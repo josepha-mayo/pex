@@ -1,0 +1,31 @@
+[project]
+name = "pex-bridge"
+version = "0.1.0"
+description = "Local PEX daemon: adapters, policy, state, and action execution."
+requires-python = ">=3.11"
+dependencies = [
+  "pex-protocol",
+  "pex-supervisor",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "aiosqlite>=0.20",
+  "pydantic-settings>=2.6",
+  "websockets>=14.0",
+  "httpx>=0.27",
+  "pyyaml>=6.0",
+  "pillow>=11.0",
+]
+
+[project.scripts]
+pex-bridge = "pex_bridge.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pex_bridge"]
+
+[tool.uv.sources]
+pex-protocol = { workspace = true }
+pex-supervisor = { workspace = true }

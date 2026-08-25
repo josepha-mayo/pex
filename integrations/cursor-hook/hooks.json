@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "sessionEnd": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "preToolUse": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "postToolUse": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "postToolUseFailure": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "beforeShellExecution": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "afterShellExecution": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "beforeReadFile": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "afterFileEdit": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "beforeSubmitPrompt": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "preCompact": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "stop": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py", "loop_limit": 8 }],
+    "afterAgentResponse": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "afterAgentThought": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "subagentStart": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }],
+    "subagentStop": [{ "command": "python integrations/cursor-hook/pex_cursor_hook.py" }]
+  }
+}

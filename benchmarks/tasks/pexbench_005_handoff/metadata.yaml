@@ -1,0 +1,15 @@
+type: handoff
+title: Move durable facts between harnesses without paste
+prompt: |
+  Codex discovered the eval schema. Cursor must implement the runner without re-deriving it.
+stressor:
+  type: handoff
+  trigger:
+    from: codex
+    to: cursor
+  expected_supervisor_behavior:
+    - build a scored context bundle
+    - inject into Cursor
+    - no full transcript dump
+hidden_evaluator:
+  no_manual_copy_paste: true

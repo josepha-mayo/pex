@@ -1,0 +1,20 @@
+{
+  "id": "dataset_before_eval",
+  "title": "Eval started before the dataset existed",
+  "replay": true,
+  "not_live_control": true,
+  "goal": {
+    "project_id": "demo-data",
+    "title": "Dataset then eval",
+    "objective": "Generate the evaluation dataset then run eval_runner",
+    "acceptance_criteria": ["dataset.parquet exists", "eval completes"],
+    "evidence_requirements": ["dataset artifact"]
+  },
+  "events": [
+    {
+      "event_type": "shell",
+      "command": "python eval_runner.py --full",
+      "message": "starting expensive evaluation"
+    }
+  ]
+}

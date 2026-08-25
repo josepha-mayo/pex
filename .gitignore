@@ -1,0 +1,56 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Node / Tauri
+node_modules/
+apps/desktop/dist/
+apps/desktop/src-tauri/target/
+*.local
+
+# Local runtime
+.pex/
+*.db
+*.db-journal
+.env
+.env.*
+!.env.example
+bridge.token
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+# Benchmark raw logs are immutable once written; never commit invented scores
+benchmarks/results/_scratch/
+benchmarks/results/*.tmp
+benchmarks/results/*.jsonl
+benchmarks/results/INVALID_LEAKED_RUNS_DO_NOT_USE/
+
+# Generated Codex App Server JSON Schema (regenerate with
+# `codex app-server generate-json-schema --out docs/vendor/codex-app-server`)
+docs/vendor/codex-app-server/
+
+# Hatch-pet working copies (final atlas is copied out after QA)
+apps/desktop/pets/pex-hatch/
+
+# Local demo captures; upload the video to YouTube/Vimeo, keep stills in git
+docs/demo/*.webm
+docs/demo/*.mp4
+
+# Secrets
+credentials.json
+*.pem
+*.key
