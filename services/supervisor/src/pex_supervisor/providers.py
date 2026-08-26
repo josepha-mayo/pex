@@ -119,7 +119,7 @@ PROVIDERS: dict[str, ProviderSpec] = {
         "https://opencode.ai/zen/v1",
         ("PEX_SUPERVISOR_API_KEY", "PEX_ZEN_API_KEY", "OPENCODE_API_KEY"),
         ("api_key",),
-        "x-preview-f-free",
+        "laguna-s-2.1-free",
         "Use an OpenCode API key. Not the default product brain.",
     ),
     "opencode_go": ProviderSpec(
@@ -271,6 +271,42 @@ PROVIDERS: dict[str, ProviderSpec] = {
         ("PEX_SUPERVISOR_API_KEY", "LITELLM_API_KEY"),
         ("api_key", "custom"),
     ),
+    "github_models": ProviderSpec(
+        "github_models",
+        "openai_compat",
+        "https://models.github.ai/inference",
+        ("PEX_SUPERVISOR_API_KEY", "GITHUB_TOKEN"),
+        ("api_key",),
+        "openai/gpt-4.1",
+        "Set PEX_SUPERVISOR_PROVIDER=github_models. GITHUB_TOKEN is not auto-detected (too common).",
+    ),
+    "writer": ProviderSpec(
+        "writer",
+        "writer",
+        None,
+        ("PEX_SUPERVISOR_API_KEY", "WRITER_API_KEY"),
+        ("api_key",),
+        None,
+        "Strands WriterModel when installed.",
+    ),
+    "sagemaker": ProviderSpec(
+        "sagemaker",
+        "sagemaker",
+        None,
+        ("PEX_SUPERVISOR_API_KEY", "AWS_ACCESS_KEY_ID", "AWS_PROFILE"),
+        ("api_key",),
+        None,
+        "Strands SageMakerAIModel when installed. Set PEX_SUPERVISOR_PROVIDER=sagemaker.",
+    ),
+    "llama_api": ProviderSpec(
+        "llama_api",
+        "llama_api",
+        None,
+        ("PEX_SUPERVISOR_API_KEY", "LLAMA_API_KEY"),
+        ("api_key",),
+        None,
+        "Strands LlamaAPIModel when installed.",
+    ),
 }
 
 _AUTO_ORDER = (
@@ -363,6 +399,42 @@ def describe_backend() -> dict[str, Any]:
     }
 
 
+def openai_compat_client_config() -> dict[str, Any] | None:
+    """Endpoint used by bounded STOP inspect. Never log the api_key."""
+    _load_dotenv()
+    if os.environ.get("PEX_SUPERVISOR_DISABLE") == "1":
+        return None
+    try:
+        pid = resolve_provider_id()
+    except ValueError:
+        return None
+    if not pid:
+        return None
+    spec = PROVIDERS[pid]
+    if spec.kind != "openai_compat":
+        return None
+    model_id = os.environ.get("PEX_SUPERVISOR_MODEL") or spec.default_model
+    base_url = os.environ.get("PEX_SUPERVISOR_BASE_URL") or spec.base_url
+    api_key = _first_env(*spec.key_envs) if spec.key_envs else None
+    if spec.id in {"lmstudio", "vllm", "ollama", "llamacpp"}:
+        api_key = api_key or "local"
+    if not model_id or not base_url:
+        return None
+    if spec.id not in {"ollama", "lmstudio", "vllm", "llamacpp", "custom"} and not api_key:
+        return None
+    try:
+        timeout = float(os.environ.get("PEX_SUPERVISOR_TIMEOUT", "45"))
+    except ValueError:
+        timeout = 45.0
+    return {
+        "provider": pid,
+        "base_url": base_url,
+        "model_id": model_id,
+        "api_key": api_key,
+        "timeout": timeout,
+    }
+
+
 def load_supervisor_model() -> Any | None:
     """Construct a Strands model for the configured provider, or None."""
     _load_dotenv()
@@ -396,8 +468,12 @@ def load_supervisor_model() -> Any | None:
             client_args["api_key"] = api_key or "local"
         if base_url:
             client_args["base_url"] = base_url
+        client_args["timeout"] = float(os.environ.get("PEX_SUPERVISOR_TIMEOUT", "45"))
         return OpenAIModel(
-            client_args=client_args or None, model_id=model_id, params={"stream": False}
+            client_args=client_args or None,
+            model_id=model_id,
+            stream=False,
+            params={"max_tokens": 700, "stream": False},
         )
 
     if spec.kind == "anthropic":
@@ -450,4 +526,41 @@ def load_supervisor_model() -> Any | None:
         from strands.models.litellm import LiteLLMModel
 
         return LiteLLMModel(model_id=model_id)
+
+    if spec.kind == "writer":
+        if not api_key:
+            return None
+        try:
+            from strands.models.writer import WriterModel
+        except ImportError:
+            return None
+        kwargs: dict[str, Any] = {"api_key": api_key}
+        if model_id:
+            kwargs["model_id"] = model_id
+        return WriterModel(**kwargs)
+
+    if spec.kind == "sagemaker":
+        try:
+            from strands.models.sagemaker import SageMakerAIModel
+        except ImportError:
+            try:
+                from strands.models.sagemaker import SageMakerModel as SageMakerAIModel
+            except ImportError:
+                return None
+        kwargs = {}
+        if model_id:
+            kwargs["model_id"] = model_id
+        return SageMakerAIModel(**kwargs)
+
+    if spec.kind == "llama_api":
+        if not api_key:
+            return None
+        try:
+            from strands.models.llamaapi import LlamaAPIModel
+        except ImportError:
+            return None
+        kwargs = {"api_key": api_key}
+        if model_id:
+            kwargs["model_id"] = model_id
+        return LlamaAPIModel(**kwargs)
     return None

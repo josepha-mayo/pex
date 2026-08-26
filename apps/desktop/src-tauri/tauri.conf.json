@@ -13,13 +13,15 @@
     "windows": [
       {
         "title": "PEX",
-        "width": 382,
-        "height": 154,
-        "decorations": false,
-        "transparent": true,
+        "width": 440,
+        "height": 720,
+        "minWidth": 380,
+        "minHeight": 560,
+        "decorations": true,
+        "transparent": false,
         "alwaysOnTop": true,
         "resizable": true,
-        "shadow": false,
+        "shadow": true,
         "skipTaskbar": false
       }
     ],

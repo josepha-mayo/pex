@@ -1,0 +1,12 @@
+services:
+  supervisor:
+    build:
+      context: .
+      dockerfile: deploy/agentcore/Dockerfile
+    image: pex-supervisor:local
+    ports:
+      - "18080:8080"
+    environment:
+      PORT: "8080"
+    # AgentCore Runtime wants linux/arm64. This compose file is local smoke on the host CPU.
+    # Deploy image: docker buildx build --platform linux/arm64 -f deploy/agentcore/Dockerfile -t pex-supervisor .

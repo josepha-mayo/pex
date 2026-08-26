@@ -33,27 +33,23 @@ class ActionExecutor:
         if action.type == InterventionType.NOOP:
             return "noop"
         if action.type in {InterventionType.SEND_NUDGE, InterventionType.INJECT_CONTEXT}:
+            if not text.strip():
+                return "send_skipped_empty"
             ok = await adapter.send_message(session, text)
             return "sent" if ok else "send_failed"
         if action.type == InterventionType.REQUEST_VERIFICATION:
-            probe = text or (
-                "PEX: run the verification already required by the public task and report "
-                "the observable command output."
-            )
-            ok = await adapter.send_message(session, probe)
+            if not text.strip():
+                return "verification_skipped_no_specific_probe"
+            ok = await adapter.send_message(session, text)
             return "verification_requested" if ok else "verification_failed"
         if action.type == InterventionType.FRESH_HANDOFF:
             raw = action.payload.get("bundle")
             if isinstance(raw, dict):
                 ok = await adapter.inject_context(session, ContextBundle.model_validate(raw))
             else:
-                ok = await adapter.send_message(
-                    session,
-                    text or (
-                        "PEX: continue from transferred project context. "
-                        "Do not restart the whole job."
-                    ),
-                )
+                if not text.strip():
+                    return "handoff_skipped_no_specific_context"
+                ok = await adapter.send_message(session, text)
             return "handoff_injected" if ok else "handoff_failed"
         if action.type == InterventionType.CONTINUE_SESSION:
             ok = await adapter.continue_or_resume(session, text or None)

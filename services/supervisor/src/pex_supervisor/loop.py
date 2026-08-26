@@ -9,15 +9,84 @@ from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.enums import Authority
 from pex_protocol.supervisor import SupervisorRequest, SupervisorResult
 
+from pex_supervisor.inspect_http import InspectUnavailable, complete_typed_action
 from pex_supervisor.planner import plan_deterministic
 from pex_supervisor.providers import describe_backend, load_supervisor_model
-from pex_supervisor.tools import SUPERVISOR_TOOLS, bind_request, reset_request, take_proposed
+from pex_supervisor.tools import bind_request, propose_typed_action, record_proposal, reset_request, take_proposed
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "supervisor.md"
 
 
+def _safe_text(value: object) -> str:
+    text = str(value)
+    return text.encode("utf-8", "replace").decode("utf-8")
+
+
+def _configure_stdio() -> None:
+    import sys
+
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            continue
+
+
 def _system_prompt() -> str:
     return PROMPT_PATH.read_text(encoding="utf-8")
+
+
+def _prefetch_evidence(request: SupervisorRequest) -> str:
+    import json
+
+    from pex_supervisor.workspace import snapshot
+
+    cwd = request.session.cwd
+    events = request.recent_events[-12:]
+    recent = [
+        {
+            "type": event.event_type.value if hasattr(event.event_type, "value") else str(event.event_type),
+            "text": (event.message_delta or event.command or "")[:240],
+        }
+        for event in events
+    ]
+    workspace: dict = {"cwd": cwd or None}
+    if cwd:
+        raw = snapshot(cwd)
+        workspace = {
+            "cwd": raw.get("workspace") or cwd,
+            "files": (raw.get("files") or [])[:80],
+            "artifacts": raw.get("artifacts") or [],
+            "git": raw.get("git") or {},
+        }
+    return json.dumps({"recent_events": recent, "workspace": workspace}, ensure_ascii=False)[:6000]
+
+
+def _compact_inspect_user(request: SupervisorRequest) -> str:
+    goal = request.goal
+    event_text = (request.event.command or request.event.message_delta or "")[:300]
+    prefetch = _prefetch_evidence(request)[:2000]
+    return (
+        f"Harness={request.session.harness_type} event={request.event.event_type} {event_text}\n"
+        f"Goal={goal.objective if goal else 'unattached'}\n"
+        f"Acceptance={list(goal.acceptance_criteria) if goal else []}\n"
+        f"Required={list(goal.evidence_requirements) if goal else []}\n"
+        f"Evidence={prefetch}\n"
+        "JSON only: action_type, rationale, evidence, message. "
+        "If a required file is missing, SEND_NUDGE naming it. "
+        "If evidence supports completion, NOOP. Never prefix the message with PEX:."
+    )
+
+
+def _http_system_prompt() -> str:
+    return (
+        "You are PEX, a goal-aware supervisor for existing coding agents. "
+        "A stop event is a trigger to inspect, not proof of failure. "
+        "If a listed evidence requirement is absent from workspace files, "
+        "action_type must be SEND_NUDGE or CONTINUE_SESSION and message must name that file. "
+        "Do not NOOP while a required file is missing. Never invent capabilities. "
+        "Never prefix worker text with PEX:."
+    )
 
 
 def _format_user(request: SupervisorRequest) -> str:
@@ -32,10 +101,32 @@ def _format_user(request: SupervisorRequest) -> str:
         f"Scores: {request.scores.model_dump_json()}\n"
         f"Goal: {goal.objective if goal else 'unattached'}\n"
         f"Acceptance: {goal.acceptance_criteria if goal else []}\n"
+        f"Evidence requirements: {goal.evidence_requirements if goal else []}\n"
         f"Notes: {request.notes}\n"
         f"Observed process state: {request.event.process_state}\n"
-        "Use tools if needed, then call propose_typed_action exactly once."
+        f"Prefetched evidence (do not re-fetch):\n{_prefetch_evidence(request)}\n"
+        "Call propose_typed_action exactly once. Do not call other tools."
     )
+
+
+def _missing_required_files(request: SupervisorRequest) -> list[str]:
+    goal = request.goal
+    cwd = request.session.cwd
+    if not goal or not cwd:
+        return []
+    from pathlib import Path
+
+    root = Path(cwd)
+    missing: list[str] = []
+    for raw in list(goal.evidence_requirements or []) + list(goal.acceptance_criteria or []):
+        name = str(raw or "").strip()
+        if not name or "/" in name or "\\" in name or len(name) > 80:
+            continue
+        if "." not in name:
+            continue
+        if not (root / name).exists():
+            missing.append(name)
+    return missing
 
 
 def _action_from_proposal(request: SupervisorRequest, proposal: dict) -> ProposedAction:
@@ -92,13 +183,85 @@ def _action_from_proposal(request: SupervisorRequest, proposal: dict) -> Propose
         InterventionType.REVERT_OVERLAY: "modify_config",
         InterventionType.SEND_NUDGE: "send_message",
     }.get(itype)
+    evidence = list(proposal.get("evidence") or [])
+    worker_facing = {
+        InterventionType.SEND_NUDGE,
+        InterventionType.CONTINUE_SESSION,
+        InterventionType.INJECT_CONTEXT,
+        InterventionType.REQUEST_VERIFICATION,
+        InterventionType.FRESH_HANDOFF,
+    }
+    if itype in worker_facing and not evidence:
+        return ProposedAction(
+            type=InterventionType.NOOP,
+            session_id=request.session.id,
+            goal_id=request.goal.id if request.goal else None,
+            payload={},
+            rationale="Worker-facing action had no evidence; defaulting to silence.",
+            evidence=["empty_evidence_coerced_noop"],
+            confidence=1.0,
+            risk=RiskLevel.NONE,
+            reversible=True,
+            cooldown_seconds=5,
+        )
+    worker_text = str(payload.get("text") or "")
+    if itype == InterventionType.NOOP and worker_text.strip():
+        lowered = worker_text.lower()
+        if any(
+            token in lowered
+            for token in (
+                "missing",
+                "please create",
+                "goal not met",
+                "was not created",
+                "does not exist",
+            )
+        ):
+            itype = InterventionType.SEND_NUDGE
+            capability = "send_message"
+            if not evidence:
+                evidence = [worker_text[:240]]
+        else:
+            payload = {key: value for key, value in payload.items() if key != "text"}
+            worker_text = ""
+    if itype == InterventionType.NOOP:
+        missing = _missing_required_files(request)
+        if missing:
+            itype = InterventionType.SEND_NUDGE
+            capability = "send_message"
+            goal = request.goal
+            if not worker_text.strip():
+                objective = str(getattr(goal, "objective", "") or "").strip()
+                payload = {
+                    **payload,
+                    "text": (
+                        f"{missing[0]} is missing from the workspace. "
+                        + (objective or f"Create {missing[0]}.")
+                    ),
+                }
+                worker_text = payload["text"]
+            if not evidence:
+                evidence = [f"missing:{name}" for name in missing]
+    if itype in worker_facing and worker_text.strip().startswith("PEX:"):
+        return ProposedAction(
+            type=InterventionType.NOOP,
+            session_id=request.session.id,
+            goal_id=request.goal.id if request.goal else None,
+            payload={},
+            rationale="Rejected generic PEX-prefixed worker text.",
+            evidence=["canned_prefix_coerced_noop"],
+            confidence=1.0,
+            risk=RiskLevel.NONE,
+            reversible=True,
+            cooldown_seconds=5,
+        )
     return ProposedAction(
         type=itype,
         session_id=request.session.id,
         goal_id=request.goal.id if request.goal else None,
         payload=payload,
         rationale=str(proposal.get("rationale") or "strands"),
-        evidence=list(proposal.get("evidence") or []),
+        evidence=evidence,
         confidence=float(proposal.get("confidence") or 0.6),
         risk=risk,
         reversible=itype not in {InterventionType.STOP_AGENT, InterventionType.CLEANUP},
@@ -152,7 +315,8 @@ def build_agent(model=None):
 
     kwargs = {
         "system_prompt": _system_prompt(),
-        "tools": SUPERVISOR_TOOLS,
+        "tools": [propose_typed_action],
+        "callback_handler": None,
     }
     if model is not None:
         kwargs["model"] = model
@@ -166,22 +330,55 @@ def run_strands(request: SupervisorRequest, model=None) -> SupervisorResult:
     started = time.perf_counter()
     backend = describe_backend()
     try:
-        agent = build_agent(model=model)
-        prompt = _format_user(request)
-        result = agent(prompt)
-        traces.append(str(getattr(result, "message", result)))
+        _configure_stdio()
+        used_llm = False
+        input_tokens = 0
+        output_tokens = 0
+        try:
+            args, usage, preview = complete_typed_action(
+                _http_system_prompt(), _compact_inspect_user(request)
+            )
+            record_proposal(
+                action_type=str(args.get("action_type") or "NOOP"),
+                rationale=str(args.get("rationale") or "strands"),
+                evidence=args.get("evidence") or "",
+                message=str(args.get("message") or ""),
+                payload_json=str(args.get("payload_json") or ""),
+                request_id=str(args.get("request_id") or ""),
+                decision=str(args.get("decision") or ""),
+                overlay_id=str(args.get("overlay_id") or ""),
+                confidence=args.get("confidence") or 0.7,
+                risk=str(args.get("risk") or "low"),
+            )
+            traces.append(preview)
+            input_tokens = int(usage.get("input_tokens") or 0)
+            output_tokens = int(usage.get("output_tokens") or 0)
+            used_llm = True
+        except InspectUnavailable:
+            traces.append("openai-compat inspect unavailable")
+        except Exception as exc:
+            traces.append(_safe_text(exc))
         proposal = take_proposed()
         if proposal:
             action = _action_from_proposal(request, proposal)
             diagnosis = "strands_supervisor"
         else:
-            action = plan_deterministic(request)
-            traces.append("strands produced no typed action; fell back to deterministic planner")
-            diagnosis = "strands_no_tool_fallback_deterministic"
-        input_tokens, output_tokens = _usage(result)
+            action = _action_from_proposal(
+                request,
+                {
+                    "type": "NOOP",
+                    "rationale": traces[-1] if traces else "inspect produced no typed action",
+                    "evidence": ["inspect_no_proposal"],
+                },
+            )
+            diagnosis = (
+                "strands_no_tool_fallback_noop"
+                if used_llm
+                else f"strands_unavailable:{traces[-1] if traces else 'inspect_failed'}"
+            )
         return SupervisorResult(
             action=action,
-            used_llm=True,
+            used_llm=used_llm,
             model_name=backend.get("model_id")
             or (type(model).__name__ if model is not None else "strands-default"),
             diagnosis=diagnosis,
@@ -214,6 +411,17 @@ def _usage(result: object) -> tuple[int, int]:
     ), int(getattr(usage, "outputTokens", 0) or getattr(usage, "output_tokens", 0) or 0)
 
 
+def needs_semantic_inference(request: SupervisorRequest, force_llm: bool = False) -> bool:
+    """Deterministic triage first. Model inspect only on STOP with a attached goal."""
+    from pex_protocol.enums import EventType
+
+    if force_llm or os.environ.get("PEX_FORCE_LLM") == "1":
+        return True
+    if request.event.event_type != EventType.STOP:
+        return False
+    return request.goal is not None
+
+
 def decide(request: SupervisorRequest, model=None, force_llm: bool = False) -> SupervisorResult:
     deterministic = plan_deterministic(request)
     if model is None and (force_llm or os.environ.get("PEX_FORCE_LLM") == "1"):
@@ -225,18 +433,23 @@ def decide(request: SupervisorRequest, model=None, force_llm: bool = False) -> S
             diagnosis="deterministic_triage_no_supervisor_model",
             backend=None,
         )
-    try:
-        from pex_supervisor.graphs import run_intervention_graph, should_use_graph
-
-        if should_use_graph(request):
-            return run_intervention_graph(request, model=model)
-        return run_strands(request, model=model)
-    except Exception as exc:
-        deterministic.payload["degraded"] = str(exc)
+    if not needs_semantic_inference(request, force_llm=force_llm):
         return SupervisorResult(
             action=deterministic,
             used_llm=False,
-            diagnosis=f"strands_unavailable:{exc}",
-            traces=[str(exc)],
+            diagnosis="deterministic_triage",
+            backend=describe_backend().get("backend"),
+        )
+    try:
+        # STOP inspect must finish inside Cursor's stop hook. The multi-agent
+        # graph tool-loops past that budget; one propose-only Strands call is enough.
+        return run_strands(request, model=model)
+    except Exception as exc:
+        deterministic.payload["degraded"] = _safe_text(exc)
+        return SupervisorResult(
+            action=deterministic,
+            used_llm=False,
+            diagnosis=f"strands_unavailable:{_safe_text(exc)}",
+            traces=[_safe_text(exc)],
             backend=describe_backend().get("backend"),
         )

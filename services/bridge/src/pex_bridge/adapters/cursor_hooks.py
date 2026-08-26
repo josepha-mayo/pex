@@ -40,7 +40,6 @@ def hook_script() -> Path:
 def install_user_hooks(cursor_dir: Path | None = None) -> Path:
     script = hook_script()
     python = sys.executable
-    command = f'"{python}" "{script}"'
     cursor_dir = cursor_dir or (Path.home() / ".cursor")
     cursor_dir.mkdir(parents=True, exist_ok=True)
     hooks_path = cursor_dir / "hooks.json"
@@ -49,9 +48,13 @@ def install_user_hooks(cursor_dir: Path | None = None) -> Path:
         data = json.loads(hooks_path.read_text(encoding="utf-8"))
         data.setdefault("hooks", {})
     for event in HOOK_EVENTS:
+        command = f'"{python}" "{script}" {event}'
         entries = data["hooks"].setdefault(event, [])
-        if any(item.get("command") == command for item in entries):
-            continue
+        entries[:] = [
+            item
+            for item in entries
+            if str(script) not in str(item.get("command") or "")
+        ]
         item: dict = {"command": command}
         if event == "stop":
             item["loop_limit"] = 8

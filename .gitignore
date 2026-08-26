@@ -45,6 +45,9 @@ docs/vendor/codex-app-server/
 
 # Hatch-pet working copies (final atlas is copied out after QA)
 apps/desktop/pets/pex-hatch/
+apps/desktop/src/pets/_hatch/
+apps/desktop/src/pets/von/spritesheet.webp
+apps/desktop/src-tauri/gen/
 
 # Local demo captures; upload the video to YouTube/Vimeo, keep stills in git
 docs/demo/*.webm

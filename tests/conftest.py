@@ -9,5 +9,9 @@ import pytest
 def _disable_supervisor_llm(request, monkeypatch):
     if request.node.get_closest_marker("live_llm"):
         monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
-        return
-    monkeypatch.setenv("PEX_SUPERVISOR_DISABLE", "1")
+        monkeypatch.setenv("PYTHONUTF8", "1")
+        monkeypatch.setenv("PYTHONIOENCODING", "utf-8")
+    else:
+        monkeypatch.setenv("PEX_SUPERVISOR_DISABLE", "1")
+    if not request.node.get_closest_marker("live_codex"):
+        monkeypatch.setenv("PEX_CODEX_ATTACH", "0")

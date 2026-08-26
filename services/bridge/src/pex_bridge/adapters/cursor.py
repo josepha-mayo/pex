@@ -32,6 +32,18 @@ HOOK_EVENT_MAP = {
 }
 
 
+def _cursor_vendor_id(payload: dict) -> str:
+    for key in ("conversation_id", "session_id", "composer_id", "chat_id"):
+        value = str(payload.get(key) or "").strip()
+        if value and value.lower() not in {"unknown", "desktop", "none"}:
+            return value
+    roots = payload.get("workspace_roots") or []
+    cwd = str(roots[0] if roots else payload.get("cwd") or "").strip()
+    if cwd:
+        return f"cwd:{cwd}"
+    return "desktop"
+
+
 class CursorAdapter(HarnessAdapter):
     """Cursor via official hooks plus optional ACP control."""
 
@@ -120,12 +132,7 @@ class CursorAdapter(HarnessAdapter):
         return list(self.sessions.values())
 
     def upsert_from_hook(self, payload: dict) -> HarnessSession:
-        vendor_id = (
-            payload.get("conversation_id")
-            or payload.get("session_id")
-            or payload.get("generation_id")
-            or "unknown"
-        )
+        vendor_id = _cursor_vendor_id(payload)
         session_id = f"cursor:{vendor_id}"
         existing = self.sessions.get(session_id)
         roots = payload.get("workspace_roots") or []
@@ -142,6 +149,7 @@ class CursorAdapter(HarnessAdapter):
                 "transcript_path": payload.get("transcript_path"),
                 "cursor_version": payload.get("cursor_version"),
                 "source": "hook",
+                "title": ((existing.metadata or {}).get("title") if existing else None),
             },
             goal_id=existing.goal_id if existing else None,
             supervision_paused=existing.supervision_paused if existing else False,
@@ -160,10 +168,22 @@ class CursorAdapter(HarnessAdapter):
         tool_input = payload.get("tool_input")
         if isinstance(tool_input, dict):
             command = tool_input.get("command")
-        command = command or payload.get("command")
+        command = command or payload.get("command") or payload.get("shell_command")
         files: list[str] = []
         if payload.get("file_path"):
             files.append(payload["file_path"])
+        message = (
+            payload.get("prompt")
+            or payload.get("text")
+            or payload.get("agent_message")
+            or payload.get("completion")
+            or payload.get("content")
+            or payload.get("last_assistant_message")
+            or payload.get("output")
+        )
+        tool_name = payload.get("tool_name") or payload.get("tool") or payload.get("toolName")
+        if not command and isinstance(tool_input, dict):
+            command = tool_input.get("command") or tool_input.get("cmd")
         return HarnessEvent(
             event_id=uuid4().hex,
             ts=datetime.now(timezone.utc),
@@ -172,8 +192,8 @@ class CursorAdapter(HarnessAdapter):
             project_id=session.project_id,
             event_type=event_type,
             phase=phase,
-            message_delta=payload.get("prompt") or payload.get("text") or payload.get("agent_message"),
-            tool_name=payload.get("tool_name"),
+            message_delta=message,
+            tool_name=tool_name,
             tool_input=tool_input if isinstance(tool_input, dict) else None,
             command=command,
             file_paths=files,
@@ -194,13 +214,16 @@ class CursorAdapter(HarnessAdapter):
         return True
 
     async def continue_or_resume(self, session: HarnessSession, message: str | None = None) -> bool:
-        return await self.send_message(
-            session,
-            message or "PEX: the goal is not complete. Missing evidence is listed below. Continue.",
-        )
+        if not message or not str(message).strip():
+            return False
+        return await self.send_message(session, message)
 
     async def focus_ui(self, session: HarnessSession) -> bool:
-        return _focus_cursor_window(session.cwd or session.project_id or "Cursor")
+        from pex_bridge.adapters.winfocus import focus_harness
+
+        if focus_harness("cursor"):
+            return True
+        return _focus_cursor_window(session.vendor_session_id or "Cursor")
 
     def consume_followup(self, session_id: str) -> str | None:
         return self.pending_followups.pop(session_id, None)
@@ -209,7 +232,7 @@ class CursorAdapter(HarnessAdapter):
         text = overlay.diff.system_instructions or overlay.reason
         return await self.send_message(
             session,
-            f"PEX overlay ({overlay.id}): {text}\nFollow this for the rest of the session unless reverted.",
+            f"Session overlay ({overlay.id}): {text}\nFollow this for the rest of the session unless reverted.",
         )
 
     async def revert_overlay(self, overlay_id: str) -> bool:

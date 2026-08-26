@@ -146,6 +146,13 @@ class Store:
         events.reverse()
         return events
 
+    async def latest_events(self, limit: int = 40) -> list[HarnessEvent]:
+        cur = await self.db.execute(
+            "SELECT json FROM events ORDER BY ts DESC LIMIT ?",
+            (limit,),
+        )
+        return [HarnessEvent.model_validate_json(row["json"]) for row in await cur.fetchall()]
+
     async def add_intervention(self, intervention: Intervention) -> None:
         await self.db.execute(
             "INSERT OR REPLACE INTO interventions(id, session_id, ts, json) VALUES (?, ?, ?, ?)",

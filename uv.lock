@@ -1636,12 +1636,15 @@ dependencies = [
 [package.optional-dependencies]
 agentcore = [
     { name = "bedrock-agentcore" },
+    { name = "fastapi" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=1.0.0" },
     { name = "bedrock-agentcore", marker = "extra == 'agentcore'", specifier = ">=0.1" },
+    { name = "fastapi", marker = "extra == 'agentcore'", specifier = ">=0.115" },
     { name = "google-genai", specifier = ">=2.19.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "litellm", specifier = ">=1.98.0" },
@@ -1650,6 +1653,7 @@ requires-dist = [
     { name = "pex-protocol", editable = "packages/protocol" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "strands-agents", specifier = ">=1.0" },
+    { name = "uvicorn", marker = "extra == 'agentcore'", specifier = ">=0.32" },
 ]
 provides-extras = ["agentcore"]
 

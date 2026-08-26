@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import secrets
 from contextlib import asynccontextmanager
@@ -55,6 +56,8 @@ class AppState:
         self.supervisor_error: str | None = None
 
     async def broadcast(self, topic: str, payload: dict[str, Any]) -> None:
+        if topic == "pet":
+            payload = self.decorate_pet(payload)
         dead: list[WebSocket] = []
         for ws in self.sockets:
             try:
@@ -64,8 +67,53 @@ class AppState:
         for ws in dead:
             self.sockets.remove(ws)
 
+    def decorate_pet(self, snap: dict[str, Any]) -> dict[str, Any]:
+        chosen = catalog_by_id(self.pet_settings).get(self.pet_settings.selected_id, STARTERS[0])
+        appearance = chosen.model_dump(mode="json")
+        if self.pet_settings.custom_name:
+            appearance["display_name"] = self.pet_settings.custom_name
+        appearance["spritesheet_url"] = f"/v1/pets/{chosen.id}/spritesheet"
+        appearance["hue_shift"] = self.pet_settings.hue_shift
+        appearance["scale"] = self.pet_settings.scale
+        snap["appearance"] = appearance
+        snap["settings"] = self.pet_settings.model_dump(mode="json")
+        last = snap.get("last_action") or {}
+        if snap.get("needs_you"):
+            snap["mood"] = "decision"
+        elif snap.get("blocked"):
+            snap["mood"] = "warning"
+        elif snap.get("drifting"):
+            snap["mood"] = "drift"
+        elif snap.get("working"):
+            snap["mood"] = "working"
+        elif last.get("action") in {"SEND_NUDGE", "VERIFY", "HANDOFF_CONTEXT"}:
+            snap["mood"] = "observing"
+        else:
+            snap["mood"] = "idle"
+        return snap
+
+    async def live_pet(self) -> dict[str, Any]:
+        await self.pipeline.refresh_desktop_sessions()
+        return self.decorate_pet(await self.pipeline.pet_snapshot())
+
 
 state = AppState()
+
+
+def _start_event_pumps() -> None:
+    for adapter in state.adapters.all():
+        starter = getattr(adapter, "start_pipeline_pump", None)
+        if starter is None:
+            continue
+        starter(state.pipeline.ingest_event)
+
+
+def _supervisor_health() -> dict[str, Any]:
+    from pex_supervisor.providers import describe_backend
+
+    info = describe_backend()
+    info["model_loaded"] = state.pipeline.model is not None
+    return info
 
 
 async def _require_token(authorization: str | None = Header(default=None)) -> None:
@@ -143,10 +191,17 @@ async def lifespan(app: FastAPI):
     if pet_file.exists():
         state.pet_settings = PetSettings.model_validate_json(pet_file.read_text(encoding="utf-8"))
         state.pet_path = pet_file
+    from pex_bridge.pets import maybe_import_codex_home
+
+    state.pet_settings = maybe_import_codex_home(state.pet_settings)
+    state.pet_path = pet_file
+    pet_file.parent.mkdir(parents=True, exist_ok=True)
+    pet_file.write_text(state.pet_settings.model_dump_json(indent=2), encoding="utf-8")
     state.bus.subscribe(state.broadcast)
     from pex_bridge.adapters.attach import attach_from_settings
 
     await attach_from_settings(state.adapters, state.settings)
+    _start_event_pumps()
     from pex_supervisor.providers import load_supervisor_model
 
     try:
@@ -159,12 +214,18 @@ async def lifespan(app: FastAPI):
             "Supervisor provider failed to load; deterministic supervision remains active"
         )
     yield
-    for adapter_name in ("codex", "cursor"):
-        adapter = state.adapters.get(adapter_name)
+    for adapter in state.adapters.all():
+        pump = getattr(adapter, "_pump_task", None)
+        if pump is not None:
+            pump.cancel()
+            try:
+                await pump
+            except asyncio.CancelledError:
+                pass
         transport = getattr(adapter, "transport", None)
         if transport is None and getattr(adapter, "acp", None) is not None:
             transport = getattr(adapter.acp, "transport", None)
-        closer = getattr(transport, "close", None)
+        closer = getattr(transport, "close", None) or getattr(transport, "aclose", None)
         if closer:
             await closer()
     await state.store.close()
@@ -192,6 +253,7 @@ def create_app() -> FastAPI:
             "attached": attached,
             "supervisor": "degraded" if state.supervisor_error else "ready",
             "supervisor_error": state.supervisor_error,
+            "supervisor_backend": _supervisor_health(),
         }
 
     @app.get("/v1/discover")
@@ -236,6 +298,7 @@ def create_app() -> FastAPI:
                 if not binary:
                     raise HTTPException(400, "codex binary not found")
                 adapter.attach_transport(CodexStdioTransport(binary))
+                _start_event_pumps()
                 caps = await adapter.probe()
                 return {
                     "ok": True,
@@ -276,6 +339,7 @@ def create_app() -> FastAPI:
                 )
             elif name == "codex":
                 adapter.attach_transport(CodexStdioTransport(match["bin"]))
+                _start_event_pumps()
             elif name in {"hermes", "kimi", "omp"}:
                 from pex_bridge.adapters.acp_client import StdioAcpTransport
                 from pex_bridge.adapters.hermes_bin import acp_command as hermes_acp
@@ -300,6 +364,7 @@ def create_app() -> FastAPI:
         if not hasattr(adapter, "attach_transport"):
             raise HTTPException(400, "adapter cannot attach HTTP")
         adapter.attach_transport(LiveHttpTransport(match["base_url"], token=body.get("token")))
+        _start_event_pumps()
         caps = await adapter.probe()
         return {
             "ok": True,
@@ -382,6 +447,7 @@ def create_app() -> FastAPI:
             if not binary:
                 raise HTTPException(400, "codex binary not found; set PEX_CODEX_BIN")
             adapter.attach_transport(CodexStdioTransport(binary))
+            _start_event_pumps()
             caps = await adapter.probe()
             return {
                 "ok": True,
@@ -400,6 +466,7 @@ def create_app() -> FastAPI:
             adapter.attach_transport(transport, org_id=body.get("org_id"))
         else:
             adapter.attach_transport(transport)
+        _start_event_pumps()
         caps = await adapter.probe()
         return {"ok": True, "name": name, "support": caps.support_label.value}
 
@@ -409,25 +476,7 @@ def create_app() -> FastAPI:
 
     @app.get("/v1/pet")
     async def pet(_: None = Depends(_require_token)):
-        snap = await state.pipeline.pet_snapshot()
-        chosen = catalog_by_id(state.pet_settings).get(state.pet_settings.selected_id, STARTERS[0])
-        appearance = chosen.model_dump(mode="json")
-        if state.pet_settings.custom_name:
-            appearance["display_name"] = state.pet_settings.custom_name
-        appearance["spritesheet_url"] = f"/v1/pets/{chosen.id}/spritesheet"
-        appearance["hue_shift"] = state.pet_settings.hue_shift
-        appearance["scale"] = state.pet_settings.scale
-        snap["appearance"] = appearance
-        snap["settings"] = state.pet_settings.model_dump(mode="json")
-        if snap.get("needs_you"):
-            snap["mood"] = "decision"
-        elif snap.get("drifting"):
-            snap["mood"] = "drift"
-        elif snap.get("working"):
-            snap["mood"] = "working"
-        else:
-            snap["mood"] = "idle"
-        return snap
+        return await state.live_pet()
 
     @app.get("/v1/pets")
     async def list_pets(_: None = Depends(_require_token)):
@@ -503,17 +552,7 @@ def create_app() -> FastAPI:
 
     @app.get("/v1/sessions")
     async def sessions(_: None = Depends(_require_token)):
-        for adapter in state.adapters.all():
-            try:
-                discovered = await adapter.discover_sessions()
-            except Exception:
-                continue
-            for session in discovered:
-                existing = await state.store.get_session(session.id)
-                if existing:
-                    session.goal_id = existing.goal_id
-                    session.supervision_paused = existing.supervision_paused
-                await state.store.upsert_session(session)
+        await state.pipeline.refresh_desktop_sessions()
         return [s.model_dump(mode="json") for s in await state.store.list_sessions()]
 
     @app.get("/v1/sessions/{session_id}")
@@ -568,6 +607,12 @@ def create_app() -> FastAPI:
             raise HTTPException(404, "session not found")
         ok = await adapter.focus_ui(session)
         return {"ok": ok}
+
+    @app.post("/v1/harnesses/{name}/focus")
+    async def focus_harness_named(name: str, _: None = Depends(_require_token)):
+        from pex_bridge.adapters.winfocus import focus_harness
+
+        return {"ok": focus_harness(name)}
 
     @app.post("/v1/sessions/{session_id}/pause-supervision")
     async def pause(session_id: str, _: None = Depends(_require_token)):
@@ -825,29 +870,24 @@ def create_app() -> FastAPI:
             session.supervision_paused = existing.supervision_paused
         await state.store.upsert_session(session)
         event = adapter.normalize_hook(payload, session)
-        intervention = await state.pipeline.ingest_event(event, session)
         hook_name = payload.get("hook_event_name")
         response: dict[str, Any] = {}
+        if hook_name in {
+            "preToolUse",
+            "beforeShellExecution",
+            "beforeMCPExecution",
+            "beforeReadFile",
+        }:
+            asyncio.create_task(state.pipeline.ingest_event(event, session))
+            response["permission"] = "allow"
+            return response
+        intervention = await state.pipeline.ingest_event(event, session)
         if hook_name == "stop":
             followup = adapter.consume_followup(session.id)
-            if followup:
-                response["followup_message"] = followup
-        elif hook_name in {"beforeShellExecution", "preToolUse"}:
-            if intervention and intervention.policy_verdict.value == "allow":
-                response["permission"] = "allow"
-            elif intervention and intervention.policy_verdict.value == "deny":
-                response["permission"] = "deny"
-                response["agent_message"] = "PEX policy denied this action."
-            elif intervention and intervention.policy_verdict.value == "ask_human":
-                if hook_name == "beforeShellExecution":
-                    response["permission"] = "ask"
-                    response["user_message"] = "PEX needs a human decision for this action."
-                else:
-                    # Cursor docs: ask is accepted for preToolUse but not enforced.
-                    response["permission"] = "deny"
-                    response["user_message"] = "PEX needs a human decision for this action."
-            else:
-                response["permission"] = "allow"
+            used_llm = bool(intervention and (intervention.metadata or {}).get("used_llm"))
+            text = (followup or "").strip()
+            if used_llm and text and not text.startswith("PEX:"):
+                response["followup_message"] = text
         elif hook_name == "beforeSubmitPrompt":
             if intervention and intervention.proposed_action.type.value == "ASK_HUMAN":
                 response["continue"] = False
@@ -895,6 +935,13 @@ def create_app() -> FastAPI:
                 "PreToolUse",
             }:
                 event.event_type = EventType.PERMISSION_REQUEST
+        hook_name = str(payload.get("hook_event_name") or payload.get("hook") or "")
+        if hook_name in {"PreToolUse", "PermissionRequest", "pre_tool_call"}:
+            asyncio.create_task(state.pipeline.ingest_event(event, session))
+            response = {"ok": True, "session_id": session.id, "inbox": getattr(adapter, "inbox", {}).get(session.id, [])}
+            if hasattr(adapter, "hook_response"):
+                response.update(adapter.hook_response(session, payload, None))
+            return response
         intervention = await state.pipeline.ingest_event(event, session)
         inbox = getattr(adapter, "inbox", {}).get(session.id, [])
         response = {
@@ -904,7 +951,15 @@ def create_app() -> FastAPI:
             "inbox": inbox,
         }
         if hasattr(adapter, "hook_response"):
-            response.update(adapter.hook_response(session, payload, intervention))
+            extra = adapter.hook_response(session, payload, intervention)
+            output = extra.get("hookSpecificOutput") if isinstance(extra, dict) else None
+            if (
+                hook_name in {"Stop", "stop"}
+                and isinstance(output, dict)
+                and str(output.get("additionalContext") or "").startswith("PEX:")
+            ):
+                extra = {k: v for k, v in extra.items() if k != "hookSpecificOutput"}
+            response.update(extra)
         return response
 
     @app.websocket("/v1/events")
@@ -924,7 +979,7 @@ def create_app() -> FastAPI:
         await ws.accept()
         state.sockets.append(ws)
         try:
-            await ws.send_json({"topic": "pet", "payload": await state.pipeline.pet_snapshot()})
+            await ws.send_json({"topic": "pet", "payload": await state.live_pet()})
             while True:
                 await ws.receive_text()
         except WebSocketDisconnect:

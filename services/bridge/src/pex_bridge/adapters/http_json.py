@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 from typing import Any, Protocol
 
 import httpx
@@ -28,6 +30,7 @@ class MemoryHttpTransport:
         self.prompts: list[dict[str, Any]] = []
         self.permissions: list[dict[str, Any]] = []
         self.config_patches: list[dict[str, Any]] = []
+        self.events: list[dict[str, Any]] = []
 
     async def request(
         self,
@@ -68,7 +71,11 @@ class LiveHttpTransport:
         headers = {}
         if token:
             headers["Authorization"] = f"Bearer {token}"
+        self._headers = headers
+        self._auth = auth
         self._client = httpx.AsyncClient(base_url=self.base_url, timeout=8.0, headers=headers, auth=auth)
+        self.events: list[dict[str, Any]] = []
+        self._sse_task: asyncio.Task | None = None
 
     async def request(
         self,
@@ -85,5 +92,55 @@ class LiveHttpTransport:
             return response.json()
         return {"raw": response.text}
 
+    async def ensure_sse(self, path: str = "/event") -> None:
+        existing = self._sse_task
+        if existing is not None and not existing.done():
+            return
+        self._sse_task = asyncio.create_task(self._read_sse(path), name="http-sse")
+
+    async def _read_sse(self, path: str) -> None:
+        client = httpx.AsyncClient(
+            base_url=self.base_url,
+            timeout=None,
+            headers={**self._headers, "Accept": "text/event-stream"},
+            auth=self._auth,
+        )
+        try:
+            while True:
+                try:
+                    async with client.stream("GET", path) as response:
+                        response.raise_for_status()
+                        buf = ""
+                        async for chunk in response.aiter_text():
+                            buf += chunk
+                            while "\n\n" in buf:
+                                raw, buf = buf.split("\n\n", 1)
+                                for line in raw.splitlines():
+                                    if not line.startswith("data:"):
+                                        continue
+                                    data = line[5:].strip()
+                                    if not data:
+                                        continue
+                                    try:
+                                        payload = json.loads(data)
+                                    except json.JSONDecodeError:
+                                        continue
+                                    if isinstance(payload, dict):
+                                        self.events.append(payload)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    await asyncio.sleep(1.0)
+        finally:
+            await client.aclose()
+
     async def aclose(self) -> None:
+        task = self._sse_task
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._sse_task = None
         await self._client.aclose()

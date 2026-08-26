@@ -19,7 +19,10 @@ def test_explicit_provider_and_disable(monkeypatch):
     assert info["has_api_key"] is True
     assert "zen" in PROVIDERS
     assert "openai" in PROVIDERS
-    assert "github_models" not in PROVIDERS
+    assert "github_models" in PROVIDERS
+    assert "writer" in PROVIDERS
+    assert "sagemaker" in PROVIDERS
+    assert "llama_api" in PROVIDERS
 
 
 def test_custom_base_url_wins_without_named_provider(monkeypatch):

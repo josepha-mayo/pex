@@ -347,9 +347,43 @@ class CodexAdapter(HarnessAdapter):
         self.isolated_item_types: list[str] = []
         self.last_turn_params: dict[str, Any] | None = None
         self.last_turn_id: str | None = None
+        self._pump_task: asyncio.Task | None = None
+        self._cwd_probed: set[str] = set()
 
     def attach_transport(self, transport: CodexTransport) -> None:
         self.transport = transport
+
+    def _session_for(self, params: dict[str, Any] | None = None) -> HarnessSession:
+        params = params or {}
+        thread_id = str(params.get("threadId") or params.get("thread_id") or "")
+        if not thread_id:
+            turn = params.get("turn")
+            if isinstance(turn, dict):
+                thread_id = str(turn.get("threadId") or turn.get("thread_id") or "")
+        if not thread_id and self.last_turn_params:
+            thread_id = str(self.last_turn_params.get("threadId") or "")
+        session_id = f"codex:{thread_id}" if thread_id else "codex:unknown"
+        session = self.sessions.get(session_id)
+        cwd = params.get("cwd")
+        if not isinstance(cwd, str) or not cwd:
+            cwd = None
+        if session is None:
+            session = HarnessSession(
+                id=session_id,
+                harness_type=HarnessType.CODEX,
+                vendor_session_id=thread_id or "unknown",
+                cwd=cwd,
+                project_id=cwd,
+                status=SessionStatus.WORKING,
+                last_activity=datetime.now(timezone.utc),
+                metadata={"source": "pump"},
+            )
+            self.sessions[session_id] = session
+        elif not session.cwd and cwd:
+            session.cwd = cwd
+            if not session.project_id:
+                session.project_id = cwd
+        return session
 
     async def existing_thread_ids(self) -> set[str]:
         if not await self._ready():
@@ -569,6 +603,7 @@ class CodexAdapter(HarnessAdapter):
             start=connected,
             resume=connected,
             fork=connected,
+            focus_ui=True,
             control_granularity=ControlGranularity.EVENT if connected else ControlGranularity.SESSION,
             trust_level=0.9 if connected else 0.0,
             support_label=AdapterSupportLabel.DEEP if connected else AdapterSupportLabel.UNAVAILABLE,
@@ -582,6 +617,12 @@ class CodexAdapter(HarnessAdapter):
                 )
             ),
         )
+
+
+    async def focus_ui(self, session: HarnessSession) -> bool:
+        from pex_bridge.adapters.winfocus import focus_harness
+
+        return focus_harness("codex")
 
     async def discover_sessions(self) -> list[HarnessSession]:
         if not await self._ready():
@@ -599,12 +640,15 @@ class CodexAdapter(HarnessAdapter):
             raw_status = thread.get("status")
             if isinstance(raw_status, dict) and raw_status.get("type") == "idle":
                 status = SessionStatus.IDLE
+            listed_cwd = thread.get("cwd")
+            if not isinstance(listed_cwd, str) or not listed_cwd:
+                listed_cwd = existing.cwd if existing else None
             self.sessions[session_id] = HarnessSession(
                 id=session_id,
                 harness_type=HarnessType.CODEX,
                 vendor_session_id=vendor_id,
-                cwd=thread.get("cwd"),
-                project_id=thread.get("projectId") or thread.get("cwd"),
+                cwd=listed_cwd,
+                project_id=thread.get("projectId") or listed_cwd,
                 status=status,
                 last_activity=datetime.now(timezone.utc),
                 goal_id=existing.goal_id if existing else None,
@@ -651,3 +695,92 @@ class CodexAdapter(HarnessAdapter):
             command=item.get("command"),
             metadata={"raw_type": kind},
         )
+
+    async def pump_into_pipeline(self, ingest) -> None:
+        seen_notifications = 0
+        seen_approvals: set[str] = set()
+        seen_transport: CodexTransport | None = None
+        last_discover: float | None = None
+        while True:
+            try:
+                transport = self.transport
+                if transport is not seen_transport:
+                    seen_transport = transport
+                    seen_notifications = 0
+                    seen_approvals.clear()
+                    last_discover = None
+                now = asyncio.get_running_loop().time()
+                if last_discover is None or now - last_discover >= 1.0:
+                    await self.discover_sessions()
+                    last_discover = now
+                pending = getattr(transport, "pending_approvals", {}) if transport else {}
+                for request_id, request in list(pending.items()):
+                    key = str(request_id)
+                    if key in seen_approvals:
+                        continue
+                    seen_approvals.add(key)
+                    params = request.get("params") or {}
+                    if not isinstance(params, dict):
+                        params = {}
+                    session = self._session_for(params)
+                    event = HarnessEvent(
+                        event_id=key,
+                        ts=datetime.now(timezone.utc),
+                        harness_type=HarnessType.CODEX,
+                        session_id=session.id,
+                        project_id=session.project_id,
+                        event_type=EventType.PERMISSION_REQUEST,
+                        phase=EventPhase.BEFORE,
+                        command=params.get("command") if isinstance(params.get("command"), str) else None,
+                        approval_request={
+                            "request_id": key,
+                            "id": key,
+                            "method": request.get("method"),
+                            "params": params,
+                        },
+                        metadata={"raw_method": request.get("method")},
+                    )
+                    await ingest(event, session)
+                notifications = getattr(transport, "notifications", []) if transport else []
+                for message in notifications[seen_notifications:]:
+                    params = message.get("params") or {}
+                    if not isinstance(params, dict):
+                        params = {}
+                    session = self._session_for(params)
+                    method = message.get("method")
+                    if not params.get("threadId") and self.last_turn_params:
+                        params = {**params, "threadId": self.last_turn_params.get("threadId")}
+                        session = self._session_for(params)
+                    if method == "turn/completed":
+                        turn = params.get("turn") if isinstance(params.get("turn"), dict) else {}
+                        event = HarnessEvent(
+                            event_id=str((turn or {}).get("id") or uuid4().hex),
+                            ts=datetime.now(timezone.utc),
+                            harness_type=HarnessType.CODEX,
+                            session_id=session.id,
+                            project_id=session.project_id,
+                            event_type=EventType.STOP,
+                            phase=EventPhase.TERMINAL,
+                            metadata={"raw_method": "turn/completed"},
+                        )
+                        await ingest(event, session)
+                    else:
+                        item = params.get("item") if isinstance(params.get("item"), dict) else params
+                        event = self.normalize_item(session, item if isinstance(item, dict) else {})
+                        await ingest(event, session)
+                seen_notifications = len(notifications)
+                await asyncio.sleep(0.05)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                await asyncio.sleep(0.5)
+
+    def start_pipeline_pump(self, ingest) -> asyncio.Task:
+        existing = self._pump_task
+        if existing is not None and not existing.done():
+            return existing
+        self._pump_task = asyncio.create_task(
+            self.pump_into_pipeline(ingest),
+            name="codex-pipeline-pump",
+        )
+        return self._pump_task

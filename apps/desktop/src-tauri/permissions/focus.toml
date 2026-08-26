@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-focus-harness"
+description = "Bring an already-running harness window to the front"
+commands.allow = ["focus_harness"]
+
+[[permission]]
+identifier = "allow-quit-app"
+description = "Exit the PEX companion"
+commands.allow = ["quit_app"]

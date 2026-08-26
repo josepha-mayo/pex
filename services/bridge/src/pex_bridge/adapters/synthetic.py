@@ -108,8 +108,9 @@ class SyntheticAdapter(HarnessAdapter):
         return True
 
     async def continue_or_resume(self, session: HarnessSession, message: str | None = None) -> bool:
-        text = message or "PEX: continue. Acceptance criteria are not yet evidenced."
-        return await self.send_message(session, text)
+        if not message or not str(message).strip():
+            return False
+        return await self.send_message(session, message)
 
     async def apply_overlay(self, session: HarnessSession, overlay) -> bool:
         self.overlays.setdefault(session.id, []).append(getattr(overlay, "id", str(overlay)))

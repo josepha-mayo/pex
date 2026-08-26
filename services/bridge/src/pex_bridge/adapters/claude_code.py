@@ -126,13 +126,13 @@ class ClaudeCodeAdapter(HarnessAdapter):
         hook_name = str(payload.get("hook_event_name") or "")
         if hook_name == "PreToolUse":
             decision = "allow"
-            reason = "PEX policy allow"
+            reason = "policy allow"
             if intervention and intervention.policy_verdict == PolicyVerdict.DENY:
                 decision = "deny"
-                reason = intervention.diagnosis or "PEX policy deny"
+                reason = intervention.diagnosis or "policy deny"
             elif intervention and intervention.policy_verdict == PolicyVerdict.ASK_HUMAN:
                 decision = "ask"
-                reason = intervention.diagnosis or "PEX needs a human decision"
+                reason = intervention.diagnosis or "needs a human decision"
             return {
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",

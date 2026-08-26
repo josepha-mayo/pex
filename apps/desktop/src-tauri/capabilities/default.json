@@ -3,6 +3,10 @@
   "description": "Default PEX desktop capabilities",
   "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-close",
+    "allow-focus-harness",
+    "allow-quit-app"
   ]
 }

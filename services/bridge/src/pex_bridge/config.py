@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     devin_token: str | None = None
     devin_org_id: str | None = None
     codex_bin: str | None = None
-    codex_attach: bool = False
+    codex_attach: bool = True
     cursor_agent: str | None = None
     cursor_attach: bool = False
     max_recent_events: int = 80

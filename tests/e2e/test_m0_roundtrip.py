@@ -65,10 +65,12 @@ async def test_m0_event_to_action_roundtrip(client: AsyncClient):
     )
     body = stop.json()
     assert body["intervention"] is not None
-    assert body["intervention"]["action_taken"] in {"CONTINUE_SESSION", "SEND_NUDGE"}
-    assert body["inbox"], "PEX must send a corrective message through the adapter"
+    assert body["intervention"]["action_taken"] == "NOOP"
     pet = await client.get("/v1/pet")
-    assert "working" in pet.json()["headline"] or "idle" in pet.json()["headline"] or pet.status_code == 200
+    body = pet.json()
+    assert "working" in body["headline"] or "quiet" in body["headline"] or "idle" in body["headline"]
+    assert body.get("last_message")
+    assert "All tests passed" in body["last_message"]
 
     adapters = await client.get("/v1/adapters")
     names = {item["name"] for item in adapters.json()}
@@ -103,7 +105,6 @@ async def test_m0_event_to_action_roundtrip(client: AsyncClient):
     assert replay.status_code == 200
     assert replay.json()["replay"] is True
     assert replay.json()["not_live_control"] is True
-    assert replay.json()["inbox"], "replay must still drive the supervisor"
     patched = await client.patch("/v1/pets/settings", json={"custom_name": "Ledgerbot", "selected_id": "ledger"})
     assert patched.status_code == 200
     shown = await client.get("/v1/pet")

@@ -43,6 +43,7 @@ testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
 markers = [
   "live_llm: hits a real supervisor provider; skipped without a key",
+  "live_codex: hits a real Codex App Server; skipped without a binary",
 ]
 
 [tool.ruff]

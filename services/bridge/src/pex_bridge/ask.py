@@ -13,27 +13,9 @@ def answer_question(
     goals: list[Goal] | None = None,
     model=None,
 ) -> str:
-    """Answer from canonical PEX state. Keyword path is always available; model is optional."""
-    canonical = _keyword_answer(question, sessions, interventions, goals or [])
-    if model is None:
-        return canonical
-    try:
-        from strands import Agent
-
-        agent = Agent(
-            system_prompt=(
-                "You are PEX answering the human from canonical supervisor state. "
-                "Do not invent sessions. Do not interrupt workers. Be terse."
-            ),
-            model=model,
-        )
-        result = agent(
-            f"Question: {question}\nCanonical facts you must not contradict:\n{canonical}"
-        )
-        text = str(getattr(result, "message", result)).strip()
-        return text[:2000] if text else canonical
-    except Exception:
-        return canonical
+    """Answer from canonical PEX state. Never interrupts a worker to fetch an answer."""
+    del model
+    return _keyword_answer(question, sessions, interventions, goals or [])
 
 
 def _keyword_answer(

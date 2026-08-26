@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -10,14 +11,14 @@ from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent
 from pex_protocol.supervisor import TrajectoryScores
 
-SUCCESS_CLAIM_MARKERS = (
-    "tests pass",
-    "all tests passed",
-    "done",
-    "completed successfully",
-    "fixed",
-    "deployment complete",
-    "evaluation done",
+# Phrase-level only. Bare "done" matches ordinary chat and is not a completion claim.
+SUCCESS_CLAIM_RE = re.compile(
+    r"\b("
+    r"all tests passed|tests passed|tests pass|"
+    r"completed successfully|deployment complete|evaluation done|"
+    r"i am done|i'm done|we're done|all done"
+    r")\b",
+    re.IGNORECASE,
 )
 
 
@@ -57,8 +58,7 @@ def extract_features(events: list[HarnessEvent]) -> dict:
                 elif pytest_info.get("ok") is False:
                     tests_run += 1
                     errors.append("pytest_failed")
-        text = (event.message_delta or "").lower()
-        if any(marker in text for marker in SUCCESS_CLAIM_MARKERS):
+        if SUCCESS_CLAIM_RE.search(event.message_delta or ""):
             success_claims += 1
 
     command_counts = Counter(commands)
@@ -86,22 +86,17 @@ def extract_features(events: list[HarnessEvent]) -> dict:
 
 
 def score_trajectory(events: list[HarnessEvent], goal: Goal | None) -> TrajectoryScores:
+    """Features only. Missing a pytest event is uncertainty, not a contradiction."""
     features = extract_features(events)
     tool_count = max(features["tool_count"], 1)
     repeated_low_info = features["repeated_command_count"] / tool_count
     verified_progress = min(1.0, (features["edits"] + features["tests_run"]) / 8)
-    criterion_neglect = 0.0
-    if goal and goal.acceptance_criteria:
-        needs_tests = any("test" in item.lower() for item in goal.acceptance_criteria)
-        if needs_tests and features["tests_run"] == 0 and features["stops"] > 0:
-            criterion_neglect = 1.0
     drift = max(
         0.0,
         min(
             1.0,
             0.35 * repeated_low_info
             + 0.25 * (1.0 if features["identical_error_count"] else 0.0)
-            + 0.25 * criterion_neglect
             - 0.35 * verified_progress,
         ),
     )
@@ -115,19 +110,11 @@ def score_trajectory(events: list[HarnessEvent], goal: Goal | None) -> Trajector
         ),
     )
     premature = 0.0
-    if features["stops"] and criterion_neglect:
-        premature = 0.9
-    elif features.get("pytest_failed") and features["stops"]:
+    if features.get("pytest_failed") and features["stops"]:
         premature = 0.88
-    elif features["success_claims"] and features["tests_run"] == 0 and goal:
-        needs_tests = any("test" in item.lower() for item in goal.acceptance_criteria + goal.evidence_requirements)
-        if needs_tests:
-            premature = 0.85
-    elif features["stops"] and features["error_count"]:
-        premature = 0.8
     contradiction = 0.0
-    if features["success_claims"] and (features["tests_run"] == 0 or features["error_count"] > 0):
-        contradiction = 0.8 if features["tests_run"] == 0 else 0.6
+    if features["success_claims"] and features.get("pytest_failed"):
+        contradiction = 0.85
 
     return TrajectoryScores(
         drift=round(drift, 4),

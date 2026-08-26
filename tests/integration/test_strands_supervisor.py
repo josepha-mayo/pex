@@ -42,5 +42,5 @@ def test_strands_agent_constructs_and_receives_normalized_event():
     result = decide(request)
     assert result.used_llm is False
     action = plan_deterministic(request)
-    assert action.type.value == "CONTINUE_SESSION"
+    assert action.type.value == "NOOP"
     assert request.event.event_type.value == "stop"

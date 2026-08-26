@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -29,7 +31,7 @@ async def client(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_cursor_stop_hook_returns_followup(client: AsyncClient):
+async def test_cursor_stop_hook_does_not_inject_followup(client: AsyncClient):
     await client.post("/v1/synthetic/sessions")
     goal = await client.post(
         "/v1/goals",
@@ -64,8 +66,8 @@ async def test_cursor_stop_hook_returns_followup(client: AsyncClient):
         },
     )
     data = stop.json()
-    assert "followup_message" in data
-    assert "PEX" in data["followup_message"]
+    assert "followup_message" not in data
+    # Deterministic stop without a loaded model must stay silent.
 
 
 @pytest.mark.asyncio
@@ -101,3 +103,51 @@ async def test_focus_does_not_inject_worker_text(client: AsyncClient):
     assert focused.json()["ok"] is True
     inbox = state.adapters.synthetic.inbox.get(sid, [])
     assert "PEX: focusing this session." not in inbox
+
+
+@pytest.mark.asyncio
+async def test_harness_focus_endpoint_uses_process_map(client: AsyncClient, monkeypatch):
+    seen: list[str] = []
+    monkeypatch.setattr("pex_bridge.adapters.winfocus.focus_harness", lambda name: seen.append(name) or True)
+    focused = await client.post("/v1/harnesses/codex/focus")
+    assert focused.status_code == 200
+    assert focused.json()["ok"] is True
+    assert seen == ["codex"]
+
+
+def test_cursor_hook_script_recovers_event_name():
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[2] / "integrations" / "cursor-hook" / "pex_cursor_hook.py"
+    spec = importlib.util.spec_from_file_location("pex_cursor_hook", path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    parsed = mod.parse_payload(
+        'noise {"hook_event_name":"afterAgentResponse","text":"ok"} trailing',
+        ["pex_cursor_hook.py"],
+    )
+    assert parsed["hook_event_name"] == "afterAgentResponse"
+    assert parsed["text"] == "ok"
+    from_argv = mod.parse_payload("{", ["pex_cursor_hook.py", "beforeShellExecution"])
+    assert from_argv["hook_event_name"] == "beforeShellExecution"
+    assert json.loads(mod._fail_open("preToolUse")) == {"permission": "allow"}
+    assert json.loads(mod._fail_open("beforeSubmitPrompt")) == {"continue": True}
+    assert json.loads(mod._safe_hook_stdout('{"followup_message":"PEX: nag"}', "stop")) == {}
+    passed = json.loads(
+        mod._safe_hook_stdout(
+            '{"followup_message":"Create report.txt containing shipped."}',
+            "stop",
+        )
+    )
+    assert passed == {"followup_message": "Create report.txt containing shipped."}
+
+
+def test_install_user_hooks_passes_event_name(tmp_path):
+    from pex_bridge.adapters.cursor_hooks import install_user_hooks
+
+    path = install_user_hooks(tmp_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    stop = data["hooks"]["stop"]
+    assert any("stop" in item["command"] and "pex_cursor_hook.py" in item["command"] for item in stop)

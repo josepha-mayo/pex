@@ -47,7 +47,7 @@ def _event(event_type: EventType, **kwargs) -> HarnessEvent:
     )
 
 
-def test_premature_stop_continues():
+def test_stop_without_contradicting_evidence_is_noop():
     request = SupervisorRequest(
         session=_session(),
         goal=_goal(),
@@ -55,8 +55,8 @@ def test_premature_stop_continues():
         scores=TrajectoryScores(premature_completion=0.9, features={"tests_run": 0, "stops": 1}),
     )
     action = plan_deterministic(request)
-    assert action.type == InterventionType.CONTINUE_SESSION
-    assert "Missing" in action.payload["text"]
+    assert action.type == InterventionType.NOOP
+    assert not str(action.payload.get("text") or "").startswith("PEX:")
 
 
 def test_safe_pytest_permission_is_brokered():

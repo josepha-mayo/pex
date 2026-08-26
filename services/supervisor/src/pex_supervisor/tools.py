@@ -106,10 +106,35 @@ def scrape_url(url: str) -> str:
 
 
 @tool
-def propose_typed_action(
+def git_diff() -> str:
+    """Return git status and a truncated diff for the session cwd. Read-only."""
+    from pex_supervisor.workspace import git_snapshot
+
+    cwd = current_request().session.cwd
+    if not cwd:
+        return json.dumps({"error": "session has no cwd"})
+    from pathlib import Path
+
+    return json.dumps(git_snapshot(Path(cwd)))
+
+
+@tool
+def read_workspace_file(path: str) -> str:
+    """Read a visible workspace file. Skips hidden evaluators and leaked benches."""
+    from pathlib import Path
+
+    from pex_supervisor.workspace import read_visible
+
+    cwd = current_request().session.cwd
+    if not cwd:
+        return json.dumps({"error": "session has no cwd"})
+    return json.dumps(read_visible(Path(cwd), path))
+
+
+def record_proposal(
     action_type: str,
     rationale: str,
-    evidence: str,
+    evidence: str | list[str],
     message: str = "",
     payload_json: str = "",
     request_id: str = "",
@@ -118,10 +143,11 @@ def propose_typed_action(
     confidence: float = 0.7,
     risk: str = "low",
 ) -> str:
-    """Commit PEX's single typed intervention.
-
-    action_type must be a valid InterventionType.
-    """
+    """Store the model's one typed intervention on the bound request."""
+    if isinstance(evidence, list):
+        evidence_text = "|".join(str(item).strip() for item in evidence if str(item).strip())
+    else:
+        evidence_text = str(evidence or "")
     payload: dict[str, Any] = {"text": message} if message else {}
     payload_error = ""
     if payload_json:
@@ -138,16 +164,51 @@ def propose_typed_action(
         payload["decision"] = decision
     if overlay_id:
         payload["overlay_id"] = overlay_id
+    try:
+        confidence_value = float(confidence)
+    except (TypeError, ValueError):
+        confidence_value = 0.7
     _RUNTIME.get()["proposed"] = {
         "type": action_type,
         "rationale": rationale,
-        "evidence": [item.strip() for item in evidence.split("|") if item.strip()],
+        "evidence": [item.strip() for item in evidence_text.split("|") if item.strip()],
         "payload": payload,
         "payload_error": payload_error,
-        "confidence": confidence,
+        "confidence": confidence_value,
         "risk": risk,
     }
     return "recorded"
+
+
+@tool
+def propose_typed_action(
+    action_type: str,
+    rationale: str,
+    evidence: str,
+    message: str = "",
+    payload_json: str = "",
+    request_id: str = "",
+    decision: str = "",
+    overlay_id: str = "",
+    confidence: float = 0.7,
+    risk: str = "low",
+) -> str:
+    """Commit PEX's single typed intervention.
+
+    action_type must be a valid InterventionType.
+    """
+    return record_proposal(
+        action_type=action_type,
+        rationale=rationale,
+        evidence=evidence,
+        message=message,
+        payload_json=payload_json,
+        request_id=request_id,
+        decision=decision,
+        overlay_id=overlay_id,
+        confidence=confidence,
+        risk=risk,
+    )
 
 
 def take_proposed() -> dict[str, Any] | None:
@@ -162,7 +223,18 @@ SUPERVISOR_TOOLS = [
     get_scores,
     get_context,
     run_verification,
+    git_diff,
+    read_workspace_file,
     web_search,
     scrape_url,
+    propose_typed_action,
+]
+
+INSPECT_TOOLS = [
+    get_goal,
+    get_recent_events,
+    run_verification,
+    git_diff,
+    read_workspace_file,
     propose_typed_action,
 ]

@@ -211,6 +211,28 @@ def codex_row_index(pex_mood: str) -> int:
         return 0
 
 
+def maybe_import_codex_home(settings: PetSettings) -> PetSettings:
+    """Pick up a locally installed Codex v2 pet (Von, etc.) without copying art into git."""
+    root = Path.home() / ".codex" / "pets"
+    if not root.is_dir():
+        return settings
+    known_ids = {item.id for item in settings.imports}
+    for folder in sorted(root.iterdir()):
+        if not (folder / "pet.json").is_file():
+            continue
+        try:
+            imported = import_codex_pet(folder)
+        except (FileNotFoundError, ValueError, OSError):
+            continue
+        if imported.id in known_ids:
+            continue
+        settings.imports.append(imported)
+        known_ids.add(imported.id)
+        if settings.selected_id in starters_by_id():
+            settings.selected_id = imported.id
+    return settings
+
+
 def import_codex_pet(directory: str | Path) -> ImportedPet:
     """Read a Codex hatch-pet folder (pet.json + spritesheet.webp)."""
     root = Path(directory).expanduser().resolve()

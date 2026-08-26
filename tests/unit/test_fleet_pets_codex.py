@@ -43,6 +43,32 @@ def test_desktop_detection_uses_running_apps():
     assert all(item["kind"] == "desktop" for item in found)
 
 
+def test_focus_maps_harness_to_desktop_process():
+    from pex_bridge.adapters.winfocus import HARNESS_IMAGES
+
+    assert HARNESS_IMAGES["cursor"] == "Cursor.exe"
+    assert HARNESS_IMAGES["codex"] == "ChatGPT.exe"
+    assert HARNESS_IMAGES["grok_bot"] == "Grok Bot.exe"
+
+
+async def test_focus_ui_uses_process_images(monkeypatch):
+    from pex_protocol.enums import HarnessType, SessionStatus
+    from pex_protocol.session import HarnessSession
+
+    seen: list[str] = []
+    monkeypatch.setattr("pex_bridge.adapters.winfocus.focus_image", lambda name: seen.append(name) or True)
+    session = HarnessSession(
+        id="cursor:live",
+        harness_type=HarnessType.CURSOR,
+        vendor_session_id="live",
+        status=SessionStatus.WORKING,
+    )
+    assert await CursorAdapter().focus_ui(session) is True
+    assert seen == ["Cursor.exe"]
+    assert await CodexAdapter().focus_ui(session) is True
+    assert seen[-1] == "ChatGPT.exe"
+
+
 def test_connect_table_keeps_bot_and_build_apart():
     from pex_bridge.adapters.connect import CONNECT
 
@@ -103,6 +129,71 @@ async def test_codex_appserver_turn_and_approval():
     assert transport.approvals[0]["decision"] == "allow"
 
 
+async def test_codex_pump_ingests_stop_permission_and_agent_message():
+    from pex_protocol.enums import EventType
+
+    transport = CodexAppServerTransport()
+    transport.threads = [{"id": "thr_pump", "preview": "pump thread", "cwd": "C:/proj"}]
+    adapter = CodexAdapter(transport)
+    ingested: list = []
+
+    async def ingest(event, session):
+        ingested.append((event, session))
+
+    transport.pending_approvals["req_pump"] = {
+        "id": "req_pump",
+        "method": "item/commandExecution/requestApproval",
+        "params": {"threadId": "thr_pump", "command": "pytest", "cwd": "C:/proj"},
+    }
+    transport.notifications.append(
+        {
+            "method": "item/completed",
+            "params": {
+                "threadId": "thr_pump",
+                "cwd": "C:/proj",
+                "item": {"id": "item_msg", "type": "agentMessage", "text": "working on it"},
+            },
+        }
+    )
+    transport.notifications.append(
+        {
+            "method": "turn/completed",
+            "params": {
+                "threadId": "thr_pump",
+                "cwd": "C:/proj",
+                "turn": {"id": "t_pump", "status": "completed", "items": []},
+            },
+        }
+    )
+
+    task = adapter.start_pipeline_pump(ingest)
+    try:
+        wanted = {
+            EventType.PERMISSION_REQUEST.value,
+            EventType.AGENT_RESPONSE.value,
+            EventType.STOP.value,
+        }
+        for _ in range(40):
+            types = {event.event_type.value for event, _ in ingested}
+            if wanted <= types:
+                break
+            await asyncio.sleep(0.05)
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+    types = {event.event_type.value for event, _ in ingested}
+    assert EventType.PERMISSION_REQUEST.value in types
+    assert EventType.AGENT_RESPONSE.value in types
+    assert EventType.STOP.value in types
+    session = adapter.sessions.get("codex:thr_pump")
+    assert session is not None
+    assert session.cwd == "C:/proj"
+
+
 async def test_codex_unavailable_without_transport():
     caps = await CodexAdapter().probe()
     assert caps.support_label.value == "unavailable"
@@ -120,6 +211,26 @@ async def test_cursor_binary_path_is_not_deep():
     adapter._bin = "C:/not-an-attached-acp"
     caps = await adapter.probe()
     assert caps.support_label.value == "strong"
+
+
+def test_cursor_hook_reads_completion_and_tool_alias():
+    adapter = CursorAdapter()
+    session = adapter.upsert_from_hook({"conversation_id": "live"})
+    event = adapter.normalize_hook(
+        {"hook_event_name": "afterAgentResponse", "completion": "Ran the hidden tests."},
+        session,
+    )
+    assert event.message_delta == "Ran the hidden tests."
+    shell = adapter.normalize_hook(
+        {
+            "hook_event_name": "beforeShellExecution",
+            "tool": "Shell",
+            "tool_input": {"cmd": "pytest -q"},
+        },
+        session,
+    )
+    assert shell.tool_name == "Shell"
+    assert shell.command == "pytest -q"
 
 
 def test_codex_approval_mapping():

@@ -6,12 +6,13 @@ Hooks remain a fallback ingest path. We do not scrape the TUI.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
 from pex_protocol.capabilities import AdapterCapabilities, AdapterSupportLabel, ControlGranularity
-from pex_protocol.enums import EventType, HarnessType, SessionStatus
+from pex_protocol.enums import EventPhase, EventType, HarnessType, SessionStatus
 from pex_protocol.session import HarnessEvent, HarnessSession
 
 from pex_bridge.adapters.base import HarnessAdapter
@@ -26,6 +27,7 @@ class OpenCodeAdapter(HarnessAdapter):
         self.sessions: dict[str, HarnessSession] = {}
         self.inbox: dict[str, list[str]] = {}
         self.hooks: list[dict] = []
+        self._pump_task: asyncio.Task | None = None
 
     def attach_transport(self, transport: HttpJsonTransport) -> None:
         self.transport = transport
@@ -141,21 +143,108 @@ class OpenCodeAdapter(HarnessAdapter):
             message_delta=message,
         )
 
+    def _cwd(self, payload: dict) -> str | None:
+        props = payload.get("properties") if isinstance(payload.get("properties"), dict) else {}
+        info = props.get("info") if isinstance(props.get("info"), dict) else {}
+        for blob in (payload, props, info):
+            if not isinstance(blob, dict):
+                continue
+            for key in ("cwd", "directory", "workspace"):
+                value = blob.get(key)
+                if isinstance(value, str) and value:
+                    return value
+        return None
+
+    def _vendor_id(self, payload: dict) -> str | None:
+        props = payload.get("properties") if isinstance(payload.get("properties"), dict) else {}
+        info = props.get("info") if isinstance(props.get("info"), dict) else {}
+        for blob in (payload, props, info):
+            for key in ("sessionID", "sessionId", "session_id", "id"):
+                value = blob.get(key) if isinstance(blob, dict) else None
+                if isinstance(value, str) and value and not str(value).startswith("evt_"):
+                    if key == "id" and blob is payload:
+                        continue
+                    return value
+        return None
+
+    def _session_for(self, payload: dict) -> HarnessSession:
+        vendor_id = self._vendor_id(payload) or "unknown"
+        session_id = f"opencode:{vendor_id}"
+        existing = self.sessions.get(session_id)
+        cwd = self._cwd(payload)
+        if existing:
+            if cwd and not existing.cwd:
+                existing.cwd = cwd
+            return existing
+        session = HarnessSession(
+            id=session_id,
+            harness_type=HarnessType.OPENCODE,
+            vendor_session_id=vendor_id,
+            cwd=cwd,
+            status=SessionStatus.WORKING,
+            last_activity=datetime.now(timezone.utc),
+        )
+        self.sessions[session_id] = session
+        return session
+
     def normalize_sse(self, session: HarnessSession, payload: dict) -> HarnessEvent:
         kind = str(payload.get("type") or payload.get("event") or "status")
+        props = payload.get("properties") if isinstance(payload.get("properties"), dict) else {}
         mapping = {
             "message.updated": EventType.AGENT_RESPONSE,
+            "message.part.updated": EventType.AGENT_RESPONSE,
             "session.idle": EventType.STOP,
             "session.deleted": EventType.SESSION_END,
             "permission.asked": EventType.PERMISSION_REQUEST,
             "file.edited": EventType.FILE_EDIT,
         }
+        text = payload.get("text") or payload.get("message") or props.get("text") or kind
+        if isinstance(text, dict):
+            text = text.get("text") or kind
         return HarnessEvent(
-            event_id=uuid4().hex,
+            event_id=str(payload.get("id") or uuid4().hex),
             ts=datetime.now(timezone.utc),
             harness_type=HarnessType.OPENCODE,
             session_id=session.id,
+            project_id=session.project_id,
             event_type=mapping.get(kind, EventType.STATUS),
-            message_delta=str(payload.get("text") or payload.get("message") or kind),
+            phase=EventPhase.TERMINAL if kind in {"session.idle", "session.deleted"} else EventPhase.AFTER,
+            message_delta=str(text),
             metadata={"sse_type": kind, "replay": False},
         )
+
+    async def pump_into_pipeline(self, ingest) -> None:
+        seen = 0
+        while True:
+            try:
+                transport = self.transport
+                if transport is None:
+                    await asyncio.sleep(0.25)
+                    continue
+                ensure = getattr(transport, "ensure_sse", None)
+                if ensure is not None:
+                    await ensure("/event")
+                events = getattr(transport, "events", [])
+                for payload in events[seen:]:
+                    kind = str(payload.get("type") or "")
+                    if kind in {"server.connected", "server.heartbeat"}:
+                        continue
+                    session = self._session_for(payload)
+                    event = self.normalize_sse(session, payload)
+                    await ingest(event, session)
+                seen = len(events)
+                await asyncio.sleep(0.05)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                await asyncio.sleep(0.5)
+
+    def start_pipeline_pump(self, ingest) -> asyncio.Task:
+        existing = self._pump_task
+        if existing is not None and not existing.done():
+            return existing
+        self._pump_task = asyncio.create_task(
+            self.pump_into_pipeline(ingest),
+            name="opencode-pipeline-pump",
+        )
+        return self._pump_task

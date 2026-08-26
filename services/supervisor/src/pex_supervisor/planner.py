@@ -5,6 +5,21 @@ from pex_protocol.enums import Authority, EventPhase, EventType
 from pex_protocol.supervisor import SupervisorRequest
 
 
+def _noop(request: SupervisorRequest, rationale: str, evidence: list[str] | None = None) -> ProposedAction:
+    return ProposedAction(
+        type=InterventionType.NOOP,
+        session_id=request.session.id,
+        goal_id=request.goal.id if request.goal else None,
+        payload={},
+        rationale=rationale,
+        evidence=evidence or [],
+        confidence=0.7,
+        risk=RiskLevel.NONE,
+        reversible=True,
+        cooldown_seconds=5,
+    )
+
+
 def _nudge(request: SupervisorRequest, rationale: str, evidence: list[str], message: str) -> ProposedAction:
     return ProposedAction(
         type=InterventionType.SEND_NUDGE,
@@ -23,8 +38,11 @@ def _nudge(request: SupervisorRequest, rationale: str, evidence: list[str], mess
 
 
 def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
+    """Cheap facts only. Stop/completion copy is never canned worker text.
+
+    A stop event is a trigger to inspect (via the supervisor model), not to nag.
+    """
     event = request.event
-    scores = request.scores
     goal = request.goal
     criteria = list(goal.acceptance_criteria) if goal else []
     evidence_needed = list(goal.evidence_requirements) if goal else []
@@ -55,7 +73,7 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
                 request,
                 "Worker started evaluation before the required dataset artifact exists.",
                 [str(command)],
-                "PEX: do not start the expensive evaluator yet. Generate/verify the dataset artifact first, then run eval.",
+                "The evaluator started before a dataset artifact exists. Generate or verify the dataset file first, then rerun eval.",
             )
 
     if event.event_type in {EventType.PERMISSION_REQUEST, EventType.SHELL} and event.phase == EventPhase.BEFORE:
@@ -76,66 +94,8 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             requires_capability="approve",
         )
 
-    if scores.premature_completion >= 0.7 or (
-        event.event_type == EventType.STOP and criteria and scores.features.get("tests_run", 0) == 0
-    ):
-        missing = criteria + evidence_needed
-        message = (
-            "PEX: you stopped before the persistent goal is evidenced. "
-            "Do not claim completion yet. Missing:\n"
-            + "\n".join(f"- {item}" for item in missing[:12])
-        )
-        return ProposedAction(
-            type=InterventionType.CONTINUE_SESSION,
-            session_id=request.session.id,
-            goal_id=goal.id if goal else None,
-            payload={"text": message},
-            rationale="Worker stopped or claimed done without required evidence.",
-            evidence=[f"premature_completion={scores.premature_completion}"] + missing[:6],
-            confidence=0.9,
-            risk=RiskLevel.LOW,
-            reversible=True,
-            expected_benefit="Prevent a false-done outcome without asking the human to type continue.",
-            cooldown_seconds=60,
-            requires_capability="send_message",
-        )
-
-    if scores.claim_contradiction >= 0.7:
-        return _nudge(
-            request,
-            "A completion claim is not supported by observable evidence.",
-            [f"claims={scores.features.get('success_claims')}", f"tests_run={scores.features.get('tests_run')}"],
-            "PEX: a completion claim is contradicted by current state (no matching test/artifact evidence). "
-            "Verify with the required command and report the actual output.",
-        )
-
-    if scores.stagnation >= 0.7:
-        return _nudge(
-            request,
-            "Trajectory is repeating low-information actions.",
-            [str(scores.features)],
-            "PEX: you are repeating the same failing action. Change diagnosis before retrying. "
-            "Inspect the unchanged config/input that caused the last identical error.",
-        )
-
-    if scores.drift >= 0.7 and goal:
-        return _nudge(
-            request,
-            "Recent actions drifted from the persistent objective.",
-            [goal.objective],
-            f"PEX: return to the persistent goal: {goal.objective}. "
-            f"Acceptance criteria: {'; '.join(criteria[:6])}",
-        )
-
-    return ProposedAction(
-        type=InterventionType.NOOP,
-        session_id=request.session.id,
-        goal_id=goal.id if goal else None,
-        payload={},
-        rationale="No deterministic intervention is warranted.",
-        evidence=[],
-        confidence=0.7,
-        risk=RiskLevel.NONE,
-        reversible=True,
-        cooldown_seconds=5,
+    return _noop(
+        request,
+        "No deterministic fact requires interruption. Stop/completion needs supervisor inference or silence.",
+        [event.event_type.value],
     )

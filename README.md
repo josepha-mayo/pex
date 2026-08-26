@@ -32,11 +32,11 @@ See [`INTEGRATIONS.md`](INTEGRATIONS.md) for the live matrix.
 
 ## Pets
 
-The desktop companion is the attention surface, not a chat UI.
+The desktop companion is a compact always-on-top harness (settings, sessions, prompt box), not a chat UI and not a tiny overlay.
 
-- **Seven illustrated pets** (Pex, Tally, Relay, Mica, Nori, Bramble, Gauge) with idle / working / needs-you / blocked sprites.
-- **Ten original generated Codex-v2 atlases** (8×11, `spriteVersionNumber: 2`) so a Codex pet folder can be imported with the same mood rows.
-- Nickname, scale, and hue. Open focuses the harness; Pause stops supervision without poking the worker.
+- Plays **Codex v2** atlases (`1536×2288`, `spriteVersionNumber: 2`): hover jumps, click focuses the selected worker, drag runs, look-at-pointer on idle/work/wave.
+- Import a hatch-pet folder (`pet.json` + `spritesheet.webp`), including a pet already installed under `~/.codex/pets/`.
+- A PEX-original v2 pet is being hatched separately. Do not treat placeholder orbs or deleted mood-stills as the submit art.
 
 ## Benchmark headline
 

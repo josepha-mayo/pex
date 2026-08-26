@@ -1,9 +1,7 @@
 """High-stakes intervention graph: supervisor then independent verifier.
 
-Cheap deterministic triage stays outside this graph. When a worker claims
-completion or drift/stagnation is high, the verifier can reject a weak NOOP
-and force a continue/verify action. The typed action still comes from
-supervisor tools, not from discarded graph text.
+A stop is a trigger to inspect, not to nag. Default is NOOP unless evidence
+justifies a specific intervention. No canned worker text.
 """
 
 from __future__ import annotations
@@ -21,8 +19,11 @@ VERIFIER_PROMPT = """You are PEX's independent verifier.
 You do not trust the worker's narrative.
 Given the goal, observable scores, and proposed action, reply with:
 VERIFY or REJECT and one sentence.
-Reject if the worker's completion claim is unsupported, or if the proposed
-action is NOOP while tests have not been evidenced.
+Reject only when observable evidence contradicts a worker claim.
+VERIFY when evidence supports the work, or when evidence is insufficient
+(PEX should gather evidence, not nag).
+Do not reject merely because a test command was not observed.
+Never invent a generic worker warning.
 """
 
 
@@ -57,8 +58,8 @@ def run_intervention_graph(request: SupervisorRequest, model=None) -> Supervisor
     started = time.perf_counter()
     backend = describe_backend()
     try:
-        kwargs = {"system_prompt": _system_prompt(), "tools": SUPERVISOR_TOOLS}
-        vkwargs = {"system_prompt": VERIFIER_PROMPT}
+        kwargs = {"system_prompt": _system_prompt(), "tools": SUPERVISOR_TOOLS, "callback_handler": None}
+        vkwargs = {"system_prompt": VERIFIER_PROMPT, "callback_handler": None}
         if model is not None:
             kwargs["model"] = model
             vkwargs["model"] = model
@@ -79,8 +80,8 @@ def run_intervention_graph(request: SupervisorRequest, model=None) -> Supervisor
             diagnosis = "strands_graph_supervisor"
         else:
             action = plan_deterministic(request)
-            traces.append("graph supervisor produced no typed action; using deterministic planner")
-            diagnosis = "strands_graph_no_tool_fallback_deterministic"
+            traces.append("graph supervisor produced no typed action; default NOOP")
+            diagnosis = "strands_graph_no_tool_fallback_noop"
         verdict, verifier_text = _verifier_verdict(result)
         traces.append(f"verifier:{verifier_text}")
         if verdict == "REJECT" and action.type in {
@@ -88,10 +89,7 @@ def run_intervention_graph(request: SupervisorRequest, model=None) -> Supervisor
             InterventionType.NOTIFY,
             InterventionType.ANNOTATE,
         }:
-            action = plan_deterministic(request)
-            if action.type == InterventionType.NOOP:
-                action = _force_continue(request)
-            diagnosis = "strands_graph_verifier_rejected"
+            diagnosis = "strands_graph_verifier_rejected_kept_noop"
         elif verdict == "VERIFY":
             diagnosis = f"{diagnosis}_verified"
         input_tokens, output_tokens = _usage(result)
@@ -115,36 +113,6 @@ def run_intervention_graph(request: SupervisorRequest, model=None) -> Supervisor
         return fallback
     finally:
         reset_request(token)
-
-
-def _force_continue(request: SupervisorRequest):
-    from pex_supervisor.planner import plan_deterministic as _plan
-
-    action = _plan(request)
-    if action.type != InterventionType.NOOP:
-        return action
-    from pex_protocol.actions import ProposedAction, RiskLevel
-    from pex_protocol.enums import Authority
-
-    return ProposedAction(
-        type=InterventionType.CONTINUE_SESSION,
-        session_id=request.session.id,
-        goal_id=request.goal.id if request.goal else None,
-        payload={
-            "text": (
-                "PEX: independent verification rejected an unsupported completion claim. "
-                "Continue until the persistent goal is evidenced."
-            )
-        },
-        rationale="Verifier rejected a weak or missing intervention on a high-stakes stop.",
-        evidence=["graph_verifier_REJECT"],
-        confidence=0.8,
-        risk=RiskLevel.LOW,
-        reversible=True,
-        cooldown_seconds=60,
-        authority_required=Authority.LOCAL_POLICY,
-        requires_capability="send_message",
-    )
 
 
 def _verifier_verdict(result: object) -> tuple[str, str]:
@@ -171,8 +139,6 @@ def _fail_closed(
 ) -> SupervisorResult:
     backend = describe_backend()
     action = plan_deterministic(request)
-    if action.type == InterventionType.NOOP:
-        action = _force_continue(request)
     return SupervisorResult(
         action=action,
         used_llm=used_llm,

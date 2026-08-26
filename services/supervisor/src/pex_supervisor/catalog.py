@@ -37,7 +37,8 @@ CATALOG: list[dict[str, str]] = [
     {"provider": "grok", "model_id": "grok-4.5", "label": "Grok 4.5"},
     {"provider": "grok", "model_id": "grok-build-0.1", "label": "Grok Build 0.1"},
     # OpenCode Zen / Go
-    {"provider": "zen", "model_id": "x-preview-f-free", "label": "Ox Alpha Free (Zen)"},
+    {"provider": "zen", "model_id": "laguna-s-2.1-free", "label": "Laguna S 2.1 Free (Zen)"},
+    {"provider": "zen", "model_id": "big-pickle", "label": "Big Pickle (Zen)"},
     {"provider": "zen", "model_id": "muse-spark-1.2", "label": "Muse Spark 1.2"},
     {"provider": "zen", "model_id": "muse-spark-1.2-contributor-free", "label": "Muse Spark Contributor Free"},
     {"provider": "zen", "model_id": "big-pickle", "label": "Big Pickle"},
@@ -66,6 +67,9 @@ CATALOG: list[dict[str, str]] = [
     {"provider": "llamacpp", "model_id": "local", "label": "llama.cpp server"},
     {"provider": "vllm", "model_id": "local", "label": "vLLM / SGLang"},
     {"provider": "custom", "model_id": "user-supplied", "label": "Custom endpoint"},
+    {"provider": "github_models", "model_id": "openai/gpt-4.1", "label": "GPT 4.1 via GitHub Models"},
+    {"provider": "writer", "model_id": "palmyra-x5", "label": "Writer Palmyra"},
+    {"provider": "llama_api", "model_id": "Llama-4-Maverick-17B-128E-Instruct-FP8", "label": "Llama API"},
 ]
 
 
