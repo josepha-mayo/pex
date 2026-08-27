@@ -66,6 +66,9 @@ async def test_m0_event_to_action_roundtrip(client: AsyncClient):
     body = stop.json()
     assert body["intervention"] is not None
     assert body["intervention"]["action_taken"] == "NOOP"
+    claims = (body["intervention"].get("metadata") or {}).get("claims") or []
+    assert any(item.get("kind") == "tests_pass" for item in claims)
+
     pet = await client.get("/v1/pet")
     body = pet.json()
     assert "working" in body["headline"] or "quiet" in body["headline"] or "idle" in body["headline"]

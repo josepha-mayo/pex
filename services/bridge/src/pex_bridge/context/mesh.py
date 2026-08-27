@@ -13,11 +13,11 @@ from pex_bridge.store import new_id
 def score_item(item: ContextItem, goal: Goal, target: HarnessSession) -> float:
     text = f"{item.content} {' '.join(item.relevance_tags)}".lower()
     goal_bits = " ".join(
-        [goal.objective, *goal.acceptance_criteria, *goal.constraints]
+        [goal.objective, *goal.acceptance_criteria, *goal.constraints, *goal.non_goals]
     ).lower()
     overlap = len(set(text.split()) & set(goal_bits.split()))
     score = overlap / max(len(set(goal_bits.split())), 1)
-    if item.kind in {ContextKind.DECISION, ContextKind.CONSTRAINT}:
+    if item.kind in {ContextKind.DECISION, ContextKind.CONSTRAINT, ContextKind.CLAIM}:
         score += 0.35
     if item.kind == ContextKind.ARTIFACT:
         score += 0.15
@@ -60,7 +60,7 @@ def build_bundle(
         acceptance_criteria=list(goal.acceptance_criteria),
         critical_decisions=[i.content for i in selected if i.kind == ContextKind.DECISION][:8],
         relevant_artifacts=[i.content for i in selected if i.kind == ContextKind.ARTIFACT][:8],
-        direct_evidence=[i.content for i in selected if i.kind == ContextKind.RESULT][:8],
+        direct_evidence=[i.content for i in selected if i.kind in {ContextKind.RESULT, ContextKind.CLAIM}][:8],
         recent_progress=progress,
         next_objective="Continue the attached goal using the facts below. Do not redo completed investigations.",
         do_not_redo=[i.content for i in selected if "already" in i.content.lower()][:8],

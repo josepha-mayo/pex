@@ -88,12 +88,26 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
                 "request_id": (event.approval_request or {}).get("request_id") or event.event_id,
                 "command": command,
             },
-            rationale="Permission request intercepted for local policy evaluation.",
-            evidence=[command or "unspecified command"],
-            confidence=0.9,
+            rationale="Routine permission brokered by local policy.",
+            evidence=[str(command or event.tool_name or "")],
+            confidence=0.7,
             risk=RiskLevel.LOW,
             reversible=True,
-            requires_capability="approve",
+        )
+
+    if (
+        event.event_type not in {EventType.STOP, EventType.USER_PROMPT}
+        and request.scores.drift >= 0.75
+        and int(request.scores.features.get("repeated_command_count") or 0) >= 3
+    ):
+        return _nudge(
+            request,
+            "Trajectory is repeating low-information work instead of attached acceptance criteria.",
+            [
+                f"drift={request.scores.drift}",
+                f"repeated_command_count={request.scores.features.get('repeated_command_count')}",
+            ],
+            "Recent actions repeated without moving the attached acceptance criteria. Return to the remaining criterion and produce the required evidence.",
         )
 
     return _noop(

@@ -67,14 +67,17 @@ def _compact_inspect_user(request: SupervisorRequest) -> str:
     goal = request.goal
     event_text = (request.event.command or request.event.message_delta or "")[:300]
     prefetch = _prefetch_evidence(request)[:2000]
+    claims = request.scores.features.get("claims") if request.scores.features else None
     return (
         f"Harness={request.session.harness_type} event={request.event.event_type} {event_text}\n"
         f"Goal={goal.objective if goal else 'unattached'}\n"
         f"Acceptance={list(goal.acceptance_criteria) if goal else []}\n"
         f"Required={list(goal.evidence_requirements) if goal else []}\n"
+        f"Claims={claims or request.notes or 'none'}\n"
         f"Evidence={prefetch}\n"
         "JSON only: action_type, rationale, evidence, message. "
         "If a required file is missing, SEND_NUDGE naming it. "
+        "If no completion claims were extracted, do not assume the worker said it is done. "
         "If evidence supports completion, NOOP. Never prefix the message with PEX:."
     )
 
@@ -104,6 +107,7 @@ def _format_user(request: SupervisorRequest) -> str:
         f"Acceptance: {goal.acceptance_criteria if goal else []}\n"
         f"Evidence requirements: {goal.evidence_requirements if goal else []}\n"
         f"Notes: {request.notes}\n"
+        f"Extracted claims: {request.scores.features.get('claims') if request.scores.features else []}\n"
         f"Observed process state: {request.event.process_state}\n"
         f"Prefetched evidence (do not re-fetch):\n{_prefetch_evidence(request)}\n"
         "Call propose_typed_action exactly once. Do not call other tools."

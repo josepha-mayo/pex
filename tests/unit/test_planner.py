@@ -125,3 +125,16 @@ def test_contradictory_prompt_escalates():
     action = plan_deterministic(request)
     assert action.type == InterventionType.ASK_HUMAN
     assert action.requires_capability is None
+
+
+def test_repeated_low_info_work_is_redirected():
+    request = SupervisorRequest(
+        session=_session(),
+        goal=_goal(),
+        event=_event(EventType.SHELL, phase=EventPhase.DURING, command="python train.py"),
+        scores=TrajectoryScores(drift=0.82, features={"repeated_command_count": 5}),
+    )
+    action = plan_deterministic(request)
+    assert action.type == InterventionType.SEND_NUDGE
+    assert "acceptance" in action.payload["text"].lower()
+    assert not str(action.payload.get("text") or "").startswith("PEX:")

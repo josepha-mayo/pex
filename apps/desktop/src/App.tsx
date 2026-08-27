@@ -14,6 +14,8 @@ type SessionRow = {
   goal_id?: string | null;
   supervision_paused?: boolean;
   last_message?: string | null;
+  cwd?: string | null;
+  project_id?: string | null;
   label?: string;
   activity?: string;
 };
@@ -52,7 +54,14 @@ type PetSnapshot = {
   sessions: SessionRow[];
 };
 
-type Goal = { id: string; title: string; objective: string };
+type Goal = {
+  id: string;
+  title: string;
+  objective: string;
+  acceptance_criteria?: string[];
+  constraints?: string[];
+  non_goals?: string[];
+};
 
 type CatalogPet = {
   id: string;
@@ -116,6 +125,11 @@ export function App() {
     return "home";
   });
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalTitle, setGoalTitle] = useState("");
+  const [goalObjective, setGoalObjective] = useState("");
+  const [goalAcceptance, setGoalAcceptance] = useState("");
+  const [goalConstraints, setGoalConstraints] = useState("");
+  const [savingGoal, setSavingGoal] = useState(false);
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [importDir, setImportDir] = useState("");
@@ -266,6 +280,7 @@ export function App() {
 
   const sessions = pet?.sessions ?? [];
   const current = sessions.find((row) => row.id === selectedId) ?? sessions[0];
+  const attachedGoal = goals.find((goal) => goal.id === current?.goal_id);
   const mood: PetMood = pet?.mood ?? "idle";
   const sheet = pet?.appearance?.spritesheet_url ? `${BRIDGE}${pet.appearance.spritesheet_url}` : "";
   const name = pet?.settings?.custom_name?.trim() || pet?.appearance?.display_name || "Pex";
@@ -477,6 +492,57 @@ export function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ goal_id: goalId }),
     });
+  }
+
+  function lines(text: string): string[] {
+    return text
+      .split("\n")
+      .map((row) => row.trim())
+      .filter(Boolean);
+  }
+
+  async function createPersistentGoal(event: FormEvent) {
+    event.preventDefault();
+    const title = goalTitle.trim();
+    const objective = goalObjective.trim();
+    if (!title || !objective || savingGoal) return;
+    setSavingGoal(true);
+    try {
+      const res = await fetch(`${BRIDGE}/v1/goals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project_id: current?.project_id || current?.cwd || "desktop",
+          title,
+          objective,
+          acceptance_criteria: lines(goalAcceptance),
+          constraints: lines(goalConstraints),
+          non_goals: lines(goalConstraints),
+        }),
+      });
+      const created = (await res.json()) as Goal & { detail?: string };
+      if (!res.ok) {
+        setNote(typeof created.detail === "string" ? created.detail : "Could not save the goal.");
+        return;
+      }
+      setGoals((rows) => [created, ...rows.filter((row) => row.id !== created.id)]);
+      if (current?.id) await attachGoal(current.id, created.id);
+      try {
+        const petRes = await fetch(`${BRIDGE}/v1/pet`);
+        if (petRes.ok) setPet((await petRes.json()) as PetSnapshot);
+      } catch {
+        /* poll will catch up */
+      }
+      setGoalTitle("");
+      setGoalObjective("");
+      setGoalAcceptance("");
+      setGoalConstraints("");
+      setNote("Goal attached. PEX will inspect against this, not the latest chat.");
+    } catch {
+      setNote("Could not reach the goal endpoint.");
+    } finally {
+      setSavingGoal(false);
+    }
   }
 
   async function undoLast() {
@@ -762,6 +828,49 @@ export function App() {
         </section>
       ) : null}
 
+      <section className="goal-box" aria-label="Persistent goal">
+        <h2>Persistent goal</h2>
+        {attachedGoal ? (
+          <p className="why">
+            Inspecting: {attachedGoal.title} — {attachedGoal.objective}
+          </p>
+        ) : (
+          <p className="why">PEX inspects against a stored goal, not the latest chat. Create one, then attach it to a worker.</p>
+        )}
+        <form className="goal-form" onSubmit={(event) => void createPersistentGoal(event)}>
+          <input
+            value={goalTitle}
+            onChange={(event) => setGoalTitle(event.target.value)}
+            placeholder="Title"
+            aria-label="Goal title"
+          />
+          <textarea
+            value={goalObjective}
+            onChange={(event) => setGoalObjective(event.target.value)}
+            placeholder="Objective"
+            rows={2}
+            aria-label="Goal objective"
+          />
+          <textarea
+            value={goalAcceptance}
+            onChange={(event) => setGoalAcceptance(event.target.value)}
+            placeholder="Acceptance criteria, one per line"
+            rows={2}
+            aria-label="Acceptance criteria"
+          />
+          <textarea
+            value={goalConstraints}
+            onChange={(event) => setGoalConstraints(event.target.value)}
+            placeholder="Constraints and non-goals, one per line"
+            rows={2}
+            aria-label="Constraints"
+          />
+          <button type="submit" className="solid" disabled={savingGoal || !goalTitle.trim() || !goalObjective.trim()}>
+            {savingGoal ? "Saving…" : current?.id ? "Save and attach" : "Save goal"}
+          </button>
+        </form>
+      </section>
+
       <section className="sessions" aria-label="Reviewed workers">
         {sessions.length ? (
           sessions.map((session) => (
@@ -773,23 +882,21 @@ export function App() {
                   {session.goal_id ? "" : " · no goal"}
                 </small>
               </button>
-              {goals.length ? (
-                <select
-                  aria-label={`Attach goal for ${session.label || session.harness_type}`}
-                  value={session.goal_id || ""}
-                  onChange={(event) => {
-                    const goalId = event.target.value;
-                    if (goalId) void attachGoal(session.id, goalId);
-                  }}
-                >
-                  <option value="">Goal</option>
-                  {goals.map((goal) => (
-                    <option key={goal.id} value={goal.id}>
-                      {goal.title}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
+              <select
+                aria-label={`Attach goal for ${session.label || session.harness_type}`}
+                value={session.goal_id || ""}
+                onChange={(event) => {
+                  const goalId = event.target.value;
+                  if (goalId) void attachGoal(session.id, goalId);
+                }}
+              >
+                <option value="">{goals.length ? "Goal" : "No goals yet"}</option>
+                {goals.map((goal) => (
+                  <option key={goal.id} value={goal.id}>
+                    {goal.title}
+                  </option>
+                ))}
+              </select>
               <button type="button" className="ghost" onClick={() => focusSession(session)}>
                 Open
               </button>

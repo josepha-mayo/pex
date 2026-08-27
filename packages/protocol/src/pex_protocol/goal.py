@@ -15,6 +15,7 @@ class Goal(BaseModel):
     constraints: list[str] = Field(default_factory=list)
     preferences: list[str] = Field(default_factory=list)
     forbidden_outcomes: list[str] = Field(default_factory=list)
+    non_goals: list[str] = Field(default_factory=list)
     priority: int = 0
     deadline: datetime | None = None
     evidence_requirements: list[str] = Field(default_factory=list)

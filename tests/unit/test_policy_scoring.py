@@ -82,6 +82,23 @@ def test_classify_do_not_preprocess_constraint():
     )
 
 
+def test_non_goals_are_constraints_for_prompt_classification():
+    now = datetime.now(UTC)
+    goal = Goal(
+        id="g",
+        project_id="p",
+        title="t",
+        objective="ship the evaluator",
+        non_goals=["Do not rewrite the dataset loader."],
+        created_at=now,
+        updated_at=now,
+    )
+    assert (
+        classify_prompt(goal, "Please rewrite the dataset loader from scratch.")
+        == PromptClass.CONTRADICTION
+    )
+
+
 def test_stagnation_from_repeated_errors():
     now = datetime.now(UTC)
     events = []

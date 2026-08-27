@@ -6,6 +6,8 @@
 
 PEX is a working supervisor loop with a compact companion window. That is not a finished product and not a submit.
 
+The closed loop now starts in the companion: create a persistent goal (objective, acceptance, constraints/non-goals) and attach it to a worker. Auto-handoff injects the smallest observed bundle into a sibling session on the same project without an explicit POST. STOP extracts structured claims instead of treating silence as "done." Drift with repeated low-information commands can redirect during work; STOP still inspects rather than nags.
+
 Seven distinct Codex-v2 pets are packaged on disk (`pex`, `ledger`, `mesh`, `nudge`, `drift`, `quiet`, `ember`) with `spriteVersionNumber: 2`. Settings can hatch a user pet through `/images/generations` on the configured PEX credentials; text-only Zen fails honestly.
 
 ## Ready enough to keep building on

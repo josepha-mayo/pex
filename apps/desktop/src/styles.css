@@ -178,6 +178,37 @@ button:disabled, textarea:disabled, input:disabled, select:disabled { opacity: 0
 .evidence li::before { content: "· "; color: var(--brass); }
 .inspect-actions { display: flex; gap: 6px; margin-top: 10px; }
 
+.goal-box {
+  margin: 0 16px 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.goal-box h2 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.goal-box .why { margin: 0 0 8px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.goal-form {
+  display: grid;
+  gap: 6px;
+}
+.goal-form input,
+.goal-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 7px 9px;
+  resize: vertical;
+}
+.goal-form input:focus,
+.goal-form textarea:focus { outline: 1px solid var(--brass); }
+.goal-form button { justify-self: start; }
+
 .ghost, .solid {
   border: 1px solid var(--line);
   background: transparent;
@@ -205,7 +236,7 @@ button:disabled, textarea:disabled, input:disabled, select:disabled { opacity: 0
 }
 .session {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr minmax(96px, 160px) auto auto;
   gap: 6px;
   align-items: center;
   padding: 7px 8px;

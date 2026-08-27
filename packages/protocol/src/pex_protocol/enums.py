@@ -84,6 +84,7 @@ class ContextKind(StrEnum):
     RESULT = "result"
     HYPOTHESIS = "hypothesis"
     WARNING = "warning"
+    CLAIM = "claim"
 
 
 class Sensitivity(StrEnum):

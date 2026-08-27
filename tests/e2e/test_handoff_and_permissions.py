@@ -66,6 +66,93 @@ async def test_context_handoff_injects_bundle(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_auto_handoff_injects_without_explicit_post(client: AsyncClient):
+    source = (await client.post("/v1/synthetic/sessions")).json()
+    source_adapter = state.adapters.synthetic
+    target = source_adapter.seed_session(vendor_id="synth-auto")
+    await state.store.upsert_session(target)
+    goal = (
+        await client.post(
+            "/v1/goals",
+            json={
+                "project_id": "demo",
+                "title": "Share path",
+                "objective": "Share the dataset path discovered by Codex with Cursor",
+                "acceptance_criteria": ["both agents use prepared_dataset.parquet"],
+            },
+        )
+    ).json()
+    await client.post(f"/v1/sessions/{source['id']}/attach", json={"goal_id": goal["id"]})
+    event = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": source["id"],
+            "event_type": EventType.AGENT_RESPONSE.value,
+            "message": "Dataset is at artifacts/prepared_dataset.parquet. Do not regenerate it.",
+        },
+    )
+    assert event.status_code == 200
+    inbox = source_adapter.inbox[target.id]
+    assert inbox
+    assert "prepared_dataset" in inbox[-1].lower() or "goal" in inbox[-1].lower()
+    attached = await client.get(f"/v1/sessions/{target.id}")
+    assert attached.json()["goal_id"] == goal["id"]
+
+
+@pytest.mark.asyncio
+async def test_goal_persists_non_goals(client: AsyncClient):
+    goal = (
+        await client.post(
+            "/v1/goals",
+            json={
+                "project_id": "demo",
+                "title": "Keep loader",
+                "objective": "Finish eval without rewriting the loader",
+                "acceptance_criteria": ["results.json exists"],
+                "constraints": ["Do not alter dataset preprocessing."],
+                "non_goals": ["Do not rewrite the dataset loader."],
+            },
+        )
+    ).json()
+    assert goal["non_goals"] == ["Do not rewrite the dataset loader."]
+    fetched = await client.get(f"/v1/goals/{goal['id']}")
+    assert fetched.json()["non_goals"] == ["Do not rewrite the dataset loader."]
+
+
+@pytest.mark.asyncio
+async def test_stop_stores_extracted_claims(client: AsyncClient):
+    session = (await client.post("/v1/synthetic/sessions")).json()
+    goal = (
+        await client.post(
+            "/v1/goals",
+            json={
+                "project_id": "demo",
+                "title": "Parser",
+                "objective": "Implement the parser with passing tests",
+                "acceptance_criteria": ["tests pass"],
+            },
+        )
+    ).json()
+    await client.post(f"/v1/sessions/{session['id']}/attach", json={"goal_id": goal["id"]})
+    stop = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session["id"],
+            "event_type": EventType.STOP.value,
+            "message": "Implemented the parser and tests pass.",
+        },
+    )
+    body = stop.json()["intervention"]
+    claims = (body.get("metadata") or {}).get("claims") or []
+    kinds = {item["kind"] for item in claims}
+    assert "tests_pass" in kinds
+    assert "implemented" in kinds
+    items = await client.get("/v1/context", params={"project_id": "demo"})
+    kinds_stored = {item["kind"] for item in items.json()}
+    assert "claim" in kinds_stored
+
+
+@pytest.mark.asyncio
 async def test_pytest_permission_auto_allowed(client: AsyncClient):
     session = (await client.post("/v1/synthetic/sessions")).json()
     goal = (

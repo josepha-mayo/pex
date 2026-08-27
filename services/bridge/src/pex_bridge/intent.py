@@ -24,7 +24,7 @@ def classify_prompt(goal: Goal | None, prompt: str) -> PromptClass:
         return PromptClass.OVERRIDE
 
     contradictions = 0
-    for constraint in goal.constraints + goal.forbidden_outcomes:
+    for constraint in goal.constraints + goal.forbidden_outcomes + goal.non_goals:
         lowered = constraint.lower()
         negated = None
         if lowered.startswith("do not ") or lowered.startswith("don't "):

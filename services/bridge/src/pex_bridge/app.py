@@ -170,6 +170,7 @@ class GoalIn(BaseModel):
     constraints: list[str] = Field(default_factory=list)
     preferences: list[str] = Field(default_factory=list)
     forbidden_outcomes: list[str] = Field(default_factory=list)
+    non_goals: list[str] = Field(default_factory=list)
     evidence_requirements: list[str] = Field(default_factory=list)
     priority: int = 0
 

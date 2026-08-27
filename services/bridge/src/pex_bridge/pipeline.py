@@ -6,7 +6,17 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from pex_protocol.actions import InterventionType
-from pex_protocol.enums import AutonomyLevel, EventPhase, EventType, PolicyVerdict, SessionStatus
+from pex_protocol.context import ContextItem
+from pex_protocol.enums import (
+    AutonomyLevel,
+    ContextKind,
+    EventPhase,
+    EventType,
+    PolicyVerdict,
+    Sensitivity,
+    SessionStatus,
+    SourceKind,
+)
 from pex_protocol.intervention import Intervention
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorRequest, SupervisorResult
@@ -14,8 +24,9 @@ from pex_supervisor.loop import _action_from_proposal, decide
 
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.bus import EventBus
+from pex_bridge.claims import extract_claims
 from pex_bridge.config import Settings
-from pex_bridge.context.mesh import item_from_event
+from pex_bridge.context.mesh import build_bundle, item_from_event
 from pex_bridge.executor import ActionExecutor
 from pex_bridge.intent import classify_prompt
 from pex_bridge.policy.engine import PolicyEngine
@@ -118,12 +129,16 @@ class Pipeline:
             session.status = SessionStatus.WORKING
         await self.store.upsert_session(session)
 
-        if session.project_id:
-            item = item_from_event(session.project_id, session.goal_id, event)
+        project_key = session.project_id or session.cwd
+        if project_key:
+            item = item_from_event(project_key, session.goal_id, event)
             if item:
                 await self.store.add_context(item)
 
         await self.bus.publish("event", event.model_dump(mode="json"))
+
+        if event.event_type in {EventType.AGENT_RESPONSE, EventType.STOP}:
+            await self._maybe_auto_handoff(session, event)
 
         if session.supervision_paused or self.supervision_paused:
             return None
@@ -131,8 +146,35 @@ class Pipeline:
         goal = await self.store.get_goal(session.goal_id) if session.goal_id else None
         recent = await self.store.recent_events(session.id, self.settings.max_recent_events)
         scores = score_trajectory(recent, goal)
+        claims: list[dict] = []
         notes = ""
-        if event.event_type == EventType.USER_PROMPT:
+        if event.event_type == EventType.STOP:
+            claims = extract_claims(recent)
+            scores.features["claims"] = claims
+            if project_key:
+                for claim in claims:
+                    await self.store.add_context(
+                        ContextItem(
+                            id=new_id("claim_"),
+                            project_id=project_key,
+                            goal_id=session.goal_id,
+                            kind=ContextKind.CLAIM,
+                            content=str(claim.get("statement") or ""),
+                            source_refs=[str(claim.get("source_event_id") or event.event_id)],
+                            provenance=SourceKind.HARNESS,
+                            confidence=float(claim.get("confidence") or 0.5),
+                            relevance_tags=[str(claim.get("kind") or "claim"), str(claim.get("polarity") or "")],
+                            valid_from=event.ts,
+                            sensitivity=Sensitivity.INTERNAL,
+                            metadata=claim,
+                        )
+                    )
+            notes = (
+                "claims:" + ";".join(f"{c.get('kind')}={c.get('statement')}" for c in claims)
+                if claims
+                else "no_completion_claims_extracted"
+            )
+        elif event.event_type == EventType.USER_PROMPT:
             classification = classify_prompt(goal, event.message_delta or "")
             notes = classification.value
         request = SupervisorRequest(
@@ -192,6 +234,7 @@ class Pipeline:
                 verdict=PolicyVerdict.DENY,
                 outcome="suppressed_by_cooldown",
                 action_taken="SUPPRESSED_COOLDOWN",
+                claims=claims,
             )
             await self.store.add_intervention(intervention)
             await self.bus.publish("intervention", intervention.model_dump(mode="json"))
@@ -207,11 +250,56 @@ class Pipeline:
             verdict=verdict,
             outcome=outcome,
             action_taken=action.type.value,
+            claims=claims,
         )
         await self.store.add_intervention(intervention)
         await self.bus.publish("intervention", intervention.model_dump(mode="json"))
         await self.bus.publish("pet", await self.pet_snapshot())
         return intervention
+
+    async def _maybe_auto_handoff(self, session: HarnessSession, event: HarnessEvent) -> None:
+        """Move the smallest useful observed fact to a sibling worker. No copy-paste."""
+        content = (event.message_delta or event.command or "").strip()
+        project_key = session.project_id or session.cwd
+        if len(content) < 40 or not session.goal_id or not project_key:
+            return
+        if session.supervision_paused or self.supervision_paused:
+            return
+        goal = await self.store.get_goal(session.goal_id)
+        if goal is None:
+            return
+        siblings = [
+            row
+            for row in await self.store.list_sessions()
+            if row.id != session.id
+            and not row.supervision_paused
+            and (
+                (session.project_id and row.project_id == session.project_id)
+                or (session.cwd and row.cwd and row.cwd == session.cwd)
+            )
+        ]
+        if not siblings:
+            return
+        items = await self.store.list_context(project_key)
+        recent = await self.store.recent_events(session.id, 12)
+        for target in siblings:
+            if not self.cooldowns.allow(f"{session.id}->{target.id}", "auto_handoff", 120):
+                continue
+            bundle = build_bundle(goal, target, items, recent, [session.id])
+            if not bundle.items and not bundle.direct_evidence and not bundle.relevant_artifacts:
+                continue
+            adapter = self.adapters.for_session(target.id)
+            if adapter is None:
+                continue
+            try:
+                ok = await adapter.inject_context(target, bundle)
+            except Exception:
+                continue
+            if not ok:
+                continue
+            if not target.goal_id:
+                target.goal_id = session.goal_id
+                await self.store.upsert_session(target)
 
     def _intervention(
         self,
@@ -222,6 +310,7 @@ class Pipeline:
         verdict: PolicyVerdict,
         outcome: str,
         action_taken: str,
+        claims: list[dict] | None = None,
     ) -> Intervention:
         action = result.action
         return Intervention(
@@ -249,6 +338,7 @@ class Pipeline:
                 "output_tokens": result.output_tokens,
                 "backend": result.backend,
                 "latency_ms": result.latency_ms,
+                "claims": claims or [],
             },
         )
 
