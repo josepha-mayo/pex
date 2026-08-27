@@ -225,6 +225,8 @@ class SyntheticEventIn(BaseModel):
     tool_name: str | None = None
     file_paths: list[str] = Field(default_factory=list)
     phase: str | None = None
+    process_state: dict | None = None
+    error: str | None = None
 
 
 @asynccontextmanager
@@ -993,6 +995,9 @@ def create_app() -> FastAPI:
             command=body.command,
             tool_name=body.tool_name,
             file_paths=body.file_paths,
+            process_state=body.process_state,
+            error=body.error,
+            **({"phase": body.phase} if body.phase else {}),
         )
         intervention = await state.pipeline.ingest_event(event, session)
         return {

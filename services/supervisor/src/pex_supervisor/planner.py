@@ -110,6 +110,18 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             "Recent actions repeated without moving the attached acceptance criteria. Return to the remaining criterion and produce the required evidence.",
         )
 
+    if event.event_type == EventType.STOP:
+        verification = (request.scores.features or {}).get("verification") or {}
+        correction = str(verification.get("correction") or "").strip()
+        evidence = [str(item) for item in (verification.get("evidence") or []) if item]
+        if verification.get("status") == "contradicted" and correction and evidence:
+            return _nudge(
+                request,
+                "Worker completion claim is contradicted by observed state.",
+                evidence,
+                correction,
+            )
+
     return _noop(
         request,
         "No deterministic fact requires interruption. Stop/completion needs supervisor inference or silence.",

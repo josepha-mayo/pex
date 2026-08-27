@@ -74,6 +74,7 @@ def _compact_inspect_user(request: SupervisorRequest) -> str:
         f"Acceptance={list(goal.acceptance_criteria) if goal else []}\n"
         f"Required={list(goal.evidence_requirements) if goal else []}\n"
         f"Claims={claims or request.notes or 'none'}\n"
+        f"Verification={(request.scores.features or {}).get('verification') or 'none'}\n"
         f"Evidence={prefetch}\n"
         "JSON only: action_type, rationale, evidence, message. "
         "If a required file is missing, SEND_NUDGE naming it. "

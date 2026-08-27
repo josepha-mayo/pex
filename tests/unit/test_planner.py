@@ -138,3 +138,25 @@ def test_repeated_low_info_work_is_redirected():
     assert action.type == InterventionType.SEND_NUDGE
     assert "acceptance" in action.payload["text"].lower()
     assert not str(action.payload.get("text") or "").startswith("PEX:")
+
+
+def test_contradicted_stop_sends_specific_evidence():
+    request = SupervisorRequest(
+        session=_session(),
+        goal=_goal(),
+        event=_event(EventType.STOP, message_delta="All tests passed"),
+        scores=TrajectoryScores(
+            claim_contradiction=0.88,
+            features={
+                "verification": {
+                    "status": "contradicted",
+                    "correction": "You said the test suite passes. The latest observed pytest run failed (exit 1). Failing test: tests/test_parser.py::test_nested_array. Continue from that failure.",
+                    "evidence": ["pytest_ok=False", "failed:tests/test_parser.py::test_nested_array"],
+                }
+            },
+        ),
+    )
+    action = plan_deterministic(request)
+    assert action.type == InterventionType.SEND_NUDGE
+    assert "test_nested_array" in action.payload["text"]
+    assert not action.payload["text"].startswith("PEX:")

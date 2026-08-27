@@ -21,6 +21,8 @@ from pex_protocol.intervention import Intervention
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorRequest, SupervisorResult
 from pex_supervisor.loop import _action_from_proposal, decide
+from pex_supervisor.verify import verify_claims
+from pex_supervisor.workspace import snapshot
 
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.bus import EventBus
@@ -147,10 +149,21 @@ class Pipeline:
         recent = await self.store.recent_events(session.id, self.settings.max_recent_events)
         scores = score_trajectory(recent, goal)
         claims: list[dict] = []
+        verification: dict = {}
         notes = ""
         if event.event_type == EventType.STOP:
             claims = extract_claims(recent)
             scores.features["claims"] = claims
+            workspace: dict = {}
+            if session.cwd:
+                try:
+                    workspace = snapshot(session.cwd, run_pytest=False)
+                except Exception:
+                    workspace = {}
+            verification = verify_claims(claims, recent, goal, workspace)
+            scores.features["verification"] = verification
+            if verification.get("status") == "contradicted":
+                scores.claim_contradiction = max(scores.claim_contradiction, 0.88)
             if project_key:
                 for claim in claims:
                     await self.store.add_context(
@@ -174,6 +187,7 @@ class Pipeline:
                 if claims
                 else "no_completion_claims_extracted"
             )
+            notes += f";verify={verification.get('status')}"
         elif event.event_type == EventType.USER_PROMPT:
             classification = classify_prompt(goal, event.message_delta or "")
             notes = classification.value
@@ -235,6 +249,7 @@ class Pipeline:
                 outcome="suppressed_by_cooldown",
                 action_taken="SUPPRESSED_COOLDOWN",
                 claims=claims,
+                verification=verification,
             )
             await self.store.add_intervention(intervention)
             await self.bus.publish("intervention", intervention.model_dump(mode="json"))
@@ -251,6 +266,7 @@ class Pipeline:
             outcome=outcome,
             action_taken=action.type.value,
             claims=claims,
+            verification=verification,
         )
         await self.store.add_intervention(intervention)
         await self.bus.publish("intervention", intervention.model_dump(mode="json"))
@@ -311,6 +327,7 @@ class Pipeline:
         outcome: str,
         action_taken: str,
         claims: list[dict] | None = None,
+        verification: dict | None = None,
     ) -> Intervention:
         action = result.action
         return Intervention(
@@ -339,6 +356,7 @@ class Pipeline:
                 "backend": result.backend,
                 "latency_ms": result.latency_ms,
                 "claims": claims or [],
+                "verification": verification or {},
             },
         )
 

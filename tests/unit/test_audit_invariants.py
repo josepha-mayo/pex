@@ -39,13 +39,20 @@ def test_grok_build_acp_is_agent_stdio_not_grok_acp():
     assert acp_command("grok") == ["grok", "agent", "stdio"]
 
 
-def test_pexbench_manifest_stays_unfrozen_without_live_rows():
+def test_pexbench_manifest_stays_frozen_only_with_live_rows():
     import yaml
 
+    path = Path("benchmarks/four_arm.py")
+    spec = importlib.util.spec_from_file_location("pexbench_four_arm_audit", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader
+    spec.loader.exec_module(module)
     manifest = yaml.safe_load(
         Path("benchmarks/manifest.yaml").read_text(encoding="utf-8")
     )
-    assert manifest.get("frozen") is False
+    blockers = module.freeze_blockers()
+    assert not blockers, blockers
+    assert manifest.get("frozen") is True
 
 
 def test_synthetic_results_are_not_presentation_arms(tmp_path, monkeypatch):

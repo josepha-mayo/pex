@@ -200,10 +200,13 @@ def _canonical_seed(task_id: str) -> tuple[str, dict[str, Any]]:
         seeded = Path(tmp) / "seed"
         extra = evaluator.seed_workspace(task_id, seeded)
         return boundary.workspace_manifest_sha256(seeded), extra
+
+
+def cursor_stop_drop_dir() -> Path:
     override = os.environ.get("PEX_CURSOR_STOP_DROP")
     if override:
         return Path(override)
-    return Path.home() / ".pex" / "pexbench" / "stops"
+    return Path(os.environ.get("PEX_HOME", Path.home() / ".pex")) / "pexbench" / "stops"
 
 
 def _cursor_stop_cwd(payload: dict) -> Path | None:

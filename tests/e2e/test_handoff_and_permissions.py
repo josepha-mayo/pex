@@ -153,6 +153,95 @@ async def test_stop_stores_extracted_claims(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_false_test_claim_nudges_with_failing_pytest(client: AsyncClient, tmp_path):
+    worker = tmp_path / "worker"
+    worker.mkdir()
+    (worker / "src").mkdir()
+    (worker / "src" / "parser.py").write_text("def parse():\n    return 1\n", encoding="utf-8")
+    adapter = state.adapters.synthetic
+    session = adapter.seed_session(vendor_id="false-claim", cwd=str(worker))
+    await state.store.upsert_session(session)
+    goal = (
+        await client.post(
+            "/v1/goals",
+            json={
+                "project_id": "demo",
+                "title": "Parser",
+                "objective": "Implement the parser with passing tests",
+                "acceptance_criteria": ["tests pass"],
+            },
+        )
+    ).json()
+    await client.post(f"/v1/sessions/{session.id}/attach", json={"goal_id": goal["id"]})
+    await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.SHELL.value,
+            "command": "pytest -q",
+            "file_paths": ["src/parser.py"],
+            "process_state": {
+                "pytest": {
+                    "ok": False,
+                    "exit_code": 1,
+                    "failed": "tests/test_parser.py::test_nested_array",
+                }
+            },
+        },
+    )
+    stop = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.STOP.value,
+            "message": "All tests passed. I am done.",
+        },
+    )
+    body = stop.json()
+    assert body["intervention"]["action_taken"] == "SEND_NUDGE"
+    text = adapter.inbox[session.id][-1]
+    assert "test_nested_array" in text
+    assert not text.startswith("PEX:")
+    assert (body["intervention"].get("metadata") or {}).get("verification", {}).get("status") == "contradicted"
+
+
+@pytest.mark.asyncio
+async def test_short_eval_artifact_contradicts_done(client: AsyncClient, tmp_path):
+    worker = tmp_path / "eval-worker"
+    worker.mkdir()
+    rows = "\n".join(f'{{"id": {i}}}' for i in range(27))
+    (worker / "results.jsonl").write_text(rows + "\n", encoding="utf-8")
+    adapter = state.adapters.synthetic
+    session = adapter.seed_session(vendor_id="short-eval", cwd=str(worker))
+    await state.store.upsert_session(session)
+    goal = (
+        await client.post(
+            "/v1/goals",
+            json={
+                "project_id": "demo",
+                "title": "Eval",
+                "objective": "Produce a complete evaluation",
+                "acceptance_criteria": ["results.jsonl has 30 rows"],
+            },
+        )
+    ).json()
+    await client.post(f"/v1/sessions/{session.id}/attach", json={"goal_id": goal["id"]})
+    stop = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.STOP.value,
+            "message": "The evaluation is complete.",
+        },
+    )
+    body = stop.json()
+    assert body["intervention"]["action_taken"] == "SEND_NUDGE"
+    text = adapter.inbox[session.id][-1]
+    assert "27" in text and "30" in text
+    assert not text.startswith("PEX:")
+
+
+@pytest.mark.asyncio
 async def test_pytest_permission_auto_allowed(client: AsyncClient):
     session = (await client.post("/v1/synthetic/sessions")).json()
     goal = (
