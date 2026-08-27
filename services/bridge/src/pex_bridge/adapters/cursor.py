@@ -14,6 +14,7 @@ from pex_protocol.session import HarnessEvent, HarnessSession
 
 from pex_bridge.adapters.acp_client import AcpClient, AcpTransport
 from pex_bridge.adapters.base import HarnessAdapter
+from pex_bridge.shell_state import parse_pytest_process_state
 
 HOOK_EVENT_MAP = {
     "sessionStart": EventType.SESSION_START,
@@ -179,19 +180,37 @@ class CursorAdapter(HarnessAdapter):
         command = command or payload.get("command") or payload.get("shell_command")
         files: list[str] = []
         if payload.get("file_path"):
-            files.append(payload["file_path"])
-        message = (
-            payload.get("prompt")
-            or payload.get("text")
-            or payload.get("agent_message")
-            or payload.get("completion")
-            or payload.get("content")
-            or payload.get("last_assistant_message")
-            or payload.get("output")
-        )
+            files.append(str(payload["file_path"]))
+        for extra in payload.get("file_paths") or payload.get("paths") or []:
+            if extra:
+                files.append(str(extra))
+        agent_hooks = {
+            "afterAgentResponse",
+            "afterAgentThought",
+            "beforeSubmitPrompt",
+            "stop",
+            "sessionEnd",
+        }
+        message = None
+        if hook_name in agent_hooks:
+            message = (
+                payload.get("prompt")
+                or payload.get("text")
+                or payload.get("agent_message")
+                or payload.get("completion")
+                or payload.get("content")
+                or payload.get("last_assistant_message")
+            )
         tool_name = payload.get("tool_name") or payload.get("tool") or payload.get("toolName")
         if not command and isinstance(tool_input, dict):
             command = tool_input.get("command") or tool_input.get("cmd")
+        process_state = None
+        error = None
+        if hook_name in {"afterShellExecution", "postToolUse", "postToolUseFailure"}:
+            process_state = parse_pytest_process_state(str(command or ""), payload)
+            error = payload.get("error") or payload.get("stderr")
+            if hook_name == "postToolUseFailure" and not error:
+                error = str(payload.get("output") or payload.get("message") or "tool failed")
         return HarnessEvent(
             event_id=uuid4().hex,
             ts=datetime.now(timezone.utc),
@@ -205,6 +224,8 @@ class CursorAdapter(HarnessAdapter):
             tool_input=tool_input if isinstance(tool_input, dict) else None,
             command=command,
             file_paths=files,
+            error=str(error) if error else None,
+            process_state=process_state,
             approval_request={"hook": hook_name} if hook_name in {"beforeShellExecution", "preToolUse"} else None,
             metadata={"hook_event_name": hook_name, "raw": {k: payload[k] for k in payload if k != "raw"}},
         )
@@ -243,11 +264,10 @@ class CursorAdapter(HarnessAdapter):
         return self.pending_followups.pop(session_id, None)
 
     async def apply_overlay(self, session: HarnessSession, overlay) -> bool:
-        text = overlay.diff.system_instructions or overlay.reason
-        return await self.send_message(
-            session,
-            f"Session overlay ({overlay.id}): {text}\nFollow this for the rest of the session unless reverted.",
-        )
+        # Official hooks cannot change Cursor tools, MCP, or model. Do not
+        # smuggle the overlay in as extra worker prompt text.
+        _ = (session, overlay)
+        return False
 
     async def revert_overlay(self, overlay_id: str) -> bool:
         for session in self.sessions.values():

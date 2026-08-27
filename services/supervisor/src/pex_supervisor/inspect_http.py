@@ -46,10 +46,25 @@ _FALLBACK_MODELS = ("hy3-free", "laguna-s-2.1-free", "big-pickle")
 
 
 def _model_unsupported(status: int, body: str) -> bool:
+    if status == 404:
+        return True
     if status not in {400, 401, 404}:
         return False
     lowered = body.lower()
     return "not supported" in lowered or "model_not_found" in lowered or "does not exist" in lowered
+
+
+def _candidate_models(cfg: dict[str, Any]) -> list[str]:
+    """Zen free IDs are not OpenRouter/OpenAI model ids. Do not send them there."""
+    models: list[str] = []
+    primary = str(cfg.get("model_id") or "").strip()
+    if primary:
+        models.append(primary)
+    if cfg.get("provider") == "zen":
+        for item in _FALLBACK_MODELS:
+            if item and item not in models:
+                models.append(item)
+    return models
 
 
 def _rate_limited(status: int, body: str) -> bool:
@@ -134,13 +149,10 @@ def _chat_json(system: str, user: str, *, max_tokens: int = 400) -> tuple[dict[s
     if cfg.get("api_key"):
         headers["Authorization"] = f"Bearer {cfg['api_key']}"
     timeout = httpx.Timeout(18.0, connect=6.0)
-    models: list[str] = []
-    for model in (cfg["model_id"], *_FALLBACK_MODELS):
-        if model and model not in models:
-            models.append(model)
+    models = _candidate_models(cfg)
     last_error = "no supervisor model"
     with httpx.Client(timeout=timeout) as client:
-        for model in models[:2]:
+        for model in models:
             payload = {
                 "model": model,
                 "stream": False,

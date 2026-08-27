@@ -167,6 +167,56 @@ def test_cursor_hook_script_recovers_event_name():
     assert passed == {"followup_message": "Create report.txt containing shipped."}
 
 
+@pytest.mark.asyncio
+async def test_cursor_false_done_stop_returns_evidenced_followup(client: AsyncClient, tmp_path):
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    roots = [str(workspace)]
+    goal = await client.post(
+        "/v1/goals",
+        json={
+            "project_id": roots[0],
+            "title": "Parser",
+            "objective": "Implement the parser with passing tests",
+            "acceptance_criteria": ["tests pass"],
+        },
+    )
+    goal_id = goal.json()["id"]
+    start = await client.post(
+        "/v1/hooks/cursor",
+        json={
+            "hook_event_name": "sessionStart",
+            "conversation_id": "conv-false-done",
+            "workspace_roots": roots,
+        },
+    )
+    assert start.status_code == 200
+    await client.post("/v1/sessions/cursor:conv-false-done/attach", json={"goal_id": goal_id})
+    shell = await client.post(
+        "/v1/hooks/cursor",
+        json={
+            "hook_event_name": "afterShellExecution",
+            "conversation_id": "conv-false-done",
+            "command": "pytest -q",
+            "exit_code": 1,
+            "output": "FAILED tests/test_parser.py::test_nested_array\n1 failed, 0 passed",
+        },
+    )
+    assert shell.status_code == 200
+    stop = await client.post(
+        "/v1/hooks/cursor",
+        json={
+            "hook_event_name": "stop",
+            "conversation_id": "conv-false-done",
+            "completion": "All tests passed. I am done.",
+        },
+    )
+    body = stop.json()
+    text = str(body.get("followup_message") or "")
+    assert "test_nested_array" in text
+    assert not text.startswith("PEX:")
+
+
 def test_stop_hook_writes_drop_file(tmp_path, monkeypatch):
     import importlib.util
     from pathlib import Path
@@ -190,6 +240,26 @@ def test_stop_hook_writes_drop_file(tmp_path, monkeypatch):
     assert dumped["cwd"] == str(tmp_path / "ws")
     mod.record_stop_drop({"hook_event_name": "beforeReadFile", "cwd": str(tmp_path)})
     assert len(list(tmp_path.glob("*.json"))) == 1
+
+
+@pytest.mark.asyncio
+async def test_cursor_overlay_is_not_prompt_injection():
+    from pex_protocol.overlay import Overlay, OverlayDiff
+
+    from pex_bridge.adapters.cursor import CursorAdapter
+
+    adapter = CursorAdapter()
+    session = adapter.upsert_from_hook(
+        {"hook_event_name": "sessionStart", "conversation_id": "ovl", "workspace_roots": ["C:/proj"]}
+    )
+    overlay = Overlay(
+        id="ovl_1",
+        session_id=session.id,
+        reason="debug",
+        diff=OverlayDiff(system_instructions="pin the failing test"),
+    )
+    assert await adapter.apply_overlay(session, overlay) is False
+    assert adapter.inbox.get(session.id, []) == []
 
 
 def test_install_user_hooks_passes_event_name(tmp_path):

@@ -73,7 +73,18 @@ def test_parse_proposal_from_wrapped_json():
 
 def test_unsupported_model_status_is_retryable():
     assert _model_unsupported(401, '{"error":{"message":"Model x-preview-f-free is not supported"}}')
+    assert _model_unsupported(404, '{"error":{"message":"No endpoints found"}}')
     assert not _model_unsupported(401, '{"error":{"message":"invalid api key"}}')
+
+
+def test_zen_fallbacks_are_not_sent_to_openrouter():
+    from pex_supervisor.inspect_http import _candidate_models
+
+    openrouter = _candidate_models({"provider": "openrouter", "model_id": "anthropic/claude-sonnet-4.6"})
+    assert openrouter == ["anthropic/claude-sonnet-4.6"]
+    zen = _candidate_models({"provider": "zen", "model_id": "hy3-free"})
+    assert zen[0] == "hy3-free"
+    assert "laguna-s-2.1-free" in zen
 
 
 def test_rate_limit_skips_exhausted_free_model():

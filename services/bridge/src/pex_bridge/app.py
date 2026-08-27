@@ -1014,6 +1014,10 @@ def create_app() -> FastAPI:
         if existing:
             session.goal_id = existing.goal_id
             session.supervision_paused = existing.supervision_paused
+            if not session.cwd:
+                session.cwd = existing.cwd
+            if not session.project_id:
+                session.project_id = existing.project_id
         await state.store.upsert_session(session)
         event = adapter.normalize_hook(payload, session)
         hook_name = payload.get("hook_event_name")
@@ -1049,9 +1053,21 @@ def create_app() -> FastAPI:
         intervention = await state.pipeline.ingest_event(event, session)
         if hook_name == "stop":
             followup = adapter.consume_followup(session.id)
-            used_llm = bool(intervention and (intervention.metadata or {}).get("used_llm"))
             text = (followup or "").strip()
-            if used_llm and text and not text.startswith("PEX:"):
+            taken = (intervention.action_taken if intervention else "") or ""
+            evidenced = bool(intervention and intervention.evidence)
+            if (
+                text
+                and not text.startswith("PEX:")
+                and taken
+                in {
+                    "SEND_NUDGE",
+                    "CONTINUE_SESSION",
+                    "INJECT_CONTEXT",
+                    "REQUEST_VERIFICATION",
+                }
+                and evidenced
+            ):
                 response["followup_message"] = text
         return response
 
@@ -1067,6 +1083,10 @@ def create_app() -> FastAPI:
         if existing:
             session.goal_id = existing.goal_id
             session.supervision_paused = existing.supervision_paused
+            if not getattr(session, "cwd", None):
+                session.cwd = existing.cwd
+            if not getattr(session, "project_id", None):
+                session.project_id = existing.project_id
         await state.store.upsert_session(session)
         if hasattr(adapter, "normalize_hook"):
             event = adapter.normalize_hook(payload, session)

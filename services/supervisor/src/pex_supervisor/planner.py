@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
-from pex_protocol.enums import Authority, EventPhase, EventType
+from pex_protocol.enums import Authority, EventPhase, EventType, HarnessType
+from pex_protocol.overlay import Overlay, OverlayDiff
 from pex_protocol.supervisor import SupervisorRequest
 
 
@@ -34,6 +37,45 @@ def _nudge(request: SupervisorRequest, rationale: str, evidence: list[str], mess
         expected_benefit="Redirect the worker toward evidenced progress without interrupting the human.",
         cooldown_seconds=45,
         requires_capability="send_message",
+    )
+
+
+def _can_overlay(request: SupervisorRequest) -> bool:
+    caps = request.session.capabilities or {}
+    if caps.get("modify_config") is True:
+        return True
+    return request.session.harness_type == HarnessType.SYNTHETIC
+
+
+def _debug_overlay(request: SupervisorRequest, evidence: list[str]) -> ProposedAction:
+    overlay = Overlay(
+        id=f"ovl_{uuid4().hex[:12]}",
+        session_id=request.session.id,
+        reason="Repeated identical failures; switch to a debug-phase overlay.",
+        diff=OverlayDiff(
+            tools_disabled=["WebSearch", "Browser", "web_search"],
+            extra={"phase": "debug", "pin": evidence[0] if evidence else ""},
+            system_instructions=(
+                "Stay on the failing reproduction. Do not start unrelated research. "
+                "Preserve the failing state until the attached acceptance criteria move."
+            ),
+        ),
+        ttl_seconds=1800,
+        scope="session",
+    )
+    return ProposedAction(
+        type=InterventionType.APPLY_OVERLAY,
+        session_id=request.session.id,
+        goal_id=request.goal.id if request.goal else None,
+        payload={"overlay": overlay.model_dump(mode="json")},
+        rationale="Current harness shape is wasting work on repeated identical failures.",
+        evidence=evidence,
+        confidence=0.8,
+        risk=RiskLevel.LOW,
+        reversible=True,
+        expected_benefit="Temporarily pin debug tools and drop unrelated research tools.",
+        cooldown_seconds=120,
+        requires_capability="modify_config",
     )
 
 
@@ -100,13 +142,17 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
         and request.scores.drift >= 0.75
         and int(request.scores.features.get("repeated_command_count") or 0) >= 3
     ):
+        evidence = [
+            f"drift={request.scores.drift}",
+            f"repeated_command_count={request.scores.features.get('repeated_command_count')}",
+            f"identical_error_count={request.scores.features.get('identical_error_count') or 0}",
+        ]
+        if int(request.scores.features.get("identical_error_count") or 0) >= 1 and _can_overlay(request):
+            return _debug_overlay(request, evidence)
         return _nudge(
             request,
             "Trajectory is repeating low-information work instead of attached acceptance criteria.",
-            [
-                f"drift={request.scores.drift}",
-                f"repeated_command_count={request.scores.features.get('repeated_command_count')}",
-            ],
+            evidence,
             "Recent actions repeated without moving the attached acceptance criteria. Return to the remaining criterion and produce the required evidence.",
         )
 

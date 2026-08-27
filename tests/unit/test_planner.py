@@ -140,6 +140,23 @@ def test_repeated_low_info_work_is_redirected():
     assert not str(action.payload.get("text") or "").startswith("PEX:")
 
 
+def test_repeated_identical_failures_apply_debug_overlay():
+    request = SupervisorRequest(
+        session=_session(),
+        goal=_goal(),
+        event=_event(EventType.SHELL, phase=EventPhase.DURING, command="pytest -q"),
+        scores=TrajectoryScores(
+            drift=0.82,
+            features={"repeated_command_count": 5, "identical_error_count": 3},
+        ),
+    )
+    action = plan_deterministic(request)
+    assert action.type == InterventionType.APPLY_OVERLAY
+    overlay = action.payload["overlay"]
+    assert overlay["diff"]["extra"]["phase"] == "debug"
+    assert "WebSearch" in overlay["diff"]["tools_disabled"]
+
+
 def test_contradicted_stop_sends_specific_evidence():
     request = SupervisorRequest(
         session=_session(),
