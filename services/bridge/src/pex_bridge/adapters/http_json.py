@@ -31,6 +31,8 @@ class MemoryHttpTransport:
         self.permissions: list[dict[str, Any]] = []
         self.config_patches: list[dict[str, Any]] = []
         self.events: list[dict[str, Any]] = []
+        self.messages: list[dict[str, Any]] = []
+        self.session_details: dict[str, dict[str, Any]] = {}
 
     async def request(
         self,
@@ -47,6 +49,11 @@ class MemoryHttpTransport:
             if path == "/global/health":
                 return {"healthy": True, "version": "fake"}
             return list(self.sessions)
+        if method == "GET" and path.endswith("/messages"):
+            return {"messages": list(self.messages)}
+        if method == "GET" and "/v3/organizations/" in path and "/sessions/" in path:
+            sid = path.rstrip("/").rsplit("/", 1)[-1]
+            return dict(self.session_details.get(sid) or {"session_id": sid, "status": "running"})
         if method == "GET" and path.startswith("/session/") and path.endswith("/status"):
             return {"id": path.split("/")[2], "status": "idle"}
         if method == "POST" and path in {"/session", "/sessions"}:

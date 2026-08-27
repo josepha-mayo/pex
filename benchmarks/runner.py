@@ -59,6 +59,10 @@ def append_immutable(run_id: str, record: dict) -> Path:
             record.get("transport_kind") != "codex_stdio" or not evidence.get("pid")
         ):
             raise ValueError("Codex live=True requires a running codex stdio process")
+        if arm in {"cursor", "cursor_pex"} and (
+            record.get("transport_kind") != "cursor_hooks" or not evidence.get("hooks_path")
+        ):
+            raise ValueError("Cursor live=True requires this-desktop ~/.cursor/hooks.json")
         if arm.endswith("_pex") and not (record.get("pex") or {}).get(
             "supervisor_process_isolated"
         ):

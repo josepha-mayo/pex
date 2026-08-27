@@ -80,7 +80,7 @@ async def test_m0_event_to_action_roundtrip(client: AsyncClient):
     asked = await client.post("/v1/ask", json={"question": "what needs me?"})
     assert "answer" in asked.json()
     pets = await client.get("/v1/pets")
-    assert len(pets.json()["starters"]) == 10
+    assert len(pets.json()["starters"]) == 7
     assert pets.json()["codex_contract"]["spriteVersionNumber"] == 2
     claude = await client.post(
         "/v1/hooks/claude_code",

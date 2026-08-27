@@ -131,7 +131,7 @@ def test_skip_model_on_5xx_rate_limit_and_unavailable():
     assert not _skip_model(200, "{}")
 
 
-def test_run_strands_inspect_failure_coerces_missing_file(tmp_path, monkeypatch):
+def test_run_strands_inspect_failure_nudges_when_required_file_missing(tmp_path, monkeypatch):
     def _boom(_system, _user):
         raise RuntimeError("model laguna-s-2.1-free timed out")
 
@@ -145,4 +145,17 @@ def test_run_strands_inspect_failure_coerces_missing_file(tmp_path, monkeypatch)
     assert result.action.type.value == "SEND_NUDGE"
     assert "report.txt" in str(result.action.payload.get("text") or "")
     assert not str(result.action.payload.get("text") or "").startswith("PEX:")
-    assert "strands_unavailable" in result.diagnosis
+
+
+def test_run_strands_inspect_failure_stays_noop_when_file_present(tmp_path, monkeypatch):
+    def _boom(_system, _user):
+        raise RuntimeError("model laguna-s-2.1-free timed out")
+
+    monkeypatch.setattr("pex_supervisor.loop.complete_typed_action", _boom)
+    request = _request(0.95)
+    request.session.cwd = str(tmp_path)
+    (tmp_path / "report.txt").write_text("shipped", encoding="utf-8")
+    request.goal.evidence_requirements = ["report.txt"]
+    result = run_strands(request, model=object())
+    assert result.used_llm is False
+    assert result.action.type.value == "NOOP"

@@ -19,7 +19,11 @@ CONNECT = {
         "method": "app-server-stdio",
         "command": ["codex", "app-server", "--listen", "stdio://"],
         "docs": "https://developers.openai.com/codex/app-server",
-        "note": "Second JSONL client on the same ~/.codex as ChatGPT.exe. thread/list returns data. Do not turn/start on the operator's live threads without intent.",
+        "note": (
+            "Isolated `codex app-server --listen stdio://` JSONL. ChatGPT.exe is observe/focus only "
+            "until same-socket JSON-RPC is proven. Do not treat the desktop process as App Server Deep. "
+            "Do not turn/start on the operator's live threads without intent."
+        ),
     },
     "grok_bot": {
         "method": "observe-process",
@@ -43,13 +47,16 @@ CONNECT = {
         "method": "http",
         "command": ["qwen", "serve"],
         "docs": None,
-        "note": "Deep only after qwen serve HTTP attach.",
+        "note": "Deep after `qwen serve` HTTP attach and an SSE event pump. A process without events is not Deep.",
     },
     "hermes": {
         "method": "acp-stdio",
         "command": ["hermes", "acp"],
         "docs": "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp",
-        "note": "Do not open Hermes. If already running, desktop is observable; control is hermes acp only when asked.",
+        "note": (
+            "Do not open Hermes. Official plugin hooks: pre_tool_call block/approve, "
+            "pre_llm_call {context} inject, on_session_end observe. Control ACP is `hermes acp` only when asked."
+        ),
     },
     "devin": {
         "method": "org-api",
@@ -73,7 +80,7 @@ CONNECT = {
         "method": "acp-stdio",
         "command": ["omp", "acp"],
         "docs": None,
-        "note": "Oh My Pi ACP. Do not assume Cursor authenticate method ids.",
+        "note": "Oh My Pi ACP (`omp acp`). Deep after handshake. STOP inspect from session/update idle/end_turn. Do not spawn unless asked.",
     },
     "pi": {
         "method": "extension-events",

@@ -14,7 +14,7 @@ from pathlib import Path
 
 from pex_bridge.scoring import score_trajectory
 from pex_bridge.store import new_id
-from pex_protocol.enums import EventPhase, EventType, HarnessType, SessionStatus
+from pex_protocol.enums import EventPhase, EventType, SessionStatus
 from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorRequest
@@ -40,7 +40,7 @@ def decide_public_observation(payload: dict) -> dict:
         HarnessEvent(
             event_id=new_id("evt_"),
             ts=now,
-            harness_type=HarnessType.CODEX,
+            harness_type=session.harness_type,
             session_id=session.id,
             event_type=EventType.AGENT_RESPONSE,
             phase=EventPhase.DURING,
@@ -51,7 +51,7 @@ def decide_public_observation(payload: dict) -> dict:
     stop = HarnessEvent(
         event_id=new_id("evt_"),
         ts=now,
-        harness_type=HarnessType.CODEX,
+        harness_type=session.harness_type,
         session_id=session.id,
         event_type=EventType.STOP,
         phase=EventPhase.TERMINAL,

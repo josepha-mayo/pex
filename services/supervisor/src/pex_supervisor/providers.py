@@ -16,9 +16,16 @@ import httpx
 from pex_supervisor.catalog import catalog
 
 
+_DOTENV_LOADED = False
+
+
 def _load_dotenv() -> None:
+    global _DOTENV_LOADED
+    if _DOTENV_LOADED:
+        return
     root = Path(__file__).resolve().parents[4]
     path = root / ".env"
+    _DOTENV_LOADED = True
     if not path.is_file():
         return
     for raw in path.read_text(encoding="utf-8").splitlines():
@@ -397,6 +404,20 @@ def describe_backend() -> dict[str, Any]:
         "catalog_size": len(catalog()),
         "providers": sorted(PROVIDERS),
     }
+
+
+def apply_runtime_choice(*, provider: str | None = None, model_id: str | None = None) -> dict[str, Any]:
+    """Select catalog provider/model for this process. Never stores keys."""
+    if provider is not None:
+        pid = provider.strip().lower()
+        if pid and pid not in PROVIDERS:
+            raise ValueError(f"unknown PEX_SUPERVISOR_PROVIDER {pid!r}; use custom + BASE_URL")
+        if pid:
+            os.environ["PEX_SUPERVISOR_PROVIDER"] = pid
+            os.environ.pop("PEX_SUPERVISOR_DISABLE", None)
+    if model_id is not None:
+        os.environ["PEX_SUPERVISOR_MODEL"] = model_id.strip()
+    return describe_backend()
 
 
 def openai_compat_client_config() -> dict[str, Any] | None:

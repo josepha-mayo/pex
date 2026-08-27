@@ -3,7 +3,7 @@
 Track: **Professional Agents**  
 Deadline: 14 Sep 2026, 17:00 PDT  
 License: MIT  
-Public repo: create with `gh repo create` from this tree (must be public).
+Public repo: https://github.com/josepha-mayo/pex (MIT).
 
 Do not cite quarantined benchmark rows in `benchmarks/results/INVALID_LEAKED_RUNS_DO_NOT_USE/`.
 
@@ -57,10 +57,10 @@ Drafts in `docs/posts/`. Publish on builder.aws.com **after** the live path is o
 
 ## Checklist before clicking Submit
 
-- [ ] Public GitHub repo with MIT license visible
-- [ ] README + architecture diagram (`docs/architecture/hackathon.md` and `docs/architecture/pex-architecture.png`)
+- [x] Public GitHub repo with MIT license visible
+- [x] README + architecture diagram (`docs/architecture/hackathon.md` and `docs/architecture/pex-architecture.png`)
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
-- [ ] Functioning local demo: `uv run pex-bridge --no-auth` and `npm run dev` in `apps/desktop`
-- [ ] AgentCore deploy in eu-north-1 **or** honest “not deployed yet” (AgentCore is optional, strengthens Technical Implementation)
-- [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost
+- [x] Functioning local demo: `uv run pex-bridge --no-auth` and `npm run dev` in `apps/desktop`
+- [x] AgentCore deploy in eu-north-1 **or** honest “not deployed yet” (AgentCore is optional, strengthens Technical Implementation) — **not deployed**; `aws sts` returns NoCredentials until `aws login`
+- [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)

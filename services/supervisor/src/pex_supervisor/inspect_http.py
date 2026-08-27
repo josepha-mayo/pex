@@ -125,7 +125,7 @@ def usage_tokens(payload: dict[str, Any]) -> dict[str, int]:
     }
 
 
-def complete_typed_action(system: str, user: str) -> tuple[dict[str, Any], dict[str, int], str]:
+def _chat_json(system: str, user: str, *, max_tokens: int = 400) -> tuple[dict[str, Any], dict[str, int]]:
     cfg = openai_compat_client_config()
     if cfg is None:
         raise InspectUnavailable("no openai-compat supervisor")
@@ -133,10 +133,6 @@ def complete_typed_action(system: str, user: str) -> tuple[dict[str, Any], dict[
     headers = {"Content-Type": "application/json"}
     if cfg.get("api_key"):
         headers["Authorization"] = f"Bearer {cfg['api_key']}"
-    json_system = (
-        system
-        + "\nReturn only JSON with keys action_type, rationale, evidence, message. No markdown."
-    )
     timeout = httpx.Timeout(18.0, connect=6.0)
     models: list[str] = []
     for model in (cfg["model_id"], *_FALLBACK_MODELS):
@@ -148,10 +144,10 @@ def complete_typed_action(system: str, user: str) -> tuple[dict[str, Any], dict[
             payload = {
                 "model": model,
                 "stream": False,
-                "max_tokens": 400,
+                "max_tokens": max_tokens,
                 "temperature": 0.2,
                 "messages": [
-                    {"role": "system", "content": json_system},
+                    {"role": "system", "content": system},
                     {"role": "user", "content": user},
                 ],
             }
@@ -170,6 +166,26 @@ def complete_typed_action(system: str, user: str) -> tuple[dict[str, Any], dict[
             except (ValueError, json.JSONDecodeError, httpx.HTTPError) as exc:
                 last_error = f"model {model} {exc.__class__.__name__}"
                 continue
-            action = str(parsed.get("action_type") or "NOOP")
-            return parsed, usage_tokens(data), f"propose_typed_action:{action}"
+            return parsed, usage_tokens(data)
     raise RuntimeError(last_error)
+
+
+def complete_typed_action(system: str, user: str) -> tuple[dict[str, Any], dict[str, int], str]:
+    json_system = (
+        system
+        + "\nReturn only JSON with keys action_type, rationale, evidence, message. No markdown."
+    )
+    parsed, usage = _chat_json(json_system, user)
+    action = str(parsed.get("action_type") or "NOOP")
+    return parsed, usage, f"propose_typed_action:{action}"
+
+
+def complete_review_answer(system: str, user: str) -> tuple[str, dict[str, int], str]:
+    json_system = system + "\nReturn only JSON with key answer (a string). No markdown."
+    parsed, usage = _chat_json(json_system, user, max_tokens=350)
+    if parsed.get("action_type"):
+        raise ValueError("inspect-shaped review payload")
+    answer = str(parsed.get("answer") or "").strip()
+    if not answer:
+        raise ValueError("empty review answer")
+    return answer, usage, "review_answer"

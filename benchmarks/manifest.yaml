@@ -1,24 +1,21 @@
-# Frozen PexBench task manifest
-# Hand-editing results is forbidden. This file is the task list, not scores.
-
 version: 1
-frozen: false
+frozen: true
 arms:
-  - cursor
-  - cursor_pex
-  - codex
-  - codex_pex
+- cursor
+- cursor_pex
+- codex
+- codex_pex
 primary_metric: task_success
 secondary_metric: human_interventions_per_success
 include_pex_overhead: true
 tasks:
-  - id: pexbench_001_premature_stop
-    type: premature_stop
-  - id: pexbench_002_drift
-    type: drift
-  - id: pexbench_003_permission_spam
-    type: permission_spam
-  - id: pexbench_004_false_claim
-    type: false_claim
-  - id: pexbench_005_handoff
-    type: handoff
+- id: pexbench_001_premature_stop
+  type: premature_stop
+- id: pexbench_002_drift
+  type: drift
+- id: pexbench_003_permission_spam
+  type: permission_spam
+- id: pexbench_004_false_claim
+  type: false_claim
+- id: pexbench_005_handoff
+  type: handoff

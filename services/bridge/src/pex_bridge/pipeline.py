@@ -170,6 +170,7 @@ class Pipeline:
         if event.phase == EventPhase.BEFORE and action.type not in {
             InterventionType.NOOP,
             InterventionType.RESPOND_PERMISSION,
+            InterventionType.ASK_HUMAN,
         }:
             action.type = InterventionType.NOOP
             action.payload = {}
@@ -301,7 +302,7 @@ class Pipeline:
         needs = [s for s in live if s.status == SessionStatus.NEEDS_DECISION]
         last = interventions[0] if interventions else None
         last_message, last_source = await self._latest_visible_line(last)
-        headline = f"{working} working" if working else "quiet"
+        headline = f"{working} working · {len(needs)} need you" if working else "quiet"
         if drifting:
             headline += f" · {drifting} drifting"
         if blocked:

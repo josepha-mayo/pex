@@ -134,6 +134,29 @@ def test_cursor_hook_script_recovers_event_name():
     assert from_argv["hook_event_name"] == "beforeShellExecution"
     assert json.loads(mod._fail_open("preToolUse")) == {"permission": "allow"}
     assert json.loads(mod._fail_open("beforeSubmitPrompt")) == {"continue": True}
+    blocked = json.loads(
+        mod._safe_hook_stdout(
+            '{"continue": false, "user_message": "Conflicts with a persistent constraint."}',
+            "beforeSubmitPrompt",
+        )
+    )
+    assert blocked == {
+        "continue": False,
+        "user_message": "Conflicts with a persistent constraint.",
+    }
+    assert json.loads(mod._safe_hook_stdout('{"continue": true}', "beforeSubmitPrompt")) == {
+        "continue": True
+    }
+    assert json.loads(
+        mod._safe_hook_stdout('{"permission":"ask"}', "preToolUse", {"command": "pytest -q"})
+    ) == {"permission": "allow"}
+    assert json.loads(
+        mod._safe_hook_stdout(
+            '{"permission":"ask"}',
+            "beforeShellExecution",
+            {"command": "rm -rf /tmp/pex-scratch"},
+        )
+    ) == {"permission": "ask"}
     assert json.loads(mod._safe_hook_stdout('{"followup_message":"PEX: nag"}', "stop")) == {}
     passed = json.loads(
         mod._safe_hook_stdout(
@@ -144,6 +167,31 @@ def test_cursor_hook_script_recovers_event_name():
     assert passed == {"followup_message": "Create report.txt containing shipped."}
 
 
+def test_stop_hook_writes_drop_file(tmp_path, monkeypatch):
+    import importlib.util
+    from pathlib import Path
+
+    hook_path = Path(__file__).resolve().parents[2] / "integrations" / "cursor-hook" / "pex_cursor_hook.py"
+    spec = importlib.util.spec_from_file_location("pex_cursor_hook_drop", hook_path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    monkeypatch.setenv("PEX_CURSOR_STOP_DROP", str(tmp_path))
+    spec.loader.exec_module(mod)
+    mod.record_stop_drop(
+        {
+            "hook_event_name": "stop",
+            "cwd": str(tmp_path / "ws"),
+            "completion": "done",
+        }
+    )
+    files = list(tmp_path.glob("*.json"))
+    assert len(files) == 1
+    dumped = json.loads(files[0].read_text(encoding="utf-8"))
+    assert dumped["cwd"] == str(tmp_path / "ws")
+    mod.record_stop_drop({"hook_event_name": "beforeReadFile", "cwd": str(tmp_path)})
+    assert len(list(tmp_path.glob("*.json"))) == 1
+
+
 def test_install_user_hooks_passes_event_name(tmp_path):
     from pex_bridge.adapters.cursor_hooks import install_user_hooks
 
@@ -151,3 +199,74 @@ def test_install_user_hooks_passes_event_name(tmp_path):
     data = json.loads(path.read_text(encoding="utf-8"))
     stop = data["hooks"]["stop"]
     assert any("stop" in item["command"] and "pex_cursor_hook.py" in item["command"] for item in stop)
+
+
+@pytest.mark.asyncio
+async def test_before_submit_prompt_blocks_constraint_contradiction(client: AsyncClient):
+    goal = await client.post(
+        "/v1/goals",
+        json={
+            "project_id": "C:/proj",
+            "title": "Train model",
+            "objective": "Train without touching preprocessing",
+            "acceptance_criteria": ["metrics.json exists"],
+            "constraints": ["Do not alter dataset preprocessing."],
+        },
+    )
+    goal_id = goal.json()["id"]
+    first = await client.post(
+        "/v1/hooks/cursor",
+        json={
+            "hook_event_name": "sessionStart",
+            "conversation_id": "conv-prompt",
+            "workspace_roots": ["C:/proj"],
+        },
+    )
+    assert first.status_code == 200
+    await client.post("/v1/sessions/cursor:conv-prompt/attach", json={"goal_id": goal_id})
+    blocked = await client.post(
+        "/v1/hooks/cursor",
+        json={
+            "hook_event_name": "beforeSubmitPrompt",
+            "conversation_id": "conv-prompt",
+            "workspace_roots": ["C:/proj"],
+            "prompt": "Just alter dataset preprocessing first.",
+        },
+    )
+    assert blocked.status_code == 200
+    body = blocked.json()
+    assert body["continue"] is False
+    assert "constraint" in str(body.get("user_message") or "").lower()
+    allowed = await client.post(
+        "/v1/hooks/cursor",
+        json={
+            "hook_event_name": "beforeSubmitPrompt",
+            "conversation_id": "conv-prompt",
+            "workspace_roots": ["C:/proj"],
+            "prompt": "Run the training script on the existing preprocessed dataset.",
+        },
+    )
+    assert allowed.json()["continue"] is True
+
+
+@pytest.mark.asyncio
+async def test_supervisor_catalog_is_selectable_without_exposing_keys(client: AsyncClient, tmp_path):
+    listed = await client.get("/v1/supervisor")
+    assert listed.status_code == 200
+    body = listed.json()
+    assert body["catalog_size"] >= 50
+    assert any(row["model_id"] == "gpt-5.6-sol" for row in body["catalog"])
+    dumped = json.dumps(body)
+    assert "sk-" not in dumped
+    assert body.get("has_api_key") in {True, False}
+    patched = await client.patch(
+        "/v1/supervisor",
+        json={"provider": "openrouter", "model_id": "anthropic/claude-sonnet-4.6"},
+    )
+    assert patched.status_code == 200
+    assert patched.json()["backend"] == "openrouter"
+    assert patched.json()["model_id"] == "anthropic/claude-sonnet-4.6"
+    saved = json.loads((tmp_path / "supervisor.json").read_text(encoding="utf-8"))
+    assert saved == {"provider": "openrouter", "model_id": "anthropic/claude-sonnet-4.6"}
+    bad = await client.patch("/v1/supervisor", json={"provider": "not-a-vendor"})
+    assert bad.status_code == 400

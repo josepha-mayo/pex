@@ -2,6 +2,8 @@
 
 FAQ requires: user input, Strands loop, tools/integrations, AWS services, output.
 
+Rendered image for Devpost: [`pex-architecture.png`](pex-architecture.png). Source: [`pex-architecture.mmd`](pex-architecture.mmd).
+
 ```mermaid
 flowchart LR
   human[Human: goals and decisions]

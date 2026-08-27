@@ -20,6 +20,7 @@ def test_required_harnesses_are_registered():
 def test_connect_table_does_not_invent_a_shared_protocol():
     assert CONNECT["cursor"]["method"] == "hooks"
     assert CONNECT["codex"]["method"] == "app-server-stdio"
+    assert "observe/focus" in CONNECT["codex"]["note"]
     assert CONNECT["grok_bot"]["method"] == "observe-process"
     assert CONNECT["grok_build"]["method"] == "acp-stdio"
     assert CONNECT["opencode"]["method"] == "http"

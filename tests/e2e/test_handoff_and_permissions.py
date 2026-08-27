@@ -100,3 +100,17 @@ async def test_pytest_permission_auto_allowed(client: AsyncClient):
         },
     )
     assert hook.json().get("permission") == "allow"
+
+
+@pytest.mark.asyncio
+async def test_destructive_shell_permission_asks_human(client: AsyncClient):
+    hook = await client.post(
+        "/v1/hooks/cursor",
+        json={
+            "hook_event_name": "beforeShellExecution",
+            "conversation_id": "conv-rm",
+            "command": "rm -rf /tmp/pex-scratch",
+            "workspace_roots": ["C:/proj"],
+        },
+    )
+    assert hook.json().get("permission") == "ask"

@@ -23,8 +23,11 @@ DESKTOP_APPS = (
         "name": "codex",
         "images": ("ChatGPT.exe",),
         "kind": "desktop",
-        "connect": "app-server-stdio",
-        "surface": "Codex desktop ChatGPT.exe; App Server JSON-RPC on the same ~/.codex.",
+        "connect": "observe-process",
+        "surface": (
+            "ChatGPT.exe is observe/focus only. Private desktop JSON-RPC is unproven. "
+            "Isolated `codex app-server --listen stdio://` is a separate attach."
+        ),
     },
     {
         "name": "grok_bot",

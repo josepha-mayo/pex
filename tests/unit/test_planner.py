@@ -75,6 +75,23 @@ def test_safe_pytest_permission_is_brokered():
     assert action.type == InterventionType.RESPOND_PERMISSION
 
 
+def test_pre_tool_use_permission_is_brokered():
+    request = SupervisorRequest(
+        session=_session(),
+        goal=_goal(),
+        event=_event(
+            EventType.TOOL_CALL,
+            phase=EventPhase.BEFORE,
+            command="rm -rf /tmp/pex",
+            tool_name="Shell",
+            approval_request={"request_id": "perm-2"},
+        ),
+        scores=TrajectoryScores(),
+    )
+    action = plan_deterministic(request)
+    assert action.type == InterventionType.RESPOND_PERMISSION
+
+
 def test_eval_before_dataset_is_blocked():
     now = datetime.now(timezone.utc)
     goal = Goal(
@@ -107,3 +124,4 @@ def test_contradictory_prompt_escalates():
     )
     action = plan_deterministic(request)
     assert action.type == InterventionType.ASK_HUMAN
+    assert action.requires_capability is None

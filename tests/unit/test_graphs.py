@@ -173,7 +173,36 @@ def test_noop_when_required_file_missing_becomes_nudge(tmp_path):
     assert not action.payload["text"].startswith("PEX:")
 
 
-def test_noop_with_missing_artifact_message_becomes_nudge():
+def test_noop_when_inspect_names_missing_file_becomes_nudge(tmp_path):
+    request = _request(0.9)
+    request.session.cwd = str(tmp_path)
+    request.goal.evidence_requirements = ["report.txt"]
+    request.goal.objective = "Create report.txt containing shipped."
+    action = _action_from_proposal(
+        request,
+        {
+            "type": "NOOP",
+            "rationale": "stopped",
+            "evidence": ["missing:report.txt"],
+            "payload": {},
+        },
+    )
+    assert action.type == InterventionType.SEND_NUDGE
+    assert "report.txt" in action.payload["text"]
+    assert not action.payload["text"].startswith("PEX:")
+
+
+def test_phrase_acceptance_criteria_are_not_filenames(tmp_path):
+    from pex_supervisor.loop import _missing_required_files
+
+    request = _request(0.9)
+    request.session.cwd = str(tmp_path)
+    request.goal.evidence_requirements = ["pytest output"]
+    request.goal.acceptance_criteria = ["results.json has 30 rows", "report.txt"]
+    assert _missing_required_files(request) == ["report.txt"]
+
+
+def test_noop_with_missing_artifact_message_without_required_file_stays_silent():
     action = _action_from_proposal(
         _request(0.1),
         {
@@ -185,8 +214,22 @@ def test_noop_with_missing_artifact_message_becomes_nudge():
             },
         },
     )
+    assert action.type == InterventionType.NOOP
+    assert not action.payload.get("text")
+
+
+def test_pex_prefixed_specific_nudge_is_stripped():
+    action = _action_from_proposal(
+        _request(0.1),
+        {
+            "type": "SEND_NUDGE",
+            "rationale": "file missing",
+            "evidence": ["cwd exists"],
+            "payload": {"text": "PEX: Create report.txt containing shipped."},
+        },
+    )
     assert action.type == InterventionType.SEND_NUDGE
-    assert "report.txt" in action.payload["text"]
+    assert action.payload["text"] == "Create report.txt containing shipped."
 
 
 def test_pex_prefixed_worker_text_is_noop():

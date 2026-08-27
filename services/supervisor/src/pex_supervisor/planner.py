@@ -62,7 +62,6 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             risk=RiskLevel.MEDIUM,
             reversible=True,
             authority_required=Authority.HUMAN,
-            requires_capability="inject_context",
         )
 
     command = event.command or (event.tool_input or {}).get("command")
@@ -76,7 +75,11 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
                 "The evaluator started before a dataset artifact exists. Generate or verify the dataset file first, then rerun eval.",
             )
 
-    if event.event_type in {EventType.PERMISSION_REQUEST, EventType.SHELL} and event.phase == EventPhase.BEFORE:
+    if event.event_type in {
+        EventType.PERMISSION_REQUEST,
+        EventType.SHELL,
+        EventType.TOOL_CALL,
+    } and event.phase == EventPhase.BEFORE:
         return ProposedAction(
             type=InterventionType.RESPOND_PERMISSION,
             session_id=request.session.id,
@@ -84,7 +87,6 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             payload={
                 "request_id": (event.approval_request or {}).get("request_id") or event.event_id,
                 "command": command,
-                "decision": "allow",
             },
             rationale="Permission request intercepted for local policy evaluation.",
             evidence=[command or "unspecified command"],

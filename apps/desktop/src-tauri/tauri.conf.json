@@ -12,10 +12,11 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "PEX",
-        "width": 440,
-        "height": 720,
-        "minWidth": 380,
+        "width": 920,
+        "height": 700,
+        "minWidth": 800,
         "minHeight": 560,
         "decorations": true,
         "transparent": false,
@@ -23,6 +24,22 @@
         "resizable": true,
         "shadow": true,
         "skipTaskbar": false
+      },
+      {
+        "label": "pet",
+        "title": "PEX pet",
+        "url": "pet.html",
+        "width": 280,
+        "height": 300,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "shadow": false,
+        "skipTaskbar": true,
+        "visible": false,
+        "focus": false,
+        "backgroundColor": [0, 0, 0, 0]
       }
     ],
     "security": {

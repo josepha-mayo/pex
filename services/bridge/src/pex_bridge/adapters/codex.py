@@ -25,6 +25,12 @@ from pex_bridge.adapters.codex_bin import app_server_command
 CLIENT_INFO = {"name": "pex", "title": "PEX", "version": "0.1.0"}
 INIT_PARAMS = {"clientInfo": CLIENT_INFO, "capabilities": {}}
 
+
+def chatgpt_desktop_running() -> bool:
+    from pex_bridge.adapters.desktop import running_image_names
+
+    return "chatgpt.exe" in {name.lower() for name in running_image_names()}
+
 COMMAND_APPROVALS = {
     "item/commandExecution/requestApproval",
     "item/fileChange/requestApproval",
@@ -588,6 +594,19 @@ class CodexAdapter(HarnessAdapter):
 
     async def probe(self) -> AdapterCapabilities:
         connected = await self._ready()
+        desktop = (not connected) and chatgpt_desktop_running()
+        if connected:
+            label = AdapterSupportLabel.DEEP
+            note = "Transport attached and handshake succeeded."
+        elif desktop:
+            label = AdapterSupportLabel.OBSERVE_ONLY
+            note = (
+                "ChatGPT.exe is running. Observe/focus only. Isolated `codex app-server` "
+                "is a separate attach; private desktop JSON-RPC is unproven."
+            )
+        else:
+            label = AdapterSupportLabel.UNAVAILABLE
+            note = "No live App Server process; ChatGPT.exe is not running."
         return AdapterCapabilities(
             observe_messages=connected,
             observe_thought_events=connected,
@@ -595,7 +614,7 @@ class CodexAdapter(HarnessAdapter):
             observe_file_edits=connected,
             observe_shell=connected,
             observe_permissions=connected,
-            observe_session_status=connected,
+            observe_session_status=connected or desktop,
             send_message=connected,
             inject_context=connected,
             approve=connected,
@@ -605,16 +624,12 @@ class CodexAdapter(HarnessAdapter):
             fork=connected,
             focus_ui=True,
             control_granularity=ControlGranularity.EVENT if connected else ControlGranularity.SESSION,
-            trust_level=0.9 if connected else 0.0,
-            support_label=AdapterSupportLabel.DEEP if connected else AdapterSupportLabel.UNAVAILABLE,
+            trust_level=0.9 if connected else 0.35 if desktop else 0.0,
+            support_label=label,
             notes=(
-                "Official surface: `codex app-server` JSON-RPC "
+                "Official surface: isolated `codex app-server` JSON-RPC "
                 "(initialize, thread/start|resume|fork, turn/start, server-initiated approvals). "
-                + (
-                    "Transport attached and handshake succeeded."
-                    if connected
-                    else "No live App Server process; label stays Unavailable."
-                )
+                + note
             ),
         )
 
@@ -624,8 +639,25 @@ class CodexAdapter(HarnessAdapter):
 
         return focus_harness("codex")
 
+    def _observe_desktop_session(self) -> None:
+        session_id = "codex:desktop"
+        existing = self.sessions.get(session_id)
+        if chatgpt_desktop_running():
+            self.sessions[session_id] = HarnessSession(
+                id=session_id,
+                harness_type=HarnessType.CODEX,
+                vendor_session_id="desktop",
+                status=SessionStatus.DISCOVERED,
+                last_activity=datetime.now(timezone.utc),
+                goal_id=existing.goal_id if existing else None,
+                metadata={"source": "desktop", "process": "ChatGPT.exe"},
+            )
+        elif existing:
+            existing.status = SessionStatus.IDLE
+
     async def discover_sessions(self) -> list[HarnessSession]:
         if not await self._ready():
+            self._observe_desktop_session()
             return list(self.sessions.values())
         assert self.transport is not None
         try:

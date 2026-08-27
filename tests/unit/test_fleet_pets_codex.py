@@ -29,6 +29,7 @@ from pex_bridge.pets import (
 )
 from pex_bridge.pets.atlas import ATLAS_H, ATLAS_W, render_atlas, write_atlas
 from pex_protocol.overlay import Overlay, OverlayDiff
+from pex_protocol.enums import EventType
 
 
 def test_desktop_detection_uses_running_apps():
@@ -38,9 +39,33 @@ def test_desktop_detection_uses_running_apps():
     by_name = {item["name"]: item for item in found}
     assert set(by_name) == {"cursor", "codex", "grok_bot"}
     assert by_name["cursor"]["connect"] == "hooks"
-    assert by_name["codex"]["connect"] == "app-server-stdio"
+    assert by_name["codex"]["connect"] == "observe-process"
     assert by_name["grok_bot"]["connect"] == "observe-process"
     assert all(item["kind"] == "desktop" for item in found)
+
+
+async def test_discover_keeps_chatgpt_and_isolated_appserver_apart(monkeypatch):
+    from pex_bridge.adapters.desktop import list_desktop_apps
+    from pex_bridge.adapters.discover import probe_local_harnesses
+
+    monkeypatch.setattr(
+        "pex_bridge.adapters.discover.list_desktop_apps",
+        lambda: list_desktop_apps({"ChatGPT.exe"}),
+    )
+    monkeypatch.setattr("pex_bridge.adapters.discover.PROBES", ())
+    monkeypatch.setattr("pex_bridge.adapters.discover.resolve_codex_bin", lambda: "C:/codex.exe")
+    monkeypatch.setattr("pex_bridge.adapters.discover.resolve_grok_build", lambda: None)
+    monkeypatch.setattr("pex_bridge.adapters.discover.resolve_hermes", lambda: None)
+    monkeypatch.setattr("pex_bridge.adapters.discover.shutil.which", lambda _name: None)
+
+    found = await probe_local_harnesses()
+    codex = [item for item in found if item["name"] == "codex"]
+    assert len(codex) == 2
+    by_kind = {item["kind"]: item for item in codex}
+    assert by_kind["desktop"]["connect"] == "observe-process"
+    assert "ChatGPT.exe" in by_kind["desktop"]["surface"] or "observe" in by_kind["desktop"]["surface"].lower()
+    assert by_kind["stdio"]["connect"] == "app-server-stdio"
+    assert "Not ChatGPT.exe" in by_kind["stdio"]["surface"]
 
 
 def test_focus_maps_harness_to_desktop_process():
@@ -194,9 +219,22 @@ async def test_codex_pump_ingests_stop_permission_and_agent_message():
     assert session.cwd == "C:/proj"
 
 
-async def test_codex_unavailable_without_transport():
+async def test_codex_unavailable_without_transport(monkeypatch):
+    monkeypatch.setattr("pex_bridge.adapters.codex.chatgpt_desktop_running", lambda: False)
     caps = await CodexAdapter().probe()
     assert caps.support_label.value == "unavailable"
+
+
+async def test_chatgpt_exe_is_observe_only(monkeypatch):
+    monkeypatch.setattr("pex_bridge.adapters.codex.chatgpt_desktop_running", lambda: True)
+    adapter = CodexAdapter()
+    caps = await adapter.probe()
+    assert caps.support_label.value == "observe_only"
+    assert caps.send_message is False
+    sessions = await adapter.discover_sessions()
+    assert sessions[0].id == "codex:desktop"
+    assert sessions[0].metadata["process"] == "ChatGPT.exe"
+    assert await adapter.send_message(sessions[0], "keep going") is False
 
 
 def test_resolve_codex_bin_respects_env(tmp_path, monkeypatch):
@@ -311,14 +349,47 @@ async def test_opencode_deep_only_with_transport():
     assert sse.event_type.value == "stop"
 
 
-async def test_qwen_deep_only_with_transport():
+async def test_qwen_strong_until_sse_pump():
     assert (await QwenAdapter().probe()).support_label.value == "unavailable"
     transport = MemoryHttpTransport()
     adapter = QwenAdapter(transport)
-    assert (await adapter.probe()).support_label.value == "deep"
+    assert (await adapter.probe()).support_label.value == "strong"
     sessions = await adapter.discover_sessions()
     assert await adapter.send_message(sessions[0], "PEX context bundle")
     assert any("/prompt" in call[1] for call in transport.calls)
+    ingested: list = []
+
+    async def ingest(event, session):
+        ingested.append((event, session))
+
+    transport.events.append({"type": "session.idle", "text": "idle", "sessionId": "sess_demo"})
+    task = adapter.start_pipeline_pump(ingest)
+    for _ in range(40):
+        if ingested:
+            break
+        await asyncio.sleep(0.05)
+    assert (await adapter.probe()).support_label.value == "deep"
+    assert ingested
+    assert ingested[0][0].event_type.value == "stop"
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+class _FailPrompt(MemoryHttpTransport):
+    async def request(self, method: str, path: str, *, json=None):
+        if "prompt" in path:
+            raise RuntimeError("daemon down")
+        return await super().request(method, path, json=json)
+
+
+async def test_qwen_send_fails_honestly():
+    adapter = QwenAdapter(_FailPrompt())
+    sessions = await adapter.discover_sessions()
+    assert await adapter.send_message(sessions[0], "PEX context bundle") is False
+    assert adapter.inbox.get(sessions[0].id, []) == []
 
 
 async def test_devin_stays_basic_when_attached():
@@ -330,16 +401,48 @@ async def test_devin_stays_basic_when_attached():
     sessions = await adapter.discover_sessions()
     assert sessions
     assert await adapter.send_message(sessions[0], "PEX: the schema is already decided.")
+    assert any("/messages" in call[1] for call in transport.calls)
+
+
+class _FailDevin(MemoryHttpTransport):
+    async def request(self, method: str, path: str, *, json=None):
+        if path.endswith("/messages") and method.upper() == "POST":
+            raise RuntimeError("devin api down")
+        return await super().request(method, path, json=json)
+
+
+async def test_devin_send_fails_honestly():
+    adapter = DevinAdapter(_FailDevin())
+    sessions = await adapter.discover_sessions()
+    assert await adapter.send_message(sessions[0], "keep going") is False
+    assert adapter.inbox.get(sessions[0].id, []) == []
 
 
 async def test_grok_build_deep_with_acp():
     adapter = GrokBuildAdapter()
-    assert (await adapter.probe()).support_label.value == "strong"
+    idle = await adapter.probe()
+    assert idle.support_label.value == "strong"
+    assert idle.send_message is False
     adapter.attach_acp(FakeAcpTransport())
     assert (await adapter.probe()).support_label.value == "deep"
     sessions = await adapter.discover_sessions()
     assert sessions
     assert await adapter.send_message(sessions[0], "PEX: stay on the eval pipeline.")
+
+
+async def test_grok_build_send_fails_honestly():
+    adapter = GrokBuildAdapter()
+    session = adapter.ingest_hook({"id": "g1"})
+    assert await adapter.send_message(session, "hi") is False
+
+    class Boom:
+        ready = True
+
+        async def prompt(self, session_id, text):
+            raise RuntimeError("acp down")
+
+    adapter.acp = Boom()
+    assert await adapter.send_message(session, "hi") is False
 
 
 async def test_acp_harness_stays_strong_if_handshake_fails():
@@ -384,6 +487,73 @@ async def test_kimi_hermes_omp_deep_with_acp():
         assert await adapter.send_message(sessions[0], "PEX: keep the goal.")
 
 
+async def test_omp_acp_pump_ingests_idle_stop():
+    transport = FakeAcpTransport()
+    adapter = OmpAdapter()
+    adapter.attach_acp(transport)
+    session = adapter.ingest_hook({"session_id": "omp-pump", "cwd": "C:/proj"})
+    ingested: list = []
+
+    async def ingest(event, sess):
+        ingested.append((event, sess))
+
+    transport.events.append(
+        {
+            "method": "session/update",
+            "params": {
+                "sessionId": "omp-pump",
+                "update": {
+                    "sessionUpdate": "agent_message_chunk",
+                    "content": {"type": "text", "text": "I am done."},
+                },
+            },
+        }
+    )
+    transport.events.append(
+        {
+            "method": "session/update",
+            "params": {
+                "sessionId": "omp-pump",
+                "update": {
+                    "sessionUpdate": "state_update",
+                    "state": "idle",
+                    "stopReason": "end_turn",
+                },
+            },
+        }
+    )
+    task = adapter.start_pipeline_pump(ingest)
+    try:
+        for _ in range(40):
+            types = {event.event_type.value for event, _ in ingested}
+            if EventType.AGENT_RESPONSE.value in types and EventType.STOP.value in types:
+                break
+            await asyncio.sleep(0.05)
+        types = {event.event_type.value for event, _ in ingested}
+        assert EventType.STOP.value in types
+        assert EventType.AGENT_RESPONSE.value in types
+        assert all(sess.id == session.id for _, sess in ingested)
+        notes = (await adapter.probe()).notes
+        assert "pump running" in notes
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+
+async def test_pi_stays_basic_without_control_api():
+    registry = AdapterRegistry()
+    adapter = registry.get("pi")
+    assert adapter is not None
+    caps = await adapter.probe()
+    assert caps.support_label.value == "basic"
+    assert caps.send_message is False
+    session = adapter.ingest_hook({"session_id": "pi-1"})
+    assert await adapter.send_message(session, "keep going") is False
+
+
 def test_claude_pretool_hook_contract():
     adapter = ClaudeCodeAdapter()
     session = adapter.ingest_hook({"session_id": "c1", "hook_event_name": "PreToolUse", "tool_name": "Bash"})
@@ -393,8 +563,33 @@ def test_claude_pretool_hook_contract():
     assert response["hookSpecificOutput"]["permissionDecision"] == "allow"
 
 
-def test_ten_starter_pets_and_codex_geometry():
-    assert len(STARTERS) == 10
+async def test_hermes_plugin_hooks_use_official_returns():
+    from types import SimpleNamespace
+
+    from pex_protocol.enums import PolicyVerdict
+
+    adapter = HermesAdapter()
+    session = adapter.ingest_hook({"session_id": "h1", "cwd": "C:/proj"})
+    end = adapter.normalize_hook(
+        {"hook_event_name": "on_session_end", "text": "I am done."},
+        session,
+    )
+    assert end.event_type.value == "stop"
+    assert adapter.hook_response(session, {"hook_event_name": "on_session_end"}, None) == {}
+    assert await adapter.send_message(session, "Create report.txt with shipped.")
+    injected = adapter.hook_response(session, {"hook_event_name": "pre_llm_call"}, None)
+    assert injected == {"context": "Create report.txt with shipped."}
+    blocked = adapter.hook_response(
+        session,
+        {"hook_event_name": "pre_tool_call", "tool_name": "terminal"},
+        SimpleNamespace(policy_verdict=PolicyVerdict.DENY, diagnosis="blocked by policy"),
+    )
+    assert blocked == {"action": "block", "message": "blocked by policy"}
+    assert await adapter.send_message(session, "PEX: keep going") is False
+
+
+def test_seven_starter_pets_and_codex_geometry():
+    assert len(STARTERS) == 7
     assert {p.id for p in STARTERS} == {
         "pex",
         "ledger",
@@ -403,9 +598,15 @@ def test_ten_starter_pets_and_codex_geometry():
         "drift",
         "quiet",
         "ember",
-        "spark",
-        "bot",
-        "kit",
+    }
+    assert {p.species for p in STARTERS} == {
+        "owl",
+        "tortoise",
+        "moth",
+        "hedgehog",
+        "axolotl",
+        "armadillo",
+        "robot",
     }
     assert CODEX_CELL_W * 8 == 1536
     assert CODEX_CELL_H * CODEX_ROWS_V2 == 2288
@@ -443,4 +644,4 @@ def test_import_codex_pet_contract(tmp_path: Path):
     settings = PetSettings(imports=[imported], selected_id=imported.id)
     ids = {pet.id for pet in catalog(settings)}
     assert "import:von-test" in ids
-    assert len(STARTERS) == 10
+    assert len(STARTERS) == 7

@@ -136,10 +136,18 @@ fn main() {
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.show();
             }
+            if let Some(pet) = app.get_webview_window("pet") {
+                let _ = pet.set_background_color(Some(tauri::window::Color(0, 0, 0, 0)));
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() != "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    return;
+                }
                 window.app_handle().exit(0);
             }
         })

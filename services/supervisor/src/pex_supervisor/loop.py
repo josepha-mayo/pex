@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -109,20 +110,35 @@ def _format_user(request: SupervisorRequest) -> str:
     )
 
 
+_FILE_TOKEN = re.compile(r"^[A-Za-z0-9._-]{1,72}\.[A-Za-z0-9]{1,8}$")
+_GENERIC_NAG = re.compile(
+    r"^(keep going|continue|verify with the required|do not stop|don't stop until)\b",
+    re.I,
+)
+
+
+def _sanitize_worker_text(text: str) -> str | None:
+    cleaned = re.sub(r"^PEX:\s*", "", (text or "").strip())
+    if not cleaned:
+        return None
+    if _GENERIC_NAG.search(cleaned) and not re.search(
+        r"\b[A-Za-z0-9._-]{1,72}\.[A-Za-z0-9]{1,8}\b", cleaned
+    ):
+        return None
+    return cleaned
+
+
 def _missing_required_files(request: SupervisorRequest) -> list[str]:
     goal = request.goal
     cwd = request.session.cwd
     if not goal or not cwd:
         return []
-    from pathlib import Path
 
     root = Path(cwd)
     missing: list[str] = []
     for raw in list(goal.evidence_requirements or []) + list(goal.acceptance_criteria or []):
         name = str(raw or "").strip()
-        if not name or "/" in name or "\\" in name or len(name) > 80:
-            continue
-        if "." not in name:
+        if not _FILE_TOKEN.fullmatch(name):
             continue
         if not (root / name).exists():
             missing.append(name)
@@ -206,55 +222,48 @@ def _action_from_proposal(request: SupervisorRequest, proposal: dict) -> Propose
         )
     worker_text = str(payload.get("text") or "")
     if itype == InterventionType.NOOP and worker_text.strip():
-        lowered = worker_text.lower()
-        if any(
-            token in lowered
-            for token in (
-                "missing",
-                "please create",
-                "goal not met",
-                "was not created",
-                "does not exist",
-            )
-        ):
-            itype = InterventionType.SEND_NUDGE
-            capability = "send_message"
-            if not evidence:
-                evidence = [worker_text[:240]]
-        else:
-            payload = {key: value for key, value in payload.items() if key != "text"}
-            worker_text = ""
+        payload = {key: value for key, value in payload.items() if key != "text"}
+        worker_text = ""
     if itype == InterventionType.NOOP:
         missing = _missing_required_files(request)
         if missing:
             itype = InterventionType.SEND_NUDGE
             capability = "send_message"
             goal = request.goal
-            if not worker_text.strip():
-                objective = str(getattr(goal, "objective", "") or "").strip()
-                payload = {
-                    **payload,
-                    "text": (
-                        f"{missing[0]} is missing from the workspace. "
-                        + (objective or f"Create {missing[0]}.")
-                    ),
-                }
-                worker_text = payload["text"]
-            if not evidence:
-                evidence = [f"missing:{name}" for name in missing]
-    if itype in worker_facing and worker_text.strip().startswith("PEX:"):
-        return ProposedAction(
-            type=InterventionType.NOOP,
-            session_id=request.session.id,
-            goal_id=request.goal.id if request.goal else None,
-            payload={},
-            rationale="Rejected generic PEX-prefixed worker text.",
-            evidence=["canned_prefix_coerced_noop"],
-            confidence=1.0,
-            risk=RiskLevel.NONE,
-            reversible=True,
-            cooldown_seconds=5,
-        )
+            objective = str(getattr(goal, "objective", "") or "").strip()
+            payload = {
+                **payload,
+                "text": (
+                    f"{missing[0]} is missing from the workspace. "
+                    + (objective or f"Create {missing[0]}.")
+                ),
+            }
+            worker_text = payload["text"]
+            evidence = [
+                *evidence,
+                *(f"missing:{name}" for name in missing if f"missing:{name}" not in evidence),
+            ]
+    if itype in worker_facing:
+        cleaned = _sanitize_worker_text(worker_text)
+        if worker_text.strip().startswith("PEX:"):
+            if cleaned is None:
+                return ProposedAction(
+                    type=InterventionType.NOOP,
+                    session_id=request.session.id,
+                    goal_id=request.goal.id if request.goal else None,
+                    payload={},
+                    rationale="Rejected generic PEX-prefixed worker text.",
+                    evidence=["canned_prefix_coerced_noop"],
+                    confidence=1.0,
+                    risk=RiskLevel.NONE,
+                    reversible=True,
+                    cooldown_seconds=5,
+                )
+            payload = {**payload, "text": cleaned}
+            worker_text = cleaned
+        elif cleaned is not None and cleaned != worker_text:
+            payload = {**payload, "text": cleaned}
+            worker_text = cleaned
     return ProposedAction(
         type=itype,
         session_id=request.session.id,

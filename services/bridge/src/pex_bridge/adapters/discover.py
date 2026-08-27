@@ -22,62 +22,88 @@ PROBES = (
 
 
 async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
-    found: dict[str, dict] = {item["name"]: item for item in list_desktop_apps()}
+    items: list[dict] = list(list_desktop_apps())
+    seen = {item["name"] for item in items}
     async with httpx.AsyncClient(timeout=timeout) as client:
         for name, url in PROBES:
-            if name in found:
+            if name in seen:
                 continue
             try:
                 response = await client.get(url)
             except Exception:
                 continue
             if response.status_code < 500:
-                found[name] = {
-                    "name": name,
-                    "kind": "http",
-                    "base_url": url.rsplit("/", 1)[0],
-                }
-    if "codex" not in found:
-        binary = resolve_codex_bin()
-        if binary:
-            found["codex"] = {
+                seen.add(name)
+                items.append(
+                    {
+                        "name": name,
+                        "kind": "http",
+                        "base_url": url.rsplit("/", 1)[0],
+                    }
+                )
+    binary = resolve_codex_bin()
+    if binary:
+        items.append(
+            {
                 "name": "codex",
                 "kind": "stdio",
                 "connect": "app-server-stdio",
                 "bin": binary,
-                "surface": "codex app-server --listen stdio://",
-            }
-    if "grok_build" not in found:
-        grok_bin = resolve_grok_build()
-        if grok_bin:
-            found["grok_build"] = {
-                "name": "grok_build",
-                "kind": "cli",
-                "connect": "acp-stdio",
-                "bin": grok_bin,
                 "surface": (
-                    "Grok Build CLI. Official ACP: `grok agent stdio`. "
-                    "One-shot headless: `grok -p`. Not Grok Bot. Do not spawn unless asked."
+                    "Isolated `codex app-server --listen stdio://`. "
+                    "Not ChatGPT.exe. Attach explicitly; do not auto-spawn from the desktop process."
                 ),
             }
-    if "hermes" not in found:
+        )
+    if "grok_build" not in seen:
+        grok_bin = resolve_grok_build()
+        if grok_bin:
+            items.append(
+                {
+                    "name": "grok_build",
+                    "kind": "cli",
+                    "connect": "acp-stdio",
+                    "bin": grok_bin,
+                    "surface": (
+                        "Grok Build CLI. Official ACP: `grok agent stdio`. "
+                        "One-shot headless: `grok -p`. Not Grok Bot. Do not spawn unless asked."
+                    ),
+                }
+            )
+    if "hermes" not in seen:
         hermes_bin = resolve_hermes()
         if hermes_bin:
-            found["hermes"] = {
-                "name": "hermes",
-                "kind": "acp",
-                "connect": "acp-stdio",
-                "bin": hermes_bin,
-                "surface": "hermes acp (CLI). Do not launch Hermes desktop.",
-            }
-    if "opencode" not in found:
+            items.append(
+                {
+                    "name": "hermes",
+                    "kind": "acp",
+                    "connect": "acp-stdio",
+                    "bin": hermes_bin,
+                    "surface": "hermes acp (CLI). Do not launch Hermes desktop.",
+                }
+            )
+    if "opencode" not in seen:
         opencode_bin = shutil.which("opencode")
         if opencode_bin:
-            found["opencode"] = {
-                "name": "opencode",
-                "kind": "cli",
-                "connect": "http",
-                "bin": opencode_bin,
-                "surface": "OpenCode CLI. Deep only after `opencode serve` HTTP attach. Do not treat a TUI process as the API.",
-            }
-    return [annotate(item) for item in found.values()]
+            items.append(
+                {
+                    "name": "opencode",
+                    "kind": "cli",
+                    "connect": "http",
+                    "bin": opencode_bin,
+                    "surface": "OpenCode CLI. Deep only after `opencode serve` HTTP attach. Do not treat a TUI process as the API.",
+                }
+            )
+    if "omp" not in seen:
+        omp_bin = shutil.which("omp")
+        if omp_bin:
+            items.append(
+                {
+                    "name": "omp",
+                    "kind": "acp",
+                    "connect": "acp-stdio",
+                    "bin": omp_bin,
+                    "surface": "omp acp (CLI). Do not spawn unless asked.",
+                }
+            )
+    return [annotate(item) for item in items]

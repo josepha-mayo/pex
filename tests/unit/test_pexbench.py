@@ -132,6 +132,143 @@ async def test_cursor_live_arm_never_spawns_a_window():
         await four.run_live("cursor_pex", "pexbench_001_premature_stop", "nope")
 
 
+async def test_cursor_stop_payload_wrong_cwd_still_refuses_spawn(tmp_path, monkeypatch):
+    four = _four_arm()
+    hooks = tmp_path / "hooks.json"
+    hooks.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(four, "cursor_hooks_path", lambda: hooks)
+    with pytest.raises(RuntimeError, match="do not spawn another Cursor"):
+        await four.run_live(
+            "cursor",
+            "pexbench_001_premature_stop",
+            "wrong_cwd",
+            workspace_root=tmp_path / "ws",
+            stop_payload={"cwd": str(tmp_path / "somewhere-else"), "completion": "done"},
+        )
+
+
+async def test_cursor_matching_stop_payload_writes_hooks_row(tmp_path, monkeypatch):
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    hooks = tmp_path / "hooks.json"
+    hooks.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(four, "cursor_hooks_path", lambda: hooks)
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.running_image_names",
+        lambda: {"Cursor.exe"},
+    )
+    workspace_root = tmp_path / "ws"
+    expected = four.isolated_workspace(
+        "this_cursor", "cursor", "pexbench_001_premature_stop", workspace_root
+    )
+    result = await four.run_live(
+        "cursor",
+        "pexbench_001_premature_stop",
+        "this_cursor",
+        workspace_root=workspace_root,
+        stop_payload={"cwd": str(expected), "completion": "I am done."},
+    )
+    assert result["transport_kind"] == "cursor_hooks"
+    assert result["live"] is True
+    assert result["not_a_presentation_arm"] is False
+    assert result["pex"] is None
+    assert result["success"] is False
+    row = json.loads((tmp_path / "results" / "this_cursor.jsonl").read_text(encoding="utf-8"))
+    assert row["transport_evidence"]["hooks_path"] == str(hooks)
+    assert row["agent_messages"] == ["I am done."]
+
+
+async def test_cursor_record_does_not_clobber_worker_files(tmp_path, monkeypatch):
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    hooks = tmp_path / "hooks.json"
+    hooks.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(four, "cursor_hooks_path", lambda: hooks)
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.running_image_names",
+        lambda: {"Cursor.exe"},
+    )
+    workspace_root = tmp_path / "ws"
+    expected = four.isolated_workspace(
+        "no_clobber", "cursor", "pexbench_003_permission_spam", workspace_root
+    )
+    four.evaluator.seed_workspace("pexbench_003_permission_spam", expected)
+    (expected / "math_utils.py").write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")
+    result = await four.run_live(
+        "cursor",
+        "pexbench_003_permission_spam",
+        "no_clobber",
+        workspace_root=workspace_root,
+        stop_payload={"cwd": str(expected), "completion": "pytest passed"},
+    )
+    assert "return a + b" in (expected / "math_utils.py").read_text(encoding="utf-8")
+    assert result["success"] is True
+    assert result["live"] is True
+
+
+async def test_cursor_wait_reads_matching_stop_drop(tmp_path, monkeypatch):
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    hooks = tmp_path / "hooks.json"
+    hooks.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(four, "cursor_hooks_path", lambda: hooks)
+    drop = tmp_path / "stops"
+    drop.mkdir()
+    monkeypatch.setattr(four, "cursor_stop_drop_dir", lambda: drop)
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.running_image_names",
+        lambda: {"Cursor.exe"},
+    )
+    workspace_root = tmp_path / "ws"
+    expected = four.isolated_workspace(
+        "wait_drop", "cursor", "pexbench_001_premature_stop", workspace_root
+    )
+    (drop / "stop.json").write_text(
+        json.dumps(
+            {
+                "cwd": str(expected),
+                "completion": "stopped from drop",
+                "hook_event_name": "stop",
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = await four.run_live(
+        "cursor",
+        "pexbench_001_premature_stop",
+        "wait_drop",
+        workspace_root=workspace_root,
+        wait_cursor_stop=True,
+        turn_timeout=2,
+    )
+    assert result["transport_kind"] == "cursor_hooks"
+    assert result["agent_messages"] == ["stopped from drop"]
+    assert result["live"] is True
+
+
+def test_runner_rejects_spoofed_cursor_live_transport(tmp_path, monkeypatch):
+    runner = _runner()
+    monkeypatch.setattr(runner, "RESULTS", tmp_path)
+    with pytest.raises(ValueError, match="hooks.json"):
+        runner.append_immutable(
+            "spoof_cursor",
+            {
+                "arm": "cursor",
+                "task": "task",
+                "success": True,
+                "live": True,
+                "pair_id": "pair",
+                "prompt_sha256": "p",
+                "seed_manifest_sha256": "s",
+                "worker_config_sha256": "w",
+                "worker_model": "model",
+                "harness_identity_sha256": "h",
+                "transport_kind": "test_double",
+                "transport_evidence": {},
+            },
+        )
+
+
 async def test_codex_isolated_thread_is_not_an_existing_id():
     from pex_bridge.adapters.codex import CodexAdapter, CodexAppServerTransport, IsolatedThreadError
 

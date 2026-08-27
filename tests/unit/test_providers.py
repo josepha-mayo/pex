@@ -53,3 +53,20 @@ def test_azure_and_hermes_refuse_missing_base_url(monkeypatch):
         monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "test-model")
         assert load_supervisor_model() is None
         monkeypatch.delenv(key_name)
+
+
+def test_apply_runtime_choice_sets_catalog_model(monkeypatch):
+    monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
+    monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "openai")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "gpt-5.4-mini")
+    from pex_supervisor.providers import apply_runtime_choice
+
+    info = apply_runtime_choice(provider="openrouter", model_id="anthropic/claude-sonnet-4.6")
+    assert info["backend"] == "openrouter"
+    assert info["model_id"] == "anthropic/claude-sonnet-4.6"
+    assert info.get("disabled") is not True
+    try:
+        apply_runtime_choice(provider="not-a-vendor")
+        raise AssertionError("expected unknown provider")
+    except ValueError:
+        pass

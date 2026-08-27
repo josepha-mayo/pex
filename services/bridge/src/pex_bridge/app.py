@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import secrets
 from contextlib import asynccontextmanager
@@ -9,7 +10,8 @@ from typing import Any
 from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from pex_protocol.enums import EventType
+from pex_protocol.actions import InterventionType
+from pex_protocol.enums import EventType, PolicyVerdict
 from pex_protocol.goal import Goal
 from pydantic import BaseModel, Field
 
@@ -24,10 +26,42 @@ from pex_bridge.pets import (
     import_codex_pet,
     starters_by_id,
 )
-from pex_bridge.pipeline import Pipeline
+from pex_bridge.pets.hatch import HatchJob, HatchRegistry, run_hatch_job, slugify
+from pex_bridge.pets.imagegen import describe_hatch_backend, probe_images_endpoint
+from pex_bridge.pipeline import Pipeline, collapse_promptable_agents
 from pex_bridge.store import Store, new_id, utcnow
 
 logger = logging.getLogger(__name__)
+_PRE_PERMISSION_HOOKS = {
+    "preToolUse",
+    "beforeShellExecution",
+    "beforeMCPExecution",
+    "beforeReadFile",
+    "PreToolUse",
+    "PermissionRequest",
+    "pre_tool_call",
+}
+
+
+def _permission_from_intervention(intervention: Any) -> str:
+    if intervention is None:
+        return "ask"
+    verdict = intervention.policy_verdict
+    value = verdict.value if hasattr(verdict, "value") else str(verdict or "")
+    if value == PolicyVerdict.DENY.value:
+        return "deny"
+    if value == PolicyVerdict.ASK_HUMAN.value:
+        return "ask"
+    payload = {}
+    proposed = getattr(intervention, "proposed_action", None)
+    if proposed is not None:
+        payload = proposed.payload or {}
+    decision = str(payload.get("decision") or "").lower()
+    if decision in {"deny", "ask"}:
+        return decision
+    return "allow"
+
+
 TRUSTED_UI_ORIGINS = {
     "http://127.0.0.1:1420",
     "http://localhost:1420",
@@ -54,6 +88,7 @@ class AppState:
         self.pet_settings = PetSettings()
         self.pet_path = self.settings.data_dir / "pet.json"
         self.supervisor_error: str | None = None
+        self.hatch = HatchRegistry(self.settings.data_dir / "hatch")
 
     async def broadcast(self, topic: str, payload: dict[str, Any]) -> None:
         if topic == "pet":
@@ -75,6 +110,7 @@ class AppState:
         appearance["spritesheet_url"] = f"/v1/pets/{chosen.id}/spritesheet"
         appearance["hue_shift"] = self.pet_settings.hue_shift
         appearance["scale"] = self.pet_settings.scale
+        appearance["atlas_ready"] = bool(chosen.atlas_ready)
         snap["appearance"] = appearance
         snap["settings"] = self.pet_settings.model_dump(mode="json")
         last = snap.get("last_action") or {}
@@ -168,6 +204,18 @@ class ImportPetIn(BaseModel):
     directory: str
 
 
+class HatchIn(BaseModel):
+    display_name: str
+    description: str = ""
+    style_preset: str = "plush"
+    pet_notes: str = ""
+
+
+class SupervisorIn(BaseModel):
+    provider: str | None = None
+    model_id: str | None = None
+
+
 class SyntheticEventIn(BaseModel):
     session_id: str
     event_type: EventType
@@ -194,6 +242,8 @@ async def lifespan(app: FastAPI):
     from pex_bridge.pets import maybe_import_codex_home
 
     state.pet_settings = maybe_import_codex_home(state.pet_settings)
+    if state.pet_settings.selected_id not in catalog_by_id(state.pet_settings):
+        state.pet_settings.selected_id = STARTERS[0].id
     state.pet_path = pet_file
     pet_file.parent.mkdir(parents=True, exist_ok=True)
     pet_file.write_text(state.pet_settings.model_dump_json(indent=2), encoding="utf-8")
@@ -202,8 +252,19 @@ async def lifespan(app: FastAPI):
 
     await attach_from_settings(state.adapters, state.settings)
     _start_event_pumps()
-    from pex_supervisor.providers import load_supervisor_model
+    from pex_supervisor.providers import apply_runtime_choice, load_supervisor_model
 
+    choice_file = state.settings.data_dir / "supervisor.json"
+    if choice_file.is_file():
+        try:
+            saved = json.loads(choice_file.read_text(encoding="utf-8"))
+            if isinstance(saved, dict):
+                apply_runtime_choice(
+                    provider=saved.get("provider"),
+                    model_id=saved.get("model_id"),
+                )
+        except (OSError, ValueError, json.JSONDecodeError):
+            logger.exception("Could not apply saved supervisor choice")
     try:
         state.pipeline.model = load_supervisor_model()
         state.supervisor_error = None
@@ -256,6 +317,41 @@ def create_app() -> FastAPI:
             "supervisor_backend": _supervisor_health(),
         }
 
+    @app.get("/v1/supervisor")
+    async def get_supervisor(_: None = Depends(_require_token)):
+        from pex_supervisor.catalog import catalog as model_catalog
+
+        info = _supervisor_health()
+        info["catalog"] = model_catalog()
+        info["note"] = "Keys stay in .env. This response never includes secrets."
+        return info
+
+    @app.patch("/v1/supervisor")
+    async def patch_supervisor(body: SupervisorIn, _: None = Depends(_require_token)):
+        from pex_supervisor.catalog import catalog as model_catalog
+        from pex_supervisor.providers import apply_runtime_choice, load_supervisor_model
+
+        try:
+            info = apply_runtime_choice(provider=body.provider, model_id=body.model_id)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        choice_file = state.settings.data_dir / "supervisor.json"
+        payload = {
+            "provider": info.get("backend"),
+            "model_id": info.get("model_id"),
+        }
+        choice_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        try:
+            state.pipeline.model = load_supervisor_model()
+            state.supervisor_error = None
+        except Exception as exc:
+            state.pipeline.model = None
+            state.supervisor_error = f"{type(exc).__name__}: {exc}"
+        info["model_loaded"] = state.pipeline.model is not None
+        info["catalog"] = model_catalog()
+        info["note"] = "Keys stay in .env. This response never includes secrets."
+        return info
+
     @app.get("/v1/discover")
     async def discover(_: None = Depends(_require_token)):
         from pex_bridge.adapters.discover import probe_local_harnesses
@@ -270,8 +366,15 @@ def create_app() -> FastAPI:
         from pex_bridge.adapters.http_json import LiveHttpTransport
 
         name = str(body.get("name") or "")
+        kind = body.get("kind")
         found = await probe_local_harnesses()
-        match = next((item for item in found if item["name"] == name), None)
+        if kind:
+            match = next(
+                (item for item in found if item["name"] == name and item.get("kind") == kind),
+                None,
+            )
+        else:
+            match = next((item for item in found if item["name"] == name), None)
         if match is None:
             raise HTTPException(404, "no local desktop app or daemon found")
         adapter = state.adapters.get(name)
@@ -292,21 +395,18 @@ def create_app() -> FastAPI:
                     "note": "Installed Cursor desktop hooks. CLI ACP was not spawned.",
                 }
             if name == "codex":
-                from pex_bridge.adapters.codex_bin import resolve_codex_bin
-
-                binary = resolve_codex_bin()
-                if not binary:
-                    raise HTTPException(400, "codex binary not found")
-                adapter.attach_transport(CodexStdioTransport(binary))
-                _start_event_pumps()
+                sessions = await adapter.discover_sessions()
                 caps = await adapter.probe()
                 return {
                     "ok": True,
                     "name": name,
                     "kind": "desktop",
-                    "bin": binary,
                     "support": caps.support_label.value,
-                    "note": "Second App Server client on the same ~/.codex as the desktop app.",
+                    "sessions": len(sessions),
+                    "note": (
+                        "ChatGPT.exe is observe/focus only. Isolated App Server is "
+                        "POST /v1/adapters/codex/attach or discover attach with kind=stdio."
+                    ),
                 }
             sessions = await adapter.discover_sessions()
             caps = await adapter.probe()
@@ -484,6 +584,7 @@ def create_app() -> FastAPI:
             "starters": [p.model_dump(mode="json") for p in STARTERS],
             "catalog": [p.model_dump(mode="json") for p in catalog(state.pet_settings)],
             "settings": state.pet_settings.model_dump(mode="json"),
+            "hatch": describe_hatch_backend(),
             "codex_contract": {
                 "spriteVersionNumber": 2,
                 "cell": [192, 208],
@@ -509,11 +610,10 @@ def create_app() -> FastAPI:
         chosen = catalog_by_id(state.pet_settings).get(pet_id)
         if chosen is None:
             raise HTTPException(404, "unknown pet")
-        if chosen.source == "imported" and chosen.spritesheet:
-            from pathlib import Path
+        from pathlib import Path
 
-            data = Path(chosen.spritesheet).read_bytes()
-            return Response(content=data, media_type="image/webp")
+        if chosen.spritesheet and Path(chosen.spritesheet).is_file():
+            return Response(content=Path(chosen.spritesheet).read_bytes(), media_type="image/webp")
         from pex_bridge.pets.atlas import cached_bytes
 
         cache = str(state.settings.data_dir / "pets")
@@ -549,6 +649,41 @@ def create_app() -> FastAPI:
         state.pet_settings.imported_codex_dir = imported.directory
         state.pet_path.write_text(state.pet_settings.model_dump_json(indent=2), encoding="utf-8")
         return imported.model_dump(mode="json")
+
+    @app.get("/v1/pets/hatch/capability")
+    async def hatch_capability(_: None = Depends(_require_token)):
+        return probe_images_endpoint()
+
+    @app.get("/v1/pets/hatch")
+    async def list_hatches(_: None = Depends(_require_token)):
+        return {"jobs": [job.public() for job in state.hatch.list_jobs()]}
+
+    @app.get("/v1/pets/hatch/{job_id}")
+    async def get_hatch(job_id: str, _: None = Depends(_require_token)):
+        job = state.hatch.get(job_id)
+        if job is None:
+            raise HTTPException(404, "unknown hatch job")
+        return job.public()
+
+    @app.post("/v1/pets/hatch")
+    async def start_hatch(body: HatchIn, _: None = Depends(_require_token)):
+        name = body.display_name.strip()
+        if not name:
+            raise HTTPException(400, "display_name is required")
+        pet_id = slugify(name)
+        job = HatchJob(
+            id=new_id("hatch_"),
+            pet_id=pet_id,
+            display_name=name,
+            description=body.description.strip(),
+            style_preset=body.style_preset.strip() or "plush",
+            pet_notes=body.pet_notes.strip() or body.description.strip(),
+            status="queued",
+            step="Getting pet ready.",
+        )
+        state.hatch.create(job)
+        asyncio.create_task(asyncio.to_thread(run_hatch_job, state.hatch, job.id))
+        return job.public()
 
     @app.get("/v1/sessions")
     async def sessions(_: None = Depends(_require_token)):
@@ -743,20 +878,25 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/ask")
     async def ask(body: AskIn, _: None = Depends(_require_token)):
+        from datetime import UTC, datetime
+
         from pex_bridge.ask import answer_question
 
-        sessions = await state.store.list_sessions()
+        await state.pipeline.refresh_desktop_sessions()
+        sessions = collapse_promptable_agents(
+            await state.store.list_sessions(), datetime.now(UTC)
+        )
         interventions = await state.store.list_interventions()
         goals = await state.store.list_goals()
-        return {
-            "answer": answer_question(
-                body.question,
-                sessions,
-                interventions,
-                goals=goals,
-                model=state.pipeline.model,
-            )
-        }
+        answer = await asyncio.to_thread(
+            answer_question,
+            body.question,
+            sessions,
+            interventions,
+            goals,
+            state.pipeline.model,
+        )
+        return {"answer": answer}
 
     @app.get("/v1/demo/trajectories")
     async def demo_trajectories(_: None = Depends(_require_token)):
@@ -872,14 +1012,33 @@ def create_app() -> FastAPI:
         event = adapter.normalize_hook(payload, session)
         hook_name = payload.get("hook_event_name")
         response: dict[str, Any] = {}
-        if hook_name in {
-            "preToolUse",
-            "beforeShellExecution",
-            "beforeMCPExecution",
-            "beforeReadFile",
-        }:
-            asyncio.create_task(state.pipeline.ingest_event(event, session))
-            response["permission"] = "allow"
+        if hook_name in _PRE_PERMISSION_HOOKS:
+            try:
+                intervention = await asyncio.wait_for(
+                    state.pipeline.ingest_event(event, session),
+                    timeout=8,
+                )
+            except TimeoutError:
+                response["permission"] = "ask"
+                return response
+            response["permission"] = _permission_from_intervention(intervention)
+            return response
+        if hook_name == "beforeSubmitPrompt":
+            try:
+                intervention = await asyncio.wait_for(
+                    state.pipeline.ingest_event(event, session),
+                    timeout=2,
+                )
+            except TimeoutError:
+                response["continue"] = True
+                return response
+            if intervention and intervention.proposed_action.type == InterventionType.ASK_HUMAN:
+                response["continue"] = False
+                response["user_message"] = intervention.proposed_action.payload.get(
+                    "question", "Conflicts with persistent goal."
+                )
+            else:
+                response["continue"] = True
             return response
         intervention = await state.pipeline.ingest_event(event, session)
         if hook_name == "stop":
@@ -888,14 +1047,6 @@ def create_app() -> FastAPI:
             text = (followup or "").strip()
             if used_llm and text and not text.startswith("PEX:"):
                 response["followup_message"] = text
-        elif hook_name == "beforeSubmitPrompt":
-            if intervention and intervention.proposed_action.type.value == "ASK_HUMAN":
-                response["continue"] = False
-                response["user_message"] = intervention.proposed_action.payload.get(
-                    "question", "Conflicts with persistent goal."
-                )
-            else:
-                response["continue"] = True
         return response
 
     @app.post("/v1/hooks/{harness}")
@@ -922,11 +1073,15 @@ def create_app() -> FastAPI:
                 "Stop",
                 "stop",
                 "SessionEnd",
+                "on_session_end",
+                "on_session_finalize",
                 "UserPromptSubmit",
+                "pre_llm_call",
             }:
                 event.event_type = (
                     EventType.STOP
-                    if payload.get("hook_event_name") in {"Stop", "stop", "SessionEnd"}
+                    if payload.get("hook_event_name")
+                    in {"Stop", "stop", "SessionEnd", "on_session_end", "on_session_finalize"}
                     else EventType.USER_PROMPT
                 )
             if payload.get("hook_event_name") in {
@@ -936,11 +1091,22 @@ def create_app() -> FastAPI:
             }:
                 event.event_type = EventType.PERMISSION_REQUEST
         hook_name = str(payload.get("hook_event_name") or payload.get("hook") or "")
-        if hook_name in {"PreToolUse", "PermissionRequest", "pre_tool_call"}:
-            asyncio.create_task(state.pipeline.ingest_event(event, session))
-            response = {"ok": True, "session_id": session.id, "inbox": getattr(adapter, "inbox", {}).get(session.id, [])}
+        if hook_name in _PRE_PERMISSION_HOOKS:
+            try:
+                intervention = await asyncio.wait_for(
+                    state.pipeline.ingest_event(event, session),
+                    timeout=8,
+                )
+            except TimeoutError:
+                intervention = None
+            response = {
+                "ok": True,
+                "session_id": session.id,
+                "inbox": getattr(adapter, "inbox", {}).get(session.id, []),
+                "permission": _permission_from_intervention(intervention),
+            }
             if hasattr(adapter, "hook_response"):
-                response.update(adapter.hook_response(session, payload, None))
+                response.update(adapter.hook_response(session, payload, intervention))
             return response
         intervention = await state.pipeline.ingest_event(event, session)
         inbox = getattr(adapter, "inbox", {}).get(session.id, [])

@@ -1,0 +1,29 @@
+flowchart LR
+  human[Human: goals and decisions]
+  pet[PEX Pet / Command Deck]
+  bridge[Local Bridge + Policy Guard]
+  store[(SQLite intent ledger)]
+  adapters[Adapter layer]
+  cursor[Cursor]
+  codex[Codex]
+  others[Claude / OpenCode / Qwen / ...]
+  strands[Strands Supervisor loop]
+  runtime[AgentCore Runtime target]
+  memory[AgentCore Memory]
+  cw[CloudWatch / traces]
+  out[Typed interventions]
+
+  human --> pet
+  pet <--> bridge
+  cursor --> adapters
+  codex --> adapters
+  others --> adapters
+  adapters --> bridge
+  bridge --> store
+  bridge -->|sanitized events| strands
+  strands --> runtime
+  runtime --> memory
+  runtime --> cw
+  strands --> out
+  out --> bridge
+  bridge -->|policy-gated| adapters

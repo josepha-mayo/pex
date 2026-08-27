@@ -4,9 +4,10 @@ Codex hatch-pets are v2 8x11 atlases (192x208 cells, spriteVersionNumber 2) with
 rows: idle, running-right, running-left, waving, jumping, failed, waiting,
 running (focused work), review, then 16 look directions.
 
-PEX maps supervisor mood onto those same row names so a user can import a
-Codex pet.json + spritesheet.webp, or use one of the ten built-in atlases.
-We do not copy Codex built-in art.
+Seven distinct starters (owl, tortoise, moth, hedgehog, axolotl, armadillo,
+clay robot). A hatched spritesheet.webp on disk replaces the procedural
+fallback. Users can also hatch a new pet from Settings using the same
+image-capable provider they configure for PEX. We do not copy Codex art.
 """
 
 from __future__ import annotations
@@ -48,6 +49,23 @@ PEX_TO_CODEX_ROW = {
 }
 
 
+def _repo_pets_dir() -> Path:
+    # services/bridge/src/pex_bridge/pets/__init__.py → repo root
+    return Path(__file__).resolve().parents[5] / "apps" / "desktop" / "src" / "pets"
+
+
+def resolve_spritesheet(pet_id: str) -> str | None:
+    slug = pet_id.split(":", 1)[-1]
+    candidates = [
+        _repo_pets_dir() / slug / "spritesheet.webp",
+        Path.home() / ".codex" / "pets" / slug / "spritesheet.webp",
+    ]
+    for path in candidates:
+        if path.is_file():
+            return str(path)
+    return None
+
+
 class PetDefinition(BaseModel):
     id: str
     display_name: str
@@ -58,9 +76,11 @@ class PetDefinition(BaseModel):
     accent: str = "#9dffd8"
     eye: str = "#06251c"
     shape: str = "orb"
+    species: str = "mascot"
     spritesheet: str | None = None
     sprite_version: int | None = 2
-    source: str = "starter"  # starter | imported
+    source: str = "starter"  # starter | imported | hatched
+    atlas_ready: bool = False
 
 
 class ImportedPet(BaseModel):
@@ -87,8 +107,9 @@ STARTERS: list[PetDefinition] = [
     PetDefinition(
         id="pex",
         display_name="Pex",
-        description="Default quiet supervisor orb. Watches, does not perform.",
+        description="Quiet ink-navy plush owl. Watches workers, does not code.",
         shape="orb",
+        species="owl",
         hue=160,
         body="#14b88a",
         accent="#9dffd8",
@@ -96,8 +117,9 @@ STARTERS: list[PetDefinition] = [
     PetDefinition(
         id="ledger",
         display_name="Ledger",
-        description="Intent-ledger keeper. Calm, rectangular, remembers constraints.",
+        description="Dusty teal plush tortoise with a tiny bound ledger. Remembers constraints.",
         shape="ledger",
+        species="tortoise",
         hue=210,
         body="#3d7ea6",
         accent="#b7e3ff",
@@ -105,8 +127,9 @@ STARTERS: list[PetDefinition] = [
     PetDefinition(
         id="mesh",
         display_name="Mesh",
-        description="Context courier. Moves facts between harnesses, never dumps transcripts.",
+        description="Lavender plush moth courier with envelope-fold wing markings.",
         shape="mesh",
+        species="moth",
         hue=265,
         body="#7a5cff",
         accent="#d7ccff",
@@ -114,8 +137,9 @@ STARTERS: list[PetDefinition] = [
     PetDefinition(
         id="nudge",
         display_name="Nudge",
-        description="Tiny corrective tap. Exists to say continue with evidence, then go quiet.",
+        description="Amber plush hedgehog. A corrective tap, then quiet.",
         shape="nudge",
+        species="hedgehog",
         hue=40,
         body="#e0a21b",
         accent="#ffe7a3",
@@ -123,8 +147,9 @@ STARTERS: list[PetDefinition] = [
     PetDefinition(
         id="drift",
         display_name="Drift",
-        description="Trajectory watcher. Lights up only when the worker leaves the goal.",
+        description="Coral plush axolotl. Lights up when a worker leaves the goal.",
         shape="pulse",
+        species="axolotl",
         hue=0,
         body="#e25b4c",
         accent="#ffc4bc",
@@ -132,8 +157,9 @@ STARTERS: list[PetDefinition] = [
     PetDefinition(
         id="quiet",
         display_name="Quiet",
-        description="Attention broker. Almost invisible until a real decision exists.",
+        description="Slate plush armadillo. Almost invisible until a real decision exists.",
         shape="quiet",
+        species="armadillo",
         hue=200,
         body="#4b5a63",
         accent="#c5d0d6",
@@ -141,38 +167,12 @@ STARTERS: list[PetDefinition] = [
     PetDefinition(
         id="ember",
         display_name="Ember",
-        description="Approval scout. Warm when a safe test is auto-allowed, still for danger.",
+        description="Terracotta clay robot. Warm when a test is safe, still for danger.",
         shape="ember",
+        species="robot",
         hue=20,
         body="#d96a2b",
         accent="#ffd0b0",
-    ),
-    PetDefinition(
-        id="spark",
-        display_name="Spark",
-        description="Verifier. Suspicious of 'done' until artifacts exist.",
-        shape="spark",
-        hue=55,
-        body="#c9c22a",
-        accent="#fff6a8",
-    ),
-    PetDefinition(
-        id="bot",
-        display_name="Bot",
-        description="Small robot supervisor. Closest to a desktop companion, still not a chat UI.",
-        shape="bot",
-        hue=180,
-        body="#2aa8b3",
-        accent="#b6f3f7",
-    ),
-    PetDefinition(
-        id="kit",
-        display_name="Kit",
-        description="Soft companion silhouette in the Codex hatch-pet spirit, original PEX art.",
-        shape="kit",
-        hue=230,
-        body="#5a6dff",
-        accent="#cfd4ff",
     ),
 ]
 
@@ -181,8 +181,15 @@ def starters_by_id() -> dict[str, PetDefinition]:
     return {pet.id: pet for pet in STARTERS}
 
 
+def _with_sheet(pet: PetDefinition) -> PetDefinition:
+    sheet = pet.spritesheet or resolve_spritesheet(pet.id)
+    if not sheet:
+        return pet
+    return pet.model_copy(update={"spritesheet": sheet, "atlas_ready": True})
+
+
 def catalog(settings: PetSettings) -> list[PetDefinition]:
-    items = list(STARTERS)
+    items = [_with_sheet(pet) for pet in STARTERS]
     for imported in settings.imports:
         items.append(
             PetDefinition(
@@ -194,6 +201,7 @@ def catalog(settings: PetSettings) -> list[PetDefinition]:
                 sprite_version=imported.sprite_version,
                 source="imported",
                 shape="kit",
+                atlas_ready=True,
             )
         )
     return items
@@ -217,7 +225,10 @@ def maybe_import_codex_home(settings: PetSettings) -> PetSettings:
     if not root.is_dir():
         return settings
     known_ids = {item.id for item in settings.imports}
+    starter_ids = set(starters_by_id())
     for folder in sorted(root.iterdir()):
+        if folder.name in starter_ids:
+            continue
         if not (folder / "pet.json").is_file():
             continue
         try:
@@ -228,8 +239,6 @@ def maybe_import_codex_home(settings: PetSettings) -> PetSettings:
             continue
         settings.imports.append(imported)
         known_ids.add(imported.id)
-        if settings.selected_id in starters_by_id():
-            settings.selected_id = imported.id
     return settings
 
 

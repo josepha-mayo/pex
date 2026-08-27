@@ -20,9 +20,9 @@ PEX does not require work to start inside PEX. Existing tools stay usable. Conte
 | --- | --- | --- |
 | Synthetic | Deep | In-process reference adapter (tests/demo) |
 | Cursor | Strong → Deep | Official hooks; ACP when a Cursor binary is configured |
-| Codex | Deep / Unavailable | `codex app-server` JSON-RPC when attached |
+| Codex | Deep / Observe-only / Unavailable | Isolated `codex app-server` JSON-RPC when attached. ChatGPT.exe is observe/focus only. |
 | OpenCode | Deep / Unavailable | `opencode serve` HTTP when attached |
-| Qwen Code | Deep / Unavailable | `qwen serve` HTTP+SSE when attached |
+| Qwen Code | Strong / Deep / Unavailable | `qwen serve` HTTP when attached; Deep after the SSE pump |
 | Claude Code, Kimi, Grok Build, OMP, Hermes | Strong | Official hooks / ACP / plugins |
 | Devin, Pi | Basic | Thinner official APIs |
 | Grok Bot | Observe-only | Not Grok Build |
@@ -36,7 +36,8 @@ The desktop companion is a compact always-on-top harness (settings, sessions, pr
 
 - Plays **Codex v2** atlases (`1536×2288`, `spriteVersionNumber: 2`): hover jumps, click focuses the selected worker, drag runs, look-at-pointer on idle/work/wave.
 - Import a hatch-pet folder (`pet.json` + `spritesheet.webp`), including a pet already installed under `~/.codex/pets/`.
-- A PEX-original v2 pet is being hatched separately. Do not treat placeholder orbs or deleted mood-stills as the submit art.
+- Settings can hatch a new pet through the same image-capable provider PEX uses (OpenAI Images / `PEX_HATCH_*`). Text-only Zen chat fails honestly.
+- Seven distinct PEX originals are in hatch (owl, tortoise, moth, hedgehog, axolotl, armadillo, clay robot). Procedural orbs are fallback only until those v2 sheets land.
 
 ## Benchmark headline
 

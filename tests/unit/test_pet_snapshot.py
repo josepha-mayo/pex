@@ -52,7 +52,7 @@ async def test_pet_snapshot_uses_last_worker_message(tmp_path):
     )
     snap = await pipeline.pet_snapshot()
     await store.close()
-    assert snap["headline"] == "1 working"
+    assert snap["headline"] == "1 working · 0 need you"
     assert snap["last_source"] == "cursor"
     assert snap["last_message"] == "Ran pytest: 92 passed, 2 skipped."
     assert snap["sessions"][0]["last_message"] == "Ran pytest: 92 passed, 2 skipped."

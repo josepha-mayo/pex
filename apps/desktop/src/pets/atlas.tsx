@@ -1,4 +1,4 @@
-import { CSSProperties, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { PetMood } from "./types";
 
 export type { PetMood };
@@ -34,43 +34,31 @@ const CELL_H = 208;
 
 const FRAME_MS: Record<CodexRow, number[]> = {
   idle: [1680, 660, 660, 840, 840, 1920],
-  "running-right": [120, 120, 120, 120, 120, 120, 120, 220],
-  "running-left": [120, 120, 120, 120, 120, 120, 120, 220],
-  waving: [140, 140, 140, 280],
-  jumping: [140, 140, 140, 140, 280],
-  failed: [140, 140, 140, 140, 140, 140, 140, 240],
-  waiting: [150, 150, 150, 150, 150, 260],
-  running: [120, 120, 120, 120, 120, 220],
-  review: [150, 150, 150, 150, 150, 280],
+  "running-right": [160, 160, 160, 160, 160, 160, 160, 280],
+  "running-left": [160, 160, 160, 160, 160, 160, 160, 280],
+  waving: [220, 220, 220, 420],
+  jumping: [400, 420, 440, 420, 780],
+  failed: [180, 180, 180, 180, 180, 180, 180, 320],
+  waiting: [220, 220, 220, 220, 220, 380],
+  running: [160, 160, 160, 160, 160, 280],
+  review: [220, 220, 220, 220, 220, 400],
 };
 
-const LOOK_ELIGIBLE: CodexRow[] = ["idle", "running", "waving"];
+const LOOK_ELIGIBLE: CodexRow[] = ["idle", "running", "waving", "review", "waiting"];
 
-export function lookIndex(dx: number, dy: number, deadzone = 28): number | null {
+export function lookIndex(dx: number, dy: number, deadzone = 42): number | null {
   if (Math.hypot(dx, dy) < deadzone) return null;
   const degrees = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
   return Math.round(degrees / 22.5) % 16;
 }
 
-function atlasStyle(src: string, row: number, frame: number, display: number): CSSProperties {
-  const scale = display / CELL_W;
-  return {
-    width: CELL_W,
-    height: CELL_H,
-    backgroundImage: `url(${src})`,
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: `-${frame * CELL_W}px -${row * CELL_H}px`,
-    imageRendering: "auto",
-    transform: `scale(${scale})`,
-    transformOrigin: "top left",
-    flex: "none",
-  };
-}
+const SHEET_COLS = 8;
+const SHEET_ROWS = 11;
 
 export function CodexSprite({
   src,
   mood,
-  hover = false,
+  hop = false,
   dragDir = 0,
   look = null,
   scale = 1,
@@ -79,6 +67,7 @@ export function CodexSprite({
   src: string;
   mood: PetMood;
   hover?: boolean;
+  hop?: boolean;
   dragDir?: -1 | 0 | 1;
   look?: number | null;
   scale?: number;
@@ -86,12 +75,12 @@ export function CodexSprite({
 }) {
   const underlying: CodexRow = PEX_TO_CODEX_ROW[mood];
   let rowName: CodexRow = underlying;
-  if (hover) rowName = "jumping";
+  if (hop) rowName = "jumping";
   else if (dragDir > 0) rowName = "running-right";
   else if (dragDir < 0) rowName = "running-left";
 
   const looking =
-    look != null && !hover && dragDir === 0 && LOOK_ELIGIBLE.includes(underlying);
+    look != null && !hop && dragDir === 0 && LOOK_ELIGIBLE.includes(underlying);
   const row = looking ? (look < 8 ? 9 : 10) : CODEX_ROWS.indexOf(rowName);
   const lookFrame = looking ? look % 8 : 0;
   const durations = FRAME_MS[rowName];
@@ -110,14 +99,30 @@ export function CodexSprite({
     return () => window.clearTimeout(id);
   }, [durations, frame, looking, reducedMotion, rowName]);
 
-  const display = Math.round(112 * scale);
+  const displayW = Math.round(112 * scale);
+  const displayH = Math.round(displayW * (CELL_H / CELL_W));
   const shownFrame = looking ? lookFrame : reducedMotion ? 0 : frame;
-  if (!src) {
-    return <div className="sprite-clip" style={{ width: display, height: Math.round(display * (CELL_H / CELL_W)) }} />;
-  }
+  const sheetW = displayW * SHEET_COLS;
+  const sheetH = displayH * SHEET_ROWS;
   return (
-    <div className="sprite-clip" style={{ width: display, height: Math.round(display * (CELL_H / CELL_W)) }}>
-      <div aria-hidden="true" style={atlasStyle(src, row, shownFrame, display)} />
+    <div className="sprite-3d" style={{ width: displayW, height: displayH }}>
+      <div className="sprite-clip" style={{ width: displayW, height: displayH }}>
+        {src ? (
+          <img
+            className="sprite-sheet"
+            alt=""
+            draggable={false}
+            src={src}
+            width={sheetW}
+            height={sheetH}
+            style={{
+              width: sheetW,
+              height: sheetH,
+              transform: `translate(${-shownFrame * displayW}px, ${-row * displayH}px)`,
+            }}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import json
+import os
 from datetime import datetime, timezone
+from pathlib import Path
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 from uuid import uuid4
 
 from pex_protocol.capabilities import AdapterCapabilities, AdapterSupportLabel, ControlGranularity
@@ -49,12 +54,15 @@ class CursorAdapter(HarnessAdapter):
 
     name = "cursor"
 
-    def __init__(self, acp: AcpClient | None = None) -> None:
+    def __init__(self, acp: AcpClient | None = None, bridge_url: str | None = None) -> None:
         self.sessions: dict[str, HarnessSession] = {}
         self.inbox: dict[str, list[str]] = {}
         self.pending_followups: dict[str, str] = {}
         self.acp = acp
         self.acp_prompts: list[tuple[str, str]] = []
+        self.bridge_url = (bridge_url or "").rstrip("/") or None
+        self.isolated_agent_messages: list[str] = []
+        self.last_turn_id: str | None = None
 
     def attach_acp(self, transport: AcpTransport) -> None:
         self.acp = AcpClient(transport)
@@ -209,9 +217,15 @@ class CursorAdapter(HarnessAdapter):
                 await self.acp.prompt(session.vendor_session_id, text)
                 self.acp_prompts.append((session.vendor_session_id, text))
             except Exception:
-                # Hook follow-up remains the durable path if ACP is down.
-                return True
+                return False
+        if self.bridge_url:
+            return _post_bridge_followup(self.bridge_url, session.id, text)
         return True
+
+    async def wait_for_turn_completion(self, session: HarnessSession, turn_id: str, timeout: float = 600):
+        """Followups land on the next stop hook. Do not spawn a worker turn."""
+        _ = (session, timeout)
+        return {"status": "queued_followup", "id": turn_id}
 
     async def continue_or_resume(self, session: HarnessSession, message: str | None = None) -> bool:
         if not message or not str(message).strip():
@@ -239,10 +253,40 @@ class CursorAdapter(HarnessAdapter):
         for session in self.sessions.values():
             await self.send_message(
                 session,
-                f"PEX overlay {overlay_id} reverted. Return to the persistent goal and default tools.",
+                f"Session overlay {overlay_id} reverted. Return to the persistent goal and default tools.",
             )
             return True
-        return True
+        return False
+
+
+def _bridge_token() -> str:
+    env = os.environ.get("PEX_TOKEN")
+    if env:
+        return env
+    path = Path(os.environ.get("PEX_HOME", Path.home() / ".pex")) / "bridge.token"
+    if path.is_file():
+        return path.read_text(encoding="utf-8").strip()
+    return ""
+
+
+def _post_bridge_followup(bridge_url: str, session_id: str, text: str) -> bool:
+    """Queue the isolated supervisor nudge on this desktop's running bridge."""
+    token = _bridge_token()
+    payload = json.dumps({"text": text}).encode("utf-8")
+    request = Request(
+        f"{bridge_url}/v1/sessions/{session_id}/message",
+        data=payload,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            **({"Authorization": f"Bearer {token}"} if token else {}),
+        },
+    )
+    try:
+        with urlopen(request, timeout=8) as response:
+            return 200 <= int(response.status) < 300
+    except (URLError, TimeoutError, OSError):
+        return False
 
 
 def _focus_cursor_window(hint: str) -> bool:

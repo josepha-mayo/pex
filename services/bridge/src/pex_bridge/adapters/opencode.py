@@ -112,7 +112,7 @@ class OpenCodeAdapter(HarnessAdapter):
         if diff.permission_policy:
             patch["permission"] = diff.permission_policy
         if not patch:
-            return True
+            return False
         await self.transport.request("PATCH", "/config", json=patch)
         return True
 

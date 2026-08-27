@@ -111,8 +111,8 @@ def fleet() -> dict[str, DeclaredAdapter]:
             HarnessType.PI,
             label=AdapterSupportLabel.BASIC,
             observe=True,
-            message=True,
-            notes="Pi extension/package to emit tool events. No permission popups by design; policy intercepts tools.",
+            message=False,
+            notes="Pi emits tool events. No session message API yet; do not fake control.",
         ),
         "prime": DeclaredAdapter(
             "prime",

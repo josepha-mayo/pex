@@ -2,8 +2,8 @@
 
 Living checklist. Do **not** put secrets, tokens, or account IDs here.
 
-Last updated: 2026-08-25  
-Browser used this turn: **no**. Cursor IDE browser had zero tabs; the AWS/Builder pages live in the user's external browser. Use the browser plugin when a live click-path is required (credits form, AgentCore deploy, Builder Center posts, Builder ID copy). Until then, keep building.
+Last updated: 2026-08-27  
+Browser used this turn: **yes**. Devpost is logged in (`You're registered`). My projects shows no draft yet. Start project is recaptcha-gated. builder.aws.com was signed out in the IDE browser. `aws sts` is still NoCredentials. Architecture PNG is at `docs/architecture/pex-architecture.png`. Do not Submit until YouTube/Vimeo + Builder ID exist.
 
 ## Open pages (user said these are already logged in)
 

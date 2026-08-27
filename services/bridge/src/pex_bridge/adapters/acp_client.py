@@ -38,6 +38,7 @@ class FakeAcpTransport:
         self.authed = False
         self.loaded: list[str] = []
         self.permission_replies: list[dict[str, Any]] = []
+        self.events: list[dict[str, Any]] = []
 
     async def request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         params = params or {}
@@ -82,6 +83,7 @@ class StdioAcpTransport:
         self._next_id = 1
         self._reader_task: asyncio.Task | None = None
         self.on_permission: PermissionHandler | None = None
+        self.events: list[dict[str, Any]] = []
 
     async def start(self) -> None:
         self._proc = await asyncio.create_subprocess_exec(
@@ -115,6 +117,9 @@ class StdioAcpTransport:
                 if self.on_permission:
                     decision = await self.on_permission(msg.get("params") or {})
                 await self._write({"jsonrpc": "2.0", "id": msg["id"], "result": decision})
+                continue
+            if msg.get("method"):
+                self.events.append(msg)
 
     async def _write(self, payload: dict[str, Any]) -> None:
         assert self._proc and self._proc.stdin
@@ -177,10 +182,9 @@ class AcpClient:
             params: dict[str, Any] = {"methodId": method_id}
             if method_id in {"cached_token", "xai.api_key"}:
                 params["_meta"] = {"headless": True}
-            try:
-                await self.transport.request("authenticate", params)
-            except Exception:
-                pass
+            await self.transport.request("authenticate", params)
+        elif methods:
+            raise RuntimeError("ACP authenticate required but no usable method")
         self.ready = True
         return init
 
