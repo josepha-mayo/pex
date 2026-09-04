@@ -10,6 +10,8 @@
 
 OpenCode delivery now requires a new, exact, session-bound user-message receipt after the send; historical identical text, foreign-session rows, ambiguous collisions, and concurrent sends cannot manufacture a delivered result. The hard-coded local plugin debug sink was removed, `.opencode/` is ignored, and token-rotation documentation was corrected. Independent review approved this narrow slice.
 
+Source checkpoint `cda1b8eb8955bebc8e4abe4acd5cabe9d5e4bffc` is pushed to `origin/main`; local and remote hashes were verified equal. GitHub initially blocked a literal Slack-shaped test canary, so the fixture was changed to runtime assembly and retested (21 passed); no protection bypass was used.
+
 Verification: repository Ruff passed; desktop **62/62** plus production build passed; contract/integration/chaos **53 passed, 16 skipped**; repaired pipeline file **5 passed**; bridge auth file **16 passed, 2 skipped**. The serial whole Python run reached **1,822 passed, 21 skipped, 1 stale-fixture failure**; that fixture is repaired and focused-green. A later parallel rerun was interrupted and is not claimed as a full receipt.
 
 No live six-cell result was created. OpenCode still lacks a valid free-model ±PEX pair. Cursor's installed hook remains observe-only. The installed Codex schema confirms `thread/start` uses `sandbox: "workspace-write"`; the real next blocker is authoritative `thread/resume` before PEX sends to a discovered same-session thread. Manifest remains `frozen: false`; overall **NO-GO**.

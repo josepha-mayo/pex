@@ -29,6 +29,9 @@ Three independent read-only audits covered OpenCode, Codex, and Cursor/benchmark
 
 ### Verification receipts for this checkpoint
 
+- Source checkpoint **pushed and remote-verified**: `cda1b8eb8955bebc8e4abe4acd5cabe9d5e4bffc` (`main` and `origin/main` matched after `git ls-remote`). Commit message: `Checkpoint audited PEX supervisor and integration foundation`.
+- The first push attempt was blocked by GitHub push protection because a redaction test contained a literal Slack-token-shaped canary. The canary is now assembled at runtime, its file passed **21 tests**, the unpushed commit was amended, and the successful push used no secret-scanning bypass.
+
 - Serial whole Python suite before the two fixture-only test repairs: **1,822 passed, 21 skipped, 1 failed** in 30:12. The single failure was the missing project binding in `test_progress_event_does_not_pollute_intervention_log_with_noop`; no production assertion failed.
 - Repaired pipeline-session file: **5 passed**.
 - Bridge auth/lock file after timeout hardening: **16 passed, 2 skipped**.
