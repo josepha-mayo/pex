@@ -1,5 +1,32 @@
 # PEX agent handoff
 
+## CURRENT HANDOFF — 4 Sep 2026 ~21:34 BST — execution gate separated from report/freeze gate
+
+**The binding Cursor/benchmark sections of all three specs were reread before this slice. This section supersedes the 21:16 next-action paragraph only. The manifest remains unfrozen and overall submission state remains NO-GO.**
+
+The previous runner used one `_experiment_preflight_blockers()` list for two incompatible jobs: deciding whether a controlled run could safely begin and deciding whether its evidence could support a presentation/freeze claim. That created a circular gate because missing raw logs, source-commit receipts, and genuine same-session continuation blocked the runs that must generate those receipts.
+
+`benchmarks/four_arm.py` now has two explicit layers:
+
+- `_execution_preflight_blockers()` rejects an invalid benchmark package/suite. It gates Cursor prepare, Cursor wait/live collection, Codex live collection, and the CLI live path.
+- `_report_readiness_blockers()` includes execution blockers plus every former hard claim gate: natural-task provenance and isolated hidden-evaluator boundary, complete immutable raw logs, genuine Cursor same-session treatment, verified source commits, and controller-verified Cursor network policy.
+- `_run_blockers()`, coherent-run selection, and freeze continue to use report readiness. `_experiment_preflight_blockers()` remains only as a backward-compatible alias for the full report NO-GO list.
+- `four_arm.py plan` now prints `execution_preflight_blockers` and `report_readiness_blockers` separately instead of the ambiguous `preflight_blockers` key.
+
+This does **not** weaken presentation rules or call controlled fixtures submission evidence. It allows development evidence collection while keeping those rows unable to freeze until the full report gate is green.
+
+Verification:
+
+- focused Cursor/preflight/freeze selection: **21 passed, 70 deselected**;
+- direct invalid-suite and honest-manifest tests after the naming cleanup: **2 passed**;
+- live `plan` command: `EXECUTION_BLOCKERS=0`, `REPORT_BLOCKERS=5`, `FROZEN=False`; the five blockers are the exact expected natural-task/evaluator boundary, raw-log, same-session treatment, source-commit, and Cursor-network gaps;
+- independent post-fix review: **APPROVE** for this split, with a separate **2 passed** focused run and direct verification that every prepare/live call uses execution safety while `_run_blockers`, coherent selection, and freeze retain report readiness;
+- Ruff passed and `git diff --check` passed.
+
+**Next exact slice:** add controller-owned Cursor timing, human-action receipts, and an append-only canonical raw event log. Do not trust worker/hook-provided benchmark timing, do not call observe-only hooks `+PEX`, and do not alter the global installed Cursor hooks while implementing offline contracts/tests.
+
+Independent review is **APPROVE**. Push receipt is pending commit. The user requires this verified update to be pushed; record the exact remote hash in a follow-up receipt commit.
+
 ## CURRENT HANDOFF — 4 Sep 2026 ~21:16 BST — Codex same-session resume gate repaired
 
 **The three binding specs were reread before this slice. This section supersedes the 20:22 Codex next-action text. The six-cell demo remains the only execution workstream; benchmark freeze, deployment, spending, packaging, and Devpost submission remain unauthorized. Overall submission state is NO-GO.**

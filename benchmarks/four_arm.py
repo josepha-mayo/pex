@@ -786,10 +786,24 @@ def _try_write_codex_raw_log(
     return str(path), digest
 
 
-def _experiment_preflight_blockers() -> list[str]:
-    blockers: list[str] = []
+def _execution_preflight_blockers() -> list[str]:
+    """Block unsafe/invalid execution, not evidence that execution must create.
+
+    Development runs may collect honest rows while the benchmark is not yet
+    presentation-ready. Freeze/report checks remain strictly fail-closed in
+    ``_report_readiness_blockers`` and ``_run_blockers``.
+    """
+
+    return [
+        f"benchmark suite is invalid: {error}" for error in evaluator.validate_suite()
+    ]
+
+
+def _report_readiness_blockers() -> list[str]:
+    """Return presentation/freeze blockers, including execution safety."""
+
+    blockers = _execution_preflight_blockers()
     manifest = runner.load_manifest()
-    blockers.extend(f"benchmark suite is invalid: {error}" for error in evaluator.validate_suite())
     suite = manifest.get("suite") if isinstance(manifest.get("suite"), dict) else {}
     if (
         suite.get("natural_task_source_status") != "satisfied"
@@ -816,10 +830,16 @@ def _experiment_preflight_blockers() -> list[str]:
     return blockers
 
 
+def _experiment_preflight_blockers() -> list[str]:
+    """Backward-compatible name for callers that display the full NO-GO list."""
+
+    return _report_readiness_blockers()
+
+
 def _run_blockers(path: Path) -> list[str]:
     rows, blockers = _read_rows(path)
     blockers.extend(runner.verify_result_chain(path))
-    blockers.extend(_experiment_preflight_blockers())
+    blockers.extend(_report_readiness_blockers())
     by_key: dict[str, dict[str, Any]] = {}
     expected_manifest = runner.manifest_sha256()
     expected_evaluator = runner.evaluator_sha256()
@@ -1244,7 +1264,7 @@ def freeze_blockers(
         return ["multiple coherent runs exist; select one explicitly with --run-id"]
     paths = sorted(runner.RESULTS.glob("*.jsonl")) if runner.RESULTS.exists() else []
     if not paths:
-        return _experiment_preflight_blockers() + [
+        return _report_readiness_blockers() + [
             f"no result for {arm}/{task}"
             for arm in PRESENTATION_ARMS
             for task in evaluator.task_ids()
@@ -2132,9 +2152,11 @@ async def run_live_this_cursor(
     if not wait_cursor_stop:
         raise RuntimeError(CURSOR_LIVE_REFUSAL)
     if stop_payload is None and wait_cursor_stop:
-        preflight = _experiment_preflight_blockers()
+        preflight = _execution_preflight_blockers()
         if preflight:
-            raise RuntimeError("benchmark preflight is NO-GO: " + "; ".join(preflight))
+            raise RuntimeError(
+                "benchmark execution preflight is NO-GO: " + "; ".join(preflight)
+            )
         runner.assert_next_scheduled(run_id, task_id, arm)
     hooks = cursor_hooks_path()
     if not _bounded_regular_file(hooks, _MAX_CONTROL_FILE_BYTES, allow_empty=False):
@@ -2237,9 +2259,11 @@ async def run_live_this_cursor(
         and intervention_evidence_available
     )
     if verified_live:
-        preflight = _experiment_preflight_blockers()
+        preflight = _execution_preflight_blockers()
         if preflight:
-            raise RuntimeError("benchmark preflight is NO-GO: " + "; ".join(preflight))
+            raise RuntimeError(
+                "benchmark execution preflight is NO-GO: " + "; ".join(preflight)
+            )
         runner.assert_next_scheduled(run_id, task_id, arm)
     evaluation_started_at = datetime.now(UTC)
     evaluation_started_perf = time.perf_counter()
@@ -2396,9 +2420,11 @@ async def run_live(
     presentation_candidate = isinstance(transport, CodexStdioTransport)
     task_budget = float(runner.protocol_config()["budget"]["task_wall_seconds"])
     if presentation_candidate:
-        preflight = _experiment_preflight_blockers()
+        preflight = _execution_preflight_blockers()
         if preflight:
-            raise RuntimeError("benchmark preflight is NO-GO: " + "; ".join(preflight))
+            raise RuntimeError(
+                "benchmark execution preflight is NO-GO: " + "; ".join(preflight)
+            )
         runner.assert_next_scheduled(run_id, task_id, arm)
         if float(turn_timeout) != task_budget:
             raise RuntimeError(
@@ -2715,7 +2741,8 @@ def main() -> None:
                     "manifest_frozen": bool(runner.load_manifest().get("frozen")),
                     "protocol_sha256": runner.protocol_sha256(),
                     "schedule_sha256": runner.experiment_plan_sha256(),
-                    "preflight_blockers": _experiment_preflight_blockers(),
+                    "execution_preflight_blockers": _execution_preflight_blockers(),
+                    "report_readiness_blockers": _report_readiness_blockers(),
                     "schedule": runner.experiment_plan(),
                 },
                 indent=2,
@@ -2749,9 +2776,11 @@ def main() -> None:
                 "Never spawn another window. After stop: "
                 "run --allow-live --wait-cursor-stop with the same run id"
             )
-        preflight = _experiment_preflight_blockers()
+        preflight = _execution_preflight_blockers()
         if preflight:
-            raise SystemExit("benchmark preflight is NO-GO: " + "; ".join(preflight))
+            raise SystemExit(
+                "benchmark execution preflight is NO-GO: " + "; ".join(preflight)
+            )
         runner.assert_next_scheduled(args.run_id, args.task, args.arm)
         workspace, _, receipt = prepare_isolated_workspace(
             args.run_id,
@@ -2784,9 +2813,11 @@ def main() -> None:
     if args.arm in PRESENTATION_ARMS:
         if not args.allow_live:
             raise SystemExit("presentation arms require --allow-live")
-        preflight = _experiment_preflight_blockers()
+        preflight = _execution_preflight_blockers()
         if preflight:
-            raise SystemExit("benchmark preflight is NO-GO: " + "; ".join(preflight))
+            raise SystemExit(
+                "benchmark execution preflight is NO-GO: " + "; ".join(preflight)
+            )
         print(
             json.dumps(
                 asyncio.run(

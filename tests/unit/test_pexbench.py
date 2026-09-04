@@ -1516,13 +1516,26 @@ def test_experiment_plan_is_predeclared_balanced_and_deterministic():
 
 def test_authoritative_manifest_preflight_remains_honestly_no_go():
     four = _four_arm()
-    blockers = four._experiment_preflight_blockers()
+    blockers = four._report_readiness_blockers()
+    assert four._execution_preflight_blockers() == []
+    assert four._experiment_preflight_blockers() == blockers
     assert four.runner.load_manifest()["frozen"] is False
     assert any("natural-task source" in blocker for blocker in blockers)
     assert any("network policy" in blocker for blocker in blockers)
     assert any("raw harness event logs" in blocker for blocker in blockers)
     assert any("same-session treatment" in blocker for blocker in blockers)
     assert any("repository commits" in blocker for blocker in blockers)
+
+
+def test_invalid_suite_blocks_execution_and_report_readiness(monkeypatch):
+    four = _four_arm()
+    monkeypatch.setattr(four.evaluator, "validate_suite", lambda: ["broken package"])
+
+    execution = four._execution_preflight_blockers()
+    report = four._report_readiness_blockers()
+
+    assert execution == ["benchmark suite is invalid: broken package"]
+    assert execution[0] in report
 
 
 def test_statistical_methods_are_exact_and_deterministic():
