@@ -27,10 +27,11 @@ from fastapi.responses import JSONResponse, Response
 from pex_protocol.actions import InterventionType
 from pex_protocol.capabilities import AdapterCapabilities
 from pex_protocol.context import ContextHandoffRequest
-from pex_protocol.enums import EventType, HarnessType, PolicyVerdict, SessionStatus
+from pex_protocol.enums import EventPhase, EventType, HarnessType, PolicyVerdict, SessionStatus
 from pex_protocol.goal import Goal
+from pex_protocol.intervention import Intervention
 from pex_protocol.project_identity import ProjectLocator
-from pex_protocol.session import HarnessSession
+from pex_protocol.session import HarnessEvent, HarnessSession
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 
@@ -201,6 +202,107 @@ def _permission_from_intervention(intervention: Any) -> str:
     if result in {"permission_allow", "permission_allow_inline"}:
         return "allow"
     return "ask"
+
+
+def _cursor_submit_response(
+    intervention: Intervention | None,
+    event: HarnessEvent,
+    session: HarnessSession,
+) -> dict[str, Any]:
+    """Only a completed, policy-approved decision for this prompt may affect it."""
+    passthrough = {"continue": True}
+    if (
+        not isinstance(intervention, Intervention)
+        or session.harness_type != HarnessType.CURSOR
+        or session.supervision_paused
+        or not session.goal_id
+        or event.harness_type != HarnessType.CURSOR
+        or event.event_type != EventType.USER_PROMPT
+        or event.phase != EventPhase.BEFORE
+        or event.metadata.get("hook_event_name") != "beforeSubmitPrompt"
+        or event.session_id != session.id
+        or event.project_id != session.project_id
+        or (event.goal_id is not None and event.goal_id != session.goal_id)
+        or intervention.session_id != session.id
+        or intervention.goal_id != session.goal_id
+        or intervention.trigger != EventType.USER_PROMPT.value
+        or intervention.metadata.get("trigger_event_id") != event.event_id
+        or not any(item.strip() for item in intervention.evidence)
+    ):
+        return passthrough
+    action = intervention.proposed_action
+    if (
+        action.session_id != session.id
+        or action.goal_id != session.goal_id
+        or intervention.action_taken != action.type.value
+    ):
+        return passthrough
+    if (
+        action.type == InterventionType.ASK_HUMAN
+        and intervention.policy_verdict in {PolicyVerdict.ALLOW, PolicyVerdict.ASK_HUMAN}
+        and intervention.result == "escalated"
+    ):
+        field, proceed = "question", False
+    elif (
+        action.type == InterventionType.ANNOTATE
+        and intervention.policy_verdict == PolicyVerdict.ALLOW
+        and intervention.result == "annotated"
+    ):
+        field, proceed = "text", True
+    else:
+        return passthrough
+    message = action.payload.get(field)
+    if not isinstance(message, str) or not message.strip() or len(message) > 4_096:
+        return passthrough
+    return {"continue": proceed, "user_message": message.strip()}
+
+
+async def _cursor_submit_authority(session_id: str) -> tuple[HarnessSession, tuple] | None:
+    """Snapshot canonical prompt authority; CAS revisions detect pause/rebind ABA."""
+    try:
+        before = await state.store.get_session_control_state(session_id)
+        session = await state.store.get_session_for_authority(session_id, require_goal_binding=True)
+        if before is None or session is None or not session.goal_id or session.supervision_paused:
+            return None
+        goal = await state.store.get_goal_intent_view(session.goal_id)
+        after = await state.store.get_session_control_state(session_id)
+    except (ProjectIdentityBlockedError, PermissionError):
+        return None
+    if goal is None or goal.get("paused") or after is None:
+        return None
+    control_fields = ("control_revision", "project_binding", "discovery_generation")
+    if any(before[key] != after[key] for key in control_fields):
+        return None
+    current = after["session"]
+    if current.supervision_paused or any(
+        getattr(current, key) != getattr(session, key)
+        for key in ("id", "harness_type", "vendor_session_id", "goal_id", "project_id", "cwd")
+    ):
+        return None
+    return current, (
+        *(after[key] for key in control_fields),
+        session.goal_id,
+        goal["intent_revision"],
+        goal["intent_hash"],
+    )
+
+
+async def _process_cursor_submit(event: HarnessEvent, session: HarnessSession) -> dict[str, Any]:
+    # Authority reads share the hook's deadline with inference; a locked store
+    # must not make the synchronous editor callback wait without a bound.
+    paused = state.pipeline.supervision_paused
+    authority = await _cursor_submit_authority(session.id)
+    intervention = await state.pipeline.ingest_event(event, session)
+    current = await _cursor_submit_authority(session.id)
+    if (
+        paused
+        or state.pipeline.supervision_paused
+        or authority is None
+        or current is None
+        or authority[1] != current[1]
+    ):
+        return {"continue": True}
+    return _cursor_submit_response(intervention, event, current[0])
 
 
 TRUSTED_UI_ORIGINS = {
@@ -1057,29 +1159,12 @@ async def _apply_cursor_hook(payload: dict) -> dict[str, Any]:
         return response
     if hook_name == "beforeSubmitPrompt":
         try:
-            intervention = await asyncio.wait_for(
-                state.pipeline.ingest_event(event, session),
+            return await asyncio.wait_for(
+                _process_cursor_submit(event, session),
                 timeout=CURSOR_SUBMIT_PIPELINE_TIMEOUT_SECONDS,
             )
         except TimeoutError:
-            response["continue"] = True
-            return response
-        if intervention and intervention.proposed_action.type == InterventionType.ASK_HUMAN:
-            response["continue"] = False
-            response["user_message"] = intervention.proposed_action.payload.get(
-                "question", "Conflicts with persistent goal."
-            )
-        elif (
-            intervention
-            and intervention.proposed_action.type == InterventionType.ANNOTATE
-        ):
-            response["continue"] = True
-            rewrite = str(intervention.proposed_action.payload.get("text") or "").strip()
-            if rewrite:
-                response["user_message"] = rewrite
-        else:
-            response["continue"] = True
-        return response
+            return {"continue": True}
     if hook_name == "stop":
         try:
             intervention = await asyncio.wait_for(

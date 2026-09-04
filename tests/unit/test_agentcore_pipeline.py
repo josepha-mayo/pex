@@ -14,7 +14,7 @@ from pex_protocol.actions import InterventionType, ProposedAction
 from pex_protocol.enums import EventType, HarnessType, SessionStatus
 from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
-from pex_protocol.supervisor import SupervisorResult
+from pex_protocol.supervisor import IndependentVerifierReceipt, SupervisorResult
 
 
 class _FailedRemoteSupervisor:
@@ -121,6 +121,62 @@ class _CrashingSupervisor:
     async def decide(self, request, *, local_model):
         del request, local_model
         raise RuntimeError("supervisor exploded")
+
+
+@pytest.mark.asyncio
+async def test_independent_verifier_receipt_survives_pipeline_store_and_audit(tmp_path):
+    receipt = IndependentVerifierReceipt(
+        approved=False,
+        status="rejected",
+        rationale="The proposed correction lacked supporting evidence.",
+        evidence=["observed test result was inconclusive"],
+        evidence_tools=["get_recent_events"],
+        model_call_count=2,
+        input_tokens=17,
+        output_tokens=9,
+        latency_ms=12,
+    )
+
+    class ReviewedSupervisor(_FailedRemoteSupervisor):
+        async def decide(self, request, *, local_model):
+            result = await super().decide(request, local_model=local_model)
+            result.used_llm = True
+            result.inference_status = "completed"
+            result.transport_status = "completed"
+            result.model_call_count = 3
+            result.independent_verifier = receipt
+            result.diagnosis = "strands_structured_decision:independent_verifier_rejected"
+            return result
+
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        now = datetime.now(UTC)
+        session = await _bound_session(store, tmp_path, vendor_session_id="reviewed", now=now)
+        pipeline = Pipeline(
+            store, AdapterRegistry(), EventBus(),
+            Settings.for_test(require_auth=False, home=tmp_path, autonomy="manage"),
+        )
+        pipeline.supervisor = ReviewedSupervisor()
+        event = HarnessEvent(
+            event_id="reviewed-event", ts=now, harness_type=HarnessType.CODEX,
+            session_id=session.id, project_id=session.project_id, goal_id=session.goal_id,
+            event_type=EventType.STOP, message_delta="Stopping for review.",
+        )
+        intervention = await pipeline.ingest_event(event, session)
+        expected = receipt.model_dump(mode="json")
+        assert intervention is not None
+        assert intervention.result == "noop"
+        assert intervention.metadata["independent_verifier"] == expected
+        rows = await store.list_interventions(session.id)
+        assert len(rows) == 1
+        assert rows[0].metadata["independent_verifier"] == expected
+        audit = json.loads(store.audit_path.read_text(encoding="utf-8").splitlines()[0])
+        assert audit["independent_verifier"] == expected
+        assert audit["model_call_count"] == 3
+        assert audit["independent_verifier"]["model_call_count"] == 2
+    finally:
+        await store.close()
 
 
 @pytest.mark.asyncio

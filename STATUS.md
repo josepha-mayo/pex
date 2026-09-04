@@ -6,6 +6,10 @@
 
 **Date:** 2026-09-04
 
+## Current production repair — intent authority and semantic arbitration
+
+Cursor prompt responses now require completed, policy-approved, event-bound decisions with current session/goal authority. False durable overrides and model failures being converted to worker nudges are repaired. Completed semantic NOOP stays silent, and every surviving semantic STOP intervention requires independent verification. Structured verifier receipts survive local/AgentCore processing and the durable audit, with distinct main/verifier counts and secret-safe failure provenance. Final stable-source verification: **334 passed in 110.08 seconds** across 15 complete regression files; repository Ruff and diff checks clean; independent review approved this slice. See `docs/AGENT_HANDOFF.md` for evidence, limitations, and the source-push receipt. No live/provider run, benchmark result, installed-hook change, or submission readiness is claimed. Overall **NO-GO** remains.
+
 ## Current source work — nonce-bound Cursor capture, 4 Sep 2026
 
 Source checkpoint **`ec64f63e724a6aac4d70c2012343580536594b0b`** is pushed to `origin/main`; exact local/remote equality and a clean working tree were verified. This line is the documentation-only receipt follow-up.

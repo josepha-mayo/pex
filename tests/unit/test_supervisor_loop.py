@@ -187,7 +187,7 @@ def test_worker_message_is_not_falsely_marked_reversible():
     assert action.reversible is False
 
 
-def test_deterministic_evidence_wins_over_different_semantic_action():
+def test_deterministic_preplan_does_not_replace_completed_semantic_wording():
     request = _request(0.9)
     deterministic = _action_from_proposal(
         request,
@@ -201,20 +201,28 @@ def test_deterministic_evidence_wins_over_different_semantic_action():
     semantic_action = _action_from_proposal(
         request,
         {
-            "type": "RESPOND_PERMISSION",
-            "rationale": "unrelated model choice",
-            "evidence": ["request observed"],
-            "payload": {"request_id": "req-2", "decision": "allow"},
+            "type": "SEND_NUDGE",
+            "rationale": "model connected the observed failure to the goal",
+            "evidence": ["report.txt absent"],
+            "payload": {
+                "text": "report.txt is absent; create it and verify its contents."
+            },
         },
     )
     semantic = __import__(
         "pex_protocol.supervisor", fromlist=["SupervisorResult"]
-    ).SupervisorResult(action=semantic_action, used_llm=True, diagnosis="semantic")
+    ).SupervisorResult(
+        action=semantic_action,
+        used_llm=True,
+        diagnosis="semantic",
+        inference_status="completed",
+    )
 
     result = _preserve_deterministic_truth(request, deterministic, semantic)
 
-    assert result.action == deterministic
-    assert "deterministic_truth_preserved" in result.diagnosis
+    assert result.action == semantic_action
+    assert result.action.payload["text"].startswith("report.txt is absent")
+    assert "deterministic_truth_preserved" not in result.diagnosis
 
 
 def test_model_noop_cannot_infer_missing_files_from_runtime_cwd(tmp_path):

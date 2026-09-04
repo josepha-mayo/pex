@@ -3,10 +3,13 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncGenerator
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from pex_protocol.supervisor import SupervisorResult
 from pex_supervisor.loop import (
+    _action_from_proposal,
     _bounded_wall_timeout,
     _format_user,
     decide_async,
@@ -26,6 +29,7 @@ class FakeStructuredModel(Model):
         evidence_tool_calls: int = 0,
         verifier_evidence_tool_calls: int = 0,
         verifier_evidence_tool_name: str = "run_verification",
+        message: str | None = None,
     ) -> None:
         self.action_type = action_type
         self.verifier_approved = verifier_approved
@@ -37,6 +41,7 @@ class FakeStructuredModel(Model):
         self.evidence_tool_calls = evidence_tool_calls
         self.verifier_evidence_tool_calls = verifier_evidence_tool_calls
         self.verifier_evidence_tool_name = verifier_evidence_tool_name
+        self.message = message
         self.captured_messages: list[str] = []
 
     def update_config(self, **model_config: Any) -> None:
@@ -112,11 +117,13 @@ class FakeStructuredModel(Model):
                 "evidence": self.verifier_evidence,
             }
         else:
-            message = (
-                "Create report.txt containing shipped."
-                if self.action_type == "SEND_NUDGE"
-                else ""
-            )
+            message = self.message
+            if message is None:
+                message = (
+                    "Create report.txt containing shipped."
+                    if self.action_type == "SEND_NUDGE"
+                    else ""
+                )
             arguments = {
                 "action_type": self.action_type,
                 "rationale": "validated fake decision",
@@ -277,7 +284,70 @@ async def test_strands_failure_receipt_does_not_echo_provider_exception_text():
     result = await run_strands_async(_request(0.1), model=FailingModel())
     rendered = json.dumps(result.model_dump(mode="json"))
     assert result.inference_status == "failed"
+    assert result.action.type.value == "NOOP"
     assert "provider-secret-sentinel" not in rendered
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("model", "expected_status", "expected_diagnosis"),
+    [
+        (FailingModel(), "failed", "strands_failed:RuntimeError"),
+        (SlowModel(), "timeout", "strands_timeout"),
+    ],
+)
+async def test_real_model_failure_paths_cannot_restore_non_noop_preplan(
+    monkeypatch, model, expected_status, expected_diagnosis
+):
+    monkeypatch.setenv("PEX_SUPERVISOR_WALL_TIMEOUT", "1")
+    request = _request(0.95)
+    request.scores.features["verification"] = {
+        "status": "contradicted",
+        "correction": "Fix exact failing test_alpha and rerun it.",
+        "evidence": ["pytest_exit:1", "failed:test_alpha"],
+    }
+
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "NOOP"
+    assert result.used_llm is True
+    assert result.inference_status == expected_status
+    assert result.diagnosis == expected_diagnosis
+    assert "text" not in result.action.payload
+
+
+@pytest.mark.asyncio
+async def test_missing_structured_runtime_result_cannot_restore_non_noop_preplan(
+    monkeypatch,
+):
+    request = _request(0.95)
+    request.scores.features["verification"] = {
+        "status": "contradicted",
+        "correction": "Fix exact failing test_alpha and rerun it.",
+        "evidence": ["pytest_exit:1", "failed:test_alpha"],
+    }
+
+    class MissingStructuredAgent:
+        event_loop_metrics = None
+
+        async def invoke_async(self, *_args, **_kwargs):
+            return SimpleNamespace(
+                structured_output=None,
+                metrics=None,
+                stop_reason="end_turn",
+            )
+
+    monkeypatch.setattr(
+        "pex_supervisor.loop.build_agent",
+        lambda *_args, **_kwargs: MissingStructuredAgent(),
+    )
+    result = await decide_async(request, model=object())
+
+    assert result.action.type.value == "NOOP"
+    assert result.used_llm is True
+    assert result.inference_status == "failed"
+    assert result.diagnosis == "strands_missing_structured_output"
+    assert "text" not in result.action.payload
 
 
 @pytest.mark.asyncio
@@ -351,7 +421,7 @@ def test_supervisor_prompt_masks_workspace_paths_in_all_evidence_channels():
 
 
 @pytest.mark.asyncio
-async def test_model_noop_cannot_erase_deterministic_contradiction():
+async def test_completed_model_noop_is_not_replaced_by_deterministic_contradiction():
     request = _request(0.95)
     request.scores.features["verification"] = {
         "status": "contradicted",
@@ -361,9 +431,160 @@ async def test_model_noop_cannot_erase_deterministic_contradiction():
     result = await decide_async(request, model=FakeStructuredModel("NOOP"))
 
     assert result.used_llm is True
+    assert result.inference_status == "completed"
+    assert result.action.type.value == "NOOP"
+    assert result.diagnosis == "strands_structured_decision"
+
+
+@pytest.mark.asyncio
+async def test_completed_noop_after_tool_call_is_not_replaced_by_stale_probe_request():
+    request = _request(0.9)
+    request.scores.features["verification"] = {
+        "status": "uncertain",
+        "acceptance_status": "uncertain",
+        "evidence": ["temporarily_unreadable:report.txt"],
+        "evidence_gathering": {
+            "state": "inspected",
+            "probe": {
+                "id": "probe_file_count",
+                "kind": "file_count",
+                "harness_type": "synthetic",
+                "session_id": request.session.id,
+                "project_id": request.session.project_id,
+                "goal_id": request.goal.id,
+                "request_event_id": request.event.event_id,
+                "cwd": "C:/workspace",
+                "relative_targets": ["report.txt"],
+                "timeout_seconds": 60,
+                "output_limit_bytes": 16_384,
+            },
+        },
+        "verdicts": [
+            {
+                "status": "uncertain",
+                "evidence": ["temporarily_unreadable:report.txt"],
+            }
+        ],
+    }
+    model = FakeStructuredModel("NOOP", evidence_tool_calls=1)
+
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "NOOP"
+    assert result.inference_status == "completed"
+    assert result.evidence_tools == ["run_verification"]
+    assert result.model_call_count == 2
+    assert "deterministic_truth_preserved" not in result.diagnosis
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("inference_status", "diagnosis"),
+    [
+        ("failed", "strands_failed:RuntimeError"),
+        ("timeout", "strands_timeout"),
+        ("failed", "strands_missing_structured_output"),
+    ],
+)
+async def test_incomplete_semantic_inference_cannot_restore_deterministic_intervention(
+    monkeypatch, inference_status, diagnosis
+):
+    request = _request(0.95)
+    request.scores.features["verification"] = {
+        "status": "contradicted",
+        "correction": "Fix exact failing test_alpha and rerun it.",
+        "evidence": ["pytest_exit:1", "failed:test_alpha"],
+    }
+    deterministic_action = _action_from_proposal(
+        request,
+        {
+            "type": "SEND_NUDGE",
+            "rationale": "Observed test failure.",
+            "evidence": ["pytest_exit:1", "failed:test_alpha"],
+            "payload": {"text": "Fix exact failing test_alpha and rerun it."},
+        },
+    )
+
+    async def incomplete(*_args, **_kwargs):
+        return SupervisorResult(
+            action=deterministic_action,
+            used_llm=True,
+            diagnosis=diagnosis,
+            inference_status=inference_status,
+            model_call_count=1,
+        )
+
+    monkeypatch.setattr("pex_supervisor.loop.run_strands_async", incomplete)
+    result = await decide_async(request, model=object())
+
+    assert result.action.type.value == "NOOP"
+    assert result.used_llm is True
+    assert result.inference_status == inference_status
+    assert "incomplete_inference_noop" in result.diagnosis
+    assert "text" not in result.action.payload
+
+
+@pytest.mark.asyncio
+async def test_outer_supervisor_setup_failure_is_noop(monkeypatch):
+    request = _request(0.95)
+    request.scores.features["verification"] = {
+        "status": "contradicted",
+        "correction": "Fix exact failing test_alpha and rerun it.",
+        "evidence": ["pytest_exit:1", "failed:test_alpha"],
+    }
+
+    async def unavailable(*_args, **_kwargs):
+        raise RuntimeError("setup failed")
+
+    monkeypatch.setattr("pex_supervisor.loop.run_strands_async", unavailable)
+    result = await decide_async(request, model=object())
+
+    assert result.action.type.value == "NOOP"
+    assert result.used_llm is False
+    assert result.inference_status == "failed"
+    assert result.diagnosis == "strands_unavailable:RuntimeError"
+
+
+@pytest.mark.asyncio
+async def test_post_inference_failure_keeps_real_model_provenance(monkeypatch):
+    request = _request(0.1)
+    model = FakeStructuredModel("NOOP")
+
+    def arbitration_failed(*_args, **_kwargs):
+        raise RuntimeError("private post-processing detail")
+
+    monkeypatch.setattr(
+        "pex_supervisor.loop._preserve_deterministic_truth",
+        arbitration_failed,
+    )
+    result = await decide_async(request, model=model)
+
+    assert len(model.captured_messages) == 1
+    assert result.action.type.value == "NOOP"
+    assert result.used_llm is True
+    assert result.inference_status == "completed"
+    assert result.model_call_count == 1
+    assert result.local_invocation_id and result.local_invocation_id.startswith("pexinv_")
+    assert result.diagnosis.endswith("post_inference_failure:RuntimeError")
+    assert "private post-processing detail" not in result.model_dump_json()
+
+
+@pytest.mark.asyncio
+async def test_no_model_keeps_explicit_deterministic_triage(monkeypatch):
+    monkeypatch.delenv("PEX_FORCE_LLM", raising=False)
+    request = _request(0.95)
+    request.scores.features["verification"] = {
+        "status": "contradicted",
+        "correction": "Fix exact failing test_alpha and rerun it.",
+        "evidence": ["pytest_exit:1", "failed:test_alpha"],
+    }
+
+    result = await decide_async(request, model=None)
+
     assert result.action.type.value == "SEND_NUDGE"
-    assert "deterministic_truth_preserved" in result.diagnosis
-    assert "pytest" in result.action.payload["text"]
+    assert result.used_llm is False
+    assert result.inference_status == "not_attempted"
+    assert result.diagnosis == "deterministic_triage_no_supervisor_model"
 
 
 @pytest.mark.asyncio
@@ -379,6 +600,87 @@ async def test_model_nudge_cannot_override_verified_completion():
     assert result.used_llm is True
     assert result.action.type.value == "NOOP"
     assert "verified_noop_preserved" in result.diagnosis
+
+
+@pytest.mark.asyncio
+async def test_supported_claim_alone_cannot_suppress_semantic_intervention():
+    request = _request(0.1)
+    request.goal.acceptance_criteria = ["tests pass", "report.txt exists"]
+    request.scores.features["verification"] = {
+        "status": "supported",
+        "acceptance_status": "uncertain",
+        "evidence": ["pytest_ok=true"],
+        "verdicts": [{"status": "supported", "evidence": ["pytest_ok=true"]}],
+    }
+    model = FakeStructuredModel(
+        "SEND_NUDGE",
+        verifier_approved=True,
+        verifier_evidence_tool_calls=1,
+        verifier_evidence_tool_name="get_recent_events",
+    )
+
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "SEND_NUDGE"
+    assert "independent_verifier_approved" in result.diagnosis
+    assert "verified_noop_preserved" not in result.diagnosis
+
+
+@pytest.mark.asyncio
+async def test_same_type_semantic_action_keeps_model_wording_after_verification():
+    request = _request(0.95)
+    request.scores.features["verification"] = {
+        "status": "contradicted",
+        "acceptance_status": "contradicted",
+        "correction": "The observed pytest run failed. Fix it and rerun pytest.",
+        "evidence": ["pytest_exit:1", "failed:test_alpha"],
+    }
+    semantic_text = (
+        "test_alpha failed in the latest observed pytest run. "
+        "Fix test_alpha and rerun pytest."
+    )
+    model = FakeStructuredModel(
+        "SEND_NUDGE",
+        message=semantic_text,
+        verifier_approved=True,
+        verifier_evidence_tool_calls=1,
+        verifier_evidence_tool_name="get_recent_events",
+    )
+
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "SEND_NUDGE"
+    assert result.action.payload["text"] == semantic_text
+    assert "independent_verifier_approved" in result.diagnosis
+    assert "deterministic_truth_preserved" not in result.diagnosis
+
+
+@pytest.mark.asyncio
+async def test_verifier_rejection_never_restores_non_noop_preplan():
+    request = _request(0.95)
+    request.scores.features["verification"] = {
+        "status": "contradicted",
+        "acceptance_status": "contradicted",
+        "correction": "The observed pytest run failed. Fix it and rerun pytest.",
+        "evidence": ["pytest_exit:1", "failed:test_alpha"],
+    }
+    model = FakeStructuredModel(
+        "SEND_NUDGE",
+        verifier_approved=False,
+        verifier_evidence=["proposal not supported"],
+        verifier_evidence_tool_calls=1,
+        verifier_evidence_tool_name="get_recent_events",
+    )
+
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "NOOP"
+    assert "independent_verifier_rejected" in result.diagnosis
+    assert "text" not in result.action.payload
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.approved is False
+    assert result.independent_verifier.status == "rejected"
+    assert result.independent_verifier.model_call_count == 2
 
 
 @pytest.mark.asyncio
@@ -398,6 +700,11 @@ async def test_semantic_only_intervention_requires_independent_verifier_approval
     assert result.model_call_count == 3
     assert len(model.captured_messages) == 3
     assert "get_recent_events" in result.evidence_tools
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.approved is True
+    assert result.independent_verifier.status == "approved"
+    assert result.independent_verifier.model_call_count == 2
+    assert result.independent_verifier.evidence_tools == ["get_recent_events"]
     assert any("independent_verifier_status=approved" in item for item in result.traces)
 
 
@@ -455,10 +762,94 @@ async def test_verifier_approval_without_an_evidence_tool_fails_closed():
     assert result.action.type.value == "NOOP"
     assert "independent_verifier_rejected" in result.diagnosis
     assert result.model_call_count == 2
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.approved is False
+    assert result.independent_verifier.status == "missing_evidence_tool"
+    assert result.independent_verifier.model_call_count == 1
     assert any(
         "independent_verifier_status=missing_evidence_tool" in item
         for item in result.traces
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("status", "failed"),
+        ("model_call_count", 0),
+        ("model_call_count", True),
+        ("model_call_count", "1"),
+        ("evidence", []),
+        ("evidence_tools", []),
+    ],
+)
+async def test_raw_approved_verifier_receipt_must_meet_shared_authority_contract(
+    monkeypatch, field, value
+):
+    request = _request(0.1)
+
+    async def forged_receipt(*_args, **_kwargs):
+        receipt = {
+            "approved": True,
+            "status": "approved",
+            "rationale": "claimed approval",
+            "evidence": ["observable verification receipt"],
+            "evidence_tools": ["get_recent_events"],
+            "model_call_count": 1,
+            "input_tokens": 1,
+            "output_tokens": 1,
+            "latency_ms": 1,
+        }
+        receipt[field] = value
+        return receipt
+
+    monkeypatch.setattr(
+        "pex_supervisor.loop.run_independent_verifier_async",
+        forged_receipt,
+    )
+    result = await decide_async(request, model=FakeStructuredModel("SEND_NUDGE"))
+
+    assert result.action.type.value == "NOOP"
+    assert "independent_verifier_rejected" in result.diagnosis
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.approved is True
+    assert result.independent_verifier.authorizes_intervention() is False
+
+
+@pytest.mark.asyncio
+async def test_raw_verifier_numeric_telemetry_does_not_coerce_strings_or_booleans(
+    monkeypatch,
+):
+    request = _request(0.1)
+
+    async def forged_receipt(*_args, **_kwargs):
+        return {
+            "approved": True,
+            "status": "approved",
+            "rationale": "valid decision with forged telemetry scalars",
+            "evidence": ["observable verification receipt"],
+            "evidence_tools": ["get_recent_events"],
+            "model_call_count": 1,
+            "input_tokens": "7",
+            "output_tokens": True,
+            "latency_ms": "9",
+        }
+
+    monkeypatch.setattr(
+        "pex_supervisor.loop.run_independent_verifier_async",
+        forged_receipt,
+    )
+    result = await decide_async(request, model=FakeStructuredModel("SEND_NUDGE"))
+
+    assert result.action.type.value == "SEND_NUDGE"
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.authorizes_intervention() is True
+    assert result.independent_verifier.input_tokens == 0
+    assert result.independent_verifier.output_tokens == 0
+    assert result.independent_verifier.latency_ms == 0
+    assert result.input_tokens == 3
+    assert result.output_tokens == 4
 
 
 @pytest.mark.asyncio

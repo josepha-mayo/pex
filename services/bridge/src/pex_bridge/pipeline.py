@@ -4877,6 +4877,10 @@ class Pipeline:
                 "runtime_version": result.runtime_version,
                 "model_class": result.model_class,
                 "evidence_tools": result.evidence_tools,
+                "independent_verifier": (
+                    result.independent_verifier.model_dump(mode="json")
+                    if result.independent_verifier is not None else None
+                ),
                 "execution_mode": result.execution_mode,
                 "transport": result.transport,
                 "transport_invocation_id": result.transport_invocation_id,

@@ -132,6 +132,13 @@ async def test_cursor_hook_pipeline_deadlines_return_safe_fallbacks(
             cancelled = True
 
     monkeypatch.setattr(bridge_app, timeout_name, 0.01)
+    if hook_name == "beforeSubmitPrompt":
+        # This case tests cancellation inside inference, not SQLite timing.
+        # Authority-read cancellation has separate contract coverage.
+        async def immediate_authority(_session_id):
+            return None
+
+        monkeypatch.setattr(bridge_app, "_cursor_submit_authority", immediate_authority)
     monkeypatch.setattr(state.pipeline, "ingest_event", stalled_pipeline)
     response = await client.post(
         "/v1/hooks/cursor",

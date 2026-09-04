@@ -15,7 +15,11 @@ from uuid import uuid4
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.enums import Authority
 from pex_protocol.redaction import redact_text
-from pex_protocol.supervisor import SupervisorRequest, SupervisorResult
+from pex_protocol.supervisor import (
+    IndependentVerifierReceipt,
+    SupervisorRequest,
+    SupervisorResult,
+)
 from pydantic import BaseModel, ConfigDict, Field
 
 from pex_supervisor.evidence_tools import build_evidence_tools
@@ -81,6 +85,14 @@ def _bounded_nonnegative_int(value: object, *, maximum: int = 1_000_000_000_000)
     except (TypeError, ValueError, OverflowError):
         return 0
     return min(maximum, max(0, parsed))
+
+
+def _strict_verifier_int(value: object, *, maximum: int = 1_000_000_000_000) -> int:
+    """Bound verifier telemetry without coercing booleans or numeric strings."""
+
+    if type(value) is not int:
+        return 0
+    return _bounded_nonnegative_int(value, maximum=maximum)
 
 
 def _bounded_wall_timeout(value: object, *, default: float) -> float:
@@ -922,38 +934,61 @@ def _preserve_deterministic_truth(
     deterministic: ProposedAction,
     semantic: SupervisorResult,
 ) -> SupervisorResult:
-    """A model failure or NOOP may not erase an evidenced local correction."""
+    """Keep triage from manufacturing a decision after semantic inspection.
+
+    The deterministic plan is computed before the supervisor can inspect more
+    evidence.  It may guard a fully verified completion, but it must not turn a
+    failed inference or an intentional semantic NOOP into an intervention.
+    """
+
+    if semantic.inference_status != "completed":
+        if semantic.action.type != InterventionType.NOOP:
+            semantic.action = _action_from_proposal(
+                request,
+                {
+                    "type": "NOOP",
+                    "rationale": "Semantic inference did not complete; defaulting to silence.",
+                    "evidence": ["incomplete_semantic_inference"],
+                },
+            )
+            semantic.diagnosis = f"{semantic.diagnosis}:incomplete_inference_noop"
+            semantic.traces.append("incomplete_inference_action_rejected")
+        return semantic
+
+    # A completed NOOP is a real supervisor decision.  In particular, do not
+    # restore a stale pre-model REQUEST_VERIFICATION after the supervisor has
+    # used its evidence tools and concluded that no action is needed.
+    if semantic.action.type == InterventionType.NOOP:
+        return semantic
 
     verification = (request.scores.features or {}).get("verification") or {}
     acceptance_supported = verification.get("acceptance_status") == "supported"
-    claims_supported = verification.get("status") == "supported"
+    verification_status = verification.get("status")
+    completion_supported = acceptance_supported and verification_status in {
+        "supported",
+        "no_claims",
+    }
     if (
         deterministic.type == InterventionType.NOOP
-        and (acceptance_supported or claims_supported)
-        and semantic.action.type != InterventionType.NOOP
+        and completion_supported
     ):
         semantic.action = deterministic
         semantic.diagnosis = f"{semantic.diagnosis}:verified_noop_preserved"
         semantic.traces.append("verified_noop_preserved")
-        return semantic
-    if deterministic.type != InterventionType.NOOP and semantic.action != deterministic:
-        semantic.action = deterministic
-        semantic.diagnosis = f"{semantic.diagnosis}:deterministic_truth_preserved"
-        semantic.traces.append("deterministic_action_preserved")
     return semantic
 
 
 def _needs_independent_verifier(
     request: SupervisorRequest,
-    deterministic: ProposedAction,
+    _deterministic: ProposedAction,
     semantic: SupervisorResult,
 ) -> bool:
-    """Verify only model-originated actions, never locally evidenced corrections."""
+    """Every completed semantic STOP intervention needs independent evidence."""
     from pex_protocol.enums import EventType
 
     return (
         request.event.event_type == EventType.STOP
-        and deterministic.type == InterventionType.NOOP
+        and semantic.inference_status == "completed"
         and semantic.action.type != InterventionType.NOOP
     )
 
@@ -961,7 +996,7 @@ def _needs_independent_verifier(
 def _apply_verifier_receipt(
     request: SupervisorRequest,
     semantic: SupervisorResult,
-    deterministic: ProposedAction,
+    _deterministic: ProposedAction,
     receipt: dict[str, Any],
 ) -> SupervisorResult:
     status = _clip(_redact_request_text(request, receipt.get("status") or "failed"), 120)
@@ -974,32 +1009,50 @@ def _apply_verifier_receipt(
         _clip(_redact_request_text(request, item), 1_000)
         for item in receipt_evidence[:20]
     ]
+    raw_tools = receipt.get("evidence_tools")
+    receipt_tools = raw_tools if isinstance(raw_tools, (list, tuple)) else []
+    verifier_tools = [
+        _clip(_redact_request_text(request, item), 128)
+        for item in receipt_tools[:20]
+    ]
+    verifier_model_call_count = _strict_verifier_int(
+        receipt.get("model_call_count"), maximum=1_000_000
+    )
+    verifier_input_tokens = _strict_verifier_int(receipt.get("input_tokens"))
+    verifier_output_tokens = _strict_verifier_int(receipt.get("output_tokens"))
+    verifier_latency_ms = _strict_verifier_int(
+        receipt.get("latency_ms"), maximum=86_400_000
+    )
+    semantic.independent_verifier = IndependentVerifierReceipt(
+        approved=receipt.get("approved") is True,
+        status=status,
+        rationale=rationale,
+        evidence=verifier_evidence,
+        evidence_tools=verifier_tools,
+        model_call_count=verifier_model_call_count,
+        input_tokens=verifier_input_tokens,
+        output_tokens=verifier_output_tokens,
+        latency_ms=verifier_latency_ms,
+    )
     semantic.model_call_count = _bounded_nonnegative_int(
-        semantic.model_call_count
-        + _bounded_nonnegative_int(receipt.get("model_call_count"), maximum=1_000_000),
+        semantic.model_call_count + verifier_model_call_count,
         maximum=1_000_000,
     )
     semantic.input_tokens = _bounded_nonnegative_int(
-        semantic.input_tokens + _bounded_nonnegative_int(receipt.get("input_tokens"))
+        semantic.input_tokens + verifier_input_tokens
     )
     semantic.output_tokens = _bounded_nonnegative_int(
-        semantic.output_tokens + _bounded_nonnegative_int(receipt.get("output_tokens"))
+        semantic.output_tokens + verifier_output_tokens
     )
     semantic.latency_ms = _bounded_nonnegative_int(
-        semantic.latency_ms
-        + _bounded_nonnegative_int(receipt.get("latency_ms"), maximum=86_400_000),
+        semantic.latency_ms + verifier_latency_ms,
         maximum=86_400_000,
     )
-    raw_tools = receipt.get("evidence_tools")
-    receipt_tools = raw_tools if isinstance(raw_tools, (list, tuple)) else []
     semantic.evidence_tools = list(
         dict.fromkeys(
             [
                 *semantic.evidence_tools,
-                *(
-                    _clip(_redact_request_text(request, item), 128)
-                    for item in receipt_tools[:20]
-                ),
+                *verifier_tools,
             ]
         )
     )[:20]
@@ -1008,10 +1061,17 @@ def _apply_verifier_receipt(
         traces.append(f"independent_verifier_rationale={rationale}")
     traces.extend(f"independent_verifier_evidence={item}" for item in verifier_evidence)
     semantic.traces = [_clip(item, 4_000) for item in traces[-256:]]
-    if receipt.get("approved") is True:
+    if semantic.independent_verifier.authorizes_intervention():
         semantic.diagnosis = f"{semantic.diagnosis}:independent_verifier_approved"
         return semantic
-    semantic.action = deterministic
+    semantic.action = _action_from_proposal(
+        request,
+        {
+            "type": "NOOP",
+            "rationale": "Independent verification did not authorize the intervention.",
+            "evidence": [f"independent_verifier:{status}"],
+        },
+    )
     semantic.diagnosis = f"{semantic.diagnosis}:independent_verifier_rejected"
     return semantic
 
@@ -1040,6 +1100,24 @@ async def decide_async(
         )
     try:
         semantic = await run_strands_async(request, model=model)
+    except Exception as exc:
+        detail = type(exc).__name__
+        return SupervisorResult(
+            action=_action_from_proposal(
+                request,
+                {
+                    "type": "NOOP",
+                    "rationale": "Strands supervisor could not start; defaulting to silence.",
+                    "evidence": ["strands_setup_failed"],
+                },
+            ),
+            used_llm=False,
+            diagnosis=f"strands_unavailable:{detail}",
+            traces=[detail],
+            inference_status="failed",
+            backend=describe_backend().get("backend"),
+        )
+    try:
         semantic = _preserve_deterministic_truth(request, deterministic, semantic)
         if _needs_independent_verifier(request, deterministic, semantic):
             try:
@@ -1066,14 +1144,20 @@ async def decide_async(
         return semantic
     except Exception as exc:
         detail = type(exc).__name__
-        deterministic.payload["degraded"] = detail
-        return SupervisorResult(
-            action=deterministic,
-            used_llm=False,
-            diagnosis=f"strands_unavailable:{detail}",
-            traces=[detail],
-            backend=describe_backend().get("backend"),
+        semantic.action = _action_from_proposal(
+            request,
+            {
+                "type": "NOOP",
+                "rationale": "Supervisor arbitration failed; defaulting to silence.",
+                "evidence": ["post_inference_arbitration_failed"],
+            },
         )
+        semantic.diagnosis = f"{semantic.diagnosis}:post_inference_failure:{detail}"
+        semantic.traces = [
+            *semantic.traces,
+            f"post_inference_failure:{detail}",
+        ][-256:]
+        return semantic
 
 
 def decide(request: SupervisorRequest, model=None, force_llm: bool = False) -> SupervisorResult:

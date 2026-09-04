@@ -16,16 +16,65 @@ class PromptClass(StrEnum):
     AMBIGUOUS = "dangerous_ambiguity"
 
 
-_OVERRIDE_MARKERS = (
-    "ignore previous",
-    "override",
-    "new goal",
-    "instead,",
-    "intentionally override",
-    "change of plan",
+_OVERRIDE_SPEECH_ACT = re.compile(
+    r"^\s*(?:"
+    r"(?:please\s+)?(?:intentionally\s+)?override\b"
+    r"|i\s+(?:want|intend|choose)\s+to\s+(?:intentionally\s+)?override\b"
+    r"|change\s+of\s+plan\s*[:;,.-]"
+    r"|(?:please\s+)?ignore\s+(?:the\s+)?(?:previous|active|existing)\b"
+    r")",
 )
-_AMBIGUOUS_MARKERS = ("maybe", "whatever", "just quickly", "hack")
+_NEGATED_ACTION = re.compile(
+    r"(?:\bdo\s+not|\bdon['’]t|\bnever|\bwithout)\s+"
+    r"(?:(?:ever|intentionally|accidentally|really)\s+)?$"
+)
+_WORD = re.compile(r"[a-z0-9]+(?:[_.-][a-z0-9]+)*")
 _TOKEN = re.compile(r"[a-z0-9][a-z0-9_.-]{3,}")
+_LEDGER_OBJECTS = {
+    "constraint",
+    "constraints",
+    "decision",
+    "decisions",
+    "restriction",
+    "restrictions",
+    "rule",
+    "rules",
+}
+_META_OR_CONDITIONAL = {
+    "could",
+    "conditional",
+    "describe",
+    "described",
+    "describing",
+    "docs",
+    "document",
+    "documented",
+    "documenting",
+    "documentation",
+    "example",
+    "examples",
+    "explain",
+    "explained",
+    "explaining",
+    "hypothetical",
+    "if",
+    "mention",
+    "mentioned",
+    "mentioning",
+    "might",
+    "quote",
+    "quoted",
+    "quoting",
+    "readme",
+    "say",
+    "should",
+    "test",
+    "testing",
+    "tests",
+    "unless",
+    "would",
+    "when",
+}
 
 
 @dataclass(frozen=True)
@@ -52,13 +101,17 @@ def lint_prompt(
     if not goal or not prompt.strip():
         return PromptLint(PromptClass.CONSISTENT)
     text = prompt.lower()
-    if any(marker in text for marker in _OVERRIDE_MARKERS):
-        return PromptLint(PromptClass.OVERRIDE)
-
     matched = _matching_constraints(goal, text) + _matching_decisions(decisions or (), text)
+    override_scope = _override_authority_scope(text)
+    if override_scope is not None:
+        override_targets = _matching_constraints(goal, override_scope) + _matching_decisions(
+            decisions or (), override_scope
+        )
+        if override_targets:
+            return PromptLint(PromptClass.OVERRIDE, matched_constraints=override_targets)
     if matched:
         return PromptLint(PromptClass.CONTRADICTION, matched_constraints=matched)
-    if any(word in text for word in _AMBIGUOUS_MARKERS):
+    if _dangerously_ambiguous(text):
         return PromptLint(PromptClass.AMBIGUOUS)
     overlap = _refinement_overlap(goal, text)
     if len(overlap) >= 2:
@@ -71,14 +124,16 @@ def _matching_constraints(goal: Goal, text: str) -> tuple[str, ...]:
     for constraint in goal.constraints + goal.forbidden_outcomes + goal.non_goals:
         lowered = constraint.lower()
         negated = None
-        if lowered.startswith("do not ") or lowered.startswith("don't "):
-            negated = lowered.split(" ", 2)[-1]
+        if lowered.startswith("do not "):
+            negated = lowered.removeprefix("do not ")
+        elif lowered.startswith(("don't ", "don’t ")):
+            negated = lowered[6:]
         elif "without" in lowered:
             negated = lowered.split("without", 1)[-1].strip()
         if not negated:
             continue
-        tokens = [token for token in negated.replace(".", " ").split() if len(token) > 3]
-        if tokens and all(token in text for token in tokens[:3]):
+        tokens = [token for token in _WORD.findall(negated) if len(token) > 3]
+        if _matches_forbidden_terms(text, tokens[:3]):
             matched.append(constraint)
     return tuple(matched)
 
@@ -96,12 +151,8 @@ def _matching_decisions(
             continue
         haystack = " ".join([decision.statement, *decision.alternatives_rejected])
         if kind == "rejected_approach" or decision.alternatives_rejected:
-            tokens = [
-                token
-                for token in haystack.lower().replace(".", " ").split()
-                if len(token) > 3
-            ]
-            if tokens and all(token in text for token in tokens[:4]):
+            tokens = [token for token in _WORD.findall(haystack.lower()) if len(token) > 3]
+            if _matches_forbidden_terms(text, tokens[:4]):
                 matched.append(decision.statement)
             continue
         fake = Goal(
@@ -133,3 +184,90 @@ def _refinement_overlap(goal: Goal, text: str) -> tuple[str, ...]:
 
 def _tokens(value: str) -> set[str]:
     return set(_TOKEN.findall(value.lower()))
+
+
+def _matches_forbidden_terms(text: str, terms: list[str]) -> bool:
+    """Find a forbidden action mention that is not a simple negated restatement."""
+
+    occurrences = list(_WORD.finditer(text))
+    words = {occurrence.group() for occurrence in occurrences}
+    if not terms or any(term not in words for term in terms):
+        return False
+    for occurrence in occurrences:
+        if occurrence.group() != terms[0]:
+            continue
+        prefix = text[max(0, occurrence.start() - 48) : occurrence.start()]
+        if not _NEGATED_ACTION.search(prefix):
+            return True
+    return False
+
+
+def _dangerously_ambiguous(text: str) -> bool:
+    """Require an unquoted shortcut plus speed/vagueness; ordinary hedging is safe."""
+
+    words = set(_WORD.findall(_without_quoted_or_code(text)))
+    return "hack" in words and bool(words & {"maybe", "whatever", "quick", "quickly"})
+
+
+def _override_authority_scope(text: str) -> str | None:
+    """Return only the direct, unquoted opening directive that may carry authority."""
+
+    speech_act = _OVERRIDE_SPEECH_ACT.match(text)
+    if speech_act is None:
+        return None
+    unquoted = _without_quoted_or_code(text)
+    boundary = re.search(r"[.!?;\r\n]", unquoted)
+    scope = unquoted[: boundary.start() if boundary else len(unquoted)]
+    words = set(_WORD.findall(scope))
+    direct_target = _WORD.findall(scope[speech_act.end() :])[:8]
+    if not set(direct_target) & _LEDGER_OBJECTS or words & _META_OR_CONDITIONAL:
+        return None
+    return scope
+
+
+def _without_quoted_or_code(text: str) -> str:
+    """Blank quoted, inline-code, and fenced-code spans, including unclosed spans."""
+
+    result = list(text)
+    index = 0
+    mode: str | None = None
+    closing = ""
+    while index < len(text):
+        if mode == "fence":
+            if text.startswith("```", index):
+                result[index : index + 3] = "   "
+                index += 3
+                mode = None
+            else:
+                result[index] = " "
+                index += 1
+            continue
+        if mode is not None:
+            result[index] = " "
+            if text[index] == closing and (index == 0 or text[index - 1] != "\\"):
+                mode = None
+            index += 1
+            continue
+        if text.startswith("```", index):
+            result[index : index + 3] = "   "
+            index += 3
+            mode = "fence"
+            continue
+        character = text[index]
+        if character == "`":
+            result[index] = " "
+            mode, closing = "inline", "`"
+        elif character in {'"', "“", "‘"}:
+            result[index] = " "
+            mode = "quote"
+            closing = {'"': '"', "“": "”", "‘": "’"}[character]
+        elif character == "'" and not (
+            index > 0
+            and index + 1 < len(text)
+            and text[index - 1].isalnum()
+            and text[index + 1].isalnum()
+        ):
+            result[index] = " "
+            mode, closing = "quote", "'"
+        index += 1
+    return "".join(result)

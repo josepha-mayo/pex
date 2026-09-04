@@ -18,8 +18,14 @@ from typing import Any, Literal
 from urllib.parse import urlsplit, urlunsplit
 from uuid import NAMESPACE_URL, uuid5
 
+from pex_protocol.actions import InterventionType
+from pex_protocol.enums import EventType
 from pex_protocol.session import HarnessEvent
-from pex_protocol.supervisor import SupervisorRequest, SupervisorResult
+from pex_protocol.supervisor import (
+    INDEPENDENT_VERIFIER_EVIDENCE_TOOLS,
+    SupervisorRequest,
+    SupervisorResult,
+)
 from pex_supervisor.loop import (
     _action_from_proposal,
     _preserve_deterministic_truth,
@@ -452,6 +458,58 @@ def _validate_request_binding(request: SupervisorRequest) -> None:
             )
 
 
+def _remote_verifier_contract_failure(
+    request: SupervisorRequest,
+    result: SupervisorResult,
+) -> str | None:
+    """Return a closed reason when a remote STOP action lacks verifier authority."""
+
+    if (
+        request.event.event_type != EventType.STOP
+        or result.inference_status != "completed"
+        or result.action.type == InterventionType.NOOP
+    ):
+        return None
+    receipt = result.independent_verifier
+    if receipt is None:
+        return "missing_receipt"
+    if not receipt.authorizes_intervention():
+        if receipt.approved is not True:
+            return "not_approved"
+        if receipt.status != "approved":
+            return "invalid_status"
+        if receipt.model_call_count < 1:
+            return "missing_verifier_call"
+        if not any(item.strip() for item in receipt.evidence):
+            return "missing_evidence"
+        if not (
+            INDEPENDENT_VERIFIER_EVIDENCE_TOOLS.intersection(
+                receipt.evidence_tools
+            )
+        ):
+            return "missing_evidence_tool"
+        return "invalid_receipt"
+    if not result.used_llm or result.model_call_count <= receipt.model_call_count:
+        return "missing_main_inference"
+    verifier_tools = set(receipt.evidence_tools)
+    verification = (request.scores.features or {}).get("verification") or {}
+    if not isinstance(verification, Mapping):
+        return "invalid_verification_state"
+    verification_only = bool(verifier_tools) and verifier_tools <= {
+        "get_goal",
+        "run_verification",
+    }
+    if (
+        verification_only
+        and str(verification.get("status") or "unavailable")
+        in {"no_claims", "uncertain", "unavailable"}
+        and str(verification.get("acceptance_status") or "unavailable")
+        in {"uncertain", "unavailable"}
+    ):
+        return "uncertain_evidence"
+    return None
+
+
 def request_envelope(request: SupervisorRequest, *, max_bytes: int) -> bytes:
     _validate_request_binding(request)
     payload = {
@@ -729,6 +787,18 @@ class AgentCoreSupervisorClient:
             _safe_text(item, 200, local_values)
             for item in list(result.evidence_tools)[:20]
         ]
+        verifier = result.independent_verifier
+        if verifier is not None:
+            verifier.status = _safe_text(verifier.status, 120, local_values)
+            verifier.rationale = _safe_text(verifier.rationale, 2_000, local_values)
+            verifier.evidence = [
+                _safe_text(item, 1_000, local_values)
+                for item in list(verifier.evidence)[:20]
+            ]
+            verifier.evidence_tools = [
+                _safe_text(item, 128, local_values)
+                for item in list(verifier.evidence_tools)[:20]
+            ]
         for field in (
             "model_name",
             "inference_request_id",
@@ -749,6 +819,30 @@ class AgentCoreSupervisorClient:
         result.output_tokens = max(0, min(result.output_tokens, 1_000_000_000))
         result.latency_ms = max(0, min(result.latency_ms, 86_400_000))
         result.model_call_count = max(0, min(result.model_call_count, 10_000))
+
+        verifier_failure = _remote_verifier_contract_failure(request, result)
+        if verifier_failure is not None:
+            result.action = _action_from_proposal(
+                request,
+                {
+                    "type": "NOOP",
+                    "rationale": (
+                        "The remote semantic intervention lacked an approved "
+                        "independent-verifier receipt; defaulting to silence."
+                    ),
+                    "evidence": [f"agentcore_verifier_contract:{verifier_failure}"],
+                    "confidence": 1.0,
+                    "risk": "none",
+                },
+            )
+            result.diagnosis = (
+                f"{result.diagnosis}:agentcore_verifier_contract_rejected:"
+                f"{verifier_failure}"
+            ).strip(":")
+            result.traces = [
+                *result.traces[-19:],
+                f"agentcore_verifier_contract={verifier_failure}",
+            ]
 
         metadata = response.get("ResponseMetadata") or {}
         result.execution_mode = "agentcore"
@@ -796,10 +890,22 @@ class SupervisorRouter:
     def _remote_failure(request: SupervisorRequest, exc: Exception) -> SupervisorResult:
         detail = type(exc).__name__
         return SupervisorResult(
-            action=plan_deterministic(request),
+            action=_action_from_proposal(
+                request,
+                {
+                    "type": "NOOP",
+                    "rationale": (
+                        "AgentCore semantic supervision was unavailable; "
+                        "defaulting to silence."
+                    ),
+                    "evidence": [f"agentcore_unavailable:{detail}"],
+                    "confidence": 1.0,
+                    "risk": "none",
+                },
+            ),
             used_llm=False,
             diagnosis=f"agentcore_unavailable:{detail}",
-            traces=[detail, "local_deterministic_preserved"],
+            traces=[detail, "agentcore_failure_noop"],
             inference_status="failed",
             execution_mode="agentcore",
             transport=TRANSPORT_NAME,

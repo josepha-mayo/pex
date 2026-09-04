@@ -409,8 +409,8 @@ async def test_restart_after_planner_result_reuses_first_evidence_generation(tmp
 
 
 @pytest.mark.asyncio
-async def test_direct_agentcore_path_preserves_local_acceptance_gap(tmp_path, monkeypatch):
-    store, _, session, pipeline = await _pipeline(tmp_path)
+async def test_direct_agentcore_noop_does_not_revive_a_preplanned_nudge(tmp_path, monkeypatch):
+    store, adapters, session, pipeline = await _pipeline(tmp_path)
     now = datetime.now(UTC)
     goal = Goal(
         id="goal-agentcore-gap",
@@ -456,8 +456,11 @@ async def test_direct_agentcore_path_preserves_local_acceptance_gap(tmp_path, mo
     try:
         intervention = await pipeline.ingest_event(event, session)
         assert intervention is not None
-        assert intervention.proposed_action.type == InterventionType.SEND_NUDGE
-        assert "report.txt" in str(intervention.proposed_action.payload)
+        assert intervention.proposed_action.type == InterventionType.NOOP
+        assert intervention.result == "noop"
+        assert intervention.metadata["inference_status"] == "completed"
+        assert "report.txt" in intervention.metadata["verification"]["missing_files"]
+        assert adapters.synthetic.inbox[session.id] == []
         assert remote.calls == 1
     finally:
         await _drain_presentations(pipeline)

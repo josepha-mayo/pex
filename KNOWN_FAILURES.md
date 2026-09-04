@@ -1,5 +1,9 @@
 # Known failures
 
+## Production supervision repair — 4 Sep 2026 continuation
+
+Current work closes reproduced prompt-policy bypass, false human-override classification, stale deterministic-plan replacement of semantic decisions, AgentCore failure fallback, and loss of post-inference provenance. Strict independent-verifier receipts are required for remote STOP interventions and retained in the durable audit. Final stable-source verification passed **334 tests**; the handoff records scope and push receipts. Bounded lexical intent triage is not a full semantic parser; ambiguous and quoted conflicts may conservatively ask instead of silently creating durable authority. Cursor response construction/prepared stop delivery is not vendor acceptance proof. Local fake-model tests cannot establish live independent Strands quality, same-session effectiveness, benchmark improvement, or submission readiness.
+
 ## Cursor evidence boundary — 4 Sep 2026 continuation
 
 Private nonce-bound observed capture and prompt-release-to-stop timing are now implemented; final verification/push receipts are recorded in the handoff. This does not provide authenticated writers, backend acceptance, full vendor-event coverage, human-action coverage, worker-only duration, or total task duration. Stop-supplied benchmark timing/human logs are ignored. Partial evidence stays diagnostic; the official attempt terminates with an abort. Runtime OS isolation and enforced Cursor network policy remain missing and real benchmark calls remain blocked before dispatch.

@@ -28,7 +28,12 @@ from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.enums import Authority, EventType, HarnessType, SessionStatus
 from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
-from pex_protocol.supervisor import SupervisorRequest, SupervisorResult, TrajectoryScores
+from pex_protocol.supervisor import (
+    IndependentVerifierReceipt,
+    SupervisorRequest,
+    SupervisorResult,
+    TrajectoryScores,
+)
 from pydantic import ValidationError
 
 ARN = (
@@ -127,6 +132,37 @@ def _result(
         runtime="strands-agents",
         auth_mode="aws_sigv4",
     )
+
+
+def _approved_verifier_receipt() -> IndependentVerifierReceipt:
+    return IndependentVerifierReceipt(
+        approved=True,
+        status="approved",
+        rationale="A separate verifier checked observable evidence.",
+        evidence=["observed verification receipt"],
+        evidence_tools=["run_verification"],
+        model_call_count=2,
+        input_tokens=4,
+        output_tokens=3,
+        latency_ms=2,
+    )
+
+
+def _remote_nudge(request: SupervisorRequest) -> SupervisorResult:
+    remote = _result(request)
+    remote.action = ProposedAction(
+        type=InterventionType.SEND_NUDGE,
+        session_id=request.session.id,
+        goal_id=request.goal.id,
+        payload={"text": "Inspect src/report.txt before stopping."},
+        rationale="Observed report evidence is incomplete.",
+        evidence=["missing:src/report.txt"],
+        risk=RiskLevel.NONE,
+        reversible=True,
+        authority_required=Authority.HUMAN,
+        requires_capability="stop",
+    )
+    return remote
 
 
 class FakeAwsClient:
@@ -236,19 +272,9 @@ async def test_agentcore_client_invokes_bound_runtime_with_sanitized_payload(tmp
 @pytest.mark.asyncio
 async def test_agentcore_action_is_reconstructed_under_local_authority_contract(tmp_path):
     request = _request()
-    remote = _result(request)
-    remote.action = ProposedAction(
-        type=InterventionType.SEND_NUDGE,
-        session_id=request.session.id,
-        goal_id=request.goal.id,
-        payload={"text": "Inspect src/report.txt before stopping."},
-        rationale="Observed report evidence is incomplete.",
-        evidence=["missing:src/report.txt"],
-        risk=RiskLevel.NONE,
-        reversible=True,
-        authority_required=Authority.HUMAN,
-        requires_capability="stop",
-    )
+    remote = _remote_nudge(request)
+    remote.independent_verifier = _approved_verifier_receipt()
+    remote.model_call_count = 3
     client = AgentCoreSupervisorClient(
         _settings(tmp_path),
         client=FakeAwsClient(_aws_response(request, remote)),
@@ -260,6 +286,213 @@ async def test_agentcore_action_is_reconstructed_under_local_authority_contract(
     assert result.action.reversible is False
     assert result.action.authority_required == Authority.LOCAL_POLICY
     assert result.action.requires_capability == "send_message"
+    assert result.independent_verifier == remote.independent_verifier
+
+
+@pytest.mark.asyncio
+async def test_agentcore_stale_runtime_action_without_verifier_receipt_is_noop(tmp_path):
+    request = _request()
+    remote = _remote_nudge(request)
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path),
+        client=FakeAwsClient(_aws_response(request, remote)),
+    )
+
+    result = await client.decide(request)
+
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.payload == {}
+    assert result.action.evidence == [
+        "agentcore_verifier_contract:missing_receipt"
+    ]
+    assert result.inference_status == "completed"
+    assert result.transport_status == "completed"
+    assert result.independent_verifier is None
+    assert "agentcore_verifier_contract_rejected:missing_receipt" in result.diagnosis
+
+
+@pytest.mark.asyncio
+async def test_agentcore_rejected_verifier_receipt_is_preserved_but_action_is_noop(tmp_path):
+    request = _request()
+    remote = _remote_nudge(request)
+    remote.independent_verifier = IndependentVerifierReceipt(
+        approved=False,
+        status="rejected",
+        rationale="The proposed correction was not supported.",
+        evidence=["report evidence was inconclusive"],
+        evidence_tools=["inspect_artifact"],
+        model_call_count=1,
+    )
+    remote.model_call_count = 2
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path),
+        client=FakeAwsClient(_aws_response(request, remote)),
+    )
+
+    result = await client.decide(request)
+
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.evidence == ["agentcore_verifier_contract:not_approved"]
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.approved is False
+    assert result.independent_verifier.status == "rejected"
+    assert result.transport_status == "completed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("receipt_update", "reason"),
+    [
+        ({"status": "rejected"}, "invalid_status"),
+        ({"model_call_count": 0}, "missing_verifier_call"),
+        ({"evidence": []}, "missing_evidence"),
+        ({"evidence_tools": []}, "missing_evidence_tool"),
+        ({"evidence_tools": ["get_goal"]}, "missing_evidence_tool"),
+    ],
+)
+async def test_agentcore_incomplete_approved_verifier_receipt_is_noop(
+    tmp_path,
+    receipt_update,
+    reason,
+):
+    request = _request()
+    remote = _remote_nudge(request)
+    remote.independent_verifier = _approved_verifier_receipt().model_copy(
+        update=receipt_update
+    )
+    remote.model_call_count = 3
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path),
+        client=FakeAwsClient(_aws_response(request, remote)),
+    )
+
+    result = await client.decide(request)
+
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.evidence == [f"agentcore_verifier_contract:{reason}"]
+    assert result.transport_status == "completed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("used_llm", "aggregate_calls"),
+    [(False, 3), (True, 2)],
+)
+async def test_agentcore_verifier_receipt_requires_distinct_main_inference(
+    tmp_path,
+    used_llm,
+    aggregate_calls,
+):
+    request = _request()
+    remote = _remote_nudge(request)
+    remote.independent_verifier = _approved_verifier_receipt()
+    remote.used_llm = used_llm
+    remote.model_call_count = aggregate_calls
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path),
+        client=FakeAwsClient(_aws_response(request, remote)),
+    )
+
+    result = await client.decide(request)
+
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.evidence == [
+        "agentcore_verifier_contract:missing_main_inference"
+    ]
+    assert result.transport_status == "completed"
+
+
+@pytest.mark.asyncio
+async def test_agentcore_runtime_cannot_approve_from_uncertain_verification_alone(tmp_path):
+    request = _request()
+    request.scores.features["verification"] = {
+        "status": "uncertain",
+        "acceptance_status": "uncertain",
+        "evidence": ["no_external_check"],
+    }
+    remote = _remote_nudge(request)
+    remote.independent_verifier = _approved_verifier_receipt()
+    remote.model_call_count = 3
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path),
+        client=FakeAwsClient(_aws_response(request, remote)),
+    )
+
+    result = await client.decide(request)
+
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.evidence == [
+        "agentcore_verifier_contract:uncertain_evidence"
+    ]
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.approved is True
+    assert result.transport_status == "completed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "malformed_update",
+    [
+        {"model_call_count": -1},
+        {"model_call_count": True},
+        {"approved": "true"},
+    ],
+)
+async def test_agentcore_malformed_verifier_receipt_is_protocol_uncertain(
+    tmp_path,
+    malformed_update,
+):
+    request = _request()
+    remote = _remote_nudge(request)
+    response = _aws_response(request, remote)
+    envelope = json.loads(response["response"].read())
+    receipt = {
+        "approved": True,
+        "status": "approved",
+        "evidence": ["observed verification receipt"],
+        "evidence_tools": ["run_verification"],
+        "model_call_count": 1,
+    }
+    receipt.update(malformed_update)
+    envelope["result"]["independent_verifier"] = receipt
+    response["response"] = io.BytesIO(json.dumps(envelope).encode())
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path),
+        client=FakeAwsClient(response),
+    )
+
+    with pytest.raises(AgentCoreDeliveryUncertainError) as caught:
+        await client.decide(request)
+
+    assert caught.value.reason_code == "response_protocol_failure"
+
+
+@pytest.mark.asyncio
+async def test_agentcore_verifier_receipt_is_redacted_before_local_provenance(tmp_path):
+    request = _request()
+    remote = _remote_nudge(request)
+    secret = "super-secret-verifier-value"
+    workspace = request.session.cwd
+    remote.independent_verifier = _approved_verifier_receipt().model_copy(
+        update={
+            "rationale": f"Checked {workspace}; token={secret}",
+            "evidence": [f"Observed {workspace}\\report.txt password={secret}"],
+        }
+    )
+    remote.model_call_count = 3
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path),
+        client=FakeAwsClient(_aws_response(request, remote)),
+    )
+
+    result = await client.decide(request)
+    rendered = result.model_dump_json()
+
+    assert result.action.type == InterventionType.SEND_NUDGE
+    assert workspace.casefold() not in rendered.casefold()
+    assert secret not in rendered
+    assert "<workspace>" in rendered
+    assert "[REDACTED:credential_assignment]" in rendered
 
 
 @pytest.mark.asyncio
@@ -651,9 +884,11 @@ def _acceptance_gap_request() -> SupervisorRequest:
 
 
 @pytest.mark.asyncio
-async def test_agentcore_unavailable_keeps_local_acceptance_gap(tmp_path, monkeypatch):
+async def test_agentcore_predispatch_failure_defaults_to_noop(tmp_path, monkeypatch):
     request = _acceptance_gap_request()
-    remote = FakeRemote(error=AgentCorePreDispatchError("local request invalid"))
+    remote = FakeRemote(
+        error=AgentCorePreDispatchError("local request invalid: SECRET_PROVIDER_BODY")
+    )
     router = SupervisorRouter(_settings(tmp_path), agentcore_client=remote)
     local_calls = 0
 
@@ -667,25 +902,72 @@ async def test_agentcore_unavailable_keeps_local_acceptance_gap(tmp_path, monkey
 
     assert remote.calls == 1
     assert local_calls == 0
-    assert result.action.type == InterventionType.SEND_NUDGE
-    text = str(result.action.payload.get("text") or "")
-    assert "27" in text and "30" in text
-    assert not text.startswith("PEX:")
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.payload == {}
+    assert result.action.evidence == [
+        "agentcore_unavailable:AgentCorePreDispatchError"
+    ]
     assert result.used_llm is False
+    assert result.inference_status == "failed"
+    assert result.execution_mode == "agentcore"
+    assert result.transport == "bedrock-agentcore"
     assert result.transport_status == "failed"
+    assert result.transport_invocation_id == transport_invocation_id(request)
+    assert result.diagnosis == "agentcore_unavailable:AgentCorePreDispatchError"
+    assert result.traces == ["AgentCorePreDispatchError", "agentcore_failure_noop"]
     assert "SECRET_PROVIDER_BODY" not in result.model_dump_json()
 
 
 @pytest.mark.asyncio
-async def test_agentcore_remote_noop_cannot_erase_local_acceptance_gap(tmp_path):
+async def test_completed_agentcore_noop_is_not_replaced_by_local_acceptance_gap(tmp_path):
     request = _acceptance_gap_request()
     remote = FakeRemote(result=_result(request))
     router = SupervisorRouter(_settings(tmp_path), agentcore_client=remote)
     result = await router.decide(request, local_model=object())
     assert remote.calls == 1
-    assert result.action.type == InterventionType.SEND_NUDGE
-    assert "27" in str(result.action.payload.get("text") or "")
-    assert "deterministic_action_preserved" in result.traces
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.payload == {}
+    assert result.inference_status == "completed"
+    assert "deterministic_action_preserved" not in result.traces
+
+
+@pytest.mark.asyncio
+async def test_agentcore_invalid_configuration_defaults_to_bound_noop(tmp_path, monkeypatch):
+    request = _acceptance_gap_request()
+    settings = Settings(
+        home=tmp_path,
+        supervisor_mode="agentcore",
+        agentcore_runtime_arn="operator-controlled-invalid-runtime-arn",
+    )
+    local_calls = 0
+
+    async def local(*_args, **_kwargs):
+        nonlocal local_calls
+        local_calls += 1
+        return _result(request)
+
+    monkeypatch.setattr("pex_bridge.agentcore.decide_async", local)
+    router = SupervisorRouter(settings)
+    result = await router.decide(request, local_model=object())
+
+    assert router.agentcore is None
+    assert local_calls == 0
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.session_id == request.session.id
+    assert result.action.goal_id == request.goal.id
+    assert result.action.payload == {}
+    assert result.action.evidence == [
+        "agentcore_unavailable:AgentCoreConfigurationError"
+    ]
+    assert result.used_llm is False
+    assert result.inference_status == "failed"
+    assert result.execution_mode == "agentcore"
+    assert result.transport == "bedrock-agentcore"
+    assert result.transport_status == "failed"
+    assert result.transport_invocation_id == transport_invocation_id(request)
+    assert result.diagnosis == "agentcore_unavailable:AgentCoreConfigurationError"
+    assert result.traces == ["AgentCoreConfigurationError", "agentcore_failure_noop"]
+    assert "operator-controlled-invalid-runtime-arn" not in result.model_dump_json()
 
 
 @pytest.mark.asyncio
