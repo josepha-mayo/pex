@@ -4,6 +4,8 @@
 
 **This supersedes the earlier zero-execution-blocker claim and the previous paragraph's pending gate repair. The app is not submission-ready. The goal remains active; continue from real requirements and evidence, with all three specs as authority.**
 
+**Pushed receipt:** safety source checkpoint **`04e77f8dc909917d34fe32281837a8f6b5f8844c`** (`Restore implementation-owned benchmark execution gates`) is on `origin/main`; `git rev-parse HEAD` and `git ls-remote origin refs/heads/main` matched exactly, and the tree was clean. This paragraph is the receipt-only follow-up; no protection bypass or live run was used.
+
 The Cursor receipt slice below was committed as **`bff82bdcdce28546bbb504020ad750ab88264b71`** (`Bind Cursor continuation to ordered hook receipts`), pushed to `origin/main`, and verified against `git ls-remote` with exact local/remote equality and a clean tree.
 
 The separate safety repair now makes `_execution_preflight_blockers(arm)` check the suite, implementation-owned runtime capability blockers, and static anti-leakage rules. Current reality is explicit: **no OS-isolated worker/PEX/hidden-evaluator backend is implemented**; plain `python -I` is not a sandbox. Cursor additionally has no controller-enforced runtime network receipt; this Cursor-specific blocker does not apply to Codex arms. There is no environment switch or manifest string that can assert these capabilities into existence.
