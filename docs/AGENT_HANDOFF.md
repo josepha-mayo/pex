@@ -4,6 +4,8 @@
 
 **Continuation of the active hackathon goal, not submission readiness. Read all three binding specs before continuing. No live model/provider call, installed/global hook change, deployment, package, freeze, or submission occurred in this slice. Verified source pushes remain authorized.**
 
+**Pushed source receipt:** `ec64f63e724a6aac4d70c2012343580536594b0b` (`Capture nonce-bound Cursor observations and terminal failures`) is on `origin/main`. Local `HEAD` and `git ls-remote origin refs/heads/main` matched exactly and the working tree was clean. This paragraph is the documentation-only receipt follow-up. No push protection was bypassed.
+
 ### Implementation and evidence boundaries
 
 - New schema-2 private Cursor control binds `run_id`, `arm`, `task`, resolved workspace, the preparation receipt's random nonce, and the unchanged public prompt SHA-256. It selects a private `receipts` spool outside the worker workspace. Both Cursor arms use the same capture surfaces. Capture identity is controller-run identity; vendor `generation_id` can change each user message and is not treated as a stable conversation identifier.

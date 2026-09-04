@@ -8,6 +8,8 @@
 
 ## Current source work — nonce-bound Cursor capture, 4 Sep 2026
 
+Source checkpoint **`ec64f63e724a6aac4d70c2012343580536594b0b`** is pushed to `origin/main`; exact local/remote equality and a clean working tree were verified. This line is the documentation-only receipt follow-up.
+
 Cursor collection now uses private run-bound prompt-release/activity/stop receipts instead of trusting timing and human-action fields in stop payloads. The append-only observed journal remains explicitly partial: human counts, complete raw-log hash, worker-only time, and total task duration are unavailable. The observed prompt-to-stop interval includes PEX overhead exactly once. Partial results are scratch diagnostics, with an immutable terminal abort in the official chain; timeout/failure attempts cannot silently disappear or resume.
 
 Stable six-file capture/integration/safety verification passed **248 tests in 514.73 seconds**; after the final collector-timeout classification correction and added both-arm cancellation coverage, the affected lifecycle/safety/leakage selection passed **35 tests in 74.39 seconds**. Final Ruff/diff checks passed; independent hook and lifecycle reviews are **APPROVE**. Collector timeout means missing harness evidence, not proven worker-budget exhaustion. See `docs/AGENT_HANDOFF.md` for push receipts and limitations. No live/provider run or global hook mutation occurred. Read-only plan remains **2 execution blockers, 7 report blockers, unfrozen**; overall **NO-GO** is unchanged.
