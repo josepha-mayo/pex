@@ -1,5 +1,8 @@
+from datetime import UTC
+
+
 def test_strands_agent_constructs_and_receives_normalized_event():
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from pex_protocol.enums import EventType, HarnessType, SessionStatus
     from pex_protocol.goal import Goal
@@ -8,12 +11,13 @@ def test_strands_agent_constructs_and_receives_normalized_event():
     from pex_supervisor.loop import decide
     from pex_supervisor.planner import plan_deterministic
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     request = SupervisorRequest(
         session=HarnessSession(
             id="synthetic:demo",
             harness_type=HarnessType.SYNTHETIC,
             vendor_session_id="demo",
+            project_id="p",
             status=SessionStatus.STOPPED,
             goal_id="g",
         ),

@@ -1,3 +1,5 @@
+import ipaddress
+
 from pex_supervisor.search import scrape_url, web_search
 
 
@@ -102,8 +104,8 @@ def test_brave_serper_tavily_endpoints(monkeypatch):
         def post(self, url, headers=None, json=None):
             if "tavily" in url:
                 assert url == "https://api.tavily.com/search"
-                assert headers["Authorization"] == "Bearer t"
-                assert "api_key" not in json
+                assert "Authorization" not in headers
+                assert json["api_key"] == "t"
                 return _Resp(
                     {"results": [{"title": "T", "url": "https://tavily.com", "content": "c"}]}
                 )
@@ -131,6 +133,14 @@ def test_search_blocks_private_benchmark_oracles(monkeypatch):
     local = scrape_url("http://127.0.0.1/metadata.yaml")
     assert local["ok"] is False
 
+    monkeypatch.setattr(
+        "pex_supervisor.search.resolve_stream_addresses",
+        lambda hostname, port: {ipaddress.ip_address("169.254.169.254")},
+    )
+    rebound = scrape_url("https://models.example.test/docs")
+    assert rebound["ok"] is False
+    assert "non-global" in rebound["error"]
+
 
 def test_firecrawl_scrape_v2(monkeypatch):
     monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test")
@@ -150,6 +160,10 @@ def test_firecrawl_scrape_v2(monkeypatch):
             return _Resp({"data": {"markdown": "# hello"}})
 
     monkeypatch.setattr("pex_supervisor.search.httpx.Client", Client)
+    monkeypatch.setattr(
+        "pex_supervisor.search.resolve_stream_addresses",
+        lambda hostname, port: {ipaddress.ip_address("93.184.216.34")},
+    )
     result = scrape_url("https://example.com/docs")
     assert result["ok"] is True
     assert result["markdown"].startswith("# hello")

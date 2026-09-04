@@ -7,10 +7,11 @@ flowchart LR
   cursor[Cursor]
   codex[Codex]
   others[Claude / OpenCode / Qwen / ...]
-  strands[Strands Supervisor loop]
+  strands[Bounded Strands Supervisor]
+  verifier[Independent Verifier Agent]
   runtime[AgentCore Runtime target]
-  memory[AgentCore Memory]
-  cw[CloudWatch / traces]
+  memory[AgentCore Memory when configured]
+  cw[CloudWatch when deployed]
   out[Typed interventions]
 
   human --> pet
@@ -20,10 +21,15 @@ flowchart LR
   others --> adapters
   adapters --> bridge
   bridge --> store
-  bridge -->|sanitized events| strands
-  strands --> runtime
-  runtime --> memory
-  runtime --> cw
-  strands --> out
+  bridge -->|redacted evidence + read-only tools| strands
+  strands -->|semantic-only action| verifier
+  bridge -->|same bounded evidence| verifier
+  bridge -.->|remote mode| runtime
+  runtime -->|hosts both Agents| strands
+  runtime --> verifier
+  runtime -.-> memory
+  runtime -.-> cw
+  verifier --> out
+  bridge -->|deterministic action| out
   out --> bridge
   bridge -->|policy-gated| adapters

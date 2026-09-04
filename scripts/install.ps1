@@ -9,8 +9,10 @@ uv sync
 python integrations/cursor-hook/install.py
 
 Write-Host ""
-Write-Host "Start the local bridge:"
-Write-Host "  uv run pex-bridge --no-auth"
+Write-Host "Start the authenticated desktop and its owned bridge sidecar:"
+Write-Host "  cd apps/desktop"
+Write-Host "  npm install"
+Write-Host "  npm run tauri dev"
 Write-Host ""
 Write-Host "If OpenCode is already serving:"
 Write-Host "  `$env:PEX_OPENCODE_URL='http://127.0.0.1:4096'"

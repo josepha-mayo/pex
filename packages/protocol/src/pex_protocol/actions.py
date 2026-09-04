@@ -1,7 +1,7 @@
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from pex_protocol.enums import Authority
 
@@ -35,16 +35,23 @@ class RiskLevel(StrEnum):
 
 
 class ProposedAction(BaseModel):
+    """A bounded, closed action vocabulary crossing the supervisor boundary."""
+
+    model_config = ConfigDict(extra="forbid")
+
     type: InterventionType
-    session_id: str
-    goal_id: str | None = None
-    payload: dict[str, Any] = Field(default_factory=dict)
-    rationale: str
-    evidence: list[str] = Field(default_factory=list)
+    session_id: str = Field(min_length=1, max_length=512)
+    goal_id: str | None = Field(default=None, min_length=1, max_length=512)
+    payload: dict[str, Any] = Field(default_factory=dict, max_length=256)
+    rationale: str = Field(min_length=1, max_length=16_384)
+    evidence: list[Annotated[str, Field(max_length=8192)]] = Field(
+        default_factory=list,
+        max_length=128,
+    )
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     risk: RiskLevel = RiskLevel.LOW
-    reversible: bool = True
-    expected_benefit: str = ""
-    cooldown_seconds: int = 30
+    reversible: bool = False
+    expected_benefit: str = Field(default="", max_length=8192)
+    cooldown_seconds: int = Field(default=30, ge=0, le=86_400)
     authority_required: Authority = Authority.LOCAL_POLICY
-    requires_capability: str | None = None
+    requires_capability: str | None = Field(default=None, min_length=1, max_length=128)

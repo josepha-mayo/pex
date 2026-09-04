@@ -14,6 +14,8 @@ from urllib.parse import urlparse
 
 import httpx
 
+from pex_supervisor.providers import resolve_stream_addresses
+
 FIRECRAWL_SEARCH = "https://api.firecrawl.dev/v2/search"
 FIRECRAWL_SCRAPE = "https://api.firecrawl.dev/v2/scrape"
 EXA_SEARCH = "https://api.exa.ai/search"
@@ -178,8 +180,13 @@ def _tavily_search(query: str, limit: int) -> dict[str, Any]:
     with httpx.Client(timeout=45.0) as client:
         response = client.post(
             TAVILY_SEARCH,
-            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            json={"query": query, "max_results": limit, "search_depth": "basic"},
+            headers={"Content-Type": "application/json"},
+            json={
+                "api_key": key,
+                "query": query,
+                "max_results": limit,
+                "search_depth": "basic",
+            },
         )
         response.raise_for_status()
         body = response.json()
@@ -282,6 +289,12 @@ def _blocked_public_url(url: str) -> str | None:
     try:
         address = ipaddress.ip_address(hostname)
     except ValueError:
+        try:
+            addresses = resolve_stream_addresses(hostname, parsed.port)
+        except OSError:
+            return "scrape hostname could not be resolved"
+        if not addresses or any(not item.is_global for item in addresses):
+            return "private or non-global DNS answers may not be scraped"
         return None
     if not address.is_global:
         return "private or non-global IP URLs may not be scraped"

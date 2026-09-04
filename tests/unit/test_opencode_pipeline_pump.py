@@ -20,7 +20,10 @@ async def test_opencode_pump_ingests_idle_as_stop():
         {
             "id": "evt_msg",
             "type": "message.updated",
-            "properties": {"info": {"sessionID": "sess_pump", "role": "assistant"}},
+            "properties": {
+                "info": {"sessionID": "sess_pump", "role": "assistant"},
+                "cwd": "/tmp/pex-opencode",
+            },
             "text": "working",
         }
     )
@@ -53,3 +56,29 @@ async def test_opencode_pump_ingests_idle_as_stop():
     assert all(session.vendor_session_id == "sess_pump" for _, session in ingested)
     assert any(session.cwd == "/tmp/pex-opencode" for _, session in ingested)
     assert "server.connected" not in {event.metadata.get("sse_type") for event, _ in ingested}
+
+
+async def test_opencode_discover_relists_isolated_project_sessions():
+    transport = MemoryHttpTransport()
+    transport.sessions = [
+        {"id": "sess_demo", "title": "demo", "cwd": "C:/fake"},
+        {
+            "id": "ses_isolated",
+            "title": "bench",
+            "cwd": "C:/Users/bench/ws",
+            "directory": "C:/Users/bench/ws",
+            "isolated_project": True,
+        },
+    ]
+    adapter = OpenCodeAdapter(transport)
+    adapter.ingest_hook(
+        {"session_id": "ses_isolated", "cwd": "C:/Users/bench/ws"}
+    )
+    sessions = await adapter.discover_sessions()
+    by_id = {session.vendor_session_id: session for session in sessions}
+    assert "ses_isolated" in by_id
+    assert by_id["ses_isolated"].cwd == "C:/Users/bench/ws"
+    assert any(
+        call[0] == "GET" and "directory=" in call[1]
+        for call in transport.calls
+    )

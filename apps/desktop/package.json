@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "prepare:sidecar": "node scripts/build-sidecar.mjs",
+    "validate:pets": "node scripts/build-sidecar.mjs --validate-pets-only",
+    "preflight:release": "node scripts/build-sidecar.mjs --preflight-release",
+    "test": "node --test src/viewModel.test.ts scripts/release-contract.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },

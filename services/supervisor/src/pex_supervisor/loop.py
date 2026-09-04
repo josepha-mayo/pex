@@ -1,26 +1,96 @@
 from __future__ import annotations
 
+import asyncio
+import math
 import os
 import re
 import time
+from contextlib import suppress
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.enums import Authority
+from pex_protocol.redaction import redact_text
 from pex_protocol.supervisor import SupervisorRequest, SupervisorResult
+from pydantic import BaseModel, ConfigDict, Field
 
-from pex_supervisor.inspect_http import InspectUnavailable, complete_typed_action
+from pex_supervisor.evidence_tools import build_evidence_tools
 from pex_supervisor.planner import plan_deterministic
 from pex_supervisor.providers import describe_backend, load_supervisor_model
-from pex_supervisor.tools import bind_request, propose_typed_action, record_proposal, reset_request, take_proposed
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "supervisor.md"
+VERIFIER_PROMPT_PATH = Path(__file__).parent / "prompts" / "verifier.md"
+
+
+class SupervisorDecision(BaseModel):
+    """The one validated decision a Strands invocation must return."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action_type: InterventionType
+    rationale: str = Field(min_length=1, max_length=2_000)
+    evidence: list[str] = Field(default_factory=list, max_length=20)
+    message: str = Field(default="", max_length=4_000)
+    payload: dict[str, Any] = Field(default_factory=dict)
+    confidence: float = Field(default=0.6, ge=0.0, le=1.0)
+    risk: RiskLevel = RiskLevel.LOW
+
+
+class IndependentVerifierDecision(BaseModel):
+    """Independent verdict over one semantic-only proposed intervention."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    approved: bool
+    rationale: str = Field(min_length=1, max_length=2_000)
+    evidence: list[str] = Field(default_factory=list, max_length=20)
 
 
 def _safe_text(value: object) -> str:
     text = str(value)
     return text.encode("utf-8", "replace").decode("utf-8")
+
+
+def _clip(value: object, limit: int) -> str:
+    return _safe_text(value)[:limit]
+
+
+def _bounded_items(values: object, *, count: int = 24, width: int = 500) -> list[str]:
+    if not isinstance(values, (list, tuple)):
+        return []
+    return [_clip(value, width) for value in values[:count]]
+
+
+def _confidence(value: object) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return 0.6
+    if not math.isfinite(parsed):
+        return 0.6
+    return min(1.0, max(0.0, parsed))
+
+
+def _bounded_nonnegative_int(value: object, *, maximum: int = 1_000_000_000_000) -> int:
+    try:
+        parsed = int(value or 0)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+    return min(maximum, max(0, parsed))
+
+
+def _bounded_wall_timeout(value: object, *, default: float) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError, OverflowError):
+        parsed = default
+    if not math.isfinite(parsed):
+        parsed = default
+    return min(25.0, max(1.0, parsed))
 
 
 def _configure_stdio() -> None:
@@ -37,85 +107,88 @@ def _system_prompt() -> str:
     return PROMPT_PATH.read_text(encoding="utf-8")
 
 
-def _prefetch_evidence(request: SupervisorRequest) -> str:
-    import json
-
-    from pex_supervisor.workspace import snapshot
-
-    cwd = request.session.cwd
-    events = request.recent_events[-12:]
-    recent = [
-        {
-            "type": event.event_type.value if hasattr(event.event_type, "value") else str(event.event_type),
-            "text": (event.message_delta or event.command or "")[:240],
-        }
-        for event in events
-    ]
-    workspace: dict = {"cwd": cwd or None}
-    if cwd:
-        raw = snapshot(cwd)
-        workspace = {
-            "cwd": raw.get("workspace") or cwd,
-            "files": (raw.get("files") or [])[:80],
-            "artifacts": raw.get("artifacts") or [],
-            "git": raw.get("git") or {},
-        }
-    return json.dumps({"recent_events": recent, "workspace": workspace}, ensure_ascii=False)[:6000]
+def _verifier_system_prompt() -> str:
+    return VERIFIER_PROMPT_PATH.read_text(encoding="utf-8")
 
 
-def _compact_inspect_user(request: SupervisorRequest) -> str:
-    goal = request.goal
-    event_text = (request.event.command or request.event.message_delta or "")[:300]
-    prefetch = _prefetch_evidence(request)[:2000]
-    claims = request.scores.features.get("claims") if request.scores.features else None
-    return (
-        f"Harness={request.session.harness_type} event={request.event.event_type} {event_text}\n"
-        f"Goal={goal.objective if goal else 'unattached'}\n"
-        f"Acceptance={list(goal.acceptance_criteria) if goal else []}\n"
-        f"Required={list(goal.evidence_requirements) if goal else []}\n"
-        f"Claims={claims or request.notes or 'none'}\n"
-        f"Verification={(request.scores.features or {}).get('verification') or 'none'}\n"
-        f"Evidence={prefetch}\n"
-        "JSON only: action_type, rationale, evidence, message. "
-        "If a required file is missing, SEND_NUDGE naming it. "
-        "If no completion claims were extracted, do not assume the worker said it is done. "
-        "If evidence supports completion, NOOP. Never prefix the message with PEX:."
+def _redact_request_text(request: SupervisorRequest, value: object) -> str:
+    rendered = redact_text(_safe_text(value))[0] or ""
+    local_values = tuple(
+        local
+        for local in (
+            request.session.cwd,
+            request.session.repo,
+            request.session.external_url,
+        )
+        if local
     )
+    for local in sorted(local_values, key=len, reverse=True):
+        for variant in {local, local.replace("\\", "/"), local.replace("/", "\\")}:
+            rendered = re.sub(
+                re.escape(variant),
+                "<workspace>",
+                rendered,
+                flags=re.IGNORECASE,
+            )
+    return rendered
 
 
-def _http_system_prompt() -> str:
-    return (
-        "You are PEX, a goal-aware supervisor for existing coding agents. "
-        "A stop event is a trigger to inspect, not proof of failure. "
-        "If a listed evidence requirement is absent from workspace files, "
-        "action_type must be SEND_NUDGE or CONTINUE_SESSION and message must name that file. "
-        "Do not NOOP while a required file is missing. Never invent capabilities. "
-        "Never prefix worker text with PEX:."
-    )
+def _redact_payload_value(
+    request: SupervisorRequest,
+    value: object,
+    *,
+    depth: int = 0,
+) -> object:
+    if depth >= 8:
+        return "[truncated]"
+    if isinstance(value, str):
+        return _clip(_redact_request_text(request, value), 4_000)
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, int) and not isinstance(value, bool):
+        return min((1 << 63) - 1, max(-(1 << 63), value))
+    if isinstance(value, dict):
+        return {
+            _clip(_redact_request_text(request, key), 200): _redact_payload_value(
+                request, item, depth=depth + 1
+            )
+            for key, item in list(value.items())[:100]
+        }
+    if isinstance(value, (list, tuple)):
+        return [
+            _redact_payload_value(request, item, depth=depth + 1)
+            for item in list(value)[:100]
+        ]
+    if value is None or isinstance(value, (bool, float)):
+        return value
+    return _clip(_redact_request_text(request, value), 4_000)
 
 
 def _format_user(request: SupervisorRequest) -> str:
     goal = request.goal
-    event_text = request.event.command or request.event.message_delta or ""
-    return (
+    event_text = _clip(request.event.command or request.event.message_delta or "", 2_000)
+    claims = request.scores.features.get("claims") if request.scores.features else []
+    verification = request.scores.features.get("verification") if request.scores.features else {}
+    rendered = (
         "Normalized supervision request.\n"
         f"Harness: {request.session.harness_type}\n"
         f"Session: {request.session.id}\n"
         f"Status: {request.session.status}\n"
         f"Event: {request.event.event_type} {event_text}\n"
-        f"Scores: {request.scores.model_dump_json()}\n"
-        f"Goal: {goal.objective if goal else 'unattached'}\n"
-        f"Acceptance: {goal.acceptance_criteria if goal else []}\n"
-        f"Evidence requirements: {goal.evidence_requirements if goal else []}\n"
-        f"Notes: {request.notes}\n"
-        f"Extracted claims: {request.scores.features.get('claims') if request.scores.features else []}\n"
-        f"Observed process state: {request.event.process_state}\n"
-        f"Prefetched evidence (do not re-fetch):\n{_prefetch_evidence(request)}\n"
-        "Call propose_typed_action exactly once. Do not call other tools."
+        f"Goal: {_clip(goal.objective, 4_000) if goal else 'unattached'}\n"
+        f"Acceptance: {_bounded_items(goal.acceptance_criteria) if goal else []}\n"
+        f"Evidence requirements: {_bounded_items(goal.evidence_requirements) if goal else []}\n"
+        f"Extracted claims: {_clip(claims, 4_000)}\n"
+        f"Verification: {_clip(verification, 6_000)}\n"
+        "Query inspect_workspace, inspect_git, inspect_file, inspect_artifact, "
+        "inspect_process, and run_verification for repo, diff, tests, artifacts, "
+        "and process state. Use web_search or scrape_url only for a public claim "
+        "the worker cited. Do not assume those facts without a tool result.\n"
+        "Return exactly one validated structured decision."
     )
+    return _redact_request_text(request, rendered)
 
 
-_FILE_TOKEN = re.compile(r"^[A-Za-z0-9._-]{1,72}\.[A-Za-z0-9]{1,8}$")
 _GENERIC_NAG = re.compile(
     r"^(keep going|continue|verify with the required|do not stop|don't stop until)\b",
     re.I,
@@ -123,7 +196,7 @@ _GENERIC_NAG = re.compile(
 
 
 def _sanitize_worker_text(text: str) -> str | None:
-    cleaned = re.sub(r"^PEX:\s*", "", (text or "").strip())
+    cleaned = re.sub(r"^PEX:\s*", "", (text or "").strip(), flags=re.I)
     if not cleaned:
         return None
     if _GENERIC_NAG.search(cleaned) and not re.search(
@@ -133,47 +206,79 @@ def _sanitize_worker_text(text: str) -> str | None:
     return cleaned
 
 
-def _missing_required_files(request: SupervisorRequest) -> list[str]:
-    goal = request.goal
-    cwd = request.session.cwd
-    if not goal or not cwd:
-        return []
-
-    root = Path(cwd)
-    missing: list[str] = []
-    for raw in list(goal.evidence_requirements or []) + list(goal.acceptance_criteria or []):
-        name = str(raw or "").strip()
-        if not _FILE_TOKEN.fullmatch(name):
-            continue
-        if not (root / name).exists():
-            missing.append(name)
-    return missing
-
-
 def _action_from_proposal(request: SupervisorRequest, proposal: dict) -> ProposedAction:
     try:
         itype = InterventionType(proposal["type"])
     except (KeyError, ValueError):
         itype = InterventionType.NOOP
-    risk_raw = str(proposal.get("risk") or "low").lower()
+    supplied_risk = proposal.get("risk")
+    risk_raw = str(supplied_risk or "low").lower()
     try:
         risk = RiskLevel(risk_raw)
     except ValueError:
-        risk = RiskLevel.LOW
+        return _invalid_proposal(request, f"unknown risk level: {_clip(risk_raw, 64)}")
     payload = proposal.get("payload")
     if not isinstance(payload, dict):
         payload = {}
-    payload_error = str(proposal.get("payload_error") or "")
-    unsupported = {
+    else:
+        payload = _redact_payload_value(request, payload)
+        if not isinstance(payload, dict):
+            payload = {}
+    payload_error = _redact_request_text(request, proposal.get("payload_error") or "")
+    if payload_error:
+        return _invalid_proposal(request, f"invalid payload JSON: {payload_error}")
+    if itype in {InterventionType.FRESH_HANDOFF, InterventionType.INJECT_CONTEXT}:
+        return _invalid_proposal(
+            request,
+            f"{itype.value} must be assembled by the provenance-backed bridge context store",
+        )
+    raw_evidence = proposal.get("evidence") or []
+    if not isinstance(raw_evidence, (list, tuple)):
+        raw_evidence = []
+    evidence = [
+        _redact_request_text(request, item)
+        for item in raw_evidence
+        if str(item).strip()
+    ]
+    lifecycle = {
         InterventionType.CLEANUP,
         InterventionType.FORK_PROBE,
         InterventionType.START_AGENT,
         InterventionType.STOP_AGENT,
     }
-    if itype in unsupported:
-        return _ask_human_for_unsupported(request, itype)
-    if payload_error:
-        return _invalid_proposal(request, f"invalid payload JSON: {payload_error}")
+    if itype in lifecycle and not evidence:
+        return _invalid_proposal(request, f"{itype.value} requires observed evidence")
+    if itype == InterventionType.START_AGENT:
+        project = str(payload.get("project") or "").strip()
+        prompt = str(payload.get("prompt") or "").strip()
+        config = payload.get("config", {})
+        if config is None:
+            config = {}
+        if not project or not prompt or not isinstance(config, dict):
+            return _invalid_proposal(
+                request,
+                "START_AGENT requires a project, prompt, and optional config object",
+            )
+        payload = {"project": project, "prompt": prompt, "config": config}
+    if itype == InterventionType.STOP_AGENT:
+        payload = {}
+    if itype == InterventionType.FORK_PROBE and not isinstance(payload.get("bundle"), dict):
+        return _invalid_proposal(request, "FORK_PROBE requires a context bundle")
+    if itype == InterventionType.CLEANUP:
+        resource_ids = payload.get("resource_ids")
+        if (
+            payload.get("mode") != "quarantine"
+            or not isinstance(resource_ids, list)
+            or not resource_ids
+        ):
+            return _invalid_proposal(
+                request,
+                "CLEANUP requires quarantine mode and registered resource ids",
+            )
+        payload = {
+            "mode": "quarantine",
+            "resource_ids": [str(item) for item in resource_ids],
+        }
     if itype == InterventionType.RESPOND_PERMISSION:
         request_id = str(payload.get("request_id") or "").strip()
         decision = str(payload.get("decision") or "").strip().lower()
@@ -185,10 +290,16 @@ def _action_from_proposal(request: SupervisorRequest, proposal: dict) -> Propose
         payload = {"request_id": request_id, "decision": decision}
     if itype == InterventionType.APPLY_OVERLAY and not isinstance(payload.get("overlay"), dict):
         return _invalid_proposal(request, "APPLY_OVERLAY requires an overlay object")
-    if itype == InterventionType.REVERT_OVERLAY and not str(
-        payload.get("overlay_id") or ""
-    ).strip():
+    if (
+        itype == InterventionType.REVERT_OVERLAY
+        and not str(payload.get("overlay_id") or "").strip()
+    ):
         return _invalid_proposal(request, "REVERT_OVERLAY requires overlay_id")
+    if itype == InterventionType.NOTIFY:
+        text = str(payload.get("text") or "").strip()
+        if not text:
+            return _invalid_proposal(request, "NOTIFY requires human-facing text")
+        payload = {"text": text}
     capability = {
         InterventionType.APPLY_OVERLAY: "modify_config",
         InterventionType.CONTINUE_SESSION: "resume",
@@ -203,8 +314,10 @@ def _action_from_proposal(request: SupervisorRequest, proposal: dict) -> Propose
         ),
         InterventionType.REVERT_OVERLAY: "modify_config",
         InterventionType.SEND_NUDGE: "send_message",
+        InterventionType.START_AGENT: "start",
+        InterventionType.STOP_AGENT: "stop",
+        InterventionType.FORK_PROBE: "fork",
     }.get(itype)
-    evidence = list(proposal.get("evidence") or [])
     worker_facing = {
         InterventionType.SEND_NUDGE,
         InterventionType.CONTINUE_SESSION,
@@ -222,48 +335,29 @@ def _action_from_proposal(request: SupervisorRequest, proposal: dict) -> Propose
             evidence=["empty_evidence_coerced_noop"],
             confidence=1.0,
             risk=RiskLevel.NONE,
-            reversible=True,
+            reversible=False,
             cooldown_seconds=5,
         )
     worker_text = str(payload.get("text") or "")
     if itype == InterventionType.NOOP and worker_text.strip():
         payload = {key: value for key, value in payload.items() if key != "text"}
         worker_text = ""
-    if itype == InterventionType.NOOP:
-        missing = _missing_required_files(request)
-        if missing:
-            itype = InterventionType.SEND_NUDGE
-            capability = "send_message"
-            goal = request.goal
-            objective = str(getattr(goal, "objective", "") or "").strip()
-            payload = {
-                **payload,
-                "text": (
-                    f"{missing[0]} is missing from the workspace. "
-                    + (objective or f"Create {missing[0]}.")
-                ),
-            }
-            worker_text = payload["text"]
-            evidence = [
-                *evidence,
-                *(f"missing:{name}" for name in missing if f"missing:{name}" not in evidence),
-            ]
     if itype in worker_facing:
         cleaned = _sanitize_worker_text(worker_text)
+        if worker_text.strip() and cleaned is None:
+            return ProposedAction(
+                type=InterventionType.NOOP,
+                session_id=request.session.id,
+                goal_id=request.goal.id if request.goal else None,
+                payload={},
+                rationale="Rejected generic worker-facing text.",
+                evidence=["generic_worker_text_coerced_noop"],
+                confidence=1.0,
+                risk=RiskLevel.NONE,
+                reversible=False,
+                cooldown_seconds=5,
+            )
         if worker_text.strip().startswith("PEX:"):
-            if cleaned is None:
-                return ProposedAction(
-                    type=InterventionType.NOOP,
-                    session_id=request.session.id,
-                    goal_id=request.goal.id if request.goal else None,
-                    payload={},
-                    rationale="Rejected generic PEX-prefixed worker text.",
-                    evidence=["canned_prefix_coerced_noop"],
-                    confidence=1.0,
-                    risk=RiskLevel.NONE,
-                    reversible=True,
-                    cooldown_seconds=5,
-                )
             payload = {**payload, "text": cleaned}
             worker_text = cleaned
         elif cleaned is not None and cleaned != worker_text:
@@ -274,13 +368,22 @@ def _action_from_proposal(request: SupervisorRequest, proposal: dict) -> Propose
         session_id=request.session.id,
         goal_id=request.goal.id if request.goal else None,
         payload=payload,
-        rationale=str(proposal.get("rationale") or "strands"),
-        evidence=evidence,
-        confidence=float(proposal.get("confidence") or 0.6),
+        rationale=_clip(
+            _redact_request_text(request, proposal.get("rationale") or "strands"),
+            2_000,
+        ),
+        evidence=[_clip(item, 1_000) for item in evidence[:20]],
+        confidence=_confidence(proposal.get("confidence", 0.6)),
         risk=risk,
-        reversible=itype not in {InterventionType.STOP_AGENT, InterventionType.CLEANUP},
+        reversible=itype in {InterventionType.APPLY_OVERLAY, InterventionType.CLEANUP},
         authority_required=Authority.HUMAN
-        if itype == InterventionType.ASK_HUMAN
+        if itype
+        in {
+            InterventionType.ASK_HUMAN,
+            InterventionType.START_AGENT,
+            InterventionType.STOP_AGENT,
+            InterventionType.FORK_PROBE,
+        }
         else Authority.LOCAL_POLICY,
         requires_capability=capability,
     )
@@ -296,40 +399,27 @@ def _invalid_proposal(request: SupervisorRequest, reason: str) -> ProposedAction
         evidence=["typed_action_validation_failed"],
         confidence=1.0,
         risk=RiskLevel.NONE,
-        reversible=True,
+        reversible=False,
         cooldown_seconds=0,
         authority_required=Authority.LOCAL_POLICY,
     )
 
 
-def _ask_human_for_unsupported(
-    request: SupervisorRequest, proposed_type: InterventionType
-) -> ProposedAction:
-    return ProposedAction(
-        type=InterventionType.ASK_HUMAN,
-        session_id=request.session.id,
-        goal_id=request.goal.id if request.goal else None,
-        payload={
-            "text": (
-                f"PEX proposed {proposed_type.value}, which requires explicit human control."
-            )
-        },
-        rationale=f"{proposed_type.value} is not executable by the local supervisor.",
-        evidence=["unsupported_supervisor_action"],
-        confidence=1.0,
-        risk=RiskLevel.HIGH,
-        reversible=True,
-        cooldown_seconds=0,
-        authority_required=Authority.HUMAN,
-    )
-
-
-def build_agent(model=None):
+def build_agent(
+    request: SupervisorRequest,
+    *,
+    model=None,
+    used_tools: list[str] | None = None,
+):
     from strands import Agent
 
+    observed_tools = used_tools if used_tools is not None else []
     kwargs = {
         "system_prompt": _system_prompt(),
-        "tools": [propose_typed_action],
+        # These request-scoped tools expose only the immutable, redacted evidence
+        # already gathered by the bridge. No tool can execute code, touch a
+        # harness, mutate PEX, or read hidden benchmark material.
+        "tools": build_evidence_tools(request, observed_tools),
         "callback_handler": None,
     }
     if model is not None:
@@ -337,74 +427,456 @@ def build_agent(model=None):
     return Agent(**kwargs)
 
 
-def run_strands(request: SupervisorRequest, model=None) -> SupervisorResult:
-    token = bind_request(request)
-    traces: list[str] = []
-    request_id = str(uuid4())
-    started = time.perf_counter()
-    backend = describe_backend()
+def build_verifier_agent(
+    request: SupervisorRequest,
+    *,
+    model: object,
+    used_tools: list[str],
+):
+    """Create a fresh agent that can only inspect the same bounded evidence."""
+    from strands import Agent
+
+    return Agent(
+        system_prompt=_verifier_system_prompt(),
+        tools=build_evidence_tools(request, used_tools),
+        callback_handler=None,
+        model=model,
+    )
+
+
+def _format_verifier_user(
+    request: SupervisorRequest,
+    proposal: ProposedAction,
+) -> str:
+    import json
+
+    goal = request.goal
+    proposal_json = json.dumps(
+        proposal.model_dump(mode="json"),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )[:8_000]
+    features = request.scores.features or {}
+    rendered = (
+        "Independently verify this proposed intervention.\n"
+        f"Harness={request.session.harness_type.value} session={_clip(request.session.id, 200)}\n"
+        f"Event={request.event.event_type.value} "
+        f"{_clip(request.event.message_delta or request.event.command or '', 1_000)}\n"
+        f"Goal={_clip(goal.objective, 4_000) if goal else 'unattached'}\n"
+        f"Acceptance={_bounded_items(goal.acceptance_criteria) if goal else []}\n"
+        f"Verification={_clip(features.get('verification') or 'none', 6_000)}\n"
+        f"Proposal={proposal_json}\n"
+        "Query inspect_workspace, inspect_git, inspect_file, inspect_artifact, "
+        "inspect_process, and run_verification when local state is required. "
+        "Use web_search or scrape_url only for a public claim the worker cited. "
+        "Approve or reject; do not propose or execute a different action."
+    )
+    return _redact_request_text(request, rendered)
+
+
+def _runtime_version() -> str | None:
     try:
-        _configure_stdio()
-        used_llm = False
-        input_tokens = 0
-        output_tokens = 0
+        return version("strands-agents")
+    except PackageNotFoundError:
+        return None
+
+
+def _model_provenance(model: object) -> dict[str, Any]:
+    attached = None
+    with suppress(Exception):
+        attached = getattr(model, "_pex_provenance", None)
+    provenance = dict(attached) if isinstance(attached, dict) else {}
+    if not provenance.get("model_id"):
+        with suppress(Exception):
+            config = model.get_config()  # type: ignore[attr-defined]
+            if isinstance(config, dict):
+                provenance["model_id"] = config.get("model_id") or config.get("model")
+    provenance["model_class"] = f"{type(model).__module__}.{type(model).__qualname__}"
+    return provenance
+
+
+def _model_call_count(metrics: object | None) -> int:
+    if metrics is None:
+        return 0
+    try:
+        invocations = getattr(metrics, "agent_invocations", None) or []
+        if isinstance(invocations, (list, tuple)):
+            count = sum(
+                min(10_000, len(getattr(item, "cycles", None) or []))
+                for item in invocations[:10_000]
+            )
+            if count:
+                return min(1_000_000, count)
+        return _bounded_nonnegative_int(
+            getattr(metrics, "cycle_count", 0), maximum=1_000_000
+        )
+    except Exception:
+        return 0
+
+
+def _public_base_url(request: SupervisorRequest, value: object) -> str | None:
+    cleaned = _clip(_redact_request_text(request, value), 2_000).strip()
+    if not cleaned:
+        return None
+    try:
+        parsed = urlsplit(cleaned)
+        if parsed.scheme.casefold() not in {"http", "https"} or not parsed.hostname:
+            return cleaned.split("?", 1)[0].split("#", 1)[0]
+        host = parsed.hostname
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        port = f":{parsed.port}" if parsed.port is not None else ""
+        return urlunsplit((parsed.scheme.casefold(), f"{host}{port}", parsed.path, "", ""))
+    except (TypeError, ValueError):
+        return cleaned.split("?", 1)[0].split("#", 1)[0]
+
+
+def _decision_proposal(decision: SupervisorDecision) -> dict[str, Any]:
+    payload = dict(decision.payload)
+    if decision.message:
+        payload.setdefault("text", decision.message)
+    return {
+        "type": decision.action_type.value,
+        "rationale": decision.rationale,
+        "evidence": list(decision.evidence),
+        "payload": payload,
+        "confidence": decision.confidence,
+        "risk": decision.risk.value,
+    }
+
+
+def _result_metadata(
+    *,
+    request: SupervisorRequest,
+    model: object,
+    local_invocation_id: str,
+    inference_status: str,
+    metrics: object | None,
+    evidence_tools: list[str],
+) -> dict[str, Any]:
+    provenance = _model_provenance(model)
+    model_name = _clip(
+        _redact_request_text(request, provenance.get("model_id") or type(model).__name__),
+        512,
+    )
+    provider = _clip(_redact_request_text(request, provenance.get("provider") or ""), 128)
+    auth_mode = _clip(_redact_request_text(request, provenance.get("auth_mode") or ""), 128)
+    config_fingerprint = _clip(
+        _redact_request_text(request, provenance.get("config_fingerprint") or ""), 64
+    )
+    return {
+        "model_name": model_name or None,
+        "inference_request_id": None,
+        "local_invocation_id": local_invocation_id,
+        "inference_status": inference_status,
+        "model_call_count": _model_call_count(metrics),
+        "runtime": "strands-agents",
+        "runtime_version": _runtime_version(),
+        "model_class": _clip(
+            _redact_request_text(request, provenance.get("model_class") or ""), 512
+        )
+        or None,
+        "provider": provider or None,
+        "base_url": _public_base_url(request, provenance.get("base_url") or ""),
+        "auth_mode": auth_mode or None,
+        "config_fingerprint": config_fingerprint or None,
+        "evidence_tools": list(dict.fromkeys(evidence_tools))[:20],
+        "backend": provider or None,
+    }
+
+
+async def run_strands_async(
+    request: SupervisorRequest,
+    model: object,
+    *,
+    wall_timeout: float | None = None,
+) -> SupervisorResult:
+    """Run one fresh, bounded Strands Agent and require validated output."""
+
+    _configure_stdio()
+    started = time.perf_counter()
+    local_invocation_id = f"pexinv_{uuid4()}"
+    used_tools: list[str] = []
+    agent = build_agent(request, model=model, used_tools=used_tools)
+    invocation = asyncio.create_task(
+        agent.invoke_async(
+            _format_user(request),
+            structured_output_model=SupervisorDecision,
+            limits={"turns": 3, "output_tokens": 1_200, "total_tokens": 12_000},
+        )
+    )
+    if wall_timeout is None:
         try:
-            args, usage, preview = complete_typed_action(
-                _http_system_prompt(), _compact_inspect_user(request)
-            )
-            record_proposal(
-                action_type=str(args.get("action_type") or "NOOP"),
-                rationale=str(args.get("rationale") or "strands"),
-                evidence=args.get("evidence") or "",
-                message=str(args.get("message") or ""),
-                payload_json=str(args.get("payload_json") or ""),
-                request_id=str(args.get("request_id") or ""),
-                decision=str(args.get("decision") or ""),
-                overlay_id=str(args.get("overlay_id") or ""),
-                confidence=args.get("confidence") or 0.7,
-                risk=str(args.get("risk") or "low"),
-            )
-            traces.append(preview)
-            input_tokens = int(usage.get("input_tokens") or 0)
-            output_tokens = int(usage.get("output_tokens") or 0)
-            used_llm = True
-        except InspectUnavailable:
-            traces.append("openai-compat inspect unavailable")
-        except Exception as exc:
-            traces.append(_safe_text(exc))
-        proposal = take_proposed()
-        if proposal:
-            action = _action_from_proposal(request, proposal)
-            diagnosis = "strands_supervisor"
-        else:
-            action = _action_from_proposal(
+            wall_timeout = float(os.environ.get("PEX_SUPERVISOR_WALL_TIMEOUT", "25"))
+        except ValueError:
+            wall_timeout = 25.0
+    wall_timeout = _bounded_wall_timeout(wall_timeout, default=25.0)
+    try:
+        result = await asyncio.wait_for(asyncio.shield(invocation), timeout=wall_timeout)
+    except TimeoutError:
+        with suppress(Exception):
+            agent.cancel()
+        invocation.cancel()
+        with suppress(asyncio.CancelledError, Exception):
+            await invocation
+        metrics = getattr(agent, "event_loop_metrics", None)
+        meta = _result_metadata(
+            request=request,
+            model=model,
+            local_invocation_id=local_invocation_id,
+            inference_status="timeout",
+            metrics=metrics,
+            evidence_tools=used_tools,
+        )
+        return SupervisorResult(
+            action=_action_from_proposal(
                 request,
                 {
                     "type": "NOOP",
-                    "rationale": traces[-1] if traces else "inspect produced no typed action",
-                    "evidence": ["inspect_no_proposal"],
+                    "rationale": "Strands supervisor timed out.",
+                    "evidence": ["strands_timeout"],
                 },
-            )
-            diagnosis = (
-                "strands_no_tool_fallback_noop"
-                if used_llm
-                else f"strands_unavailable:{traces[-1] if traces else 'inspect_failed'}"
-            )
+            ),
+            used_llm=True,
+            diagnosis="strands_timeout",
+            traces=["strands_timeout"],
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            **meta,
+        )
+    except asyncio.CancelledError:
+        with suppress(Exception):
+            agent.cancel()
+        invocation.cancel()
+        with suppress(asyncio.CancelledError, Exception):
+            await invocation
+        raise
+    except Exception as exc:
+        metrics = getattr(agent, "event_loop_metrics", None)
+        meta = _result_metadata(
+            request=request,
+            model=model,
+            local_invocation_id=local_invocation_id,
+            inference_status="failed",
+            metrics=metrics,
+            evidence_tools=used_tools,
+        )
+        detail = type(exc).__name__
         return SupervisorResult(
-            action=action,
-            used_llm=used_llm,
-            model_name=backend.get("model_id")
-            or (type(model).__name__ if model is not None else "strands-default"),
-            diagnosis=diagnosis,
-            traces=traces,
+            action=_action_from_proposal(
+                request,
+                {
+                    "type": "NOOP",
+                    "rationale": "Strands supervisor failed to return a decision.",
+                    "evidence": ["strands_inference_failed"],
+                },
+            ),
+            used_llm=True,
+            diagnosis=f"strands_failed:{detail}",
+            traces=[detail],
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            **meta,
+        )
+
+    metrics = getattr(result, "metrics", None)
+    structured = getattr(result, "structured_output", None)
+    meta = _result_metadata(
+        request=request,
+        model=model,
+        local_invocation_id=local_invocation_id,
+        inference_status="completed" if isinstance(structured, SupervisorDecision) else "failed",
+        metrics=metrics,
+        evidence_tools=used_tools,
+    )
+    input_tokens, output_tokens = _usage(result)
+    if not isinstance(structured, SupervisorDecision):
+        return SupervisorResult(
+            action=_action_from_proposal(
+                request,
+                {
+                    "type": "NOOP",
+                    "rationale": "Strands returned no validated structured decision.",
+                    "evidence": ["strands_missing_structured_output"],
+                },
+            ),
+            used_llm=True,
+            diagnosis="strands_missing_structured_output",
+            traces=[f"stop_reason={getattr(result, 'stop_reason', None)}"],
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             latency_ms=int((time.perf_counter() - started) * 1000),
-            inference_request_id=request_id,
-            backend=backend.get("backend"),
+            **meta,
         )
-    finally:
-        reset_request(token)
+    return SupervisorResult(
+        action=_action_from_proposal(request, _decision_proposal(structured)),
+        used_llm=True,
+        diagnosis="strands_structured_decision",
+        traces=[f"stop_reason={getattr(result, 'stop_reason', None)}"],
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        latency_ms=int((time.perf_counter() - started) * 1000),
+        **meta,
+    )
+
+
+async def run_independent_verifier_async(
+    request: SupervisorRequest,
+    proposal: ProposedAction,
+    *,
+    model: object,
+    wall_timeout: float | None = None,
+) -> dict[str, Any]:
+    """Run a fresh second Agent; failure or missing evidence rejects the action."""
+
+    started = time.perf_counter()
+    used_tools: list[str] = []
+    agent = build_verifier_agent(request, model=model, used_tools=used_tools)
+    invocation = asyncio.create_task(
+        agent.invoke_async(
+            _format_verifier_user(request, proposal),
+            structured_output_model=IndependentVerifierDecision,
+            limits={"turns": 3, "output_tokens": 900, "total_tokens": 10_000},
+        )
+    )
+    if wall_timeout is None:
+        try:
+            wall_timeout = float(os.environ.get("PEX_VERIFIER_WALL_TIMEOUT", "15"))
+        except ValueError:
+            wall_timeout = 15.0
+    wall_timeout = _bounded_wall_timeout(wall_timeout, default=15.0)
+    try:
+        result = await asyncio.wait_for(asyncio.shield(invocation), timeout=wall_timeout)
+    except TimeoutError:
+        with suppress(Exception):
+            agent.cancel()
+        invocation.cancel()
+        with suppress(asyncio.CancelledError, Exception):
+            await invocation
+        metrics = getattr(agent, "event_loop_metrics", None)
+        return {
+            "approved": False,
+            "status": "timeout",
+            "rationale": "Independent verifier timed out; semantic-only action rejected.",
+            "evidence": [],
+            "evidence_tools": list(dict.fromkeys(used_tools))[:20],
+            "model_call_count": _model_call_count(metrics),
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+        }
+    except asyncio.CancelledError:
+        with suppress(Exception):
+            agent.cancel()
+        invocation.cancel()
+        with suppress(asyncio.CancelledError, Exception):
+            await invocation
+        raise
+    except Exception as exc:
+        metrics = getattr(agent, "event_loop_metrics", None)
+        return {
+            "approved": False,
+            "status": f"failed:{type(exc).__name__}",
+            "rationale": "Independent verifier failed; semantic-only action rejected.",
+            "evidence": [],
+            "evidence_tools": list(dict.fromkeys(used_tools))[:20],
+            "model_call_count": _model_call_count(metrics),
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+        }
+
+    metrics = getattr(result, "metrics", None)
+    structured = getattr(result, "structured_output", None)
+    input_tokens, output_tokens = _usage(result)
+    if not isinstance(structured, IndependentVerifierDecision):
+        return {
+            "approved": False,
+            "status": "missing_structured_output",
+            "rationale": "Independent verifier returned no validated verdict.",
+            "evidence": [],
+            "evidence_tools": list(dict.fromkeys(used_tools))[:20],
+            "model_call_count": _model_call_count(metrics),
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+        }
+    evidence = [
+        _clip(_redact_request_text(request, item), 1_000)
+        for item in structured.evidence[:20]
+        if item.strip()
+    ]
+    unique_tools = set(used_tools)
+    evidence_tool_used = bool(
+        unique_tools
+        & {
+            "get_context",
+            "get_recent_events",
+            "get_scores",
+            "get_session_state",
+            "inspect_workspace",
+            "inspect_git",
+            "inspect_file",
+            "inspect_artifact",
+            "inspect_process",
+            "run_verification",
+        }
+    )
+    verification = (request.scores.features or {}).get("verification") or {}
+    verification_status = str(verification.get("status") or "unavailable")
+    acceptance_status = str(verification.get("acceptance_status") or "unavailable")
+    verification_only = bool(unique_tools) and unique_tools <= {
+        "get_goal",
+        "run_verification",
+    }
+    uncertain_verification_only = (
+        verification_only
+        and verification_status
+        in {
+            "no_claims",
+            "uncertain",
+            "unavailable",
+        }
+        and acceptance_status in {"uncertain", "unavailable"}
+    )
+    approved = bool(
+        structured.approved and evidence and evidence_tool_used and not uncertain_verification_only
+    )
+    if approved:
+        status = "approved"
+    elif structured.approved and evidence and uncertain_verification_only:
+        status = "uncertain_evidence"
+    elif structured.approved and evidence and not evidence_tool_used:
+        status = "missing_evidence_tool"
+    else:
+        status = "rejected"
+    return {
+        "approved": approved,
+        "status": status,
+        "rationale": _clip(_redact_request_text(request, structured.rationale), 2_000),
+        "evidence": evidence,
+        "evidence_tools": list(dict.fromkeys(used_tools))[:20],
+        "model_call_count": _model_call_count(metrics),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "latency_ms": int((time.perf_counter() - started) * 1000),
+    }
+
+
+def run_strands(request: SupervisorRequest, model=None) -> SupervisorResult:
+    """Compatibility entry point for synchronous callers and tests."""
+
+    if model is None:
+        model = load_supervisor_model()
+    if model is None:
+        return SupervisorResult(
+            action=plan_deterministic(request),
+            used_llm=False,
+            diagnosis="deterministic_triage_no_supervisor_model",
+        )
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(run_strands_async(request, model=model))
+    raise RuntimeError("run_strands() cannot run inside an event loop; await run_strands_async()")
 
 
 def _usage(result: object) -> tuple[int, int]:
@@ -414,15 +886,24 @@ def _usage(result: object) -> tuple[int, int]:
         or getattr(metrics, "accumulated_usage", None)
         or getattr(result, "usage", None)
     )
+    def bounded_count(value: object) -> int:
+        try:
+            parsed = int(value or 0)
+        except (TypeError, ValueError, OverflowError):
+            return 0
+        return min(1_000_000_000_000, max(0, parsed))
+
     if isinstance(usage, dict):
-        return int(usage.get("inputTokens") or usage.get("input_tokens") or 0), int(
-            usage.get("outputTokens") or usage.get("output_tokens") or 0
-        )
+        return bounded_count(
+            usage.get("inputTokens") or usage.get("input_tokens")
+        ), bounded_count(usage.get("outputTokens") or usage.get("output_tokens"))
     if usage is None:
         return 0, 0
-    return int(
-        getattr(usage, "inputTokens", 0) or getattr(usage, "input_tokens", 0) or 0
-    ), int(getattr(usage, "outputTokens", 0) or getattr(usage, "output_tokens", 0) or 0)
+    return bounded_count(
+        getattr(usage, "inputTokens", 0) or getattr(usage, "input_tokens", 0)
+    ), bounded_count(
+        getattr(usage, "outputTokens", 0) or getattr(usage, "output_tokens", 0)
+    )
 
 
 def needs_semantic_inference(request: SupervisorRequest, force_llm: bool = False) -> bool:
@@ -436,7 +917,110 @@ def needs_semantic_inference(request: SupervisorRequest, force_llm: bool = False
     return request.goal is not None
 
 
-def decide(request: SupervisorRequest, model=None, force_llm: bool = False) -> SupervisorResult:
+def _preserve_deterministic_truth(
+    request: SupervisorRequest,
+    deterministic: ProposedAction,
+    semantic: SupervisorResult,
+) -> SupervisorResult:
+    """A model failure or NOOP may not erase an evidenced local correction."""
+
+    verification = (request.scores.features or {}).get("verification") or {}
+    acceptance_supported = verification.get("acceptance_status") == "supported"
+    claims_supported = verification.get("status") == "supported"
+    if (
+        deterministic.type == InterventionType.NOOP
+        and (acceptance_supported or claims_supported)
+        and semantic.action.type != InterventionType.NOOP
+    ):
+        semantic.action = deterministic
+        semantic.diagnosis = f"{semantic.diagnosis}:verified_noop_preserved"
+        semantic.traces.append("verified_noop_preserved")
+        return semantic
+    if deterministic.type != InterventionType.NOOP and semantic.action != deterministic:
+        semantic.action = deterministic
+        semantic.diagnosis = f"{semantic.diagnosis}:deterministic_truth_preserved"
+        semantic.traces.append("deterministic_action_preserved")
+    return semantic
+
+
+def _needs_independent_verifier(
+    request: SupervisorRequest,
+    deterministic: ProposedAction,
+    semantic: SupervisorResult,
+) -> bool:
+    """Verify only model-originated actions, never locally evidenced corrections."""
+    from pex_protocol.enums import EventType
+
+    return (
+        request.event.event_type == EventType.STOP
+        and deterministic.type == InterventionType.NOOP
+        and semantic.action.type != InterventionType.NOOP
+    )
+
+
+def _apply_verifier_receipt(
+    request: SupervisorRequest,
+    semantic: SupervisorResult,
+    deterministic: ProposedAction,
+    receipt: dict[str, Any],
+) -> SupervisorResult:
+    status = _clip(_redact_request_text(request, receipt.get("status") or "failed"), 120)
+    rationale = _clip(
+        _redact_request_text(request, receipt.get("rationale") or ""), 2_000
+    )
+    raw_evidence = receipt.get("evidence")
+    receipt_evidence = raw_evidence if isinstance(raw_evidence, (list, tuple)) else []
+    verifier_evidence = [
+        _clip(_redact_request_text(request, item), 1_000)
+        for item in receipt_evidence[:20]
+    ]
+    semantic.model_call_count = _bounded_nonnegative_int(
+        semantic.model_call_count
+        + _bounded_nonnegative_int(receipt.get("model_call_count"), maximum=1_000_000),
+        maximum=1_000_000,
+    )
+    semantic.input_tokens = _bounded_nonnegative_int(
+        semantic.input_tokens + _bounded_nonnegative_int(receipt.get("input_tokens"))
+    )
+    semantic.output_tokens = _bounded_nonnegative_int(
+        semantic.output_tokens + _bounded_nonnegative_int(receipt.get("output_tokens"))
+    )
+    semantic.latency_ms = _bounded_nonnegative_int(
+        semantic.latency_ms
+        + _bounded_nonnegative_int(receipt.get("latency_ms"), maximum=86_400_000),
+        maximum=86_400_000,
+    )
+    raw_tools = receipt.get("evidence_tools")
+    receipt_tools = raw_tools if isinstance(raw_tools, (list, tuple)) else []
+    semantic.evidence_tools = list(
+        dict.fromkeys(
+            [
+                *semantic.evidence_tools,
+                *(
+                    _clip(_redact_request_text(request, item), 128)
+                    for item in receipt_tools[:20]
+                ),
+            ]
+        )
+    )[:20]
+    traces = [*semantic.traces, f"independent_verifier_status={status}"]
+    if rationale:
+        traces.append(f"independent_verifier_rationale={rationale}")
+    traces.extend(f"independent_verifier_evidence={item}" for item in verifier_evidence)
+    semantic.traces = [_clip(item, 4_000) for item in traces[-256:]]
+    if receipt.get("approved") is True:
+        semantic.diagnosis = f"{semantic.diagnosis}:independent_verifier_approved"
+        return semantic
+    semantic.action = deterministic
+    semantic.diagnosis = f"{semantic.diagnosis}:independent_verifier_rejected"
+    return semantic
+
+
+async def decide_async(
+    request: SupervisorRequest,
+    model=None,
+    force_llm: bool = False,
+) -> SupervisorResult:
     deterministic = plan_deterministic(request)
     if model is None and (force_llm or os.environ.get("PEX_FORCE_LLM") == "1"):
         model = load_supervisor_model()
@@ -455,15 +1039,48 @@ def decide(request: SupervisorRequest, model=None, force_llm: bool = False) -> S
             backend=describe_backend().get("backend"),
         )
     try:
-        # STOP inspect must finish inside Cursor's stop hook. The multi-agent
-        # graph tool-loops past that budget; one propose-only Strands call is enough.
-        return run_strands(request, model=model)
+        semantic = await run_strands_async(request, model=model)
+        semantic = _preserve_deterministic_truth(request, deterministic, semantic)
+        if _needs_independent_verifier(request, deterministic, semantic):
+            try:
+                receipt = await run_independent_verifier_async(
+                    request,
+                    semantic.action,
+                    model=model,
+                )
+            except Exception as exc:
+                # The main model call already happened. Preserve that provenance
+                # while failing the unverified action closed.
+                receipt = {
+                    "approved": False,
+                    "status": f"failed:{type(exc).__name__}",
+                    "rationale": "Independent verifier setup failed; action rejected.",
+                    "evidence": [],
+                    "evidence_tools": [],
+                    "model_call_count": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "latency_ms": 0,
+                }
+            semantic = _apply_verifier_receipt(request, semantic, deterministic, receipt)
+        return semantic
     except Exception as exc:
-        deterministic.payload["degraded"] = _safe_text(exc)
+        detail = type(exc).__name__
+        deterministic.payload["degraded"] = detail
         return SupervisorResult(
             action=deterministic,
             used_llm=False,
-            diagnosis=f"strands_unavailable:{_safe_text(exc)}",
-            traces=[_safe_text(exc)],
+            diagnosis=f"strands_unavailable:{detail}",
+            traces=[detail],
             backend=describe_backend().get("backend"),
         )
+
+
+def decide(request: SupervisorRequest, model=None, force_llm: bool = False) -> SupervisorResult:
+    """Synchronous entry point for CLI/AgentCore callers outside an event loop."""
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(decide_async(request, model=model, force_llm=force_llm))
+    raise RuntimeError("decide() cannot run inside an event loop; await decide_async()")

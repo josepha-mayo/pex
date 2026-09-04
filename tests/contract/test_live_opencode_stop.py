@@ -11,12 +11,14 @@ from pathlib import Path
 
 import pytest
 
+from tests.contract.live_gate import require_live_authorization
 from tests.contract.test_live_codex_pump import _ensure_local_supervisor_env, _has_supervisor_key
 
 
 @pytest.mark.live_llm
 @pytest.mark.asyncio
 async def test_live_opencode_idle_stop_sends_specific_prompt(tmp_path: Path):
+    require_live_authorization("PEX_LIVE_SUPERVISOR")
     if not _has_supervisor_key():
         pytest.skip("no supervisor API key or local OpenAI-compatible server")
     _ensure_local_supervisor_env()
@@ -42,7 +44,9 @@ async def test_live_opencode_idle_stop_sends_specific_prompt(tmp_path: Path):
     transport = MemoryHttpTransport()
     registry = AdapterRegistry()
     registry.opencode.attach_transport(transport)
-    settings = Settings(require_auth=False, home=tmp_path, autonomy="manage", codex_attach=False)
+    settings = Settings.for_test(
+        require_auth=False, home=tmp_path, autonomy="manage", codex_attach=False
+    )
     pipeline = Pipeline(store, registry, EventBus(), settings, model=model)
     now = datetime.now(UTC)
     goal = Goal(

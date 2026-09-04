@@ -38,6 +38,9 @@ class HarnessEvent(BaseModel):
     harness_type: HarnessType
     session_id: str
     project_id: str | None = None
+    # Bound by Store.add_event from the live session at ingest time. Historical
+    # rows without a goal remain readable but cannot serve as goal-scoped proof.
+    goal_id: str | None = None
     event_type: EventType
     phase: EventPhase = EventPhase.DURING
     raw_event_ref: str | None = None

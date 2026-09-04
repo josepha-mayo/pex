@@ -1,7 +1,8 @@
 """Focus an already-running desktop harness window.
 
-PEX never launches Cursor, Codex, or Grok Bot. It only brings the existing
-process to the front. Process image names come from desktop.DESKTOP_APPS.
+PEX never launches Cursor, Codex, OpenCode, Hermes, or Claude Code. It only
+brings an existing process to the front. Process image names come from
+desktop.DESKTOP_APPS.
 """
 
 from __future__ import annotations
@@ -11,19 +12,18 @@ import sys
 from ctypes import wintypes
 
 HARNESS_IMAGES = {
-    "cursor": "Cursor.exe",
-    "codex": "ChatGPT.exe",
-    "grok_bot": "Grok Bot.exe",
-    "hermes": "Hermes.exe",
-    "devin": "Devin.exe",
+    "cursor": ("Cursor.exe",),
+    "codex": ("ChatGPT.exe",),
+    "opencode": ("OpenCode.exe", "opencode.exe"),
+    "hermes": ("Hermes.exe", "NousHermes.exe"),
+    "claude_code": ("claude.exe",),
+    "grok_bot": ("Grok Bot.exe",),
 }
 
 
 def focus_harness(harness: str) -> bool:
-    image = HARNESS_IMAGES.get(harness)
-    if not image:
-        return False
-    return focus_image(image)
+    images = HARNESS_IMAGES.get(harness) or ()
+    return any(focus_image(image) for image in images)
 
 
 def focus_image(image_name: str) -> bool:

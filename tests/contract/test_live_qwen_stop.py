@@ -1,7 +1,7 @@
-"""Live Qwen session.idle through the SSE pump into Pipeline inspect.
+"""Live supervisor + simulated Qwen turn_complete through the SSE pump.
 
-Does not require `qwen serve`. Uses the official event shape and the
-POST /session/:id/prompt send path. Skips without a supervisor key.
+Does not require `qwen serve` and is not provider-live evidence. Uses the
+official event and prompt-admission shapes. Skips without a supervisor key.
 """
 
 from __future__ import annotations
@@ -11,12 +11,14 @@ from pathlib import Path
 
 import pytest
 
+from tests.contract.live_gate import require_live_authorization
 from tests.contract.test_live_codex_pump import _ensure_local_supervisor_env, _has_supervisor_key
 
 
 @pytest.mark.live_llm
 @pytest.mark.asyncio
-async def test_live_qwen_idle_stop_sends_specific_prompt(tmp_path: Path):
+async def test_live_qwen_turn_complete_sends_specific_prompt(tmp_path: Path):
+    require_live_authorization("PEX_LIVE_SUPERVISOR")
     if not _has_supervisor_key():
         pytest.skip("no supervisor API key or local OpenAI-compatible server")
     _ensure_local_supervisor_env()
@@ -40,9 +42,18 @@ async def test_live_qwen_idle_stop_sends_specific_prompt(tmp_path: Path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
     transport = MemoryHttpTransport()
+    transport.sessions = [
+        {
+            "id": "live-qwen-inspect",
+            "sessionId": "live-qwen-inspect",
+            "cwd": "C:/fake",
+        }
+    ]
     registry = AdapterRegistry()
     registry.qwen.attach_transport(transport)
-    settings = Settings(require_auth=False, home=tmp_path, autonomy="manage", codex_attach=False)
+    settings = Settings.for_test(
+        require_auth=False, home=tmp_path, autonomy="manage", codex_attach=False
+    )
     pipeline = Pipeline(store, registry, EventBus(), settings, model=model)
     now = datetime.now(UTC)
     goal = Goal(
@@ -56,9 +67,7 @@ async def test_live_qwen_idle_stop_sends_specific_prompt(tmp_path: Path):
         updated_at=now,
     )
     await store.upsert_goal(goal)
-    session = registry.qwen.ingest_hook(
-        {"session_id": "live-qwen-inspect", "cwd": str(tmp_path)}
-    )
+    session = (await registry.qwen.discover_sessions())[0]
     session.goal_id = goal.id
     session.cwd = str(tmp_path)
     await store.upsert_session(session)
@@ -67,10 +76,14 @@ async def test_live_qwen_idle_stop_sends_specific_prompt(tmp_path: Path):
     try:
         transport.events.append(
             {
-                "id": "evt_idle",
-                "type": "session.idle",
-                "sessionId": "live-qwen-inspect",
-                "text": "I am done.",
+                "id": 1,
+                "v": 1,
+                "type": "turn_complete",
+                "data": {
+                    "promptId": "prompt-existing",
+                    "stopReason": "end_turn",
+                },
+                "_pex_sse_path": "/session/live-qwen-inspect/events",
             }
         )
         for _ in range(120):
@@ -97,7 +110,7 @@ async def test_live_qwen_idle_stop_sends_specific_prompt(tmp_path: Path):
             "SEND_NUDGE",
             "CONTINUE_SESSION",
             "REQUEST_VERIFICATION",
-        }, f"incomplete Qwen idle stayed silent: {proof!r}"
+        }, f"incomplete simulated Qwen turn stayed silent: {proof!r}"
         assert proof["prompts"], f"/prompt was not called: {proof!r}"
         sent = json.dumps(proof["prompts"]).lower()
         assert "report" in sent or "report" in str(proof.get("worker_text") or "").lower()

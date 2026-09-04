@@ -1,10 +1,17 @@
-"""Record the current companion UI: home roster, Ask PEX, Settings page."""
+"""Capture local UI reference frames; this is not live-integration or submission proof."""
 
+import re
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
+try:
+    from playwright.sync_api import sync_playwright
+except ModuleNotFoundError as exc:
+    raise SystemExit(
+        "Playwright is optional and is not installed by PEX. Install it explicitly "
+        "before capturing local UI reference frames."
+    ) from exc
 
-out = Path(__file__).resolve().parents[3] / "docs" / "demo"
+out = Path(__file__).resolve().parents[3] / "docs" / "demo" / "ui-reference"
 out.mkdir(parents=True, exist_ok=True)
 
 with sync_playwright() as playwright:
@@ -17,26 +24,25 @@ with sync_playwright() as playwright:
     page = context.new_page()
     page.goto("http://localhost:1420", wait_until="domcontentloaded")
     page.wait_for_timeout(1500)
-    page.screenshot(path=str(out / "01-home.png"))
-    roster = page.locator(".roster-pet")
-    if roster.count() > 1:
-        roster.nth(1).click()
-        page.wait_for_timeout(700)
-        page.screenshot(path=str(out / "02-roster.png"))
-    ask = page.get_by_role("textbox", name="Ask PEX")
-    if ask.count():
-        ask.fill("What needs me?")
-        page.get_by_role("button", name="Ask", exact=True).click()
-        page.wait_for_timeout(1200)
-        page.screenshot(path=str(out / "03-ask-pex.png"))
+    page.screenshot(path=str(out / "01-compact.png"))
+    page.get_by_role("button", name="Inspect what PEX knows").click()
+    page.wait_for_timeout(400)
+    page.screenshot(path=str(out / "02-inspector.png"))
+    page.get_by_role("button", name="Open command deck").click()
+    page.wait_for_timeout(400)
+    for index, view in enumerate(
+        ["Now", "Decisions", "Context", "Interventions", "Agents", "Bench"],
+        start=3,
+    ):
+        page.get_by_role("button", name=re.compile(rf"^{view}\b")).click()
+        page.wait_for_timeout(250)
+        page.screenshot(path=str(out / f"{index:02d}-deck-{view.lower()}.png"))
     page.get_by_role("button", name="Settings").click()
-    page.wait_for_timeout(600)
-    page.screenshot(path=str(out / "04-settings.png"))
-    page.get_by_role("button", name="Back").click()
-    page.wait_for_timeout(500)
-    page.screenshot(path=str(out / "05-home-return.png"))
+    page.wait_for_timeout(400)
+    page.screenshot(path=str(out / "09-settings.png"))
     context.close()
     browser.close()
 
 videos = list(out.glob("*.webm"))
+print("UI reference only; do not present as live PEX evidence.")
 print("videos", [str(path) for path in videos])

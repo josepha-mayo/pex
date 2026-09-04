@@ -14,10 +14,11 @@ flowchart LR
   cursor[Cursor]
   codex[Codex]
   others[Claude / OpenCode / Qwen / ...]
-  strands[Strands Supervisor loop]
-  runtime[AgentCore Runtime]
-  memory[AgentCore Memory]
-  cw[CloudWatch / traces]
+  strands[Bounded Strands Supervisor]
+  verifier[Independent Verifier Agent]
+  runtime[AgentCore Runtime deploy target]
+  memory[AgentCore Memory when configured]
+  cw[CloudWatch when deployed]
   out[Typed interventions]
 
   human --> pet
@@ -27,13 +28,18 @@ flowchart LR
   others --> adapters
   adapters --> bridge
   bridge --> store
-  bridge -->|sanitized events| strands
-  strands --> runtime
-  runtime --> memory
-  runtime --> cw
-  strands --> out
+  bridge -->|redacted evidence + read-only tools| strands
+  strands -->|semantic-only action| verifier
+  bridge -->|same bounded evidence| verifier
+  bridge -.->|remote mode| runtime
+  runtime -->|hosts both Agents| strands
+  runtime --> verifier
+  runtime -.-> memory
+  runtime -.-> cw
+  verifier --> out
+  bridge -->|deterministic action| out
   out --> bridge
   bridge -->|policy-gated| adapters
 ```
 
-Cloud never bypasses local policy. Adapters are capability-negotiated, not assumed equal.
+Cloud never bypasses local policy. Verifier failure or evidence-free approval becomes NOOP. Adapters are capability-negotiated, not assumed equal. AgentCore, Memory, and CloudWatch are deploy/configuration targets, not current live-service claims.

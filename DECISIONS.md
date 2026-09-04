@@ -25,7 +25,11 @@ Bridge, supervisor, and protocol are a uv workspace so the Strands supervisor ca
 On this machine `agent` is Grok Build. Cursor is this desktop session via `~/.cursor/hooks.json`. Do not install or spawn `%LOCALAPPDATA%\\cursor-agent`. Do not open a second Cursor window.
 
 ## D11 — Pets are Codex-v2 compatible, original art
-Ten starters are generated as 8×11 / 192×208 atlases with the hatch-pet row contract. We import user Codex pets (`pet.json` + `spritesheet.webp`) and never copy Codex built-in sprites.
+Exactly eight built-ins (`pex`, `ledger`, `mesh`, `nudge`, `drift`, `quiet`,
+`ember`, `von`) use 8×11 / 192×208 atlases with the hatch-pet row contract.
+User imports (`pet.json` + `spritesheet.webp`) and hatches are a separate custom
+roster; they never expand or replace the built-in eight. We never copy Codex
+built-in sprites.
 
 ## D12 — Deep means a live official transport
 OpenCode and Qwen are Deep only with an attached HTTP transport. Codex is Deep only after App Server handshake. Cursor's primary official transport is `~/.cursor/hooks.json` (Strong; Deep only if ACP is *explicitly* attached later). Grok Build ACP is `grok agent stdio`. Registration is not a capability claim.
@@ -41,5 +45,25 @@ Grok Bot is the desktop app (`Grok Bot.exe`): cloud-computer teammates ([docs](h
 
 ## D16 — Every increment is audited before it is claimed done
 `uv run pytest` must pass. Honesty invariants in `tests/unit/test_audit_invariants.py` must pass. After a change batch, run Bugbot on the uncommitted (or branch) diff. Do not freeze PexBench from synthetic smoke. Do not spawn extra Cursor windows to "fix" Cursor attach.
+
+## D17 — Supervisor credentials are local, opaque, audience-bound, and transactional
+The JSON supervisor snapshot stores only versioned routing fields and an opaque secret
+reference. Raw BYOK values live in an allowlisted native OS keyring backend and are never
+returned by REST or UI. Provider/auth/protocol/base URL form the credential audience;
+cross-audience reuse fails closed. PATCH validates and constructs a task-local candidate
+before atomic persistence and live swap, uses revision compare-and-swap when supplied,
+and cleans staged/retired secrets around the commit boundary. Login and AgentCore auth do
+not silently fall back to API-key or Bedrock behavior when their adapters are absent.
+
+## D18 — Attention metrics come from one durable backend snapshot, never UI pages
+`ASK_HUMAN` is an attention request, not a human intervention. Product metrics are read
+from one SQLite snapshot over exact durable ledgers, with an all-time window, source
+watermarks, explicit coverage, null-preserving denominators, and separate current-live
+pending authority. Because pause/resume, goal mutation, and out-of-band human actions do
+not yet have complete append-only receipts, the canonical human-intervention total stays
+null; an authenticated observed lower bound is labeled separately. Existing direct
+message/handoff receipts are actor-unverified and cannot become human proof retroactively.
+Human active time and unnecessary-alert rate stay null until consented focus intervals and
+alert exposure/adjudication exist. Operational product counts are never benchmark evidence.
 
 

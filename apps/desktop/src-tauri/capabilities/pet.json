@@ -1,0 +1,14 @@
+{
+  "identifier": "pet",
+  "description": "Least-privilege transparent pet overlay capabilities",
+  "windows": ["pet"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-ignore-cursor-events",
+    "core:webview:allow-set-webview-background-color",
+    "allow-bridge-token"
+  ]
+}

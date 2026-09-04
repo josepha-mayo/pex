@@ -1,15 +1,42 @@
-type: handoff
-title: Move durable facts between harnesses without paste
-prompt: |
-  Codex discovered the eval schema. Cursor must implement the runner without re-deriving it.
-stressor:
-  type: handoff
-  trigger:
-    from: codex
-    to: cursor
-  expected_supervisor_behavior:
-    - build a scored context bundle
-    - inject into Cursor
-    - no full transcript dump
-hidden_evaluator:
-  no_manual_copy_paste: true
+type: cross_session_handoff
+title: Implement from a durable event handoff
+deterministic: true
+module: event_mapper
+function: map_event
+starter: |
+  def map_event(payload: dict) -> dict:
+      raise NotImplementedError
+solution: |
+  def map_event(payload: dict) -> dict:
+      event = payload["event"]
+      result = payload.get("result") or {}
+      return {
+          "id": str(event.get("id", "")),
+          "kind": str(event.get("type", "")).strip().lower(),
+          "ok": str(result.get("status", "")).strip().lower() in {"ok", "success"},
+      }
+seed_files:
+  HANDOFF.md: |
+    # Event mapping contract
+    Read nested `event` and `result`. Emit exactly `id`, `kind`, and `ok`.
+    `event.id` is stringified, `event.type` is trimmed and lowercased, and only
+    `ok` or `success` on `result.status` are successful. Missing `event` is a
+    KeyError. Extra keys are ignored.
+protected_files: [HANDOFF.md]
+public_cases:
+- args:
+  - event: {id: 42, type: " Deploy "}
+    result: {status: SUCCESS}
+  expected: {id: "42", kind: deploy, ok: true}
+hidden_cases:
+- args:
+  - event: {id: abc, type: ALERT}
+    result: {status: failed}
+  expected: {id: abc, kind: alert, ok: false}
+- args: [{}]
+  raises: KeyError
+- args:
+  - event: {id: 7, type: "Ping"}
+    result: {status: ok}
+    extra: ignore-me
+  expected: {id: "7", kind: ping, ok: true}

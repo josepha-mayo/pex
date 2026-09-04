@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { animationFrameIndex } from "./atlasMath";
 import type { PetMood } from "./types";
 
 export type { PetMood };
@@ -85,6 +86,7 @@ export function CodexSprite({
   const lookFrame = looking ? look % 8 : 0;
   const durations = FRAME_MS[rowName];
   const [frame, setFrame] = useState(0);
+  const animationFrame = animationFrameIndex(frame, durations.length);
 
   useEffect(() => {
     setFrame(0);
@@ -92,16 +94,16 @@ export function CodexSprite({
 
   useEffect(() => {
     if (looking || reducedMotion) return;
-    const ms = durations[frame] ?? durations[durations.length - 1];
+    const ms = durations[animationFrame];
     const id = window.setTimeout(() => {
-      setFrame((frame + 1) % durations.length);
+      setFrame((current) => animationFrameIndex(current + 1, durations.length));
     }, ms);
     return () => window.clearTimeout(id);
-  }, [durations, frame, looking, reducedMotion, rowName]);
+  }, [animationFrame, durations, looking, reducedMotion, rowName]);
 
   const displayW = Math.round(112 * scale);
   const displayH = Math.round(displayW * (CELL_H / CELL_W));
-  const shownFrame = looking ? lookFrame : reducedMotion ? 0 : frame;
+  const shownFrame = looking ? lookFrame : reducedMotion ? 0 : animationFrame;
   const sheetW = displayW * SHEET_COLS;
   const sheetH = displayH * SHEET_ROWS;
   return (

@@ -8,12 +8,14 @@ from pathlib import Path
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from tests.contract.live_gate import require_live_authorization
 from tests.contract.test_live_codex_pump import _ensure_local_supervisor_env, _has_supervisor_key
 
 
 @pytest.mark.live_llm
 @pytest.mark.asyncio
 async def test_live_claude_incomplete_stop_sends_specific_context(tmp_path: Path):
+    require_live_authorization("PEX_LIVE_SUPERVISOR")
     if not _has_supervisor_key():
         pytest.skip("no supervisor API key or local OpenAI-compatible server")
     _ensure_local_supervisor_env()
@@ -30,7 +32,9 @@ async def test_live_claude_incomplete_stop_sends_specific_context(tmp_path: Path
     if model is None:
         pytest.skip("supervisor model did not construct")
 
-    settings = Settings(require_auth=False, home=tmp_path, autonomy="manage", codex_attach=False)
+    settings = Settings.for_test(
+        require_auth=False, home=tmp_path, autonomy="manage", codex_attach=False
+    )
     store = Store(tmp_path / "pex.sqlite")
     adapters = AdapterRegistry()
     bus = EventBus()
@@ -43,7 +47,7 @@ async def test_live_claude_incomplete_stop_sends_specific_context(tmp_path: Path
     transport = ASGITransport(app=app)
     proof: dict = {"used_llm": False, "action_taken": None, "followup": ""}
     try:
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
             goal = await client.post(
                 "/v1/goals",
                 json={
@@ -81,8 +85,7 @@ async def test_live_claude_incomplete_stop_sends_specific_context(tmp_path: Path
             )
             assert stop.status_code == 200
             body = stop.json()
-            extra = body.get("hookSpecificOutput") or {}
-            followup = str(extra.get("additionalContext") or "")
+            followup = str(body.get("reason") or "")
             proof["followup"] = followup
             proof["hook_body"] = body
             rows = await store.list_interventions("claude_code:live-claude-inspect")
@@ -107,6 +110,8 @@ async def test_live_claude_incomplete_stop_sends_specific_context(tmp_path: Path
                 "CONTINUE_SESSION",
                 "REQUEST_VERIFICATION",
             }, f"incomplete Claude stop stayed silent: {proof!r}"
+            assert body.get("decision") == "block"
+            assert "hookSpecificOutput" not in body
             assert followup
             assert "report" in followup.lower()
     finally:

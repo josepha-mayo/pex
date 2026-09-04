@@ -1,4 +1,7 @@
-"""Live OMP ACP idle → Pipeline inspect. Does not spawn `omp`."""
+"""Live supervisor + simulated OMP ACP prompt-result inspection.
+
+This does not spawn OMP and is not provider-live evidence.
+"""
 
 from __future__ import annotations
 
@@ -7,12 +10,14 @@ from pathlib import Path
 
 import pytest
 
+from tests.contract.live_gate import require_live_authorization
 from tests.contract.test_live_codex_pump import _ensure_local_supervisor_env, _has_supervisor_key
 
 
 @pytest.mark.live_llm
 @pytest.mark.asyncio
-async def test_live_omp_idle_stop_sends_specific_prompt(tmp_path: Path):
+async def test_live_omp_prompt_result_sends_specific_prompt(tmp_path: Path):
+    require_live_authorization("PEX_LIVE_SUPERVISOR")
     if not _has_supervisor_key():
         pytest.skip("no supervisor API key or local OpenAI-compatible server")
     _ensure_local_supervisor_env()
@@ -36,9 +41,12 @@ async def test_live_omp_idle_stop_sends_specific_prompt(tmp_path: Path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
     transport = FakeAcpTransport()
+    transport.sessions = [{"sessionId": "live-omp-inspect", "cwd": str(tmp_path)}]
     registry = AdapterRegistry()
     registry.omp.attach_acp(transport)
-    settings = Settings(require_auth=False, home=tmp_path, autonomy="manage", codex_attach=False)
+    settings = Settings.for_test(
+        require_auth=False, home=tmp_path, autonomy="manage", codex_attach=False
+    )
     pipeline = Pipeline(store, registry, EventBus(), settings, model=model)
     now = datetime.now(UTC)
     goal = Goal(
@@ -52,7 +60,7 @@ async def test_live_omp_idle_stop_sends_specific_prompt(tmp_path: Path):
         updated_at=now,
     )
     await store.upsert_goal(goal)
-    session = registry.omp.ingest_hook({"session_id": "live-omp-inspect", "cwd": str(tmp_path)})
+    session = (await registry.omp.discover_sessions())[0]
     session.goal_id = goal.id
     session.cwd = str(tmp_path)
     await store.upsert_session(session)
@@ -71,19 +79,7 @@ async def test_live_omp_idle_stop_sends_specific_prompt(tmp_path: Path):
                 },
             }
         )
-        transport.events.append(
-            {
-                "method": "session/update",
-                "params": {
-                    "sessionId": "live-omp-inspect",
-                    "update": {
-                        "sessionUpdate": "state_update",
-                        "state": "idle",
-                        "stopReason": "end_turn",
-                    },
-                },
-            }
-        )
+        assert await registry.omp.send_message(session, "Inspect whether the report is complete.")
         for _ in range(120):
             rows = await store.list_interventions(session.id)
             stops = [row for row in rows if row.trigger == "stop"]
@@ -108,7 +104,7 @@ async def test_live_omp_idle_stop_sends_specific_prompt(tmp_path: Path):
             "SEND_NUDGE",
             "CONTINUE_SESSION",
             "REQUEST_VERIFICATION",
-        }, f"incomplete OMP idle stayed silent: {proof!r}"
+        }, f"incomplete simulated OMP prompt result stayed silent: {proof!r}"
         assert proof["prompts"], f"session/prompt was not called: {proof!r}"
         sent = json.dumps(proof["prompts"]).lower()
         assert "report" in sent or "report" in str(proof.get("worker_text") or "").lower()

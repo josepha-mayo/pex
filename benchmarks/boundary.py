@@ -10,6 +10,7 @@ import ast
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -23,15 +24,47 @@ PRIVATE_MARKERS = (
     "metadata.yaml",
     "pexbench_",
 )
+IGNORED_WORKSPACE_PARTS = {".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", "__pycache__"}
+IGNORED_WORKSPACE_FILES = {".coverage"}
+_HASH_CHUNK_BYTES = 1024 * 1024
+_MAX_PUBLIC_PROMPT_BYTES = 512_000
+_MAX_WORKSPACE_FILES = 10_000
+_MAX_WORKSPACE_ENTRIES = 20_000
+_MAX_WORKSPACE_FILE_BYTES = 64 * 1024 * 1024
+_MAX_WORKSPACE_TOTAL_BYTES = 512 * 1024 * 1024
+_MAX_RELATIVE_PATH_CHARS = 1_024
 
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def sha256_file(path: Path, *, max_bytes: int | None = None) -> str:
+    """Hash a worker file with bounded memory."""
+    digest = hashlib.sha256()
+    total = 0
+    with path.open("rb") as handle:
+        while chunk := handle.read(_HASH_CHUNK_BYTES):
+            total += len(chunk)
+            if max_bytes is not None and total > max_bytes:
+                raise ValueError(f"file exceeds the {max_bytes}-byte hash bound: {path.name}")
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def public_prompt(task_id: str) -> str:
-    path = ROOT / "tasks" / task_id / "prompt.md"
-    return path.read_text(encoding="utf-8")
+    tasks = (ROOT / "tasks").resolve()
+    path = (tasks / task_id / "prompt.md").resolve()
+    if not path.is_relative_to(tasks) or not path.is_file():
+        raise ValueError("invalid public benchmark task id")
+    with path.open("rb") as handle:
+        raw = handle.read(_MAX_PUBLIC_PROMPT_BYTES + 1)
+    if len(raw) > _MAX_PUBLIC_PROMPT_BYTES:
+        raise ValueError("public benchmark prompt exceeds the size bound")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeError as exc:
+        raise ValueError("public benchmark prompt is not UTF-8") from exc
 
 
 def assert_public_prompt(task_id: str, prompt: str) -> None:
@@ -42,13 +75,65 @@ def assert_public_prompt(task_id: str, prompt: str) -> None:
 
 def workspace_manifest_sha256(workspace: Path) -> str:
     rows: list[tuple[str, str]] = []
-    for path in sorted(workspace.rglob("*")):
-        if not path.is_file() or ".pytest_cache" in path.parts:
-            continue
-        relative = str(path.relative_to(workspace)).replace("\\", "/")
-        if any(marker.lower() in relative.lower() for marker in PRIVATE_MARKERS):
-            raise AssertionError(f"private marker present in worker workspace: {relative}")
-        rows.append((relative, hashlib.sha256(path.read_bytes()).hexdigest()))
+    is_junction = getattr(workspace, "is_junction", None)
+    if workspace.is_symlink() or bool(is_junction and is_junction()):
+        raise ValueError("worker workspace root cannot be linked")
+    root = workspace.resolve()
+    if not root.is_dir():
+        raise ValueError("worker workspace is not a directory")
+    total_bytes = 0
+    total_entries = 0
+    ignored_parts = {part.casefold() for part in IGNORED_WORKSPACE_PARTS}
+    ignored_files = {name.casefold() for name in IGNORED_WORKSPACE_FILES}
+
+    def walk_error(error: OSError) -> None:
+        raise error
+
+    def link_like(path: Path) -> bool:
+        is_junction = getattr(path, "is_junction", None)
+        return path.is_symlink() or bool(is_junction and is_junction())
+
+    for directory, names, filenames in os.walk(
+        root,
+        topdown=True,
+        onerror=walk_error,
+        followlinks=False,
+    ):
+        base = Path(directory)
+        total_entries += len(names) + len(filenames)
+        if total_entries > _MAX_WORKSPACE_ENTRIES:
+            raise ValueError("worker workspace exceeds the 20000-entry fingerprint bound")
+        kept_names: list[str] = []
+        for name in sorted(names):
+            path = base / name
+            relative = path.relative_to(root)
+            if link_like(path):
+                raise AssertionError(f"link present in worker workspace: {relative}")
+            if name.casefold() not in ignored_parts:
+                kept_names.append(name)
+        names[:] = kept_names
+        for filename in sorted(filenames):
+            path = base / filename
+            relative_path = path.relative_to(root)
+            if link_like(path):
+                raise AssertionError(f"link present in worker workspace: {relative_path}")
+            if filename.casefold() in ignored_files or not path.is_file():
+                continue
+            relative = str(relative_path).replace("\\", "/")
+            if len(relative) > _MAX_RELATIVE_PATH_CHARS:
+                raise ValueError("worker workspace path exceeds the fingerprint bound")
+            if any(marker.casefold() in relative.casefold() for marker in PRIVATE_MARKERS):
+                raise AssertionError(f"private marker present in worker workspace: {relative}")
+            if len(rows) >= _MAX_WORKSPACE_FILES:
+                raise ValueError("worker workspace exceeds the 10000-file fingerprint bound")
+            size = path.stat().st_size
+            if size > _MAX_WORKSPACE_FILE_BYTES:
+                raise ValueError(f"worker file exceeds the 64 MiB fingerprint bound: {relative}")
+            total_bytes += size
+            if total_bytes > _MAX_WORKSPACE_TOTAL_BYTES:
+                raise ValueError("worker workspace exceeds the 512 MiB fingerprint bound")
+            rows.append((relative, sha256_file(path, max_bytes=_MAX_WORKSPACE_FILE_BYTES)))
+    rows.sort()
     return sha256_text(json.dumps(rows, separators=(",", ":")))
 
 
@@ -70,6 +155,10 @@ def worker_config_sha256(turn_params: dict) -> str:
     normalized = copy.deepcopy(turn_params)
     normalized.pop("threadId", None)
     normalized.pop("cwd", None)
+    # The prompt is bound separately by prompt_sha256. Keeping it in the
+    # configuration hash would make the allegedly pinned config differ for
+    # every task and conceal real settings drift behind task text.
+    normalized.pop("input", None)
     sandbox = normalized.get("sandboxPolicy")
     if isinstance(sandbox, dict) and "writableRoots" in sandbox:
         sandbox["writableRoots"] = ["<workspace>"]

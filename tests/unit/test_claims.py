@@ -1,7 +1,8 @@
+from datetime import UTC, datetime
+
 from pex_bridge.claims import extract_claims
 from pex_protocol.enums import EventType, HarnessType
 from pex_protocol.session import HarnessEvent
-from datetime import UTC, datetime
 
 
 def _event(text: str, event_id: str = "e1") -> HarnessEvent:
@@ -44,3 +45,51 @@ def test_stop_without_narration_extracts_nothing():
         ]
     )
     assert claims == []
+
+
+def test_user_prompt_and_shell_output_are_not_worker_claims():
+    now = datetime.now(UTC)
+    claims = extract_claims(
+        [
+            HarnessEvent(
+                event_id="prompt",
+                ts=now,
+                harness_type=HarnessType.SYNTHETIC,
+                session_id="synthetic:s",
+                event_type=EventType.USER_PROMPT,
+                message_delta="Make all tests pass and finish the deployment.",
+            ),
+            HarnessEvent(
+                event_id="shell",
+                ts=now,
+                harness_type=HarnessType.SYNTHETIC,
+                session_id="synthetic:s",
+                event_type=EventType.SHELL,
+                message_delta="All tests passed",
+                command="pytest -q",
+            ),
+        ]
+    )
+    assert claims == []
+
+
+def test_failed_tests_are_denied_and_contrast_clause_is_still_extracted():
+    claims = extract_claims(
+        [_event("Some tests failed, but implemented the parser.")]
+    )
+
+    assert any(
+        item["kind"] == "tests_pass" and item["polarity"] == "denied"
+        for item in claims
+    )
+    assert any(
+        item["kind"] == "implemented" and item["polarity"] == "asserted"
+        for item in claims
+    )
+
+
+def test_not_all_tests_passed_is_never_an_asserted_pass_claim():
+    claims = extract_claims([_event("Not all tests passed.")])
+
+    assert claims
+    assert all(item["polarity"] == "denied" for item in claims)

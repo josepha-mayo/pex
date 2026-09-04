@@ -1,20 +1,16 @@
 {
-  "identifier": "default",
-  "description": "Default PEX desktop capabilities",
-  "windows": ["main", "pet"],
+  "identifier": "main",
+  "description": "PEX command surface capabilities",
+  "windows": ["main"],
   "permissions": [
     "core:default",
-    "core:window:allow-start-dragging",
     "core:window:allow-close",
     "core:window:allow-show",
     "core:window:allow-hide",
     "core:window:allow-set-position",
-    "core:window:allow-set-focus",
     "core:window:allow-outer-position",
     "core:window:allow-outer-size",
     "core:window:allow-set-background-color",
-    "core:webview:allow-set-webview-background-color",
-    "allow-focus-harness",
-    "allow-quit-app"
+    "allow-bridge-token"
   ]
 }

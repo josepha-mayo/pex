@@ -13,7 +13,8 @@ flowchart TB
   codex[Codex App Server]
   other[Other harness adapters]
   strands[Strands Supervisor]
-  search[Firecrawl / Exa / Tavily / Brave]
+  verifier[Independent Strands Verifier]
+  evidence[Bounded local evidence + verification]
   runtime[AgentCore Runtime target]
 
   human --> pet
@@ -25,10 +26,14 @@ flowchart TB
   bridge --> policy
   policy --> cursor
   policy --> codex
-  bridge -->|sanitized events| strands
-  strands --> search
-  strands -->|typed proposed actions| policy
-  strands -.->|hackathon deploy, not live yet| runtime
+  bridge --> evidence
+  evidence -->|redacted request| strands
+  evidence --> verifier
+  strands -->|semantic-only proposed action| verifier
+  verifier -->|approved typed proposal| policy
+  bridge -->|deterministic typed action| policy
+  runtime -.->|deploy target hosts both Agents| strands
+  runtime -.-> verifier
 ```
 
 ## Invariants
@@ -42,6 +47,10 @@ flowchart TB
 
 ## Strands usage
 
-The supervisor agent has tools (`get_goal`, `get_session_state`, `get_recent_events`, `get_scores`, `get_context`, `run_verification`, `web_search`, `scrape_url`, `propose_typed_action`). A Graph (supervisor → independent verifier) is used for high-stakes false-done / drift cases. Deterministic scoring stays in the bridge so token deltas do not each call a model. If no supervisor model is configured, triage is deterministic and `used_llm=false`.
+The current live path creates one fresh Strands supervisor for each semantic STOP inspection and requires a validated structured decision. Six fresh request-scoped tools expose only the immutable redacted evidence already gathered by the bridge: goal, session state, recent events, scores, context, and the local verification receipt. They cannot execute code, read arbitrary files, call a harness, or mutate PEX. Their actual use is recorded in `evidence_tools`.
+
+A semantic-only intervention must pass a second fresh independent verifier Agent over the same bounded evidence. Rejection, missing evidence, malformed output, failure, or timeout fails closed to deterministic NOOP. Locally evidenced completion/corrections remain authoritative, and local policy still owns execution. Deterministic scoring stays in the bridge so token deltas do not each call a model. If no supervisor model is configured, triage is deterministic and `used_llm=false`.
+
+The previous unused verifier Graph was removed. The current two-Agent workflow is real but is not presented as a Strands Graph. Side-effect tools and public-web verification tools remain unimplemented rather than being exposed unsafely.
 
 AgentCore entrypoint: `python -m pex_supervisor.runtime` exposing `/invocations` and `/ping`. Image exists; runtime is not deployed.

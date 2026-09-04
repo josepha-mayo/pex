@@ -2,7 +2,16 @@
 
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.capabilities import AdapterCapabilities, AdapterSupportLabel, ControlGranularity
-from pex_protocol.context import ContextBundle, ContextItem
+from pex_protocol.context import (
+    ClaimVerificationRequest,
+    ContextBundle,
+    ContextHandoffRequest,
+    ContextItem,
+    HandoffAssimilationEvidence,
+    HumanDecisionRequest,
+    ProgressEvidenceReference,
+    ProgressReport,
+)
 from pex_protocol.enums import (
     Authority,
     AutonomyLevel,
@@ -20,8 +29,30 @@ from pex_protocol.fingerprint import AgentFingerprint
 from pex_protocol.goal import Decision, Goal
 from pex_protocol.intervention import Intervention
 from pex_protocol.overlay import Overlay, OverlayDiff
+from pex_protocol.project_identity import (
+    PathPlatform,
+    PhysicalIdentityProof,
+    ProjectIdentity,
+    ProjectLocator,
+    ProjectLocatorKind,
+    ProjectOrigin,
+    same_project_locator,
+)
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorRequest, SupervisorResult, TrajectoryScores
+from pex_protocol.verification import (
+    EvidenceGatheringReceipt,
+    EvidenceGatheringState,
+    PytestInvocation,
+    PytestInvocationScope,
+    VerificationBackendKind,
+    VerificationExecutionReceipt,
+    VerificationExecutionResult,
+    VerificationProbe,
+    VerificationProbeKind,
+    classify_pytest_argv,
+    classify_pytest_invocation,
+)
 
 SCHEMA_VERSION = "1"
 
@@ -32,8 +63,11 @@ __all__ = [
     "AgentFingerprint",
     "Authority",
     "AutonomyLevel",
+    "ClaimVerificationRequest",
     "ContextBundle",
+    "ContextHandoffRequest",
     "ContextItem",
+    "HandoffAssimilationEvidence",
     "ContextKind",
     "ControlGranularity",
     "Decision",
@@ -41,16 +75,29 @@ __all__ = [
     "DecisionStatus",
     "EventPhase",
     "EventType",
+    "EvidenceGatheringReceipt",
+    "EvidenceGatheringState",
     "Goal",
     "HarnessEvent",
     "HarnessSession",
     "HarnessType",
+    "HumanDecisionRequest",
     "Intervention",
     "InterventionType",
     "Overlay",
     "OverlayDiff",
+    "PathPlatform",
+    "PhysicalIdentityProof",
     "PolicyVerdict",
+    "ProgressEvidenceReference",
+    "ProgressReport",
+    "ProjectIdentity",
+    "ProjectLocator",
+    "ProjectLocatorKind",
+    "ProjectOrigin",
     "ProposedAction",
+    "PytestInvocation",
+    "PytestInvocationScope",
     "RiskLevel",
     "Sensitivity",
     "SessionStatus",
@@ -58,4 +105,12 @@ __all__ = [
     "SupervisorRequest",
     "SupervisorResult",
     "TrajectoryScores",
+    "VerificationBackendKind",
+    "VerificationExecutionReceipt",
+    "VerificationExecutionResult",
+    "VerificationProbe",
+    "VerificationProbeKind",
+    "classify_pytest_argv",
+    "classify_pytest_invocation",
+    "same_project_locator",
 ]

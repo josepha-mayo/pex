@@ -7,12 +7,14 @@ from pathlib import Path
 
 import pytest
 
+from tests.contract.live_gate import require_live_authorization
 from tests.contract.test_live_codex_pump import _ensure_local_supervisor_env, _has_supervisor_key
 
 
 @pytest.mark.live_llm
 @pytest.mark.asyncio
 async def test_live_devin_exit_sends_specific_message(tmp_path: Path):
+    require_live_authorization("PEX_LIVE_SUPERVISOR")
     if not _has_supervisor_key():
         pytest.skip("no supervisor API key or local OpenAI-compatible server")
     _ensure_local_supervisor_env()
@@ -36,7 +38,9 @@ async def test_live_devin_exit_sends_specific_message(tmp_path: Path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
     transport = MemoryHttpTransport()
-    transport.sessions = [{"id": "live-devin-inspect", "session_id": "live-devin-inspect", "status": "running"}]
+    transport.sessions = [
+        {"id": "live-devin-inspect", "session_id": "live-devin-inspect", "status": "running"}
+    ]
     transport.session_details["live-devin-inspect"] = {
         "session_id": "live-devin-inspect",
         "status": "exit",
@@ -45,7 +49,9 @@ async def test_live_devin_exit_sends_specific_message(tmp_path: Path):
     transport.messages = [{"message": "I am done.", "role": "assistant"}]
     registry = AdapterRegistry()
     registry.devin.attach_transport(transport, org_id="org")
-    settings = Settings(require_auth=False, home=tmp_path, autonomy="manage", codex_attach=False)
+    settings = Settings.for_test(
+        require_auth=False, home=tmp_path, autonomy="manage", codex_attach=False
+    )
     pipeline = Pipeline(store, registry, EventBus(), settings, model=model)
     now = datetime.now(UTC)
     goal = Goal(
@@ -59,9 +65,7 @@ async def test_live_devin_exit_sends_specific_message(tmp_path: Path):
         updated_at=now,
     )
     await store.upsert_goal(goal)
-    session = registry.devin.ingest_hook(
-        {"session_id": "live-devin-inspect", "cwd": str(tmp_path)}
-    )
+    session = registry.devin.ingest_hook({"session_id": "live-devin-inspect", "cwd": str(tmp_path)})
     session.goal_id = goal.id
     session.cwd = str(tmp_path)
     await store.upsert_session(session)

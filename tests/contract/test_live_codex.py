@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import pytest
-
 from pex_bridge.adapters.codex import CodexAdapter, CodexStdioTransport
 from pex_bridge.adapters.codex_bin import resolve_codex_bin
 
+from tests.contract.live_gate import require_live_authorization
 
+
+@pytest.mark.live_codex
 @pytest.mark.asyncio
 async def test_live_codex_appserver_handshake():
+    require_live_authorization("PEX_LIVE_CODEX")
     binary = resolve_codex_bin()
     if not binary:
         pytest.skip("codex CLI not found")

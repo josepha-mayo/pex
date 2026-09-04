@@ -8,23 +8,28 @@ not copy Codex built-in sprites.
 from __future__ import annotations
 
 import math
+import os
+import secrets
 from colorsys import hls_to_rgb, rgb_to_hls
 from functools import lru_cache
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, UnidentifiedImageError
 
 from pex_bridge.pets import (
     CODEX_CELL_H,
     CODEX_CELL_W,
     CODEX_COLS,
+    CODEX_REQUIRED_FRAMES,
     CODEX_ROWS,
     CODEX_ROWS_V2,
     PetDefinition,
+    validate_codex_v2_atlas,
 )
 
 ATLAS_W = CODEX_CELL_W * CODEX_COLS
 ATLAS_H = CODEX_CELL_H * CODEX_ROWS_V2
+MAX_CACHE_ATLAS_BYTES = 16 * 1024 * 1024
 
 LOOK_ROW9 = [0.0, 22.5, 45.0, 67.5, 90.0, 112.5, 135.0, 157.5]
 LOOK_ROW10 = [180.0, 202.5, 225.0, 247.5, 270.0, 292.5, 315.0, 337.5]
@@ -37,9 +42,9 @@ def _hex(color: str) -> tuple[int, int, int]:
 
 def _shift(color: str, hue_deg: int) -> tuple[int, int, int]:
     r, g, b = (c / 255 for c in _hex(color))
-    h, l, s = rgb_to_hls(r, g, b)
+    h, lightness, s = rgb_to_hls(r, g, b)
     h = (h + hue_deg / 360.0) % 1.0
-    rr, gg, bb = hls_to_rgb(h, l, s)
+    rr, gg, bb = hls_to_rgb(h, lightness, s)
     return int(rr * 255), int(gg * 255), int(bb * 255)
 
 
@@ -66,8 +71,12 @@ def _draw_body(
     elif shape == "kit":
         draw.rounded_rectangle((x0, y0 + 8, x1, y1), radius=22, fill=body, outline=accent, width=3)
         ear = int(22 * scale)
-        draw.polygon([(x0 + 6, y0 + 18), (x0 + ear, y0 - 10), (cx - 8, y0 + 18)], fill=body, outline=accent)
-        draw.polygon([(x1 - 6, y0 + 18), (x1 - ear, y0 - 10), (cx + 8, y0 + 18)], fill=body, outline=accent)
+        draw.polygon(
+            [(x0 + 6, y0 + 18), (x0 + ear, y0 - 10), (cx - 8, y0 + 18)], fill=body, outline=accent
+        )
+        draw.polygon(
+            [(x1 - 6, y0 + 18), (x1 - ear, y0 - 10), (cx + 8, y0 + 18)], fill=body, outline=accent
+        )
     elif shape == "bot":
         draw.rounded_rectangle((x0, y0, x1, y1), radius=10, fill=body, outline=accent, width=3)
         draw.rectangle((cx - 3, y0 - 16, cx + 3, y0), fill=accent)
@@ -83,7 +92,9 @@ def _draw_body(
     elif shape == "nudge":
         draw.polygon([(cx, y0), (x1, cy), (cx, y1), (x0, cy)], fill=body, outline=accent)
     elif shape == "ember":
-        draw.polygon([(cx, y0 - 8), (x1, y1 - 6), (cx, y1 + 8), (x0, y1 - 6)], fill=body, outline=accent)
+        draw.polygon(
+            [(cx, y0 - 8), (x1, y1 - 6), (cx, y1 + 8), (x0, y1 - 6)], fill=body, outline=accent
+        )
     elif shape == "spark":
         pts = []
         for i in range(8):
@@ -101,9 +112,19 @@ def _row_motion(row_name: str, frame: int) -> tuple[int, int, float, float]:
     if row_name == "idle":
         return 0, int(math.sin(t * math.pi * 2) * 3), 1.0 + 0.03 * math.sin(t * math.pi * 2), 1.0
     if row_name == "running-right":
-        return int(10 + 8 * math.sin(t * math.pi * 2)), int(abs(math.sin(t * math.pi * 4)) * -10), 1.0, 1.0
+        return (
+            int(10 + 8 * math.sin(t * math.pi * 2)),
+            int(abs(math.sin(t * math.pi * 4)) * -10),
+            1.0,
+            1.0,
+        )
     if row_name == "running-left":
-        return int(-10 - 8 * math.sin(t * math.pi * 2)), int(abs(math.sin(t * math.pi * 4)) * -10), 1.0, 1.0
+        return (
+            int(-10 - 8 * math.sin(t * math.pi * 2)),
+            int(abs(math.sin(t * math.pi * 4)) * -10),
+            1.0,
+            1.0,
+        )
     if row_name == "waving":
         return int(math.sin(t * math.pi * 2) * 6), -6, 1.02, 1.0
     if row_name == "jumping":
@@ -114,7 +135,12 @@ def _row_motion(row_name: str, frame: int) -> tuple[int, int, float, float]:
         blink = 0.15 if frame in {3, 4} else 1.0
         return 0, 4, 0.98, blink
     if row_name == "running":
-        return int(math.sin(t * math.pi * 2) * 4), int(abs(math.sin(t * math.pi * 4)) * -8), 1.0, 1.0
+        return (
+            int(math.sin(t * math.pi * 2) * 4),
+            int(abs(math.sin(t * math.pi * 4)) * -8),
+            1.0,
+            1.0,
+        )
     if row_name == "review":
         return int(math.sin(t * math.pi) * 3), 0, 1.0, 1.0
     return 0, 0, 1.0, 1.0
@@ -153,7 +179,10 @@ def _draw_cell(
         ex = cx + side + look_x
         ey = cy - 8 + look_y
         draw.ellipse((ex - ew, ey - eh, ex + ew, ey + eh), fill=(*eye, 255))
-        draw.ellipse((ex - 3 + look_x, ey - 3 + look_y, ex + 1 + look_x, ey + 1 + look_y), fill=(250, 250, 250, 220))
+        draw.ellipse(
+            (ex - 3 + look_x, ey - 3 + look_y, ex + 1 + look_x, ey + 1 + look_y),
+            fill=(250, 250, 250, 220),
+        )
     if row_name == "waving":
         arm_y = cy - 20 - col * 3
         draw.line((cx + 40, cy, cx + 62, arm_y), fill=accent, width=6)
@@ -165,6 +194,12 @@ def _draw_cell(
 
 
 def render_atlas(pet: PetDefinition, hue_shift: int = 0) -> Image.Image:
+    if (
+        isinstance(hue_shift, bool)
+        or not isinstance(hue_shift, int)
+        or not -360 <= hue_shift <= 360
+    ):
+        raise ValueError("hue_shift must be an integer between -360 and 360")
     atlas = Image.new("RGBA", (ATLAS_W, ATLAS_H), (0, 0, 0, 0))
     for row, name in enumerate(CODEX_ROWS):
         looks = None
@@ -172,7 +207,7 @@ def render_atlas(pet: PetDefinition, hue_shift: int = 0) -> Image.Image:
             looks = LOOK_ROW9
         elif name == "look-10":
             looks = LOOK_ROW10
-        for col in range(CODEX_COLS):
+        for col in range(CODEX_REQUIRED_FRAMES[row]):
             look = looks[col] if looks else None
             _draw_cell(atlas, pet, col, row, name if looks is None else "idle", look, hue_shift)
     return atlas
@@ -181,16 +216,49 @@ def render_atlas(pet: PetDefinition, hue_shift: int = 0) -> Image.Image:
 def write_atlas(pet: PetDefinition, dest: Path, hue_shift: int = 0) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     image = render_atlas(pet, hue_shift)
-    image.save(dest, "WEBP", lossless=True, quality=95)
+    temporary = dest.parent / f".{dest.name}.{secrets.token_hex(8)}.tmp"
+    try:
+        with temporary.open("xb") as handle:
+            image.save(handle, "WEBP", lossless=True, quality=95)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, dest)
+    finally:
+        image.close()
+        temporary.unlink(missing_ok=True)
     return dest
+
+
+def _cache_atlas_valid(path: Path) -> bool:
+    try:
+        stat = path.stat()
+        if not path.is_file() or not 1 <= stat.st_size <= MAX_CACHE_ATLAS_BYTES:
+            return False
+        with Image.open(path) as image:
+            validate_codex_v2_atlas(image, subject="cached pet atlas")
+    except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError):
+        return False
+    return True
 
 
 @lru_cache(maxsize=32)
 def cached_bytes(pet_id: str, hue_shift: int, cache_dir: str) -> bytes:
     from pex_bridge.pets import starters_by_id
 
-    pet = starters_by_id()[pet_id]
+    if (
+        isinstance(hue_shift, bool)
+        or not isinstance(hue_shift, int)
+        or not -360 <= hue_shift <= 360
+    ):
+        raise ValueError("hue_shift must be an integer between -360 and 360")
+    pet = starters_by_id().get(pet_id)
+    if pet is None:
+        raise ValueError("unknown starter pet")
     path = Path(cache_dir) / f"{pet_id}_{hue_shift}.webp"
-    if not path.exists():
+    if not _cache_atlas_valid(path):
         write_atlas(pet, path, hue_shift)
-    return path.read_bytes()
+    with path.open("rb") as handle:
+        data = handle.read(MAX_CACHE_ATLAS_BYTES + 1)
+    if not data or len(data) > MAX_CACHE_ATLAS_BYTES:
+        raise ValueError("cached pet atlas exceeded the safety bound")
+    return data

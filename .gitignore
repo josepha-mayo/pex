@@ -31,6 +31,7 @@ bridge.token
 Thumbs.db
 .idea/
 .vscode/
+.opencode/
 *.log
 
 # Benchmark raw logs are immutable once written; never commit invented scores
@@ -46,8 +47,13 @@ docs/vendor/codex-app-server/
 # Hatch-pet working copies (final atlas is copied out after QA)
 apps/desktop/pets/pex-hatch/
 apps/desktop/src/pets/_hatch/
-apps/desktop/src/pets/von/spritesheet.webp
+# Generated visual-QA evidence contains machine-bound provenance. Release
+# packaging must regenerate and validate it; source checkpoints never stage it.
+apps/desktop/src/pets/_audit/
 apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/binaries/
+build/pyinstaller/
+build/sidecar-pets/
 
 # Local demo captures; upload the video to YouTube/Vimeo, keep stills in git
 docs/demo/*.webm

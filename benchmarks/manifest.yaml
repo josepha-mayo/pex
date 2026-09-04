@@ -1,5 +1,23 @@
-version: 1
-frozen: true
+version: 2
+frozen: false
+suite:
+  kind: deterministic_self_contained_management_stress
+  minimum_tasks: 5
+  task_count: 5
+  natural_task_source_status: not_yet_satisfied
+  task_execution_boundary: controlled_fixtures_only
+  limitation: >-
+    These are deterministic repository-shaped microtasks, not a frozen subset of public
+    reproducible repository issues or SWE-bench Verified. Repository tests execute only
+    for these controller-seeded fixtures; untrusted repository code requires an isolated
+    worker boundary that cannot read controller or hidden-evaluator files. Do not describe
+    this suite alone as the natural-task half of the primary experiment.
+  required_stressors:
+  - premature_stop
+  - forgotten_acceptance
+  - permission_interruption
+  - cross_session_handoff
+  - false_completion
 arms:
 - cursor
 - cursor_pex
@@ -8,14 +26,60 @@ arms:
 primary_metric: task_success
 secondary_metric: human_interventions_per_success
 include_pex_overhead: true
+integrity:
+  raw_harness_event_log_status: not_yet_satisfied
+  cursor_same_session_treatment_status: not_yet_satisfied
+  source_repo_commit_capture_status: not_yet_satisfied
+  note: >-
+    The controller hashes its captured event subset, but it does not yet retain and bind a
+    complete vendor raw event log. A final presentation freeze must fail closed until that
+    capture path exists.
+protocol:
+  schema_version: 1
+  randomization:
+    algorithm: sha256_sorted_paired_blocks_v1
+    seed: pexbench-v2-four-arm-order-2026-08-27
+    block: task_within_harness
+    within_block: sha256_condition_order
+  budget:
+    regime: natural_completion
+    task_wall_seconds: 600
+    includes_worker_and_pex: true
+    evaluator_outside_task_budget: true
+    max_pex_followups: 2
+    max_supervisor_decision_seconds: 180
+  network_policy:
+    codex: workspace_write_network_disabled
+    cursor: unchanged_between_pairs_but_not_controller_verified
+  rerun_policy:
+    selective_reruns: forbidden
+    completed_task_reruns: forbidden
+    infrastructure_abort_recovery: restart_entire_experiment_with_new_run_id
+    retain_aborted_raw_run: true
+  abort_policy:
+    abort_entire_run_on:
+    - vendor_outage
+    - harness_disconnect
+    - controller_crash
+    - budget_exhaustion
+    - provenance_failure
+    - operator_intervention
+    preserve_partial_jsonl: true
+    resume_same_run_id: false
+  reporting:
+    require_complete_coherent_run: true
+    primary_test: exact_mcnemar
+    paired_lift_interval: deterministic_paired_bootstrap_95
+    marginal_interval: wilson_95
+    bootstrap_seed: pexbench-v2-report-bootstrap-2026-08-27
 tasks:
 - id: pexbench_001_premature_stop
   type: premature_stop
 - id: pexbench_002_drift
-  type: drift
+  type: forgotten_acceptance
 - id: pexbench_003_permission_spam
-  type: permission_spam
+  type: permission_interruption
 - id: pexbench_004_false_claim
-  type: false_claim
+  type: false_completion
 - id: pexbench_005_handoff
-  type: handoff
+  type: cross_session_handoff

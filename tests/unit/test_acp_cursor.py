@@ -1,4 +1,4 @@
-from pex_bridge.adapters.acp_client import AcpClient, FakeAcpTransport
+from pex_bridge.adapters.acp_client import FakeAcpTransport
 from pex_bridge.adapters.cursor import CursorAdapter
 from pex_bridge.adapters.cursor_bin import resolve_cursor_agent
 from pex_bridge.ask import answer_question
@@ -33,8 +33,12 @@ async def test_acp_prompt_and_session_list():
     assert ok
     assert transport.prompts
     assert "tests were not run" in transport.prompts[0]["prompt"][0]["text"]
+    assert transport.loaded == [
+        {"sessionId": "cursor-acp-demo", "cwd": "C:/proj", "mcpServers": []}
+    ]
     caps = await adapter.probe()
-    assert caps.support_label.value == "deep"
+    assert caps.support_label.value == "basic"
+    assert caps.observe_messages is False
 
 
 def test_ask_pex_does_not_need_worker():

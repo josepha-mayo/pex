@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import math
 import shutil
+from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -11,34 +14,108 @@ from pex_bridge.adapters.connect import annotate
 from pex_bridge.adapters.desktop import list_desktop_apps
 from pex_bridge.adapters.grok_build_bin import resolve_grok_build
 from pex_bridge.adapters.hermes_bin import resolve_hermes
+from pex_bridge.adapters.strict_json import strict_json_loads
 
 PROBES = (
-    ("opencode", "http://127.0.0.1:4096/global/health"),
-    ("opencode", "http://127.0.0.1:4097/global/health"),
-    ("opencode", "http://127.0.0.1:4096/session"),
-    ("qwen", "http://127.0.0.1:4170/global/health"),
-    ("qwen", "http://127.0.0.1:4170/session"),
+    ("opencode", "http://127.0.0.1:4096/global/health", "opencode_health"),
+    ("opencode", "http://127.0.0.1:4097/global/health", "opencode_health"),
+    ("opencode", "http://127.0.0.1:4096/session", "opencode_sessions"),
+    ("qwen", "http://127.0.0.1:4170/capabilities", "qwen_capabilities"),
 )
+
+# Prefer a live control surface over process-observe when both are present.
+_KIND_PRIORITY = ("http", "stdio", "acp", "cli", "desktop")
+
+MAX_DISCOVERY_RESPONSE_BYTES = 1_048_576
+
+
+def _resolved_cli(name: str) -> str | None:
+    """Return only a concrete executable inventory path, never a PATH token."""
+
+    candidate = shutil.which(name)
+    if not candidate:
+        return None
+    path = Path(candidate)
+    try:
+        resolved = path.resolve(strict=True)
+    except (OSError, RuntimeError):
+        return None
+    return str(resolved) if resolved.is_absolute() and resolved.is_file() else None
+
+
+def _matches_probe(contract: str, payload: object) -> bool:
+    if contract == "opencode_health":
+        return isinstance(payload, dict) and payload.get("healthy") is True
+    if contract == "opencode_sessions":
+        return isinstance(payload, list) and all(isinstance(item, dict) for item in payload)
+    if contract == "qwen_capabilities":
+        return (
+            isinstance(payload, dict)
+            and payload.get("v") == 1
+            and isinstance(payload.get("features"), list)
+            and "session_list" in payload["features"]
+        )
+    return False
+
+
+def _has(items: list[dict], name: str, kind: str) -> bool:
+    return any(item["name"] == name and item.get("kind") == kind for item in items)
+
+
+def prefer_attach_match(found: list[dict], name: str, kind: object = None) -> dict | None:
+    """Pick a discovered surface.
+
+    An omitted kind prefers HTTP/ACP over desktop observe, except Codex: omitted
+    kind never selects isolated App Server stdio. That attach is explicit.
+    """
+
+    candidates = [item for item in found if item.get("name") == name]
+    if kind:
+        return next((item for item in candidates if item.get("kind") == kind), None)
+    if name == "codex":
+        return next((item for item in candidates if item.get("kind") == "desktop"), None)
+    ranked = sorted(
+        candidates,
+        key=lambda item: (
+            _KIND_PRIORITY.index(item["kind"])
+            if item.get("kind") in _KIND_PRIORITY
+            else len(_KIND_PRIORITY)
+        ),
+    )
+    return ranked[0] if ranked else None
 
 
 async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, (int, float))
+        or not math.isfinite(float(timeout))
+        or not 0 < float(timeout) <= 5.0
+    ):
+        raise ValueError("discovery timeout must be between zero and five seconds")
     items: list[dict] = list(list_desktop_apps())
-    seen = {item["name"] for item in items}
     async with httpx.AsyncClient(timeout=timeout) as client:
-        for name, url in PROBES:
-            if name in seen:
+        for name, url, contract in PROBES:
+            if _has(items, name, "http"):
                 continue
             try:
-                response = await client.get(url)
+                async with client.stream("GET", url) as response:
+                    if not 200 <= response.status_code < 300:
+                        continue
+                    body = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        body.extend(chunk)
+                        if len(body) > MAX_DISCOVERY_RESPONSE_BYTES:
+                            raise RuntimeError("discovery response exceeded the safety bound")
+                payload = strict_json_loads(bytes(body))
             except Exception:
                 continue
-            if response.status_code < 500:
-                seen.add(name)
+            if _matches_probe(contract, payload):
                 items.append(
                     {
                         "name": name,
                         "kind": "http",
-                        "base_url": url.rsplit("/", 1)[0],
+                        "base_url": _origin(url),
                     }
                 )
     binary = resolve_codex_bin()
@@ -51,11 +128,12 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                 "bin": binary,
                 "surface": (
                     "Isolated `codex app-server --listen stdio://`. "
-                    "Not ChatGPT.exe. Attach explicitly; do not auto-spawn from the desktop process."
+                    "Not ChatGPT.exe. Attach explicitly; do not auto-spawn from the "
+                    "desktop process."
                 ),
             }
         )
-    if "grok_build" not in seen:
+    if not _has(items, "grok_build", "cli") and not _has(items, "grok_build", "acp"):
         grok_bin = resolve_grok_build()
         if grok_bin:
             items.append(
@@ -70,7 +148,7 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                     ),
                 }
             )
-    if "hermes" not in seen:
+    if not _has(items, "hermes", "acp"):
         hermes_bin = resolve_hermes()
         if hermes_bin:
             items.append(
@@ -79,11 +157,14 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                     "kind": "acp",
                     "connect": "acp-stdio",
                     "bin": hermes_bin,
-                    "surface": "hermes acp (CLI). Do not launch Hermes desktop.",
+                    "surface": (
+                        "hermes acp (CLI). Lists beside an already-running Hermes desktop. "
+                        "Do not launch Hermes to attach."
+                    ),
                 }
             )
-    if "opencode" not in seen:
-        opencode_bin = shutil.which("opencode")
+    if not _has(items, "opencode", "cli"):
+        opencode_bin = _resolved_cli("opencode")
         if opencode_bin:
             items.append(
                 {
@@ -91,11 +172,14 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                     "kind": "cli",
                     "connect": "http",
                     "bin": opencode_bin,
-                    "surface": "OpenCode CLI. Deep only after `opencode serve` HTTP attach. Do not treat a TUI process as the API.",
+                    "surface": (
+                        "OpenCode CLI. Deep only after `opencode serve` HTTP attach. "
+                        "A running TUI is listed separately; do not treat it as the API."
+                    ),
                 }
             )
-    if "omp" not in seen:
-        omp_bin = shutil.which("omp")
+    if not _has(items, "omp", "acp"):
+        omp_bin = _resolved_cli("omp")
         if omp_bin:
             items.append(
                 {
@@ -106,4 +190,36 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                     "surface": "omp acp (CLI). Do not spawn unless asked.",
                 }
             )
+    if not _has(items, "kimi", "acp"):
+        kimi_bin = _resolved_cli("kimi")
+        if kimi_bin:
+            items.append(
+                {
+                    "name": "kimi",
+                    "kind": "acp",
+                    "connect": "acp-stdio",
+                    "bin": kimi_bin,
+                    "surface": "kimi acp is available but not attached. Do not spawn unless asked.",
+                }
+            )
+    if not _has(items, "qwen", "cli"):
+        qwen_bin = _resolved_cli("qwen")
+        if qwen_bin:
+            items.append(
+                {
+                    "name": "qwen",
+                    "kind": "cli",
+                    "connect": "http",
+                    "bin": qwen_bin,
+                    "surface": (
+                        "Qwen CLI is installed but not attached. `qwen serve` plus a verified "
+                        "capability response and session SSE stream is required."
+                    ),
+                }
+            )
     return [annotate(item) for item in items]
+
+
+def _origin(url: str) -> str:
+    parsed = urlsplit(url)
+    return f"{parsed.scheme}://{parsed.netloc}"

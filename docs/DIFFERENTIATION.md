@@ -15,7 +15,7 @@ PEX's unit of optimization is different:
 | Approval gates | Local policy broker; cloud cannot bypass |
 | Shared context | Context mesh with scored bundles, not a dumped transcript |
 | Mobile/remote | Same attention policy on Telegram/Discord later |
-| Pets (Codex) | Seven illustrated mood sprites + ten generated Codex-v2 atlases + hatch-pet import + hue/name/scale. |
+| Pets (Codex) | Current source contains exactly eight built-in Codex-v2 atlases, each with nine animation rows and sixteen look directions. Custom imports and one-call hatch outputs stay separate; hatch output is only an unverified base candidate. Playable custom-pet assembly, independent QA, and release packaging remain incomplete. |
 
 ## What we refuse to become
 

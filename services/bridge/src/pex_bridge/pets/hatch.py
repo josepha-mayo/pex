@@ -1,54 +1,44 @@
-"""In-app Codex-style hatch: 13 visual jobs via the user's PEX image provider."""
+"""One-call, durable generation of unverified pet base-candidate art.
+
+This module never generates animation rows and never produces a playable pet.
+The hatch-pet workflow must ground every later row in the approved base, assemble
+an 8x11 v2 atlas, and pass deterministic plus independent visual QA.
+"""
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import re
-import threading
-from datetime import datetime, timezone
+import secrets
+import time
+from collections.abc import Mapping
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from PIL import Image, UnidentifiedImageError
 
-from pex_bridge.pets.imagegen import (
-    HatchImageError,
-    describe_hatch_backend,
-    generate_png,
-    hatch_image_config,
-    probe_images_endpoint,
+from pex_bridge.pets.hatch_store import (
+    JOBS_TOTAL,
+    HatchAuthorization,
+    HatchAuthorizationError,
+    HatchConflictError,
+    HatchEffect,
+    HatchJob,
+    HatchRegistry,
+    authorize_hatch,
+    base_candidate_prompt,
+    hatch_request_hash,
+    prepare_hatch_artifact_dirs,
 )
+from pex_bridge.pets.imagegen import HatchImageError, generate_png, hatch_image_config
 
-JOBS_TOTAL = 13
-STRIP_PREFIX = (
-    "OUTPUT SHAPE (mandatory): a SINGLE horizontal animation strip, one row of frames only, "
-    "sitting side by side on a flat #00FF55 chroma-key field. Do NOT generate a spritesheet, "
-    "contact sheet, atlas, grid, stacked rows, or 8x11 sheet. Height is one character tall. "
-    "No text, labels, numbers, guide boxes, scenery, floor, shadows, speed lines, or detached effects. "
+_SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
+_TERMINAL_EFFECT_STATES = frozenset(
+    {"delivered", "failed", "delivery_uncertain", "skipped"}
 )
-BASE_PREFIX = (
-    "One centered full-body pet on a flat #00FF55 chroma-key background. "
-    "No scenery, shadows, floor, text, labels, or detached effects. "
-)
-
-ROW_SPECS: list[tuple[str, int, str]] = [
-    ("idle", 6, "calm breathing and blink loop, same planted pose"),
-    ("running-right", 8, "body traveling screen-right through limb poses, not a grid"),
-    ("running-left", 8, "body traveling screen-left; skip if mirrored from running-right"),
-    ("waving", 4, "greeting through a limb pose only, no wave marks"),
-    ("jumping", 5, "vertical jump through body height only, no shadows"),
-    ("failed", 8, "slumped blocked reaction, attached tears only if any"),
-    ("waiting", 6, "expectant asking pose, distinct from idle"),
-    ("running", 6, "focused work/thinking, NOT foot-running or jogging"),
-    ("review", 6, "inspecting finished work with a lean or head tilt"),
-    ("look-cardinals", 4, "four poses left to right: look up, screen-right, down, screen-left"),
-    ("look-row-9", 8, "eight look poses from up through down-right"),
-    ("look-row-10", 8, "eight look poses from down through up-left"),
-]
-
-
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def slugify(name: str) -> str:
@@ -56,165 +46,240 @@ def slugify(name: str) -> str:
     return slug or "pet"
 
 
-class HatchJob(BaseModel):
-    id: str
-    pet_id: str
-    display_name: str
-    description: str
-    style_preset: str = "plush"
-    pet_notes: str = ""
-    status: str = "queued"
-    step: str = "Getting pet ready."
-    jobs_complete: int = 0
-    jobs_total: int = JOBS_TOTAL
-    error: str | None = None
-    spritesheet: str | None = None
-    image_backend: str | None = None
-    created_at: str = Field(default_factory=_utcnow)
-    updated_at: str = Field(default_factory=_utcnow)
+def hatch_prompt(job: HatchJob, kind: str, _frames: int, _action: str) -> str:
+    """Return the only safe in-app prompt: one unverified base candidate."""
 
-    def public(self) -> dict[str, Any]:
-        return self.model_dump(mode="json")
-
-
-class HatchRegistry:
-    def __init__(self, root: Path) -> None:
-        self.root = root
-        self.root.mkdir(parents=True, exist_ok=True)
-        self._lock = threading.Lock()
-        self._jobs: dict[str, HatchJob] = {}
-        self._load()
-
-    def _path(self, job_id: str) -> Path:
-        return self.root / f"{job_id}.json"
-
-    def _load(self) -> None:
-        for path in self.root.glob("*.json"):
-            try:
-                job = HatchJob.model_validate_json(path.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                continue
-            self._jobs[job.id] = job
-
-    def _save(self, job: HatchJob) -> None:
-        job.updated_at = _utcnow()
-        self._path(job.id).write_text(job.model_dump_json(indent=2), encoding="utf-8")
-
-    def list_jobs(self) -> list[HatchJob]:
-        with self._lock:
-            return sorted(self._jobs.values(), key=lambda item: item.created_at, reverse=True)
-
-    def get(self, job_id: str) -> HatchJob | None:
-        with self._lock:
-            return self._jobs.get(job_id)
-
-    def create(self, job: HatchJob) -> HatchJob:
-        with self._lock:
-            self._jobs[job.id] = job
-            self._save(job)
-        return job
-
-    def update(self, job_id: str, **fields: Any) -> HatchJob:
-        with self._lock:
-            job = self._jobs[job_id]
-            updated = job.model_copy(update=fields)
-            self._jobs[job_id] = updated
-            self._save(updated)
-            return updated
-
-
-def hatch_prompt(job: HatchJob, kind: str, frames: int, action: str) -> str:
-    identity = job.pet_notes or job.description
-    style = job.style_preset
-    if kind == "base":
-        return (
-            f"{BASE_PREFIX}Style `{style}`. Identity: {identity} "
-            f"Named {job.display_name}. Compact whole-body mascot readable at 192x208."
+    if kind != "base":
+        raise ValueError(
+            "in-app hatch may generate only one base candidate; rows require hatch-pet"
         )
-    return (
-        f"{STRIP_PREFIX}Exactly {frames} frames in one row. State `{kind}`: {action}. "
-        f"Style `{style}`. Same identity as the base pet: {identity}"
-    )
+    return base_candidate_prompt(job)
 
 
-def write_generated(job_dir: Path, name: str, png: bytes) -> Path:
-    decoded = job_dir / "decoded"
-    decoded.mkdir(parents=True, exist_ok=True)
-    dest = decoded / f"{name}.png"
-    dest.write_bytes(png)
+def _atomic_write_bytes(destination: Path, payload: bytes) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.parent / f".{destination.name}.{secrets.token_hex(8)}.tmp"
+    try:
+        with temporary.open("xb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        # Linking a complete temporary file into its final name is atomic and
+        # fails if another actor preplanted that name after our path check.
+        os.link(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _atomic_write_json(destination: Path, payload: dict[str, Any]) -> None:
+    encoded = (
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n"
+    ).encode("utf-8")
+    _atomic_write_bytes(destination, encoded)
+
+
+def write_generated(
+    job_dir: Path,
+    name: str,
+    image_bytes: bytes,
+    *,
+    root: Path | None = None,
+) -> Path:
+    """Validate and normalize provider output before atomically storing a PNG."""
+
+    if not _SAFE_COMPONENT.fullmatch(name):
+        raise HatchImageError("candidate image name is invalid")
+    if not image_bytes or len(image_bytes) > 25 * 1024 * 1024:
+        raise HatchImageError("image response was empty or exceeded the 25 MiB safety limit")
+    artifact_root = root or job_dir.parent
+    try:
+        secured_job_dir = prepare_hatch_artifact_dirs(
+            artifact_root, job_dir.name, require_empty=False
+        )
+    except HatchAuthorizationError as exc:
+        raise HatchImageError("candidate artifact path is unsafe") from exc
+    if secured_job_dir != Path(os.path.abspath(os.fspath(job_dir))):
+        raise HatchImageError("candidate artifact path escaped its root")
+    try:
+        with Image.open(BytesIO(image_bytes)) as source:
+            if (
+                source.width > 4096
+                or source.height > 4096
+                or source.width * source.height > 20_000_000
+            ):
+                raise HatchImageError(
+                    "image dimensions exceeded the candidate-art safety limit"
+                )
+            source.verify()
+        with Image.open(BytesIO(image_bytes)) as source:
+            normalized = source.convert("RGBA")
+            encoded = BytesIO()
+            normalized.save(encoded, format="PNG")
+            normalized.close()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise HatchImageError("image provider returned invalid or unsafe image bytes") from exc
+
+    normalized_png = encoded.getvalue()
+    if len(normalized_png) > 25 * 1024 * 1024:
+        raise HatchImageError("normalized candidate exceeded the 25 MiB safety limit")
+    destination = job_dir / "decoded" / f"{name}.png"
+    _atomic_write_bytes(destination, normalized_png)
     if name == "base":
-        refs = job_dir / "references"
-        refs.mkdir(parents=True, exist_ok=True)
-        (refs / "canonical-base.png").write_bytes(png)
-    return dest
+        _atomic_write_bytes(
+            job_dir / "references" / "canonical-base.png", normalized_png
+        )
+    return destination
 
 
-def run_hatch_job(registry: HatchRegistry, job_id: str) -> HatchJob:
+def write_candidate_receipt(
+    registry: HatchRegistry,
+    job: HatchJob,
+    effect: HatchEffect,
+    asset: Path,
+) -> Path:
+    """Persist the strict, secret-free provenance required for reconciliation."""
+
+    if not job.request_hash or not job.provider_fingerprint or not job.request_fingerprint:
+        raise HatchImageError("hatch job is missing its exact request binding")
+    try:
+        job_dir = prepare_hatch_artifact_dirs(registry.root, job.id)
+    except HatchAuthorizationError as exc:
+        raise HatchImageError("candidate artifact path is unsafe") from exc
+    expected_asset = job_dir / "decoded" / "base.png"
+    if Path(os.path.abspath(os.fspath(asset))) != expected_asset:
+        raise HatchImageError("candidate asset path does not match the reserved effect")
+    payload = asset.read_bytes()
+    relative_asset = asset.relative_to(registry.root).as_posix()
+    receipt = job_dir / "candidate-receipt.json"
+    _atomic_write_json(
+        receipt,
+        {
+            "schema": "pex.hatch.base-candidate-receipt.v1",
+            "job_id": job.id,
+            "effect_id": effect.effect_id,
+            "result_state": "base_candidate_persisted",
+            "request_hash": job.request_hash,
+            "provider_fingerprint": job.provider_fingerprint,
+            "request_fingerprint": job.request_fingerprint,
+            "asset": relative_asset,
+            "asset_sha256": hashlib.sha256(payload).hexdigest(),
+            "asset_bytes": len(payload),
+            "playable_pet": False,
+            "qa_status": "awaiting_grounded_assembly_and_independent_qa",
+        },
+    )
+    return receipt
+
+
+def _wait_for_canonical_terminal(
+    registry: HatchRegistry, job_id: str, *, timeout_seconds: float = 5.0
+) -> HatchJob:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        effect = registry.get_effect(job_id)
+        job = registry.get(job_id)
+        if job is None:
+            raise KeyError(job_id)
+        if effect is None or effect.state in _TERMINAL_EFFECT_STATES:
+            return job
+        time.sleep(0.01)
     job = registry.get(job_id)
     if job is None:
         raise KeyError(job_id)
-    cfg = hatch_image_config()
-    probe = probe_images_endpoint(cfg)
-    if not probe.get("has_image_endpoint"):
-        return registry.update(
+    return job
+
+
+def run_hatch_job(
+    registry: HatchRegistry,
+    job_id: str,
+    *,
+    config: Mapping[str, Any] | None = None,
+) -> HatchJob:
+    """Dispatch at most one billable base generation through the durable ledger."""
+
+    job = registry.get(job_id)
+    if job is None:
+        raise KeyError(job_id)
+    effect = registry.get_effect(job_id)
+    if effect is None or effect.state in _TERMINAL_EFFECT_STATES:
+        return job
+    if effect.state == "dispatching":
+        return _wait_for_canonical_terminal(registry, job_id)
+
+    cfg = config if config is not None else hatch_image_config()
+    if cfg is None:
+        return registry.note_pre_dispatch_block(
             job_id,
-            status="failed",
-            step="Hatch needs an image model.",
-            error=probe.get("reason") or describe_hatch_backend().get("reason"),
-            image_backend=probe.get("provider"),
+            step="Hatch needs an explicitly bound image provider.",
+            error="No authorized image provider configuration is available; no call was made.",
         )
-    registry.update(
-        job_id,
-        status="running",
-        step="Imagining the main look.",
-        image_backend=probe.get("provider"),
-        error=None,
-    )
-    job_dir = registry.root / job_id
-    job_dir.mkdir(parents=True, exist_ok=True)
-    complete = 0
+
     try:
-        base_png = generate_png(hatch_prompt(job, "base", 1, "canonical identity"))
-        write_generated(job_dir, "base", base_png)
-        complete = 1
-        registry.update(job_id, jobs_complete=complete, step="Picturing poses.")
-        for kind, frames, action in ROW_SPECS:
-            if kind == "running-left":
-                # Deterministic mirror is applied after running-right extract in a later pass.
-                # Generate a dedicated strip so a missing hatch-pet script still yields art.
-                pass
-            png = generate_png(
-                hatch_prompt(job, kind, frames, action),
-                size="1536x1024",
+        job_dir = prepare_hatch_artifact_dirs(
+            registry.root, job_id, require_empty=True
+        )
+    except HatchAuthorizationError:
+        return registry.note_pre_dispatch_block(
+            job_id,
+            step="Hatch artifact path requires operator review.",
+            error="Unsafe or pre-existing hatch artifacts blocked provider dispatch.",
+        )
+
+    claim = registry.claim_for_dispatch(job_id, cfg)
+    if not claim.claimed:
+        if claim.reason == "already_dispatching":
+            return _wait_for_canonical_terminal(registry, job_id)
+        return claim.job
+    claimed_effect = claim.effect
+    if claimed_effect is None or claimed_effect.dispatch_token is None:
+        raise RuntimeError("hatch dispatch claim did not contain a durable token")
+
+    try:
+        # Exactly one potentially billable operation exists in this function.
+        png = generate_png(base_candidate_prompt(claim.job), config=cfg)
+        asset = write_generated(job_dir, "base", png, root=registry.root)
+        write_candidate_receipt(registry, claim.job, claimed_effect, asset)
+        return registry.finalize_delivered(
+            job_id,
+            dispatch_token=claimed_effect.dispatch_token,
+        )
+    except BaseException as exc:
+        # Once dispatching, generic failures cannot prove that no billable request
+        # reached the provider. Never make this effect retryable.
+        error_code = f"post_dispatch_{type(exc).__name__.lower()}"
+        try:
+            result = registry.finalize_uncertain(
+                job_id,
+                dispatch_token=claimed_effect.dispatch_token,
+                error_code=error_code,
             )
-            write_generated(job_dir, kind, png)
-            complete += 1
-            registry.update(job_id, jobs_complete=complete, step=f"Hatching {kind}.")
-        (job_dir / "hatch-note.json").write_text(
-            json.dumps(
-                {
-                    "ok": True,
-                    "jobs_complete": complete,
-                    "note": (
-                        "Strips are saved. Assemble with hatch-pet scripts into an 8x11 "
-                        "spritesheet.webp (spriteVersionNumber 2) before playback."
-                    ),
-                },
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
-        return registry.update(
-            job_id,
-            status="complete",
-            step="Hatching complete. Assembly/QA still required for v2 playback.",
-            jobs_complete=complete,
-        )
-    except HatchImageError as exc:
-        return registry.update(
-            job_id,
-            status="failed",
-            step="Hatch stopped.",
-            jobs_complete=complete,
-            error=str(exc),
-        )
+        except Exception:
+            result = registry.get(job_id) or claim.job
+        if not isinstance(exc, Exception):
+            raise
+        return result
+
+
+__all__ = [
+    "HatchAuthorization",
+    "HatchAuthorizationError",
+    "HatchConflictError",
+    "HatchEffect",
+    "HatchJob",
+    "HatchRegistry",
+    "JOBS_TOTAL",
+    "authorize_hatch",
+    "hatch_prompt",
+    "hatch_request_hash",
+    "run_hatch_job",
+    "slugify",
+    "write_generated",
+    "write_candidate_receipt",
+]

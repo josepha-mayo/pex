@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 import pytest
 from pex_supervisor.providers import load_supervisor_model
 
+from tests.contract.live_gate import require_live_authorization
+
 
 def _has_supervisor_key() -> bool:
     names = (
@@ -34,6 +36,7 @@ def _has_supervisor_key() -> bool:
 @pytest.mark.live_llm
 @pytest.mark.skipif(not _has_supervisor_key(), reason="no supervisor API key configured")
 def test_live_supervisor_inference_is_auditable():
+    require_live_authorization("PEX_LIVE_SUPERVISOR")
     from pex_protocol.enums import EventType, HarnessType, SessionStatus
     from pex_protocol.goal import Goal
     from pex_protocol.session import HarnessEvent, HarnessSession
@@ -79,7 +82,14 @@ def test_live_supervisor_inference_is_auditable():
     assert result.used_llm is True, (
         f"expected live inference, got {result.diagnosis} backend={backend}"
     )
-    assert result.inference_request_id
+    assert result.inference_status == "completed", result.model_dump(mode="json")
+    assert result.runtime == "strands-agents"
+    assert result.runtime_version
+    assert result.model_call_count >= 1
+    assert result.local_invocation_id and result.local_invocation_id.startswith("pexinv_")
+    # The installed generic Strands adapters do not expose every provider's
+    # request id. Never fabricate one from PEX's local correlation id.
+    assert result.inference_request_id is None
     assert result.action.type.value in {
         "CONTINUE_SESSION",
         "SEND_NUDGE",

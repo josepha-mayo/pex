@@ -2,14 +2,68 @@ from __future__ import annotations
 
 import json
 
-from pex_supervisor.inspect_http import _model_unsupported, _skip_model, parse_proposal_args, usage_tokens
-from pex_supervisor.loop import run_strands
-from pex_supervisor.tools import bind_request, record_proposal, reset_request, take_proposed
+import httpx
+import pytest
+from pex_supervisor.inspect_http import (
+    _chat_json,
+    _loads_object,
+    _model_unsupported,
+    _parse_response_object,
+    _read_response_text,
+    _skip_model,
+    complete_review_answer,
+    usage_tokens,
+)
 
-from tests.unit.test_graphs import _request
+
+def test_parse_review_answer_from_json_content():
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps({"answer": "Nothing needs you."})
+                }
+            }
+        ],
+        "usage": {"prompt_tokens": 11, "completion_tokens": 4},
+    }
+    parsed = _parse_response_object(payload)
+    assert parsed == {"answer": "Nothing needs you."}
+    assert usage_tokens(payload) == {"input_tokens": 11, "output_tokens": 4}
 
 
-def test_parse_proposal_from_tool_call():
+def test_parse_review_answer_from_wrapped_json():
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": (
+                        "Review:\n"
+                        '{"answer":"The latest verified action was NOOP."}\n'
+                    )
+                }
+            }
+        ]
+    }
+    assert _parse_response_object(payload) == {
+        "answer": "The latest verified action was NOOP."
+    }
+
+
+def test_review_completion_rejects_action_payload(monkeypatch):
+    monkeypatch.setattr(
+        "pex_supervisor.inspect_http._chat_json",
+        lambda *_args, **_kwargs: (
+            {"answer": "continue", "action_type": "SEND_NUDGE"},
+            {},
+        ),
+    )
+
+    with pytest.raises(ValueError, match="only answer"):
+        complete_review_answer("system", "question")
+
+
+def test_review_parser_does_not_accept_legacy_action_tool_calls():
     payload = {
         "choices": [
             {
@@ -18,61 +72,23 @@ def test_parse_proposal_from_tool_call():
                         {
                             "function": {
                                 "name": "propose_typed_action",
-                                "arguments": json.dumps(
-                                    {
-                                        "action_type": "SEND_NUDGE",
-                                        "rationale": "report.txt is missing",
-                                        "evidence": "workspace files=[]",
-                                        "message": "Create report.txt containing shipped.",
-                                    }
-                                ),
+                                "arguments": '{"action_type":"SEND_NUDGE"}',
                             }
                         }
                     ]
                 }
             }
-        ],
-        "usage": {"prompt_tokens": 11, "completion_tokens": 4},
-    }
-    args = parse_proposal_args(payload)
-    assert args["action_type"] == "SEND_NUDGE"
-    assert "report.txt" in args["message"]
-    assert usage_tokens(payload) == {"input_tokens": 11, "output_tokens": 4}
-
-
-def test_parse_proposal_from_json_content():
-    payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": '{"action_type":"NOOP","rationale":"done","evidence":"report.txt exists"}'
-                }
-            }
         ]
     }
-    assert parse_proposal_args(payload)["action_type"] == "NOOP"
 
-
-def test_parse_proposal_from_wrapped_json():
-    payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": (
-                        "Here is the action:\n"
-                        '{"action_type":"SEND_NUDGE","rationale":"missing","evidence":"no report.txt","message":"Create report.txt containing shipped."}\n'
-                    )
-                }
-            }
-        ]
-    }
-    args = parse_proposal_args(payload)
-    assert args["action_type"] == "SEND_NUDGE"
-    assert "report.txt" in args["message"]
+    with pytest.raises(ValueError, match="review content"):
+        _parse_response_object(payload)
 
 
 def test_unsupported_model_status_is_retryable():
-    assert _model_unsupported(401, '{"error":{"message":"Model x-preview-f-free is not supported"}}')
+    assert _model_unsupported(
+        401, '{"error":{"message":"Model x-preview-f-free is not supported"}}'
+    )
     assert _model_unsupported(404, '{"error":{"message":"No endpoints found"}}')
     assert not _model_unsupported(401, '{"error":{"message":"invalid api key"}}')
 
@@ -80,7 +96,9 @@ def test_unsupported_model_status_is_retryable():
 def test_zen_fallbacks_are_not_sent_to_openrouter():
     from pex_supervisor.inspect_http import _candidate_models
 
-    openrouter = _candidate_models({"provider": "openrouter", "model_id": "anthropic/claude-sonnet-4.6"})
+    openrouter = _candidate_models(
+        {"provider": "openrouter", "model_id": "anthropic/claude-sonnet-4.6"}
+    )
     assert openrouter == ["anthropic/claude-sonnet-4.6"]
     zen = _candidate_models({"provider": "zen", "model_id": "hy3-free"})
     assert zen[0] == "hy3-free"
@@ -91,47 +109,10 @@ def test_rate_limit_skips_exhausted_free_model():
     from pex_supervisor.inspect_http import _rate_limited
 
     assert _rate_limited(429, "")
-    assert _rate_limited(400, '{"error":{"type":"FreeUsageLimitError","message":"Rate limit exceeded"}}')
-    assert not _rate_limited(401, '{"error":{"message":"invalid api key"}}')
-
-
-def test_record_proposal_accepts_list_evidence():
-    request = _request(0.9)
-    token = bind_request(request)
-    try:
-        record_proposal(
-            action_type="SEND_NUDGE",
-            rationale="missing artifact",
-            evidence=["no report.txt", "goal wants shipped"],
-            message="Create report.txt containing shipped.",
-        )
-        proposed = take_proposed()
-    finally:
-        reset_request(token)
-    assert proposed is not None
-    assert proposed["evidence"] == ["no report.txt", "goal wants shipped"]
-
-
-def test_run_strands_uses_bounded_http(monkeypatch):
-    monkeypatch.setattr(
-        "pex_supervisor.loop.complete_typed_action",
-        lambda system, user: (
-            {
-                "action_type": "SEND_NUDGE",
-                "rationale": "report.txt missing",
-                "evidence": "workspace has no report.txt",
-                "message": "Create report.txt containing shipped.",
-            },
-            {"input_tokens": 9, "output_tokens": 6},
-            "propose_typed_action:SEND_NUDGE",
-        ),
+    assert _rate_limited(
+        400, '{"error":{"type":"FreeUsageLimitError","message":"Rate limit exceeded"}}'
     )
-    result = run_strands(_request(0.95), model=object())
-    assert result.used_llm is True
-    assert result.action.type.value == "SEND_NUDGE"
-    assert "report.txt" in str(result.action.payload.get("text") or "")
-    assert not str(result.action.payload.get("text") or "").startswith("PEX:")
-    assert result.diagnosis == "strands_supervisor"
+    assert not _rate_limited(401, '{"error":{"message":"invalid api key"}}')
 
 
 def test_skip_model_on_5xx_rate_limit_and_unavailable():
@@ -142,31 +123,103 @@ def test_skip_model_on_5xx_rate_limit_and_unavailable():
     assert not _skip_model(200, "{}")
 
 
-def test_run_strands_inspect_failure_nudges_when_required_file_missing(tmp_path, monkeypatch):
-    def _boom(_system, _user):
-        raise RuntimeError("model laguna-s-2.1-free timed out")
-
-    monkeypatch.setattr("pex_supervisor.loop.complete_typed_action", _boom)
-    request = _request(0.95)
-    request.session.cwd = str(tmp_path)
-    request.goal.evidence_requirements = ["report.txt"]
-    request.goal.objective = "Create report.txt containing shipped."
-    result = run_strands(request, model=object())
-    assert result.used_llm is False
-    assert result.action.type.value == "SEND_NUDGE"
-    assert "report.txt" in str(result.action.payload.get("text") or "")
-    assert not str(result.action.payload.get("text") or "").startswith("PEX:")
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"choices": "not-a-list"},
+        {"choices": ["not-an-object"]},
+        {"choices": [{"message": "not-an-object"}]},
+        {"choices": [{"message": {"content": 42}}]},
+    ],
+)
+def test_review_parser_rejects_malformed_response_shapes(payload):
+    with pytest.raises(ValueError):
+        _parse_response_object(payload)
 
 
-def test_run_strands_inspect_failure_stays_noop_when_file_present(tmp_path, monkeypatch):
-    def _boom(_system, _user):
-        raise RuntimeError("model laguna-s-2.1-free timed out")
+def test_review_parser_rejects_nonfinite_json_and_bounds_usage_counts():
+    with pytest.raises(ValueError, match="non-finite"):
+        _loads_object('{"answer":NaN}')
+    with pytest.raises(ValueError, match="duplicate JSON key"):
+        _loads_object('{"answer":"safe","answer":"overridden"}')
+    assert usage_tokens(
+        {
+            "usage": {
+                "prompt_tokens": -10,
+                "completion_tokens": 10**5_000,
+            }
+        }
+    ) == {"input_tokens": 0, "output_tokens": 1_000_000_000}
+    assert usage_tokens({"usage": "invalid"}) == {
+        "input_tokens": 0,
+        "output_tokens": 0,
+    }
 
-    monkeypatch.setattr("pex_supervisor.loop.complete_typed_action", _boom)
-    request = _request(0.95)
-    request.session.cwd = str(tmp_path)
-    (tmp_path / "report.txt").write_text("shipped", encoding="utf-8")
-    request.goal.evidence_requirements = ["report.txt"]
-    result = run_strands(request, model=object())
-    assert result.used_llm is False
-    assert result.action.type.value == "NOOP"
+
+def test_review_response_reader_rejects_excessive_empty_chunks():
+    class EmptyChunkResponse:
+        def iter_bytes(self):
+            yield from [b""] * 4_097
+
+    with pytest.raises(ValueError, match="too many chunks"):
+        _read_response_text(EmptyChunkResponse())  # type: ignore[arg-type]
+
+
+def test_chat_json_uses_bounded_streaming_json_response(monkeypatch):
+    payload = {
+        "choices": [{"message": {"content": '{"answer":"bounded"}'}}],
+        "usage": {"prompt_tokens": 3, "completion_tokens": 2},
+    }
+    transport = httpx.MockTransport(
+        lambda _request: httpx.Response(
+            200,
+            headers={"content-type": "application/json; charset=utf-8"},
+            json=payload,
+        )
+    )
+    real_client = httpx.Client
+    monkeypatch.setattr(
+        "pex_supervisor.inspect_http.openai_compat_client_config",
+        lambda: {
+            "provider": "openrouter",
+            "base_url": "https://example.invalid/v1",
+            "model_id": "test-model",
+            "api_key": None,
+        },
+    )
+    monkeypatch.setattr(
+        "pex_supervisor.providers.httpx.Client",
+        lambda **kwargs: real_client(transport=transport, **kwargs),
+    )
+
+    parsed, usage = _chat_json("system", "user")
+
+    assert parsed == {"answer": "bounded"}
+    assert usage == {"input_tokens": 3, "output_tokens": 2}
+
+
+def test_chat_json_rejects_oversized_streamed_response(monkeypatch):
+    transport = httpx.MockTransport(
+        lambda _request: httpx.Response(
+            200,
+            headers={"content-type": "application/json"},
+            content=b"x" * 262_145,
+        )
+    )
+    real_client = httpx.Client
+    monkeypatch.setattr(
+        "pex_supervisor.inspect_http.openai_compat_client_config",
+        lambda: {
+            "provider": "openrouter",
+            "base_url": "https://example.invalid/v1",
+            "model_id": "test-model",
+            "api_key": None,
+        },
+    )
+    monkeypatch.setattr(
+        "pex_supervisor.providers.httpx.Client",
+        lambda **kwargs: real_client(transport=transport, **kwargs),
+    )
+
+    with pytest.raises(RuntimeError, match="ValueError"):
+        _chat_json("system", "user")

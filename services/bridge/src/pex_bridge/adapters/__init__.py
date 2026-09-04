@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pex_bridge.adapters.acp_harness import HermesAdapter, KimiAdapter, OmpAdapter
 from pex_bridge.adapters.base import HarnessAdapter
 from pex_bridge.adapters.claude_code import ClaudeCodeAdapter
 from pex_bridge.adapters.codex import CodexAdapter
@@ -8,7 +9,6 @@ from pex_bridge.adapters.devin import DevinAdapter
 from pex_bridge.adapters.fleet import DeclaredAdapter, fleet
 from pex_bridge.adapters.grok_bot import GrokBotAdapter
 from pex_bridge.adapters.grok_build import GrokBuildAdapter
-from pex_bridge.adapters.acp_harness import HermesAdapter, KimiAdapter, OmpAdapter
 from pex_bridge.adapters.opencode import OpenCodeAdapter
 from pex_bridge.adapters.qwen import QwenAdapter
 from pex_bridge.adapters.synthetic import SyntheticAdapter

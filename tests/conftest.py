@@ -15,3 +15,15 @@ def _disable_supervisor_llm(request, monkeypatch):
         monkeypatch.setenv("PEX_SUPERVISOR_DISABLE", "1")
     if not request.node.get_closest_marker("live_codex"):
         monkeypatch.setenv("PEX_CODEX_ATTACH", "0")
+
+
+@pytest.fixture(autouse=True)
+def _quiet_desktop_processes(request, monkeypatch):
+    """Keep unit probes independent of whichever coding apps are open locally."""
+
+    if request.node.get_closest_marker("live_desktop"):
+        return
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.running_image_names",
+        lambda: set(),
+    )

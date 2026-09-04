@@ -19,6 +19,15 @@ def test_supervisor_loop_has_no_task_id_branches():
         root / "services" / "supervisor" / "src" / "pex_supervisor" / "planner.py"
     )
     boundary.supervisor_has_no_task_id_branches(root / "benchmarks" / "pex_attach.py")
+    boundary.supervisor_has_no_task_id_branches(
+        root / "benchmarks" / "cursor_isolated_stop.py"
+    )
+    boundary.supervisor_has_no_task_id_branches(
+        root / "services" / "supervisor" / "src" / "pex_supervisor" / "public_task.py"
+    )
+    boundary.supervisor_has_no_task_id_branches(
+        root / "benchmarks" / "pex_supervisor_process.py"
+    )
 
 
 def test_pex_attach_does_not_import_hidden_evaluator():
@@ -31,6 +40,13 @@ def test_pex_attach_does_not_import_hidden_evaluator():
     assert "Handoff fact" not in text
     assert "from pex_supervisor" not in text
     assert "import pex_supervisor" not in text
+
+    isolated_stop = (
+        Path(__file__).resolve().parents[2] / "benchmarks" / "cursor_isolated_stop.py"
+    ).read_text(encoding="utf-8")
+    assert "import evaluator" not in isolated_stop
+    assert "from evaluator" not in isolated_stop
+    assert "metadata.yaml" not in isolated_stop
 
     process = (
         Path(__file__).resolve().parents[2] / "benchmarks" / "pex_supervisor_process.py"

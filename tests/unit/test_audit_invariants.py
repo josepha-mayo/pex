@@ -26,7 +26,9 @@ def test_connect_table_does_not_invent_a_shared_protocol():
     assert CONNECT["opencode"]["method"] == "http"
     assert CONNECT["hermes"]["command"] == ["hermes", "acp"]
     assert CONNECT["devin"]["method"] == "org-api"
-    assert "second Cursor" in CONNECT["cursor"]["note"] or "Never spawn" in CONNECT["cursor"]["note"]
+    assert (
+        "second Cursor" in CONNECT["cursor"]["note"] or "Never spawn" in CONNECT["cursor"]["note"]
+    )
     assert CONNECT["grok_bot"]["method"] != CONNECT["grok_build"]["method"]
 
 
@@ -35,11 +37,13 @@ def test_cursor_agent_is_never_auto_discovered(monkeypatch):
     assert resolve_cursor_agent() is None
 
 
-def test_grok_build_acp_is_agent_stdio_not_grok_acp():
-    assert acp_command("grok") == ["grok", "agent", "stdio"]
+def test_grok_build_acp_is_agent_stdio_not_grok_acp(tmp_path):
+    grok = tmp_path / "grok"
+    grok.write_bytes(b"fake")
+    assert acp_command(str(grok)) == [str(grok), "agent", "stdio"]
 
 
-def test_pexbench_manifest_stays_frozen_only_with_live_rows():
+def test_pexbench_manifest_stays_unfrozen_without_one_coherent_live_run():
     import yaml
 
     path = Path("benchmarks/four_arm.py")
@@ -47,12 +51,11 @@ def test_pexbench_manifest_stays_frozen_only_with_live_rows():
     module = importlib.util.module_from_spec(spec)
     assert spec.loader
     spec.loader.exec_module(module)
-    manifest = yaml.safe_load(
-        Path("benchmarks/manifest.yaml").read_text(encoding="utf-8")
-    )
+    manifest = yaml.safe_load(Path("benchmarks/manifest.yaml").read_text(encoding="utf-8"))
     blockers = module.freeze_blockers()
-    assert not blockers, blockers
-    assert manifest.get("frozen") is True
+    assert blockers
+    assert "single immutable result file" in blockers[0]
+    assert manifest.get("frozen") is False
 
 
 def test_synthetic_results_are_not_presentation_arms(tmp_path, monkeypatch):

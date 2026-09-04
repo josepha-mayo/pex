@@ -1,4 +1,9 @@
-"""Bounded OpenAI-compat inspect. Strands Agent() can stream-hang past STOP."""
+"""Bounded OpenAI-compatible completion used only by the bridge review answer.
+
+Supervisor interventions run through :mod:`pex_supervisor.loop` and its
+validated Strands ``SupervisorDecision`` output. This module deliberately does
+not expose an alternate action-proposal path.
+"""
 
 from __future__ import annotations
 
@@ -7,42 +12,37 @@ from typing import Any
 
 import httpx
 
-from pex_supervisor.providers import openai_compat_client_config
-
-PROPOSE_TOOL = {
-    "type": "function",
-    "function": {
-        "name": "propose_typed_action",
-        "description": (
-            "Commit PEX's single typed intervention. "
-            "action_type must be a valid InterventionType. "
-            "evidence is pipe-separated observable facts."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "action_type": {"type": "string"},
-                "rationale": {"type": "string"},
-                "evidence": {"type": "string"},
-                "message": {"type": "string"},
-                "payload_json": {"type": "string"},
-                "request_id": {"type": "string"},
-                "decision": {"type": "string"},
-                "overlay_id": {"type": "string"},
-                "confidence": {"type": "number"},
-                "risk": {"type": "string"},
-            },
-            "required": ["action_type", "rationale", "evidence"],
-        },
-    },
-}
+from pex_supervisor.providers import credential_safe_http_client, openai_compat_client_config
 
 
 class InspectUnavailable(RuntimeError):
-    """No OpenAI-compatible supervisor endpoint is configured."""
+    """No OpenAI-compatible review endpoint is configured."""
 
 
 _FALLBACK_MODELS = ("hy3-free", "laguna-s-2.1-free", "big-pickle")
+_MAX_RESPONSE_BYTES = 262_144
+_MAX_RESPONSE_CHUNKS = 4_096
+
+
+def _reject_nonfinite_json_constant(value: str) -> None:
+    raise ValueError(f"non-finite JSON constant {value}")
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key {key!r}")
+        result[key] = value
+    return result
+
+
+def _bounded_count(value: object) -> int:
+    try:
+        parsed = int(value or 0)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+    return min(1_000_000_000, max(0, parsed))
 
 
 def _model_unsupported(status: int, body: str) -> bool:
@@ -57,7 +57,7 @@ def _model_unsupported(status: int, body: str) -> bool:
 def _candidate_models(cfg: dict[str, Any]) -> list[str]:
     """Zen free IDs are not OpenRouter/OpenAI model ids. Do not send them there."""
     models: list[str] = []
-    primary = str(cfg.get("model_id") or "").strip()
+    primary = str(cfg.get("model_id") or "").strip()[:512]
     if primary:
         models.append(primary)
     if cfg.get("provider") == "zen":
@@ -85,6 +85,8 @@ def _skip_model(status: int, body: str) -> bool:
 
 def _loads_object(text: str) -> dict[str, Any]:
     raw = str(text or "").strip()
+    if len(raw.encode("utf-8", "replace")) > 65_536:
+        raise ValueError("review content exceeds the parser limit")
     if raw.startswith("```"):
         raw = raw.strip("`")
         if raw.lower().startswith("json"):
@@ -97,53 +99,79 @@ def _loads_object(text: str) -> dict[str, Any]:
     last_error: Exception | None = None
     for candidate in candidates:
         try:
-            decoded = json.loads(candidate)
-        except json.JSONDecodeError as exc:
+            decoded = json.loads(
+                candidate,
+                parse_constant=_reject_nonfinite_json_constant,
+                object_pairs_hook=_unique_json_object,
+            )
+        except (json.JSONDecodeError, ValueError) as exc:
             last_error = exc
             continue
         if isinstance(decoded, dict):
             return decoded
-        last_error = ValueError("supervisor content was not an object")
+        last_error = ValueError("review content was not an object")
     if last_error:
         raise last_error
-    raise ValueError("supervisor content was not a proposal object")
+    raise ValueError("review content was not an object")
 
 
-def parse_proposal_args(payload: dict[str, Any]) -> dict[str, Any]:
-    choices = payload.get("choices") or []
-    if not choices:
-        raise ValueError("supervisor returned no choices")
-    message = choices[0].get("message") or {}
-    calls = message.get("tool_calls") or []
-    if calls:
-        raw = ((calls[0].get("function") or {}).get("arguments")) or "{}"
-        if isinstance(raw, dict):
-            return raw
-        text = str(raw).strip()
-        if not text:
-            raise ValueError("empty tool arguments")
-        return _loads_object(text)
+def _parse_response_object(payload: dict[str, Any]) -> dict[str, Any]:
+    choices = payload.get("choices")
+    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+        raise ValueError("review model returned no choices")
+    message = choices[0].get("message")
+    if not isinstance(message, dict):
+        raise ValueError("review model returned an invalid message")
+    if message.get("tool_calls"):
+        raise ValueError("review content may not contain tool calls")
     content = message.get("content") or ""
     if isinstance(content, list):
         content = "".join(
-            str(part.get("text") or "") if isinstance(part, dict) else str(part)
-            for part in content
+            (str(part.get("text") or "") if isinstance(part, dict) else str(part))[:4_000]
+            for part in content[:32]
         )
+    elif not isinstance(content, str):
+        raise ValueError("review model returned invalid content")
     return _loads_object(str(content))
 
 
 def usage_tokens(payload: dict[str, Any]) -> dict[str, int]:
     usage = payload.get("usage") or {}
+    if not isinstance(usage, dict):
+        usage = {}
     return {
-        "input_tokens": int(usage.get("prompt_tokens") or usage.get("input_tokens") or 0),
-        "output_tokens": int(usage.get("completion_tokens") or usage.get("output_tokens") or 0),
+        "input_tokens": _bounded_count(
+            usage.get("prompt_tokens") or usage.get("input_tokens")
+        ),
+        "output_tokens": _bounded_count(
+            usage.get("completion_tokens") or usage.get("output_tokens")
+        ),
     }
 
 
-def _chat_json(system: str, user: str, *, max_tokens: int = 400) -> tuple[dict[str, Any], dict[str, int]]:
+def _read_response_text(response: httpx.Response) -> str:
+    body = bytearray()
+    for index, chunk in enumerate(response.iter_bytes()):
+        if index >= _MAX_RESPONSE_CHUNKS:
+            raise ValueError("review response contained too many chunks")
+        if len(body) + len(chunk) > _MAX_RESPONSE_BYTES:
+            raise ValueError("review response exceeds the byte limit")
+        body.extend(chunk)
+    return bytes(body).decode("utf-8")
+
+
+def _chat_json(
+    system: str, user: str, *, max_tokens: int = 400
+) -> tuple[dict[str, Any], dict[str, int]]:
     cfg = openai_compat_client_config()
     if cfg is None:
         raise InspectUnavailable("no openai-compat supervisor")
+    if not 1 <= max_tokens <= 1_000:
+        raise ValueError("max_tokens must be between 1 and 1000")
+    if len(system.encode("utf-8", "replace")) > 16_384:
+        raise ValueError("review system prompt exceeds the byte limit")
+    if len(user.encode("utf-8", "replace")) > 65_536:
+        raise ValueError("review user prompt exceeds the byte limit")
     url = f"{cfg['base_url'].rstrip('/')}/chat/completions"
     headers = {"Content-Type": "application/json"}
     if cfg.get("api_key"):
@@ -151,7 +179,7 @@ def _chat_json(system: str, user: str, *, max_tokens: int = 400) -> tuple[dict[s
     timeout = httpx.Timeout(18.0, connect=6.0)
     models = _candidate_models(cfg)
     last_error = "no supervisor model"
-    with httpx.Client(timeout=timeout) as client:
+    with credential_safe_http_client(timeout=timeout) as client:
         for model in models:
             payload = {
                 "model": model,
@@ -164,40 +192,52 @@ def _chat_json(system: str, user: str, *, max_tokens: int = 400) -> tuple[dict[s
                 ],
             }
             try:
-                response = client.post(url, headers=headers, json=payload, timeout=timeout)
+                with client.stream(
+                    "POST", url, headers=headers, json=payload, timeout=timeout
+                ) as response:
+                    response_text = _read_response_text(response)
+                    status_code = response.status_code
+                    content_type = response.headers.get("content-type", "").split(";", 1)[
+                        0
+                    ].strip().casefold()
+                    if _skip_model(status_code, response_text):
+                        last_error = f"model {model} unavailable"
+                        continue
+                    response.raise_for_status()
+                    if content_type != "application/json":
+                        raise ValueError("review endpoint did not return application/json")
+                    data = json.loads(
+                        response_text,
+                        parse_constant=_reject_nonfinite_json_constant,
+                        object_pairs_hook=_unique_json_object,
+                    )
+                    if not isinstance(data, dict):
+                        raise ValueError("review endpoint returned a non-object response")
+                    parsed = _parse_response_object(data)
             except httpx.TimeoutException:
                 last_error = f"model {model} timed out"
                 continue
-            if _skip_model(response.status_code, response.text):
-                last_error = f"model {model} unavailable"
-                continue
-            try:
-                response.raise_for_status()
-                data = response.json()
-                parsed = parse_proposal_args(data)
-            except (ValueError, json.JSONDecodeError, httpx.HTTPError) as exc:
+            except (
+                UnicodeDecodeError,
+                ValueError,
+                json.JSONDecodeError,
+                httpx.HTTPError,
+            ) as exc:
                 last_error = f"model {model} {exc.__class__.__name__}"
                 continue
             return parsed, usage_tokens(data)
     raise RuntimeError(last_error)
 
 
-def complete_typed_action(system: str, user: str) -> tuple[dict[str, Any], dict[str, int], str]:
-    json_system = (
-        system
-        + "\nReturn only JSON with keys action_type, rationale, evidence, message. No markdown."
-    )
-    parsed, usage = _chat_json(json_system, user)
-    action = str(parsed.get("action_type") or "NOOP")
-    return parsed, usage, f"propose_typed_action:{action}"
-
-
 def complete_review_answer(system: str, user: str) -> tuple[str, dict[str, int], str]:
     json_system = system + "\nReturn only JSON with key answer (a string). No markdown."
     parsed, usage = _chat_json(json_system, user, max_tokens=350)
-    if parsed.get("action_type"):
-        raise ValueError("inspect-shaped review payload")
-    answer = str(parsed.get("answer") or "").strip()
-    if not answer:
-        raise ValueError("empty review answer")
+    if set(parsed) != {"answer"}:
+        raise ValueError("review payload must contain only answer")
+    raw_answer = parsed["answer"]
+    if not isinstance(raw_answer, str):
+        raise ValueError("review answer must be a string")
+    answer = raw_answer.strip()
+    if not answer or len(answer) > 4_000:
+        raise ValueError("review answer must contain 1 to 4000 characters")
     return answer, usage, "review_answer"
