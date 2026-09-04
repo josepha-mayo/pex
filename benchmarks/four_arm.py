@@ -38,6 +38,7 @@ if str(ROOT) not in sys.path:
 import boundary  # noqa: E402
 import evaluator  # noqa: E402
 import runner  # noqa: E402
+from cursor_capture import CursorCapture  # noqa: E402
 
 PRESENTATION_ARMS = evaluator.PRESENTATION_ARMS
 CURSOR_LIVE_REFUSAL = (
@@ -1576,7 +1577,7 @@ def prepare_isolated_workspace(
     except FileExistsError as exc:
         raise RuntimeError("benchmark seed receipt was created concurrently") from exc
     if arm in {"cursor", "cursor_pex"}:
-        _write_cursor_isolated_control(run_id, arm, task_id, workspace, seed)
+        _write_cursor_isolated_control(run_id, arm, task_id, workspace, seed, receipt)
     return workspace, seed, receipt
 
 
@@ -1597,12 +1598,17 @@ def _write_cursor_isolated_control(
     task_id: str,
     workspace: Path,
     seed: dict[str, Any],
+    receipt: dict[str, Any],
 ) -> None:
     """Publish an out-of-band pointer the this-desktop stop hook can find."""
     control_dir = _cursor_private_control_dir(run_id, arm, task_id)
     if _path_has_link_component(control_dir, runner.RESULTS):
         raise RuntimeError("refusing a linked isolated Cursor control directory")
     control_dir.mkdir(parents=True, exist_ok=True)
+    spool = control_dir / "receipts"
+    if _path_has_link_component(spool, runner.RESULTS):
+        raise RuntimeError("refusing a linked Cursor receipt spool")
+    spool.mkdir(exist_ok=True)
     script = (ROOT / "cursor_isolated_stop.py").resolve()
     if not script.is_file() or runner._is_link_like(script):
         raise RuntimeError("isolated Cursor supervisor script is missing")
@@ -1612,10 +1618,12 @@ def _write_cursor_isolated_control(
     )
     public_test = str((seed.get("protected_sha256") or {}).get("test_public.py") or "")
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "arm": arm,
         "workspace": str(workspace.resolve()),
         "control_dir": str(control_dir.resolve()),
+        "receipt_spool": str(spool.resolve()),
+        "capture_binding": _cursor_capture_binding(receipt),
         "python": sys.executable,
         "script": str(script),
         "isolated_supervisor": arm == "cursor_pex",
@@ -1636,6 +1644,14 @@ def _write_cursor_isolated_control(
         )
     except FileExistsError as exc:
         raise RuntimeError("isolated Cursor hook control was created concurrently") from exc
+
+
+def _cursor_capture_binding(receipt: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "run_id": receipt["run_id"], "arm": receipt["arm"], "task": receipt["task"],
+        "workspace": receipt["workspace"], "capture_nonce": receipt["nonce"],
+        "prompt_sha256": receipt["prompt_sha256"],
+    }
 
 
 def _load_cursor_isolated_pex_meta(
@@ -1827,7 +1843,14 @@ def _cursor_stop_id(payload: dict[str, Any], path: Path | None = None) -> str:
     return stop_id[:256]
 
 
-async def wait_for_matching_cursor_stop(workspace: Path, timeout: float) -> dict[str, Any]:
+class CursorCaptureTimeout(RuntimeError):
+    """The bounded hook observation window expired without terminal evidence."""
+
+
+async def wait_for_matching_cursor_stop(
+    workspace: Path, timeout: float, *, capture: CursorCapture | None = None,
+    receipt_spool: Path | None = None,
+) -> dict[str, Any]:
     """Block until this Cursor.exe writes a stop drop whose cwd is the isolated workspace."""
     if not math.isfinite(timeout) or timeout <= 0 or timeout > 3_600:
         raise ValueError("Cursor stop wait timeout must be finite and at most one hour")
@@ -1835,27 +1858,43 @@ async def wait_for_matching_cursor_stop(workspace: Path, timeout: float) -> dict
     seen: set[Path] = set()
     target = workspace.resolve()
     while time.monotonic() < deadline:
-        drop = cursor_stop_drop_dir()
+        drop = receipt_spool if receipt_spool is not None else cursor_stop_drop_dir()
         if drop.is_dir():
-            for path in drop.glob("*.json"):
+            terminal = None
+            for index, path in enumerate(drop.glob("*.json")):
+                if index >= _MAX_RAW_LOG_RECORDS:
+                    raise RuntimeError("Cursor receipt directory exceeds the capture bound")
                 if path in seen:
                     continue
                 try:
                     payload = _load_control_json(path)
                 except ValueError:
+                    if capture is not None:
+                        capture.invalidate("Unreadable Cursor receipt in the run spool")
                     continue
                 seen.add(path)
-                if payload.get("kind") == "followup_delivery":
+                if len(seen) > _MAX_RAW_LOG_RECORDS:
+                    raise RuntimeError("Cursor receipt history exceeds the capture bound")
+                if _cursor_stop_cwd(payload) != target:
                     continue
-                if _cursor_stop_cwd(payload) == target:
-                    payload.setdefault("stop_id", path.stem)
-                    return payload
+                if capture is not None and payload.get("stop_id") != path.stem:
+                    capture.invalidate("Cursor receipt filename does not match its identifier")
+                    continue
+                if capture is not None and not capture.record(payload):
+                    continue
+                if _valid_cursor_hook_receipt(payload, path) and payload.get("kind") == "stop":
+                    if (terminal is None or
+                            payload["captured_monotonic_ns"] < terminal["captured_monotonic_ns"]):
+                        terminal = payload
+            if terminal is not None:
+                return terminal
         await asyncio.sleep(0.25)
-    raise RuntimeError(CURSOR_LIVE_REFUSAL)
+    raise CursorCaptureTimeout(CURSOR_LIVE_REFUSAL)
 
 
 async def wait_for_cursor_treatment_chain(
-    workspace: Path, timeout: float
+    workspace: Path, timeout: float, *, capture: CursorCapture | None = None,
+    receipt_spool: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Observe an ordered local hook sequence, not vendor acceptance or causal impact.
 
@@ -1869,7 +1908,7 @@ async def wait_for_cursor_treatment_chain(
     receipts: dict[str, dict[str, Any]] = {}
     target = workspace.resolve()
     while time.monotonic() < deadline:
-        drop = cursor_stop_drop_dir()
+        drop = receipt_spool if receipt_spool is not None else cursor_stop_drop_dir()
         if drop.is_dir():
             for index, path in enumerate(drop.glob("*.json")):
                 if index >= _MAX_RAW_LOG_RECORDS:
@@ -1879,11 +1918,18 @@ async def wait_for_cursor_treatment_chain(
                 try:
                     payload = _load_control_json(path)
                 except ValueError:
+                    if capture is not None:
+                        capture.invalidate("Unreadable Cursor receipt in the run spool")
                     continue
                 seen.add(path)
                 if len(seen) > _MAX_RAW_LOG_RECORDS:
                     raise RuntimeError("Cursor receipt history exceeds the capture bound")
                 if _cursor_stop_cwd(payload) != target:
+                    continue
+                if capture is not None and payload.get("stop_id") != path.stem:
+                    capture.invalidate("Cursor receipt filename does not match its identifier")
+                    continue
+                if capture is not None and not capture.record(payload):
                     continue
                 if not _valid_cursor_hook_receipt(payload, path):
                     continue
@@ -1892,7 +1938,7 @@ async def wait_for_cursor_treatment_chain(
         if chain is not None:
             return chain
         await asyncio.sleep(0.25)
-    raise RuntimeError(CURSOR_TREATMENT_REFUSAL)
+    raise CursorCaptureTimeout(CURSOR_TREATMENT_REFUSAL)
 
 
 def _cursor_receipt_identity(payload: dict[str, Any]) -> tuple[tuple[str, str], ...] | None:
@@ -2038,23 +2084,6 @@ def _codex_harness_version(server_info: object) -> str:
     if len(version) > 256 or any(ord(character) < 32 for character in version):
         return "unknown"
     return version
-
-
-def _cursor_benchmark_timing(payload: dict[str, Any]) -> tuple[str, str, float] | None:
-    """Accept only explicit synchronous-controller timing, never infer from file times."""
-    started = str(payload.get("benchmark_started_at") or "").strip()
-    ended = str(payload.get("benchmark_ended_at") or "").strip()
-    if not started or not ended:
-        return None
-    try:
-        start_dt = datetime.fromisoformat(started.replace("Z", "+00:00"))
-        end_dt = datetime.fromisoformat(ended.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    elapsed = (end_dt - start_dt).total_seconds()
-    if start_dt.tzinfo is None or end_dt.tzinfo is None or not 0 <= elapsed <= 86_400:
-        return None
-    return started, ended, elapsed
 
 
 def _pex_config_fingerprint(pex_meta: dict[str, Any] | None) -> str | None:
@@ -2226,6 +2255,75 @@ async def run_live_this_cursor(
     bridge_url: str | None = None,
     wait_cursor_stop: bool = False,
 ) -> dict[str, Any]:
+    """Own the Cursor attempt lifecycle, including immutable terminal aborts."""
+    if arm not in {"cursor", "cursor_pex"}:
+        raise RuntimeError("unknown Cursor benchmark arm")
+    if stop_payload is not None:
+        raise RuntimeError(
+            CURSOR_TREATMENT_REFUSAL if arm == "cursor_pex" else CURSOR_REPLAY_REFUSAL
+        )
+    if not wait_cursor_stop:
+        raise RuntimeError(CURSOR_TREATMENT_REFUSAL if arm == "cursor_pex" else CURSOR_LIVE_REFUSAL)
+    preflight = _execution_preflight_blockers(arm)
+    if preflight:
+        raise RuntimeError("benchmark execution preflight is NO-GO: " + "; ".join(preflight))
+    runner.assert_next_scheduled(run_id, task_id, arm)
+    started_at = datetime.now(UTC).isoformat()
+    try:
+        result = await _collect_live_this_cursor(
+            arm, task_id, run_id, stop_payload=stop_payload, turn_timeout=turn_timeout,
+            workspace_root=workspace_root, worker_model=worker_model,
+            bridge_url=bridge_url, wait_cursor_stop=wait_cursor_stop,
+        )
+    except BaseException as exc:
+        if isinstance(exc, (KeyboardInterrupt, asyncio.CancelledError)):
+            reason = "operator_intervention"
+        elif isinstance(exc, CursorCaptureTimeout):
+            # A missing receipt after a collector wait does not establish
+            # exhaustion of a measured worker/PEX execution budget.
+            reason = "harness_disconnect"
+        elif isinstance(exc, RuntimeError) and "hooks.json is not installed" in str(exc):
+            reason = "harness_disconnect"
+        elif isinstance(exc, RuntimeError) and any(
+            marker in str(exc).lower()
+            for marker in ("refusing", "does not match", "fingerprint", "provenance")
+        ):
+            reason = "provenance_failure"
+        else:
+            reason = "controller_crash"
+        try:
+            runner.append_abort(
+                run_id, task=task_id, arm=arm, abort_reason=reason,
+                started_at=started_at, ended_at=datetime.now(UTC).isoformat(),
+                detail=type(exc).__name__,
+            )
+        except (OSError, ValueError) as abort_exc:
+            exc.add_note(f"failed to append immutable Cursor abort: {abort_exc}")
+        raise
+    if result.get("live") is not True:
+        # Partial diagnostics must not poison the official chain with a fake
+        # completed row. Preserve them separately and terminate this attempt.
+        abort_path = runner.append_abort(
+            run_id, task=task_id, arm=arm, abort_reason="provenance_failure",
+            started_at=started_at, ended_at=datetime.now(UTC).isoformat(),
+            detail="Cursor capture lacks complete event and human-action coverage",
+        )
+        result["abort_written"] = str(abort_path)
+    return result
+
+
+async def _collect_live_this_cursor(
+    arm: str,
+    task_id: str,
+    run_id: str,
+    *,
+    stop_payload: dict[str, Any] | None = None,
+    turn_timeout: float = 600,
+    workspace_root: Path | None = None,
+    worker_model: str | None = None,
+    bridge_url: str | None = None,
+    wait_cursor_stop: bool = False,
+) -> dict[str, Any]:
     """This Cursor.exe via ~/.cursor/hooks.json. Never spawn another window."""
     if arm == "cursor_pex" and stop_payload is not None:
         # A saved payload is replay, not a same-conversation continuation.
@@ -2271,6 +2369,11 @@ async def run_live_this_cursor(
     boundary.assert_public_prompt(task_id, prompt)
     prompt_sha256 = boundary.sha256_text(prompt)
     continuation: dict[str, Any] | None = None
+    observation_started_at = datetime.now(UTC).isoformat()
+    private_dir = _cursor_private_control_dir(run_id, arm, task_id)
+    capture_path = private_dir / "observed_events.jsonl"
+    if _path_has_link_component(capture_path, runner.RESULTS):
+        raise RuntimeError("refusing a linked Cursor observed-event capture")
     if stop_payload is None:
         print(
             (
@@ -2284,13 +2387,23 @@ async def run_live_this_cursor(
             ),
             file=sys.stderr,
         )
-        if arm == "cursor_pex":
-            _initial_stop, stop_payload, continuation = await wait_for_cursor_treatment_chain(
-                workspace, turn_timeout
-            )
-            del _initial_stop
-        else:
-            stop_payload = await wait_for_matching_cursor_stop(workspace, turn_timeout)
+        capture = CursorCapture(capture_path, binding=_cursor_capture_binding(receipt))
+        try:
+            if arm == "cursor_pex":
+                _initial_stop, stop_payload, continuation = await wait_for_cursor_treatment_chain(
+                    workspace, turn_timeout, capture=capture,
+                    receipt_spool=private_dir / "receipts",
+                )
+            else:
+                stop_payload = await wait_for_matching_cursor_stop(
+                    workspace, turn_timeout, capture=capture,
+                    receipt_spool=private_dir / "receipts",
+                )
+        except BaseException:
+            capture.invalidate("Cursor observation aborted before a terminal receipt")
+            capture.finish(None)
+            raise
+    capture_summary = capture.finish(stop_payload.get("stop_id"))
     hooked_cwd = _cursor_stop_cwd(stop_payload)
     if hooked_cwd != workspace.resolve():
         raise RuntimeError(
@@ -2330,18 +2443,18 @@ async def run_live_this_cursor(
     cursor_version = str(stop_payload.get("cursor_version") or "unknown")
     if len(cursor_version) > 256:
         raise RuntimeError("Cursor version exceeds the benchmark text bound")
-    timing = _cursor_benchmark_timing(stop_payload)
-    human_intervention_log = _human_intervention_log(
-        stop_payload.get("benchmark_human_intervention_log")
-    )
-    intervention_evidence_available = human_intervention_log is not None
+    execution_wall_seconds = capture_summary["task_execution_wall_seconds"]
+    # Hook callbacks cannot account for every human action or vendor event.
+    # Never promote worker-supplied benchmark_* fields to controller evidence.
+    intervention_evidence_available = capture_summary["human_action_coverage"] == "complete"
     verified_live = (
         running
         and _bounded_regular_file(hooks, _MAX_CONTROL_FILE_BYTES, allow_empty=False)
         and bool(worker)
         and cursor_version.lower() != "unknown"
-        and timing is not None
+        and execution_wall_seconds is not None
         and intervention_evidence_available
+        and capture_summary["raw_log_sha256"] is not None
     )
     if verified_live:
         preflight = _execution_preflight_blockers(arm)
@@ -2363,30 +2476,18 @@ async def run_live_this_cursor(
     controller_ended_at = datetime.now(UTC)
     hooks_sha256 = boundary.sha256_file(hooks, max_bytes=_MAX_CONTROL_FILE_BYTES)
     pex_config_sha256 = _pex_config_fingerprint(pex_meta)
-    if timing is None:
-        started_at = evaluation_started_at.isoformat()
-        ended_at = controller_ended_at.isoformat()
-        worker_wall_seconds = None
-    else:
-        started_at, worker_ended_at, worker_wall_seconds = timing
-        ended_at = controller_ended_at.isoformat()
-        del worker_ended_at
-    total_wall_seconds = (
-        datetime.fromisoformat(ended_at.replace("Z", "+00:00"))
-        - datetime.fromisoformat(started_at.replace("Z", "+00:00"))
-    ).total_seconds()
-    if total_wall_seconds < 0:
-        raise RuntimeError("Cursor benchmark timestamps place completion before start")
+    started_at = capture_summary["task_started_at"] or observation_started_at
+    ended_at = controller_ended_at.isoformat()
     runtime_fields = _runtime_record_fields(
         arm=arm,
         task_id=task_id,
         seed_manifest_sha256=seed_manifest_sha256,
         started_at=started_at,
         ended_at=ended_at,
-        worker_wall_seconds=worker_wall_seconds,
+        worker_wall_seconds=None,
         pex_wall_seconds=float((pex_meta or {}).get("supervisor_wall_seconds") or 0.0),
         evaluation_wall_seconds=evaluation_wall_seconds,
-        total_wall_seconds=total_wall_seconds,
+        total_wall_seconds=0.0,
         harness_version=cursor_version,
         model_settings={
             "model": worker,
@@ -2407,6 +2508,16 @@ async def run_live_this_cursor(
             "completion": text,
         },
     )
+    # The observed prompt-to-stop interval already includes PEX and waiting.
+    # Worker-only duration and total task-to-finalization duration are unmeasured.
+    runtime_fields["execution_wall_seconds"] = execution_wall_seconds
+    runtime_fields["combined_metrics"]["wall_seconds"] = execution_wall_seconds
+    runtime_fields["wall_time_seconds"] = None
+    runtime_fields["measurement_availability"].update({
+        "execution_wall_seconds": execution_wall_seconds is not None,
+        "worker_wall_seconds": False, "wall_time_seconds": False,
+        "human_interventions": False,
+    })
     record = {
         **runtime_fields,
         "arm": arm,
@@ -2447,8 +2558,15 @@ async def run_live_this_cursor(
         },
         "snapshot": str(snapshot) if snapshot else None,
         "workspace_files": sorted(p.name for p in workspace.iterdir() if p.is_file()),
-        "human_interventions": len(human_intervention_log or []),
-        "human_intervention_log": human_intervention_log or [],
+        "human_interventions": None,
+        "human_intervention_log": None,
+        "human_interventions_observed": capture_summary["human_interventions_observed"],
+        "human_action_coverage": capture_summary["human_action_coverage"],
+        "cursor_capture": capture_summary,
+        "task_started_at": capture_summary["task_started_at"],
+        "task_stopped_at": capture_summary["task_stopped_at"],
+        "observation_started_at": observation_started_at,
+        "evaluation_started_at": evaluation_started_at.isoformat(),
         "human_intervention_requests": int(seed.get("human_prompts_for_pytest") or 0),
         "agent_messages": adapter.isolated_agent_messages,
         "pex": pex_meta,
@@ -2456,7 +2574,14 @@ async def run_live_this_cursor(
         "reasons": result["reasons"],
         "ts": datetime.now(UTC).isoformat(),
     }
-    path = runner.append_immutable(run_id, record)
+    if verified_live:
+        path = runner.append_immutable(run_id, record)
+    else:
+        record["run_status"] = "diagnostic_only"
+        path = private_dir / "partial_result.json"
+        if _path_has_link_component(path, runner.RESULTS):
+            raise RuntimeError("refusing a linked Cursor diagnostic path")
+        _write_text_fsync(path, json.dumps(record, sort_keys=True, allow_nan=False) + "\n")
     result.update(record)
     result["written"] = str(path)
     return result

@@ -234,7 +234,8 @@ def _load_isolated_control(payload: dict) -> dict | None:
         try:
             if not path.is_file():
                 continue
-            raw = path.read_bytes()
+            with path.open("rb") as handle:
+                raw = handle.read(MAX_PAYLOAD_BYTES + 1)
         except OSError:
             continue
         if len(raw) > MAX_PAYLOAD_BYTES:
@@ -258,6 +259,8 @@ def _load_isolated_control(payload: dict) -> dict | None:
         if arm == "cursor_pex" and not isolated:
             continue
         if arm not in {"cursor", "cursor_pex"}:
+            continue
+        if control.get("schema_version") == 2 and not _capture_control_valid(control, cwd):
             continue
         if not isolated:
             return control
@@ -284,6 +287,41 @@ def _load_isolated_control(payload: dict) -> dict | None:
         control["_control_path"] = str(path.resolve())
         return control
     return None
+
+
+def _capture_control_valid(control: dict, cwd: Path) -> bool:
+    """Validate controller-owned capture scope, never fields from hook input."""
+    binding = control.get("capture_binding")
+    if not isinstance(binding, dict) or set(binding) != {
+        "run_id", "arm", "task", "workspace", "capture_nonce", "prompt_sha256"
+    }:
+        return False
+    for key in ("run_id", "task"):
+        value = binding.get(key)
+        if not isinstance(value, str) or not value or len(value) > 128:
+            return False
+    for key, length in (("capture_nonce", 32), ("prompt_sha256", 64)):
+        value = binding.get(key)
+        if (not isinstance(value, str) or len(value) != length
+                or any(char not in "0123456789abcdef" for char in value)):
+            return False
+    if binding.get("arm") != control.get("arm") or binding.get("workspace") != str(cwd):
+        return False
+    try:
+        root = Path(control["control_dir"])
+        spool = Path(control["receipt_spool"])
+        if not root.is_absolute() or not spool.is_absolute():
+            return False
+        if spool != root / "receipts" or not spool.is_dir():
+            return False
+        # Reparse points are not an isolation mechanism; refuse known redirects.
+        for component in (spool, *spool.parents):
+            if (component.is_symlink() or
+                    getattr(component.lstat(), "st_file_attributes", 0) & 0x400):
+                return False
+        return spool.resolve() == spool and root.resolve() == root
+    except (KeyError, TypeError, ValueError, OSError):
+        return False
 
 
 def _run_isolated_supervisor(control: dict, payload: dict) -> str:
@@ -337,6 +375,9 @@ def _is_benchmark_workspace(payload: dict) -> bool:
     # opaque isolated benchmark workspace tree may produce drop files.
     if os.environ.get("PEX_CURSOR_STOP_DROP"):
         return True
+    control = _load_isolated_control(payload)
+    if control and control.get("schema_version") == 2:
+        return True
     return _cwd_in_isolated_workspace_tree(payload)
 
 
@@ -346,6 +387,7 @@ def _sanitized_stop_drop(payload: dict) -> dict:
         "conversation_id",
         "session_id",
         "composer_id",
+        "generation_id",
         "cwd",
         "workspace",
         "workspace_roots",
@@ -380,13 +422,24 @@ def _sanitized_stop_drop(payload: dict) -> dict:
     return result
 
 
-def _write_stop_drop(payload: dict, *, metadata: dict | None = None) -> dict | None:
-    dest = cursor_stop_drop_dir()
+def _write_stop_drop(
+    payload: dict, *, metadata: dict | None = None, parent: dict | None = None,
+) -> dict | None:
+    control = _load_isolated_control(payload)
+    capture = control if control and control.get("schema_version") == 2 else None
+    dest = Path(capture["receipt_spool"]) if capture else cursor_stop_drop_dir()
+    if parent is not None and (
+        parent.get("capture_binding") != (capture["capture_binding"] if capture else None)
+        or parent.get("receipt_spool") != (str(dest) if capture else None)
+    ):
+        return None
     dest.mkdir(parents=True, exist_ok=True)
     # Never use a vendor-supplied stop_id as a filesystem path or trust its clock.
     body = {
         **_sanitized_stop_drop(payload),
         **(metadata or {}),
+        **({"capture_binding": capture["capture_binding"], "receipt_spool": str(dest)}
+           if capture else {}),
         "stop_id": uuid.uuid4().hex,
         "receipt_schema": "pex.cursor-hook-receipt.v1",
         "captured_at_ns": time.time_ns(),
@@ -411,6 +464,61 @@ def _write_stop_drop(payload: dict, *, metadata: dict | None = None) -> dict | N
         handle.flush()
         os.fsync(handle.fileno())
     return body
+
+
+def record_prompt_release(payload: dict, stdout: str) -> str | None:
+    """After stdout flush only: observe submission release, not backend acceptance."""
+    if payload.get("hook_event_name") != "beforeSubmitPrompt":
+        return None
+    try:
+        control = _load_isolated_control(payload)
+        output = _strict_json_loads(stdout)
+        prompt = payload.get("prompt")
+        if (not control or control.get("schema_version") != 2
+                or not isinstance(output, dict) or output.get("continue") is not True
+                or not isinstance(prompt, str)):
+            return None
+        # Hash the exact submitted text; never persist it or accept a supplied hash.
+        receipt = _write_stop_drop(
+            payload,
+            parent={
+                "capture_binding": control["capture_binding"],
+                "receipt_spool": control["receipt_spool"],
+            },
+            metadata={
+                "kind": "prompt_release",
+                "submission_evidence": "hook_stdout_flushed",
+                "submitted_prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+            },
+        )
+        return receipt["stop_id"] if receipt else None
+    except Exception:
+        return None
+
+
+def record_hook_activity(payload: dict) -> None:
+    """Partial observed callback coverage; never a full vendor transcript claim."""
+    if payload.get("hook_event_name") not in {
+        "sessionStart", "sessionEnd", "afterShellExecution", "afterMCPExecution",
+        "afterFileEdit", "afterAgentResponse", "preCompact", "subagentStart",
+        "subagentStop", "preToolUse", "postToolUse", "postToolUseFailure",
+    }:
+        return
+    try:
+        control = _load_isolated_control(payload)
+        if control and control.get("schema_version") == 2:
+            activity = {key: value for key, value in payload.items() if key in {
+                "hook_event_name", "conversation_id", "session_id", "composer_id",
+                "generation_id", "cwd", "workspace", "workspace_roots", "model",
+                "model_id", "cursor_version",
+            }}
+            _write_stop_drop(
+                activity, metadata={"kind": "hook_activity"},
+                parent={"capture_binding": control["capture_binding"],
+                        "receipt_spool": control["receipt_spool"]},
+            )
+    except Exception:
+        pass
 
 
 def record_stop_drop(payload: dict) -> str | None:
@@ -458,6 +566,7 @@ def record_stop_delivery(payload: dict, stdout: str, initial_stop_id: str | None
         redacted_followup = _redact_drop_text(followup)
         receipt = _write_stop_drop(
             payload,
+            parent=initial,
             metadata={
                 "kind": "followup_delivery",
                 "initial_stop_id": initial_stop_id,
@@ -657,6 +766,12 @@ def _post(req: urllib.request.Request, timeout: float) -> str:
 
 
 def _request(payload: dict) -> urllib.request.Request | None:
+    control = _load_isolated_control(payload)
+    if control and control.get("schema_version") == 2:
+        # Benchmark callbacks share local pass-through policy in both arms.
+        # The treatment stop is dispatched separately; never attach either
+        # benchmark arm to the operator's unrelated live bridge session.
+        return None
     endpoint = _endpoint()
     if endpoint is None:
         return None
@@ -689,6 +804,7 @@ def main() -> None:
     else:
         payload = parse_payload(raw.decode("utf-8", "replace"), sys.argv)
     hook_name = str(payload.get("hook_event_name") or "")
+    record_hook_activity(payload)
     inbound_stop_id = record_stop_drop(payload)
     if hook_name in {"stop", "Stop"}:
         control = _load_isolated_control(payload)
@@ -716,7 +832,11 @@ def main() -> None:
                 pass
         return
     if req is None:
-        sys.stdout.write(_pass_through(hook_name, payload))
+        stdout = _pass_through(hook_name, payload)
+        sys.stdout.write(stdout)
+        if hook_name == "beforeSubmitPrompt":
+            sys.stdout.flush()
+            record_prompt_release(payload, stdout)
         return
     if hook_name in _PRE_PERMISSION:
         timeout = PERMISSION_CLIENT_TIMEOUT_SECONDS
@@ -735,6 +855,9 @@ def main() -> None:
     if hook_name in {"stop", "Stop"}:
         sys.stdout.flush()
         record_stop_delivery(payload, stdout, inbound_stop_id)
+    elif hook_name == "beforeSubmitPrompt":
+        sys.stdout.flush()
+        record_prompt_release(payload, stdout)
 
 
 if __name__ == "__main__":

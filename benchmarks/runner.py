@@ -39,6 +39,7 @@ _CONTROLLER_FILES = (
     "four_arm.py",
     "pex_attach.py",
     "cursor_isolated_stop.py",
+    "cursor_capture.py",
     "pex_supervisor_process.py",
     "report.py",
     "runner.py",

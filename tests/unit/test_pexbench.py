@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import importlib.util
 import json
@@ -2505,7 +2506,7 @@ async def test_cursor_treatment_wait_attaches_continuation_receipt(tmp_path, mon
         "followup_stop_id": "stop-2",
     }
 
-    async def chain(_workspace, _timeout):
+    async def chain(_workspace, _timeout, **_capture_kwargs):
         later = {
             "cwd": str(expected),
             "completion": "I finished after the follow-up.",
@@ -2578,7 +2579,7 @@ async def test_cursor_treatment_wait_attaches_isolated_supervisor_receipt(
         "followup_stop_id": "stop-2",
     }
 
-    async def chain(_workspace, _timeout):
+    async def chain(_workspace, _timeout, **_capture_kwargs):
         later = {
             "cwd": str(expected),
             "completion": "I finished after the follow-up.",
@@ -2765,7 +2766,7 @@ async def test_cursor_stop_payload_wrong_cwd_still_refuses_spawn(tmp_path, monke
         "wrong_cwd", "cursor", "pexbench_001_premature_stop", workspace_root
     )
 
-    async def wrong_stop(_workspace, _timeout):
+    async def wrong_stop(_workspace, _timeout, **_capture_kwargs):
         return {
             "cwd": str(tmp_path / "somewhere-else"),
             "completion": "done",
@@ -2783,6 +2784,8 @@ async def test_cursor_stop_payload_wrong_cwd_still_refuses_spawn(tmp_path, monke
             workspace_root=workspace_root,
             wait_cursor_stop=True,
         )
+    abort = json.loads((tmp_path / "results" / "wrong_cwd.jsonl").read_text(encoding="utf-8"))
+    assert abort["abort_reason"] == "provenance_failure"
 
 
 async def test_cursor_matching_stop_payload_writes_hooks_row(tmp_path, monkeypatch):
@@ -2802,7 +2805,7 @@ async def test_cursor_matching_stop_payload_writes_hooks_row(tmp_path, monkeypat
         "this_cursor", "cursor", "pexbench_001_premature_stop", workspace_root
     )
 
-    async def matching_stop(_workspace, _timeout):
+    async def matching_stop(_workspace, _timeout, **_capture_kwargs):
         return {
             "cwd": str(expected),
             "completion": "I am done.",
@@ -2824,13 +2827,25 @@ async def test_cursor_matching_stop_payload_writes_hooks_row(tmp_path, monkeypat
         wait_cursor_stop=True,
     )
     assert result["transport_kind"] == "cursor_hooks"
-    assert result["live"] is True
-    assert result["not_a_presentation_arm"] is False
+    assert result["live"] is False
+    assert result["not_a_presentation_arm"] is True
+    assert result["execution_wall_seconds"] is None
+    assert result["wall_time_seconds"] is None
+    assert result["human_interventions"] is None
+    assert result["human_intervention_log"] is None
+    assert result["task_started_at"] is None
+    assert result["raw_log_sha256"] is None
     assert result["pex"] is None
     assert result["success"] is False
-    row = json.loads((tmp_path / "results" / "this_cursor.jsonl").read_text(encoding="utf-8"))
+    row = json.loads(Path(result["written"]).read_text(encoding="utf-8"))
     assert row["transport_evidence"]["hooks_path"] == str(hooks)
     assert row["agent_messages"] == ["I am done."]
+    assert row["run_status"] == "diagnostic_only"
+    abort = json.loads(Path(result["abort_written"]).read_text(encoding="utf-8"))
+    assert abort["record_type"] == "abort"
+    assert abort["abort_reason"] == "provenance_failure"
+    with pytest.raises(ValueError, match="aborted"):
+        four.runner.assert_next_scheduled("this_cursor", "pexbench_001_premature_stop", "cursor")
 
 
 async def test_cursor_record_does_not_clobber_worker_files(tmp_path, monkeypatch):
@@ -2851,7 +2866,7 @@ async def test_cursor_record_does_not_clobber_worker_files(tmp_path, monkeypatch
     )
     four.evaluator.complete_synthetic("pexbench_003_permission_spam", expected)
 
-    async def matching_stop(_workspace, _timeout):
+    async def matching_stop(_workspace, _timeout, **_capture_kwargs):
         return {
             "cwd": str(expected),
             "completion": "pytest passed",
@@ -2874,13 +2889,14 @@ async def test_cursor_record_does_not_clobber_worker_files(tmp_path, monkeypatch
     )
     assert "startswith" in (expected / "test_summary.py").read_text(encoding="utf-8")
     assert result["success"] is True
-    assert result["live"] is True
+    assert result["live"] is False
 
 
-async def test_cursor_wait_reads_matching_stop_drop(tmp_path, monkeypatch):
+@pytest.mark.parametrize("arm", ["cursor", "cursor_pex"])
+async def test_cursor_wait_reads_matching_stop_drop(tmp_path, monkeypatch, arm):
     four = _four_arm()
     _enable_presentation_fixture(four, tmp_path, monkeypatch)
-    _admit_as_first(four, monkeypatch, "pexbench_001_premature_stop", "cursor")
+    _admit_as_first(four, monkeypatch, "pexbench_001_premature_stop", arm)
     monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
     hooks = tmp_path / "hooks.json"
     hooks.write_text("{}", encoding="utf-8")
@@ -2893,27 +2909,40 @@ async def test_cursor_wait_reads_matching_stop_drop(tmp_path, monkeypatch):
         lambda: {"Cursor.exe"},
     )
     workspace_root = tmp_path / "ws"
-    expected = four.isolated_workspace(
-        "wait_drop", "cursor", "pexbench_001_premature_stop", workspace_root
+    monkeypatch.setenv("PEX_CURSOR_ISOLATED_CONTROL", str(tmp_path / "control"))
+    expected, _, _ = four.prepare_isolated_workspace(
+        "wait_drop", arm, "pexbench_001_premature_stop", workspace_root
     )
-    (drop / "stop.json").write_text(
-        json.dumps(
-            {
-                "cwd": str(expected),
-                "completion": "stopped from drop",
-                "hook_event_name": "stop",
-                "conversation_id": "cursor-wait",
-                "model": "cursor-model",
-                "cursor_version": "1.0",
-                "benchmark_started_at": "2026-08-27T00:00:00+00:00",
-                "benchmark_ended_at": "2026-08-27T00:00:01+00:00",
-                "benchmark_human_intervention_log": [],
-            }
-        ),
-        encoding="utf-8",
-    )
+    hook_path = Path(__file__).resolve().parents[2] / "integrations/cursor-hook/pex_cursor_hook.py"
+    spec = importlib.util.spec_from_file_location("cursor_capture_integration", hook_path)
+    hook = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(hook)
+    payload = {
+        "cwd": str(expected), "conversation_id": "cursor-wait",
+        "model": "cursor-model", "cursor_version": "1.0",
+        "benchmark_started_at": "2026-08-27T00:00:00+00:00",
+        "benchmark_ended_at": "2026-08-27T00:00:01+00:00",
+        "benchmark_human_intervention_log": [],
+    }
+    assert hook.record_prompt_release({
+        **payload, "hook_event_name": "beforeSubmitPrompt",
+        "prompt": (expected / "TASK.md").read_text(encoding="utf-8"),
+    }, '{"continue":true}')
+    inbound_stop = {
+        **payload, "hook_event_name": "stop", "completion": "stopped from drop",
+    }
+    initial_id = hook.record_stop_drop(inbound_stop)
+    assert initial_id
+    if arm == "cursor_pex":
+        assert hook.record_stop_delivery(
+            inbound_stop, '{"followup_message":"Verify the public test result."}', initial_id
+        )
+        assert hook.record_stop_drop(inbound_stop)
+        monkeypatch.setattr(four, "_load_cursor_isolated_pex_meta", lambda *_: {
+            "supervisor_wall_seconds": 123.0, "followups": 1, "audits": [],
+        })
     result = await four.run_live(
-        "cursor",
+        arm,
         "pexbench_001_premature_stop",
         "wait_drop",
         workspace_root=workspace_root,
@@ -2922,7 +2951,92 @@ async def test_cursor_wait_reads_matching_stop_drop(tmp_path, monkeypatch):
     )
     assert result["transport_kind"] == "cursor_hooks"
     assert result["agent_messages"] == ["stopped from drop"]
-    assert result["live"] is True
+    assert result["live"] is False
+    assert result["not_a_presentation_arm"] is True
+    assert result["execution_wall_seconds"] > 0
+    assert result["execution_wall_seconds"] < 123.0
+    assert result["task_started_at"] != payload["benchmark_started_at"]
+    assert result["combined_metrics"]["wall_seconds"] == result["execution_wall_seconds"]
+    assert result["worker_metrics"]["wall_seconds"] is None
+    assert result["human_interventions"] is None
+    assert result["raw_log_sha256"] is None
+    assert result["cursor_capture"]["coverage"] == "partial"
+    assert result["cursor_capture"]["observed_receipt_count"] == (4 if arm == "cursor_pex" else 2)
+
+
+@pytest.mark.parametrize("arm", ["cursor", "cursor_pex"])
+@pytest.mark.parametrize("cancelled", [False, True])
+async def test_cursor_capture_timeout_preserves_partial_journal_without_evaluation(
+    tmp_path, monkeypatch, arm, cancelled
+):
+    four = _four_arm()
+    _enable_presentation_fixture(four, tmp_path, monkeypatch)
+    _admit_as_first(four, monkeypatch, "pexbench_001_premature_stop", arm)
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    hooks = tmp_path / "hooks.json"
+    hooks.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(four, "cursor_hooks_path", lambda: hooks)
+    monkeypatch.setenv("PEX_CURSOR_ISOLATED_CONTROL", str(tmp_path / "control"))
+
+    def unexpected_evaluation(*_args):
+        raise AssertionError("An incomplete capture must not reach evaluation")
+
+    monkeypatch.setattr(four.evaluator, "evaluate", unexpected_evaluation)
+    if cancelled:
+        async def cancel_wait(*_args, **_kwargs):
+            raise asyncio.CancelledError("operator cancelled observation")
+
+        monkeypatch.setattr(four, "wait_for_matching_cursor_stop", cancel_wait)
+        monkeypatch.setattr(four, "wait_for_cursor_treatment_chain", cancel_wait)
+    with pytest.raises(asyncio.CancelledError if cancelled else RuntimeError):
+        await four.run_live(
+            arm, "pexbench_001_premature_stop", "capture_timeout",
+            workspace_root=tmp_path / "ws", wait_cursor_stop=True, turn_timeout=0.01,
+        )
+    path = four._cursor_private_control_dir(
+        "capture_timeout", arm, "pexbench_001_premature_stop"
+    ) / "observed_events.jsonl"
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    assert records[-1]["record_type"] == "capture_footer"
+    assert records[-1]["complete"] is False
+    assert records[-1]["terminal_stop_id"] is None
+    abort = json.loads((tmp_path / "results" / "capture_timeout.jsonl").read_text(encoding="utf-8"))
+    assert abort["record_type"] == "abort"
+    assert abort["abort_reason"] == ("operator_intervention" if cancelled else "harness_disconnect")
+    assert four.runner.verify_result_chain(tmp_path / "results" / "capture_timeout.jsonl") == []
+    with pytest.raises(ValueError, match="aborted"):
+        four.runner.assert_next_scheduled("capture_timeout", "pexbench_001_premature_stop", arm)
+
+
+async def test_cursor_post_stop_evaluator_failure_is_a_terminal_abort(tmp_path, monkeypatch):
+    four = _four_arm()
+    _enable_presentation_fixture(four, tmp_path, monkeypatch)
+    _admit_as_first(four, monkeypatch, "pexbench_001_premature_stop", "cursor")
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    hooks = tmp_path / "hooks.json"
+    hooks.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(four, "cursor_hooks_path", lambda: hooks)
+    monkeypatch.setenv("PEX_CURSOR_ISOLATED_CONTROL", str(tmp_path / "control"))
+
+    async def stop(workspace, _timeout, **_kwargs):
+        return {"cwd": str(workspace), "conversation_id": "post-stop-failure",
+                "hook_event_name": "stop", "completion": "done"}
+
+    def fail_evaluation(*_args):
+        raise OSError("fixture evaluator failed")
+
+    monkeypatch.setattr(four, "wait_for_matching_cursor_stop", stop)
+    monkeypatch.setattr(four.evaluator, "evaluate", fail_evaluation)
+    with pytest.raises(OSError, match="fixture evaluator failed"):
+        await four.run_live(
+            "cursor", "pexbench_001_premature_stop", "post_stop_failure",
+            workspace_root=tmp_path / "ws", wait_cursor_stop=True,
+        )
+    path = tmp_path / "results" / "post_stop_failure.jsonl"
+    abort = json.loads(path.read_text(encoding="utf-8"))
+    assert abort["record_type"] == "abort"
+    assert abort["abort_reason"] == "controller_crash"
+    assert four.runner.verify_result_chain(path) == []
 
 
 def test_runner_rejects_spoofed_cursor_live_transport(tmp_path, monkeypatch):
