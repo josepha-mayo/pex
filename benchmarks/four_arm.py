@@ -786,17 +786,17 @@ def _try_write_codex_raw_log(
     return str(path), digest
 
 
-def _execution_preflight_blockers() -> list[str]:
-    """Block unsafe/invalid execution, not evidence that execution must create.
-
-    Development runs may collect honest rows while the benchmark is not yet
-    presentation-ready. Freeze/report checks remain strictly fail-closed in
-    ``_report_readiness_blockers`` and ``_run_blockers``.
-    """
-
-    return [
+def _execution_preflight_blockers(arm: str | None = None) -> list[str]:
+    """Enforce pre-run safety without requiring post-run outcome evidence."""
+    blockers = [
         f"benchmark suite is invalid: {error}" for error in evaluator.validate_suite()
     ]
+    blockers.extend(boundary.execution_runtime_blockers(arm))
+    blockers.extend(
+        f"benchmark information-boundary check failed: {error}"
+        for error in boundary.pre_execution_integrity_errors()
+    )
+    return blockers
 
 
 def _report_readiness_blockers() -> list[str]:
@@ -2237,7 +2237,7 @@ async def run_live_this_cursor(
     if not wait_cursor_stop:
         raise RuntimeError(CURSOR_LIVE_REFUSAL)
     if stop_payload is None and wait_cursor_stop:
-        preflight = _execution_preflight_blockers()
+        preflight = _execution_preflight_blockers(arm)
         if preflight:
             raise RuntimeError(
                 "benchmark execution preflight is NO-GO: " + "; ".join(preflight)
@@ -2344,7 +2344,7 @@ async def run_live_this_cursor(
         and intervention_evidence_available
     )
     if verified_live:
-        preflight = _execution_preflight_blockers()
+        preflight = _execution_preflight_blockers(arm)
         if preflight:
             raise RuntimeError(
                 "benchmark execution preflight is NO-GO: " + "; ".join(preflight)
@@ -2490,7 +2490,11 @@ async def run_live(
         )
     if arm not in {"codex", "codex_pex"}:
         raise RuntimeError(f"unknown presentation arm {arm}")
-    from pex_bridge.adapters.codex import CodexAdapter, CodexStdioTransport
+    from pex_bridge.adapters.codex import (
+        CodexAdapter,
+        CodexAppServerTransport,
+        CodexStdioTransport,
+    )
     from pex_bridge.adapters.codex_bin import resolve_codex_bin
 
     owned_transport = False
@@ -2500,12 +2504,20 @@ async def run_live(
             raise RuntimeError("codex CLI not found; cannot run a live Codex arm")
         transport = CodexStdioTransport(binary)
         owned_transport = True
+    if (
+        not isinstance(transport, CodexStdioTransport)
+        and type(transport) is not CodexAppServerTransport
+    ):
+        raise RuntimeError(
+            "unsupported benchmark transport: only the exact in-process test double "
+            "or the safety-gated Codex stdio transport is allowed"
+        )
     if isinstance(transport, CodexStdioTransport) and not worker_model:
         raise RuntimeError("live Codex arms require an explicit --worker-model for parity")
     presentation_candidate = isinstance(transport, CodexStdioTransport)
     task_budget = float(runner.protocol_config()["budget"]["task_wall_seconds"])
     if presentation_candidate:
-        preflight = _execution_preflight_blockers()
+        preflight = _execution_preflight_blockers(arm)
         if preflight:
             raise RuntimeError(
                 "benchmark execution preflight is NO-GO: " + "; ".join(preflight)
@@ -2842,6 +2854,9 @@ def main() -> None:
     if args.command == "evaluate":
         if not args.workspace:
             raise SystemExit("--workspace is required for evaluate")
+        preflight = _execution_preflight_blockers(args.arm)
+        if preflight:
+            raise SystemExit("benchmark execution preflight is NO-GO: " + "; ".join(preflight))
         print(json.dumps(evaluator.evaluate(args.task, Path(args.workspace)), indent=2))
         return
     if args.command == "prepare":
@@ -2861,7 +2876,7 @@ def main() -> None:
                 "Never spawn another window. After stop: "
                 "run --allow-live --wait-cursor-stop with the same run id"
             )
-        preflight = _execution_preflight_blockers()
+        preflight = _execution_preflight_blockers(args.arm)
         if preflight:
             raise SystemExit(
                 "benchmark execution preflight is NO-GO: " + "; ".join(preflight)
@@ -2898,7 +2913,7 @@ def main() -> None:
     if args.arm in PRESENTATION_ARMS:
         if not args.allow_live:
             raise SystemExit("presentation arms require --allow-live")
-        preflight = _execution_preflight_blockers()
+        preflight = _execution_preflight_blockers(args.arm)
         if preflight:
             raise SystemExit(
                 "benchmark execution preflight is NO-GO: " + "; ".join(preflight)

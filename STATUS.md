@@ -6,6 +6,14 @@
 
 **Date:** 2026-09-04
 
+## Latest checkpoint — real execution blocked until isolation exists, 4 Sep 2026 ~22:15 WAT
+
+The preflight regression is corrected: real four-arm execution and CLI prepare/run/evaluate now enforce implementation-owned runtime safety and existing anti-leakage checks before dispatch. The missing OS isolation backend blocks all real arms; Cursor's missing enforced network receipt is arm-specific. Manifest flags cannot bypass either. Post-run logs/outcomes remain report-only, avoiding a circular gate. Read-only plan: **2 execution blockers, 7 report blockers, unfrozen**.
+
+Verification: **23 safety/leakage tests passed**, **9 affected compatibility tests passed**, scoped Ruff and diff check passed. These are offline fixtures, not a working sandbox or live benchmark. Current Cursor receipt checkpoint **`bff82bdcdce28546bbb504020ad750ab88264b71`** is pushed and remote-verified. No provider quota, global hook mutation, or submission action occurred. Overall **NO-GO** remains; controller raw/timing/action capture and genuine isolated live evidence are next.
+
+Final review also closed the custom-transport bypass: only the exact known fake gets the synthetic path; unknown wrappers/fake subclasses reject before effects. Independent **APPROVE**. Final safety/leakage selection **25 passed**, plus **9 affected compatibility** and **3 synthetic Codex compatibility** tests passed. The 25 replaces the earlier 23 count; these are not additive unique-test totals.
+
 ## Latest checkpoint — Cursor local receipt integrity, 4 Sep 2026 ~22:00 WAT
 
 Cursor stop receipts now use hook-owned UUIDs, clocks, canonical content hashes, invocation-local parent binding, and flush-before-delivery capture. Treatment checking requires chronological stops around one exact follow-up, identical namespace-bound session identity/workspace, and verified unredacted content. Legacy/tampered/reordered/cross-session receipts fail closed. Separate-process high-resolution timing is covered; this is local hook sequence evidence, not vendor acceptance or causal impact.

@@ -541,6 +541,9 @@ def _report():
 
 
 def _enable_presentation_fixture(four, tmp_path, monkeypatch):
+    # Synthetic fixtures provide no runtime or isolation evidence. Bypass the
+    # unavailable backend only inside these tests, never through manifest flags.
+    monkeypatch.setattr(four.boundary, "execution_runtime_blockers", lambda arm=None: [])
     source = four.runner.MANIFEST.read_text(encoding="utf-8")
     source = source.replace(
         "natural_task_source_status: not_yet_satisfied",
@@ -1517,7 +1520,7 @@ def test_experiment_plan_is_predeclared_balanced_and_deterministic():
 def test_authoritative_manifest_preflight_remains_honestly_no_go():
     four = _four_arm()
     blockers = four._report_readiness_blockers()
-    assert four._execution_preflight_blockers() == []
+    assert any("not a sandbox" in item for item in four._execution_preflight_blockers())
     assert four._experiment_preflight_blockers() == blockers
     assert four.runner.load_manifest()["frozen"] is False
     assert any("natural-task source" in blocker for blocker in blockers)
@@ -1534,7 +1537,7 @@ def test_invalid_suite_blocks_execution_and_report_readiness(monkeypatch):
     execution = four._execution_preflight_blockers()
     report = four._report_readiness_blockers()
 
-    assert execution == ["benchmark suite is invalid: broken package"]
+    assert execution[0] == "benchmark suite is invalid: broken package"
     assert execution[0] in report
 
 
@@ -2080,6 +2083,7 @@ def _complete_run(four, run_id: str, arms=None) -> None:
 
 def test_freeze_accepts_one_coherent_fingerprinted_run(tmp_path, monkeypatch):
     four = _four_arm()
+    monkeypatch.setattr(four.boundary, "execution_runtime_blockers", lambda arm=None: [])
     results = tmp_path / "results"
     manifest = tmp_path / "manifest.yaml"
     manifest_source = (

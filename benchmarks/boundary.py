@@ -194,3 +194,50 @@ def supervisor_has_no_task_id_branches(path: Path) -> None:
         if needle in text:
             raise AssertionError(f"{path} mentions benchmark identity {needle!r}")
     _ = tree
+
+
+def execution_runtime_blockers(arm: str | None = None) -> list[str]:
+    """Describe missing implemented capabilities, not editable manifest claims.
+
+    The current worker/PEX processes share the controller host and evaluator.py
+    executes candidate code through ordinary python -I. Neither is an OS-level
+    hidden-data boundary. Replace these blockers only with an enforced backend
+    and action-time validation of its isolation/network receipts.
+    """
+    blockers = [
+        "OS-isolated worker/PEX and hidden-evaluator execution backend is not implemented; "
+        "plain python -I and controlled fixture directories are not a sandbox"
+    ]
+    if arm is None or arm in {"cursor", "cursor_pex"}:
+        blockers.append("Cursor network policy has no controller-enforced runtime receipt")
+    return blockers
+
+
+def pre_execution_integrity_errors() -> list[str]:
+    """Run existing deterministic anti-leakage checks before dispatch."""
+    errors = []
+    try:
+        forbids_treatment_suffix(four_arm_source())
+    except (AssertionError, OSError, UnicodeError) as exc:
+        errors.append(str(exc))
+    supervisor = REPO / "services" / "supervisor" / "src" / "pex_supervisor"
+    paths = [
+        supervisor / "loop.py",
+        supervisor / "planner.py",
+        supervisor / "public_task.py",
+        ROOT / "pex_attach.py",
+        ROOT / "cursor_isolated_stop.py",
+        ROOT / "pex_supervisor_process.py",
+    ]
+    for path in paths:
+        try:
+            supervisor_has_no_task_id_branches(path)
+            source = path.read_text(encoding="utf-8")
+            if any(
+                token in source
+                for token in ("import evaluator", "from evaluator", "metadata.yaml", "Handoff fact")
+            ):
+                raise AssertionError(f"{path.name} contains a private evaluator/oracle reference")
+        except (AssertionError, OSError, UnicodeError, SyntaxError) as exc:
+            errors.append(str(exc))
+    return errors

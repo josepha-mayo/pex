@@ -4,7 +4,7 @@
 
 - Source commits/pushes are now explicitly authorized; the older matrix's commit restriction is superseded. Other publish/deploy/spend/submission gates remain.
 - Cursor local hook receipts are now chronological, namespace-bound, hash-checked, and captured after stdout flush. They do not authenticate shared-host writers or prove vendor acceptance/causal impact. Controller timing/action/raw-log capture remains missing; legacy drops are not upgraded to evidence.
-- The execution/report gate split at `cbd5427` is too permissive for real benchmark execution: hidden-data isolation, safe evaluation of candidate code, static leakage checks, and network fairness are pre-run requirements. Current evaluator subprocesses are not an OS sandbox. Hold real runs until this is corrected; manifest assertions cannot establish runtime safety. Natural-task provenance and completed raw logs/outcomes remain separate report requirements.
+- The permissive execution/report split at `cbd5427` is now corrected in the four-arm driver: real entrypoints and CLI prepare/run/evaluate enforce implementation-owned safety blockers and static leakage checks. The runtime isolation backend itself is still **not implemented**, so live execution remains held regardless of manifest assertions. Evaluator-library subprocesses are not an OS sandbox and must not be used as a bypass. Natural-task provenance and completed raw logs/outcomes remain separate report requirements.
 
 ## Contest honesty matrix (3 Sep 2026)
 
