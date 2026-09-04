@@ -60,7 +60,7 @@ The highest-impact offline blocker is now Cursor. The read-only Cursor/benchmark
 
 ### Push receipt
 
-Independent review is **APPROVE**. The implementation commit is still pending at the moment represented by this source paragraph. The operator requires every verified update pushed; after commit, update this receipt with the exact local/remote hash in a second documentation commit.
+Independent review is **APPROVE**. Source checkpoint **`8596c9e4986c70c7d2620617ad4da9644b3d5003`** (`Harden Codex same-session resume delivery`) was pushed to `origin/main`; local and remote hashes were verified equal with `git rev-parse` and `git ls-remote`. No push-protection bypass was used. This paragraph is the promised receipt-only follow-up.
 
 ## CURRENT HANDOFF — 4 Sep 2026 ~20:22 BST — audited source checkpoint and push policy
 
