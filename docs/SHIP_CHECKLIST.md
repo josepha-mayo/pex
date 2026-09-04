@@ -58,7 +58,7 @@ When specs conflict, preserve the stricter product/integrity contract: Core/Reco
 - [ ] Bridge/adapters reconnect and restart without duplicate effects; incomplete/uncertain delivery is not claimed accepted/helpful.
 - [ ] Complete observation → model → decision → policy → actual action → observed result audit, with unknown outcomes retained as unknown.
 
-Current checkpoint in progress: truthful Cursor hook preparation/flush/activity ledger. Latest 12-file compatibility gate: **205 passed, 1 failed in 153.95 seconds**. The remaining failure is `test_presentation_listener_cannot_delay_or_invalidate_event_receipt`: a presentation task remains pending after the test drain. Earlier broad diagnostic run was interrupted after failures/stalled progress and is not a passing gate. Diagnose the remaining failure, retain receipt/timeout invariants, re-review the actual diff, and checkpoint only after the affected gate passes. These current changes are not yet committed or pushed.
+Current checkpoint: truthful Cursor hook preparation/flush/activity ledger. The test helper now drains descendant presentation tasks; production timeouts and strict listener-independence assertions are unchanged. Stable 12-file gate: **206 passed in 134.00 seconds**; separate Codex pump/fleet gate: **77 passed in 79.92 seconds**; adapter-capability file: **24 passed in 14.05 seconds**. Total **307 across 15 distinct files**, scoped Ruff clean; bounded independent review's stale-test finding corrected. The earlier 205/1 run and interrupted broad diagnostic run are retained in the handoff as failures, not green evidence. Source push is next; this is not live product proof.
 
 ## Immediate repair queue from the fresh audits
 

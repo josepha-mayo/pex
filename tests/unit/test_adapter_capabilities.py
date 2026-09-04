@@ -758,7 +758,9 @@ async def test_failed_cursor_acp_delivery_is_not_queued_as_hook_followup():
 
 
 @pytest.mark.asyncio
-async def test_cursor_hook_message_only_claims_delivery_inside_active_stop():
+async def test_cursor_hook_message_only_prepares_inside_active_stop():
+    from pex_bridge.adapters.base import CursorHookPreparation
+
     adapter = CursorAdapter()
     session = adapter.upsert_from_hook({"conversation_id": "c-stop"})
 
@@ -775,8 +777,12 @@ async def test_cursor_hook_message_only_claims_delivery_inside_active_stop():
     assert capabilities.send_message is True
     assert capabilities.inject_context is True
     assert capabilities.resume is True
-    assert await adapter.send_message(session, "continue with the missing file")
-    assert adapter.consume_followup(session.id) == "continue with the missing file"
+    prepared = await adapter.send_message(session, "continue with the missing file")
+    assert isinstance(prepared, CursorHookPreparation)
+    assert not hasattr(prepared, "accepted")
+    assert adapter.consume_followup(session.id) is None
+    assert not adapter.pending_followups
+    assert adapter.inbox.get(session.id, []) == []
 
 
 @pytest.mark.asyncio

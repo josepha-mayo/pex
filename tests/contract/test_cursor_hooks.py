@@ -55,7 +55,9 @@ async def client(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_cursor_stop_hook_requests_exact_missing_test_evidence(client: AsyncClient):
+async def test_cursor_stop_hook_requests_exact_missing_test_evidence(
+    client: AsyncClient, monkeypatch,
+):
     await client.post("/v1/synthetic/sessions")
     goal = await client.post(
         "/v1/goals",
@@ -87,6 +89,7 @@ async def test_cursor_stop_hook_requests_exact_missing_test_evidence(client: Asy
             "workspace_roots": ["C:/proj"],
             "status": "completed",
             "loop_count": 0,
+            "generation_id": "generation-before-followup",
         },
     )
     data = stop.json()
@@ -98,6 +101,70 @@ async def test_cursor_stop_hook_requests_exact_missing_test_evidence(client: Asy
     assert not followup.startswith("PEX:")
     # Recovery Test 4 permits a deterministic, evidence-specific continuation after
     # inspection finds that a test-backed completion criterion is still unproven.
+
+    packet = data["pex_hook_delivery"]
+    intervention = await state.store.get_intervention(packet["intervention_id"])
+    assert intervention.result == "hook_followup_prepared_delivery_uncertain"
+    assert intervention.outcome == "worker_delivery_uncertain"
+    assert intervention.helped is None
+    assert intervention.metadata.get("worker_delivery_receipt") is None
+    assert intervention.metadata.get("cursor_hook_delivery") is None
+    assert state.adapters.cursor.inbox.get("cursor:conv-1", []) == []
+    ack = {
+        "hook_event_name": "pexDeliveryReceipt",
+        "conversation_id": "conv-1",
+        "workspace_roots": ["C:/proj"],
+        "receipt": packet,
+        "delivery_evidence": "hook_stdout_flushed",
+    }
+    monkeypatch.setattr(state.settings, "require_auth", True)
+    monkeypatch.setattr(state, "token", "cursor-ack-contract-token")
+    headers = {"Authorization": "Bearer cursor-ack-contract-token"}
+    unauthorized = await client.post("/v1/hooks/cursor", json=ack)
+    assert unauthorized.status_code == 401
+    wrong_nonce = {
+        **ack,
+        "receipt": {**packet, "nonce": "0" * 64},
+    }
+    rejected = await client.post("/v1/hooks/cursor", json=wrong_nonce, headers=headers)
+    assert rejected.status_code == 409
+    wrong_session = {**ack, "conversation_id": "other-conversation"}
+    rejected = await client.post("/v1/hooks/cursor", json=wrong_session, headers=headers)
+    assert rejected.status_code == 422
+    wrong_project = {**ack, "workspace_roots": ["C:/different-project"]}
+    rejected = await client.post("/v1/hooks/cursor", json=wrong_project, headers=headers)
+    assert rejected.status_code == 409
+    flushed = await client.post("/v1/hooks/cursor", json=ack, headers=headers)
+    assert flushed.status_code == 200, flushed.text
+    replay = await client.post("/v1/hooks/cursor", json=ack, headers=headers)
+    assert replay.status_code == 200
+    assert replay.json() == flushed.json()
+    rejected = await client.post("/v1/hooks/cursor", json=wrong_project, headers=headers)
+    assert rejected.status_code == 409
+    assert packet["nonce"] not in flushed.text
+    intervention = await state.store.get_intervention(packet["intervention_id"])
+    assert intervention.metadata["cursor_hook_delivery"]["state"] == "hook_stdout_flushed"
+    assert intervention.metadata["effect_state"] == "delivery_uncertain"
+    assert intervention.helped is None
+
+    activity = await client.post(
+        "/v1/hooks/cursor",
+        headers=headers,
+        json={
+            "hook_event_name": "afterAgentResponse",
+            "conversation_id": "conv-1",
+            "workspace_roots": ["C:/proj"],
+            "generation_id": "generation-after-followup",
+            "text": "I am inspecting the tests now.",
+        },
+    )
+    assert activity.status_code == 200
+    intervention = await state.store.get_intervention(packet["intervention_id"])
+    observation = intervention.metadata["cursor_hook_delivery"]
+    assert observation["state"] == "same_session_activity_observed"
+    assert observation["vendor_acceptance_proven"] is False
+    assert intervention.result == "hook_followup_prepared_delivery_uncertain"
+    assert intervention.helped is None
 
 
 @pytest.mark.asyncio
@@ -132,7 +199,7 @@ async def test_cursor_hook_pipeline_deadlines_return_safe_fallbacks(
             cancelled = True
 
     monkeypatch.setattr(bridge_app, timeout_name, 0.01)
-    if hook_name == "beforeSubmitPrompt":
+    if hook_name in {"beforeSubmitPrompt", "stop"}:
         # This case tests cancellation inside inference, not SQLite timing.
         # Authority-read cancellation has separate contract coverage.
         async def immediate_authority(_session_id):

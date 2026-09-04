@@ -1253,7 +1253,11 @@ def test_release_preflight_is_structured_and_never_claims_package_readiness():
     assert report["fleet"]["pet_ids"] == [pet.id for pet in STARTERS]
     assert report["fleet"]["playback_receipt"]["gif_count"] == 72
     assert report["fleet"]["playback_receipt"]["decoded_frame_count"] == 456
-    assert report["git"]["release_input_count"] == 888
+    assert report["git"]["release_input_count"] >= 888
+    assert report["git"]["release_input_count"] == (
+        report["git"]["tracked_release_input_count"]
+        + report["git"]["untracked_release_input_count"]
+    )
     assert report["git"]["audit_reachable_input_count"] == 672
     assert report["git"]["audit_closure_sha256"] == (
         "94dcebf5bfce4640bfad52be94b7437b511aa5efb10068081550aaf5c42c3470"

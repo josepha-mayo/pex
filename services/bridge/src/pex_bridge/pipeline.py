@@ -28,6 +28,7 @@ from pex_protocol.enums import (
     DecisionStatus,
     EventPhase,
     EventType,
+    HarnessType,
     PolicyVerdict,
     Sensitivity,
     SessionStatus,
@@ -68,6 +69,7 @@ from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.base import (
     bounded_adapter_id,
     resolve_adapter_message_result,
+    validate_cursor_hook_preparation_receipt,
     validate_worker_delivery_receipt_binding,
 )
 from pex_bridge.adapters.desktop import is_desktop_observe_session
@@ -1933,13 +1935,21 @@ class Pipeline:
             "auto_handoff": "auto_handoff_deferred_until_multi_effect_recovery",
             "remote_attention": "remote_attention_deferred_until_multi_effect_recovery",
         }
+        cursor_stop_terminated = (
+            event.harness_type == HarnessType.CURSOR
+            and event.event_type == EventType.STOP
+            and event.metadata.get("tool_status") in {"aborted", "error"}
+        )
         if (
             session.supervision_paused
             or self.supervision_paused
             or (goal is not None and goal.paused)
+            or cursor_stop_terminated
         ):
             reason = (
-                "global_supervision_paused"
+                "cursor_stop_terminated_without_followup"
+                if cursor_stop_terminated
+                else "global_supervision_paused"
                 if self.supervision_paused
                 else ("goal_paused" if goal is not None and goal.paused else "session_paused")
             )
@@ -2424,6 +2434,25 @@ class Pipeline:
             if isinstance(effect_result, dict)
             else None
         )
+        hook_preparation_receipt = (
+            effect_result.get("hook_preparation_receipt")
+            if isinstance(effect_result, dict)
+            else None
+        )
+        if hook_preparation_receipt is not None:
+            if (
+                session is None
+                or worker_delivery_receipt is not None
+                or effect_state != "delivery_uncertain"
+                or outcome != "hook_followup_prepared_delivery_uncertain"
+            ):
+                raise RuntimeError("Cursor hook preparation receipt is corrupt")
+            normalized_preparation = validate_cursor_hook_preparation_receipt(
+                hook_preparation_receipt,
+                session=session,
+                trigger_event_id=processing["event_id"],
+            )
+            final.metadata["hook_preparation_receipt"] = normalized_preparation
         if worker_delivery_receipt is not None:
             if session is None:
                 raise RuntimeError("worker delivery receipt is corrupt")
@@ -2810,6 +2839,7 @@ class Pipeline:
         action = reserved.proposed_action
         verdict = reserved.policy_verdict
         worker_delivery_receipt = None
+        hook_preparation_receipt = None
         try:
             if action.type in {
                 InterventionType.APPLY_OVERLAY,
@@ -2826,6 +2856,7 @@ class Pipeline:
                 if isinstance(execution, ActionExecutionResult):
                     outcome = execution.outcome
                     worker_delivery_receipt = execution.worker_delivery_receipt
+                    hook_preparation_receipt = execution.hook_preparation_receipt
                 else:
                     outcome = execution
         except asyncio.CancelledError:
@@ -2867,14 +2898,17 @@ class Pipeline:
             return
         effect_state = self._main_effect_state(outcome)
         effect_result = None
-        if worker_delivery_receipt is not None:
+        if worker_delivery_receipt is not None or hook_preparation_receipt is not None:
             effect_result = {
                 "status": effect_state,
                 "outcome": outcome,
                 "code": outcome,
                 "effect_id": effect["effect_id"],
-                "worker_delivery_receipt": worker_delivery_receipt,
             }
+            if worker_delivery_receipt is not None:
+                effect_result["worker_delivery_receipt"] = worker_delivery_receipt
+            if hook_preparation_receipt is not None:
+                effect_result["hook_preparation_receipt"] = hook_preparation_receipt
         await self._seal_main_event_effect(
             processing=current,
             effect=effect,
@@ -3129,8 +3163,13 @@ class Pipeline:
         session: HarnessSession,
         event: HarnessEvent,
     ) -> bool:
-        """Require exact Codex continuation identity before causal attribution."""
+        """Require proven continuation identity before attributing worker outcomes."""
 
+        if session.harness_type.value == "cursor":
+            # A queued response or even a flushed hook is not vendor acceptance.
+            # The separate Cursor ledger records bounded, ordered observations;
+            # it must not enter this generic causal/helpfulness path.
+            return False
         if session.harness_type.value != "codex":
             return True
         receipt = (intervention.metadata or {}).get("worker_delivery_receipt")
@@ -4266,7 +4305,7 @@ class Pipeline:
                 ok,
                 session=dispatch["target"],
             )
-            if message_resolution.status == "delivery_uncertain":
+            if message_resolution.status in {"delivery_uncertain", "hook_prepared"}:
                 final = await durable_finalize(
                     "delivery_uncertain",
                     {

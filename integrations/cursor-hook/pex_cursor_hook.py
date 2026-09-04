@@ -28,6 +28,22 @@ MAX_RESPONSE_BYTES = 65_536
 MAX_TOKEN_CHARS = 512
 MAX_UI_MESSAGE_CHARS = 4_096
 MAX_DROP_TEXT_CHARS = 65_536
+DELIVERY_PACKET_SCHEMA = "pex.cursor-hook-delivery.v1"
+DELIVERY_ACK_TIMEOUT_SECONDS = 0.75
+_DELIVERY_PACKET_KEYS = frozenset(
+    {
+        "schema",
+        "preparation_id",
+        "intervention_id",
+        "trigger_event_id",
+        "target_session_id",
+        "vendor_session_id",
+        "goal_id",
+        "message_sha256",
+        "nonce",
+    }
+)
+_LOWER_HEX_64 = re.compile(r"[0-9a-f]{64}\Z")
 # A hook invocation handles one stop. Keep its receipt in memory so an incoming
 # payload or an edited drop file cannot supply the parent of a delivery receipt.
 _pending_stop_receipt: dict | None = None
@@ -725,6 +741,83 @@ def _safe_hook_stdout(raw_body: str, hook_name: str, payload: dict | None = None
     return "{}"
 
 
+def _validated_delivery_packet(
+    candidate: object,
+    *,
+    payload: dict,
+    stdout: str,
+) -> dict[str, str] | None:
+    """Bind a private bridge delivery packet to the exact flushed follow-up."""
+    if not isinstance(candidate, dict) or set(candidate) != _DELIVERY_PACKET_KEYS:
+        return None
+    if any(
+        type(value) is not str
+        or not value
+        or len(value) > MAX_TOKEN_CHARS
+        or any(ord(char) < 0x20 for char in value)
+        for value in candidate.values()
+    ):
+        return None
+    packet = {key: candidate[key] for key in _DELIVERY_PACKET_KEYS}
+    if packet["schema"] != DELIVERY_PACKET_SCHEMA:
+        return None
+    if not _LOWER_HEX_64.fullmatch(packet["message_sha256"]):
+        return None
+    if not _LOWER_HEX_64.fullmatch(packet["nonce"]):
+        return None
+    conversation_id = payload.get("conversation_id")
+    if (
+        type(conversation_id) is not str
+        or not conversation_id
+        or len(conversation_id) > MAX_TOKEN_CHARS
+    ):
+        return None
+    if packet["target_session_id"] != f"cursor:{conversation_id}":
+        return None
+    if packet["vendor_session_id"] != conversation_id:
+        return None
+    try:
+        emitted = _strict_json_loads(stdout)
+    except (ValueError, RecursionError):
+        return None
+    if not isinstance(emitted, dict) or set(emitted) != {"followup_message"}:
+        return None
+    message = emitted.get("followup_message")
+    if type(message) is not str or not message:
+        return None
+    message_sha256 = hashlib.sha256(message.encode("utf-8")).hexdigest()
+    if packet["message_sha256"] != message_sha256:
+        return None
+    return packet
+
+
+def _safe_hook_stdout_with_delivery(
+    raw_body: str,
+    hook_name: str,
+    payload: dict,
+) -> tuple[str, dict[str, str] | None]:
+    """Sanitize bridge stdout and privately extract a bound delivery packet."""
+    stdout = _safe_hook_stdout(raw_body, hook_name, payload)
+    if hook_name not in {"stop", "Stop"}:
+        return stdout, None
+    try:
+        body = _strict_json_loads((raw_body or "").strip() or "{}")
+    except (ValueError, RecursionError):
+        return stdout, None
+    if not isinstance(body, dict) or "pex_hook_delivery" not in body:
+        return stdout, None
+    packet = _validated_delivery_packet(
+        body.get("pex_hook_delivery"),
+        payload=payload,
+        stdout=stdout,
+    )
+    if packet is None:
+        # A bridge that attempted the receipt handshake but failed its binding
+        # cannot safely emit the associated follow-up as a delivered message.
+        return "{}", None
+    return stdout, packet
+
+
 _PRE_HOOKS = {
     "preToolUse",
     "beforeShellExecution",
@@ -763,6 +856,54 @@ def _post(req: urllib.request.Request, timeout: float) -> str:
     if len(raw) > MAX_RESPONSE_BYTES:
         raise ValueError("bridge response exceeded limit")
     return raw.decode("utf-8")
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _post_delivery_ack(payload: dict, packet: dict[str, str]) -> bool:
+    """Best-effort local ACK after stdout flush; never retry or follow redirects."""
+    control = _load_isolated_control(payload)
+    if control is not None and control.get("schema_version") == 2:
+        return False
+    endpoint = _endpoint()
+    if endpoint is None:
+        return False
+    ack = {
+        "hook_event_name": "pexDeliveryReceipt",
+        "conversation_id": payload.get("conversation_id"),
+        "workspace_roots": payload.get("workspace_roots"),
+        "receipt": packet,
+        "delivery_evidence": "hook_stdout_flushed",
+    }
+    try:
+        encoded = json.dumps(
+            ack,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except (TypeError, ValueError, UnicodeError, RecursionError):
+        return False
+    if len(encoded) > MAX_PAYLOAD_BYTES:
+        return False
+    headers = {"Content-Type": "application/json"}
+    token = _token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(endpoint, data=encoded, headers=headers, method="POST")
+    try:
+        opener = urllib.request.build_opener(_NoRedirectHandler())
+        with opener.open(request, timeout=DELIVERY_ACK_TIMEOUT_SECONDS) as response:
+            raw = response.read(MAX_RESPONSE_BYTES + 1)
+            status = getattr(response, "status", None)
+            if status is None:
+                status = response.getcode()
+        return 200 <= int(status) < 300 and len(raw) <= MAX_RESPONSE_BYTES
+    except Exception:
+        return False
 
 
 def _request(payload: dict) -> urllib.request.Request | None:
@@ -813,9 +954,11 @@ def main() -> None:
                 stdout = _run_isolated_supervisor(control, payload)
             else:
                 stdout = "{}"
-            sys.stdout.write(stdout)
+            written = sys.stdout.write(stdout)
             sys.stdout.flush()
-            record_stop_delivery(payload, stdout, inbound_stop_id)
+            if type(written) is int and written == len(stdout):
+                # A complete local flush is still not Cursor/vendor acceptance.
+                record_stop_delivery(payload, stdout, inbound_stop_id)
             return
         if _cwd_in_isolated_workspace_tree(payload):
             sys.stdout.write("{}")
@@ -833,10 +976,11 @@ def main() -> None:
         return
     if req is None:
         stdout = _pass_through(hook_name, payload)
-        sys.stdout.write(stdout)
+        written = sys.stdout.write(stdout)
         if hook_name == "beforeSubmitPrompt":
             sys.stdout.flush()
-            record_prompt_release(payload, stdout)
+            if type(written) is int and written == len(stdout):
+                record_prompt_release(payload, stdout)
         return
     if hook_name in _PRE_PERMISSION:
         timeout = PERMISSION_CLIENT_TIMEOUT_SECONDS
@@ -846,18 +990,24 @@ def main() -> None:
         timeout = SUBMIT_CLIENT_TIMEOUT_SECONDS
     else:
         timeout = PASSIVE_CLIENT_TIMEOUT_SECONDS
+    delivery_packet: dict[str, str] | None = None
     try:
         body = _post(req, timeout)
-        stdout = _safe_hook_stdout(body, hook_name, payload)
+        stdout, delivery_packet = _safe_hook_stdout_with_delivery(body, hook_name, payload)
     except Exception:
         stdout = _pass_through(hook_name, payload)
-    sys.stdout.write(stdout)
+    written = sys.stdout.write(stdout)
     if hook_name in {"stop", "Stop"}:
         sys.stdout.flush()
-        record_stop_delivery(payload, stdout, inbound_stop_id)
+        if type(written) is int and written == len(stdout):
+            # This proves only complete local stdout flush, not vendor acceptance.
+            record_stop_delivery(payload, stdout, inbound_stop_id)
+            if delivery_packet is not None:
+                _post_delivery_ack(payload, delivery_packet)
     elif hook_name == "beforeSubmitPrompt":
         sys.stdout.flush()
-        record_prompt_release(payload, stdout)
+        if type(written) is int and written == len(stdout):
+            record_prompt_release(payload, stdout)
 
 
 if __name__ == "__main__":

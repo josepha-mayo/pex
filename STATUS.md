@@ -4,7 +4,11 @@
 
 **Commit/push policy update, 4 Sep 2026 ~20:22 BST:** the operator has now explicitly authorized committing and pushing each verified source update. Submission, deploy, publish, spend, installer/package, and benchmark-freeze gates remain unauthorized. See the top of `docs/AGENT_HANDOFF.md` for exact exclusions and receipts.
 
-**Date:** 2026-09-04
+**Date:** 2026-09-05
+
+## Current production repair — truthful Cursor stop delivery
+
+Cursor hook follow-ups now have separate event-bound preparation, authenticated full-stdout-flush acknowledgment, and ordered same-session activity observations. No local queued message is reported as vendor-accepted. Aborted/error stops do not dispatch a continuation. Original effects remain delivery-uncertain; activity has explicit incomplete-coverage/non-causal flags and no helped credit. First ACKs are project/nonce/boot/age/accept-sequence fenced, with durable append-only observations and no raw nonce in audit. Final stable-source test/push receipts are in the handoff; this is not live-provider or submission proof. Deadline refreshed from the official contest overview: September 14, 5 PM PDT / September 15, 01:00 WAT.
 
 ## Current production repair — intent authority and semantic arbitration
 

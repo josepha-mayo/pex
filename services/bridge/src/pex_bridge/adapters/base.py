@@ -41,11 +41,22 @@ class AdapterMessageResult:
 
 
 @dataclass(frozen=True)
+class CursorHookPreparation:
+    """A Cursor stop-hook follow-up prepared locally, not vendor-accepted."""
+
+    preparation_id: str
+    trigger_event_id: str
+    vendor_session_id: str
+    message_sha256: str
+
+
+@dataclass(frozen=True)
 class AdapterMessageResolution:
     """Fail-closed interpretation of one adapter mutation result."""
 
-    status: Literal["delivered", "rejected", "delivery_uncertain"]
+    status: Literal["delivered", "rejected", "delivery_uncertain", "hook_prepared"]
     worker_delivery_receipt: dict[str, str] | None = None
+    hook_preparation_receipt: dict[str, str] | None = None
 
 
 def bounded_adapter_text(
@@ -79,6 +90,7 @@ def bounded_adapter_id(value: object, *, field: str = "identifier") -> str:
 
 WORKER_DELIVERY_SCHEMA_GENERIC = "pex.worker-delivery.v1"
 WORKER_DELIVERY_SCHEMA_CODEX = "pex.worker-delivery.codex-turn.v1"
+CURSOR_HOOK_PREPARATION_SCHEMA = "pex.cursor-hook-preparation.v1"
 WORKER_DELIVERY_RECEIPT_KEYS = frozenset(
     {
         "schema",
@@ -87,6 +99,26 @@ WORKER_DELIVERY_RECEIPT_KEYS = frozenset(
         "vendor_turn_id",
     }
 )
+CURSOR_HOOK_PREPARATION_RECEIPT_KEYS = frozenset(
+    {
+        "schema",
+        "preparation_id",
+        "trigger_event_id",
+        "target_session_id",
+        "vendor_session_id",
+        "message_sha256",
+    }
+)
+
+
+def _bounded_sha256(value: object, *, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(char not in "0123456789abcdef" for char in value)
+    ):
+        raise ValueError(f"{field} must be a lowercase SHA-256 digest")
+    return value
 
 
 def worker_delivery_schema_for(harness_type: object) -> str:
@@ -191,6 +223,70 @@ def validate_codex_worker_delivery_receipt_binding(
     return expected
 
 
+def validate_cursor_hook_preparation_receipt(
+    receipt: object,
+    *,
+    session: HarnessSession,
+    trigger_event_id: object | None = None,
+    preparation_id: object | None = None,
+    message_sha256: object | None = None,
+) -> dict[str, str]:
+    """Validate an exact content-free Cursor hook-preparation binding."""
+
+    if session.harness_type != HarnessType.CURSOR:
+        raise ValueError("Cursor hook preparation has the wrong target harness")
+    if not isinstance(receipt, dict) or set(receipt) != CURSOR_HOOK_PREPARATION_RECEIPT_KEYS:
+        raise ValueError("Cursor hook preparation receipt has invalid keys")
+    target_session_id = bounded_adapter_id(
+        session.id,
+        field="Cursor hook preparation target session id",
+    )
+    bound_vendor_session_id = bounded_adapter_id(
+        session.vendor_session_id,
+        field="Cursor hook preparation bound vendor session id",
+    )
+    receipt_preparation_id = bounded_adapter_id(
+        receipt.get("preparation_id"),
+        field="Cursor hook preparation id",
+    )
+    receipt_trigger_event_id = bounded_adapter_id(
+        receipt.get("trigger_event_id"),
+        field="Cursor hook preparation trigger event id",
+    )
+    receipt_vendor_session_id = bounded_adapter_id(
+        receipt.get("vendor_session_id"),
+        field="Cursor hook preparation vendor session id",
+    )
+    receipt_message_sha256 = _bounded_sha256(
+        receipt.get("message_sha256"),
+        field="Cursor hook preparation message hash",
+    )
+    expected = {
+        "schema": CURSOR_HOOK_PREPARATION_SCHEMA,
+        "preparation_id": receipt_preparation_id,
+        "trigger_event_id": receipt_trigger_event_id,
+        "target_session_id": target_session_id,
+        "vendor_session_id": bound_vendor_session_id,
+        "message_sha256": receipt_message_sha256,
+    }
+    exact_bindings = (
+        (preparation_id, receipt_preparation_id, "preparation id"),
+        (trigger_event_id, receipt_trigger_event_id, "trigger event id"),
+        (message_sha256, receipt_message_sha256, "message hash"),
+    )
+    if (
+        receipt != expected
+        or target_session_id != f"cursor:{bound_vendor_session_id}"
+        or receipt_vendor_session_id != bound_vendor_session_id
+        or any(
+            supplied is not None and supplied != observed
+            for supplied, observed, _field in exact_bindings
+        )
+    ):
+        raise ValueError("Cursor hook preparation receipt does not match its binding")
+    return expected
+
+
 def resolve_adapter_message_result(
     result: object,
     *,
@@ -198,6 +294,23 @@ def resolve_adapter_message_result(
 ) -> AdapterMessageResolution:
     """Resolve Boolean adapters and exact turn receipts without truthiness."""
 
+    if isinstance(result, CursorHookPreparation):
+        candidate = {
+            "schema": CURSOR_HOOK_PREPARATION_SCHEMA,
+            "preparation_id": result.preparation_id,
+            "trigger_event_id": result.trigger_event_id,
+            "target_session_id": session.id,
+            "vendor_session_id": result.vendor_session_id,
+            "message_sha256": result.message_sha256,
+        }
+        try:
+            receipt = validate_cursor_hook_preparation_receipt(candidate, session=session)
+        except (TypeError, ValueError):
+            return AdapterMessageResolution(status="delivery_uncertain")
+        return AdapterMessageResolution(
+            status="hook_prepared",
+            hook_preparation_receipt=receipt,
+        )
     if result is False:
         return AdapterMessageResolution(status="rejected")
     if result is True:
@@ -388,12 +501,12 @@ class HarnessAdapter(ABC):
 
     async def send_message(
         self, session: HarnessSession, text: str, attachments=None
-    ) -> bool | AdapterMessageResult:
+    ) -> bool | AdapterMessageResult | CursorHookPreparation:
         return False
 
     async def inject_context(
         self, session: HarnessSession, bundle: ContextBundle
-    ) -> bool | AdapterMessageResult:
+    ) -> bool | AdapterMessageResult | CursorHookPreparation:
         return await self.send_message(session, _bundle_as_prompt(bundle))
 
     async def respond_permission(
@@ -428,7 +541,7 @@ class HarnessAdapter(ABC):
 
     async def continue_or_resume(
         self, session: HarnessSession, message: str | None = None
-    ) -> bool | AdapterMessageResult:
+    ) -> bool | AdapterMessageResult | CursorHookPreparation:
         if message:
             return await self.send_message(session, message)
         return False

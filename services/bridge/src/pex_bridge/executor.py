@@ -22,6 +22,7 @@ from pydantic import ValidationError
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.base import (
     AdapterMessageResult,
+    CursorHookPreparation,
     resolve_adapter_message_result,
 )
 from pex_bridge.store import (
@@ -50,11 +51,12 @@ RENAME_EXCL = 0x00000004
 @dataclass(frozen=True)
 class ActionExecutionResult:
     outcome: str
-    worker_delivery_receipt: dict[str, str]
+    worker_delivery_receipt: dict[str, str] | None = None
+    hook_preparation_receipt: dict[str, str] | None = None
 
 
 def _message_execution_result(
-    result: bool | AdapterMessageResult,
+    result: bool | AdapterMessageResult | CursorHookPreparation,
     *,
     session: HarnessSession,
     accepted_outcome: str,
@@ -76,6 +78,13 @@ def _message_execution_result(
             raise RuntimeError(
                 f"unsupported message acceptance outcome: {accepted_outcome}"
             ) from exc
+    if resolution.status == "hook_prepared":
+        if resolution.hook_preparation_receipt is None:
+            return "send_delivery_uncertain"
+        return ActionExecutionResult(
+            outcome="hook_followup_prepared_delivery_uncertain",
+            hook_preparation_receipt=resolution.hook_preparation_receipt,
+        )
     if resolution.worker_delivery_receipt is None:
         return accepted_outcome
     return ActionExecutionResult(

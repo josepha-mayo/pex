@@ -1,5 +1,9 @@
 # Known failures
 
+## Production Cursor delivery boundary — 5 Sep 2026
+
+The queued-message false acceptance has been replaced with distinct prepared, helper-stdout-flushed, and same-session-activity observations. Aborted/error stops cannot dispatch follow-ups. This **does not establish vendor acceptance or causal continuation**: the helper ACK precedes successful process exit/vendor parsing, and missing user-prompt callbacks leave coverage incomplete. `helped` remains unknown; original effects remain delivery-uncertain. First ACKs fail closed on wrong project, nonce, boot, age, or any intervening accepted event. This may conservatively lose a real delivery observation under concurrency/timeout; it must never retry the worker message or invent a receipt. Legacy fake turn IDs are not upgraded into evidence. Real independent same-session Strands quality, benchmark runtime isolation/network policy, six live cells, release/package smoke, and submission proof remain open.
+
 ## Production supervision repair — 4 Sep 2026 continuation
 
 Current work closes reproduced prompt-policy bypass, false human-override classification, stale deterministic-plan replacement of semantic decisions, AgentCore failure fallback, and loss of post-inference provenance. Strict independent-verifier receipts are required for remote STOP interventions and retained in the durable audit. Final stable-source verification passed **334 tests**; the handoff records scope and push receipts. Bounded lexical intent triage is not a full semantic parser; ambiguous and quoted conflicts may conservatively ask instead of silently creating durable authority. Cursor response construction/prepared stop delivery is not vendor acceptance proof. Local fake-model tests cannot establish live independent Strands quality, same-session effectiveness, benchmark improvement, or submission readiness.

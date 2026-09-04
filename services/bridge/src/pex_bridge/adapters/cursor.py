@@ -3,10 +3,12 @@ from __future__ import annotations
 import hashlib
 import time
 from contextvars import ContextVar
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
+from uuid import uuid4
 
 from pex_protocol.actions import InterventionType
 from pex_protocol.capabilities import (
@@ -29,6 +31,7 @@ from pex_bridge.adapters.acp_client import AcpClient, AcpTransport
 from pex_bridge.adapters.base import (
     MAX_ADAPTER_MESSAGE_CHARS,
     AdapterMessageResult,
+    CursorHookPreparation,
     DeliveryUncertainError,
     HarnessAdapter,
     bounded_adapter_id,
@@ -37,6 +40,7 @@ from pex_bridge.adapters.base import (
     bounded_observed_text,
     preserve_bridge_state,
     session_binding_matches,
+    validate_cursor_hook_preparation_receipt,
 )
 from pex_bridge.adapters.desktop import (
     desktop_process_running,
@@ -77,6 +81,12 @@ MIN_BRIDGE_TOKEN_CHARS = 32
 MAX_BRIDGE_TOKEN_CHARS = 512
 
 
+@dataclass(frozen=True)
+class _PendingCursorFollowup:
+    text: str
+    preparation: CursorHookPreparation
+
+
 def _cursor_vendor_id(payload: dict) -> str:
     value = bounded_adapter_id(payload.get("conversation_id") or "", field="conversation_id")
     if value and value.lower() not in {"unknown", "desktop", "none"}:
@@ -94,7 +104,7 @@ class CursorAdapter(HarnessAdapter):
     def __init__(self, acp: AcpClient | None = None, bridge_url: str | None = None) -> None:
         self.sessions: dict[str, HarnessSession] = {}
         self.inbox: dict[str, list[str]] = {}
-        self.pending_followups: dict[str, str] = {}
+        self.pending_followups: dict[tuple[str, str], _PendingCursorFollowup] = {}
         self.acp = acp
         self.acp_prompts: list[tuple[str, str]] = []
         self.permission_responses: list[tuple[str, str, str]] = []
@@ -102,7 +112,7 @@ class CursorAdapter(HarnessAdapter):
         self.isolated_agent_messages: list[str] = []
         self.last_turn_id: str | None = None
         self._last_hook_at: float | None = None
-        self._active_hook: ContextVar[tuple[str, str] | None] = ContextVar(
+        self._active_hook: ContextVar[tuple[str, str, str] | None] = ContextVar(
             f"pex_cursor_active_hook_{id(self)}", default=None
         )
         self._active_permission_request: ContextVar[tuple[str, str] | None] = ContextVar(
@@ -302,11 +312,11 @@ class CursorAdapter(HarnessAdapter):
         if payload.get("conversation_id") and _cursor_vendor_id(payload) != bound.vendor_session_id:
             raise ValueError("Cursor hook conversation binding mismatch")
         session = bound
+        self._active_hook.set(None)
         hook_name = bounded_adapter_id(
             payload.get("hook_event_name") or payload.get("hook") or "unknown",
             field="hook event name",
         )
-        self._active_hook.set((session.id, str(hook_name)))
         event_type = HOOK_EVENT_MAP.get(hook_name, EventType.STATUS)
         phase = (
             EventPhase.BEFORE if str(hook_name).startswith(("before", "pre")) else EventPhase.AFTER
@@ -360,6 +370,12 @@ class CursorAdapter(HarnessAdapter):
                     field="hook failure",
                 ) or "tool failed"
         event_id = _cursor_event_id(session.id, payload)
+        raw_generation_id = payload.get("generation_id")
+        generation_id = (
+            bounded_adapter_id(raw_generation_id, field="Cursor generation id")
+            if raw_generation_id is not None and raw_generation_id != ""
+            else None
+        )
         if hook_name in {
             "beforeShellExecution",
             "preToolUse",
@@ -369,7 +385,7 @@ class CursorAdapter(HarnessAdapter):
             self._active_permission_request.set((session.id, event_id))
         else:
             self._active_permission_request.set(None)
-        return HarnessEvent(
+        event = HarnessEvent(
             event_id=event_id,
             ts=datetime.now(UTC),
             harness_type=HarnessType.CURSOR,
@@ -395,15 +411,18 @@ class CursorAdapter(HarnessAdapter):
                     max_chars=512,
                 ),
                 "conversation_id": session.vendor_session_id,
+                "generation_id": generation_id,
                 "tool_status": bounded_observed_text(
                     payload.get("status"), field="Cursor tool status", max_chars=512
                 ),
             },
         )
+        self._active_hook.set((session.id, str(hook_name), event.event_id))
+        return event
 
     async def send_message(
         self, session: HarnessSession, text: str, attachments=None
-    ) -> bool | AdapterMessageResult:
+    ) -> bool | AdapterMessageResult | CursorHookPreparation:
         bound = self.sessions.get(session.id)
         if not session_binding_matches(bound, session, harness_type=HarnessType.CURSOR):
             return False
@@ -416,10 +435,10 @@ class CursorAdapter(HarnessAdapter):
         if session.id != f"cursor:{session.vendor_session_id}":
             return False
         session = bound
-        inbox = self.inbox.setdefault(session.id, [])
-        if len(inbox) >= MAX_INBOX_MESSAGES:
-            return False
         if self.acp is not None:
+            inbox = self.inbox.setdefault(session.id, [])
+            if len(inbox) >= MAX_INBOX_MESSAGES:
+                return False
             try:
                 await self.acp.activate(
                     session.vendor_session_id,
@@ -441,6 +460,9 @@ class CursorAdapter(HarnessAdapter):
             # helper already fail-opened with {}.
             return False
         elif self.bridge_url:
+            inbox = self.inbox.setdefault(session.id, [])
+            if len(inbox) >= MAX_INBOX_MESSAGES:
+                return False
             upstream_effect_id = (
                 str(attachments.get("operator_effect_id") or "").strip()
                 if isinstance(attachments, dict)
@@ -454,22 +476,33 @@ class CursorAdapter(HarnessAdapter):
             ):
                 return False
         else:
-            # The active stop hook consumes this synchronously and returns it as
-            # followup_message.  It is not an out-of-band Cursor message API.
-            if not self._hook_live() or self._active_hook.get() != (session.id, "stop"):
-                return False
+            # This only prepares text for the exact active stop event. A later
+            # stdout flush proves local hook delivery, not Cursor acceptance or
+            # display.
+            active_hook = self._active_hook.get()
             if (
-                session.id not in self.pending_followups
-                and len(self.pending_followups) >= MAX_TRACKED_SESSIONS
+                not self._hook_live()
+                or active_hook is None
+                or active_hook[:2] != (session.id, "stop")
             ):
                 return False
-            self.pending_followups[session.id] = cleaned
-            inbox.append(cleaned)
-            return AdapterMessageResult(
-                accepted=True,
+            trigger_event_id = active_hook[2]
+            pending_key = (session.id, trigger_event_id)
+            if pending_key in self.pending_followups:
+                return False
+            if len(self.pending_followups) >= MAX_TRACKED_SESSIONS:
+                return False
+            preparation = CursorHookPreparation(
+                preparation_id=f"cursor-prep-{uuid4().hex}",
+                trigger_event_id=trigger_event_id,
                 vendor_session_id=session.vendor_session_id,
-                vendor_turn_id=f"cursor-stop-{len(inbox):04d}",
+                message_sha256=hashlib.sha256(cleaned.encode("utf-8")).hexdigest(),
             )
+            self.pending_followups[pending_key] = _PendingCursorFollowup(
+                text=cleaned,
+                preparation=preparation,
+            )
+            return preparation
         inbox.append(cleaned)
         return True
 
@@ -484,7 +517,9 @@ class CursorAdapter(HarnessAdapter):
             "completion_observed": False,
         }
 
-    async def continue_or_resume(self, session: HarnessSession, message: str | None = None) -> bool:
+    async def continue_or_resume(
+        self, session: HarnessSession, message: str | None = None
+    ) -> bool | AdapterMessageResult | CursorHookPreparation:
         if not message or not str(message).strip():
             return False
         return await self.send_message(session, message)
@@ -528,16 +563,36 @@ class CursorAdapter(HarnessAdapter):
             return True
         return _focus_cursor_window(session.vendor_session_id or "Cursor")
 
-    def consume_followup(self, session_id: str) -> str | None:
+    def consume_followup(
+        self,
+        session_id: str,
+        *,
+        trigger_event_id: str | None = None,
+    ) -> str | None:
+        """Discard the active pending packet without exposing unverified text."""
+
+        active_hook = self._active_hook.get()
         self._active_hook.set(None)
-        return self.pending_followups.pop(session_id, None)
+        event_id = trigger_event_id
+        if event_id is None and active_hook is not None and active_hook[0] == session_id:
+            event_id = active_hook[2]
+        if event_id is not None:
+            try:
+                event_id = bounded_adapter_id(
+                    event_id,
+                    field="Cursor follow-up trigger event id",
+                )
+            except ValueError:
+                return None
+            self.pending_followups.pop((session_id, event_id), None)
+        return None
 
     def consume_verified_stop_followup(
         self,
         session: HarnessSession,
         intervention: Intervention | None,
     ) -> str | None:
-        """Consume, but expose only an exact completed delivery receipt.
+        """Consume, but expose only an exact prepared hook response.
 
         Pending text is single-use even when validation fails. This prevents a
         stale or policy-denied proposal from leaking into a later Cursor stop
@@ -545,30 +600,63 @@ class CursorAdapter(HarnessAdapter):
         """
 
         active_hook = self._active_hook.get()
-        text = (self.consume_followup(session.id) or "").strip()
-        if not text or text.startswith("PEX:") or active_hook != (session.id, "stop"):
+        self._active_hook.set(None)
+        if (
+            active_hook is None
+            or active_hook[:2] != (session.id, "stop")
+            or not session_binding_matches(
+                self.sessions.get(session.id), session, harness_type=HarnessType.CURSOR
+            )
+        ):
+            return None
+        pending = self.pending_followups.pop((session.id, active_hook[2]), None)
+        if pending is None:
+            return None
+        if (
+            pending.preparation.trigger_event_id != active_hook[2]
+            or pending.preparation.vendor_session_id != session.vendor_session_id
+        ):
+            return None
+        text = pending.text.strip()
+        if not text or text.startswith("PEX:"):
             return None
         if intervention is None:
             return None
         action = intervention.proposed_action
-        expected_results = {
-            InterventionType.SEND_NUDGE: "sent",
-            InterventionType.CONTINUE_SESSION: "continued",
-            InterventionType.INJECT_CONTEXT: "sent",
-            InterventionType.REQUEST_VERIFICATION: "verification_requested",
+        prepared_actions = {
+            InterventionType.SEND_NUDGE,
+            InterventionType.CONTINUE_SESSION,
+            InterventionType.INJECT_CONTEXT,
+            InterventionType.REQUEST_VERIFICATION,
         }
-        expected_result = expected_results.get(action.type)
         payload = action.payload if isinstance(action.payload, dict) else {}
+        raw_receipt = (intervention.metadata or {}).get("hook_preparation_receipt")
+        try:
+            receipt = validate_cursor_hook_preparation_receipt(
+                raw_receipt,
+                session=session,
+                preparation_id=pending.preparation.preparation_id,
+                trigger_event_id=active_hook[2],
+                message_sha256=pending.preparation.message_sha256,
+            )
+        except (TypeError, ValueError):
+            return None
         if (
-            expected_result is None
+            action.type not in prepared_actions
             or intervention.session_id != session.id
+            or intervention.goal_id is None
+            or intervention.goal_id != session.goal_id
             or intervention.trigger != EventType.STOP.value
             or action.session_id != session.id
+            or action.goal_id != session.goal_id
             or intervention.action_taken != action.type.value
             or intervention.policy_verdict != PolicyVerdict.ALLOW
-            or intervention.result != expected_result
+            or intervention.result != "hook_followup_prepared_delivery_uncertain"
             or not any(str(item).strip() for item in intervention.evidence)
             or str(payload.get("text") or "").strip() != text
+            or hashlib.sha256(text.encode("utf-8")).hexdigest()
+            != receipt["message_sha256"]
+            or (intervention.metadata or {}).get("worker_delivery_receipt") is not None
         ):
             return None
         return text

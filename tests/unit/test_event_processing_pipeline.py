@@ -162,7 +162,9 @@ async def _pipeline(
 
 
 async def _drain_presentations(pipeline: Pipeline) -> None:
-    if pipeline._presentation_tasks:
+    # A pet-snapshot task schedules a publication task before completing.
+    # Drain the whole tree, not only the tasks present at the first snapshot.
+    while pipeline._presentation_tasks:
         await asyncio.gather(*tuple(pipeline._presentation_tasks), return_exceptions=True)
 
 
@@ -174,6 +176,37 @@ async def _followup_row(store: Store, event_id: str, kind: str) -> dict:
     row = await cursor.fetchone()
     assert row is not None
     return dict(row)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["aborted", "error"])
+async def test_cursor_terminated_stop_records_event_without_planning_or_dispatch(tmp_path, status):
+    store, adapters, source, pipeline = await _pipeline(tmp_path)
+    payload = {
+        "hook_event_name": "stop",
+        "conversation_id": "terminated-stop",
+        "workspace_roots": [str(tmp_path)],
+        "status": status,
+    }
+    session = adapters.cursor.upsert_from_hook(payload)
+    session.goal_id = source.goal_id
+    await store.upsert_session(session)
+    event = adapters.cursor.normalize_hook(payload, session)
+    supervisor = _NudgeSupervisor()
+    executor = _CrashExecutor()
+    pipeline.supervisor = supervisor
+    pipeline.executor = executor
+    try:
+        assert await pipeline.ingest_event(event, session) is None
+        record = await store.get_event_processing(event.event_id)
+        assert record["state"] == "complete"
+        assert record["receipt"]["terminal_reason"] == "cursor_stop_terminated_without_followup"
+        assert supervisor.calls == 0
+        assert executor.calls == 0
+        assert adapters.cursor.pending_followups == {}
+    finally:
+        await _drain_presentations(pipeline)
+        await store.close()
 
 
 @pytest.mark.asyncio
@@ -210,12 +243,15 @@ async def test_presentation_listener_cannot_delay_or_invalidate_event_receipt(tm
     store, _, session, pipeline = await _pipeline(tmp_path, bus=bus)
     event = _event(session, "presentation-independent", event_type=EventType.HEARTBEAT)
     try:
-        result = await asyncio.wait_for(pipeline.ingest_event(event, session), timeout=1)
+        # This allowance covers SQLite/thread scheduling, not a production SLO.
+        # The listener stays blocked throughout, so it cannot release ingestion.
+        result = await asyncio.wait_for(pipeline.ingest_event(event, session), timeout=10)
         assert result is None
         processing = await store.get_event_processing(event.event_id)
         assert processing is not None and processing["state"] == "complete"
-        await asyncio.wait_for(listener_started.wait(), timeout=1)
-        await asyncio.sleep(0.15)
+        await asyncio.wait_for(_drain_presentations(pipeline), timeout=2)
+        assert listener_started.is_set()
+        assert not never.is_set()
         assert not pipeline._presentation_tasks
     finally:
         never.set()
@@ -307,7 +343,8 @@ async def test_cancellation_after_main_marker_is_durably_uncertain_and_not_retri
     event = _event(session, "main-dispatch-cancel")
     task = asyncio.create_task(pipeline.ingest_event(event, session))
     try:
-        await asyncio.wait_for(blocking.started.wait(), timeout=2)
+        # Wait for the dispatch marker, not a host-load-dependent I/O deadline.
+        await asyncio.wait_for(blocking.started.wait(), timeout=10)
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task

@@ -305,6 +305,83 @@ async def _process_cursor_submit(event: HarnessEvent, session: HarnessSession) -
     return _cursor_submit_response(intervention, event, current[0])
 
 
+async def _observe_cursor_continuation(event_id: str) -> None:
+    try:
+        await asyncio.wait_for(state.store.observe_cursor_hook_continuation(event_id), timeout=1.0)
+    except (TimeoutError, LookupError, PermissionError, ProjectIdentityBlockedError):
+        return
+    except Exception as exc:
+        logger.warning("Cursor continuation observation unavailable (%s)", type(exc).__name__)
+
+
+async def _process_cursor_stop(event: HarnessEvent, session: HarnessSession) -> dict[str, Any]:
+    adapter = state.adapters.cursor
+    paused = state.pipeline.supervision_paused
+    authority = await _cursor_submit_authority(session.id)
+    try:
+        intervention = await state.pipeline.ingest_event(event, session)
+        await _observe_cursor_continuation(event.event_id)
+        current = await _cursor_submit_authority(session.id)
+        if (
+            paused
+            or state.pipeline.supervision_paused
+            or authority is None
+            or current is None
+            or authority[1] != current[1]
+            or event.metadata.get("tool_status") in {"aborted", "error"}
+        ):
+            return {}
+        text = adapter.consume_verified_stop_followup(current[0], intervention)
+        if not text or intervention is None:
+            return {}
+        revision, binding, generation, goal_id, intent_revision, intent_hash = current[1]
+        packet = await state.store.prepare_cursor_hook_delivery(
+            intervention.id,
+            intervention.metadata.get("hook_preparation_receipt"),
+            expected_authority={
+                "control_revision": revision,
+                "project_binding": binding,
+                "discovery_generation": generation,
+                "goal_id": goal_id,
+                "intent_revision": intent_revision,
+                "intent_hash": intent_hash,
+            },
+        )
+        return {"followup_message": text, "pex_hook_delivery": packet}
+    finally:
+        adapter.consume_followup(session.id, trigger_event_id=event.event_id)
+
+
+async def _record_cursor_delivery_ack(payload: dict) -> dict[str, Any]:
+    if (
+        set(payload) != {
+            "hook_event_name", "conversation_id", "workspace_roots", "receipt", "delivery_evidence",
+        }
+        or payload.get("delivery_evidence") != "hook_stdout_flushed"
+        or not isinstance(payload.get("receipt"), dict)
+    ):
+        raise HTTPException(422, "invalid Cursor delivery observation")
+    packet = payload["receipt"]
+    conversation_id = payload.get("conversation_id")
+    if (
+        not isinstance(conversation_id, str)
+        or packet.get("vendor_session_id") != conversation_id
+        or packet.get("target_session_id") != f"cursor:{conversation_id}"
+    ):
+        raise HTTPException(422, "Cursor delivery observation identity mismatch")
+    _, project_id = _hook_payload_binding(HarnessType.CURSOR, payload)
+    if project_id is None:
+        raise HTTPException(422, "Cursor delivery observation requires a project identity")
+    try:
+        return await asyncio.wait_for(
+            state.store.record_cursor_hook_flush(packet, project_id=project_id), timeout=1.0,
+        )
+    except (LookupError, PermissionError, ProjectIdentityBlockedError, ValueError, TypeError):
+        raise HTTPException(409, "Cursor delivery observation rejected") from None
+    except TimeoutError:
+        raise HTTPException(503, "Cursor delivery observation is unavailable") from None
+
+
 TRUSTED_UI_ORIGINS = {
     "http://127.0.0.1:1420",
     "http://localhost:1420",
@@ -1167,12 +1244,20 @@ async def _apply_cursor_hook(payload: dict) -> dict[str, Any]:
             return {"continue": True}
     if hook_name == "stop":
         try:
-            intervention = await asyncio.wait_for(
-                state.pipeline.ingest_event(event, session),
+            return await asyncio.wait_for(
+                _process_cursor_stop(event, session),
                 timeout=CURSOR_STOP_PIPELINE_TIMEOUT_SECONDS,
             )
-        except TimeoutError:
+        except (
+            TimeoutError,
+            PermissionError,
+            ProjectIdentityBlockedError,
+            LookupError,
+            ValueError,
+        ):
             return response
+        finally:
+            adapter.consume_followup(session.id, trigger_event_id=event.event_id)
     else:
         try:
             intervention = await asyncio.wait_for(
@@ -1181,10 +1266,7 @@ async def _apply_cursor_hook(payload: dict) -> dict[str, Any]:
             )
         except TimeoutError:
             intervention = None
-    if hook_name == "stop":
-        text = adapter.consume_verified_stop_followup(session, intervention)
-        if text:
-            response["followup_message"] = text
+    await _observe_cursor_continuation(event.event_id)
     return response
 
 
@@ -4561,7 +4643,7 @@ def create_app() -> FastAPI:
             )
             return _operator_effect_response(uncertain, replayed=False)
         message_resolution = resolve_adapter_message_result(ok, session=live_session)
-        if message_resolution.status == "delivery_uncertain":
+        if message_resolution.status in {"delivery_uncertain", "hook_prepared"}:
             uncertain = await finalize_uncertain("invalid_adapter_receipt")
             return _operator_effect_response(uncertain, replayed=False)
         if message_resolution.status == "rejected":
@@ -5317,6 +5399,8 @@ def create_app() -> FastAPI:
             harness_type=HarnessType.CURSOR,
             payload=payload,
         )
+        if payload.get("hook_event_name") == "pexDeliveryReceipt":
+            return await _record_cursor_delivery_ack(payload)
         return await apply_cursor_hook(payload)
 
     @app.post("/v1/hooks/{harness}")
@@ -5331,6 +5415,8 @@ def create_app() -> FastAPI:
                 harness_type=HarnessType.CURSOR,
                 payload=payload,
             )
+            if payload.get("hook_event_name") == "pexDeliveryReceipt":
+                return await _record_cursor_delivery_ack(payload)
             return await apply_cursor_hook(payload)
         adapter = state.adapters.get(harness)
         if (

@@ -9,6 +9,7 @@ import ntpath
 import os
 import posixpath
 import re
+import secrets
 import stat
 import threading
 from collections.abc import Sequence
@@ -51,7 +52,19 @@ from pex_protocol.project_identity import (
 from pex_protocol.redaction import redact_mapping, redact_text
 from pex_protocol.session import HarnessEvent, HarnessSession
 
-from pex_bridge.adapters.base import validate_worker_delivery_receipt_binding
+from pex_bridge.adapters.base import (
+    validate_cursor_hook_preparation_receipt,
+    validate_worker_delivery_receipt_binding,
+)
+from pex_bridge.cursor_delivery import (
+    CURSOR_HOOK_CONTINUATION_SCHEMA,
+    CURSOR_HOOK_FLUSH_SCHEMA,
+    CURSOR_HOOK_PREPARED_OUTCOME,
+    cursor_message_sha256,
+    cursor_nonce_sha256,
+    validate_cursor_hook_authority,
+    validate_cursor_hook_delivery_packet,
+)
 from pex_bridge.handoff_views import intervention_audit_action_payload
 from pex_bridge.hook_auth import allowed_hook_routes
 
@@ -508,6 +521,49 @@ CREATE TABLE IF NOT EXISTS interventions (
   ts TEXT,
   json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS cursor_hook_preparations (
+  preparation_id TEXT PRIMARY KEY,
+  intervention_id TEXT NOT NULL UNIQUE REFERENCES interventions(id),
+  effect_id TEXT NOT NULL UNIQUE REFERENCES event_effects(effect_id),
+  trigger_event_id TEXT NOT NULL UNIQUE REFERENCES events(event_id),
+  trigger_accept_seq INTEGER NOT NULL CHECK(trigger_accept_seq > 0),
+  target_session_id TEXT NOT NULL REFERENCES sessions(id),
+  vendor_session_id TEXT NOT NULL,
+  goal_id TEXT NOT NULL REFERENCES goals(id),
+  project_id TEXT NOT NULL,
+  project_binding TEXT NOT NULL,
+  control_revision INTEGER NOT NULL CHECK(control_revision >= 0),
+  discovery_generation TEXT,
+  goal_intent_revision INTEGER NOT NULL CHECK(goal_intent_revision >= 0),
+  goal_intent_hash TEXT NOT NULL,
+  message_sha256 TEXT NOT NULL,
+  nonce_sha256 TEXT NOT NULL,
+  process_boot_id TEXT NOT NULL,
+  trigger_generation TEXT,
+  prepared_at TEXT NOT NULL,
+  json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS cursor_hook_flush_receipts (
+  preparation_id TEXT PRIMARY KEY REFERENCES cursor_hook_preparations(preparation_id),
+  intervention_id TEXT NOT NULL,
+  target_session_id TEXT NOT NULL,
+  vendor_session_id TEXT NOT NULL,
+  message_sha256 TEXT NOT NULL,
+  target_accept_seq_through INTEGER NOT NULL CHECK(target_accept_seq_through > 0),
+  flushed_at TEXT NOT NULL,
+  json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS cursor_hook_continuations (
+  preparation_id TEXT PRIMARY KEY REFERENCES cursor_hook_preparations(preparation_id),
+  intervention_id TEXT NOT NULL,
+  event_id TEXT NOT NULL UNIQUE REFERENCES events(event_id),
+  target_session_id TEXT NOT NULL,
+  vendor_session_id TEXT NOT NULL,
+  accept_seq INTEGER NOT NULL CHECK(accept_seq > 0),
+  observed_generation TEXT NOT NULL,
+  observed_at TEXT NOT NULL,
+  json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS intervention_audit (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   intervention_id TEXT NOT NULL,
@@ -868,6 +924,36 @@ CREATE TRIGGER IF NOT EXISTS trg_handoff_dispatch_watermark_no_delete
 BEFORE DELETE ON handoff_dispatch_watermarks
 BEGIN
   SELECT RAISE(ABORT, 'handoff dispatch watermark is append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_cursor_hook_preparations_immutable
+BEFORE UPDATE ON cursor_hook_preparations
+BEGIN
+  SELECT RAISE(ABORT, 'Cursor hook preparation is immutable');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_cursor_hook_preparations_no_delete
+BEFORE DELETE ON cursor_hook_preparations
+BEGIN
+  SELECT RAISE(ABORT, 'Cursor hook preparation is append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_cursor_hook_flush_receipts_immutable
+BEFORE UPDATE ON cursor_hook_flush_receipts
+BEGIN
+  SELECT RAISE(ABORT, 'Cursor hook flush receipt is immutable');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_cursor_hook_flush_receipts_no_delete
+BEFORE DELETE ON cursor_hook_flush_receipts
+BEGIN
+  SELECT RAISE(ABORT, 'Cursor hook flush receipt is append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_cursor_hook_continuations_immutable
+BEFORE UPDATE ON cursor_hook_continuations
+BEGIN
+  SELECT RAISE(ABORT, 'Cursor hook continuation is immutable');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_cursor_hook_continuations_no_delete
+BEFORE DELETE ON cursor_hook_continuations
+BEGIN
+  SELECT RAISE(ABORT, 'Cursor hook continuation is append-only');
 END;
 CREATE TRIGGER IF NOT EXISTS trg_handoff_context_candidate_immutable
 BEFORE UPDATE ON handoff_context_candidates
@@ -2570,6 +2656,95 @@ def _event_effect_record(row: aiosqlite.Row) -> dict[str, Any]:
     return record
 
 
+def _cursor_hook_preparation_record(row: aiosqlite.Row) -> dict[str, Any]:
+    record = _strict_json_loads(str(row["json"]))
+    if not isinstance(record, dict):
+        raise RuntimeError("stored Cursor hook preparation is invalid")
+    expected = {
+        "schema": "pex.cursor-hook-preparation-record.v1",
+        "preparation_id": str(row["preparation_id"]),
+        "intervention_id": str(row["intervention_id"]),
+        "effect_id": str(row["effect_id"]),
+        "trigger_event_id": str(row["trigger_event_id"]),
+        "trigger_accept_seq": int(row["trigger_accept_seq"]),
+        "target_session_id": str(row["target_session_id"]),
+        "vendor_session_id": str(row["vendor_session_id"]),
+        "goal_id": str(row["goal_id"]),
+        "project_id": str(row["project_id"]),
+        "project_binding": str(row["project_binding"]),
+        "control_revision": int(row["control_revision"]),
+        "discovery_generation": row["discovery_generation"],
+        "goal_intent_revision": int(row["goal_intent_revision"]),
+        "goal_intent_hash": str(row["goal_intent_hash"]),
+        "message_sha256": str(row["message_sha256"]),
+        "nonce_sha256": str(row["nonce_sha256"]),
+        "process_boot_id": str(row["process_boot_id"]),
+        "trigger_generation": row["trigger_generation"],
+        "prepared_at": str(row["prepared_at"]),
+    }
+    if record != expected or str(row["json"]) != _canonical_json(expected):
+        raise RuntimeError("stored Cursor hook preparation is corrupt")
+    validate_cursor_hook_authority(
+        {
+            "control_revision": expected["control_revision"],
+            "project_binding": expected["project_binding"],
+            "discovery_generation": expected["discovery_generation"],
+            "goal_id": expected["goal_id"],
+            "intent_revision": expected["goal_intent_revision"],
+            "intent_hash": expected["goal_intent_hash"],
+        }
+    )
+    if any(
+        re.fullmatch(r"[0-9a-f]{64}", value) is None
+        for value in (
+            expected["message_sha256"],
+            expected["nonce_sha256"],
+            expected["goal_intent_hash"],
+        )
+    ):
+        raise RuntimeError("stored Cursor hook preparation hash is corrupt")
+    return expected
+
+
+def _cursor_hook_flush_record(row: aiosqlite.Row) -> dict[str, Any]:
+    record = _strict_json_loads(str(row["json"]))
+    expected = {
+        "schema": CURSOR_HOOK_FLUSH_SCHEMA,
+        "preparation_id": str(row["preparation_id"]),
+        "intervention_id": str(row["intervention_id"]),
+        "target_session_id": str(row["target_session_id"]),
+        "vendor_session_id": str(row["vendor_session_id"]),
+        "message_sha256": str(row["message_sha256"]),
+        "target_accept_seq_through": int(row["target_accept_seq_through"]),
+        "delivery_evidence": "hook_stdout_flushed",
+        "vendor_acceptance_proven": False,
+        "flushed_at": str(row["flushed_at"]),
+    }
+    if record != expected or str(row["json"]) != _canonical_json(expected):
+        raise RuntimeError("stored Cursor hook flush receipt is corrupt")
+    return expected
+
+
+def _cursor_hook_continuation_record(row: aiosqlite.Row) -> dict[str, Any]:
+    record = _strict_json_loads(str(row["json"]))
+    expected = {
+        "schema": CURSOR_HOOK_CONTINUATION_SCHEMA,
+        "preparation_id": str(row["preparation_id"]),
+        "intervention_id": str(row["intervention_id"]),
+        "event_id": str(row["event_id"]),
+        "target_session_id": str(row["target_session_id"]),
+        "vendor_session_id": str(row["vendor_session_id"]),
+        "accept_seq": int(row["accept_seq"]),
+        "observed_generation": str(row["observed_generation"]),
+        "observation": "same_session_activity_observed",
+        "vendor_acceptance_proven": False,
+        "observed_at": str(row["observed_at"]),
+    }
+    if record != expected or str(row["json"]) != _canonical_json(expected):
+        raise RuntimeError("stored Cursor hook continuation is corrupt")
+    return expected
+
+
 def _operator_effect_record(row: aiosqlite.Row) -> dict[str, Any]:
     record = dict(row)
     record["payload"] = _strict_json_loads(str(record["payload_json"]))
@@ -4130,6 +4305,7 @@ def _validate_event_delivery_update(
         "remote_notify",
         "verification",
         "worker_delivery_receipt",
+        "hook_preparation_receipt",
     }
     reserved_metadata = reserved.metadata or {}
     finalized_metadata = finalized.metadata or {}
@@ -21893,6 +22069,729 @@ class Store:
     async def add_intervention(self, intervention: Intervention) -> None:
         await self._write_intervention(intervention, "created", create=True)
 
+    async def prepare_cursor_hook_delivery(
+        self,
+        intervention_id: str,
+        preparation_receipt: dict[str, Any],
+        *,
+        expected_authority: dict[str, Any],
+    ) -> dict[str, str]:
+        """Mint the one-time hook packet for an already-prepared uncertain effect."""
+
+        _validate_store_id(intervention_id, label="Cursor hook intervention id")
+        authority = validate_cursor_hook_authority(expected_authority)
+        packet: dict[str, str]
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN IMMEDIATE")
+            try:
+                duplicate_cursor = await transaction.execute(
+                    "SELECT 1 FROM cursor_hook_preparations WHERE intervention_id = ?",
+                    (intervention_id,),
+                )
+                if await duplicate_cursor.fetchone() is not None:
+                    # The raw nonce is deliberately not durable. Replaying prepare
+                    # must never mint a second credential for the same action.
+                    raise ValueError("Cursor hook preparation already exists")
+
+                intervention, binding, session, goal, _ = await _load_bound_intervention(
+                    transaction,
+                    intervention_id,
+                    require_live=True,
+                )
+                receipt = validate_cursor_hook_preparation_receipt(
+                    preparation_receipt,
+                    session=session,
+                )
+                duplicate_cursor = await transaction.execute(
+                    "SELECT 1 FROM cursor_hook_preparations WHERE preparation_id = ?",
+                    (receipt["preparation_id"],),
+                )
+                if await duplicate_cursor.fetchone() is not None:
+                    raise ValueError("Cursor hook preparation already exists")
+                session_cursor = await transaction.execute(
+                    "SELECT * FROM sessions WHERE id = ?",
+                    (intervention.session_id,),
+                )
+                session_row = await session_cursor.fetchone()
+                if session_row is None:  # pragma: no cover - bound loader invariant
+                    raise RuntimeError("Cursor hook session disappeared")
+                goal_cursor = await transaction.execute(
+                    "SELECT intent_revision, intent_hash FROM goals WHERE id = ?",
+                    (intervention.goal_id,),
+                )
+                goal_row = await goal_cursor.fetchone()
+                if goal_row is None:  # pragma: no cover - bound loader invariant
+                    raise RuntimeError("Cursor hook goal disappeared")
+                intent_revision, intent_hash = _validate_goal_intent_scalar_pair(
+                    goal_row["intent_revision"],
+                    goal_row["intent_hash"],
+                )
+                actual_authority = {
+                    "control_revision": int(session_row["control_revision"]),
+                    "project_binding": binding.project_binding,
+                    "discovery_generation": session_row["discovery_generation"],
+                    "goal_id": goal.id,
+                    "intent_revision": intent_revision,
+                    "intent_hash": intent_hash,
+                }
+                if authority != actual_authority:
+                    raise PermissionError("Cursor hook delivery authority changed")
+                if (
+                    session.harness_type != HarnessType.CURSOR
+                    or session.supervision_paused
+                    or session.status == SessionStatus.DETACHED
+                    or goal.paused
+                    or receipt["trigger_event_id"]
+                    != intervention.metadata.get("trigger_event_id")
+                    or receipt["target_session_id"] != intervention.session_id
+                    or receipt["vendor_session_id"] != session.vendor_session_id
+                    or receipt["target_session_id"]
+                    != f"cursor:{receipt['vendor_session_id']}"
+                    or intervention.trigger != EventType.STOP.value
+                    or intervention.policy_verdict != PolicyVerdict.ALLOW
+                    or intervention.action_taken != intervention.proposed_action.type.value
+                    or intervention.proposed_action.type
+                    not in {
+                        InterventionType.SEND_NUDGE,
+                        InterventionType.INJECT_CONTEXT,
+                        InterventionType.CONTINUE_SESSION,
+                        InterventionType.REQUEST_VERIFICATION,
+                    }
+                    or intervention.result != CURSOR_HOOK_PREPARED_OUTCOME
+                    or intervention.outcome != "worker_delivery_uncertain"
+                    or intervention.helped is not None
+                    or (intervention.metadata or {}).get("effect_state")
+                    != "delivery_uncertain"
+                    or (intervention.metadata or {}).get("worker_delivery_receipt")
+                    is not None
+                    or (intervention.metadata or {}).get("hook_preparation_receipt")
+                    != receipt
+                ):
+                    raise PermissionError("Cursor hook preparation is not authoritative")
+                action_text = intervention.proposed_action.payload.get("text")
+                if (
+                    not isinstance(action_text, str)
+                    or cursor_message_sha256(action_text.strip())
+                    != receipt["message_sha256"]
+                ):
+                    raise ValueError("Cursor hook preparation message does not match action")
+
+                processing_cursor = await transaction.execute(
+                    "SELECT * FROM event_processing WHERE event_id = ?",
+                    (receipt["trigger_event_id"],),
+                )
+                processing_row = await processing_cursor.fetchone()
+                effect_cursor = await transaction.execute(
+                    "SELECT * FROM event_effects WHERE event_id = ? AND effect_key = 'main'",
+                    (receipt["trigger_event_id"],),
+                )
+                effect_row = await effect_cursor.fetchone()
+                event_cursor = await transaction.execute(
+                    "SELECT json FROM events WHERE event_id = ? AND session_id = ?",
+                    (receipt["trigger_event_id"], receipt["target_session_id"]),
+                )
+                event_row = await event_cursor.fetchone()
+                if processing_row is None or effect_row is None or event_row is None:
+                    raise RuntimeError("Cursor hook prepared effect binding is missing")
+                processing = _event_processing_record(processing_row)
+                effect = _event_effect_record(effect_row)
+                trigger_event = HarnessEvent.model_validate_json(event_row["json"])
+                expected_effect_result = {
+                    "status": "delivery_uncertain",
+                    "outcome": CURSOR_HOOK_PREPARED_OUTCOME,
+                    "code": CURSOR_HOOK_PREPARED_OUTCOME,
+                    "effect_id": effect["effect_id"],
+                    "hook_preparation_receipt": receipt,
+                }
+                processing_receipt = processing.get("receipt")
+                if (
+                    processing["state"] != "complete"
+                    or processing["session_id"] != receipt["target_session_id"]
+                    or processing["goal_id"] != goal.id
+                    or processing["accepted_project_binding"] != binding.project_binding
+                    or processing["accepted_goal_intent_revision"] != intent_revision
+                    or processing["accepted_goal_intent_hash"] != intent_hash
+                    or effect["state"] != "delivery_uncertain"
+                    or effect["target_session_id"] != receipt["target_session_id"]
+                    or effect["result"] != expected_effect_result
+                    or effect["payload"].get("intervention_id") != intervention.id
+                    or effect["payload"].get("action")
+                    != intervention.proposed_action.model_dump(mode="json")
+                    or not isinstance(processing_receipt, dict)
+                    or processing_receipt.get("effect_id") != effect["effect_id"]
+                    or processing_receipt.get("effect_state") != "delivery_uncertain"
+                    or processing_receipt.get("effect_result") != expected_effect_result
+                    or trigger_event.event_type != EventType.STOP
+                    or trigger_event.harness_type != HarnessType.CURSOR
+                    or trigger_event.session_id != receipt["target_session_id"]
+                    or trigger_event.goal_id != goal.id
+                ):
+                    raise PermissionError("Cursor hook prepared effect binding is invalid")
+                trigger_generation_raw = (trigger_event.metadata or {}).get("generation_id")
+                trigger_generation = (
+                    str(trigger_generation_raw).strip()
+                    if isinstance(trigger_generation_raw, str)
+                    and trigger_generation_raw.strip()
+                    and len(trigger_generation_raw.strip()) <= 512
+                    else None
+                )
+
+                nonce = secrets.token_hex(32)
+                now = utcnow().isoformat()
+                record = {
+                    "schema": "pex.cursor-hook-preparation-record.v1",
+                    "preparation_id": receipt["preparation_id"],
+                    "intervention_id": intervention.id,
+                    "effect_id": effect["effect_id"],
+                    "trigger_event_id": receipt["trigger_event_id"],
+                    "trigger_accept_seq": int(processing["accept_seq"]),
+                    "target_session_id": receipt["target_session_id"],
+                    "vendor_session_id": receipt["vendor_session_id"],
+                    "goal_id": goal.id,
+                    "project_id": binding.project_id,
+                    "project_binding": binding.project_binding,
+                    "control_revision": authority["control_revision"],
+                    "discovery_generation": authority["discovery_generation"],
+                    "goal_intent_revision": authority["intent_revision"],
+                    "goal_intent_hash": authority["intent_hash"],
+                    "message_sha256": receipt["message_sha256"],
+                    "nonce_sha256": cursor_nonce_sha256(nonce),
+                    "process_boot_id": self.process_boot_id,
+                    "trigger_generation": trigger_generation,
+                    "prepared_at": now,
+                }
+                await transaction.execute(
+                    "INSERT INTO cursor_hook_preparations("
+                    "preparation_id, intervention_id, effect_id, trigger_event_id, "
+                    "trigger_accept_seq, target_session_id, vendor_session_id, goal_id, "
+                    "project_id, project_binding, control_revision, discovery_generation, "
+                    "goal_intent_revision, goal_intent_hash, message_sha256, nonce_sha256, "
+                    "process_boot_id, trigger_generation, prepared_at, json) VALUES "
+                    "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        record["preparation_id"],
+                        record["intervention_id"],
+                        record["effect_id"],
+                        record["trigger_event_id"],
+                        record["trigger_accept_seq"],
+                        record["target_session_id"],
+                        record["vendor_session_id"],
+                        record["goal_id"],
+                        record["project_id"],
+                        record["project_binding"],
+                        record["control_revision"],
+                        record["discovery_generation"],
+                        record["goal_intent_revision"],
+                        record["goal_intent_hash"],
+                        record["message_sha256"],
+                        record["nonce_sha256"],
+                        record["process_boot_id"],
+                        record["trigger_generation"],
+                        record["prepared_at"],
+                        _canonical_json(record),
+                    ),
+                )
+                packet = {
+                    "schema": "pex.cursor-hook-delivery.v1",
+                    "preparation_id": receipt["preparation_id"],
+                    "intervention_id": intervention.id,
+                    "trigger_event_id": receipt["trigger_event_id"],
+                    "target_session_id": receipt["target_session_id"],
+                    "vendor_session_id": receipt["vendor_session_id"],
+                    "goal_id": goal.id,
+                    "message_sha256": receipt["message_sha256"],
+                    "nonce": nonce,
+                }
+                validate_cursor_hook_delivery_packet(packet)
+                await transaction.commit()
+            except Exception:
+                await transaction.rollback()
+                raise
+        return packet
+
+    async def record_cursor_hook_flush(
+        self,
+        packet: dict[str, Any],
+        *,
+        project_id: str,
+    ) -> dict[str, Any]:
+        """Append an authenticated stdout-flush fact without upgrading delivery."""
+
+        validated = validate_cursor_hook_delivery_packet(packet)
+        if (
+            not isinstance(project_id, str)
+            or not project_id
+            or len(project_id) > MAX_PROJECT_ID_LENGTH
+            or "\x00" in project_id
+        ):
+            raise ValueError("Cursor hook project id is invalid")
+        audit_written = False
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN IMMEDIATE")
+            try:
+                preparation_cursor = await transaction.execute(
+                    "SELECT * FROM cursor_hook_preparations WHERE preparation_id = ?",
+                    (validated["preparation_id"],),
+                )
+                preparation_row = await preparation_cursor.fetchone()
+                if preparation_row is None:
+                    raise LookupError("Cursor hook preparation not found")
+                preparation = _cursor_hook_preparation_record(preparation_row)
+                packet_binding = {
+                    "preparation_id": preparation["preparation_id"],
+                    "intervention_id": preparation["intervention_id"],
+                    "trigger_event_id": preparation["trigger_event_id"],
+                    "target_session_id": preparation["target_session_id"],
+                    "vendor_session_id": preparation["vendor_session_id"],
+                    "goal_id": preparation["goal_id"],
+                    "message_sha256": preparation["message_sha256"],
+                }
+                if any(validated[key] != value for key, value in packet_binding.items()):
+                    raise ValueError("Cursor hook delivery packet binding mismatch")
+                if not hmac.compare_digest(
+                    cursor_nonce_sha256(validated["nonce"]),
+                    preparation["nonce_sha256"],
+                ):
+                    raise PermissionError("Cursor hook delivery nonce mismatch")
+                if not _same_project(project_id, preparation["project_id"]):
+                    raise PermissionError("Cursor hook project binding changed")
+
+                existing_cursor = await transaction.execute(
+                    "SELECT * FROM cursor_hook_flush_receipts WHERE preparation_id = ?",
+                    (validated["preparation_id"],),
+                )
+                existing_row = await existing_cursor.fetchone()
+                if existing_row is not None:
+                    existing = _cursor_hook_flush_record(existing_row)
+                    await transaction.commit()
+                    return existing
+
+                now_moment = utcnow()
+                try:
+                    prepared_at = datetime.fromisoformat(preparation["prepared_at"])
+                except (TypeError, ValueError) as exc:  # pragma: no cover - record validator
+                    raise RuntimeError("Cursor hook preparation time is invalid") from exc
+                elapsed = now_moment - prepared_at
+                if (
+                    preparation["process_boot_id"] != self.process_boot_id
+                    or prepared_at.utcoffset() != timedelta(0)
+                    or elapsed < timedelta(0)
+                    or elapsed > timedelta(seconds=30)
+                ):
+                    raise PermissionError("Cursor hook flush acknowledgement expired")
+                try:
+                    same_project = await _same_live_project_binding(
+                        transaction,
+                        project_id,
+                        preparation["project_id"],
+                    )
+                    caller_binding = await _project_binding_snapshot(transaction, project_id)
+                except (ProjectIdentityBlockedError, RuntimeError, ValueError) as exc:
+                    raise PermissionError("Cursor hook project binding changed") from exc
+                if (
+                    not same_project
+                    or not hmac.compare_digest(
+                        caller_binding,
+                        preparation["project_binding"],
+                    )
+                ):
+                    raise PermissionError("Cursor hook project binding changed")
+                watermark_cursor = await transaction.execute(
+                    "SELECT MAX(accept_seq) AS watermark FROM event_processing "
+                    "WHERE session_id = ?",
+                    (preparation["target_session_id"],),
+                )
+                watermark_row = await watermark_cursor.fetchone()
+                watermark = int(watermark_row["watermark"] or 0)
+                if watermark != preparation["trigger_accept_seq"]:
+                    raise PermissionError("Cursor hook flush acknowledgement is stale")
+                now = now_moment.isoformat()
+                flush = {
+                    "schema": CURSOR_HOOK_FLUSH_SCHEMA,
+                    "preparation_id": preparation["preparation_id"],
+                    "intervention_id": preparation["intervention_id"],
+                    "target_session_id": preparation["target_session_id"],
+                    "vendor_session_id": preparation["vendor_session_id"],
+                    "message_sha256": preparation["message_sha256"],
+                    "target_accept_seq_through": watermark,
+                    "delivery_evidence": "hook_stdout_flushed",
+                    "vendor_acceptance_proven": False,
+                    "flushed_at": now,
+                }
+                await transaction.execute(
+                    "INSERT INTO cursor_hook_flush_receipts("
+                    "preparation_id, intervention_id, target_session_id, "
+                    "vendor_session_id, message_sha256, target_accept_seq_through, "
+                    "flushed_at, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        flush["preparation_id"],
+                        flush["intervention_id"],
+                        flush["target_session_id"],
+                        flush["vendor_session_id"],
+                        flush["message_sha256"],
+                        flush["target_accept_seq_through"],
+                        flush["flushed_at"],
+                        _canonical_json(flush),
+                    ),
+                )
+                intervention_cursor = await transaction.execute(
+                    "SELECT json FROM interventions WHERE id = ?",
+                    (preparation["intervention_id"],),
+                )
+                intervention_row = await intervention_cursor.fetchone()
+                if intervention_row is None:
+                    raise RuntimeError("Cursor hook preparation intervention is missing")
+                intervention = _stored_intervention(intervention_row["json"])
+                if (
+                    intervention.result != CURSOR_HOOK_PREPARED_OUTCOME
+                    or intervention.outcome != "worker_delivery_uncertain"
+                    or intervention.helped is not None
+                ):
+                    raise RuntimeError("Cursor hook preparation intervention changed")
+                metadata = dict(intervention.metadata or {})
+                if metadata.get("cursor_hook_delivery") is not None:
+                    raise RuntimeError("Cursor hook delivery projection already exists")
+                metadata["cursor_hook_delivery"] = {
+                    "schema": "pex.cursor-hook-delivery-state.v1",
+                    "state": "hook_stdout_flushed",
+                    "preparation_id": preparation["preparation_id"],
+                    "trigger_event_id": preparation["trigger_event_id"],
+                    "target_session_id": preparation["target_session_id"],
+                    "vendor_session_id": preparation["vendor_session_id"],
+                    "message_sha256": preparation["message_sha256"],
+                    "target_accept_seq_through": watermark,
+                    "flushed_at": now,
+                    "vendor_acceptance_proven": False,
+                    "prompt_coverage_complete": False,
+                    "causal_continuation_proven": False,
+                }
+                intervention.metadata = metadata
+                intervention.helped = None
+                await _update_frozen_bound_intervention(transaction, intervention)
+                audit = self._intervention_audit_record(
+                    intervention,
+                    "cursor_hook_stdout_flushed",
+                )
+                audit["cursor_hook_delivery"] = metadata["cursor_hook_delivery"]
+                await transaction.execute(
+                    "INSERT INTO intervention_audit(intervention_id, record_type, json) "
+                    "VALUES (?, 'cursor_hook_stdout_flushed', ?)",
+                    (intervention.id, _canonical_json(audit)),
+                )
+                audit_written = True
+                await transaction.commit()
+            except Exception:
+                await transaction.rollback()
+                raise
+        if audit_written:
+            await self._try_sync_intervention_audit()
+        return flush
+
+    async def observe_cursor_hook_continuation(
+        self,
+        event_id: str,
+    ) -> dict[str, Any] | None:
+        """Append one ordered same-session activity fact after a flushed hook."""
+
+        _validate_store_id(event_id, label="Cursor continuation event id")
+        audit_written = False
+        result: dict[str, Any] | None = None
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN IMMEDIATE")
+            try:
+                replay_cursor = await transaction.execute(
+                    "SELECT * FROM cursor_hook_continuations WHERE event_id = ?",
+                    (event_id,),
+                )
+                replay_row = await replay_cursor.fetchone()
+                if replay_row is not None:
+                    result = _cursor_hook_continuation_record(replay_row)
+                    await transaction.commit()
+                    return result
+
+                event_cursor = await transaction.execute(
+                    "SELECT e.json, p.* FROM events AS e JOIN event_processing AS p "
+                    "ON p.event_id = e.event_id WHERE e.event_id = ?",
+                    (event_id,),
+                )
+                event_row = await event_cursor.fetchone()
+                if event_row is None:
+                    await transaction.commit()
+                    return None
+                event = HarnessEvent.model_validate_json(event_row["json"])
+                recognized = {
+                    EventType.AGENT_RESPONSE,
+                    EventType.FILE_EDIT,
+                    EventType.TOOL_RESULT,
+                    EventType.ERROR,
+                    EventType.STOP,
+                }
+                observed_generation_raw = (event.metadata or {}).get("generation_id")
+                if (
+                    event.harness_type != HarnessType.CURSOR
+                    or event.event_type not in recognized
+                    or not isinstance(observed_generation_raw, str)
+                    or not observed_generation_raw.strip()
+                    or observed_generation_raw != observed_generation_raw.strip()
+                    or len(observed_generation_raw) > 512
+                ):
+                    await transaction.commit()
+                    return None
+                observed_generation = observed_generation_raw
+                accept_seq = int(event_row["accept_seq"])
+
+                candidates_cursor = await transaction.execute(
+                    "SELECT p.*, f.intervention_id AS flush_intervention_id, "
+                    "f.target_session_id AS flush_target_session_id, "
+                    "f.vendor_session_id AS flush_vendor_session_id, "
+                    "f.message_sha256 AS flush_message_sha256, "
+                    "f.target_accept_seq_through, f.flushed_at, f.json AS flush_json "
+                    "FROM cursor_hook_preparations AS p "
+                    "JOIN cursor_hook_flush_receipts AS f USING(preparation_id) "
+                    "LEFT JOIN cursor_hook_continuations AS c USING(preparation_id) "
+                    "WHERE p.target_session_id = ? AND c.preparation_id IS NULL "
+                    "ORDER BY p.trigger_accept_seq DESC LIMIT 102",
+                    (event.session_id,),
+                )
+                candidate_rows = await candidates_cursor.fetchall()
+                if len(candidate_rows) > 100:
+                    result = {
+                        "status": "causality_ambiguous_candidate_bound",
+                        "event_id": event_id,
+                    }
+                    await transaction.commit()
+                    return result
+
+                eligible: list[tuple[dict[str, Any], dict[str, Any]]] = []
+                prompt_ambiguity = False
+                for candidate_row in candidate_rows:
+                    preparation = _cursor_hook_preparation_record(candidate_row)
+                    flush_row = {
+                        "preparation_id": candidate_row["preparation_id"],
+                        "intervention_id": candidate_row["flush_intervention_id"],
+                        "target_session_id": candidate_row["flush_target_session_id"],
+                        "vendor_session_id": candidate_row["flush_vendor_session_id"],
+                        "message_sha256": candidate_row["flush_message_sha256"],
+                        "target_accept_seq_through": candidate_row[
+                            "target_accept_seq_through"
+                        ],
+                        "flushed_at": candidate_row["flushed_at"],
+                        "json": candidate_row["flush_json"],
+                    }
+                    flush = _cursor_hook_flush_record(flush_row)  # type: ignore[arg-type]
+                    if (
+                        flush["intervention_id"] != preparation["intervention_id"]
+                        or flush["target_session_id"] != preparation["target_session_id"]
+                        or flush["vendor_session_id"] != preparation["vendor_session_id"]
+                        or flush["message_sha256"] != preparation["message_sha256"]
+                        or accept_seq <= flush["target_accept_seq_through"]
+                        or preparation["trigger_generation"] is None
+                        or observed_generation == preparation["trigger_generation"]
+                    ):
+                        continue
+
+                    prompt_cursor = await transaction.execute(
+                        "SELECT e.json FROM event_processing AS p JOIN events AS e "
+                        "ON e.event_id = p.event_id WHERE p.session_id = ? "
+                        "AND p.accept_seq > ? AND p.accept_seq < ? "
+                        "ORDER BY p.accept_seq LIMIT 1002",
+                        (
+                            preparation["target_session_id"],
+                            preparation["trigger_accept_seq"],
+                            accept_seq,
+                        ),
+                    )
+                    intervening_rows = await prompt_cursor.fetchall()
+                    if len(intervening_rows) > 1000:
+                        prompt_ambiguity = True
+                        continue
+                    if any(
+                        HarnessEvent.model_validate_json(row["json"]).event_type
+                        == EventType.USER_PROMPT
+                        for row in intervening_rows
+                    ):
+                        prompt_ambiguity = True
+                        continue
+
+                    session_cursor = await transaction.execute(
+                        "SELECT * FROM sessions WHERE id = ?",
+                        (preparation["target_session_id"],),
+                    )
+                    session_row = await session_cursor.fetchone()
+                    goal_cursor = await transaction.execute(
+                        "SELECT * FROM goals WHERE id = ?",
+                        (preparation["goal_id"],),
+                    )
+                    goal_row = await goal_cursor.fetchone()
+                    if session_row is None or goal_row is None:
+                        continue
+                    session = HarnessSession.model_validate_json(session_row["json"])
+                    try:
+                        goal, goal_binding = await _load_bound_goal(
+                            transaction,
+                            preparation["goal_id"],
+                            require_live=True,
+                        )
+                        current_project_binding = await _project_binding_snapshot(
+                            transaction,
+                            preparation["project_id"],
+                        )
+                        intent_revision, intent_hash = _validate_goal_intent_scalar_pair(
+                            goal_row["intent_revision"],
+                            goal_row["intent_hash"],
+                        )
+                    except (LookupError, ProjectIdentityBlockedError, RuntimeError, ValueError):
+                        continue
+                    accepted_session_raw = event_row["accepted_session_json"]
+                    if not isinstance(accepted_session_raw, str):
+                        continue
+                    accepted_session = HarnessSession.model_validate_json(
+                        accepted_session_raw
+                    )
+                    if (
+                        session.id != preparation["target_session_id"]
+                        or session.vendor_session_id != preparation["vendor_session_id"]
+                        or session.harness_type != HarnessType.CURSOR
+                        or session.goal_id != preparation["goal_id"]
+                        or session.supervision_paused
+                        or session.status == SessionStatus.DETACHED
+                        or int(session_row["control_revision"])
+                        != preparation["control_revision"]
+                        or session_row["project_binding"]
+                        != preparation["project_binding"]
+                        or session_row["discovery_generation"]
+                        != preparation["discovery_generation"]
+                        or goal.paused
+                        or goal_binding.project_binding != preparation["project_binding"]
+                        or current_project_binding != preparation["project_binding"]
+                        or intent_revision != preparation["goal_intent_revision"]
+                        or intent_hash != preparation["goal_intent_hash"]
+                        or event.goal_id != preparation["goal_id"]
+                        or event.session_id != preparation["target_session_id"]
+                        or event_row["harness_type"] != HarnessType.CURSOR.value
+                        or event_row["goal_id"] != preparation["goal_id"]
+                        or event_row["accepted_project_binding"]
+                        != preparation["project_binding"]
+                        or event_row["accepted_goal_intent_revision"]
+                        != preparation["goal_intent_revision"]
+                        or event_row["accepted_goal_intent_hash"]
+                        != preparation["goal_intent_hash"]
+                        or accepted_session.id != preparation["target_session_id"]
+                        or accepted_session.vendor_session_id
+                        != preparation["vendor_session_id"]
+                        or accepted_session.goal_id != preparation["goal_id"]
+                    ):
+                        continue
+                    eligible.append((preparation, flush))
+
+                if not eligible:
+                    result = (
+                        {
+                            "status": "causality_ambiguous_intervening_user_prompt",
+                            "event_id": event_id,
+                        }
+                        if prompt_ambiguity
+                        else None
+                    )
+                    await transaction.commit()
+                    return result
+                if len(eligible) != 1:
+                    result = {
+                        "status": "causality_ambiguous_multiple_preparations",
+                        "event_id": event_id,
+                    }
+                    await transaction.commit()
+                    return result
+
+                preparation, _ = eligible[0]
+                now = utcnow().isoformat()
+                continuation = {
+                    "schema": CURSOR_HOOK_CONTINUATION_SCHEMA,
+                    "preparation_id": preparation["preparation_id"],
+                    "intervention_id": preparation["intervention_id"],
+                    "event_id": event_id,
+                    "target_session_id": preparation["target_session_id"],
+                    "vendor_session_id": preparation["vendor_session_id"],
+                    "accept_seq": accept_seq,
+                    "observed_generation": observed_generation,
+                    "observation": "same_session_activity_observed",
+                    "vendor_acceptance_proven": False,
+                    "observed_at": now,
+                }
+                await transaction.execute(
+                    "INSERT INTO cursor_hook_continuations("
+                    "preparation_id, intervention_id, event_id, target_session_id, "
+                    "vendor_session_id, accept_seq, observed_generation, observed_at, json) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        continuation["preparation_id"],
+                        continuation["intervention_id"],
+                        continuation["event_id"],
+                        continuation["target_session_id"],
+                        continuation["vendor_session_id"],
+                        continuation["accept_seq"],
+                        continuation["observed_generation"],
+                        continuation["observed_at"],
+                        _canonical_json(continuation),
+                    ),
+                )
+                intervention_cursor = await transaction.execute(
+                    "SELECT json FROM interventions WHERE id = ?",
+                    (preparation["intervention_id"],),
+                )
+                intervention_row = await intervention_cursor.fetchone()
+                if intervention_row is None:
+                    raise RuntimeError("Cursor continuation intervention is missing")
+                intervention = _stored_intervention(intervention_row["json"])
+                delivery = dict((intervention.metadata or {}).get("cursor_hook_delivery") or {})
+                if (
+                    intervention.result != CURSOR_HOOK_PREPARED_OUTCOME
+                    or intervention.helped is not None
+                    or delivery.get("state") != "hook_stdout_flushed"
+                    or delivery.get("preparation_id") != preparation["preparation_id"]
+                ):
+                    raise RuntimeError("Cursor continuation projection is invalid")
+                delivery.update(
+                    {
+                        "state": "same_session_activity_observed",
+                        "continuation_event_id": event_id,
+                        "continuation_accept_seq": accept_seq,
+                        "observed_generation": observed_generation,
+                        "vendor_acceptance_proven": False,
+                        "prompt_coverage_complete": False,
+                        "causal_continuation_proven": False,
+                    }
+                )
+                intervention.metadata = {
+                    **(intervention.metadata or {}),
+                    "cursor_hook_delivery": delivery,
+                }
+                intervention.outcome = "same_session_activity_observed"
+                intervention.helped = None
+                await _update_frozen_bound_intervention(transaction, intervention)
+                audit = self._intervention_audit_record(
+                    intervention,
+                    "cursor_same_session_activity_observed",
+                )
+                audit["cursor_hook_delivery"] = delivery
+                await transaction.execute(
+                    "INSERT INTO intervention_audit(intervention_id, record_type, json) "
+                    "VALUES (?, 'cursor_same_session_activity_observed', ?)",
+                    (intervention.id, _canonical_json(audit)),
+                )
+                audit_written = True
+                result = continuation
+                await transaction.commit()
+            except Exception:
+                await transaction.rollback()
+                raise
+        if audit_written:
+            await self._try_sync_intervention_audit()
+        return result
+
     async def update_intervention(
         self,
         intervention: Intervention,
@@ -21995,6 +22894,8 @@ class Store:
             "trigger_event_id": metadata.get("trigger_event_id"),
             "observed_event_refs": metadata.get("outcome_event_ids") or [],
             "worker_delivery_receipt": metadata.get("worker_delivery_receipt"),
+            "hook_preparation_receipt": metadata.get("hook_preparation_receipt"),
+            "cursor_hook_delivery": metadata.get("cursor_hook_delivery"),
             "permission_request_id": metadata.get("permission_request_id"),
             "permission_resolution": metadata.get("permission_resolution"),
             "lifecycle_resolution": metadata.get("lifecycle_resolution"),
