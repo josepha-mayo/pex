@@ -421,6 +421,10 @@ async def test_codex_stdio_jsonl_fake_process(tmp_path):
         "    elif method == 'thread/list':\n"
         "        print(json.dumps({'id': msg['id'], 'result': {"
         "'data': [{'id': 'thr_jsonl', 'preview': 'fake', 'cwd': 'C:/proj'}]}}), flush=True)\n"
+        "    elif method == 'thread/resume':\n"
+        "        print(json.dumps({'id': msg['id'], 'result': {"
+        "'thread': {'id': 'thr_jsonl', 'cwd': 'C:/proj'}, 'cwd': 'C:/proj', "
+        "'model': 'gpt-test', 'modelProvider': 'test'}}), flush=True)\n"
         "    elif method == 'turn/start':\n"
         "        print(json.dumps({'id': msg['id'], 'result': {'turn': "
         "{'id': 't1', 'status': 'inProgress'}}}), flush=True)\n"
@@ -610,9 +614,7 @@ async def test_qwen_send_fails_honestly():
 async def test_devin_stays_basic_when_attached():
     assert (await DevinAdapter().probe()).support_label.value == "unavailable"
     transport = MemoryHttpTransport()
-    transport.sessions = [
-        {"id": "sess_demo", "project_id": "project-1", "status": "running"}
-    ]
+    transport.sessions = [{"id": "sess_demo", "project_id": "project-1", "status": "running"}]
     adapter = DevinAdapter(transport)
     caps = await adapter.probe()
     assert caps.support_label.value == "basic"
@@ -800,9 +802,7 @@ async def test_omp_acp_pump_uses_prompt_result_for_stop():
         assert EventType.STOP.value in types
         assert EventType.AGENT_RESPONSE.value in types
         state_updates = [
-            event
-            for event, _ in ingested
-            if event.metadata.get("session_update") == "state_update"
+            event for event, _ in ingested if event.metadata.get("session_update") == "state_update"
         ]
         assert state_updates and state_updates[0].event_type == EventType.STATUS
         assert all(sess.id == session.id for _, sess in ingested)

@@ -6,6 +6,16 @@
 
 **Date:** 2026-09-04
 
+## Latest checkpoint — Codex same-session resume gate repaired, 4 Sep 2026 ~21:16 BST
+
+Discovered Codex threads now require an authoritative, correlated `thread/resume` before PEX can deliver the first same-session intervention on a connection. Resume and `turn/start` are serialized under one bounded adapter delivery lock; loaded state is private and keyed to the exact App Server connection generation plus canonical thread/project/workspace binding. Transport restart/replacement, post-await goal/project/workspace drift, malformed or mismatched receipts, and `canAcceptDirectInput: false` all fail before a turn is sent. Fresh isolated threads skip redundant resume, and uncertain turns are never retried.
+
+Verification after final formatting: adversarial adapter slice **51 passed**; full Codex pipeline/fleet/live-contract partition **77 passed, 4 skipped**; five load-sensitive JSONL/closed-loop cases **5 passed** after replacing fixed four-second scheduling assumptions with a 40-second maximum test wait. A broader partition reached **181 passed** before exposing one stale fake-App-Server fixture without `thread/resume`; the fixture was corrected to the authoritative contract and passed in the later partition. Ruff and `git diff --check` passed. No live model turn or quota was used; this is not a new whole-suite receipt.
+
+Independent audit forced correction of the first draft's connection-restart, post-resume rebinding, lock-scope, and fabricated-`projectId` defects before push. The final verdict is **APPROVE**; its separate affected-file run completed **127 passed** with one non-failing aiosqlite teardown warning. Exact push receipt is pending commit.
+
+Codex offline delivery is improved, but the six-cell table still has no GPT-5.4-mini pair. Cursor is now the highest-impact offline blocker: preflight is circular, required controller-owned timing/raw/action receipts are missing, continuation is not monotonic/hash-bound, and installed hooks are observe-only. Manifest remains `frozen: false`; overall **NO-GO**.
+
 ## Latest checkpoint — OpenCode receipt hardening and three-way audit, 4 Sep 2026 ~20:22 BST
 
 OpenCode delivery now requires a new, exact, session-bound user-message receipt after the send; historical identical text, foreign-session rows, ambiguous collisions, and concurrent sends cannot manufacture a delivered result. The hard-coded local plugin debug sink was removed, `.opencode/` is ignored, and token-rotation documentation was corrected. Independent review approved this narrow slice.

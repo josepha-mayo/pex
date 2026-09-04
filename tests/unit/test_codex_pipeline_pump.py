@@ -202,10 +202,13 @@ def test_codex_normalize_item_keeps_shell_output_out_of_claims():
 
 
 def test_codex_item_turn_identity_cannot_override_enclosing_turn():
-    assert CodexAdapter._vendor_turn_id(
-        {"turn": {"id": "turn_outer"}},
-        {"turnId": "turn_inner"},
-    ) is None
+    assert (
+        CodexAdapter._vendor_turn_id(
+            {"turn": {"id": "turn_outer"}},
+            {"turnId": "turn_inner"},
+        )
+        is None
+    )
     assert (
         CodexAdapter._vendor_turn_id(
             {"turn": {"id": "turn_outer"}},
@@ -287,11 +290,10 @@ async def test_official_codex_failure_flows_through_pipeline_to_exact_nudge(tmp_
     pipeline = Pipeline(store, registry, EventBus(), Settings(home=tmp_path))
     task = adapter.start_pipeline_pump(pipeline.ingest_event)
     try:
-        for _ in range(80):
+        for _ in range(800):
             interventions = await store.list_interventions(session.id)
             if any(
-                item.action_taken == "SEND_NUDGE"
-                and item.result != "delivery_reserved"
+                item.action_taken == "SEND_NUDGE" and item.result != "delivery_reserved"
                 for item in interventions
             ):
                 break
@@ -312,11 +314,7 @@ async def test_official_codex_failure_flows_through_pipeline_to_exact_nudge(tmp_
         events = await store.recent_events(session.id, 20)
         assert (
             len(
-                [
-                    event
-                    for event in events
-                    if event.event_id == f"{session.id}:item:{failed['id']}"
-                ]
+                [event for event in events if event.event_id == f"{session.id}:item:{failed['id']}"]
             )
             == 1
         )
@@ -327,9 +325,7 @@ async def test_official_codex_failure_flows_through_pipeline_to_exact_nudge(tmp_
         assert followup["threadId"] == session.vendor_session_id
         assert followup["threadId"] != "desktop"
         texts = [
-            block.get("text")
-            for block in (followup.get("input") or [])
-            if isinstance(block, dict)
+            block.get("text") for block in (followup.get("input") or []) if isinstance(block, dict)
         ]
         assert text in texts
         assert not any(str(item).startswith("PEX:") for item in texts)
@@ -408,7 +404,7 @@ async def test_official_codex_passing_pytest_is_noop_on_the_same_thread(tmp_path
     pipeline = Pipeline(store, registry, EventBus(), Settings(home=tmp_path))
     task = adapter.start_pipeline_pump(pipeline.ingest_event)
     try:
-        for _ in range(80):
+        for _ in range(800):
             interventions = await store.list_interventions(session.id)
             if any(item.trigger == EventType.STOP.value for item in interventions):
                 break
@@ -443,9 +439,7 @@ async def test_official_codex_missing_artifact_nudges_the_same_thread(tmp_path):
     await store.connect()
     transport.threads = [{"id": "thr_report", "cwd": str(worker)}]
     session = next(
-        item
-        for item in await adapter.discover_sessions()
-        if item.vendor_session_id == "thr_report"
+        item for item in await adapter.discover_sessions() if item.vendor_session_id == "thr_report"
     )
     now = datetime.now(UTC)
     goal = Goal(
@@ -487,11 +481,10 @@ async def test_official_codex_missing_artifact_nudges_the_same_thread(tmp_path):
     pipeline = Pipeline(store, registry, EventBus(), Settings(home=tmp_path))
     task = adapter.start_pipeline_pump(pipeline.ingest_event)
     try:
-        for _ in range(80):
+        for _ in range(800):
             interventions = await store.list_interventions(session.id)
             if any(
-                item.action_taken == "SEND_NUDGE"
-                and item.result != "delivery_reserved"
+                item.action_taken == "SEND_NUDGE" and item.result != "delivery_reserved"
                 for item in interventions
             ):
                 break
@@ -515,9 +508,7 @@ async def test_official_codex_missing_artifact_nudges_the_same_thread(tmp_path):
         assert followup["threadId"] == session.vendor_session_id
         assert followup["threadId"] != "desktop"
         texts = [
-            block.get("text")
-            for block in (followup.get("input") or [])
-            if isinstance(block, dict)
+            block.get("text") for block in (followup.get("input") or []) if isinstance(block, dict)
         ]
         assert text in texts
         assert adapter.inbox[session.id][-1] == text
@@ -970,7 +961,7 @@ async def test_codex_recovery_observes_same_thread_outcome_appended_during_stop(
     pipeline = Pipeline(store, registry, EventBus(), Settings(home=tmp_path))
     task = adapter.start_pipeline_pump(pipeline.ingest_event)
     try:
-        for _ in range(80):
+        for _ in range(800):
             rows = await store.list_interventions(session.id)
             stop_rows = [row for row in rows if row.trigger == EventType.STOP.value]
             if len(stop_rows) >= 2:
@@ -999,10 +990,7 @@ async def test_codex_recovery_observes_same_thread_outcome_appended_during_stop(
             "vendor_turn_id": "turn_1",
         }
         assert noop.result == "noop"
-        assert (
-            (noop.metadata or {}).get("verification", {}).get("acceptance_status")
-            == "supported"
-        )
+        assert (noop.metadata or {}).get("verification", {}).get("acceptance_status") == "supported"
         assert (worker / "report.txt").read_text(encoding="utf-8").strip() == "shipped"
         assert len(transport.turns) == 1
         assert transport.turns[0]["threadId"] == session.vendor_session_id

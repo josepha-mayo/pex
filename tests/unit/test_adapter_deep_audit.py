@@ -134,9 +134,7 @@ def test_cursor_requires_stable_conversation_identity_and_keeps_parallel_chats_s
 
 
 def test_live_transport_origins_and_credentials_fail_closed():
-    assert _loopback_http_origin("http://127.0.0.1:4096/", "OpenCode") == (
-        "http://127.0.0.1:4096"
-    )
+    assert _loopback_http_origin("http://127.0.0.1:4096/", "OpenCode") == ("http://127.0.0.1:4096")
     assert _https_origin("https://api.devin.ai", "Devin") == "https://api.devin.ai"
     for unsafe in (
         "https://127.0.0.1:4096",
@@ -272,9 +270,7 @@ async def test_acp_malformed_mutation_receipt_is_delivery_uncertain(tmp_path, mo
     transport = StdioAcpTransport([str(executable.resolve())])
 
     async def malformed_write(payload):
-        transport._pending[payload["id"]].set_exception(
-            _AcpMalformedResult("malformed result")
-        )
+        transport._pending[payload["id"]].set_exception(_AcpMalformedResult("malformed result"))
 
     monkeypatch.setattr(transport, "_write", malformed_write)
     with pytest.raises(DeliveryUncertainError, match="authoritative result"):
@@ -375,16 +371,12 @@ async def test_provider_session_titles_are_bounded_and_redacted_before_persisten
     secret_title = "report token=abcdefghijklmnop"
 
     acp_transport = FakeAcpTransport()
-    acp_transport.sessions = [
-        {"sessionId": "s1", "cwd": "C:/project", "title": secret_title}
-    ]
+    acp_transport.sessions = [{"sessionId": "s1", "cwd": "C:/project", "title": secret_title}]
     acp_rows = await AcpClient(acp_transport).list_sessions()
     assert acp_rows[0]["title"] == "report [REDACTED:credential_assignment]"
 
     opencode_transport = MemoryHttpTransport()
-    opencode_transport.sessions = [
-        {"id": "s1", "cwd": "C:/project", "title": secret_title}
-    ]
+    opencode_transport.sessions = [{"id": "s1", "cwd": "C:/project", "title": secret_title}]
     opencode = (await OpenCodeAdapter(opencode_transport).discover_sessions())[0]
     assert opencode.metadata["title"] == "report [REDACTED:credential_assignment]"
 
@@ -493,9 +485,7 @@ def test_hook_permissions_require_exact_completed_inline_action(adapter_type):
     )
     assert response["hookSpecificOutput"]["decision"] == {"behavior": "allow"}
 
-    wrong_trigger = explicit_deny.model_copy(
-        update={"trigger": EventType.PERMISSION_REQUEST.value}
-    )
+    wrong_trigger = explicit_deny.model_copy(update={"trigger": EventType.PERMISSION_REQUEST.value})
     adapter.normalize_hook(payload, session)
     assert adapter.hook_response(session, payload, wrong_trigger) == {}
 
@@ -553,11 +543,14 @@ def test_qwen_only_treats_submitted_prompt_as_direct_human_input():
         action_taken=InterventionType.ASK_HUMAN.value,
         result="awaiting_human",
     )
-    assert adapter.hook_response(
-        session,
-        {"hook_event_name": "UserPromptSubmit"},
-        escalation,
-    ) == {}
+    assert (
+        adapter.hook_response(
+            session,
+            {"hook_event_name": "UserPromptSubmit"},
+            escalation,
+        )
+        == {}
+    )
 
 
 @pytest.mark.asyncio
@@ -574,9 +567,7 @@ async def test_opencode_global_sse_wrapper_binds_exact_session_and_current_route
             "directory": "C:/project",
             "payload": {
                 "type": "message.updated",
-                "properties": {
-                    "info": {"id": "msg-1", "sessionID": "s1", "role": "user"}
-                },
+                "properties": {"info": {"id": "msg-1", "sessionID": "s1", "role": "user"}},
             },
         }
     )
@@ -687,6 +678,296 @@ async def test_codex_rejects_turn_safety_overrides_before_delivery():
 
 
 @pytest.mark.asyncio
+async def test_codex_resumes_discovered_thread_once_before_first_turn():
+    class RecordingTransport(CodexAppServerTransport):
+        def __init__(self):
+            super().__init__()
+            self.calls = []
+
+        async def request(self, method, params=None):
+            self.calls.append((method, dict(params or {})))
+            return await super().request(method, params)
+
+    transport = RecordingTransport()
+    adapter = CodexAdapter(transport)
+    session = (await adapter.discover_sessions())[0]
+    transport.calls.clear()
+
+    await adapter.start_turn(session, "first")
+    await adapter.start_turn(session, "second")
+
+    assert [method for method, _ in transport.calls] == [
+        "thread/resume",
+        "turn/start",
+        "turn/start",
+    ]
+    assert transport.calls[0][1] == {
+        "threadId": session.vendor_session_id,
+        "excludeTurns": True,
+    }
+    assert session.metadata["resumed_model"] == "test-model"
+    assert session.metadata["resumed_model_provider"] == "test-provider"
+
+
+@pytest.mark.asyncio
+async def test_codex_serializes_concurrent_first_resume():
+    class SlowResumeTransport(CodexAppServerTransport):
+        def __init__(self):
+            super().__init__()
+            self.resume_count = 0
+            self.turn_active = False
+            self.turn_order = []
+
+        async def request(self, method, params=None):
+            if method == "thread/resume":
+                self.resume_count += 1
+                await asyncio.sleep(0.05)
+            if method == "turn/start":
+                assert self.turn_active is False
+                self.turn_active = True
+                text = params["input"][0]["text"]
+                self.turn_order.append(f"start:{text}")
+                await asyncio.sleep(0.02)
+                result = await super().request(method, params)
+                self.turn_order.append(f"end:{text}")
+                self.turn_active = False
+                return result
+            return await super().request(method, params)
+
+    transport = SlowResumeTransport()
+    adapter = CodexAdapter(transport)
+    session = (await adapter.discover_sessions())[0]
+
+    await asyncio.gather(
+        adapter.start_turn(session, "first"),
+        adapter.start_turn(session, "second"),
+    )
+
+    assert transport.resume_count == 1
+    assert len(transport.turns) == 2
+    assert transport.turn_order == ["start:first", "end:first", "start:second", "end:second"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("resume_result", "error"),
+    [
+        ({}, "authoritative thread receipt"),
+        (
+            {
+                "thread": {
+                    "id": "wrong-thread",
+                    "cwd": "C:/fake",
+                },
+                "cwd": "C:/fake",
+                "model": "test-model",
+                "modelProvider": "test-provider",
+            },
+            "requested thread",
+        ),
+        (
+            {
+                "thread": {
+                    "id": "thr_demo",
+                    "cwd": "C:/other",
+                },
+                "cwd": "C:/other",
+                "model": "test-model",
+                "modelProvider": "test-provider",
+            },
+            "workspace did not match",
+        ),
+        (
+            {
+                "thread": {
+                    "id": "thr_demo",
+                    "cwd": "C:/fake",
+                },
+                "cwd": "C:/other",
+                "model": "test-model",
+                "modelProvider": "test-provider",
+            },
+            "workspace did not match",
+        ),
+        (
+            {
+                "thread": {
+                    "id": "thr_demo",
+                    "cwd": "C:/fake",
+                },
+                "cwd": "C:/fake",
+                "modelProvider": "test-provider",
+            },
+            "authoritative model",
+        ),
+        (
+            {
+                "thread": {
+                    "id": "thr_demo",
+                    "cwd": "C:/fake",
+                },
+                "cwd": "C:/fake",
+                "model": "test-model",
+            },
+            "model provider",
+        ),
+        (
+            {
+                "thread": {
+                    "id": "thr_demo",
+                    "cwd": "C:/fake",
+                    "canAcceptDirectInput": False,
+                },
+                "cwd": "C:/fake",
+                "model": "test-model",
+                "modelProvider": "test-provider",
+            },
+            "cannot accept direct input",
+        ),
+    ],
+)
+async def test_codex_refuses_turn_when_resume_receipt_is_not_exact(resume_result, error):
+    class BadResumeTransport(CodexAppServerTransport):
+        async def request(self, method, params=None):
+            if method == "thread/resume":
+                return resume_result
+            return await super().request(method, params)
+
+    transport = BadResumeTransport()
+    adapter = CodexAdapter(transport)
+    session = (await adapter.discover_sessions())[0]
+
+    with pytest.raises(DeliveryUncertainError, match=error):
+        await adapter.start_turn(session, "must not deliver")
+
+    assert transport.turns == []
+
+
+@pytest.mark.asyncio
+async def test_codex_new_isolated_thread_is_already_loaded(tmp_path):
+    class RecordingTransport(CodexAppServerTransport):
+        def __init__(self):
+            super().__init__()
+            self.calls = []
+
+        async def request(self, method, params=None):
+            self.calls.append(method)
+            return await super().request(method, params)
+
+    transport = RecordingTransport()
+    adapter = CodexAdapter(transport)
+    session = await adapter.start_isolated_thread(str(tmp_path))
+    transport.calls.clear()
+    session.goal_id = "goal-attached-after-thread-start"
+
+    await adapter.start_turn(session, "continue")
+
+    assert transport.calls == ["turn/start"]
+
+
+@pytest.mark.asyncio
+async def test_codex_transport_restart_and_replacement_force_fresh_resume():
+    class CountingTransport(CodexAppServerTransport):
+        def __init__(self):
+            super().__init__()
+            self.resumes = 0
+
+        async def request(self, method, params=None):
+            if method == "thread/resume":
+                self.resumes += 1
+            return await super().request(method, params)
+
+    first = CountingTransport()
+    adapter = CodexAdapter(first)
+    session = (await adapter.discover_sessions())[0]
+    await adapter.start_turn(session, "first")
+
+    await first.close()
+    await adapter.start_turn(session, "after restart")
+    assert first.connection_generation == 2
+
+    second = CountingTransport()
+    adapter.attach_transport(second)
+    await adapter.start_turn(session, "after replacement")
+
+    assert len(first.turns) == 2
+    assert first.resumes == 2
+    assert len(second.turns) == 1
+    assert second.resumes == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "binding_update",
+    [{"project_id": "C:/other"}, {"goal_id": "different-goal"}],
+)
+async def test_codex_revalidates_canonical_binding_after_awaited_resume(binding_update):
+    resume_started = asyncio.Event()
+    release_resume = asyncio.Event()
+
+    class PausedResumeTransport(CodexAppServerTransport):
+        async def request(self, method, params=None):
+            if method == "thread/resume":
+                resume_started.set()
+                await release_resume.wait()
+            return await super().request(method, params)
+
+    transport = PausedResumeTransport()
+    adapter = CodexAdapter(transport)
+    session = (await adapter.discover_sessions())[0]
+    delivery = asyncio.create_task(adapter.start_turn(session, "must not deliver"))
+    await resume_started.wait()
+    with pytest.raises(RuntimeError, match="during a delivery"):
+        adapter.attach_transport(CodexAppServerTransport())
+    adapter.sessions[session.id] = session.model_copy(update=binding_update)
+    release_resume.set()
+
+    with pytest.raises(DeliveryUncertainError, match="changed while.*resuming"):
+        await delivery
+    assert transport.turns == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("resume_error", [RuntimeError("rejected"), TimeoutError()])
+async def test_codex_resume_failure_never_starts_turn(resume_error):
+    class FailedResumeTransport(CodexAppServerTransport):
+        async def request(self, method, params=None):
+            if method == "thread/resume":
+                raise resume_error
+            return await super().request(method, params)
+
+    transport = FailedResumeTransport()
+    adapter = CodexAdapter(transport)
+    session = (await adapter.discover_sessions())[0]
+
+    with pytest.raises(type(resume_error)):
+        await adapter.start_turn(session, "must not deliver")
+    assert transport.turns == []
+
+
+@pytest.mark.asyncio
+async def test_codex_uncertain_turn_start_is_never_retried():
+    class UncertainTurnTransport(CodexAppServerTransport):
+        def __init__(self):
+            super().__init__()
+            self.attempts = 0
+
+        async def request(self, method, params=None):
+            if method == "turn/start":
+                self.attempts += 1
+                raise DeliveryUncertainError("receipt lost")
+            return await super().request(method, params)
+
+    transport = UncertainTurnTransport()
+    adapter = CodexAdapter(transport)
+    session = (await adapter.discover_sessions())[0]
+
+    with pytest.raises(DeliveryUncertainError, match="receipt lost"):
+        await adapter.start_turn(session, "one attempt only")
+    assert transport.attempts == 1
+
+
+@pytest.mark.asyncio
 async def test_codex_isolated_thread_rejects_unsafe_paths_and_malformed_receipts(tmp_path):
     with pytest.raises(ValueError, match="absolute path"):
         await CodexAdapter().start_isolated_thread("relative/workspace")
@@ -733,9 +1014,7 @@ def test_generic_hook_deadlines_and_explicit_harness_fragments():
     claude = json.loads(
         (root / "integrations" / "claude-hook" / "settings.fragment.json").read_text()
     )
-    qwen = json.loads(
-        (root / "integrations" / "qwen-hook" / "settings.fragment.json").read_text()
-    )
+    qwen = json.loads((root / "integrations" / "qwen-hook" / "settings.fragment.json").read_text())
     for event, rows in claude["hooks"].items():
         hook = rows[0]["hooks"][0]
         assert "--harness claude_code" in hook["command"]

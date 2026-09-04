@@ -87,6 +87,7 @@ APPROVAL_METHODS = COMMAND_APPROVALS | LEGACY_APPROVALS | {PERMISSION_APPROVAL}
 
 class CodexTransport(Protocol):
     initialized: bool
+    connection_generation: int
 
     async def ensure_ready(self) -> dict[str, Any]: ...
 
@@ -166,6 +167,7 @@ class CodexAppServerTransport:
             {"id": "thr_demo", "preview": "synthetic thread", "cwd": "C:/fake"}
         ]
         self.initialized = False
+        self.connection_generation = 0
         self.pending_approvals: dict[str, dict[str, Any]] = {}
 
     def _append_notification(self, message: dict[str, Any]) -> None:
@@ -188,6 +190,7 @@ class CodexAppServerTransport:
             if self.initialized:
                 raise RuntimeError("Already initialized")
             self.initialized = True
+            self.connection_generation += 1
             return {
                 "userAgent": "pex-fake",
                 "codexHome": "/",
@@ -206,7 +209,17 @@ class CodexAppServerTransport:
             self.threads.append(thread)
             return {"thread": thread}
         if method == "thread/resume":
-            return {"thread": {"id": params.get("threadId")}}
+            thread_id = params.get("threadId")
+            thread = next((row for row in self.threads if row.get("id") == thread_id), None)
+            if thread is None:
+                raise KeyError(thread_id)
+            resumed = dict(thread)
+            return {
+                "thread": resumed,
+                "cwd": resumed.get("cwd"),
+                "model": "test-model",
+                "modelProvider": "test-provider",
+            }
         if method == "turn/start":
             self.turns.append(params)
             turn = {"id": f"turn_{len(self.turns)}", "status": "completed", "items": []}
@@ -235,7 +248,7 @@ class CodexAppServerTransport:
         return None
 
     async def close(self) -> None:
-        return None
+        self.initialized = False
 
 
 class CodexStdioTransport:
@@ -261,6 +274,7 @@ class CodexStdioTransport:
         self._reader_task: asyncio.Task | None = None
         self._stderr_task: asyncio.Task | None = None
         self.initialized = False
+        self.connection_generation = 0
         self.pending_approvals: dict[str, dict[str, Any]] = {}
         self.notifications: list[dict[str, Any]] = []
         self.raw_capture: list[dict[str, Any]] = []
@@ -297,6 +311,7 @@ class CodexStdioTransport:
                 limit=MAX_CODEX_LINE_BYTES,
                 **kwargs,
             )
+            self.connection_generation += 1
             self._reader_task = asyncio.create_task(self._read_loop())
             self._stderr_task = asyncio.create_task(self._stderr_loop())
 
@@ -370,9 +385,7 @@ class CodexStdioTransport:
 
     async def _write(self, payload: dict[str, Any]) -> None:
         assert self._proc and self._proc.stdin
-        encoded = (strict_json_dumps(payload, separators=(",", ":")) + "\n").encode(
-            "utf-8"
-        )
+        encoded = (strict_json_dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
         if len(encoded) > MAX_CODEX_WRITE_BYTES:
             raise ValueError("Codex app-server request exceeded the write safety bound")
         async with self._write_lock:
@@ -523,8 +536,14 @@ class CodexAdapter(HarnessAdapter):
         self._completed_turns: dict[tuple[str, str], dict[str, Any]] = {}
         self._completed_turn_order: deque[tuple[str, str]] = deque()
         self._turn_completion_waiters: dict[tuple[str, str], asyncio.Event] = {}
+        self._loaded_thread_bindings: dict[str, tuple[tuple[int, int], tuple[str, str, str]]] = {}
+        # One bounded mutation lock avoids unbounded per-thread lock retention and
+        # keeps resume + turn/start atomic with respect to transport replacement.
+        self._delivery_lock = asyncio.Lock()
 
     def attach_transport(self, transport: CodexTransport) -> None:
+        if self._delivery_lock.locked():
+            raise RuntimeError("cannot replace Codex transport during a delivery")
         if (
             self.transport is not None
             and self.transport is not transport
@@ -535,6 +554,128 @@ class CodexAdapter(HarnessAdapter):
         self.transport = transport
         self._completed_turns.clear()
         self._completed_turn_order.clear()
+        self._loaded_thread_bindings.clear()
+
+    @staticmethod
+    def _thread_load_binding(session: HarnessSession) -> tuple[str, str, str]:
+        if not session.cwd or not session.project_id:
+            raise ValueError("Codex thread loading requires project and workspace bindings")
+        try:
+            resolved_cwd = Path(session.cwd).resolve()
+        except (OSError, RuntimeError, ValueError):
+            raise ValueError("Codex thread workspace could not be resolved") from None
+        return (
+            session.id,
+            session.project_id,
+            os.path.normcase(str(resolved_cwd)),
+        )
+
+    @staticmethod
+    def _transport_connection_token(transport: CodexTransport) -> tuple[int, int]:
+        generation = getattr(transport, "connection_generation", None)
+        if isinstance(generation, bool) or not isinstance(generation, int) or generation < 1:
+            raise RuntimeError("Codex transport has no initialized connection generation")
+        return (id(transport), generation)
+
+    async def _ensure_thread_loaded(
+        self, session: HarnessSession
+    ) -> tuple[HarnessSession, CodexTransport]:
+        """Resume a discovered thread before the first mutation on this transport."""
+
+        bound = self.sessions.get(session.id)
+        if (
+            not session_binding_matches(bound, session, harness_type=HarnessType.CODEX)
+            or session.id != f"codex:{session.vendor_session_id}"
+        ):
+            raise ValueError("Codex thread resume requires an exact session binding")
+        binding = self._thread_load_binding(bound)
+        goal_binding = bound.goal_id
+        if not await self._ready():
+            raise RuntimeError("codex app-server is not attached")
+        transport = self.transport
+        assert transport is not None
+        connection_token = self._transport_connection_token(transport)
+        cache_value = (connection_token, binding)
+        if self._loaded_thread_bindings.get(session.vendor_session_id) == cache_value:
+            return bound, transport
+
+        resumed = await transport.request(
+            "thread/resume",
+            {"threadId": session.vendor_session_id, "excludeTurns": True},
+        )
+        if not isinstance(resumed, dict) or not isinstance(resumed.get("thread"), dict):
+            raise DeliveryUncertainError(
+                "Codex thread/resume returned no authoritative thread receipt"
+            )
+        thread = resumed["thread"]
+        try:
+            resumed_id = bounded_adapter_id(thread.get("id") or "", field="resumed Codex thread id")
+        except ValueError:
+            raise DeliveryUncertainError(
+                "Codex thread/resume returned a malformed thread receipt"
+            ) from None
+        if resumed_id != session.vendor_session_id:
+            raise DeliveryUncertainError(
+                "Codex thread/resume receipt did not match the requested thread"
+            )
+
+        expected_cwd = Path(bound.cwd).resolve()
+        observed_cwds: list[Path] = []
+        for raw_cwd in (resumed.get("cwd"), thread.get("cwd")):
+            if not isinstance(raw_cwd, str) or not raw_cwd:
+                raise DeliveryUncertainError(
+                    "Codex thread/resume returned no authoritative workspace"
+                )
+            try:
+                observed_cwd = Path(raw_cwd)
+                if not observed_cwd.is_absolute():
+                    raise DeliveryUncertainError("Codex thread/resume workspace was not absolute")
+                observed_cwds.append(observed_cwd.resolve())
+            except DeliveryUncertainError:
+                raise
+            except (OSError, RuntimeError, ValueError):
+                raise DeliveryUncertainError(
+                    "Codex thread/resume workspace could not be verified"
+                ) from None
+        if any(observed_cwd != expected_cwd for observed_cwd in observed_cwds):
+            raise DeliveryUncertainError(
+                "Codex thread/resume workspace did not match the session binding"
+            )
+        if thread.get("canAcceptDirectInput") is False:
+            raise DeliveryUncertainError("Codex thread cannot accept direct input")
+
+        raw_model = resumed.get("model")
+        raw_provider = resumed.get("modelProvider")
+        if not isinstance(raw_model, str) or not raw_model:
+            raise DeliveryUncertainError("Codex thread/resume returned no authoritative model")
+        if not isinstance(raw_provider, str) or not raw_provider:
+            raise DeliveryUncertainError(
+                "Codex thread/resume returned no authoritative model provider"
+            )
+        try:
+            model = bounded_adapter_id(raw_model, field="resumed Codex model")
+            model_provider = bounded_adapter_id(raw_provider, field="resumed Codex model provider")
+        except ValueError:
+            raise DeliveryUncertainError(
+                "Codex thread/resume model receipt was malformed"
+            ) from None
+
+        current = self.sessions.get(session.id)
+        if (
+            self.transport is not transport
+            or self._transport_connection_token(transport) != connection_token
+            or not session_binding_matches(current, session, harness_type=HarnessType.CODEX)
+            or current is None
+            or self._thread_load_binding(current) != binding
+            or current.goal_id != goal_binding
+        ):
+            raise DeliveryUncertainError(
+                "Codex session or transport changed while the thread was resuming"
+            )
+        current.metadata["resumed_model"] = model
+        current.metadata["resumed_model_provider"] = model_provider
+        self._loaded_thread_bindings[session.vendor_session_id] = cache_value
+        return current, transport
 
     def _notification_identity(self, message: dict[str, Any]) -> str:
         existing = message.get("_pex_notification_identity")
@@ -772,11 +913,22 @@ class CodexAdapter(HarnessAdapter):
         )
         if not safe_name:
             raise ValueError("Codex isolated thread name must be bounded text")
+        async with self._delivery_lock:
+            return await self._start_isolated_thread_locked(requested, safe_name, sandbox)
+
+    async def _start_isolated_thread_locked(
+        self,
+        requested: Path,
+        safe_name: str,
+        sandbox: str,
+    ) -> HarnessSession:
         if not await self._ready():
             raise IsolatedThreadError("codex app-server is not attached")
-        assert self.transport is not None
+        transport = self.transport
+        assert transport is not None
+        connection_token = self._transport_connection_token(transport)
         existing = await self.existing_thread_ids()
-        started = await self.transport.request(
+        started = await transport.request(
             "thread/start",
             {
                 "cwd": str(requested),
@@ -785,6 +937,11 @@ class CodexAdapter(HarnessAdapter):
                 "approvalPolicy": "never",
             },
         )
+        if (
+            self.transport is not transport
+            or self._transport_connection_token(transport) != connection_token
+        ):
+            raise DeliveryUncertainError("Codex transport changed during thread creation")
         if not isinstance(started, dict):
             raise DeliveryUncertainError("thread/start returned no authoritative receipt object")
         if "thread" in started and not isinstance(started.get("thread"), dict):
@@ -827,6 +984,10 @@ class CodexAdapter(HarnessAdapter):
             },
         )
         self.sessions[session_id] = session
+        self._loaded_thread_bindings[vendor_id] = (
+            connection_token,
+            self._thread_load_binding(session),
+        )
         return session
 
     async def start_turn(
@@ -844,12 +1005,19 @@ class CodexAdapter(HarnessAdapter):
         ):
             raise ValueError("Codex turn requires an exact session and non-empty text")
         cleaned = bounded_adapter_text(text, field="Codex turn text").strip()
-        session = bound
-        if is_chatgpt_observe_session(session):
+        if is_chatgpt_observe_session(bound):
             raise ValueError("ChatGPT.exe observe sessions cannot start App Server turns")
-        if not await self._ready():
-            raise RuntimeError("codex app-server is not attached")
-        assert self.transport is not None
+        async with self._delivery_lock:
+            return await self._start_turn_locked(bound, cleaned, extra_params)
+
+    async def _start_turn_locked(
+        self,
+        session: HarnessSession,
+        cleaned: str,
+        extra_params: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        session, transport = await self._ensure_thread_loaded(session)
+        connection_token = self._transport_connection_token(transport)
         sandbox = str((session.metadata or {}).get("sandbox") or "workspace-write")
         sandbox_policy: dict[str, Any]
         if sandbox == "danger-full-access":
@@ -905,7 +1073,12 @@ class CodexAdapter(HarnessAdapter):
         inbox = self.inbox.setdefault(session.id, [])
         if len(inbox) >= MAX_INBOX_MESSAGES:
             raise RuntimeError("Codex session inbox safety bound reached")
-        result = await self.transport.request("turn/start", params)
+        result = await transport.request("turn/start", params)
+        if (
+            self.transport is not transport
+            or self._transport_connection_token(transport) != connection_token
+        ):
+            raise DeliveryUncertainError("Codex transport changed during turn delivery")
         if not isinstance(result, dict):
             raise DeliveryUncertainError("Codex turn/start returned a malformed receipt")
         turn = result.get("turn") if isinstance(result.get("turn"), dict) else {}
@@ -916,7 +1089,7 @@ class CodexAdapter(HarnessAdapter):
                 "Codex turn/start did not return a verified turn id"
             ) from exc
         inbox.append(cleaned)
-        recorded = getattr(self.transport, "turns", None)
+        recorded = getattr(transport, "turns", None)
         self.last_turn_params = recorded[-1] if recorded else params
         self.last_turn_id = turn_id
         return result
@@ -1114,8 +1287,7 @@ class CodexAdapter(HarnessAdapter):
             try:
                 listed = await self.transport.request("thread/list", {"limit": 1})
                 connected = isinstance(listed, dict) and (
-                    isinstance(listed.get("data"), list)
-                    or isinstance(listed.get("threads"), list)
+                    isinstance(listed.get("data"), list) or isinstance(listed.get("threads"), list)
                 )
             except Exception:
                 connected = False
@@ -1167,9 +1339,7 @@ class CodexAdapter(HarnessAdapter):
             resume=connected,
             fork=False,
             focus_ui=desktop,
-            control_granularity=ControlGranularity.EVENT
-            if pumping
-            else ControlGranularity.SESSION,
+            control_granularity=ControlGranularity.EVENT if pumping else ControlGranularity.SESSION,
             trust_level=0.9 if pumping else 0.65 if connected else 0.35 if desktop else 0.0,
             support_label=label,
             notes=(
@@ -1210,6 +1380,7 @@ class CodexAdapter(HarnessAdapter):
             if session.status in live or (session.metadata or {}).get("isolated") is True:
                 continue
             self.sessions.pop(session_id, None)
+            self._loaded_thread_bindings.pop(session.vendor_session_id, None)
 
     async def discover_sessions(self) -> list[HarnessSession]:
         if not await self._ready():
@@ -1223,9 +1394,7 @@ class CodexAdapter(HarnessAdapter):
             raise RuntimeError("Codex thread listing exceeded the safety bound")
         for thread in rows:
             try:
-                vendor_id = bounded_adapter_id(
-                    thread.get("id") or "", field="Codex thread id"
-                )
+                vendor_id = bounded_adapter_id(thread.get("id") or "", field="Codex thread id")
             except ValueError:
                 continue
             session_id = f"codex:{vendor_id}"
@@ -1312,9 +1481,7 @@ class CodexAdapter(HarnessAdapter):
             self.transport is None
             or not request_id
             or not isinstance(request, dict)
-            or not session_binding_matches(
-                bound_session, session, harness_type=HarnessType.CODEX
-            )
+            or not session_binding_matches(bound_session, session, harness_type=HarnessType.CODEX)
             or session.id != f"codex:{session.vendor_session_id}"
             or is_chatgpt_observe_session(session)
             or bound_thread != session.vendor_session_id
@@ -1567,11 +1734,14 @@ class CodexAdapter(HarnessAdapter):
                                 session,
                             )
                             remember_item(item_key)
-                        turn_status = bounded_observed_text(
-                            turn.get("status"),
-                            field="Codex turn status",
-                            max_chars=512,
-                        ) or "completed"
+                        turn_status = (
+                            bounded_observed_text(
+                                turn.get("status"),
+                                field="Codex turn status",
+                                max_chars=512,
+                            )
+                            or "completed"
+                        )
                         turn_error = turn.get("error")
                         raw_turn_id = turn.get("id")
                         try:
@@ -1603,9 +1773,7 @@ class CodexAdapter(HarnessAdapter):
                                 session,
                                 turn_id=vendor_turn_id,
                             ),
-                            error=bounded_observed_text(
-                                turn_error, field="Codex turn error"
-                            ),
+                            error=bounded_observed_text(turn_error, field="Codex turn error"),
                             metadata=stop_metadata,
                         )
                         await ingest(event, session)

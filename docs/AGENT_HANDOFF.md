@@ -1,5 +1,67 @@
 # PEX agent handoff
 
+## CURRENT HANDOFF — 4 Sep 2026 ~21:16 BST — Codex same-session resume gate repaired
+
+**The three binding specs were reread before this slice. This section supersedes the 20:22 Codex next-action text. The six-cell demo remains the only execution workstream; benchmark freeze, deployment, spending, packaging, and Devpost submission remain unauthorized. Overall submission state is NO-GO.**
+
+### What is now implemented
+
+Discovered Codex threads can no longer be mutated merely because they appeared in `thread/list`. Before PEX sends the first same-session intervention on an App Server connection, `CodexAdapter` now performs the authoritative state transition:
+
+1. acquire one bounded adapter delivery lock;
+2. capture the exact canonical PEX session binding and initialized App Server connection generation;
+3. issue only `thread/resume {threadId, excludeTurns: true}`;
+4. require the exact resumed thread id, absolute matching top-level and nested workspace paths, bounded top-level model/provider receipts, and a thread that can accept direct input;
+5. re-fetch and revalidate the PEX session, goal, project, workspace, transport identity, and connection generation after the awaited resume;
+6. issue `turn/start` on that same captured transport while still holding the delivery lock;
+7. require a correlated bounded `turn.id` before recording acceptance.
+
+The loaded-thread cache is private and keyed to `(transport identity, connection generation, thread id, canonical project/workspace binding)`. A close/restart of the same transport object or a replacement transport therefore forces a fresh resume. A newly created isolated `thread/start` session is already loaded on that connection and does not perform a redundant resume before its first turn. No uncertain `turn/start` is retried.
+
+The production/default safety contract remains unchanged: `thread/start` uses `sandbox: "workspace-write"`; `turn/start` uses `sandboxPolicy.type: "workspaceWrite"`, `networkAccess: false`, and `approvalPolicy: "never"`. Do not change those values based on casing guesswork.
+
+### Audit corrections made before accepting the slice
+
+The first draft was deliberately not pushed after the independent auditor found real races. The final implementation:
+
+- holds the delivery lock across both resume and turn creation, not resume alone;
+- rejects `attach_transport` while a delivery is in flight;
+- keys loaded state to a monotonically increasing connection generation, so same-object process restarts invalidate it;
+- revalidates canonical goal/project/workspace and the captured connection after the resume await;
+- does not depend on a fabricated `thread.projectId` or nested `thread.model` field; those are not authoritative v2 resume contracts;
+- keeps connection-local loaded truth out of durable session metadata;
+- prunes loaded cache entries when stale App Server sessions are dropped;
+- serializes all Codex delivery through one lock instead of retaining an unbounded per-thread lock map.
+
+### Regression evidence
+
+- New adversarial adapter suite: **51 passed** after final formatting. It covers resume-before-turn order, exact request parameters, cached second send, strict serialization of two concurrent sends, isolated-thread no-resume behavior, same-object restart invalidation, transport replacement invalidation, attachment rejection mid-delivery, canonical project and goal changes during resume, wrong thread id, missing/mismatched workspaces, missing model/provider, `canAcceptDirectInput: false`, resume rejection/timeout, and no retry after an uncertain turn.
+- Independent post-fix audit: **APPROVE**. The auditor's separate run of the three affected files completed **127 passed** with one non-failing `PytestUnhandledThreadExceptionWarning` from an aiosqlite teardown worker after event-loop close. The warning is cleanup debt, not a claimed pass over a failure, and should be removed in a later bounded slice.
+- Full Codex pipeline/fleet/live-contract partition after the fixture update: **77 passed, 4 skipped** in 2:01.
+- Broader Codex/benchmark partition reached **181 passed** before finding one stale JSONL fake App Server that lacked a `thread/resume` response. The fixture was updated to implement the real contract; its focused test passed and is included in the 77-test partition above. This was a fixture-contract failure, not a weakened production check.
+- Four closed-loop pipeline tests that were canceling a still-valid STOP evaluation after a fixed four-second scheduling window now use a 40-second maximum wait. Under current machine load all four plus the real JSONL transport test passed: **5 passed** in 43.98s. Assertions and product timeouts are unchanged; only the test harness scheduling allowance changed.
+- Ruff passed on every changed Python file. `git diff --check` passed; repository-wide LF/CRLF notices are informational.
+
+The full 1,843-test Python suite was **not** rerun in this slice; do not claim a new whole-suite receipt. The last whole-suite evidence remains the 20:22 checkpoint below. No live Codex model turn and no provider quota were consumed.
+
+### Current truth and next exact slice
+
+Codex offline same-session delivery is now substantially safer, but there is still no valid Codex GPT-5.4-mini baseline/+PEX result. A live model run remains quota/action-time gated and must verify the exact requested worker model; this checkpoint does not authorize or claim it.
+
+The highest-impact offline blocker is now Cursor. The read-only Cursor/benchmark audit found:
+
+1. `four_arm.py` mixes execution-safety preflight with freeze/report-readiness, making evidence generation circular;
+2. Cursor hook sanitization drops controller timing and human-intervention fields required for a truthful live row, and Cursor has no canonical append-only raw log equivalent;
+3. continuation validation is not yet monotonic or hash-bound to the originating intervention/audit/outcome;
+4. the installed Cursor hook is observe-only and must never be labeled `+PEX`;
+5. evaluator execution is process-bounded but not a disposable no-network sandbox, so current results remain development evidence.
+
+**Next exact implementation slice:** split Cursor run-safety from freeze-readiness, add controller-owned timing/action/raw receipts, then make the continuation chain monotonic and hash-bound with regressions. Keep the six-cell demo ledger separate and `frozen: false`. After independent review, commit/push and record the remote receipt. Do not launch or impersonate the separate Composer 2.5 worker session.
+
+### Push receipt
+
+Independent review is **APPROVE**. The implementation commit is still pending at the moment represented by this source paragraph. The operator requires every verified update pushed; after commit, update this receipt with the exact local/remote hash in a second documentation commit.
+
 ## CURRENT HANDOFF — 4 Sep 2026 ~20:22 BST — audited source checkpoint and push policy
 
 **This section supersedes the 18:52 checkpoint only where stated. The three specs still prevail, the six-cell demo remains the only execution workstream, and overall submission state remains NO-GO.**
