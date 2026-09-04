@@ -10,7 +10,7 @@
 
 The four-arm runner no longer requires evidence to exist before it can run the controlled process that generates that evidence. Invalid suites still fail the execution gate. Natural-task/evaluator isolation, immutable raw logs, genuine Cursor treatment, source commits, and network verification remain hard report/freeze blockers. Result validation and freeze still consume the full report-readiness list; `plan` exposes both lists explicitly.
 
-Verification: **21 passed, 70 deselected** in the focused Cursor/preflight/freeze selection; **2 passed** after the final naming cleanup; Ruff and diff check passed. Live `plan` reports **0 execution blockers**, **5 report blockers**, and **`frozen: false`**. Independent post-fix verdict is **APPROVE**, with a separate **2 passed** run. No harness/model run, global hook mutation, freeze, or quota use occurred. Exact push receipt is pending. Overall **NO-GO**.
+Verification: **21 passed, 70 deselected** in the focused Cursor/preflight/freeze selection; **2 passed** after the final naming cleanup; Ruff and diff check passed. Live `plan` reports **0 execution blockers**, **5 report blockers**, and **`frozen: false`**. Independent post-fix verdict is **APPROVE**, with a separate **2 passed** run. Source checkpoint **`cbd5427cf87e61ce30e61c7283fcb1bb3d34ec5a`** was pushed to `origin/main`, and local/remote hashes were verified equal. No harness/model run, global hook mutation, freeze, or quota use occurred. Overall **NO-GO**.
 
 ## Latest checkpoint — Codex same-session resume gate repaired, 4 Sep 2026 ~21:16 BST
 

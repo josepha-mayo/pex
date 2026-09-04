@@ -25,7 +25,7 @@ Verification:
 
 **Next exact slice:** add controller-owned Cursor timing, human-action receipts, and an append-only canonical raw event log. Do not trust worker/hook-provided benchmark timing, do not call observe-only hooks `+PEX`, and do not alter the global installed Cursor hooks while implementing offline contracts/tests.
 
-Independent review is **APPROVE**. Push receipt is pending commit. The user requires this verified update to be pushed; record the exact remote hash in a follow-up receipt commit.
+Independent review is **APPROVE**. Source checkpoint **`cbd5427cf87e61ce30e61c7283fcb1bb3d34ec5a`** (`Separate benchmark execution and report gates`) was pushed to `origin/main`; local and remote hashes were verified equal. No push-protection bypass was used. This paragraph is the receipt-only follow-up.
 
 ## CURRENT HANDOFF — 4 Sep 2026 ~21:16 BST — Codex same-session resume gate repaired
 
