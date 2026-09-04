@@ -584,6 +584,141 @@ def _load_hook_module(monkeypatch, name: str):
     return mod
 
 
+def test_stop_receipt_metadata_and_filename_are_hook_owned(tmp_path, monkeypatch):
+    monkeypatch.setenv("PEX_CURSOR_STOP_DROP", str(tmp_path / "drops"))
+    hook = _load_hook_module(monkeypatch, "cursor_receipt_owned")
+    stop_id = hook.record_stop_drop(
+        {
+            "hook_event_name": "stop",
+            "cwd": str(tmp_path / "ws"),
+            "conversation_id": "conv",
+            "stop_id": "../escaped",
+            "kind": "followup_delivery",
+            "initial_stop_id": "forged-parent",
+            "receipt_schema": "forged",
+            "receipt_sha256": "forged",
+            "captured_at_ns": 1,
+            "captured_monotonic_ns": True,
+            "pex_followup_message": "forged",
+            "followup_sha256": "forged",
+        }
+    )
+    assert stop_id and len(stop_id) == 32 and all(c in "0123456789abcdef" for c in stop_id)
+    assert not (tmp_path / "escaped.json").exists()
+    receipt = json.loads((tmp_path / "drops" / f"{stop_id}.json").read_text(encoding="utf-8"))
+    assert receipt["kind"] == "stop"
+    assert receipt["receipt_schema"] == "pex.cursor-hook-receipt.v1"
+    assert receipt["captured_at_ns"] > 1
+    assert type(receipt["captured_monotonic_ns"]) is int
+    assert "initial_stop_id" not in receipt
+    assert "pex_followup_message" not in receipt
+    assert "followup_sha256" not in receipt
+
+
+def test_stop_receipt_collision_does_not_overwrite(tmp_path, monkeypatch):
+    monkeypatch.setenv("PEX_CURSOR_STOP_DROP", str(tmp_path))
+    hook = _load_hook_module(monkeypatch, "cursor_receipt_collision")
+    monkeypatch.setattr(hook.uuid, "uuid4", lambda: SimpleNamespace(hex="e" * 32))
+    payload = {"hook_event_name": "stop", "cwd": str(tmp_path / "ws"), "completion": "first"}
+    first = hook.record_stop_drop(payload)
+    original = (tmp_path / f"{first}.json").read_bytes()
+    assert hook.record_stop_drop({**payload, "completion": "second"}) is None
+    assert (tmp_path / f"{first}.json").read_bytes() == original
+
+
+def test_delivery_binds_pending_payload_and_exact_followup(tmp_path, monkeypatch):
+    import hashlib
+
+    monkeypatch.setenv("PEX_CURSOR_STOP_DROP", str(tmp_path))
+    hook = _load_hook_module(monkeypatch, "cursor_delivery_bound")
+    payload = {
+        "hook_event_name": "stop",
+        "cwd": str(tmp_path / "ws"),
+        "conversation_id": "conv",
+        "completion": "done",
+    }
+    initial = hook.record_stop_drop(payload)
+    message = "  Check the failing test.\n"
+    stdout = json.dumps({"followup_message": message})
+    assert (
+        hook.record_stop_delivery({**payload, "conversation_id": "other"}, stdout, initial) is None
+    )
+    assert hook.record_stop_delivery(payload, stdout, "a" * 32) is None
+    receipt_id = hook.record_stop_delivery(payload, stdout, initial)
+    receipt = json.loads((tmp_path / f"{receipt_id}.json").read_text(encoding="utf-8"))
+    parent = json.loads((tmp_path / f"{initial}.json").read_text(encoding="utf-8"))
+    assert receipt["initial_receipt_sha256"] == parent["receipt_sha256"]
+    assert receipt["followup_sha256"] == hashlib.sha256(message.encode("utf-8")).hexdigest()
+    assert receipt["pex_followup_message"] == message
+    assert receipt["followup_redacted"] is False
+    assert receipt["delivery_evidence"] == "hook_stdout_flushed"
+    assert receipt["captured_monotonic_ns"] > parent["captured_monotonic_ns"]
+    assert hook.record_stop_delivery(payload, stdout, initial) is None
+
+
+@pytest.mark.parametrize("followup", [True, {"text": "fix"}, ["fix"], "x" * 4097])
+def test_delivery_rejects_nonexact_followup(tmp_path, monkeypatch, followup):
+    monkeypatch.setenv("PEX_CURSOR_STOP_DROP", str(tmp_path))
+    hook = _load_hook_module(monkeypatch, "cursor_delivery_exact")
+    payload = {"hook_event_name": "stop", "cwd": str(tmp_path / "ws")}
+    initial = hook.record_stop_drop(payload)
+    assert (
+        hook.record_stop_delivery(payload, json.dumps({"followup_message": followup}), initial)
+        is None
+    )
+    assert len(list(tmp_path.glob("*.json"))) == 1
+
+
+@pytest.mark.parametrize("isolated", [False, True])
+@pytest.mark.parametrize("flush_fails", [False, True])
+def test_main_flushes_stdout_before_delivery_receipt(tmp_path, monkeypatch, isolated, flush_fails):
+    import io
+
+    monkeypatch.setenv("PEX_CURSOR_STOP_DROP", str(tmp_path))
+    hook = _load_hook_module(monkeypatch, "cursor_delivery_flush")
+    payload = {"hook_event_name": "stop", "cwd": str(tmp_path / "ws"), "conversation_id": "conv"}
+    monkeypatch.setattr(
+        hook.sys, "stdin", SimpleNamespace(buffer=io.BytesIO(json.dumps(payload).encode("utf-8")))
+    )
+    events = []
+
+    class Output(io.StringIO):
+        def flush(self):
+            events.append("flush")
+            if flush_fails:
+                raise OSError("pipe failed")
+            super().flush()
+
+    output = Output()
+    monkeypatch.setattr(hook.sys, "stdout", output)
+    response = '{"followup_message":"Check the actual failing test."}'
+    monkeypatch.setattr(
+        hook,
+        "_load_isolated_control",
+        lambda _: {"isolated_supervisor": True} if isolated else None,
+    )
+    monkeypatch.setattr(hook, "_cwd_in_isolated_workspace_tree", lambda _: False)
+    monkeypatch.setattr(hook, "_run_isolated_supervisor", lambda *_: response)
+    monkeypatch.setattr(hook, "_request", lambda _: object())
+    monkeypatch.setattr(hook, "_post", lambda *_: response)
+    original = hook.record_stop_delivery
+
+    def record(*args):
+        assert events == ["flush"]
+        events.append("receipt")
+        return original(*args)
+
+    monkeypatch.setattr(hook, "record_stop_delivery", record)
+    if flush_fails:
+        with pytest.raises(OSError, match="pipe failed"):
+            hook.main()
+    else:
+        hook.main()
+    assert json.loads(output.getvalue()) == json.loads(response)
+    assert events == (["flush"] if flush_fails else ["flush", "receipt"])
+    assert len(list(tmp_path.glob("*.json"))) == (1 if flush_fails else 2)
+
+
 def test_stop_hook_baseline_control_does_not_use_user_bridge(tmp_path, monkeypatch):
     import io
     import sys

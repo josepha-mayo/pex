@@ -1,5 +1,11 @@
 # Known failures
 
+## Current safety correction — 4 Sep 2026
+
+- Source commits/pushes are now explicitly authorized; the older matrix's commit restriction is superseded. Other publish/deploy/spend/submission gates remain.
+- Cursor local hook receipts are now chronological, namespace-bound, hash-checked, and captured after stdout flush. They do not authenticate shared-host writers or prove vendor acceptance/causal impact. Controller timing/action/raw-log capture remains missing; legacy drops are not upgraded to evidence.
+- The execution/report gate split at `cbd5427` is too permissive for real benchmark execution: hidden-data isolation, safe evaluation of candidate code, static leakage checks, and network fairness are pre-run requirements. Current evaluator subprocesses are not an OS sandbox. Hold real runs until this is corrected; manifest assertions cannot establish runtime safety. Natural-task provenance and completed raw logs/outcomes remain separate report requirements.
+
 ## Contest honesty matrix (3 Sep 2026)
 
 | State | What |

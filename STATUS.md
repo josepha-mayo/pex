@@ -6,6 +6,16 @@
 
 **Date:** 2026-09-04
 
+## Latest checkpoint — Cursor local receipt integrity, 4 Sep 2026 ~22:00 WAT
+
+Cursor stop receipts now use hook-owned UUIDs, clocks, canonical content hashes, invocation-local parent binding, and flush-before-delivery capture. Treatment checking requires chronological stops around one exact follow-up, identical namespace-bound session identity/workspace, and verified unredacted content. Legacy/tampered/reordered/cross-session receipts fail closed. Separate-process high-resolution timing is covered; this is local hook sequence evidence, not vendor acceptance or causal impact.
+
+Independent narrow review **APPROVE**: **31 chain tests** and **11 hook tests** passed, Ruff clean. Main focused run: **37 passed** after correcting Windows coarse-clock handling. Stable-source broader verification and push receipt are recorded in the handoff before the checkpoint is considered delivered.
+
+Final stable-source gate: **169 passed in 6:18** across the complete PexBench unit and Cursor hook contract files; scoped Ruff and diff check passed. No whole-repository or live-provider pass is claimed.
+
+**Execution HOLD:** a separate audit found the previous preflight split improperly moved runtime isolation/leakage/network prerequisites to report-only. Plain `python -I` is not an evaluator sandbox. Fix the actual execution boundary before a real benchmark; a manifest flag is insufficient. Controller timing, human-action receipts, raw capture, live supervisor outcomes, and submission readiness remain unproven. No provider run, global hook change, or freeze occurred.
+
 ## Latest checkpoint — run-safety and report-readiness gates split, 4 Sep 2026 ~21:34 BST
 
 The four-arm runner no longer requires evidence to exist before it can run the controlled process that generates that evidence. Invalid suites still fail the execution gate. Natural-task/evaluator isolation, immutable raw logs, genuine Cursor treatment, source commits, and network verification remain hard report/freeze blockers. Result validation and freeze still consume the full report-readiness list; `plan` exposes both lists explicitly.

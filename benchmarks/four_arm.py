@@ -1857,19 +1857,23 @@ async def wait_for_matching_cursor_stop(workspace: Path, timeout: float) -> dict
 async def wait_for_cursor_treatment_chain(
     workspace: Path, timeout: float
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-    """Wait for initial stop + delivered follow-up + later stop in the same conversation."""
+    """Observe an ordered local hook sequence, not vendor acceptance or causal impact.
+
+    The opaque per-run workspace supplies the run scope. Content hashes detect
+    changed receipts; they do not authenticate a writer on the shared host.
+    """
     if not math.isfinite(timeout) or timeout <= 0 or timeout > 3_600:
         raise ValueError("Cursor stop wait timeout must be finite and at most one hour")
     deadline = time.monotonic() + timeout
     seen: set[Path] = set()
-    inbound: dict[str, dict[str, Any]] = {}
-    deliveries: dict[str, dict[str, Any]] = {}
-    order: list[str] = []
+    receipts: dict[str, dict[str, Any]] = {}
     target = workspace.resolve()
     while time.monotonic() < deadline:
         drop = cursor_stop_drop_dir()
         if drop.is_dir():
-            for path in drop.glob("*.json"):
+            for index, path in enumerate(drop.glob("*.json")):
+                if index >= _MAX_RAW_LOG_RECORDS:
+                    raise RuntimeError("Cursor receipt directory exceeds the capture bound")
                 if path in seen:
                     continue
                 try:
@@ -1877,49 +1881,130 @@ async def wait_for_cursor_treatment_chain(
                 except ValueError:
                     continue
                 seen.add(path)
+                if len(seen) > _MAX_RAW_LOG_RECORDS:
+                    raise RuntimeError("Cursor receipt history exceeds the capture bound")
                 if _cursor_stop_cwd(payload) != target:
                     continue
-                stop_id = _cursor_stop_id(payload, path)
-                if not stop_id:
+                if not _valid_cursor_hook_receipt(payload, path):
                     continue
-                payload["stop_id"] = stop_id
-                if payload.get("kind") == "followup_delivery":
-                    followup = str(payload.get("pex_followup_message") or "").strip()
-                    initial = str(payload.get("initial_stop_id") or "").strip()
-                    if followup and not followup.startswith("PEX:") and initial:
-                        deliveries[initial] = payload
-                    continue
-                if stop_id not in inbound:
-                    order.append(stop_id)
-                    inbound[stop_id] = payload
-        by_conversation: dict[str, list[str]] = {}
-        for stop_id in order:
-            conversation = _cursor_conversation_id(inbound[stop_id])
-            if conversation:
-                by_conversation.setdefault(conversation, []).append(stop_id)
-        for conversation, stop_ids in by_conversation.items():
-            delivered = [stop_id for stop_id in stop_ids if stop_id in deliveries]
-            if not delivered or len(stop_ids) < 2:
-                continue
-            initial_stop_id = delivered[0]
-            later = next(
-                (stop_id for stop_id in stop_ids if stop_id != initial_stop_id),
-                "",
-            )
-            if not later:
-                continue
-            return (
-                inbound[initial_stop_id],
-                inbound[later],
-                {
-                    "confirmed": True,
-                    "conversation_id": conversation,
-                    "initial_stop_id": initial_stop_id,
-                    "followup_stop_id": later,
-                },
-            )
+                receipts[payload["stop_id"]] = payload
+        chain = _cursor_hook_chain(receipts)
+        if chain is not None:
+            return chain
         await asyncio.sleep(0.25)
     raise RuntimeError(CURSOR_TREATMENT_REFUSAL)
+
+
+def _cursor_receipt_identity(payload: dict[str, Any]) -> tuple[tuple[str, str], ...] | None:
+    """Keep identity namespaces and every supplied identifier bound together."""
+    identity = []
+    for field in ("conversation_id", "session_id", "composer_id"):
+        if field not in payload:
+            continue
+        value = payload[field]
+        if (not isinstance(value, str) or not value or value != value.strip()
+                or len(value) > 256 or any(ord(c) < 32 for c in value)):
+            return None
+        identity.append((field, value))
+    return tuple(identity) or None
+
+
+def _valid_cursor_hook_receipt(payload: dict[str, Any], path: Path) -> bool:
+    """Validate the standalone hook's canonical v1 receipt contract."""
+    stop_id = payload.get("stop_id")
+    if (
+        payload.get("receipt_schema") != "pex.cursor-hook-receipt.v1"
+        or payload.get("hook_event_name") not in ("stop", "Stop")
+        or payload.get("kind") not in ("stop", "followup_delivery")
+        or not isinstance(stop_id, str)
+        or len(stop_id) != 32
+        or any(c not in "0123456789abcdef" for c in stop_id)
+        or path.stem != stop_id
+        or _cursor_receipt_identity(payload) is None
+        or not _is_sha256(payload.get("receipt_sha256"))
+    ):
+        return False
+    for key in ("captured_at_ns", "captured_monotonic_ns"):
+        if type(payload.get(key)) is not int or not 0 < payload[key] < 2**63:
+            return False
+    try:
+        canonical = json.dumps(
+            {key: value for key, value in payload.items() if key != "receipt_sha256"},
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except (TypeError, ValueError, UnicodeError):
+        return False
+    return hashlib.sha256(canonical).hexdigest() == payload["receipt_sha256"]
+
+
+def _cursor_hook_chain(
+    receipts: dict[str, dict[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]] | None:
+    ordered = sorted(receipts.values(), key=lambda item: item["captured_monotonic_ns"])
+    for delivery in ordered:
+        if delivery["kind"] != "followup_delivery":
+            continue
+        parent_id = delivery.get("initial_stop_id")
+        if not isinstance(parent_id, str):
+            continue
+        initial = receipts.get(parent_id)
+        followup = delivery.get("pex_followup_message")
+        redacted = delivery.get("followup_redacted")
+        if (
+            initial is None
+            or initial["kind"] != "stop"
+            or initial["receipt_sha256"] != delivery.get("initial_receipt_sha256")
+            or delivery.get("delivery_evidence") != "hook_stdout_flushed"
+            or not isinstance(followup, str)
+            or not followup.strip()
+            or len(followup) > 65_536
+            or followup.lstrip().startswith("PEX:")
+            # Preserve redacted receipts for diagnostics, but their original
+            # message hash cannot be independently verified from stored text.
+            or redacted is not False
+            or not _is_sha256(delivery.get("followup_sha256"))
+            or (
+                hashlib.sha256(followup.encode("utf-8")).hexdigest()
+                != delivery["followup_sha256"]
+            )
+            or _cursor_receipt_identity(initial) != _cursor_receipt_identity(delivery)
+            or initial["captured_monotonic_ns"] >= delivery["captured_monotonic_ns"]
+            or initial["captured_at_ns"] > delivery["captured_at_ns"]
+        ):
+            continue
+        # Multiple outputs attributed to one stop cannot identify one correction.
+        if sum(item.get("initial_stop_id") == parent_id for item in ordered) != 1:
+            continue
+        for later in ordered:
+            if (
+                later["kind"] != "stop"
+                or _cursor_receipt_identity(later) != _cursor_receipt_identity(initial)
+                or delivery["captured_monotonic_ns"] >= later["captured_monotonic_ns"]
+                or delivery["captured_at_ns"] > later["captured_at_ns"]
+            ):
+                continue
+            return (
+                initial,
+                later,
+                {
+                    "confirmed": True,
+                    "evidence_scope": "ordered_local_hook_receipts",
+                    "conversation_id": _cursor_conversation_id(initial),
+                    "conversation_identity": dict(_cursor_receipt_identity(initial)),
+                    "initial_stop_id": initial["stop_id"],
+                    "followup_stop_id": later["stop_id"],
+                    "delivery_stop_id": delivery["stop_id"],
+                    "initial_receipt_sha256": initial["receipt_sha256"],
+                    "delivery_receipt_sha256": delivery["receipt_sha256"],
+                    "followup_receipt_sha256": later["receipt_sha256"],
+                    "followup_sha256": delivery["followup_sha256"],
+                    "followup_redacted": redacted,
+                },
+            )
+    return None
 
 
 def _snapshot_workspace(run_id: str, arm: str, task_id: str, workspace: Path) -> Path | None:

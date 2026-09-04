@@ -2258,9 +2258,13 @@ async def test_cursor_treatment_fails_closed_without_same_session_continuation()
         )
 
 
-@pytest.mark.asyncio
-async def test_cursor_treatment_chain_confirms_followup_and_later_stop(tmp_path, monkeypatch):
-    four = _four_arm()
+def _real_cursor_hook_chain(tmp_path, monkeypatch):
+    hook_path = (
+        Path(__file__).resolve().parents[2] / "integrations" / "cursor-hook" / "pex_cursor_hook.py"
+    )
+    spec = importlib.util.spec_from_file_location("cursor_chain_contract", hook_path)
+    hook = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(hook)
     monkeypatch.setenv("PEX_CURSOR_STOP_DROP", str(tmp_path))
     workspace = tmp_path / "ws"
     workspace.mkdir()
@@ -2269,39 +2273,209 @@ async def test_cursor_treatment_chain_confirms_followup_and_later_stop(tmp_path,
         "cwd": str(workspace),
         "conversation_id": "conv-chain",
         "completion": "I am done.",
-        "stop_id": "stop-1",
     }
-    (tmp_path / "stop-1.json").write_text(json.dumps(inbound), encoding="utf-8")
-    (tmp_path / "delivery.json").write_text(
-        json.dumps(
-            {
-                **inbound,
-                "kind": "followup_delivery",
-                "stop_id": "delivery-1",
-                "initial_stop_id": "stop-1",
-                "pex_followup_message": "Create report.txt containing shipped.",
-            }
-        ),
-        encoding="utf-8",
+    initial_id = hook.record_stop_drop(inbound)
+    delivery_id = hook.record_stop_delivery(
+        inbound,
+        '{"followup_message":"Create report.txt containing shipped."}',
+        initial_id,
     )
-    later = {
-        "hook_event_name": "stop",
-        "cwd": str(workspace),
-        "conversation_id": "conv-chain",
-        "completion": "report.txt now contains shipped.",
-        "stop_id": "stop-2",
-    }
-    (tmp_path / "stop-2.json").write_text(json.dumps(later), encoding="utf-8")
+    later_id = hook.record_stop_drop({**inbound, "completion": "report.txt now contains shipped."})
+    assert initial_id and delivery_id and later_id
+    receipts = [
+        json.loads((tmp_path / f"{value}.json").read_text(encoding="utf-8"))
+        for value in (initial_id, delivery_id, later_id)
+    ]
+    return workspace, receipts
+
+
+def _rewrite_cursor_receipt(root, receipt, *, rehash=True):
+    if rehash:
+        receipt["receipt_sha256"] = hashlib.sha256(
+            json.dumps(
+                {k: v for k, v in receipt.items() if k != "receipt_sha256"},
+                ensure_ascii=False,
+                allow_nan=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+    (root / f"{receipt['stop_id']}.json").write_text(json.dumps(receipt), encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_cursor_treatment_chain_confirms_followup_and_later_stop(tmp_path, monkeypatch):
+    four = _four_arm()
+    workspace, receipts = _real_cursor_hook_chain(tmp_path, monkeypatch)
+    initial, delivery, later = receipts
+    # File discovery order must not be mistaken for event order.
+    original_glob = Path.glob
+    monkeypatch.setattr(
+        Path,
+        "glob",
+        lambda path, pattern: (
+            iter(tmp_path / f"{item['stop_id']}.json" for item in reversed(receipts))
+            if path == tmp_path
+            else original_glob(path, pattern)
+        ),
+    )
 
     first, second, continuation = await four.wait_for_cursor_treatment_chain(workspace, 2)
-    assert first["stop_id"] == "stop-1"
-    assert second["stop_id"] == "stop-2"
+    assert first == initial
+    assert second == later
     assert continuation == {
         "confirmed": True,
+        "evidence_scope": "ordered_local_hook_receipts",
         "conversation_id": "conv-chain",
-        "initial_stop_id": "stop-1",
-        "followup_stop_id": "stop-2",
+        "conversation_identity": {"conversation_id": "conv-chain"},
+        "initial_stop_id": initial["stop_id"],
+        "followup_stop_id": later["stop_id"],
+        "delivery_stop_id": delivery["stop_id"],
+        "initial_receipt_sha256": initial["receipt_sha256"],
+        "delivery_receipt_sha256": delivery["receipt_sha256"],
+        "followup_receipt_sha256": later["receipt_sha256"],
+        "followup_sha256": _digest("Create report.txt containing shipped."),
+        "followup_redacted": False,
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "old_stop",
+        "equal_stop",
+        "delivery_before_initial",
+        "wall_clock_reversal",
+        "foreign_delivery",
+        "foreign_later",
+        "wrong_workspace",
+        "tampered_initial",
+        "tampered_delivery",
+        "tampered_later",
+        "wrong_parent_hash",
+        "wrong_followup_hash",
+        "non_stop",
+        "bad_event_type",
+        "bad_kind_type",
+        "bad_conversation_type",
+        "bool_clock",
+        "string_clock",
+        "missing_schema",
+        "duplicate_delivery",
+        "blank_followup",
+        "canned_followup",
+        "wrong_delivery_evidence",
+        "legacy_receipts",
+        "identity_alias_hop",
+        "changed_secondary_identity",
+        "malformed_secondary_identity",
+        "redacted_followup",
+    ],
+)
+async def test_cursor_treatment_chain_rejects_false_evidence(tmp_path, monkeypatch, defect):
+    four = _four_arm()
+    workspace, receipts = _real_cursor_hook_chain(tmp_path, monkeypatch)
+    initial, delivery, later = receipts
+    if defect == "old_stop":
+        later["captured_monotonic_ns"] = initial["captured_monotonic_ns"] - 1
+    elif defect == "equal_stop":
+        later["captured_monotonic_ns"] = delivery["captured_monotonic_ns"]
+    elif defect == "delivery_before_initial":
+        delivery["captured_monotonic_ns"] = initial["captured_monotonic_ns"] - 1
+    elif defect == "wall_clock_reversal":
+        later["captured_at_ns"] = initial["captured_at_ns"] - 1
+    elif defect == "foreign_delivery":
+        delivery["conversation_id"] = "other-conversation"
+    elif defect == "foreign_later":
+        later["conversation_id"] = "other-conversation"
+    elif defect == "wrong_workspace":
+        delivery["cwd"] = str(tmp_path / "other")
+    elif defect.startswith("tampered_"):
+        receipts[{"tampered_initial": 0, "tampered_delivery": 1, "tampered_later": 2}[defect]][
+            "completion"
+        ] = "changed after capture"
+    elif defect == "wrong_parent_hash":
+        delivery["initial_receipt_sha256"] = "0" * 64
+    elif defect == "wrong_followup_hash":
+        delivery["followup_sha256"] = "0" * 64
+    elif defect == "non_stop":
+        later["hook_event_name"] = "afterFileEdit"
+    elif defect == "bad_event_type":
+        later["hook_event_name"] = []
+    elif defect == "bad_kind_type":
+        later["kind"] = {}
+    elif defect == "bad_conversation_type":
+        delivery["conversation_id"] = ["conv-chain"]
+    elif defect == "bool_clock":
+        later["captured_monotonic_ns"] = True
+    elif defect == "string_clock":
+        later["captured_at_ns"] = str(later["captured_at_ns"])
+    elif defect == "missing_schema":
+        later.pop("receipt_schema")
+    elif defect == "duplicate_delivery":
+        receipts.append({**delivery, "stop_id": "f" * 32})
+    elif defect == "blank_followup":
+        delivery["pex_followup_message"] = " "
+    elif defect == "canned_followup":
+        delivery["pex_followup_message"] = "PEX: nag"
+    elif defect == "wrong_delivery_evidence":
+        delivery["delivery_evidence"] = "prepared"
+    elif defect == "legacy_receipts":
+        for receipt in receipts:
+            receipt.pop("receipt_schema")
+            receipt.pop("captured_at_ns")
+            receipt.pop("captured_monotonic_ns")
+    elif defect == "identity_alias_hop":
+        later["session_id"] = later.pop("conversation_id")
+    elif defect == "changed_secondary_identity":
+        later["composer_id"] = "different-composer"
+    elif defect == "malformed_secondary_identity":
+        delivery["session_id"] = []
+    elif defect == "redacted_followup":
+        delivery["followup_redacted"] = True
+    for receipt in receipts:
+        _rewrite_cursor_receipt(tmp_path, receipt, rehash=not defect.startswith("tampered_"))
+    with pytest.raises(RuntimeError, match="same Cursor conversation"):
+        await four.wait_for_cursor_treatment_chain(workspace, 0.01)
+
+
+@pytest.mark.asyncio
+async def test_cursor_hook_clock_orders_separate_processes(tmp_path, monkeypatch):
+    four = _four_arm()
+    monkeypatch.setenv("PEX_CURSOR_STOP_DROP", str(tmp_path))
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    hook = Path(__file__).resolve().parents[2] / "integrations/cursor-hook/pex_cursor_hook.py"
+    script = (
+        "import json, runpy, sys; module = runpy.run_path(sys.argv[1]); "
+        "payload = json.loads(sys.argv[2]); first = module['record_stop_drop'](payload); "
+        "assert first; "
+        "assert sys.argv[3] == 'later' or module['record_stop_delivery']("
+        "payload, json.dumps({'followup_message': 'Check the failing test.'}), first)"
+    )
+    payload = {"hook_event_name": "stop", "cwd": str(workspace), "conversation_id": "conv"}
+    for phase in ("initial", "later"):
+        result = subprocess.run(
+            [sys.executable, "-c", script, str(hook), json.dumps(payload), phase],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert result.returncode == 0, result.stderr
+    _, _, receipt = await four.wait_for_cursor_treatment_chain(workspace, 2)
+    assert receipt["evidence_scope"] == "ordered_local_hook_receipts"
+
+
+@pytest.mark.asyncio
+async def test_cursor_chain_accepts_coarse_wall_clock_ties(tmp_path, monkeypatch):
+    four = _four_arm()
+    workspace, receipts = _real_cursor_hook_chain(tmp_path, monkeypatch)
+    for receipt in receipts:
+        receipt["captured_at_ns"] = receipts[0]["captured_at_ns"]
+        if receipt["kind"] == "followup_delivery":
+            receipt["initial_receipt_sha256"] = receipts[0]["receipt_sha256"]
+        _rewrite_cursor_receipt(tmp_path, receipt)
+    _, _, receipt = await four.wait_for_cursor_treatment_chain(workspace, 2)
+    assert receipt["confirmed"] is True
 
 
 @pytest.mark.asyncio

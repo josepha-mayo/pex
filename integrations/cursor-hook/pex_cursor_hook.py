@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -10,6 +11,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from pathlib import Path
 
 BRIDGE = os.environ.get("PEX_BRIDGE_URL", "http://127.0.0.1:7420")
@@ -26,6 +28,9 @@ MAX_RESPONSE_BYTES = 65_536
 MAX_TOKEN_CHARS = 512
 MAX_UI_MESSAGE_CHARS = 4_096
 MAX_DROP_TEXT_CHARS = 65_536
+# A hook invocation handles one stop. Keep its receipt in memory so an incoming
+# payload or an edited drop file cannot supply the parent of a delivery receipt.
+_pending_stop_receipt: dict | None = None
 
 # Permission-bearing actions stay behind the bridge policy boundary.
 # Ordinary editor reads/writes must never freeze the agent: credential-shaped
@@ -351,10 +356,6 @@ def _sanitized_stop_drop(payload: dict) -> dict:
         "model",
         "model_id",
         "cursor_version",
-        "stop_id",
-        "kind",
-        "initial_stop_id",
-        "pex_followup_message",
     )
     result: dict[str, object] = {}
     for key in allowed:
@@ -366,14 +367,11 @@ def _sanitized_stop_drop(payload: dict) -> dict:
             "text",
             "message",
             "last_assistant_message",
-            "pex_followup_message",
         }:
             result[key] = _redact_drop_text(value)
         elif key == "workspace_roots":
             result[key] = (
-                [str(item)[:4_096] for item in value[:64]]
-                if isinstance(value, list)
-                else []
+                [str(item)[:4_096] for item in value[:64]] if isinstance(value, list) else []
             )
         elif isinstance(value, str):
             result[key] = value[:4_096]
@@ -382,46 +380,64 @@ def _sanitized_stop_drop(payload: dict) -> dict:
     return result
 
 
-def _write_stop_drop(payload: dict) -> str | None:
+def _write_stop_drop(payload: dict, *, metadata: dict | None = None) -> dict | None:
     dest = cursor_stop_drop_dir()
     dest.mkdir(parents=True, exist_ok=True)
-    stop_id = str(payload.get("stop_id") or f"{time.time_ns()}_{os.getpid()}")[:256]
-    body = _sanitized_stop_drop({**payload, "stop_id": stop_id})
-    encoded = json.dumps(body, ensure_ascii=False, allow_nan=False)
-    if len(encoded.encode("utf-8")) > MAX_PAYLOAD_BYTES:
+    # Never use a vendor-supplied stop_id as a filesystem path or trust its clock.
+    body = {
+        **_sanitized_stop_drop(payload),
+        **(metadata or {}),
+        "stop_id": uuid.uuid4().hex,
+        "receipt_schema": "pex.cursor-hook-receipt.v1",
+        "captured_at_ns": time.time_ns(),
+        # Python 3.11 on Windows uses coarse GetTickCount64 for monotonic().
+        # perf_counter is host-wide and monotonic, with sub-millisecond resolution.
+        "captured_monotonic_ns": time.perf_counter_ns(),
+    }
+    # Canonical UTF-8 JSON, excluding this hash field. This is content integrity,
+    # not authentication: the shared local filesystem is not an OS sandbox.
+    canonical = json.dumps(
+        body, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    body["receipt_sha256"] = hashlib.sha256(canonical).hexdigest()
+    encoded = json.dumps(body, ensure_ascii=False, allow_nan=False).encode("utf-8")
+    if len(encoded) > MAX_PAYLOAD_BYTES:
         return None
-    path = dest / f"{stop_id}.json"
-    try:
-        with path.open("x", encoding="utf-8") as handle:
-            handle.write(encoded)
-    except FileExistsError:
-        stop_id = f"{stop_id}_{time.time_ns()}"[:256]
-        body["stop_id"] = stop_id
-        encoded = json.dumps(body, ensure_ascii=False, allow_nan=False)
-        path = dest / f"{stop_id}.json"
-        with path.open("x", encoding="utf-8") as handle:
-            handle.write(encoded)
-    try:
-        path.chmod(0o600)
-    except OSError:
-        pass
-    return stop_id
+    path = dest / f"{body['stop_id']}.json"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    descriptor = os.open(path, flags, 0o600)
+    with os.fdopen(descriptor, "wb") as handle:
+        handle.write(encoded)
+        handle.flush()
+        os.fsync(handle.fileno())
+    return body
 
 
 def record_stop_drop(payload: dict) -> str | None:
+    global _pending_stop_receipt
+    _pending_stop_receipt = None
     hook_name = str(payload.get("hook_event_name") or "")
     if hook_name not in {"stop", "Stop"} or not _is_benchmark_workspace(payload):
         return None
     try:
-        return _write_stop_drop(payload)
+        _pending_stop_receipt = _write_stop_drop(payload, metadata={"kind": "stop"})
+        return _pending_stop_receipt["stop_id"] if _pending_stop_receipt else None
     except Exception:
         return None
 
 
 def record_stop_delivery(payload: dict, stdout: str, initial_stop_id: str | None) -> str | None:
-    """Record the follow-up this stop hook actually returned to Cursor."""
+    """Record flushed hook stdout, not a Cursor acceptance acknowledgment."""
 
-    if not initial_stop_id or not _is_benchmark_workspace(payload):
+    global _pending_stop_receipt
+    initial = _pending_stop_receipt
+    if (
+        not initial_stop_id
+        or not _is_benchmark_workspace(payload)
+        or initial is None
+        or initial["stop_id"] != initial_stop_id
+        or _sanitized_stop_drop(payload) != _sanitized_stop_drop(initial)
+    ):
         return None
     try:
         body = _strict_json_loads((stdout or "").strip() or "{}")
@@ -429,19 +445,30 @@ def record_stop_delivery(payload: dict, stdout: str, initial_stop_id: str | None
         return None
     if not isinstance(body, dict):
         return None
-    followup = str(body.get("followup_message") or "").strip()[:MAX_UI_MESSAGE_CHARS]
-    if not followup or followup.startswith("PEX:"):
+    followup = body.get("followup_message")
+    if (
+        not isinstance(followup, str)
+        or not followup.strip()
+        or len(followup) > MAX_UI_MESSAGE_CHARS
+        or followup.lstrip().startswith("PEX:")
+    ):
         return None
+    _pending_stop_receipt = None
     try:
-        return _write_stop_drop(
-            {
-                **payload,
-                "stop_id": f"{initial_stop_id}_followup_{time.time_ns()}",
+        redacted_followup = _redact_drop_text(followup)
+        receipt = _write_stop_drop(
+            payload,
+            metadata={
                 "kind": "followup_delivery",
                 "initial_stop_id": initial_stop_id,
-                "pex_followup_message": followup,
-            }
+                "initial_receipt_sha256": initial["receipt_sha256"],
+                "delivery_evidence": "hook_stdout_flushed",
+                "pex_followup_message": redacted_followup,
+                "followup_redacted": redacted_followup != followup,
+                "followup_sha256": hashlib.sha256(followup.encode("utf-8")).hexdigest(),
+            },
         )
+        return receipt["stop_id"] if receipt else None
     except Exception:
         return None
 
@@ -671,6 +698,7 @@ def main() -> None:
             else:
                 stdout = "{}"
             sys.stdout.write(stdout)
+            sys.stdout.flush()
             record_stop_delivery(payload, stdout, inbound_stop_id)
             return
         if _cwd_in_isolated_workspace_tree(payload):
@@ -701,11 +729,12 @@ def main() -> None:
     try:
         body = _post(req, timeout)
         stdout = _safe_hook_stdout(body, hook_name, payload)
-        sys.stdout.write(stdout)
-        if hook_name in {"stop", "Stop"}:
-            record_stop_delivery(payload, stdout, inbound_stop_id)
     except Exception:
-        sys.stdout.write(_pass_through(hook_name, payload))
+        stdout = _pass_through(hook_name, payload)
+    sys.stdout.write(stdout)
+    if hook_name in {"stop", "Stop"}:
+        sys.stdout.flush()
+        record_stop_delivery(payload, stdout, inbound_stop_id)
 
 
 if __name__ == "__main__":

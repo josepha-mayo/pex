@@ -1,5 +1,30 @@
 # PEX agent handoff
 
+## CURRENT HANDOFF — 4 Sep 2026 ~22:00 WAT — Cursor local receipt chain hardened
+
+**Read the three binding specs (`PEX_CORE_SPEC.md`, `PEX_BUILD_SPEC.md`, `PEX_IMPLEMENTATION_RECOVERY_SPEC.md`) before continuing. This checkpoint is offline evidence only. Overall submission remains NO-GO, the manifest remains unfrozen, and no live worker/provider run or global Cursor-hook mutation occurred.**
+
+### What changed
+
+- The standalone Cursor hook now assigns opaque UUID receipt filenames; incoming `stop_id`, kind, timestamps, parent references, or hash fields cannot choose the path or manufacture receipt metadata. Exclusive creation fails closed on collision without replacing earlier evidence.
+- Receipts use `pex.cursor-hook-receipt.v1`, hook-owned wall and high-resolution monotonic timestamps, and SHA-256 of canonical UTF-8 JSON excluding only `receipt_sha256`. The original sanitized stop is held in invocation-local memory; a delivery cannot adopt a supplied or rewritten on-disk parent.
+- A delivery binds the initial receipt's ID/hash and the exact emitted follow-up's UTF-8 SHA-256. The hook preserves redaction, records whether it changed the message, and records only after stdout successfully flushes. A pipe failure creates no delivery receipt and does not append a second JSON response. Evidence is explicitly `hook_stdout_flushed`, never vendor acceptance.
+- The treatment waiter validates all receipt hashes and requires initial stop < delivery < later stop under the monotonic clock, with nondecreasing wall time, the exact resolved workspace, and the identical set of `(identity field, value)` pairs. `conversation_id=X` cannot be substituted by `session_id=X`; changed or malformed secondary identifiers also fail.
+- Discovery order cannot imply event order. Legacy receipts, changed receipt bytes, ambiguous deliveries, unrelated event kinds, malformed clocks, clock reversal, wrong parent/message hashes, and redacted follow-ups cannot confirm the chain. The returned evidence scope is `ordered_local_hook_receipts`, with three receipt hashes and the exact follow-up hash.
+- Python 3.11 on this Windows host reports `GetTickCount64()` and wall-clock resolution of 15.625 ms. The initial regression run exposed equal timestamps. `perf_counter_ns()` uses monotonic host-wide `QueryPerformanceCounter()` at 100 ns resolution; separate-process ordering and coarse wall-clock ties are covered without fabricating timestamps.
+
+### Audit and remaining boundaries
+
+Independent Cursor review: **APPROVE for this narrow slice**, with **31 passed, 90 deselected**, **11 passed, 37 deselected**, and Ruff clean. The first focused main run had two clock-resolution failures; the corrected selection passed **37 tests**. A broader run was invalidated by edits during execution (67 passed, two failures: source-fingerprint drift and a stale loaded assertion against newly loaded code). It is not a final verification receipt; a stable-source rerun follows before push.
+
+**Final stable-source receipt:** `uv run pytest -q tests/unit/test_pexbench.py tests/contract/test_cursor_hooks.py --maxfail=1` completed **169 passed in 378.58 seconds**, with no source edits during the run. Ruff on the four changed Python files and `git diff --check` passed. This is not a whole-repository or live-provider validation. Commit/push follows this receipt; verify the exact remote hash before calling the update delivered.
+
+These hashes detect changed content; they do not authenticate writers on the shared host. Workspace scope is opaque/per-run but not a controller nonce. A later stop after flushed stdout is not proof of Cursor acceptance, causal impact, or a correlated supervisor audit/outcome. Full controller-owned execution timing, human-action accounting, canonical append-only raw capture, and runtime isolation are still missing. Do not set manifest integrity flags to satisfied on this receipt alone. Do not rewrite/backfill legacy drops.
+
+**New safety finding supersedes the previous zero-execution-blocker interpretation:** independent review of `cbd5427` found that CORE §16 requires hidden-evaluator/untrusted-code isolation and pre-run leakage checks before execution, and BUILD §34.4 requires enforced network fairness. Moving these to report-only is too permissive. The current evaluator executes candidate code using ordinary `python -I`, which is not a filesystem/network sandbox. **Do not launch a real benchmark through the current execution gate.** Correct it next without reintroducing a circular requirement for post-run logs/outcomes. Natural-task provenance and finished result receipts can remain report-only; actual safety cannot be bypassed by a manifest assertion. A development-only six-cell ledger must remain separate from presentation results and cannot waive isolation.
+
+Continue with focused subagent review after each coherent repair, retain the user's eight-pet scope and six-cell priorities, and push verified source updates. Do not claim the app is perfect from unit tests; persistent progress is toward real same-session supervision and submission evidence, with deadline and authorization gates intact.
+
 ## CURRENT HANDOFF — 4 Sep 2026 ~21:34 BST — execution gate separated from report/freeze gate
 
 **The binding Cursor/benchmark sections of all three specs were reread before this slice. This section supersedes the 21:16 next-action paragraph only. The manifest remains unfrozen and overall submission state remains NO-GO.**
