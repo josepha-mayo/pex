@@ -2,7 +2,9 @@
 
 ## CURRENT HANDOFF — 4 Sep 2026 — production intent and semantic arbitration repair
 
-**Verified local checkpoint, not submission readiness. All three binding specs remain authoritative. This slice repairs production supervision, not benchmark scoring. The final stable-source gate passed 334 tests; source push follows this receipt. No live provider/model call, installed/global hook mutation, bridge restart, deployment, package, freeze, or submission has occurred.**
+**Verified and pushed checkpoint, not submission readiness. All three binding specs remain authoritative. This slice repairs production supervision, not benchmark scoring. The final stable-source gate passed 334 tests. No live provider/model call, installed/global hook mutation, bridge restart, deployment, package, freeze, or submission has occurred.**
+
+**Pushed source receipt:** `004cd2ce94f51100bd6e41f1e6b37334a5886cc5` (`Honor prompt authority and independently verified semantic decisions`) is on `origin/main`. `git rev-parse HEAD` and `git ls-remote origin refs/heads/main` matched exactly and the working tree was clean. This paragraph is the documentation-only receipt follow-up. No push protection was bypassed.
 
 ### Audit findings and implementation
 
@@ -23,7 +25,7 @@ Three bounded subagents split supervisor/runtime, intent/persisted-decision test
 
 Intermediate failures are superseded by that final run: the rejected-decision punctuation regression after 124 passes; a new audit fixture using healthy non-STOP NOOP (which correctly creates no intervention), corrected to STOP; and an obsolete pipeline test after 328 passes that expected a deterministic nudge to replace remote NOOP. The updated pipeline assertion proves both no worker message and retention of missing-file evidence: NOOP does not mean the goal is complete. These are not separate additive test totals or a whole-repository/live-provider pass.
 
-Record the exact source commit and remote equality before calling this update delivered. Keep source pushes scoped to reviewed files; no force push or protection bypass. Next, continue the actual production delivery audit: Cursor stop delivery is still prepared before hook stdout/vendor acceptance, and complete same-session observed outcomes remain unproven. Separately implement the enforced hidden-data/no-network execution boundary before any real six-cell benchmark. Preserve all execution isolation/network/report gates in the previous capture checkpoint. No live six-cell pair or benchmark improvement is established by these local fake-model/ASGI regressions. The app remains **NO-GO** for submission; do not mark the active goal complete. Read all three specs before the next grind, split independent bounded work with subagents, audit every changed path, verify, and push each reviewed checkpoint.
+Source delivery is verified by the exact push receipt above. Keep future source pushes scoped to reviewed files; no force push or protection bypass. Next, continue the actual production delivery audit: Cursor stop delivery is still prepared before hook stdout/vendor acceptance, and complete same-session observed outcomes remain unproven. Separately implement the enforced hidden-data/no-network execution boundary before any real six-cell benchmark. Preserve all execution isolation/network/report gates in the previous capture checkpoint. No live six-cell pair or benchmark improvement is established by these local fake-model/ASGI regressions. The app remains **NO-GO** for submission; do not mark the active goal complete. Read all three specs before the next grind, split independent bounded work with subagents, audit every changed path, verify, and push each reviewed checkpoint.
 
 ## CURRENT HANDOFF — 4 Sep 2026 — nonce-bound Cursor observed capture
 
