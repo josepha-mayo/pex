@@ -708,11 +708,141 @@ class Pipeline:
         # cannot strand a delivered overlay child behind a dispatching parent.
         self._overlay_reconciliation_tasks: set[asyncio.Task] = set()
 
+    async def ingest_observer_lifecycle(
+        self, event: HarnessEvent, session: HarnessSession
+    ) -> None:
+        """Record a local observer disconnect without semantic worker processing.
+
+        Only the registered shared adapter receives this callback. Generic event
+        ingestion deliberately does not activate it from untrusted metadata.
+        """
+        from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
+
+        subscription_id = event.metadata.get("subscription_id")
+        receipt = session.metadata.get("subscription_receipt")
+        coverage = event.metadata.get("observation_coverage")
+        if (
+            event.harness_type != HarnessType.CODEX
+            or session.harness_type != HarnessType.CODEX
+            or event.session_id != session.id
+            or session.id != f"codex:{session.vendor_session_id}"
+            or event.event_type != EventType.STATUS
+            or event.metadata.get("source") != "pex_observer_lifecycle"
+            or event.metadata.get("worker_stopped") is not False
+            or not isinstance(subscription_id, str)
+            or not subscription_id
+            or not isinstance(receipt, dict)
+            or receipt.get("authorization_id") != subscription_id
+            or not isinstance(coverage, dict)
+            or coverage.get("state") != "disconnected"
+            or session.metadata.get("observation_coverage") != coverage
+            or session.status != SessionStatus.DETACHED
+        ):
+            raise ValueError("observer lifecycle receipt is invalid")
+
+        async with self._session_locks_guard:
+            lock = self._session_locks.setdefault(session.id, asyncio.Lock())
+        async with lock:
+            adapter = self.adapters.for_session(session.id)
+
+            def validate_adapter() -> None:
+                if (
+                    not isinstance(adapter, CodexSharedAdapter)
+                    or self.adapters.for_session(session.id) is not adapter
+                    or adapter._subscription_id != subscription_id
+                    or adapter.session.id != session.id
+                    or adapter.session.metadata.get("subscription_receipt") != receipt
+                    or adapter._connected()
+                ):
+                    raise ValueError("observer lifecycle does not own the current connection")
+
+            validate_adapter()
+            control = await self.store.get_session_control_state(session.id)
+            if control is None:
+                raise ValueError("observer lifecycle session is not published")
+            current = control["session"]
+            if (
+                current.metadata.get("subscription_receipt") != receipt
+                or current.vendor_session_id != session.vendor_session_id
+                or current.harness_type != session.harness_type
+                or not current.project_id
+                or not session.project_id
+                or not _same_project(current.project_id, session.project_id)
+            ):
+                raise ValueError("observer lifecycle durable connection changed")
+            binding = await self.store.project_binding_for_authority(current.project_id)
+            if control["project_binding"] != binding:
+                raise ValueError("observer lifecycle project binding changed")
+            validate_adapter()
+            lifecycle = event.model_copy(deep=True)
+            _redact_event(lifecycle)
+            canonical = await self.store.publish_observer_session(
+                session,
+                expected_control_revision=control["control_revision"],
+                expected_project_binding=binding,
+                lifecycle_event=lifecycle,
+                expected_subscription_id=subscription_id,
+            )
+            if self.adapters.for_session(session.id) is adapter:
+                adapter.session = canonical
+                adapter.sessions[session.id] = canonical
+                adapter._normalizer.sessions[session.id] = canonical
+            stored_event = await self.store.get_event(lifecycle.event_id)
+            if stored_event is None:
+                raise RuntimeError("committed observer lifecycle event is missing")
+            self._schedule_committed_publication("event", stored_event.model_dump(mode="json"))
+
+    async def ingest_shared_codex_event(
+        self, event: HarnessEvent, session: HarnessSession
+    ) -> Intervention | None:
+        """Freeze an actual queued observation, not client-supplied status claims.
+
+        The in-flight object witness is local to the registered adapter. The
+        frozen record survives durable event replay without re-reading a newer
+        adapter runtime state. Store checks the receipt again at acceptance.
+        """
+        from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
+
+        async with self._session_locks_guard:
+            lock = self._session_locks.setdefault(session.id, asyncio.Lock())
+        async with lock:
+            adapter = self.adapters.for_session(session.id)
+            receipt = session.metadata.get("subscription_receipt")
+            if (
+                not isinstance(adapter, CodexSharedAdapter)
+                or adapter._ingesting_observation is None
+                or adapter._ingesting_observation[0] is not event
+                or adapter._ingesting_observation[1] is not session
+                or not adapter._connected()
+                or event.session_id != session.id
+                or event.harness_type != HarnessType.CODEX
+                or session.harness_type != HarnessType.CODEX
+                or not isinstance(receipt, dict)
+                or receipt != adapter.session.metadata.get("subscription_receipt")
+                or event.metadata.get("subscription_id") != adapter._subscription_id
+            ):
+                raise ValueError("shared observation does not own the current ingestion")
+            observed = event.model_copy(deep=True)
+            observed.metadata["pex_observer_snapshot"] = {
+                "schema": "pex.codex-live-observation.v1",
+                "subscription_receipt": dict(receipt),
+                "status": session.status.value,
+                "last_activity": (
+                    session.last_activity.isoformat() if session.last_activity else None
+                ),
+                "observation_coverage": dict(session.metadata["observation_coverage"]),
+            }
+            return await self._ingest_event_locked(observed, session)
+
     async def ingest_event(
         self, event: HarnessEvent, session: HarnessSession
     ) -> Intervention | None:
         if event.session_id != session.id or event.harness_type != session.harness_type:
             raise ValueError("event/session identity mismatch")
+        if "pex_observer_snapshot" in event.metadata:
+            # Only the internal shared adapter callback may attest runtime
+            # state. HTTP/plugin metadata cannot manufacture this authority.
+            raise ValueError("observer snapshots require the internal ingestion path")
         # Multiple hook transports can report the same worker concurrently.
         # Serialize the complete read/decide/act ledger for one exact session so
         # no decision is based on a snapshot that another in-flight event has
@@ -1663,7 +1793,20 @@ class Pipeline:
             session.id,
             require_goal_binding=goal is not None,
         )
-        if event.event_type == EventType.STOP:
+        observation = event.metadata.get("pex_observer_snapshot")
+        if isinstance(observation, dict):
+            if (
+                observation.get("schema") != "pex.codex-live-observation.v1"
+                or session.harness_type != HarnessType.CODEX
+                or observation.get("subscription_receipt")
+                != session.metadata.get("subscription_receipt")
+            ):
+                raise ValueError("accepted shared observation binding is invalid")
+            session.status = SessionStatus(observation["status"])
+            activity = observation["last_activity"]
+            session.last_activity = datetime.fromisoformat(activity) if activity else None
+            session.metadata["observation_coverage"] = dict(observation["observation_coverage"])
+        elif event.event_type == EventType.STOP:
             session.status = SessionStatus.STOPPED
         elif event.event_type == EventType.ERROR:
             session.status = SessionStatus.ERROR
@@ -1931,7 +2074,22 @@ class Pipeline:
         elif event.event_type == EventType.USER_PROMPT:
             lint = lint_prompt(goal, event.message_delta or "", decisions=stored_decisions)
             notes = lint.classification.value
-            if lint.classification is PromptClass.CONTRADICTION and lint.matched_constraints:
+            normalized_codex_user = (
+                event.harness_type == HarnessType.CODEX
+                and event.metadata.get("raw_type") == "userMessage"
+            )
+            content_status = event.metadata.get("content_status")
+            complete_codex_user = (
+                isinstance(content_status, str)
+                and content_status in {"complete", "legacy_top_level"}
+                and event.metadata.get("content_truncated") is False
+                and event.metadata.get("content_redacted") is False
+            )
+            if normalized_codex_user and not complete_codex_user:
+                # Retain the prompt for provenance and stale-action fencing,
+                # but an observed prefix cannot authorize a ledger override.
+                notes = "observed_incomplete_user_input:override_authority_not_established"
+            elif lint.classification is PromptClass.CONTRADICTION and lint.matched_constraints:
                 notes = f"{lint.classification.value}:{lint.matched_constraints[0][:200]}"
             elif lint.classification is PromptClass.OVERRIDE and goal is not None:
                 projections = self._explicit_override_projections(
@@ -1944,7 +2102,9 @@ class Pipeline:
                     decision, context = projections
                     plan_decisions.append(decision)
                     plan_contexts.append(context)
-                notes = f"{lint.classification.value}:recorded"
+                    notes = f"{lint.classification.value}:recorded"
+                else:
+                    notes = "observed_user_input:override_authority_not_established"
         elif event.event_type in {
             EventType.AGENT_RESPONSE,
             EventType.SHELL,
@@ -3570,6 +3730,18 @@ class Pipeline:
     ) -> tuple[Decision, ContextItem] | None:
         """Build the override ledger pair without performing Store writes."""
 
+        if (
+            event.harness_type == HarnessType.CODEX
+            and event.metadata.get("raw_type") == "userMessage"
+        ):
+            content_status = event.metadata.get("content_status")
+            if (
+                not isinstance(content_status, str)
+                or content_status not in {"complete", "legacy_top_level"}
+                or event.metadata.get("content_truncated") is not False
+                or event.metadata.get("content_redacted") is not False
+            ):
+                return None
         prompt, _ = redact_text(event.message_delta or "")
         statement = (prompt or "").strip()[:500]
         if not statement:

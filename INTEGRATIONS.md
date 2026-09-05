@@ -4,6 +4,8 @@ Live capability matrix. Labels are negotiated at runtime. Registration, a binary
 an open port, an initialize response, or an injected test transport alone is never
 proof of observation or control.
 
+Current shared Codex source is a separately confirmed existing-thread observer, with bounded raw proxy transport, read/resume/read reconciliation, attachment recovery and canonical Pipeline/Store observation receipts. It has local fake-vendor/real-Store regression evidence, not installed-runtime proof. Sending, steering, approvals and configuration changes remain disabled. The isolated App Server route is explicitly labeled `isolated=true, existing_worker=false` and cannot replace an active shared connection. Named-project origin, durable/full coverage and installed protected-path prerequisites remain open; see the current handoff. Historical matrix labels below must not be applied to the shared path.
+
 There is **no single connect method**. Cursor is this desktop via hooks. Isolated Codex is App Server JSON-RPC. ChatGPT.exe is observe/focus only. Grok Bot is observe-only. Grok Build is `grok agent stdio`. OpenCode/Qwen are HTTP. Hermes/Kimi/OMP are ACP stdio. Devin is the Organization API. Tailscale is a network overlay for HTTP loopback, not a harness protocol, and is **not installed** on this machine.
 
 Supervisor-model routing is a separate layer from worker harness integration. Settings

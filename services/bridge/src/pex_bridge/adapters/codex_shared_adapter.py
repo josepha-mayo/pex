@@ -1,0 +1,363 @@
+"""Live selected-thread observations; history never becomes synthetic activity.
+
+Worker effects remain disabled until the same-connection delivery/intent fence
+is implemented. This adapter is a connection milestone, not the finished PEX loop.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import hashlib
+from dataclasses import asdict
+from datetime import UTC, datetime
+
+from pex_protocol.capabilities import AdapterCapabilities, AdapterSupportLabel
+from pex_protocol.enums import EventPhase, EventType, HarnessType, SessionStatus
+from pex_protocol.session import HarnessEvent, HarnessSession
+
+from pex_bridge.adapters.base import HarnessAdapter, bounded_observed_text
+from pex_bridge.adapters.codex import CodexAdapter
+from pex_bridge.adapters.codex_subscription import (
+    CodexExistingThreadSubscription,
+    CodexObservedRecord,
+    CodexSubscriptionError,
+)
+
+MAX_PENDING_EVENTS = 256
+MAX_USER_ITEMS = 4096
+DISCONNECT_INGEST_TIMEOUT_SECONDS = 2
+
+
+def _runtime_status(value: str, flags: tuple[str, ...] = ()) -> SessionStatus:
+    if value == "active" and flags:
+        if "waitingOnApproval" in flags:
+            return SessionStatus.BLOCKED
+        # A new vendor flag is not positive evidence of productive work.
+        return SessionStatus.DISCOVERED
+    return {
+        "active": SessionStatus.WORKING,
+        "idle": SessionStatus.IDLE,
+        "systemError": SessionStatus.ERROR,
+        "notLoaded": SessionStatus.DISCOVERED,
+    }.get(value, SessionStatus.DISCOVERED)
+
+
+class CodexSharedAdapter(HarnessAdapter):
+    name = "codex"
+
+    def __init__(self, subscription: CodexExistingThreadSubscription) -> None:
+        state = subscription.state
+        if state is None or not state.active:
+            raise ValueError("shared Codex requires an authorized active subscription")
+        selected = state.selected
+        if selected.pex_session_id != f"codex:{selected.thread_id}":
+            raise ValueError("shared Codex session identity is not canonical")
+        self.subscription = subscription
+        self.transport = subscription.transport
+        self._token = self.transport.connection_token()
+        self._subscription_id = state.receipt.authorization_id
+        self._normalizer = CodexAdapter()
+        self._pump_task: asyncio.Task | None = None
+        self.last_pump_error: str | None = None
+        self.input_revision = 0
+        self.ingress_sequence = 0
+        self.last_ingested_sequence = 0
+        self._ingesting = False
+        self._ingesting_observation: tuple[HarnessEvent, HarnessSession] | None = None
+        self._enqueueing = False
+        self.active_turn_id: str | None = None
+        self._user_items: set[tuple[str, str]] = set()
+        self._pending: asyncio.Queue[tuple[HarnessEvent, HarnessSession]] = asyncio.Queue(
+            maxsize=MAX_PENDING_EVENTS
+        )
+        self._initial = state.reconciliation_records
+        self._invalid = False
+        self.session = HarnessSession(
+            id=selected.pex_session_id,
+            harness_type=HarnessType.CODEX,
+            vendor_session_id=selected.thread_id,
+            project_id=selected.project_id,
+            cwd=selected.cwd,
+            model=selected.model,
+            status=_runtime_status(state.runtime_status, state.runtime_flags),
+            last_activity=None,
+            metadata={
+                "existing_session": True,
+                "connection_kind": "codex_shared",
+                "subscription_receipt": asdict(state.receipt),
+                "history_replayed_as_live": False,
+                "delivery_proven": False,
+                "observation_coverage": self._coverage("observing"),
+            },
+        )
+        self.sessions = {self.session.id: self.session}
+        self._normalizer.sessions[self.session.id] = self.session
+
+    def _coverage(self, state: str, *, reason: str | None = None) -> dict:
+        return {
+            "schema": "pex.codex-observation-coverage.v1",
+            "state": state,
+            "scope": "selected_lifecycle_notifications",
+            "raw_stream_complete": False,
+            "history_replayed_as_live": False,
+            "durable_before_ingest": False,
+            "last_observed_live_sequence": self.ingress_sequence,
+            "last_ingested_live_sequence": self.last_ingested_sequence,
+            "pending_normalized_events": (
+                self._pending.qsize() + int(self._ingesting) + int(self._enqueueing)
+            ),
+            "unobserved_event_count": None,
+            "reason": reason,
+        }
+
+    def _connected(self) -> bool:
+        state = self.subscription.state
+        return bool(
+            not self._invalid
+            and self.transport.initialized
+            and self.transport.connection_token() == self._token
+            and state is not None
+            and state.active
+        )
+
+    async def probe(self) -> AdapterCapabilities:
+        connected = self._connected()
+        pumping = connected and self._pump_task is not None and not self._pump_task.done()
+        return AdapterCapabilities(
+            observe_messages=pumping,
+            observe_tool_calls=False,
+            observe_shell=pumping,
+            observe_file_edits=pumping,
+            observe_session_status=connected,
+            support_label=(
+                AdapterSupportLabel.OBSERVE_ONLY if connected else AdapterSupportLabel.UNAVAILABLE
+            ),
+            trust_level=0.7 if pumping else 0.4 if connected else 0,
+            notes=(
+                "Explicit existing-thread shared subscription. Live item/turn observations only; "
+                "history is not replayed. Worker delivery, approvals and configuration changes "
+                "are disabled pending current-intent/transport fencing. Observation is a "
+                "lifecycle subset, not complete raw capture; disconnect/crash can lose "
+                "buffered events."
+                if connected
+                else "Shared Codex observation lost; explicit reattachment required."
+            ),
+        )
+
+    async def discover_sessions(self) -> list[HarnessSession]:
+        if not self._connected():
+            self.session.status = SessionStatus.DETACHED
+        self.session.capabilities = (await self.probe()).model_dump(mode="json")
+        # Discovery never invents a last-activity timestamp or reconnects a worker.
+        return [self.session.model_copy(deep=True)]
+
+    def _event(self, record: CodexObservedRecord) -> HarnessEvent | None:
+        if record.source != "live_notification" or record.live_sequence is None:
+            raise CodexSubscriptionError("history cannot enter the shared live event pump")
+        envelope = record.payload()
+        params = envelope["params"]
+        self.ingress_sequence = record.live_sequence
+        observed_at = datetime.now(UTC)
+        method = record.method
+        metadata = {
+            "raw_method": method,
+            "source": "codex_shared_live_notification",
+            "observed_at": observed_at.isoformat(),
+            "timestamp_kind": "pex_receipt_time",
+            "connection_generation": self._token[1],
+            "endpoint_identity": self._token[0],
+            "subscription_id": self._subscription_id,
+            "vendor_turn_id": record.turn_id or None,
+            "ingress_sequence": record.live_sequence,
+            "sequence_scope": "retained_lifecycle_records_not_raw_frames",
+            "delivery_proven": False,
+        }
+        event_type = EventType.STATUS
+        phase = EventPhase.DURING
+        error = None
+        event = None
+        if method.startswith("item/"):
+            item = params["item"]
+            is_user = item.get("type") == "userMessage"
+            if method == "item/started" and not is_user:
+                return None
+            if method == "item/started":
+                # Revoke a future delivery fence immediately, but do not mistake
+                # partial user content for the authoritative completed prompt.
+                self.input_revision += 1
+                metadata["human_input_pending"] = True
+            elif is_user:
+                key = (record.turn_id, str(record.item_id))
+                if key in self._user_items:
+                    return None
+                if len(self._user_items) >= MAX_USER_ITEMS:
+                    raise CodexSubscriptionError("shared human input retention bound reached")
+                self._user_items.add(key)
+                self.input_revision += 1
+            if method == "item/completed":
+                event = self._normalizer.normalize_item(
+                    self.session,
+                    item,
+                    event_suffix=record.stable_id,
+                    vendor_turn_id=record.turn_id,
+                )
+        elif method == "turn/started":
+            self.active_turn_id = record.turn_id
+            self.session.status = SessionStatus.WORKING
+        elif method == "turn/completed":
+            turn = params["turn"]
+            status = turn.get("status")
+            raw_error = turn.get("error")
+            error = bounded_observed_text(
+                raw_error.get("message") if isinstance(raw_error, dict) else raw_error,
+                field="Codex turn error",
+            )
+            metadata["turn_status"] = status
+            self.active_turn_id = None
+            event_type, phase = EventType.STOP, EventPhase.TERMINAL
+            # A failed turn isn't a failed thread. Retain independently observed
+            # thread runtime status rather than deriving it from the turn error.
+            # Keep the preceding runtime observation. The coordinator may have
+            # drained later status records already; using its final batch state
+            # here would apply a future observation to this earlier event.
+        elif method == "thread/status/changed":
+            thread = params.get("thread") if isinstance(params.get("thread"), dict) else {}
+            status = params.get("status", thread.get("status"))
+            if not isinstance(status, dict):
+                raise CodexSubscriptionError("shared runtime status is malformed")
+            flags = status.get("activeFlags", [])
+            if not isinstance(flags, list) or any(not isinstance(flag, str) for flag in flags):
+                raise CodexSubscriptionError("shared runtime flags are malformed")
+            self.session.status = _runtime_status(status.get("type", "unknown"), tuple(flags))
+            metadata["runtime_status"] = dict(status)
+        elif method != "thread/started":
+            return None
+        metadata["human_input_revision"] = self.input_revision
+        event_identity = hashlib.sha256(
+            f"{self._subscription_id}:{self._token[0]}:{self._token[1]}:{record.stable_id}".encode()
+        ).hexdigest()
+        if event is None:
+            event = HarnessEvent(
+                event_id=f"codex-shared:{event_identity}",
+                ts=observed_at,
+                harness_type=HarnessType.CODEX,
+                session_id=self.session.id,
+                project_id=self.session.project_id,
+                event_type=event_type,
+                phase=phase,
+                error=error,
+            )
+        else:
+            event.event_id = f"codex-shared:{event_identity}"
+            event.ts = observed_at
+        event.metadata = {**event.metadata, **metadata}
+        if method not in ("thread/status/changed", "thread/started"):
+            self.session.last_activity = observed_at
+        self.session.metadata["observation_coverage"] = self._coverage("observing")
+        return event
+
+    async def _receive(self) -> None:
+        records = self._initial
+        self._initial = ()
+        while True:
+            if not self._connected():
+                raise CodexSubscriptionError("shared Codex connection continuity lost")
+            for record in records:
+                event = self._event(record)
+                if event is not None:
+                    self._enqueueing = True
+                    await self._pending.put((event, self.session.model_copy(deep=True)))
+                    self._enqueueing = False
+            batch = await self.subscription.drain_live()
+            records = batch.records
+            if not records:
+                await asyncio.sleep(0.025)
+
+    async def _consume(self, ingest) -> None:
+        while True:
+            event, session = await self._pending.get()
+            self._ingesting = True
+            self._ingesting_observation = (event, session)
+            if not self._connected():
+                raise CodexSubscriptionError("shared connection lost before event ingestion")
+            while True:
+                if not self._connected():
+                    raise CodexSubscriptionError("shared connection lost during event ingestion")
+                try:
+                    # Keep the exact event and receipt time across a transient
+                    # Store/pipeline failure; its durable acceptance is idempotent.
+                    await ingest(event, session)
+                    self.last_ingested_sequence = event.metadata["ingress_sequence"]
+                    self._ingesting = False
+                    self._ingesting_observation = None
+                    self.last_pump_error = None
+                    break
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    self.last_pump_error = type(exc).__name__
+                    await asyncio.sleep(0.1)
+
+    async def pump_into_pipeline(self, ingest, *, lifecycle_ingest=None) -> None:
+        receiver = asyncio.create_task(self._receive())
+        consumer = asyncio.create_task(self._consume(ingest))
+        try:
+            done, _ = await asyncio.wait((receiver, consumer), return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                task.result()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self.last_pump_error = type(exc).__name__
+        finally:
+            self._invalid = True
+            self.session.status = SessionStatus.DETACHED
+            for task in (receiver, consumer):
+                task.cancel()
+            await asyncio.gather(receiver, consumer, return_exceptions=True)
+            await self.transport.close()
+            self.session.capabilities = (await self.probe()).model_dump(mode="json")
+            state = self.subscription.state
+            reason = (
+                (state.invalidation_reason if state is not None else None)
+                or self.last_pump_error
+                or "observation_stopped"
+            )
+            coverage = self._coverage("disconnected", reason=reason)
+            self.session.metadata["observation_coverage"] = coverage
+            # This is a local coverage/lifecycle receipt, NOT a vendor STOP or
+            # evidence the worker finished. Never advance worker last_activity.
+            disconnected = HarnessEvent(
+                event_id=f"codex-shared-disconnected:{self._subscription_id}",
+                ts=datetime.now(UTC),
+                harness_type=HarnessType.CODEX,
+                session_id=self.session.id,
+                project_id=self.session.project_id,
+                event_type=EventType.STATUS,
+                metadata={
+                    "source": "pex_observer_lifecycle",
+                    "timestamp_kind": "pex_receipt_time",
+                    "subscription_id": self._subscription_id,
+                    "observation_coverage": coverage,
+                    "worker_stopped": False,
+                    "delivery_proven": False,
+                },
+            )
+            try:
+                if lifecycle_ingest is None:
+                    raise RuntimeError("dedicated observer lifecycle sink is unavailable")
+                await asyncio.wait_for(
+                    lifecycle_ingest(disconnected, self.session.model_copy(deep=True)),
+                    timeout=DISCONNECT_INGEST_TIMEOUT_SECONDS,
+                )
+            except Exception as exc:
+                # Store unavailability cannot be reported as durable gap capture.
+                self.last_pump_error = f"disconnect_receipt_{type(exc).__name__}"
+
+    def start_pipeline_pump(self, ingest, *, lifecycle_ingest=None) -> asyncio.Task:
+        if self._pump_task is None:
+            self._pump_task = asyncio.create_task(
+                self.pump_into_pipeline(ingest, lifecycle_ingest=lifecycle_ingest),
+                name="codex-shared-pipeline-pump",
+            )
+        return self._pump_task

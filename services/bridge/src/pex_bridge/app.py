@@ -742,6 +742,9 @@ class AppState:
         self.supervisor_choice: SupervisorChoice | None = None
         self.supervisor_secret_store: SupervisorSecretStore = KeyringSupervisorSecretStore()
         self.supervisor_config_lock = asyncio.Lock()
+        from pex_bridge.codex_shared_attach import SharedCodexAttachments
+
+        self.codex_shared_attachments = SharedCodexAttachments()
         self.hatch = HatchRegistry(self.settings.data_dir / "hatch")
         self.background_tasks: set[asyncio.Task[Any]] = set()
         self.hatch_tasks: dict[str, asyncio.Task[Any]] = {}
@@ -1006,6 +1009,69 @@ async def _attach_verified_http_transport(
     return capabilities
 
 
+async def _attach_isolated_codex(binary: str) -> AdapterCapabilities:
+    """Publish a verified isolated connection without replacing an owned worker."""
+    from pex_bridge.adapters.codex import CodexAdapter, CodexStdioTransport
+
+    manager = state.codex_shared_attachments
+    async with manager.lock:
+        if manager.closed or state.codex_shared_attachments is not manager:
+            raise HTTPException(409, "Codex attachment manager is closed")
+        previous = state.adapters.get("codex")
+        if previous is None:
+            raise HTTPException(404, "adapter not found")
+        if (
+            not isinstance(previous, CodexAdapter)
+            or previous.transport is not None
+            or manager.active is not None
+        ):
+            raise HTTPException(409, "detach the existing Codex connection before attaching")
+
+        candidate = CodexAdapter()
+        transport = CodexStdioTransport(binary)
+        old_pump = previous._pump_task
+        stopped_old_pump = False
+        published = False
+        try:
+            candidate.attach_transport(transport)
+            caps = await _bounded_adapter_probe(candidate)
+            if not transport.initialized or not caps.send_message:
+                raise HTTPException(502, "isolated Codex attach probe failed; candidate discarded")
+            if state.adapters.get("codex") is not previous or previous.transport is not None:
+                raise HTTPException(409, "Codex connection changed during attachment")
+            if old_pump is not None and not old_pump.done():
+                stopped_old_pump = True
+                old_pump.cancel()
+                await asyncio.wait_for(
+                    asyncio.gather(old_pump, return_exceptions=True),
+                    timeout=TRANSPORT_CLOSE_TIMEOUT_SECONDS,
+                )
+            if state.adapters.get("codex") is not previous or previous.transport is not None:
+                raise HTTPException(409, "Codex connection changed during attachment")
+            state.adapters.bind("codex", candidate)
+            published = True
+            candidate.start_pipeline_pump(state.pipeline.ingest_event)
+            # These are the capabilities actually probed before pump startup.
+            # Do not upgrade the response to Deep merely for scheduling a task.
+            return caps
+        except BaseException:
+            if published and state.adapters.get("codex") is candidate:
+                state.adapters.bind("codex", previous)
+            pump = candidate._pump_task
+            if pump is not None:
+                pump.cancel()
+                await asyncio.gather(pump, return_exceptions=True)
+            try:
+                await asyncio.wait_for(
+                    _close_owned_transport(transport),
+                    timeout=TRANSPORT_CLOSE_TIMEOUT_SECONDS,
+                )
+            finally:
+                if stopped_old_pump and state.adapters.get("codex") is previous:
+                    previous.start_pipeline_pump(state.pipeline.ingest_event)
+            raise
+
+
 def _start_event_pumps() -> None:
     for adapter in state.adapters.all():
         starter = getattr(adapter, "start_pipeline_pump", None)
@@ -1041,6 +1107,7 @@ async def _stop_runtime_loop(
 async def _shutdown_runtime_resources() -> None:
     """Cancel runtime work and close adapter-owned transports before Store shutdown."""
 
+    await state.codex_shared_attachments.close_pending()
     await state.pipeline.close_presentations()
     sockets = state.detach_all_event_sockets()
     for socket in sockets:
@@ -2761,6 +2828,10 @@ async def lifespan(app: FastAPI):
         state_lock = _BridgeStateLock(state.store.path)
         state_lock.acquire()
         cleanup.callback(state_lock.release)
+        if state.codex_shared_attachments.closed:
+            from pex_bridge.codex_shared_attach import SharedCodexAttachments
+
+            state.codex_shared_attachments = SharedCodexAttachments()
         cleanup.push_async_callback(state.store.close)
         await state.store.connect()
         recovered_operator_effects = await state.store.recover_interrupted_operator_effects()
@@ -2892,6 +2963,9 @@ def create_app() -> FastAPI:
 
     pex_mcp, pex_mcp_app = build_mcp_server()
     app = FastAPI(title="PEX Bridge", version="0.1.0", lifespan=lifespan)
+    from pex_bridge.codex_shared_attach import register_shared_codex_routes
+
+    register_shared_codex_routes(app, state, _require_token, _require_operator_token)
     app.state.pex_mcp = pex_mcp
 
     @app.exception_handler(RequestValidationError)
@@ -3165,7 +3239,6 @@ def create_app() -> FastAPI:
             _loopback_http_origin,
             opencode_basic_auth,
         )
-        from pex_bridge.adapters.codex import CodexStdioTransport
         from pex_bridge.adapters.discover import prefer_attach_match, probe_local_harnesses
         from pex_bridge.adapters.http_json import LiveHttpTransport
 
@@ -3257,8 +3330,7 @@ def create_app() -> FastAPI:
                     ),
                 )
             elif name == "codex":
-                adapter.attach_transport(CodexStdioTransport(match["bin"]))
-                _start_event_pumps()
+                caps = await _attach_isolated_codex(match["bin"])
             elif name in {"hermes", "kimi", "omp"}:
                 from pex_bridge.adapters.acp_client import StdioAcpTransport
                 from pex_bridge.adapters.hermes_bin import acp_command as hermes_acp
@@ -3276,13 +3348,13 @@ def create_app() -> FastAPI:
                 )
             else:
                 raise HTTPException(400, f"no stdio/ACP attach path for {name}")
-            caps = await _bounded_adapter_probe(adapter) if name == "codex" else caps
             return {
                 "ok": True,
                 "name": name,
                 "kind": match.get("kind"),
                 "bin": match["bin"],
                 "support": caps.support_label.value,
+                **({"isolated": True, "existing_worker": False} if name == "codex" else {}),
             }
         if not hasattr(adapter, "attach_transport"):
             raise HTTPException(400, "adapter cannot attach HTTP")
@@ -3324,7 +3396,6 @@ def create_app() -> FastAPI:
             _loopback_http_origin,
             opencode_basic_auth,
         )
-        from pex_bridge.adapters.codex import CodexStdioTransport
         from pex_bridge.adapters.codex_bin import resolve_codex_bin
         from pex_bridge.adapters.http_json import LiveHttpTransport
 
@@ -3417,15 +3488,15 @@ def create_app() -> FastAPI:
                 )
             except (OSError, ValueError) as exc:
                 raise HTTPException(400, str(exc)) from exc
-            adapter.attach_transport(CodexStdioTransport(binary))
-            _start_event_pumps()
-            caps = await _bounded_adapter_probe(adapter)
+            caps = await _attach_isolated_codex(binary)
             return {
                 "ok": True,
                 "name": name,
                 "kind": "stdio",
                 "bin": binary,
                 "support": caps.support_label.value,
+                "isolated": True,
+                "existing_worker": False,
             }
         if name not in {"opencode", "qwen", "devin"} or not hasattr(
             adapter, "attach_transport"

@@ -2,7 +2,7 @@
 
 ## Target and truth standard
 
-Latest reviewed source push: `125b97649d54902818e36640c6cb50e471ea1406`, exact remote `main` equality verified. Durable dispatch authority repair: 162 tests across seven complete files and 28 compatibility tests across three additional files passed; independent review and scoped Ruff/diff checks passed. Earlier provider/setup gates below apply to their own checkpoint. Preserved unowned `loop.py` edits and agent-owned shared Codex WIP are excluded.
+Current shared-observer source integration and final verification receipt are at the top of `AGENT_HANDOFF.md`. It repairs attachment recovery, runtime/coverage projection and incomplete-input authority; it does not complete live observation, safe delivery or the actual supervisor loop. Previous durable dispatch source push: `125b97649d54902818e36640c6cb50e471ea1406` (162 + 28 distinct compatibility tests at that checkpoint). Preserve unowned `loop.py` edits outside staging. Earlier provider/setup gates below apply to their own checkpoint.
 
 User target: **ship tomorrow, 6 September 2026 (Africa/Lagos)**. This is earlier than the official contest deadline (14 September, 5 PM PDT). Do not use the later contest date to defer essential work.
 
@@ -25,11 +25,13 @@ The app's existing goal remains active. Its available tools allow status changes
 
 ### 1. Finish existing-worker connection integration — NOW
 
-- [ ] Main fully re-reviews hardened shared transport, coordinator, adapter, attachment API and tests together; component reports are not a combined integration pass.
-- [ ] Finish authenticated inspect → explicit confirm → detach/recovery: operator authority, monotonic expiry, exact PEX project/cwd binding, vendor-project namespace separation, retry safety, shutdown cleanup and serialization across legacy/shared attachment routes.
-- [ ] Preserve actual human content and terminal/status semantics; review embedded completion items, queue backpressure and ingestion retries. Persist or disclose disconnect/crash observation gaps; in-memory buffering is not durable complete coverage.
+- [x] Bounded shared source review completed across transport/coordinator/adapter/attachment and existing app/Store/Pipeline changes. Defects reproduced; final combined gate and independent review are recorded in the current handoff. This is not whole-repository or installed-runtime approval.
+- [x] Implement authenticated inspect → explicit confirm → detach/recovery, monotonic expiry, immutable PEX/vendor identity separation, retry safety and legacy/shared serialization. Failed publication restores the prior bare pump; post-commit cancellation settles the new publication.
+- [ ] Complete named-project local-origin/physical binding: two different machine origins with the same lexical path currently both match local cwd. Do not discard origin identity or invent hostname conventions.
+- [x] Preserve observed human content with explicit uncertainty; block HUMAN override authority from incomplete/redacted input while retaining USER_PROMPT records. Separate runtime status, terminal turn and local observer loss through real Store/Pipeline tests.
+- [ ] Preserve valid prefixes when a later drained record fails, complete durable/raw observation, and process-crash recovery. Disconnect gaps are disclosed, but bounded in-memory buffering is not complete coverage or useful-outcome proof.
 - [ ] Resolve a protected executable/endpoint path before authorized installed-runtime testing. Launch validation currently rejects modifiable AppData ancestry; do not weaken it or silently change permissions.
-- [ ] Run combined new-module and existing Codex/pipeline/attachment gates, cross-review and push only verified changes.
+- [x] Run combined new-module and existing Codex/pipeline/attachment gates and cross-review; exact final receipt is in the handoff. Only reviewed paths may be committed/pushed; unowned `loop.py` is excluded.
 
 **Exit:** reviewed recoverable selected-existing-worker observation, then installed-version runtime evidence. Observation is intermediate: shared delivery remains disabled and is required next. A new PEX-owned worker cannot substitute for the user's original session.
 
@@ -93,9 +95,9 @@ The app's existing goal remains active. Its available tools allow status changes
 ### Bounded ownership and execution discipline
 
 - **Main:** shared adapter/API integration, cross-domain review, full-spec audit, runtime/UI verification and final evidence acceptance.
-- **`credential_review`:** hardened shared transport/tests; bounded independent security review after releasing implementation ownership.
-- **`opencode_audit`:** coordinator and attachment manager/tests; only the explicitly delegated app registration call, not other app edits.
-- **`codex_audit`:** documented human-content normalization/tests and independent adapter review.
+- **`transport_review`:** independent shared transport/coordinator review and bounded Store acceptance/projection repair/tests.
+- **`attachment_review`:** manager recovery, coordinator initial runtime flags and independent live-status review.
+- **`legacy_attach_fence`:** legacy attachment/content review and incomplete-input authority repair/tests; only explicitly delegated Pipeline branches.
 - Assign exact non-overlapping files; preserve unexplained `loop.py` changes without staging, cleaning or overwriting them.
 
 **Every repair cycle:** read all three specs, handoff and important files → reproduce → implement with regressions → independent diff review → main integration checks → update coverage/handoff → scoped commit/push → verify remote hash. An agent report alone cannot complete a checkbox.
@@ -104,9 +106,9 @@ The app's existing goal remains active. Its available tools allow status changes
 
 ## Binding inputs and audit discipline
 
-- [x] Prior audit cycle recorded a complete main-agent read of `PEX_CORE_SPEC.md`; this planning update is not a fresh full-read claim.
-- [x] Prior audit cycle recorded a complete main-agent read of `PEX_BUILD_SPEC.md`; reread before the next repair cycle.
-- [x] Prior audit cycle recorded a complete main-agent read of `PEX_IMPLEMENTATION_RECOVERY_SPEC.md`; its real-loop-first requirement still governs execution.
+- [x] Main reread complete `PEX_CORE_SPEC.md` during the current shared integration repair cycle.
+- [x] Main reread complete `PEX_BUILD_SPEC.md`; its full product scope remains required.
+- [x] Main reread complete `PEX_IMPLEMENTATION_RECOVERY_SPEC.md`; real-loop-first still governs execution.
 - [x] Current handoff, status, known failures, architecture decisions, and integration matrix inspected; historical claims are not fresh evidence.
 - [x] Initial tracked/new code and configuration inventory created in `CODE_AUDIT_COVERAGE.md`: 341 paths including tests, integration JS, desktop scripts and release configuration. Every fresh-review status starts pending; excluded generated/raw/asset/document groups need separate targeted coverage.
 - [ ] Independent backend/logic review: supervisor, bridge, protocol, evidence, policy, intent/context, persistence, outcome attribution.

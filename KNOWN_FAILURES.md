@@ -1,5 +1,11 @@
 # Known failures
 
+## Current shared-observer limits — 5 Sep 2026
+
+Shared attachment, legacy-route serialization, failed-publication pump restoration, cancellation settlement, disconnect-vs-worker semantics, runtime projection and incomplete-input override authority have bounded source repairs with real-Store regressions. The final receipt is in `docs/AGENT_HANDOFF.md`; earlier unintegrated-WIP descriptions below are historical.
+
+Still required: named local project origin/physical binding (same path on two machine origins is not the same workspace); preserve validated live prefixes before later malformed/closure records; durable complete event coverage; installed-version schema/executable/endpoint validation; actual current-epoch/current-input safe same-worker control. Shared delivery/approval/configuration remain unavailable. Post-commit task cancellation recovery is not process-crash recovery. The lifecycle stream excludes raw diagnostic/delta/token/approval frames and reports unknown loss rather than complete coverage. Conservative existing redaction-marker handling may withhold override authority for literal marker text; it never silently authorizes from a partial prompt. Live Strands effectiveness, UI, build, all eight pets, benchmarks and submission remain unverified.
+
 ## Dispatch authority repair and remaining races — 5 Sep 2026
 
 The bounded Store repair now rejects changed goal intent, session pause/resume, target cwd ABA and later accepted human input, without cancelling plans on routine discovery refresh. It also prevents stale event plans from restoring an old cwd. See the handoff for regressions and final integration/push receipt. This does not yet fence actual transport reconnects, raw unaccepted input, global pause/resume ABA or changes after a dispatch claim commits. Codex content normalization, active-steer/idle-continue separation and configuration-preserving same-worker delivery remain required. Shared connector/coordinator work is uncommitted and unintegrated; no live supervision claim follows.

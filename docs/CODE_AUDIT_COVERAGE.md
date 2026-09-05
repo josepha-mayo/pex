@@ -6,6 +6,29 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Shared observer source and intent-authority addendum — 5 Sep
+
+New paths below are additions to the historical inventory, not a fresh exhaustive count. Full module review by the transport/attachment owners and main's integration/diff review cover the bounded new shared source; existing huge app/pipeline/Store/Codex files received changed-path review, not whole-file approval. Independent reviewers reproduced recovery, false-status and partial-input authority bugs and reviewed their repairs. The final complete-file integration gate is in the current handoff. No live worker, provider, UI or complete-trajectory claim follows. Origin binding, lost batch prefixes, raw/durable capture and same-worker control remain open.
+
+| New path | Bounded review scope |
+| --- | --- |
+| `services/bridge/src/pex_bridge/adapters/codex_shared.py` | Full transport owner and independent review; framing, RPC identity, protected paths, owned connector cleanup; installed runtime unproven |
+| `services/bridge/src/pex_bridge/adapters/codex_subscription.py` | Full coordinator review; exact selection, history/live reconciliation, closure and runtime flags; prefix-loss limit explicit |
+| `services/bridge/src/pex_bridge/adapters/codex_shared_adapter.py` | Main full read plus independent lifecycle/status review; bounded buffering, retry, witness-bound ingestion, no worker effects |
+| `services/bridge/src/pex_bridge/codex_shared_attach.py` | Main and attachment owner full read; auth, expiry, CAS, cancellation and prior-pump recovery; origin gap retained |
+| `tests/unit/test_codex_shared_transport.py` | Full transport review; fake process/protocol regressions and read-only native ACL probes |
+| `tests/unit/test_codex_subscription.py` | Coordinator owner full review; fake selected worker and strict lifecycle/runtime cases |
+| `tests/unit/test_codex_shared_adapter.py` | Main full read; actual pump with fake vendor and controlled sinks |
+| `tests/unit/test_codex_shared_attach.py` | Owner full review; main reviewed CAS/recovery/cancellation regressions; authenticated API fixtures, real Store |
+| `tests/unit/test_codex_attach_serialization.py` | Legacy owner full review; independent final compatibility run, no real worker spawn |
+| `tests/unit/test_codex_user_content.py` | Main and content reviewer full read; exact content, uncertainty and upstream redaction |
+| `tests/unit/test_codex_partial_intent.py` | Main and reviewer full read; real Store negative authority cases and complete-input positive controls |
+| `tests/unit/test_observer_session_publication.py` | Main and Store reviewer full read; CAS, human-control retention, acceptance race and canonical projection |
+| `tests/unit/test_observer_lifecycle_pipeline.py` | Main and lifecycle reviewer full read; real record-only disconnect and current-incarnation protection |
+| `tests/unit/test_codex_shared_status_pipeline.py` | Main full read and independent runtime review; real Pipeline/Store state, activity and ordered batch projections |
+
+Unowned `services/supervisor/src/pex_supervisor/loop.py` remains outside the reviewed source checkpoint.
+
 ### Durable dispatch authority addendum — 5 Sep
 
 Main and independent credential reviewer reviewed the bounded `store.py` schema/migration, atomic event acceptance, main-effect claim, session-control revision and event-projection changes. Main fully read new `tests/unit/test_generic_dispatch_authority.py`; independent reviewer ran all 14 cases and approved the final diff. Pre-fix source loaded in memory reproduced stale grants, without changing the checkout or invoking external effects. Final integration/push receipt is in the current handoff. This is not full-file review of the large Store module or proof of transport concurrency safety.

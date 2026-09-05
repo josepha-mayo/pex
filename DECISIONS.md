@@ -1,5 +1,13 @@
 # DECISIONS
 
+## 5 Sep 2026 — Observer state is not worker activity or control authority
+
+Existing-thread Codex observations use a dedicated internal callback with an in-flight adapter object witness. It freezes a per-event runtime/activity/coverage snapshot; generic HTTP/plugin ingestion cannot supply that reserved marker. SQLite rechecks the durable subscription receipt and cwd, then projects from the canonical accepted event rather than current mutable adapter state or arbitrary planned metadata. Thread runtime and turn terminal status remain independent. Local observer loss is atomic record-only state, never a synthetic worker STOP or supervisor trigger. A new observer incarnation preserves current human goal/pause and revokes old session-control authority; task cancellation settles publication, but process-crash recovery remains required.
+
+Normalized human input is evidence, not automatic authorization: incomplete, truncated, malformed or redacted Codex content cannot create an explicit HUMAN override. It remains a USER_PROMPT observation for provenance and stale-action fencing. Existing redaction markers conservatively retain uncertainty even when text was redacted upstream.
+
+This source checkpoint deliberately does not certify full raw/durable coverage or same-worker delivery. Complete supervision still requires the real Strands/evidence/decision/policy/action/outcome loop. Current protocol reference: [official Codex App Server documentation](https://learn.chatgpt.com/docs/app-server).
+
 ## D1 — Local bridge is the side-effect authority
 The Strands/AgentCore supervisor proposes typed actions. The local Python bridge enforces policy, redacts secrets, and executes adapter calls. Cloud cannot bypass this.
 

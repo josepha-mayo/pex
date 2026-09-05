@@ -1496,6 +1496,146 @@ class CodexAdapter(HarnessAdapter):
             return False
         return True
 
+    @staticmethod
+    def _bounded_user_message_text(raw: object) -> tuple[str | None, bool, bool]:
+        """Return an exact bounded prefix plus truncation/redaction facts."""
+
+        if not isinstance(raw, str) or not raw or "\x00" in raw:
+            return None, False, False
+        truncated = len(raw) > MAX_ADAPTER_MESSAGE_CHARS
+        prefix = raw[:MAX_ADAPTER_MESSAGE_CHARS]
+        observed = bounded_observed_text(
+            prefix,
+            field="Codex user message",
+            max_chars=MAX_ADAPTER_MESSAGE_CHARS,
+        )
+        return observed, truncated, observed is not None and (
+            observed != prefix or "[REDACTED:" in prefix
+        )
+
+    @classmethod
+    def _normalize_user_message_content(
+        cls,
+        item: dict[str, Any],
+    ) -> tuple[str | None, dict[str, Any]]:
+        """Normalize documented userMessage content without inventing text."""
+
+        max_parts = 128
+        metadata: dict[str, Any] = {
+            "role": "user",
+            "message_provenance": "codex_app_server.userMessage.content",
+            "content_status": "missing",
+            "content_part_count": 0,
+            "content_parts_observed": 0,
+            "text_parts_observed": 0,
+            "unsupported_content_parts": 0,
+            "malformed_content_parts": 0,
+            "content_truncated": False,
+            "content_redacted": False,
+        }
+        if "content" not in item:
+            raw_text = item.get("text")
+            raw_message = item.get("message")
+            raw = raw_text or raw_message
+            if raw in (None, ""):
+                return None, metadata
+            field = "text" if raw_text else "message"
+            message, truncated, redacted = cls._bounded_user_message_text(raw)
+            metadata.update(
+                {
+                    "message_provenance": f"codex_app_server.userMessage.{field}",
+                    "content_status": (
+                        "truncated"
+                        if message is not None and truncated
+                        else "legacy_top_level"
+                        if message is not None
+                        else "malformed"
+                    ),
+                    "content_truncated": truncated,
+                    "content_redacted": redacted,
+                }
+            )
+            return message, metadata
+
+        content = item.get("content")
+        if not isinstance(content, list):
+            metadata["content_status"] = "malformed"
+            return None, metadata
+        metadata["content_part_count"] = len(content)
+        if len(content) > max_parts:
+            metadata["content_truncated"] = True
+
+        chunks: list[str] = []
+        remaining = MAX_ADAPTER_MESSAGE_CHARS
+        unsupported_types: list[str] = []
+        for part in content[:max_parts]:
+            metadata["content_parts_observed"] += 1
+            if not isinstance(part, dict):
+                metadata["malformed_content_parts"] += 1
+                continue
+            part_type = part.get("type")
+            if part_type != "text":
+                if not isinstance(part_type, str) or not part_type:
+                    metadata["malformed_content_parts"] += 1
+                    continue
+                metadata["unsupported_content_parts"] += 1
+                try:
+                    bounded_type = bounded_adapter_id(
+                        part_type,
+                        field="Codex user content type",
+                    )
+                except ValueError:
+                    metadata["malformed_content_parts"] += 1
+                    metadata["unsupported_content_parts"] -= 1
+                    continue
+                if bounded_type not in unsupported_types and len(unsupported_types) < 16:
+                    unsupported_types.append(bounded_type)
+                continue
+            raw_text = part.get("text")
+            if not isinstance(raw_text, str) or "\x00" in raw_text:
+                metadata["malformed_content_parts"] += 1
+                continue
+            metadata["text_parts_observed"] += 1
+            if not raw_text:
+                continue
+            if remaining <= 0:
+                metadata["content_truncated"] = True
+                continue
+            prefix = raw_text[:remaining]
+            chunks.append(prefix)
+            remaining -= len(prefix)
+            if len(prefix) != len(raw_text):
+                metadata["content_truncated"] = True
+
+        if unsupported_types:
+            metadata["unsupported_content_types"] = unsupported_types
+        raw_message = "".join(chunks)
+        message = bounded_observed_text(
+            raw_message,
+            field="Codex user message content",
+            max_chars=MAX_ADAPTER_MESSAGE_CHARS,
+        )
+        metadata["content_redacted"] = message is not None and (
+            message != raw_message or "[REDACTED:" in raw_message
+        )
+        has_unsupported = bool(
+            metadata["unsupported_content_parts"]
+            or metadata["malformed_content_parts"]
+        )
+        if metadata["content_truncated"]:
+            metadata["content_status"] = "truncated"
+        elif message is not None and has_unsupported:
+            metadata["content_status"] = "partial_unsupported"
+        elif message is not None:
+            metadata["content_status"] = "complete"
+        elif metadata["malformed_content_parts"]:
+            metadata["content_status"] = "malformed"
+        elif metadata["unsupported_content_parts"]:
+            metadata["content_status"] = "unsupported"
+        else:
+            metadata["content_status"] = "empty"
+        return message, metadata
+
     def normalize_item(
         self,
         session: HarnessSession,
@@ -1542,7 +1682,10 @@ class CodexAdapter(HarnessAdapter):
                 if isinstance(path, str) and path:
                     files.append(_bounded_path(path))
         message = None
-        if kind in {"agentMessage", "userMessage", "reasoning"}:
+        message_metadata: dict[str, Any] = {}
+        if kind == "userMessage":
+            message, message_metadata = self._normalize_user_message_content(item)
+        elif kind in {"agentMessage", "reasoning"}:
             raw = item.get("text") or item.get("message")
             if isinstance(raw, str) and raw:
                 message = bounded_observed_text(
@@ -1602,7 +1745,11 @@ class CodexAdapter(HarnessAdapter):
             file_paths=files,
             error=error,
             process_state=process_state,
-            metadata={"raw_type": kind, "vendor_turn_id": vendor_turn_id},
+            metadata={
+                "raw_type": kind,
+                "vendor_turn_id": vendor_turn_id,
+                **message_metadata,
+            },
         )
 
     async def pump_into_pipeline(self, ingest) -> None:

@@ -4360,6 +4360,8 @@ def _merge_event_session_projection(
     processing: dict[str, Any],
     current: HarnessSession | None,
     planned: HarnessSession,
+    *,
+    event: HarnessEvent | None = None,
 ) -> HarnessSession:
     """Apply event-owned state without rolling back newer adapter/control state."""
 
@@ -4367,7 +4369,10 @@ def _merge_event_session_projection(
         raise ValueError("event session projection binding mismatch")
     if planned.harness_type.value != processing["harness_type"]:
         raise ValueError("event session projection harness mismatch")
+    observer = event.metadata.get("pex_observer_snapshot") if event is not None else None
     if current is None:
+        if observer is not None:
+            raise ValueError("observer projection lost its durable session")
         return planned.model_copy(deep=True)
     if current.harness_type != planned.harness_type:
         raise ValueError("event session projection cannot change harness identity")
@@ -4381,6 +4386,23 @@ def _merge_event_session_projection(
         raise ValueError("event session projection cannot change project identity")
 
     accepted = processing.get("accepted_session")
+    accepted_metadata = accepted.metadata if accepted is not None else {}
+    if accepted is not None and (
+        current.cwd != accepted.cwd
+        or current.metadata.get("subscription_receipt")
+        != accepted_metadata.get("subscription_receipt")
+    ):
+        # A new target or observer incarnation owns all of its presentation
+        # state, even when status/activity/capabilities happen to be identical.
+        return current.model_copy(deep=True)
+    observer_matches = bool(
+        isinstance(observer, dict)
+        and observer.get("schema") == "pex.codex-live-observation.v1"
+        and isinstance(observer.get("subscription_receipt"), dict)
+        and observer["subscription_receipt"]
+        and observer["subscription_receipt"] == current.metadata.get("subscription_receipt")
+        and observer["subscription_receipt"] == accepted_metadata.get("subscription_receipt")
+    )
     current_newer = bool(
         current.last_activity
         and (
@@ -4407,15 +4429,28 @@ def _merge_event_session_projection(
     # has not changed since acceptance.  This applies the event delta without
     # allowing a stale plan to erase newer adapter/control metadata.
     merged.metadata = dict(current.metadata)
-    accepted_metadata = accepted.metadata if accepted is not None else {}
     for key, value in planned.metadata.items():
+        if key == "observation_coverage":
+            # Only the canonical trusted event can advance observer coverage.
+            continue
         if key not in _EVENT_SESSION_METADATA_KEYS:
             if key not in merged.metadata:
                 merged.metadata[key] = value
             continue
         if current.metadata.get(key) == accepted_metadata.get(key):
             merged.metadata[key] = value
-    if accepted is not None and current.status == accepted.status:
+    if (
+        observer_matches
+        and not current_newer
+        and current.metadata.get("observation_coverage")
+        == accepted_metadata.get("observation_coverage")
+    ):
+        merged.metadata["observation_coverage"] = json.loads(
+            _canonical_json(observer["observation_coverage"])
+        )
+    if accepted is not None and current.status == accepted.status and not (
+        observer_matches and current_newer
+    ):
         merged.status = planned.status
     if current.last_activity and (
         merged.last_activity is None
@@ -10991,6 +11026,176 @@ class Store:
                 await tx.rollback()
                 raise
 
+    async def publish_observer_session(
+        self,
+        session: HarnessSession,
+        *,
+        expected_control_revision: int | None,
+        expected_project_binding: str,
+        lifecycle_event: HarnessEvent | None = None,
+        expected_subscription_id: str | None = None,
+    ) -> HarnessSession:
+        """CAS-publish an explicitly selected observer without inventing activity.
+
+        Unlike ordinary discovery, connection publication must not silently skip
+        a new receipt because an older session has a real activity timestamp.
+        The caller serializes registry changes; this transaction fences durable
+        project, target and user-control changes while subscription was awaited.
+        It does not authorize worker effects or prove transport continuity.
+        """
+
+        _validate_store_id(session.id, label="observer session id")
+        if expected_control_revision is not None and (
+            type(expected_control_revision) is not int or expected_control_revision < 0
+        ):
+            raise ValueError("observer control revision is invalid")
+        expected_binding = validate_project_binding(expected_project_binding)
+        incoming = session.model_copy(deep=True)
+        incoming_project = _session_project(incoming)
+        lifecycle = lifecycle_event.model_copy(deep=True) if lifecycle_event is not None else None
+        if (lifecycle is None) != (expected_subscription_id is None):
+            raise ValueError("observer lifecycle requires exact subscription authority")
+        if lifecycle is not None:
+            _validate_store_id(lifecycle.event_id, label="observer lifecycle event id")
+            if (
+                not isinstance(expected_subscription_id, str)
+                or not expected_subscription_id
+                or lifecycle.session_id != incoming.id
+                or lifecycle.harness_type != incoming.harness_type
+                or lifecycle.event_type != EventType.STATUS
+                or lifecycle.metadata.get("source") != "pex_observer_lifecycle"
+                or lifecycle.metadata.get("subscription_id") != expected_subscription_id
+                or lifecycle.metadata.get("worker_stopped") is not False
+                or incoming.status != SessionStatus.DETACHED
+            ):
+                raise ValueError("observer lifecycle identity or status is invalid")
+
+        def canonical_cwd(value: str | None) -> str:
+            if not isinstance(value, str) or not value or not Path(value).is_absolute():
+                raise ValueError("observer session requires an absolute local cwd")
+            return os.path.normcase(str(Path(value).resolve()))
+
+        target_cwd = canonical_cwd(incoming.cwd)
+        async with aiosqlite.connect(self.path, timeout=5.0) as tx:
+            await _configure_connection(tx)
+            await tx.execute("BEGIN IMMEDIATE")
+            try:
+                if await _project_binding_snapshot(tx, incoming_project) != expected_binding:
+                    raise ValueError("observer project identity changed")
+                cur = await tx.execute("SELECT * FROM sessions WHERE id = ?", (incoming.id,))
+                row = await cur.fetchone()
+                if (row is None) != (expected_control_revision is None):
+                    raise ValueError("observer session existence changed")
+                if row is None:
+                    if lifecycle is not None:
+                        raise ValueError("observer lifecycle cannot create a session")
+                    # Observation cannot create a goal attachment or pause policy.
+                    if incoming.goal_id is not None or incoming.supervision_paused:
+                        raise ValueError("new observer cannot assign user control state")
+                    await tx.execute(
+                        "INSERT INTO sessions("
+                        "id, vendor_session_id, harness_type, revision, control_revision, "
+                        "project_binding, discovery_generation, json) "
+                        "VALUES (?, ?, ?, 0, 0, ?, ?, ?)",
+                        (
+                            incoming.id,
+                            incoming.vendor_session_id,
+                            incoming.harness_type.value,
+                            expected_binding,
+                            _session_discovery_generation(incoming),
+                            _dump(incoming),
+                        ),
+                    )
+                else:
+                    if row["control_revision"] != expected_control_revision:
+                        raise ValueError("observer session control changed")
+                    current, stored_binding = await _load_bound_session(tx, incoming.id)
+                    if lifecycle is not None:
+                        receipt = current.metadata.get("subscription_receipt")
+                        proposed_receipt = incoming.metadata.get("subscription_receipt")
+                        if (
+                            not isinstance(receipt, dict)
+                            or receipt.get("authorization_id") != expected_subscription_id
+                            or receipt != proposed_receipt
+                        ):
+                            raise ValueError("observer subscription changed")
+                        # A local observation failure is not worker progress.
+                        incoming.last_activity = current.last_activity
+                        lifecycle.goal_id = current.goal_id
+                        if lifecycle.project_id is not None and (
+                            await _project_binding_snapshot(tx, lifecycle.project_id)
+                            != expected_binding
+                        ):
+                            raise ValueError("observer lifecycle project changed")
+                        lifecycle.project_id = current.project_id or current.cwd
+                    if (
+                        current.harness_type != incoming.harness_type
+                        or current.vendor_session_id != incoming.vendor_session_id
+                        or canonical_cwd(current.cwd) != target_cwd
+                    ):
+                        raise ValueError("observer session target changed")
+                    if (
+                        await _project_binding_snapshot(tx, _session_project(current))
+                        != expected_binding
+                        or stored_binding != expected_binding
+                    ):
+                        raise ValueError("observer stored project identity changed")
+                    incoming.project_id = current.project_id
+                    incoming.cwd = current.cwd
+                    incoming.goal_id = current.goal_id
+                    incoming.supervision_paused = current.supervision_paused
+                    incoming.repo = current.repo or incoming.repo
+                    incoming.branch = current.branch or incoming.branch
+                    incoming.local_window_id = current.local_window_id or incoming.local_window_id
+                    incoming.external_url = current.external_url or incoming.external_url
+                    if current.last_activity is not None and (
+                        incoming.last_activity is None
+                        or _time_key(current.last_activity) > _time_key(incoming.last_activity)
+                    ):
+                        incoming.last_activity = current.last_activity
+                    observer_metadata_keys = {
+                        "existing_session", "connection_kind", "subscription_receipt",
+                        "history_replayed_as_live", "delivery_proven", "observation_coverage",
+                    }
+                    incoming.metadata = {
+                        **current.metadata,
+                        **{
+                            key: value for key, value in incoming.metadata.items()
+                            if key in observer_metadata_keys
+                        },
+                    }
+                    attention = current.metadata.get("human_decision_attention")
+                    if attention is not None:
+                        incoming.metadata["human_decision_attention"] = attention
+                    # A new observer incarnation revokes previously accepted
+                    # action authority even when its visible cwd/goal is equal.
+                    await tx.execute(
+                        "UPDATE sessions SET json = ?, revision = revision + 1, "
+                        "control_revision = control_revision + 1, project_binding = ?, "
+                        "discovery_generation = ? WHERE id = ?",
+                        (
+                            _dump(incoming),
+                            expected_binding,
+                            _session_discovery_generation(incoming),
+                            incoming.id,
+                        ),
+                    )
+                if lifecycle is not None:
+                    # The existing SQL trigger binds this as record_only_complete.
+                    # No semantic plan or worker-effect reservation is created.
+                    await tx.execute(
+                        "INSERT INTO events(event_id, session_id, ts, json) VALUES (?, ?, ?, ?)",
+                        (
+                            lifecycle.event_id, incoming.id,
+                            lifecycle.ts.isoformat(), _dump(lifecycle),
+                        ),
+                    )
+                await tx.commit()
+                return incoming
+            except BaseException:
+                await tx.rollback()
+                raise
+
     async def get_session(self, session_id: str) -> HarnessSession | None:
         cur = await self.db.execute("SELECT json FROM sessions WHERE id = ?", (session_id,))
         row = await cur.fetchone()
@@ -16301,6 +16506,45 @@ class Store:
                     else None
                 )
                 stored_session_binding: str | None = None
+                if "pex_observer_snapshot" in event.metadata:
+                    observer = event.metadata["pex_observer_snapshot"]
+                    if (
+                        not isinstance(observer, dict)
+                        or observer.get("schema") != "pex.codex-live-observation.v1"
+                        or event.harness_type != HarnessType.CODEX
+                        or stored_session is None
+                        or session_snapshot is None
+                    ):
+                        raise ValueError("trusted observer snapshot has no durable session")
+                    observer_receipt = observer.get("subscription_receipt")
+                    if (
+                        not isinstance(observer_receipt, dict)
+                        or not observer_receipt
+                        or observer_receipt != stored_session.metadata.get("subscription_receipt")
+                        or observer_receipt != session_snapshot.metadata.get("subscription_receipt")
+                        or stored_session.cwd != session_snapshot.cwd
+                    ):
+                        raise ValueError("trusted observer subscription changed before acceptance")
+                    if (
+                        set(observer) != {
+                            "schema", "subscription_receipt", "status", "last_activity",
+                            "observation_coverage",
+                        }
+                        or not isinstance(observer.get("status"), str)
+                        or observer["status"] not in {status.value for status in SessionStatus}
+                        or not isinstance(observer.get("observation_coverage"), dict)
+                    ):
+                        raise ValueError("trusted observer snapshot projection mismatch")
+                    observer_activity = observer.get("last_activity")
+                    if observer_activity is not None:
+                        if not isinstance(observer_activity, str):
+                            raise ValueError("trusted observer activity must be ISO text")
+                        try:
+                            parsed_activity = datetime.fromisoformat(observer_activity)
+                        except ValueError as exc:
+                            raise ValueError("trusted observer activity is invalid") from exc
+                        if parsed_activity.tzinfo is None:
+                            raise ValueError("trusted observer activity requires timezone")
                 if stored_session is not None:
                     if (
                         stored_session.id != session_row["id"]
@@ -20454,10 +20698,17 @@ class Store:
                     if session_row is not None
                     else None
                 )
+                canonical_event_cursor = await transaction.execute(
+                    "SELECT json FROM events WHERE event_id = ?", (event_id,),
+                )
+                canonical_event_row = await canonical_event_cursor.fetchone()
+                if canonical_event_row is None:
+                    raise RuntimeError("accepted event disappeared before session projection")
                 planned_session = _merge_event_session_projection(
                     processing,
                     stored_session,
                     session,
+                    event=HarnessEvent.model_validate_json(canonical_event_row["json"]),
                 )
                 planned_generation = _session_discovery_generation(planned_session)
                 if session_row is None:
@@ -21417,10 +21668,17 @@ class Store:
                         )
                     ):
                         raise ValueError("event finalization project binding mismatch")
+                    canonical_event_cursor = await transaction.execute(
+                        "SELECT json FROM events WHERE event_id = ?", (event_id,),
+                    )
+                    canonical_event_row = await canonical_event_cursor.fetchone()
+                    if canonical_event_row is None:
+                        raise RuntimeError("accepted event disappeared before session projection")
                     finalized_session = _merge_event_session_projection(
                         processing,
                         current_session,
                         session,
+                        event=HarnessEvent.model_validate_json(canonical_event_row["json"]),
                     )
                     await transaction.execute(
                         "UPDATE sessions SET json = ?, revision = revision + 1 WHERE id = ?",
