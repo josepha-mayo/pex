@@ -2,7 +2,7 @@
 
 ## Target and truth standard
 
-Latest reviewed source push: `67168204b11331a4a3db21b20e09a6900f3bbec5`, exact remote `main` equality verified. Source gates below apply to that checkpoint, not to the preserved unowned `loop.py` edits.
+Latest reviewed source push: `125b97649d54902818e36640c6cb50e471ea1406`, exact remote `main` equality verified. Durable dispatch authority repair: 162 tests across seven complete files and 28 compatibility tests across three additional files passed; independent review and scoped Ruff/diff checks passed. Earlier provider/setup gates below apply to their own checkpoint. Preserved unowned `loop.py` edits and agent-owned shared Codex WIP are excluded.
 
 User target: **ship tomorrow, 6 September 2026 (Africa/Lagos)**. This is earlier than the official contest deadline (14 September, 5 PM PDT). Do not use the later contest date to defer essential work.
 

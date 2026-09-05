@@ -2,7 +2,7 @@
 
 ## CURRENT REPAIR — 5 Sep 2026 — durable dispatch authority
 
-**Active goal; overall NO-GO.** Main implemented the first authority repair in `services/bridge/src/pex_bridge/store.py`, with 14 new cases in `tests/unit/test_generic_dispatch_authority.py`. This is a bounded backend repair, not a live independent-supervisor or release receipt. Main's stable seven-file integration gate passed **162 tests in 194.86 seconds**; scoped Ruff and whitespace checks passed. Source push receipt follows once verified.
+**Active goal; overall NO-GO.** Main implemented the first authority repair in `services/bridge/src/pex_bridge/store.py`, with 14 new cases in `tests/unit/test_generic_dispatch_authority.py`. This is a bounded backend repair, not a live independent-supervisor or release receipt. Main's stable seven-file integration gate passed **162 tests in 194.86 seconds**; scoped Ruff and whitespace checks passed. Reviewed source is pushed as **`125b97649d54902818e36640c6cb50e471ea1406`**; main verified exact HEAD/remote equality. This receipt is a documentation-only follow-up; agent-owned shared Codex files and unowned `loop.py` remain outside the source checkpoint.
 
 ### What changed and why
 
