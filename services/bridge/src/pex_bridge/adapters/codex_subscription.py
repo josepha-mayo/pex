@@ -349,9 +349,10 @@ def _runtime_flags(value: object | None) -> tuple[str, ...]:
 
 
 def _is_truncated(container: dict[str, Any]) -> bool:
-    if container.get("truncated") is True or container.get("hasMore") is True:
-        return True
-    if container.get("has_more") is True:
+    for flag in ("truncated", "hasMore", "has_more", "redacted"):
+        if flag in container and container[flag] is not False:
+            return True
+    if "content_status" in container and container["content_status"] != "complete":
         return True
     next_cursor = container.get("nextCursor")
     legacy_cursor = container.get("next_cursor")
@@ -446,6 +447,8 @@ def _parse_snapshot(response: object, *, require_history: bool = True) -> _Threa
     thread = frozen.get("thread")
     if not isinstance(thread, dict):
         raise CodexSubscriptionError("Codex thread response omitted the thread")
+    if _is_truncated(thread):
+        raise CodexSubscriptionError("Codex thread history is truncated")
     thread_id = _bounded_id(thread.get("id"), "Codex thread id")
     root_session_id = _bounded_id(
         _one_consistent(

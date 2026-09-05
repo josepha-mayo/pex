@@ -2514,6 +2514,39 @@ def _canonical_json(value: Any) -> str:
     )
 
 
+def _validate_observer_input_baseline(value: Any) -> None:
+    """Validate content-free event evidence, never grant dispatch authority."""
+    if (
+        not isinstance(value, dict)
+        or set(value) != {
+            "schema", "complete", "digest", "revision", "external_count", "pending_count", "reason",
+        }
+        or value.get("schema") != "pex.codex-input-baseline.v1"
+        or type(value.get("complete")) is not bool
+        or type(value.get("revision")) is not int
+        or not 0 <= value["revision"] <= 2**63 - 1
+        or any(
+            type(value.get(key)) is not int or not 0 <= value[key] <= 4096
+            for key in ("external_count", "pending_count")
+        )
+    ):
+        raise ValueError("observer input baseline shape or bounds are invalid")
+    digest, reason = value["digest"], value["reason"]
+    if value["complete"]:
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+            or value["pending_count"] != 0
+            or reason is not None
+        ):
+            raise ValueError("complete observer input baseline is invalid")
+    elif (
+        digest is not None or not isinstance(reason, str) or not reason or len(reason) > 160
+    ):
+        raise ValueError("incomplete observer input baseline is invalid")
+
+
 def _accepted_fingerprint_cohort(
     row: aiosqlite.Row,
     *,
@@ -11668,7 +11701,7 @@ class Store:
                 or type(sequence) is not int
                 or not last_sequence < sequence <= 2**63 - 1
                 or not isinstance(marker, dict)
-                or set(marker) != snapshot_keys
+                or set(marker) - {"input_baseline"} != snapshot_keys
                 or marker.get("schema") != "pex.codex-live-observation.v1"
                 or marker.get("subscription_receipt") != receipt
                 or _canonical_json(marker.get("workspace_binding"))
@@ -11679,6 +11712,8 @@ class Store:
                 or frozen.ts.utcoffset() is None
             ):
                 raise ValueError("observer retention event identity, order or snapshot is invalid")
+            if "input_baseline" in marker:
+                _validate_observer_input_baseline(marker["input_baseline"])
             activity = marker["last_activity"]
             if activity is not None:
                 if not isinstance(activity, str):
@@ -17131,12 +17166,14 @@ class Store:
                     if "workspace_binding" in stored_session.metadata:
                         expected_observer_keys.add("workspace_binding")
                     if (
-                        set(observer) != expected_observer_keys
+                        set(observer) - {"input_baseline"} != expected_observer_keys
                         or not isinstance(observer.get("status"), str)
                         or observer["status"] not in {status.value for status in SessionStatus}
                         or not isinstance(observer.get("observation_coverage"), dict)
                     ):
                         raise ValueError("trusted observer snapshot projection mismatch")
+                    if "input_baseline" in observer:
+                        _validate_observer_input_baseline(observer["input_baseline"])
                     if "workspace_binding" in stored_session.metadata and (
                         _canonical_json(observer.get("workspace_binding"))
                         != _canonical_json(stored_session.metadata["workspace_binding"])

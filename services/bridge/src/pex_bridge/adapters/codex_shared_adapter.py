@@ -25,6 +25,7 @@ from pex_bridge.adapters.codex_subscription import (
     CodexSubscriptionError,
 )
 from pex_bridge.codex_correction import CodexCorrectionMultiplicityError, canonical
+from pex_bridge.codex_input_baseline import CodexInputBaseline, CodexInputBaselineSnapshot
 from pex_bridge.codex_input_provenance import CodexInputClassification, CodexInputProvenance
 from pex_bridge.workspace_binding import WorkspaceAuthorityError
 
@@ -61,6 +62,7 @@ class CodexSharedAdapter(HarnessAdapter):
         if state is None or not state.active:
             raise ValueError("shared Codex requires an authorized active subscription")
         selected = state.selected
+        self._selected = selected
         if selected.pex_session_id != f"codex:{selected.thread_id}":
             raise ValueError("shared Codex session identity is not canonical")
         self.subscription = subscription
@@ -91,7 +93,10 @@ class CodexSharedAdapter(HarnessAdapter):
         self._user_items: set[tuple[str, str]] = set()
         self._correction_vendor_items: dict[str, tuple[str, str]] = {}
         self._input_provenance: CodexInputProvenance | None = None
+        self._input_baseline: CodexInputBaseline | None = None
+        self._input_baselines: dict[str, CodexInputBaselineSnapshot] = {}
         self._provenance_required = False
+        self._input_bootstrap_complete = False
         self._correction_items: dict[str, str] = {}
         self._pending: asyncio.Queue[tuple[HarnessEvent, HarnessSession]] = asyncio.Queue(
             maxsize=MAX_PENDING_EVENTS
@@ -207,6 +212,10 @@ class CodexSharedAdapter(HarnessAdapter):
         correction_item_json = None
         if method.startswith("item/"):
             item = params["item"]
+            if self._input_baseline is not None:
+                self._input_baseline.observe_item(
+                    turn_id=record.turn_id, item=item, completed=method == "item/completed",
+                )
             is_user = item.get("type") == "userMessage"
             classification = (
                 self._input_provenance.classify_item(
@@ -328,6 +337,8 @@ class CodexSharedAdapter(HarnessAdapter):
             event.event_id = f"codex-shared:{event_identity}"
             event.ts = observed_at
         event.metadata = {**event.metadata, **metadata}
+        if self._input_baseline is not None:
+            self._input_baselines[event.event_id] = self._input_baseline.snapshot()
         if correction_item_json is not None:
             self._correction_items[event.event_id] = correction_item_json
         if method not in ("thread/status/changed", "thread/started"):
@@ -380,6 +391,10 @@ class CodexSharedAdapter(HarnessAdapter):
             self._input_provenance = CodexInputProvenance.from_store_records(
                 records, session_id=self.session.id, thread_id=self.session.vendor_session_id,
             )
+            self._input_baseline = CodexInputBaseline.from_selected(
+                self._selected, self._input_provenance,
+            )
+        self._input_bootstrap_complete = True
         await self._receive()
 
     async def _consume(self, ingest) -> None:
@@ -401,6 +416,7 @@ class CodexSharedAdapter(HarnessAdapter):
                     )
                     self._undelivered.pop(event.event_id, None)
                     self._correction_items.pop(event.event_id, None)
+                    self._input_baselines.pop(event.event_id, None)
                     self._ingesting = False
                     self._ingesting_observation = None
                     self.last_pump_error = None
@@ -461,6 +477,7 @@ class CodexSharedAdapter(HarnessAdapter):
             self._retained_count = len(self._retaining_observations)
             self._undelivered.clear()
             self._correction_items.clear()
+            self._input_baselines.clear()
             while not self._pending.empty():
                 self._pending.get_nowait()
             self._ingesting = False
@@ -511,7 +528,7 @@ class CodexSharedAdapter(HarnessAdapter):
         interrupted = self.subscription.interrupted_batch
         if (
             interrupted is not None and interrupted is not self._received_interrupted_batch
-            and not (self._provenance_required and self._input_provenance is None)
+            and not (self._provenance_required and not self._input_bootstrap_complete)
         ):
             self._received_interrupted_batch = interrupted
             try:

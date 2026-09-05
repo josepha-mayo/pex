@@ -7,6 +7,7 @@ import logging
 import re
 import time
 from contextlib import nullcontext
+from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
@@ -804,7 +805,7 @@ class Pipeline:
 
     @staticmethod
     def _freeze_shared_codex_observation(
-        event: HarnessEvent, session: HarnessSession
+        event: HarnessEvent, session: HarnessSession, *, input_baseline=None,
     ) -> HarnessEvent:
         """Use the same immutable receipt for live acceptance and loss recovery."""
         observed = event.model_copy(deep=True)
@@ -820,6 +821,8 @@ class Pipeline:
             observed.metadata["pex_observer_snapshot"]["workspace_binding"] = (
                 session.model_copy(deep=True).metadata["workspace_binding"]
             )
+        if input_baseline is not None:
+            observed.metadata["pex_observer_snapshot"]["input_baseline"] = asdict(input_baseline)
         return observed
 
     async def retain_shared_codex_observations(
@@ -878,7 +881,12 @@ class Pipeline:
                     or held[1] is not snapshot
                 ):
                     raise ValueError("retained observation identity changed")
-                observed = self._freeze_shared_codex_observation(event, snapshot)
+                baseline = adapter._input_baselines.get(event.event_id)
+                if adapter._input_baseline is not None and baseline is None:
+                    raise ValueError("retained observation lacks its frozen input baseline")
+                observed = self._freeze_shared_codex_observation(
+                    event, snapshot, input_baseline=baseline,
+                )
                 _redact_event(observed)
                 events.append(observed)
             binding = await self.store.project_binding_for_authority(session.project_id)
@@ -919,7 +927,12 @@ class Pipeline:
                 or event.metadata.get("subscription_id") != adapter._subscription_id
             ):
                 raise ValueError("shared observation does not own the current ingestion")
-            observed = self._freeze_shared_codex_observation(event, session)
+            baseline = adapter._input_baselines.get(event.event_id)
+            if adapter._input_baseline is not None and baseline is None:
+                raise ValueError("shared observation lacks its frozen input baseline")
+            observed = self._freeze_shared_codex_observation(
+                event, session, input_baseline=baseline,
+            )
             if (
                 observed.metadata.get("raw_method") == "item/started"
                 and observed.metadata.get("human_input_pending") is True
