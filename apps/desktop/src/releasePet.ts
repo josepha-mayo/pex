@@ -1,9 +1,22 @@
 const TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 const CLEAR = { red: 0, green: 0, blue: 0, alpha: 0 };
+const PET_VISIBLE_KEY = "pex.pet.overlay.visible";
+export const PET_VISIBILITY_EVENT = "pex-pet-visibility";
+
+export function petOverlayVisible(): boolean {
+  return typeof window === "undefined" || window.localStorage.getItem(PET_VISIBLE_KEY) !== "false";
+}
+
+export function setPetOverlayVisible(visible: boolean) {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(PET_VISIBLE_KEY, String(visible));
+    window.dispatchEvent(new CustomEvent(PET_VISIBILITY_EVENT, { detail: visible }));
+  }
+}
 
 export async function releasePetOverlay() {
-  if (!TAURI) return;
+  if (!TAURI || !petOverlayVisible()) return;
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
   const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
   const { PhysicalPosition } = await import("@tauri-apps/api/dpi");
@@ -26,6 +39,31 @@ export async function releasePetOverlay() {
     /* keep last pet position */
   }
   await pet.show();
+}
+
+export async function hidePetOverlay() {
+  const previous = petOverlayVisible();
+  setPetOverlayVisible(false);
+  try {
+    if (!TAURI) return;
+    const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+    const pet = await WebviewWindow.getByLabel("pet");
+    await pet?.hide();
+  } catch (error) {
+    setPetOverlayVisible(previous);
+    throw error;
+  }
+}
+
+export async function showPetOverlay() {
+  const previous = petOverlayVisible();
+  setPetOverlayVisible(true);
+  try {
+    await releasePetOverlay();
+  } catch (error) {
+    setPetOverlayVisible(previous);
+    throw error;
+  }
 }
 
 export async function startPetDrag() {

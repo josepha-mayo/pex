@@ -24,7 +24,7 @@ import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { createOperatorRequest } from "./operatorRequest";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
-import { applyPetClickThrough, expandMainSurface, nextPetExpansion, petClickThroughEnabled, releasePetOverlay } from "./releasePet";
+import { applyPetClickThrough, expandMainSurface, hidePetOverlay, nextPetExpansion, PET_VISIBILITY_EVENT, petClickThroughEnabled, petOverlayVisible, releasePetOverlay, showPetOverlay } from "./releasePet";
 import {
   advanceBridgeBootstrapStatus,
   bridgeBootstrapAvailable,
@@ -225,11 +225,12 @@ async function bridgeToken(): Promise<string | null> {
       throw error;
     });
   bridgeTokenRequest = request;
-  try {
-    return await request;
-  } finally {
-    if (bridgeTokenRequest === request) bridgeTokenRequest = null;
-  }
+  // Retain the verified token promise for this desktop bridge generation.
+  // Re-probing before every parallel startup fetch can starve the bridge's
+  // identity endpoint while a bounded adapter probe is running. The promise is
+  // cleared on bridge generation change, WebSocket close, 401, or explicit
+  // retry, so a restarted port owner must prove the in-memory token again.
+  return request;
 }
 
 async function bridgeFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -365,6 +366,18 @@ export function App() {
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
+  const [petVisible, setPetVisible] = useState(petOverlayVisible);
+
+  useEffect(() => {
+    const syncVisibility = () => setPetVisible(petOverlayVisible());
+    const syncDirectVisibility = (event: Event) => setPetVisible(Boolean((event as CustomEvent).detail));
+    window.addEventListener("storage", syncVisibility);
+    window.addEventListener(PET_VISIBILITY_EVENT, syncDirectVisibility);
+    return () => {
+      window.removeEventListener("storage", syncVisibility);
+      window.removeEventListener(PET_VISIBILITY_EVENT, syncDirectVisibility);
+    };
+  }, []);
   const [importDir, setImportDir] = useState("");
   const [hookHarness, setHookHarness] = useState<HookHarness>("cursor");
   const [hookProject, setHookProject] = useState("");
@@ -607,7 +620,6 @@ export function App() {
                   /* Resume remains available for this live socket. */
                 }
               }
-              void refreshPet();
             }
           } catch {
             /* HTTP polling remains authoritative when a frame is malformed. */
@@ -1719,13 +1731,24 @@ export function App() {
       const refreshed = await refreshPet();
       if (refreshed.status === "failed") success += " The live view could not refresh yet.";
       try {
-        await releasePetOverlay();
+        if (petVisible) await releasePetOverlay();
       } catch {
         success += " Its overlay could not reopen yet.";
       }
       setNote(success);
     } finally {
       setSelectingPet(false);
+    }
+  }
+
+  async function changePetVisibility(visible: boolean) {
+    setPetVisible(visible);
+    try {
+      if (visible) await showPetOverlay();
+      else await hidePetOverlay();
+      setNote(visible ? "Desktop pet shown." : "Desktop pet hidden. You can restore it here anytime.");
+    } catch (error) {
+      setNote(operationError(error, visible ? "Could not show the desktop pet." : "Could not hide the desktop pet."));
     }
   }
 
@@ -1962,6 +1985,24 @@ export function App() {
     window.location.hash = next;
   }
 
+  if (shell === "pet") {
+    return (
+      <main className={`pet-desktop tone-${status.tone}`}>
+        <PetStage
+          overlay
+          name={petName}
+          sheet={sheet}
+          mood={mood}
+          scale={scale}
+          reducedMotion={reducedMotion}
+          status={status}
+          onActivate={() => void expandMainSurface()}
+          onDismiss={() => void changePetVisibility(false)}
+        />
+      </main>
+    );
+  }
+
   if (!bridgeAvailable) {
     return (
       <StartupRecovery
@@ -1974,26 +2015,6 @@ export function App() {
     );
   }
 
-  if (shell === "pet") {
-    if (!pet) {
-      return <main className="pet-desktop" aria-label="PEX pet is waiting for its verified local bridge" />;
-    }
-    return (
-      <main className={`pet-desktop tone-${status.tone}`}>
-        <PetStage
-          overlay
-          name={petName}
-          sheet={sheet}
-          mood={mood}
-          scale={scale}
-          reducedMotion={reducedMotion}
-          status={status}
-          onActivate={() => void expandMainSurface()}
-        />
-      </main>
-    );
-  }
-
   if (shell === "settings") {
     return (
       <SettingsPage
@@ -2002,6 +2023,7 @@ export function App() {
         nickname={nickname}
         scale={scale}
         clickThrough={clickThrough}
+        petVisible={petVisible}
         supervisor={supervisor}
         supervisorProvider={supervisorProvider}
         supervisorModel={supervisorModel}
@@ -2034,6 +2056,7 @@ export function App() {
         onNickname={setNickname}
         onScale={setScale}
         onClickThrough={setClickThrough}
+        onPetVisible={(visible) => void changePetVisibility(visible)}
         onSaveAppearance={() => void saveAppearance()}
         onSupervisorProvider={(value) => changeSupervisorDraft(supervisorProvider, value, (next) => {
           setSupervisorProvider(next);
@@ -2126,7 +2149,7 @@ export function App() {
           <span className="status-dot" aria-hidden="true" />{status.label}
         </span>
         <nav className="surface-switch" aria-label="Progressive PEX surfaces">
-          {(["compact", "inspector", "deck"] as Surface[]).map((item, index) => (
+          {(["compact", "inspector", "deck"] as Surface[]).map((item) => (
             <button
               type="button"
               className={surface === item ? "active" : ""}
@@ -2134,7 +2157,7 @@ export function App() {
               onClick={() => showSurface(item)}
               key={item}
             >
-              <span>{index + 1}</span>{titleCase(item)}
+              {item === "compact" ? "Home" : titleCase(item)}
             </button>
           ))}
         </nav>

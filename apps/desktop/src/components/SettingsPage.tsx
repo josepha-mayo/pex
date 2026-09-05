@@ -23,6 +23,7 @@ export function SettingsPage({
   nickname,
   scale,
   clickThrough,
+  petVisible,
   supervisor,
   supervisorProvider,
   supervisorModel,
@@ -56,6 +57,7 @@ export function SettingsPage({
   onNickname,
   onScale,
   onClickThrough,
+  onPetVisible,
   onSaveAppearance,
   onSupervisorProvider,
   onSupervisorModel,
@@ -85,6 +87,7 @@ export function SettingsPage({
   nickname: string;
   scale: number;
   clickThrough: boolean;
+  petVisible: boolean;
   supervisor: SupervisorInfo | null;
   supervisorProvider: string;
   supervisorModel: string;
@@ -118,6 +121,7 @@ export function SettingsPage({
   onNickname: (value: string) => void;
   onScale: (value: number) => void;
   onClickThrough: (value: boolean) => void;
+  onPetVisible: (value: boolean) => void;
   onSaveAppearance: () => void;
   onSupervisorProvider: (value: string) => void;
   onSupervisorModel: (value: string) => void;
@@ -203,6 +207,14 @@ export function SettingsPage({
                 value={scale}
                 onChange={(event) => onScale(Number(event.target.value))}
               />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={petVisible}
+                onChange={(event) => onPetVisible(event.target.checked)}
+              />
+              Show desktop pet
             </label>
             <label>
               <input

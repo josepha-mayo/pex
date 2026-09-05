@@ -21,6 +21,8 @@ const MAX_BRIDGE_TOKEN_CHARS: usize = 512;
 const BRIDGE_STARTUP_TIMEOUT: Duration = Duration::from_secs(20);
 const BRIDGE_PROBE_TIMEOUT: Duration = Duration::from_millis(1_500);
 const BRIDGE_RETRY_INTERVAL: Duration = Duration::from_millis(100);
+const BRIDGE_IDENTITY_RETRY_ATTEMPTS: usize = 6;
+const BRIDGE_IDENTITY_MISS_LIMIT: u8 = 10;
 type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -106,21 +108,24 @@ struct BridgeRuntimeInner {
     child: Option<CommandChild>,
 }
 
-struct BridgeRuntime(Mutex<BridgeRuntimeInner>);
+struct BridgeRuntime(Mutex<BridgeRuntimeInner>, tokio::sync::Mutex<()>);
 
 impl Default for BridgeRuntime {
     fn default() -> Self {
-        Self(Mutex::new(BridgeRuntimeInner {
-            status: BridgeBootstrapStatus::failed(
-                0,
-                "not_started",
-                "The local PEX bridge has not started yet.",
-                true,
-                BridgeSource::NotReady,
-            ),
-            operator_token: None,
-            child: None,
-        }))
+        Self(
+            Mutex::new(BridgeRuntimeInner {
+                status: BridgeBootstrapStatus::failed(
+                    0,
+                    "not_started",
+                    "The local PEX bridge has not started yet.",
+                    true,
+                    BridgeSource::NotReady,
+                ),
+                operator_token: None,
+                child: None,
+            }),
+            tokio::sync::Mutex::new(()),
+        )
     }
 }
 
@@ -347,6 +352,18 @@ fn bridge_is_healthy_with_token(token: &str) -> bool {
     bridge_is_healthy_at(&address, token)
 }
 
+fn bridge_identity_survives_transient_io(token: &str) -> bool {
+    for attempt in 0..BRIDGE_IDENTITY_RETRY_ATTEMPTS {
+        if bridge_is_healthy_with_token(token) {
+            return true;
+        }
+        if attempt + 1 < BRIDGE_IDENTITY_RETRY_ATTEMPTS {
+            std::thread::sleep(BRIDGE_RETRY_INTERVAL);
+        }
+    }
+    false
+}
+
 fn bridge_is_healthy_at(address: &SocketAddr, token: &str) -> bool {
     bridge_is_healthy_at_until(address, token, Instant::now() + BRIDGE_PROBE_TIMEOUT)
 }
@@ -401,6 +418,12 @@ fn bridge_is_healthy_at_until(address: &SocketAddr, token: &str, deadline: Insta
                 if response.len() > 64 * 1_024 {
                     return false;
                 }
+                // A complete, strictly parsed, token-bound response is enough;
+                // do not make correctness depend on when an HTTP server closes
+                // the connection after sending the declared body.
+                if is_pex_identity_response(&response, &challenge, token) {
+                    return true;
+                }
             }
             Err(error) if matches!(error.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) => {
                 break;
@@ -408,7 +431,7 @@ fn bridge_is_healthy_at_until(address: &SocketAddr, token: &str, deadline: Insta
             Err(_) => return false,
         }
     }
-    is_pex_identity_response(&response, &challenge, token)
+    false
 }
 
 fn bridge_port_state_at(address: &SocketAddr, token: &str) -> Result<BridgePortState, String> {
@@ -524,12 +547,16 @@ async fn bridge_token(
     app: tauri::AppHandle,
     runtime: tauri::State<'_, BridgeRuntime>,
 ) -> Result<String, String> {
+    // The UI can start several authenticated reads at once. Serialize their
+    // pre-send identity proofs so a healthy single-process bridge is not
+    // rejected because a burst of raw probes races its small listen backlog.
+    let _verification = runtime.1.lock().await;
     let (attempt, token) = runtime
         .ready_token()
         .ok_or_else(|| "PEX bridge is not ready".to_string())?;
     let token_for_probe = token.clone();
     let verified = tauri::async_runtime::spawn_blocking(move || {
-        bridge_is_healthy_with_token(&token_for_probe)
+        bridge_identity_survives_transient_io(&token_for_probe)
     })
     .await
     .map_err(|_| "PEX bridge identity check could not complete".to_string())?;
@@ -590,23 +617,31 @@ fn fail_bridge_attempt(
 fn monitor_owned_bridge(
     app: tauri::AppHandle,
     attempt: u64,
+    token: String,
     mut events: tauri::async_runtime::Receiver<CommandEvent>,
 ) {
     tauri::async_runtime::spawn(async move {
         while let Some(event) = events.recv().await {
             if command_event_is_terminal(&event) {
-                fail_bridge_attempt(
-                    &app,
-                    attempt,
-                    "bridge_process_stopped",
-                    "The owned PEX bridge process stopped.",
-                    true,
-                    BridgeSource::OwnedSidecar,
-                );
-                return;
+                break;
             }
             // Stdout and stderr are intentionally discarded. Bridge output can
             // contain private workspace or provider diagnostics.
+        }
+        // PyInstaller's one-file bootloader can hand execution to its extracted
+        // payload before the shell plugin reports either a terminal event or
+        // channel EOF. Keep authority only when that payload proves the token.
+        let token_for_probe = token.clone();
+        let verified = tauri::async_runtime::spawn_blocking(move || {
+            bridge_identity_survives_transient_io(&token_for_probe)
+        })
+        .await
+        .unwrap_or(false);
+        if verified {
+            tauri::async_runtime::spawn_blocking(move || {
+                monitor_verified_bridge_identity(app, attempt, token)
+            });
+            return;
         }
         fail_bridge_attempt(
             &app,
@@ -617,6 +652,34 @@ fn monitor_owned_bridge(
             BridgeSource::OwnedSidecar,
         );
     });
+}
+
+fn monitor_verified_bridge_identity(app: tauri::AppHandle, attempt: u64, token: String) {
+    let mut consecutive_misses = 0_u8;
+    loop {
+        std::thread::sleep(Duration::from_secs(1));
+        let current = app.state::<BridgeRuntime>().status();
+        if current.attempt != attempt || current.phase != BridgeBootstrapPhase::Ready {
+            return;
+        }
+        if bridge_is_healthy_with_token(&token) {
+            consecutive_misses = 0;
+            continue;
+        }
+        consecutive_misses = consecutive_misses.saturating_add(1);
+        if consecutive_misses < BRIDGE_IDENTITY_MISS_LIMIT {
+            continue;
+        }
+        fail_bridge_attempt(
+            &app,
+            attempt,
+            "bridge_process_stopped",
+            "The owned PEX bridge stopped proving its identity.",
+            true,
+            BridgeSource::OwnedSidecar,
+        );
+        return;
+    }
 }
 
 fn run_bridge_bootstrap(app: tauri::AppHandle, attempt: u64) {
@@ -731,6 +794,7 @@ fn run_bridge_bootstrap(app: tauri::AppHandle, attempt: u64) {
         .env("PEX_PORT", BRIDGE_PORT)
         .env("PEX_REQUIRE_AUTH", "true")
         .env("PEX_TOKEN", &token)
+        .env("PEX_DESKTOP_PARENT_PID", std::process::id().to_string())
         .spawn();
     let (mut events, child) = match spawned {
         Ok(spawned) => spawned,
@@ -796,7 +860,7 @@ fn run_bridge_bootstrap(app: tauri::AppHandle, attempt: u64) {
         }
         if bridge_is_healthy_at_until(&address, &token, deadline) {
             app.state::<BridgeRuntime>().finish_ready(attempt);
-            monitor_owned_bridge(app, attempt, events);
+            monitor_owned_bridge(app, attempt, token, events);
             return;
         }
         let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {

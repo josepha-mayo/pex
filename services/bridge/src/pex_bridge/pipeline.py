@@ -154,6 +154,7 @@ _COMPLETION_SIGNAL = re.compile(
     re.I,
 )
 DESKTOP_DISCOVERY_TIMEOUT_SECONDS = 3.0
+DESKTOP_REFRESH_MIN_INTERVAL_SECONDS = 8.0
 DESKTOP_REFRESH_ADAPTERS = (
     "cursor",
     "codex",
@@ -710,6 +711,7 @@ class Pipeline:
         self.cooldowns = Cooldowns()
         self.supervision_paused = False
         self._desktop_refresh_lock = asyncio.Lock()
+        self._desktop_refresh_attempted_at: float | None = None
         self._handoff_mutation_lock = asyncio.Lock()
         self._session_locks_guard = asyncio.Lock()
         self._session_locks: dict[str, asyncio.Lock] = {}
@@ -5528,7 +5530,12 @@ class Pipeline:
         )
 
     async def refresh_desktop_sessions(self) -> None:
-        if self._desktop_refresh_lock.locked():
+        now = time.monotonic()
+        last_attempt = self._desktop_refresh_attempted_at
+        if self._desktop_refresh_lock.locked() or (
+            last_attempt is not None
+            and now - last_attempt < DESKTOP_REFRESH_MIN_INTERVAL_SECONDS
+        ):
             return
         live = {"working", "verifying", "drifting", "needs_decision", "blocked"}
         idle = {"idle", "discovered"}
@@ -5546,6 +5553,14 @@ class Pipeline:
                 return name, None
 
         async with self._desktop_refresh_lock:
+            last_attempt = self._desktop_refresh_attempted_at
+            if last_attempt is not None and (
+                time.monotonic() - last_attempt < DESKTOP_REFRESH_MIN_INTERVAL_SECONDS
+            ):
+                return
+            # Record the attempt before adapter work. Even a caller-cancelled or
+            # failed discovery receives a short backoff instead of hot-looping.
+            self._desktop_refresh_attempted_at = time.monotonic()
             discoveries = await asyncio.gather(
                 *(discover_one(name) for name in DESKTOP_REFRESH_ADAPTERS)
             )
@@ -5604,6 +5619,7 @@ class Pipeline:
                     expected_revision=control["revision"],
                     expected_discovery_generation=control["discovery_generation"],
                 )
+            self._desktop_refresh_attempted_at = time.monotonic()
 
     async def current_projection(
         self,

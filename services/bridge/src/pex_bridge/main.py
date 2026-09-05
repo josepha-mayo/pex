@@ -4,6 +4,8 @@ import argparse
 import hashlib
 import json
 import os
+import threading
+import time
 from pathlib import Path
 
 import uvicorn
@@ -20,6 +22,57 @@ EXPECTED_BUNDLED_PET_IDS = (
     "ember",
     "von",
 )
+
+
+def _process_is_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except (OSError, ValueError):
+        return False
+    return True
+
+
+def _start_parent_watchdog(pid: int) -> None:
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        open_process = kernel32.OpenProcess
+        open_process.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        open_process.restype = wintypes.HANDLE
+        wait_for_single_object = kernel32.WaitForSingleObject
+        wait_for_single_object.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+        wait_for_single_object.restype = wintypes.DWORD
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = (wintypes.HANDLE,)
+        close_handle.restype = wintypes.BOOL
+        parent_handle = open_process(0x00100000, False, pid)  # SYNCHRONIZE
+        if not parent_handle:
+            raise OSError(ctypes.get_last_error(), "could not retain PEX desktop process")
+
+        def watch_windows() -> None:
+            try:
+                wait_for_single_object(parent_handle, 0xFFFFFFFF)
+            finally:
+                close_handle(parent_handle)
+            os._exit(0)
+
+        threading.Thread(
+            target=watch_windows,
+            name="pex-parent-watchdog",
+            daemon=True,
+        ).start()
+        return
+
+    def watch() -> None:
+        while _process_is_alive(pid):
+            time.sleep(1)
+        os._exit(0)
+
+    threading.Thread(target=watch, name="pex-parent-watchdog", daemon=True).start()
 
 
 def _sha256(path: Path) -> str:
@@ -78,6 +131,19 @@ def main() -> None:
         return
 
     from pex_bridge.app import create_app, state
+
+    parent_pid = os.environ.pop("PEX_DESKTOP_PARENT_PID", "").strip()
+    if parent_pid:
+        try:
+            parsed_parent_pid = int(parent_pid)
+        except ValueError:
+            parser.error("PEX_DESKTOP_PARENT_PID must be a positive integer")
+        if os.name != "nt" and not _process_is_alive(parsed_parent_pid):
+            parser.error("PEX desktop parent process is not alive")
+        try:
+            _start_parent_watchdog(parsed_parent_pid)
+        except OSError as exc:
+            parser.error(str(exc))
 
     # The desktop passes its operator bearer only to this owned sidecar. Settings
     # has already validated and copied it into bridge-owned memory, so scrub the

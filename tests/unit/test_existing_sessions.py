@@ -7,6 +7,9 @@ starter inventory.
 
 from __future__ import annotations
 
+import asyncio
+from unittest.mock import AsyncMock
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from pex_bridge.adapters import AdapterRegistry
@@ -317,6 +320,58 @@ async def test_refresh_does_not_detach_a_working_codex_session(tmp_path, monkeyp
     await store.close()
     assert stored is not None
     assert stored.status == SessionStatus.WORKING
+
+
+async def test_desktop_refresh_coalesces_pollers_and_resumes_after_backoff(
+    tmp_path, monkeypatch
+):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    registry = AdapterRegistry()
+    pipeline = Pipeline(
+        store,
+        registry,
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
+    )
+    clock = [100.0]
+    monkeypatch.setattr("pex_bridge.pipeline.time.monotonic", lambda: clock[0])
+    discoveries = []
+    for name in ("cursor", "codex", "opencode", "hermes", "claude_code"):
+        discover = AsyncMock(return_value=[])
+        registry.get(name).discover_sessions = discover
+        discoveries.append(discover)
+
+    await pipeline.refresh_desktop_sessions()
+    await pipeline.refresh_desktop_sessions()
+    clock[0] = 109.0
+    await pipeline.refresh_desktop_sessions()
+    await store.close()
+
+    assert all(discover.await_count == 2 for discover in discoveries)
+
+
+async def test_failed_desktop_refresh_is_backed_off(tmp_path, monkeypatch):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    registry = AdapterRegistry()
+    pipeline = Pipeline(
+        store,
+        registry,
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
+    )
+    clock = [100.0]
+    monkeypatch.setattr("pex_bridge.pipeline.time.monotonic", lambda: clock[0])
+    discover = AsyncMock(side_effect=asyncio.CancelledError)
+    registry.get("cursor").discover_sessions = discover
+
+    with pytest.raises(asyncio.CancelledError):
+        await pipeline.refresh_desktop_sessions()
+    await pipeline.refresh_desktop_sessions()
+    await store.close()
+
+    assert discover.await_count == 1
 
 
 @pytest.fixture

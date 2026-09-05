@@ -16,6 +16,7 @@ export function PetStage({
   overlay = false,
   status,
   onActivate,
+  onDismiss,
 }: {
   name: string;
   sheet: string;
@@ -25,6 +26,7 @@ export function PetStage({
   overlay?: boolean;
   status?: StatusCopy;
   onActivate: () => void;
+  onDismiss?: () => void;
 }) {
   const [hop, setHop] = useState(false);
   const [dragDir, setDragDir] = useState<-1 | 0 | 1>(0);
@@ -46,6 +48,15 @@ export function PetStage({
   }
 
   useEffect(() => clearTimers, []);
+
+  useEffect(() => {
+    if (!overlay || !onDismiss) return;
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onDismiss();
+    };
+    window.addEventListener("keydown", dismissOnEscape);
+    return () => window.removeEventListener("keydown", dismissOnEscape);
+  }, [onDismiss, overlay]);
 
   function onPointerEnter() {
     clearTimers();
@@ -134,14 +145,19 @@ export function PetStage({
         <span className="pet-name">{name}</span>
       </button>
       {status ? (
-        <button type="button" className="activity-bubble" onClick={onActivate} aria-live="polite">
-          <span className="status-dot" aria-hidden="true" />
-          <span>
-            <strong>{status.label}</strong>
-            <small>{status.detail}</small>
-          </span>
-          <span className="bubble-action">Inspect</span>
-        </button>
+        <div className="activity-bubble" aria-live="polite">
+          <button type="button" className="bubble-content" onClick={onActivate}>
+            <span className="status-dot" aria-hidden="true" />
+            <span>
+              <strong>{status.label}</strong>
+              <small>{status.detail}</small>
+            </span>
+            <span className="bubble-action">Open</span>
+          </button>
+          {overlay && onDismiss ? (
+            <button type="button" className="pet-overlay-close" aria-label="Hide PEX pet" title="Hide pet (Esc)" onClick={onDismiss}>×</button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

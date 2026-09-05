@@ -188,10 +188,7 @@ p {
   display: grid;
   grid-template-rows: 58px minmax(0, 1fr);
   overflow: hidden;
-  background:
-    radial-gradient(circle at 8% -10%, rgba(103, 222, 177, 0.13), transparent 35%),
-    radial-gradient(circle at 100% 105%, rgba(125, 180, 219, 0.08), transparent 34%),
-    var(--night);
+  background: #0b1216;
 }
 
 .main-shell::before {
@@ -263,9 +260,9 @@ p {
   gap: 3px;
   margin: 0 auto;
   padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.025);
+  border: 0;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.03);
   -webkit-app-region: no-drag;
 }
 
@@ -273,32 +270,17 @@ p {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 9px;
+  padding: 6px 12px;
   border: 0;
   border-radius: 7px;
   background: transparent;
   color: var(--faint);
-  font-size: 11px;
-}
-
-.surface-switch button span {
-  width: 16px;
-  height: 16px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .surface-switch button.active {
   background: rgba(103, 222, 177, 0.1);
   color: var(--paper);
-}
-
-.surface-switch button.active span {
-  border-color: rgba(103, 222, 177, 0.45);
-  color: var(--mint);
 }
 
 .topbar-settings {
@@ -384,26 +366,34 @@ p {
 .compact-surface {
   min-height: 0;
   overflow: auto;
-  padding: clamp(24px, 5vh, 48px) clamp(28px, 5vw, 58px) 28px;
+  display: grid;
+  align-content: center;
+  padding: 28px clamp(24px, 6vw, 68px);
 }
 
 .compact-companion {
-  max-width: 720px;
+  width: min(620px, 100%);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px 24px;
+  grid-template-columns: minmax(360px, 1fr) 130px;
+  align-items: center;
+  gap: 16px 20px;
   margin: 0 auto;
-  padding: 26px 30px 24px;
-  border: 1px solid var(--line-strong);
-  border-radius: 24px;
-  background:
-    linear-gradient(140deg, rgba(103, 222, 177, 0.075), transparent 42%),
-    var(--panel);
-  box-shadow: var(--shadow);
+  padding: 30px 32px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #121d22;
+  box-shadow: 0 20px 54px rgba(0, 0, 0, 0.22);
 }
 
 .compact-companion .pet-stage {
-  grid-column: 1 / -1;
+  grid-row: 1 / span 3;
+  flex-direction: row;
+  align-items: center;
+}
+
+.compact-companion .activity-bubble {
+  width: min(250px, 28vw);
+  margin-bottom: 12px;
 }
 
 .pet-stage {
@@ -440,9 +430,9 @@ p {
   left: 50%;
   padding: 3px 9px 4px;
   transform: translateX(-50%);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: #0e171c;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--paper);
   font-size: 10px;
   font-weight: 700;
@@ -455,15 +445,13 @@ p {
   display: grid;
   place-items: center;
   margin-bottom: 3px;
-  border: 1px solid rgba(103, 222, 177, 0.34);
-  border-radius: 43% 57% 48% 52% / 55% 44% 56% 45%;
-  background:
-    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.16), transparent 13%),
-    linear-gradient(145deg, #27483d, #112a23);
-  color: var(--mint);
+  border: 1px dashed rgba(150, 166, 158, 0.22);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--faint);
   font-size: 28px;
   font-weight: 820;
-  box-shadow: inset 0 -8px 20px rgba(0, 0, 0, 0.18), 0 12px 24px rgba(0, 0, 0, 0.22);
+  box-shadow: none;
 }
 
 .activity-bubble {
@@ -471,17 +459,17 @@ p {
   min-height: 86px;
   position: relative;
   display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 10px;
   margin-bottom: 20px;
   padding: 14px 15px;
-  border: 1px solid rgba(24, 43, 35, 0.12);
-  border-radius: 17px;
-  background: #f0f5f1;
-  color: #15221c;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(238, 245, 240, 0.06);
+  color: var(--paper);
   text-align: left;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: none;
 }
 
 .activity-bubble::before {
@@ -492,9 +480,9 @@ p {
   bottom: 22px;
   content: "";
   transform: rotate(45deg);
-  border-left: 1px solid rgba(24, 43, 35, 0.1);
-  border-bottom: 1px solid rgba(24, 43, 35, 0.1);
-  background: #f0f5f1;
+  border-left: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: #182328;
 }
 
 .activity-bubble .status-dot {
@@ -514,7 +502,7 @@ p {
 
 .activity-bubble small {
   margin-top: 4px;
-  color: #53635b;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
 }
@@ -2257,10 +2245,32 @@ html.pet-shell #root {
 }
 
 .pet-stage-overlay {
+  position: relative;
   width: 100%;
   justify-content: flex-start;
   gap: 0;
   -webkit-app-region: drag;
+}
+
+.pet-overlay-close {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(236, 244, 239, 0.22);
+  border-radius: 999px;
+  color: rgba(236, 244, 239, 0.72);
+  background: transparent;
+  font: 500 17px/1 system-ui, sans-serif;
+  cursor: pointer;
+  opacity: 0.72;
+  -webkit-app-region: no-drag;
+}
+
+.pet-overlay-close:hover,
+.pet-overlay-close:focus-visible {
+  opacity: 1;
+  border-color: rgba(90, 225, 184, 0.72);
+  color: #ffffff;
 }
 
 .pet-stage-overlay .pet-actor {
@@ -2269,12 +2279,26 @@ html.pet-shell #root {
 }
 
 .pet-stage-overlay .activity-bubble {
-  width: min(220px, calc(100% - 8px));
+  width: min(138px, calc(100% - 126px));
   min-height: 72px;
-  grid-template-columns: 7px minmax(0, 1fr) auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
   margin: 0 0 16px -2px;
   padding: 10px 10px;
   border-radius: 13px;
+}
+
+.bubble-content {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
 }
 
 .pet-stage-overlay .activity-bubble strong {
@@ -2290,7 +2314,7 @@ html.pet-shell #root {
 }
 
 .pet-stage-overlay .bubble-action {
-  align-self: start;
+  grid-column: 2;
   font-size: 9px;
 }
 

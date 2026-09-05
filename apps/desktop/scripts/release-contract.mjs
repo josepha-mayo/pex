@@ -31,6 +31,7 @@ export const EXPECTED_PET_PERMISSIONS = [
   "core:default",
   "core:window:allow-start-dragging",
   "core:window:allow-show",
+  "core:window:allow-hide",
   "core:window:allow-set-focus",
   "core:window:allow-set-ignore-cursor-events",
   "core:webview:allow-set-webview-background-color",
