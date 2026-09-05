@@ -1,5 +1,11 @@
 # PEX agent handoff
 
+## Planning update — 5 Sep 2026
+
+At the user's request, `SHIP_CHECKLIST.md` now records the revised winning-oriented working objective and an ordered next-cycle TODO list with owners, dependencies and evidence-based completion rules. The native goal remains active; its tool cannot edit an unfinished objective, so do not falsely complete it to replace the text. Internal ship target remains 6 September WAT. This is a planning-only update, not new implementation or validation evidence.
+
+Current local source work must be preserved: the credential draft repair in `apps/desktop/src/App.tsx` and new `apps/desktop/src/supervisorDraft.ts` is incomplete and unverified. Finish its callback/key-audience wiring and regression coverage before treating it as usable. The separate unexplained `services/supervisor/src/pex_supervisor/loop.py` edit remains untouched and outside reviewed checkpoints. Follow the next-cycle TODOs before moving to the gated live loop, eight-pet review and comparisons.
+
 ## CURRENT HANDOFF — 5 Sep 2026 — exact model evidence and recoverable desktop startup
 
 **Active goal; overall NO-GO.** Reread all three binding specifications (`PEX_CORE_SPEC.md`, `PEX_BUILD_SPEC.md`, `PEX_IMPLEMENTATION_RECOVERY_SPEC.md`), this handoff and the root `STATUS.md`, `KNOWN_FAILURES.md`, `DECISIONS.md`, and `INTEGRATIONS.md` before continuing. Internal ship target is **6 September WAT**, not the later official contest deadline. Exactly eight pets. The updated objective and ordered TODOs remain in `SHIP_CHECKLIST.md`; do not falsely complete the active goal to replace its text.
