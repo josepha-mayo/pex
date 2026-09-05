@@ -6,6 +6,12 @@
 
 **Date:** 2026-09-05
 
+## Post-attachment workspace continuity — current repair
+
+The bounded Store/Pipeline/executor/evidence/Ask repair is reviewed and pushed as **`c0db4536db3c3cbb7366032e9bfdd9d22237aa4e`**, exact remote equality verified. Final main gate: **1,016 passed/3 skipped in 627.20s across 56 complete files**, scoped Ruff for 27 Python paths and staged whitespace for those plus the API guide. Late real-answer defects are repaired too: fallback model entry after timeout/revocation, and detached history blocking current completion queries. Full receipts, failed development cases, migration and residual boundaries: [`docs/WORKSPACE_CONTINUITY_REVIEW.md`](docs/WORKSPACE_CONTINUITY_REVIEW.md). Next separate repair: subscription-close ownership, independently reproduced as 2 failed/2 passed; its uncommitted test and unowned `loop.py` remain outside this checkpoint.
+
+These are temporary-Store/fake-provider checks, not live same-worker supervision. Shared messaging/approvals/configuration remain unavailable. All three specs, normal release, eight pets and visible fair comparisons remain required; **Goal ACTIVE, release NO-GO, 6 September WAT target at risk**. Earlier attachment-time-only descriptions are historical, not current repair status.
+
 ## Workspace-bound existing-worker attachment — 5 Sep
 
 Reviewed source/API guide pushed as `f08ad8097775fa45b7057983b6365f5e9272623e`, exact remote equality verified. Main final gate: **545 passed, 2 Windows symlink-permission skips in 261.43 seconds across 26 complete files**; scoped Ruff/staged whitespace passed. Explicit local-origin configuration, measured directory binding, transactional locator/physical-conflict checks, safe config publication and reload/status APIs now have bounded real-Store/fake-worker regression evidence. Full details and failed development cases are in the current handoff. No live worker/model/GUI/package/benchmark/deploy/submission run or production origin/ACL change occurred.

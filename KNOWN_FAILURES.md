@@ -1,5 +1,13 @@
 # Known failures
 
+## Continuous workspace and Ask review repair — 5 Sep 2026
+
+Post-attachment replacement/origin/locator/receipt gaps are repaired in source **`c0db453`**, with final main **1,016 passed/3 skipped** across 56 files and verified push in [`docs/WORKSPACE_CONTINUITY_REVIEW.md`](docs/WORKSPACE_CONTINUITY_REVIEW.md). Main independently reproduced the initial 15 failures. Review later reproduced real Ask fallback entry after revocation/timeout (2 failed/1 passed), which outer-answer mocks had missed; a revocable per-review check now covers fallback branches, queued Strands entry and each HTTP attempt. Detached historical sessions no longer suppress valid current same-goal progress. Their tests use real answer/Store paths and fake providers, not live effectiveness evidence.
+
+Next concrete recovery failure: cancellation during failed subscription can return while its shielded transport-close task is still running. The separate new test gives 2 failed/2 passed with explicitly held fake close and joins all test-owned tasks. It is not fixed or included in `c0db453`; a bounded patch/review is in progress.
+
+No claim of atomic filesystem authority, full transport/input fencing, process-crash durability, complete raw capture, already-entered Strands-internal retry cancellation, or general post-quarantine settlement follows. Old workspace-bound sessions without a server witness require explicit detach/reinspection. Three compatibility skips are denied temporary symlink creation in local_workspace, local_origin_config and workspace_inspect; permissions were not changed. Normal runtime/control/UI/release and submission gates remain open.
+
 ## Workspace attachment repair and remaining boundary — 5 Sep 2026
 
 Named local-origin/physical attachment binding and the typed raw-cwd bypass are now repaired in source `f08ad80`, with final 545-pass/2-skip integration evidence in the handoff. Review also reproduced and repaired config temporary-file substitution, stale-origin subscription, stale confirmability and conflicting-proof fallback; valid Windows attachment remains covered. This is sampled attachment/publication authority, not continuous post-attachment evidence/action validation, machine attestation or an atomic filesystem lock. Desktop caller, installed runtime/protected endpoint, raw/crash coverage, owned coordinator cleanup and safe same-worker delivery remain unproven. Existing older publication callers without workspace witnesses are not silently certified by the new guard. These current facts supersede older origin-as-unimplemented paragraphs below without deleting their historical evidence.

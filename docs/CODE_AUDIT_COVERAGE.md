@@ -6,6 +6,16 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Post-attachment continuity and Ask invocation review — 5 Sep
+
+Main reread all three specs, all new helper/test files, and changed production paths. Bounded owners independently reviewed Store, adapter/Pipeline/access, executor/evidence and real Ask paths. Large Store/Pipeline/App/Executor files received changed-path review, not blanket full-file approval. Reviewed source/API guide **`c0db453`** is pushed with exact remote equality; final main **1,016 passed/3 skipped across 56 files**, scoped Ruff for all 27 Python paths. Exact gates and reproduced late findings are in [`WORKSPACE_CONTINUITY_REVIEW.md`](WORKSPACE_CONTINUITY_REVIEW.md). No live product claim or exhaustive reinventory follows. The new subscription-close test belongs to a separate unaccepted repair.
+
+New source files fully reviewed: `services/bridge/src/pex_bridge/workspace_access.py`, `services/supervisor/src/pex_supervisor/review_authority.py`.
+
+New regression files fully read/reviewed by main and bounded owners: `tests/unit/test_workspace_access.py`, `test_workspace_continuity_pipeline.py`, `test_workspace_continuity_store_review.py`, `test_workspace_continuity_recovery_store.py`, `test_workspace_continuity_tools.py`, `test_workspace_continuity_executor.py`, `test_workspace_continuity_ask.py`, `test_workspace_main_dispatch.py`, `test_workspace_operator_handoff.py`, `test_workspace_ask_fallback.py`, `test_review_authority.py`.
+
+Existing production changes reviewed: shared adapter typed loss handling; Store publication/metadata/continuity and effect-settlement branches; Pipeline snapshots/planner/main/direct-handoff/claim-verification; Executor new-effect checks; workspace binding's typed sample helper; supervisor evidence-tool wrappers; app Ask checks; actual answer selection; queued Ask Strands entry; HTTP fallback attempt checks. Existing observer lifecycle/retention/publication fixtures and four unbound overlay test stubs were changed to match the protected publication contract, without weakening negative assertions. Supervisor `loop.py` remains unowned and unapproved.
+
 ### Local-origin/workspace attachment addendum — 5 Sep
 
 Source `f08ad80`; main final 26-file gate 545 passed/2 Windows symlink-permission skips. Main read the three specs and new source/test files; independent reviewers covered helper persistence/directory logic, manager integration and Store publication branches. Store review is changed-path only, not full-file approval. Reproduced failures and repair receipts are at the top of the handoff. API guide `docs/adapters/local-workspace-origin.md` was added and reviewed. This is not an exhaustive reinventory or live product approval.

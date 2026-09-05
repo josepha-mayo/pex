@@ -1,5 +1,13 @@
 # DECISIONS
 
+## 5 Sep 2026 — Carry workspace authority through processing without rewriting history
+
+Persist the server-selected workspace/subscription/origin-path witness at dedicated observer publication. Never derive missing authority from a request or database location. Recheck at transactional planning/dispatch and actual queued local-read/provider/adapter entry, with post-read rejection of stale evidence. Generic session refresh cannot mint or erase observer authority. Old witnessed metadata without the new durable server row requires explicit reattachment, not guessed migration.
+
+Keep pre-call refusal distinct from a known or uncertain call: after a dispatch marker, a proven unstarted planner is `failed` with `provider_started=false`; actual model and worker receipts survive workspace loss, while stale session projections do not. Observer loss retains validated history without retrying stale processing. Rollback/cleanup uses its existing separately scoped recovery contract.
+
+Ask needs both workspace-specific tool authority and invocation-lifetime authority: a surviving thread may otherwise start a second provider path after the outer request ends. Scope copies share revocation; each HTTP fallback attempt and scheduled Strands entry checks it. This is not cancellation of already-entered SDK-internal work. Completion excludes detached historical sessions but does not hide attached sessions merely because a UI activity filter does. Evidence and remaining limits: [`docs/WORKSPACE_CONTINUITY_REVIEW.md`](docs/WORKSPACE_CONTINUITY_REVIEW.md).
+
 ## 5 Sep 2026 — Explicit origin plus sampled directory evidence for attachment
 
 Bind selected existing-worker attachment to an operator-declared local origin, server-measured directory identity and current registered locator, not a path string or guessed hostname. Preserve project identities/history; separate origin setup from project registration. Even an older bare locator cannot override a conflicting physical claim for that same local directory. Freeze the choice revision/incarnation with the workspace and recheck after authority awaits and at transactional publication. Exact-subscription detach remains possible when the directory/config disappears; it preserves historical evidence, not new action authority. Filesystem samples are deliberately not machine attestation or an atomic worker-cwd lock. Continuous evidence/action fencing remains required before safe worker control.

@@ -2,6 +2,12 @@
 
 ## Target and truth standard
 
+**Current execution:** continuity source/API guide accepted and pushed as **`c0db453`**, exact remote equality verified; final main **1,016 passed/3 skipped across 56 complete files**, scoped Ruff for all 27 Python paths. This includes the late real-answer fallback and detached-history repairs. The next bounded task is failed-subscription close ownership (2 failures independently reproduced), then required connection/control and the actual Strands loop. Detailed evidence and remaining gates: [`WORKSPACE_CONTINUITY_REVIEW.md`](WORKSPACE_CONTINUITY_REVIEW.md). This supersedes older 53-file/pending-source text below; no live-product checkbox is completed.
+
+- [x] Accept, document and push the bounded continuous workspace/evidence/dispatch/Ask repair (`c0db453`).
+- [ ] Fix failed-subscription cleanup ownership; independently review, verify affected connection/retention paths and push only accepted changes.
+- [ ] Complete minimum connection, durable observation and safe actual same-worker control; prove Recovery's real NOOP/correction/outcome loop before optional expansion.
+
 **Latest planning refresh:** the native goal remains active; release remains NO-GO. Post-attachment continuity changes are now implemented locally with bounded review, but remain uncommitted pending final acceptance. Main recovered the completed 51-file compatibility result: **967 passed, 3 skipped in 455.51 seconds**. New Ask and operator-handoff files have separate reviewer-reported green gates and must be included in the final frozen-tree gate. These results supersede reproduction-only status, not the live-product gates. See the handoff's **LATEST EXECUTION STATE** for exact ownership, evidence limits and next action.
 
 Latest reviewed workspace-attachment source/API guide: **`f08ad8097775fa45b7057983b6365f5e9272623e`**, exact remote equality verified; **545 passed, 2 environment-dependent symlink skips across 26 full files**, scoped Ruff/staged whitespace passed. Explicit local-origin setup, measured workspace receipt, transactional publication and status/recovery APIs are implemented; desktop caller, continuous evidence/action fencing and live worker/model/release proof remain open. Detailed evidence and failed development cases are in the current handoff.
