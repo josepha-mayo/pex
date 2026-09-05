@@ -2,7 +2,8 @@
 
 The transport owns a short-lived ``codex app-server proxy`` connector, never
 the App Server or worker.  It is deliberately bound to one existing thread and
-rejects every worker mutation before bytes are written.
+rejects worker mutations through its generic API. A separate internal text
+dispatch primitive is inactive until a caller supplies durable control authority.
 """
 
 from __future__ import annotations
@@ -10,12 +11,14 @@ from __future__ import annotations
 import asyncio
 import ctypes
 import hashlib
+import inspect
 import math
 import os
 import stat
 import subprocess
 import sys
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -33,6 +36,7 @@ MAX_MESSAGE_BYTES = 1_048_576
 MAX_PENDING = 1_024
 MAX_NOTIFICATIONS = 1_024
 MAX_PATH_CHARS = 4_096
+MAX_DISPATCH_TEXT_BYTES = 65_536
 CLEANUP_TIMEOUT_SECONDS = 3.5
 _CONNECTOR_REAPERS: set[asyncio.Task[None]] = set()
 
@@ -44,9 +48,45 @@ class SharedCodexProtocolError(RuntimeError):
 class SharedCodexRemoteError(RuntimeError):
     """The shared App Server explicitly rejected a request."""
 
+    def __init__(self, message: str, *, code: int | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
 
 class SharedCodexDeliveryUncertainError(RuntimeError):
     """A permitted request was written but no response was verified."""
+
+
+class SharedCodexTextDispatchRejected(PermissionError):
+    """This text dispatch did not enqueue any worker-input bytes."""
+
+
+class SharedCodexTextDispatchCancelled(asyncio.CancelledError):
+    """Cancellation after enqueue: delivery is unknown, never safe to retry."""
+
+    delivery_uncertain = True
+
+
+class SharedCodexTextDispatchRemoteError(SharedCodexDeliveryUncertainError):
+    """A matching vendor error arrived; it does not prove absence of side effects."""
+
+    result_class = "returned_error"
+    delivery_uncertain = True
+
+    def __init__(self, *, code: int | None) -> None:
+        super().__init__("text dispatch returned a vendor error; delivery remains uncertain")
+        self.code = code
+
+
+@dataclass(frozen=True)
+class SharedCodexTextAcknowledgement:
+    method: str
+    thread_id: str
+    turn_id: str
+    client_user_message_id: str
+    connection_token: tuple[str, int]
+    received_revision_at_write: int
+    received_revision_at_ack: int
 
 
 class RawByteChannel(Protocol):
@@ -498,10 +538,14 @@ class CodexSharedAppServerTransport:
         self._channel: RawByteChannel | None = None
         self._websocket: ClientProtocol | None = None
         self._reader_task: asyncio.Task[None] | None = None
+        self._close_task: asyncio.Task[None] | None = None
         self._pending: dict[int | str, asyncio.Future[dict[str, Any]]] = {}
+        self._text_pending: set[int] = set()
         self._next_id = 1
         self._initialize_lock = asyncio.Lock()
         self._protocol_lock = asyncio.Lock()
+        self._text_dispatch_lock = asyncio.Lock()
+        self._received_envelope_revision = 0
         self._closing = False
         self._close_revision = 0
         self._fragment_opcode: Opcode | None = None
@@ -509,6 +553,11 @@ class CodexSharedAppServerTransport:
 
     def connection_token(self) -> tuple[str, int]:
         return self.endpoint_identity, self.connection_generation
+
+    @property
+    def received_envelope_revision(self) -> int:
+        """Local complete-envelope count, not a server/global input revision."""
+        return self._received_envelope_revision
 
     def drain_notifications(self, *, limit: int = 256) -> list[dict[str, Any]]:
         if not isinstance(limit, int) or isinstance(limit, bool) or not 0 < limit <= 256:
@@ -533,6 +582,8 @@ class CodexSharedAppServerTransport:
             pass
 
     async def _open(self) -> None:
+        if self._close_task is not None and not self._close_task.done():
+            raise ConnectionError("shared Codex connector cleanup is still in progress")
         self._closing = False
         self.connection_generation += 1
         close_revision = self._close_revision
@@ -605,13 +656,18 @@ class CodexSharedAppServerTransport:
                         break
                     websocket.receive_data(data)
                     events = websocket.events_received()
+                    # Publish every complete envelope before releasing write
+                    # serialization or awaiting a control-frame flush. Otherwise
+                    # a writer can pass its freshness check ahead of input that
+                    # this reader has already decoded.
+                    for event in events:
+                        if isinstance(event, Frame):
+                            message = self._accept_frame(event)
+                            if message is not None:
+                                self._received_envelope_revision += 1
+                                self._route_message(message)
                     async with asyncio.timeout(self.request_timeout_s):
                         await self._flush(websocket, channel)
-                for event in events:
-                    if isinstance(event, Frame):
-                        message = self._accept_frame(event)
-                        if message is not None:
-                            self._route_message(message)
                 if websocket.state is State.CLOSED:
                     break
         except asyncio.CancelledError:
@@ -671,7 +727,22 @@ class CodexSharedAppServerTransport:
             if future is None:
                 raise SharedCodexProtocolError("shared Codex returned an unknown response id")
             if "error" in message:
-                future.set_exception(SharedCodexRemoteError("shared Codex request failed"))
+                error = message["error"]
+                if message_id in self._text_pending and (
+                    not isinstance(error, dict)
+                    or type(error.get("code")) is not int
+                    or not isinstance(error.get("message"), str)
+                ):
+                    future.set_exception(
+                        SharedCodexProtocolError("shared Codex refusal is malformed")
+                    )
+                    raise SharedCodexProtocolError("shared Codex refusal is malformed")
+                code = error.get("code") if isinstance(error, dict) else None
+                future.set_exception(
+                    SharedCodexRemoteError(
+                        "shared Codex request failed", code=code if type(code) is int else None
+                    )
+                )
                 return
             result = message.get("result")
             if not isinstance(result, dict):
@@ -767,6 +838,202 @@ class CodexSharedAppServerTransport:
             self.init_result = dict(result)
             return dict(result)
 
+    async def _settle_text_dispatch_close(self) -> None:
+        """Own the one cleanup task even through repeated caller cancellation."""
+        self._invalidate(ConnectionError("shared Codex text delivery became uncertain"))
+        closing = asyncio.create_task(self.close())
+        while not closing.done():
+            try:
+                await asyncio.shield(closing)
+            except asyncio.CancelledError:
+                continue
+            except BaseException:
+                break
+        if not closing.cancelled():
+            try:
+                closing.result()
+            except BaseException:
+                # Preserve the dispatch outcome, without claiming cleanup worked.
+                pass
+
+    async def _dispatch_text(
+        self,
+        *,
+        thread_id: str,
+        text: str,
+        client_user_message_id: str,
+        expected_connection_token: tuple[str, int],
+        expected_received_revision: int,
+        expected_turn_id: str | None,
+        final_authority_check: Callable[[], None],
+    ) -> SharedCodexTextAcknowledgement:
+        """Send once on this connection under caller-owned durable authority.
+
+        ``None`` selects start; an exact turn ID selects steer. This is not a
+        capability grant and never initializes/reconnects. The mandatory final
+        synchronous callback must validate current local policy/effect authority.
+        No local check excludes another client's subsequent input: start has no
+        server idle CAS, and steer fences only the turn ID, not its latest input.
+        ``clientUserMessageId`` is correlation, not a vendor idempotency promise.
+        """
+        try:
+            for value in (thread_id, client_user_message_id, expected_turn_id):
+                if value is not None and (not isinstance(value, str) or value != value.strip()):
+                    raise ValueError("dispatch identifiers must be exact")
+            thread_id = bounded_adapter_id(thread_id, field="dispatch thread id")
+            client_user_message_id = bounded_adapter_id(
+                client_user_message_id, field="dispatch client message id"
+            )
+            if expected_turn_id is not None:
+                expected_turn_id = bounded_adapter_id(
+                    expected_turn_id, field="dispatch expected turn id"
+                )
+            if (
+                thread_id != self.thread_id
+                or not isinstance(text, str)
+                or not text.strip()
+                or "\x00" in text
+                or len(text) > MAX_DISPATCH_TEXT_BYTES
+                or len(text.encode("utf-8")) > MAX_DISPATCH_TEXT_BYTES
+                or type(expected_received_revision) is not int
+                or expected_received_revision < 0
+                or not isinstance(expected_connection_token, tuple)
+                or len(expected_connection_token) != 2
+                or not isinstance(expected_connection_token[0], str)
+                or type(expected_connection_token[1]) is not int
+                or not callable(final_authority_check)
+            ):
+                raise ValueError("invalid dispatch inputs")
+        except (TypeError, ValueError, UnicodeError) as exc:
+            raise SharedCodexTextDispatchRejected("invalid text dispatch binding") from exc
+
+        method = "turn/start" if expected_turn_id is None else "turn/steer"
+        params: dict[str, Any] = {
+            "threadId": thread_id,
+            "clientUserMessageId": client_user_message_id,
+            "input": [{"type": "text", "text": text, "text_elements": []}],
+        }
+        if expected_turn_id is not None:
+            params["expectedTurnId"] = expected_turn_id
+        attempted = False
+        future: asyncio.Future[dict[str, Any]] | None = None
+        request_id: int | None = None
+
+        def require_current() -> None:
+            if (
+                not self.initialized
+                or self._closing
+                or self.connection_token() != expected_connection_token
+                or self.received_envelope_revision != expected_received_revision
+                or self._channel is None
+                or self._websocket is None
+                or self._websocket.state is not State.OPEN
+            ):
+                raise SharedCodexTextDispatchRejected("text dispatch authority is stale")
+
+        try:
+            async with asyncio.timeout(self.request_timeout_s):
+                async with self._text_dispatch_lock:
+                    async with self._protocol_lock:
+                        require_current()
+                        if len(self._pending) >= MAX_PENDING:
+                            raise SharedCodexTextDispatchRejected("dispatch pending bound reached")
+                        request_id = self._next_id
+                        self._next_id += 1
+                        encoded = strict_json_dumps(
+                            {"id": request_id, "method": method, "params": params},
+                            separators=(",", ":"),
+                        ).encode("utf-8")
+                        if len(encoded) > MAX_MESSAGE_BYTES:
+                            raise SharedCodexTextDispatchRejected("dispatch write bound reached")
+                        try:
+                            checked = final_authority_check()
+                            if inspect.isawaitable(checked):
+                                if inspect.iscoroutine(checked):
+                                    checked.close()
+                                raise ValueError("authority callback must be synchronous")
+                            if checked is not None:
+                                raise ValueError("authority callback must return None")
+                        except Exception as exc:
+                            raise SharedCodexTextDispatchRejected(
+                                "text dispatch authority callback refused"
+                            ) from exc
+                        require_current()
+                        channel, websocket = self._channel, self._websocket
+                        assert channel is not None and websocket is not None
+                        future = asyncio.get_running_loop().create_future()
+                        self._pending[request_id] = future
+                        self._text_pending.add(request_id)
+                        # From enqueue onward a later flush may transmit bytes,
+                        # even if this write raises or is cancelled.
+                        attempted = True
+                        websocket.send_text(encoded)
+                        await self._flush(websocket, channel)
+                    result = await future
+                    if (
+                        not self.initialized
+                        or self.connection_token() != expected_connection_token
+                        or self._channel is not channel
+                    ):
+                        raise SharedCodexProtocolError("dispatch acknowledgement lost its epoch")
+                    if method == "turn/steer":
+                        turn_id = bounded_adapter_id(result.get("turnId"), field="ack turn id")
+                        if (
+                            turn_id != result.get("turnId")
+                            or turn_id != expected_turn_id
+                            or set(result) != {"turnId"}
+                        ):
+                            raise SharedCodexProtocolError("steer acknowledgement mismatched")
+                    else:
+                        turn = result.get("turn")
+                        if (
+                            set(result) != {"turn"}
+                            or not isinstance(turn, dict)
+                            or turn.get("status") != "inProgress"
+                        ):
+                            raise SharedCodexProtocolError("start acknowledgement malformed")
+                        turn_id = bounded_adapter_id(turn.get("id"), field="ack turn id")
+                        if turn_id != turn.get("id") or (
+                            "threadId" in turn and turn["threadId"] != thread_id
+                        ):
+                            raise SharedCodexProtocolError("start acknowledgement mismatched")
+                    return SharedCodexTextAcknowledgement(
+                        method=method,
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        client_user_message_id=client_user_message_id,
+                        connection_token=expected_connection_token,
+                        received_revision_at_write=expected_received_revision,
+                        received_revision_at_ack=self.received_envelope_revision,
+                    )
+        except SharedCodexRemoteError as exc:
+            # JSON-RPC failure (especially internal error) does not establish
+            # that the vendor had not already accepted/enqueued worker input.
+            await self._settle_text_dispatch_close()
+            raise SharedCodexTextDispatchRemoteError(code=exc.code) from exc
+        except asyncio.CancelledError as exc:
+            if attempted:
+                await self._settle_text_dispatch_close()
+                raise SharedCodexTextDispatchCancelled(
+                    "text dispatch cancelled after enqueue; delivery unknown"
+                ) from exc
+            raise
+        except BaseException as exc:
+            if attempted:
+                await self._settle_text_dispatch_close()
+                raise SharedCodexDeliveryUncertainError(
+                    "text dispatch attempted without a verified acknowledgement"
+                ) from exc
+            if isinstance(exc, SharedCodexTextDispatchRejected):
+                raise
+            raise SharedCodexTextDispatchRejected("text dispatch refused before enqueue") from exc
+        finally:
+            if request_id is not None:
+                self._pending.pop(request_id, None)
+                self._text_pending.discard(request_id)
+            if future is not None and future.done() and not future.cancelled():
+                future.exception()
+
     def _validated_read_params(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         if method == "thread/read":
             if set(params) - {"threadId", "includeTurns"}:
@@ -806,18 +1073,44 @@ class CodexSharedAppServerTransport:
     async def close(self) -> None:
         self._close_revision += 1
         self._closing = True
-        reader = self._reader_task
-        self._reader_task = None
-        channel = self._channel
-        self._channel = None
-        self._websocket = None
+        closing = self._close_task
+        if closing is None or closing.done():
+            reader = self._reader_task
+            self._reader_task = None
+            channel = self._channel
+            self._channel = None
+            self._websocket = None
+            if reader is asyncio.current_task():
+                reader = None
+
+            async def finish_close() -> None:
+                if reader is not None:
+                    # If the reader already detached the channel on EOF/error,
+                    # it owns cleanup. Join it instead of cancelling that cleanup.
+                    if channel is not None:
+                        reader.cancel()
+                    await asyncio.gather(reader, return_exceptions=True)
+                if channel is not None:
+                    await self._close_channel(channel)
+
+            closing = asyncio.create_task(finish_close())
+            self._close_task = closing
+        # Revocation precedes the first await, including concurrent close calls.
         self._invalidate(ConnectionError("shared Codex transport closed"))
         self.notifications.clear()
-        if reader is not None and reader is not asyncio.current_task():
-            reader.cancel()
-            await asyncio.gather(reader, return_exceptions=True)
-        if channel is not None:
-            await self._close_channel(channel)
+        cancelled: asyncio.CancelledError | None = None
+        while not closing.done():
+            try:
+                await asyncio.shield(closing)
+            except asyncio.CancelledError as exc:
+                cancelled = exc
+            except BaseException:
+                break
+        if cancelled is not None:
+            if not closing.cancelled():
+                closing.exception()
+            raise cancelled
+        closing.result()
 
 
 def _validated_jsonrpc_id(value: object) -> int | str | None:
