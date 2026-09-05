@@ -1,5 +1,17 @@
 # PEX agent handoff
 
+## CURRENT EXECUTION — exact echoes accepted, 5 September 2026, 17:55 UTC
+
+**Goal ACTIVE; release NO-GO; 6 September WAT target at risk.** Source **`9ba5f394b14040e8e0808f7101f1dc821084d5b3`** is reviewed/pushed with exact remote equality verified. Main **703 passed in 165.28s across 26 complete files**, no skips; ten changed Python paths Ruff/staged-whitespace clean. Full changes, failed reproductions, command inventory and limits: [`CODEX_INPUT_PROVENANCE_REVIEW.md`](CODEX_INPUT_PROVENANCE_REVIEW.md).
+
+Exact Store-backed correction ID/content attribution now precedes live normalization and is shared with the history classifier. Completed echoes are record-only, not human input or another model call. Incomplete starts are record-only without claiming authorship; completed external input remains supervised. Bootstrap failure/cancellation, transactional multiplicity, replay, private sidecar lifetime and stopped evidence retention are reviewed. A duplicate discovered after reattachment closes with an explicit gap rather than retrying forever. No shared control, live worker/model/AgentCore or submission-readiness claim.
+
+**Next, immediately:** coherent per-event accepted external-input baseline, then actual claimed-effect Executor/shared dispatch through fresh policy, Store and transport checks. Seed from selected pre-resume history only, advance in observed prefix order, and keep raw input private; later reconciled history cannot grant an earlier STOP authority. Never wait for the action's own consumer drainage/echo. Then real existing-worker Strands NOOP/correction/outcome plus ten quiet cases, verified AgentCore runtime and all remaining full-spec/UI/backend/cross-harness/release/**eight pets**/visible fair comparison gates.
+
+`transport_review` owns next-slice NEW `codex_input_baseline.py` and NEW `test_codex_input_baseline.py` only; these are unaccepted WIP and excluded from the echo commit. Main owns subsequent adapter/Pipeline/Store integration and final gates. `attachment_review` finished independent approval (65-pass four-file gate) and is available for bounded review. All echo-checkpoint test handles completed. Preserve unowned `loop.py` +28 and unchanged hash in the receipt. Reread all three specs/current operational files each cycle; use explicit non-overlapping subagent work, independent review and scoped verified pushes.
+
+The first short Builder article remains saved/previewed in the user's own signed-in Brave, **not public**, awaiting the already-present action-time Publish confirmation. Other two remain local reviewed drafts. See [`posts/PUBLICATION_CHECKLIST.md`](posts/PUBLICATION_CHECKLIST.md). Posting is authorized side work, not permission for final Devpost submission or cloud spend. All earlier CURRENT headings below are historical receipts, not the active queue.
+
 ## CURRENT EXECUTION — correction provenance accepted, 5 September 2026
 
 **Goal ACTIVE; release NO-GO; 6 September WAT target at risk.** Source **`4f034e1a0dfe19a70c931f8269f44df339fdc55e`** is reviewed/pushed with exact remote main equality verified. Main **551 passed in 135.77s across 19 files**, no skips; eight changed Python paths Ruff/staged-whitespace clean. Full receipt: [`CODEX_CORRECTION_REVIEW.md`](CODEX_CORRECTION_REVIEW.md).
