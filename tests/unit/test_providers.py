@@ -198,6 +198,7 @@ def test_openai_provider_constructs_with_installed_dependency(monkeypatch):
 def test_zen_openai_compat_excludes_reasoning_on_follow_up_turns(monkeypatch):
     monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
     monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "zen")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "laguna-s-2.1-free")
     monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-key")
     captured: dict = {}
 
@@ -211,6 +212,190 @@ def test_zen_openai_compat_excludes_reasoning_on_follow_up_turns(monkeypatch):
     assert captured["params"]["extra_body"] == {"reasoning": {"exclude": True}}
     http_client = captured["client_args"]["http_client"]
     asyncio.run(http_client.aclose())
+
+
+def test_zen_responses_model_is_routed_by_catalog_id(monkeypatch):
+    from pex_supervisor.openai_responses import OpenAIResponsesModel
+
+    monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
+    monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "zen")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "muse-spark-1.3-contributor-free")
+    monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-key")
+
+    model = load_supervisor_model()
+
+    assert isinstance(model, OpenAIResponsesModel)
+    assert model._pex_provenance["provider"] == "zen"
+    assert model._pex_provenance["model_id"] == "muse-spark-1.3-contributor-free"
+    assert model._pex_provenance["generation_api"] == "responses"
+    assert "http_client" not in model.client_args
+    assert model._http_client_factory is not None
+
+
+def test_other_zen_models_preserve_chat_completions_route(monkeypatch):
+    from pex_supervisor.openai_responses import OpenAIResponsesModel
+
+    monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
+    monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "zen")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "muse-spark-1.3")
+    monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-key")
+
+    model = load_supervisor_model()
+
+    assert model is not None
+    assert not isinstance(model, OpenAIResponsesModel)
+    assert model._pex_provenance["generation_api"] == "chat"
+    assert model.config["params"]["extra_body"] == {"reasoning": {"exclude": True}}
+    asyncio.run(model.client_args["http_client"].aclose())
+
+
+def test_responses_model_translates_strands_tools_and_tool_results(monkeypatch):
+    from pex_supervisor.openai_responses import OpenAIResponsesModel
+
+    captured = {}
+
+    class Responses:
+        async def create(self, **kwargs):
+            captured.update(kwargs)
+            return {
+                "output": [
+                    {
+                        "type": "function_call",
+                        "call_id": "call-2",
+                        "name": "submit_decision",
+                        "arguments": '{"action":"NOOP"}',
+                    }
+                ],
+                "usage": {"input_tokens": 11, "output_tokens": 7},
+            }
+
+    class Client:
+        responses = Responses()
+
+    class Context:
+        async def __aenter__(self):
+            return Client()
+
+        async def __aexit__(self, *_args):
+            return None
+
+    model = OpenAIResponsesModel(client_args={"api_key": "test"}, model_id="model")
+    monkeypatch.setattr(model, "_get_client", lambda: Context())
+    messages = [
+        {"role": "user", "content": [{"text": "inspect"}]},
+        {
+            "role": "assistant",
+            "content": [
+                {"toolUse": {"toolUseId": "call-1", "name": "read_evidence", "input": {"n": 1}}}
+            ],
+        },
+        {
+            "role": "user",
+            "content": [
+                {"toolResult": {"toolUseId": "call-1", "content": [{"json": {"ok": True}}]}}
+            ],
+        },
+    ]
+    tools = [
+        {
+            "name": "submit_decision",
+            "description": "Return the typed decision",
+            "inputSchema": {"json": {"type": "object"}},
+        }
+    ]
+
+    async def collect():
+        return [
+            event
+            async for event in model.stream(
+                messages,
+                tools,
+                "system",
+                tool_choice={"any": {}},
+                system_prompt_content=[{"text": "system"}],
+            )
+        ]
+
+    events = asyncio.run(collect())
+
+    assert captured["model"] == "model"
+    assert captured["instructions"] == "system"
+    assert captured["tool_choice"] == "auto"
+    assert captured["reasoning"] == {"effort": "low"}
+    assert captured["tools"] == [
+        {
+            "type": "function",
+            "name": "submit_decision",
+            "description": "Return the typed decision",
+            "parameters": {"type": "object"},
+        }
+    ]
+    assert captured["input"] == [
+        {"role": "user", "content": "inspect"},
+        {
+            "type": "function_call",
+            "call_id": "call-1",
+            "name": "read_evidence",
+            "arguments": '{"n":1}',
+        },
+        {
+            "type": "function_call_output",
+            "call_id": "call-1",
+            "output": '[{"json":{"ok":true}}]',
+        },
+    ]
+    assert events[0] == {"messageStart": {"role": "assistant"}}
+    assert events[1]["contentBlockStart"]["start"]["toolUse"] == {
+        "name": "submit_decision",
+        "toolUseId": "call-2",
+    }
+    assert events[2] == {
+        "contentBlockDelta": {"delta": {"toolUse": {"input": '{"action":"NOOP"}'}}}
+    }
+    assert events[4] == {"messageStop": {"stopReason": "tool_use"}}
+    assert events[5]["metadata"]["usage"] == {
+        "inputTokens": 11,
+        "outputTokens": 7,
+        "totalTokens": 18,
+    }
+
+
+def test_responses_model_uses_supported_auto_tool_choice(monkeypatch):
+    from pex_supervisor.openai_responses import OpenAIResponsesModel
+
+    captured = {}
+
+    class Responses:
+        async def create(self, **kwargs):
+            captured.update(kwargs)
+            return {"output": [], "usage": None}
+
+    class Client:
+        responses = Responses()
+
+    class Context:
+        async def __aenter__(self):
+            return Client()
+
+        async def __aexit__(self, *_args):
+            return None
+
+    model = OpenAIResponsesModel(client_args={"api_key": "test"}, model_id="model")
+    monkeypatch.setattr(model, "_get_client", lambda: Context())
+    tools = [
+        {
+            "name": "SupervisorDecision",
+            "description": "Return the typed decision",
+            "inputSchema": {"json": {"type": "object"}},
+        }
+    ]
+
+    async def collect():
+        return [event async for event in model.stream([], tools, "system")]
+
+    asyncio.run(collect())
+
+    assert captured["tool_choice"] == "auto"
 
 
 def test_azure_and_hermes_refuse_missing_base_url(monkeypatch):

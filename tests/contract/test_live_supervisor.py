@@ -6,12 +6,20 @@ import os
 from datetime import UTC, datetime
 
 import pytest
+from dotenv import dotenv_values
 from pex_supervisor.providers import load_supervisor_model
 
 from tests.contract.live_gate import require_live_authorization
 
 
-def _has_supervisor_key() -> bool:
+def _has_supervisor_access() -> bool:
+    if os.environ.get("PEX_SUPERVISOR_PROVIDER") in {
+        "ollama",
+        "lmstudio",
+        "llamacpp",
+        "vllm",
+    }:
+        return True
     names = (
         "PEX_SUPERVISOR_API_KEY",
         "OPENAI_API_KEY",
@@ -26,15 +34,15 @@ def _has_supervisor_key() -> bool:
     if any(os.environ.get(name) for name in names):
         return True
     env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
-    try:
-        text = open(env_path, encoding="utf-8").read()
-    except OSError:
-        return False
-    return any(name in text for name in names)
+    values = dotenv_values(env_path)
+    return any(str(values.get(name) or "").strip() for name in names)
 
 
 @pytest.mark.live_llm
-@pytest.mark.skipif(not _has_supervisor_key(), reason="no supervisor API key configured")
+@pytest.mark.skipif(
+    not _has_supervisor_access(),
+    reason="no supervisor API key or local provider configured",
+)
 def test_live_supervisor_inference_is_auditable():
     require_live_authorization("PEX_LIVE_SUPERVISOR")
     from pex_protocol.enums import EventType, HarnessType, SessionStatus
@@ -46,17 +54,17 @@ def test_live_supervisor_inference_is_auditable():
 
     os.environ.pop("PEX_SUPERVISOR_DISABLE", None)
     model = load_supervisor_model()
-    if model is None:
-        pytest.skip("supervisor model did not construct")
+    assert model is not None, "authorized live supervisor model did not construct"
     now = datetime.now(UTC)
     request = SupervisorRequest(
         session=HarnessSession(
             id="synthetic:probe",
             harness_type=HarnessType.SYNTHETIC,
             vendor_session_id="probe",
+            project_id="p",
             status=SessionStatus.STOPPED,
             goal_id="g",
-            cwd=".",
+            cwd=os.getcwd(),
         ),
         goal=Goal(
             id="g",
@@ -87,6 +95,15 @@ def test_live_supervisor_inference_is_auditable():
     assert result.runtime_version
     assert result.model_call_count >= 1
     assert result.local_invocation_id and result.local_invocation_id.startswith("pexinv_")
+    expected_provider = os.environ.get("PEX_LIVE_EXPECT_PROVIDER")
+    expected_model = os.environ.get("PEX_LIVE_EXPECT_MODEL")
+    expected_api = os.environ.get("PEX_LIVE_EXPECT_GENERATION_API")
+    if expected_provider:
+        assert result.provider == expected_provider
+    if expected_model:
+        assert result.model_name == expected_model
+    if expected_api:
+        assert getattr(model, "_pex_provenance", {}).get("generation_api") == expected_api
     # The installed generic Strands adapters do not expose every provider's
     # request id. Never fabricate one from PEX's local correlation id.
     assert result.inference_request_id is None

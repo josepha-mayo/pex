@@ -23,6 +23,7 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 import httpx
 
 from pex_supervisor.catalog import catalog
+from pex_supervisor.openai_responses import OpenAIResponsesModel
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,16 @@ _RUNTIME_UNSET = object()
 _RUNTIME_SCOPE: ContextVar[Any] = ContextVar(
     "pex_supervisor_runtime_scope", default=_RUNTIME_UNSET
 )
+
+_RESPONSES_API_MODELS: dict[str, frozenset[str]] = {
+    "zen": frozenset({"muse-spark-1.3-contributor-free"}),
+}
+
+
+def _generation_api(provider: str, model_id: str) -> str:
+    """Select a provider/model transport without changing neighboring catalog models."""
+
+    return "responses" if model_id in _RESPONSES_API_MODELS.get(provider, ()) else "chat"
 
 
 @dataclass(frozen=True)
@@ -1348,6 +1359,7 @@ def _load_supervisor_model() -> Any | None:
             "model_id": model_id,
             "base_url": _public_base_url(base_url),
             "auth_mode": _auth_mode(spec),
+            "generation_api": _generation_api(pid, model_id or ""),
         }
         fingerprint_payload = json.dumps(
             {
@@ -1397,16 +1409,35 @@ def _load_supervisor_model() -> Any | None:
         if base_url:
             client_args["base_url"] = base_url
         client_args["timeout"] = _supervisor_timeout()
-        client_args["http_client"] = credential_safe_http_client(
-            timeout=_supervisor_timeout(),
-            asynchronous=True,
+        model_type = OpenAIModel
+        if _generation_api(spec.id, model_id) == "responses":
+            model_type = OpenAIResponsesModel
+        else:
+            client_args["http_client"] = credential_safe_http_client(
+                timeout=_supervisor_timeout(),
+                asynchronous=True,
+            )
+        responses_args = (
+            {
+                "http_client_factory": lambda: credential_safe_http_client(
+                    timeout=_supervisor_timeout(),
+                    asynchronous=True,
+                )
+            }
+            if model_type is OpenAIResponsesModel
+            else {}
         )
         return ready(
-            OpenAIModel(
+            model_type(
                 client_args=client_args or None,
                 model_id=model_id,
                 stream=False,
-                params=_openai_compat_chat_params(spec),
+                params=(
+                    _openai_compat_chat_params(spec)
+                    if _generation_api(spec.id, model_id) == "chat"
+                    else {}
+                ),
+                **responses_args,
             )
         )
 
