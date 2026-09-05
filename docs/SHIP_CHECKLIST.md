@@ -12,13 +12,26 @@ Current reviewed provider/setup source: **147 backend/setup tests passed, 1 syml
 
 ## Updated working objective
 
-Maximize PEX's chance of winning the hackathon by shipping a genuinely useful, fully spec-compliant, evidence-backed app, targeting 6 September 2026 WAT. Independently audit every current code/configuration path, including our own changes, against all three binding specifications; fix incorrect behavior and build missing requirements. First prove real goal-aware Strands supervision and safe intervention in the user's existing worker, then complete the full cross-harness product and easy, helpful UI/UX. Verify a reproducible release build, re-review all eight pets, and perform visible live Cursor, OpenCode and Codex baseline/+PEX comparisons with honest outcomes, counted overhead and no hidden-data leakage. Use bounded subagents with independent review after each repair cycle; push only verified checkpoints. Finish with requirement-by-requirement release evidence and accurate submission artifacts. Keep the complete goal active until all required gates are met or a genuine external blocker needs the user; observation-only support and passing local tests are intermediate milestones, not success. Winning is the aim, not a guarantee.
+Ship a genuinely useful, submission-ready PEX that satisfies all three binding specifications, targeting 6 September 2026 WAT and maximizing our chance of winning the hackathon. Audit every current code/configuration path independently, including our own work, and repair incorrect or missing behavior. Prove real goal-aware Strands reasoning, independent verification and safe intervention in the user's same existing worker; then finish the full cross-harness product and understandable UI/UX. Validate the normal release build, all eight pets, and visible fair Cursor/Codex comparisons plus separately labeled OpenCode diagnostics, counting overhead and human actions without hidden-evaluator access. Use bounded subagents, independently review every repair, and push verified checkpoints. Completion requires requirement-by-requirement evidence, useful real outcomes and accurate submission artifacts; observation-only support or green local tests cannot complete this goal. Winning is the aim, not a guarantee.
 
 The app's existing goal remains active. Its available tools allow status changes but not editing an unfinished goal's objective; this document records the updated working objective without falsely completing/replacing that goal.
 
 ## Prioritized TODOs and steps — current plan, 5 September
 
 **Goal ACTIVE; release NO-GO.** This order supersedes the duplicate older plans. Detailed P0–P4 acceptance checklists below remain required. A planning update is not implementation or live-verification evidence.
+
+### Next repair cycle — executable TODOs
+
+These are the immediate steps within stage 1, not another competing product plan. Current baseline is source `8a402c2` plus documentation `93272ad`; no new source repair is claimed by this refresh.
+
+1. [ ] **Refresh the audit inputs — main.** Finish reading all three specs, current handoff and affected source/tests; reconcile worktree ownership. Core and Recovery have been reread in the current continuation; the fresh Build reread remains incomplete. Keep the unowned `loop.py` diff untouched.
+2. [ ] **Capture prefix-loss regressions — main; independent reviewer: `transport_review`.** A valid turn-start and item-completion followed by closure or malformed input must retain the two valid observations. Reproduce through coordinator, adapter, Pipeline and real temporary Store, not only a callback stub. Reviewer reproduction already confirms coordinator watermark 2 with zero delivered observations; the integrated regression/fix remains pending.
+3. [ ] **Repair observation retention — main.** Preserve only the validated prefix and its original identity, order and receipt metadata. Validate status/flags before accepting a record. Record continuity loss honestly and prohibit semantic worker effects after loss; invalid/foreign suffixes cannot become trusted observations. Cover retry, duplicate, cancellation, pending queues, Store failure and replacement-session races. Keeping a prefix does not establish complete raw capture or process-crash durability.
+4. [ ] **Resolve local workspace authority — `attachment_review` designs; main accepts and assigns implementation.** Define explicit local-origin and server-observed physical-workspace binding, with safe confirmation/migration. Test distinct machine origins sharing a path, typed bindings whose raw key resembles cwd, stale identity and replacement races. Never guess a hostname or trust caller-provided proof as locally measured evidence. The reviewer has reproduced cross-origin acceptance; its proposed design is not implemented or approved yet.
+5. [ ] **Independently review and integrate — main plus bounded reviewers.** Review the actual diff and negative/positive cases, run focused regressions and relevant complete compatibility files, and record exact commands/results. Do not mark whole-repository review complete from these paths.
+6. [ ] **Publish the verified checkpoint and advance — main.** Update audit coverage, known failures, handoff and these checkboxes; commit only reviewed owned paths, push and verify remote hash. Then proceed to same-worker action authority and the real supervisor loop. If an external runtime prerequisite needs the user, state the exact prerequisite and continue independent in-scope work where possible.
+
+**Deadline checkpoint:** after each repair cycle, reassess remaining gates against 6 September WAT. Surface any schedule risk and required user decision promptly; do not silently defer required functionality, relabel mocks as live proof or claim submission readiness to meet the date.
 
 ### Completed source checkpoints (not live product proof)
 
@@ -31,7 +44,8 @@ The app's existing goal remains active. Its available tools allow status changes
 - [x] Implement authenticated inspect → explicit confirm → detach/recovery, monotonic expiry, immutable PEX/vendor identity separation, retry safety and legacy/shared serialization. Failed publication restores the prior bare pump; post-commit cancellation settles the new publication.
 - [ ] Complete named-project local-origin/physical binding: two different machine origins with the same lexical path currently both match local cwd. Do not discard origin identity or invent hostname conventions.
 - [x] Preserve observed human content with explicit uncertainty; block HUMAN override authority from incomplete/redacted input while retaining USER_PROMPT records. Separate runtime status, terminal turn and local observer loss through real Store/Pipeline tests.
-- [ ] Preserve valid prefixes when a later drained record fails, complete durable/raw observation, and process-crash recovery. Disconnect gaps are disclosed, but bounded in-memory buffering is not complete coverage or useful-outcome proof.
+- [ ] Preserve valid prefixes when a later drained record fails, without allowing worker effects after continuity loss. Follow the next-cycle regressions above.
+- [ ] Complete required durable/raw observation and process-crash recovery separately. Disconnect gaps are disclosed, but bounded in-memory buffering or repaired prefix retention is not complete coverage or useful-outcome proof.
 - [ ] Resolve a protected executable/endpoint path before authorized installed-runtime testing. Launch validation currently rejects modifiable AppData ancestry; do not weaken it or silently change permissions.
 - [x] Run combined new-module and existing Codex/pipeline/attachment gates and cross-review; exact final receipt is in the handoff. Only reviewed paths may be committed/pushed; unowned `loop.py` is excluded.
 
@@ -96,10 +110,10 @@ The app's existing goal remains active. Its available tools allow status changes
 
 ### Bounded ownership and execution discipline
 
-- **Main:** shared adapter/API integration, cross-domain review, full-spec audit, runtime/UI verification and final evidence acceptance.
-- **`transport_review`:** independent shared transport/coordinator review and bounded Store acceptance/projection repair/tests.
-- **`attachment_review`:** manager recovery, coordinator initial runtime flags and independent live-status review.
-- **`legacy_attach_fence`:** legacy attachment/content review and incomplete-input authority repair/tests; only explicitly delegated Pipeline branches.
+- **Main:** next prefix-retention implementation across coordinator/adapter/Pipeline/Store, integration, full-spec audit and final evidence acceptance; later runtime/UI verification.
+- **`transport_review`:** current read-only prefix-loss reproduction/design and independent review of the resulting patch. Prior Store projection work is already committed.
+- **`attachment_review`:** current read-only local-origin/physical-workspace authority design and migration review. Prior manager recovery/runtime flag work is already committed; new implementation needs explicit bounded ownership.
+- **`legacy_attach_fence`:** prior legacy attachment/content and incomplete-input authority repair is committed; available for a bounded independent follow-up, with no new source ownership assigned by this plan.
 - Assign exact non-overlapping files; preserve unexplained `loop.py` changes without staging, cleaning or overwriting them.
 
 **Every repair cycle:** read all three specs, handoff and important files → reproduce → implement with regressions → independent diff review → main integration checks → update coverage/handoff → scoped commit/push → verify remote hash. An agent report alone cannot complete a checkbox.
