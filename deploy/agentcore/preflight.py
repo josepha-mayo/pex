@@ -23,7 +23,7 @@ FALLBACK_REGIONS = ("eu-west-1", "eu-central-1")
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_IMAGE = "pex-supervisor:agentcore-arm64"
 _RUNTIME_ARN = re.compile(
-    r"^arn:aws(?:-[a-z0-9-]+)?:bedrock-agentcore:[a-z0-9-]+:[0-9]{12}:runtime/"
+    r"^arn:aws(?:-[a-z0-9-]+)?:bedrock-agentcore:(?P<region>[a-z0-9-]+):[0-9]{12}:runtime/"
     r"[A-Za-z][A-Za-z0-9_]{0,99}-[A-Za-z0-9]{10}$"
 )
 _MAX_COMMAND_OUTPUT_BYTES = 64 * 1024
@@ -195,7 +195,17 @@ def check() -> dict:
     dockerignore = _secret_safe_dockerignore()
     runtime_arn = os.environ.get("PEX_AGENTCORE_RUNTIME_ARN", "").strip()
     runtime_arn_configured = bool(runtime_arn)
-    runtime_arn_valid = bool(_RUNTIME_ARN.fullmatch(runtime_arn))
+    runtime_match = _RUNTIME_ARN.fullmatch(runtime_arn)
+    runtime_arn_valid = runtime_match is not None
+    # Mirror Settings normalization and the bridge's target checks without
+    # constructing Settings (which also processes unrelated local secrets).
+    raw_region = os.environ.get("PEX_AGENTCORE_REGION", "")
+    region = raw_region.strip()
+    region_valid = len(raw_region) <= 64 and (
+        not region or bool(runtime_match and region == runtime_match.group("region"))
+    )
+    qualifier = os.environ.get("PEX_AGENTCORE_QUALIFIER", "DEFAULT").strip()
+    qualifier_valid = bool(re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,47}", qualifier))
 
     blockers: list[str] = []
     if not aws:
@@ -232,6 +242,14 @@ def check() -> dict:
         invocation_blockers.append("PEX_AGENTCORE_RUNTIME_ARN is not configured")
     elif not runtime_arn_valid:
         invocation_blockers.append("PEX_AGENTCORE_RUNTIME_ARN is not a valid Runtime ARN")
+    if not region_valid:
+        invocation_blockers.append(
+            "PEX_AGENTCORE_REGION must fit 64 characters and match the Runtime ARN region"
+        )
+    if not qualifier_valid:
+        invocation_blockers.append(
+            "PEX_AGENTCORE_QUALIFIER must be a valid AgentCore endpoint name"
+        )
     return {
         "generated_at": datetime.now(UTC).isoformat(),
         "preferred_region": PREFERRED_REGION,
@@ -254,8 +272,10 @@ def check() -> dict:
         "dockerignore": dockerignore,
         "runtime_arn_configured": runtime_arn_configured,
         "runtime_arn_valid": runtime_arn_valid,
+        "runtime_region_valid": region_valid,
+        "runtime_qualifier_valid": qualifier_valid,
         "deployable": deployable,
-        "invokable": deployable and runtime_arn_valid,
+        "invokable": not invocation_blockers,
         "blockers": blockers,
         "invocation_blockers": invocation_blockers,
         "source": (

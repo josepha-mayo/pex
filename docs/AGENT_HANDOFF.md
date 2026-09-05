@@ -1,5 +1,7 @@
 # PEX agent handoff
 
+**Latest authority:** the user conditionally approved AWS setup **only if no card billing occurs**. General credit service eligibility was checked, but no hard no-charge protection was established; no cloud creation/invocation is authorized under unresolved billing risk. Keep private billing details out of git. A Sol-low audit also led to a bounded preflight region/qualifier validation repair: main reproduced 5 bad-target false positives and 4 valid controls; complete preflight/client gate **91 passed**, Ruff/whitespace clean. [Updated receipt and remaining limitations](AGENTCORE_LIVE_PREFLIGHT_2026_09_05.md). Actual existing-worker/Strands/AgentCore proof remains open; do not repeat broad accepted tests or call the product ready.
+
 **Live prerequisite refresh, 5 Sep ~20:01 UTC:** existing Brave browser-extension access now works; signed-in AWS Runtime lists show zero resources in `us-east-1` and `eu-north-1`. Local preflight is not deployable: CLI authentication/current deployment tools/running Docker/ARM64 image/runtime ARN are missing or unverified. Region/spend authorization is still required. The first article renders Published with its stable URL; logged-out availability and bonus award remain unverified. [Exact evidence and next steps](AGENTCORE_LIVE_PREFLIGHT_2026_09_05.md). New subagents must use **GPT-5.6 Sol low**, superseding all older medium instructions. No new test, deployment or live-model proof is claimed.
 
 ## CURRENT EXECUTION — claimed corrections and cancellation repair, 5 September 2026

@@ -3,8 +3,16 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 PREFLIGHT_PATH = ROOT / "deploy" / "agentcore" / "preflight.py"
+
+
+@pytest.fixture(autouse=True)
+def isolated_target(monkeypatch):
+    for name in ("PEX_AGENTCORE_RUNTIME_ARN", "PEX_AGENTCORE_REGION", "PEX_AGENTCORE_QUALIFIER"):
+        monkeypatch.delenv(name, raising=False)
 
 
 def _load_preflight():
@@ -146,6 +154,55 @@ def test_invalid_runtime_arn_never_becomes_invokable(monkeypatch):
     assert report["invokable"] is False
     assert any("valid Runtime ARN" in item for item in report["invocation_blockers"])
     assert "configured-but-invalid" not in str(report)
+
+
+@pytest.mark.parametrize(
+    ("region", "qualifier", "valid"),
+    [
+        (None, None, True),
+        ("eu-north-1", "DEFAULT", True),
+        (" eu-north-1 ", " Demo_1 ", True),
+        ("   ", "DEFAULT", True),
+        ("eu-west-1", "DEFAULT", False),
+        ("eu-north-1", "1-invalid", False),
+        ("eu-north-1", "", False),
+        ("eu-north-1", "A" * 49, False),
+        (" " * 65, "DEFAULT", False),
+    ],
+)
+def test_invocation_target_matches_real_bridge_validation(
+    monkeypatch, tmp_path, region, qualifier, valid
+):
+    from pex_bridge.agentcore import AgentCoreConfigurationError, AgentCoreSupervisorClient
+    from pex_bridge.config import Settings
+
+    module = _load_preflight()
+    monkeypatch.setattr(module.shutil, "which", _tools)
+    monkeypatch.setattr(module, "_run", _ready_run)
+    arn = "arn:aws:bedrock-agentcore:eu-north-1:123456789012:runtime/PexRuntime-ABCDEFGHIJ"
+    monkeypatch.setenv("PEX_AGENTCORE_RUNTIME_ARN", arn)
+    if region is not None:
+        monkeypatch.setenv("PEX_AGENTCORE_REGION", region)
+    if qualifier is not None:
+        monkeypatch.setenv("PEX_AGENTCORE_QUALIFIER", qualifier)
+    settings_values = dict(
+        require_auth=False,
+        home=tmp_path,
+        agentcore_runtime_arn=arn,
+        agentcore_region=region,
+        agentcore_qualifier="DEFAULT" if qualifier is None else qualifier,
+    )
+    # Construction only: the injected dummy client cannot make an AWS call.
+    if valid:
+        AgentCoreSupervisorClient(Settings.for_test(**settings_values), client=object())
+    else:
+        with pytest.raises((ValueError, AgentCoreConfigurationError)):
+            AgentCoreSupervisorClient(Settings.for_test(**settings_values), client=object())
+
+    report = module.check()
+    assert report["invokable"] is valid
+    assert bool(report["invocation_blockers"]) is not valid
+    assert arn not in str(report)
 
 
 def test_dockerignore_cannot_reinclude_secret_patterns(tmp_path, monkeypatch):

@@ -50,6 +50,12 @@ uv run python deploy/agentcore/preflight.py
 It checks active AWS credentials, the current AgentCore CLI/CDK prerequisites,
 Docker/buildx ARM64 support, the existing image architecture, and secret-safe
 build context. Executable presence alone is not considered deployable.
+The invocation target checks also reject a mismatched region or invalid endpoint
+qualifier using the bridge's normalization rules. This remains a local prerequisite
+report, not a resource existence, IAM/model access, billing-safety or live inference
+proof. Its current `invokable` flag still requires deployment tooling and should
+not be used to rule out SDK invocation of an already deployed runtime; project
+configuration and deployment dry-run verification are separate gates below.
 
 ## Runtime configuration
 
