@@ -6,6 +6,10 @@
 
 **Date:** 2026-09-05
 
+## Durable dispatch authority repair — 5 Sep
+
+Main implemented and independently reviewed a bounded Store repair for stale intent/control/input and working-directory authority. Fourteen new regression cases cover goal edits/ABA, session pause/resume, newer accepted prompts, cwd changes/stale projection, migration/replay, and valid routine refresh/activity. Final integration and scoped push receipt are recorded at the top of `docs/AGENT_HANDOFF.md`. Actual transport/raw-input/global-pause/post-claim concurrency gates and live product proof remain open. Shared Codex transport/coordinator files are separate uncommitted WIP; unowned `loop.py` remains untouched. Overall **NO-GO**, active goal unchanged.
+
 ## Provider/setup repair checkpoint — 5 Sep
 
 Reviewed source push: `67168204b11331a4a3db21b20e09a6900f3bbec5`; main verified exact remote equality. The unrelated `loop.py` edit remains uncommitted. This receipt is a docs-only follow-up.

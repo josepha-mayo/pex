@@ -6,6 +6,12 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Durable dispatch authority addendum — 5 Sep
+
+Main and independent credential reviewer reviewed the bounded `store.py` schema/migration, atomic event acceptance, main-effect claim, session-control revision and event-projection changes. Main fully read new `tests/unit/test_generic_dispatch_authority.py`; independent reviewer ran all 14 cases and approved the final diff. Pre-fix source loaded in memory reproduced stale grants, without changing the checkout or invoking external effects. Final integration/push receipt is in the current handoff. This is not full-file review of the large Store module or proof of transport concurrency safety.
+
+Add the new authority test file to the next reconciled inventory. New shared Codex transport/coordinator files and their tests are separate agent WIP with incomplete main review/integration; do not count them as reviewed capabilities. The unowned `loop.py` change remains excluded.
+
 ### Provider/setup repair addendum — 5 Sep
 
 Main and the independent credential reviewer fully read the new `apps/desktop/src/supervisorDraft.ts` and `supervisorDraft.test.ts`, and reviewed changed App/SettingsPage/viewModel-test/package wiring. Main and setup owner fully read `scripts/install.ps1` and new `tests/unit/test_source_setup_contract.py`; the setup owner fully read README, with main reviewing its changed setup/architecture text. Main reviewed the provider runtime-scope/mismatch patch and all new provider/route tests after independent reproduction; this does not equal whole-file approval of `providers.py` or `app.py`. Seven-file final gate: 147 passed/1 symlink skip; desktop: 97 checks/TypeScript. New `docs/CODEX_EXISTING_SESSION_AUDIT.md` records bounded Codex source/protocol review, not a live integration receipt.

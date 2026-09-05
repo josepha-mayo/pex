@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS event_processing (
   accepted_project_binding TEXT,
   accepted_goal_intent_revision INTEGER,
   accepted_goal_intent_hash TEXT,
+  accepted_session_authority TEXT,
   accepted_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   completed_at TEXT
@@ -4430,8 +4431,9 @@ def _merge_event_session_projection(
             merged.metadata["capabilities_adapter"] = source
     if current.project_id and not merged.project_id:
         merged.project_id = current.project_id
-    if current.cwd and not merged.cwd:
-        merged.cwd = current.cwd
+    # The adapter owns the live working target. Even with unchanged activity
+    # timestamps, an older semantic plan cannot restore its previous directory.
+    merged.cwd = current.cwd
     if current.repo and not merged.repo:
         merged.repo = current.repo
     # These are always control-plane owned, regardless of activity timestamps.
@@ -4665,6 +4667,22 @@ def _session_control_receipt(
         "project_binding": row["project_binding"],
         "discovery_generation": row["discovery_generation"],
     }
+
+
+def _event_session_authority(row: aiosqlite.Row) -> str:
+    """Freeze dispatch authority independently of mutable presentation snapshots."""
+
+    session = HarnessSession.model_validate_json(row["json"])
+    return _canonical_json(
+        {
+            "schema": "pex.event-session-authority.v1",
+            "binding": _overlay_session_binding(session),
+            "control_revision": row["control_revision"],
+            "project_binding": row["project_binding"],
+            # discovery_generation is a UI refresh token, not a transport epoch.
+            # Connection/subscription continuity must be checked by the adapter.
+        }
+    )
 
 
 async def _revoke_session_credentials(
@@ -8366,6 +8384,12 @@ class Store:
                 await self.db.execute(
                     "ALTER TABLE event_processing ADD COLUMN accepted_goal_intent_hash TEXT"
                 )
+            if "accepted_session_authority" not in columns:
+                # Never backfill current authority onto historical decisions.
+                # An unfinished pre-migration plan must not regain dispatch rights.
+                await self.db.execute(
+                    "ALTER TABLE event_processing ADD COLUMN accepted_session_authority TEXT"
+                )
             now = utcnow().isoformat()
             await self.db.execute(
                 "INSERT INTO event_processing("
@@ -10938,6 +10962,7 @@ class Store:
                     control_changed = (
                         session.supervision_paused != existing.supervision_paused
                         or session.goal_id != existing.goal_id
+                        or session.cwd != existing.cwd
                     )
                     if (
                         session != existing
@@ -16264,7 +16289,8 @@ class Store:
                     if event_semantic_payload(collision_event) != event_semantic_payload(event):
                         raise ValueError("event id collision contains different content")
                 session_cursor = await transaction.execute(
-                    "SELECT id, vendor_session_id, harness_type, project_binding, json "
+                    "SELECT id, vendor_session_id, harness_type, project_binding, json, "
+                    "control_revision "
                     "FROM sessions WHERE id = ?",
                     (event.session_id,),
                 )
@@ -16477,6 +16503,7 @@ class Store:
                     "state = 'accepted', revision = revision + 1, "
                     "accepted_session_json = ?, accepted_project_binding = ?, "
                     "accepted_goal_intent_revision = ?, accepted_goal_intent_hash = ?, "
+                    "accepted_session_authority = ?, "
                     "accepted_at = ?, updated_at = ?, completed_at = NULL "
                     "WHERE event_id = ? AND mode = 'record_only' "
                     "AND state = 'record_only_complete'",
@@ -16489,6 +16516,7 @@ class Store:
                         accepted_project_binding,
                         accepted_goal_intent_revision,
                         accepted_goal_intent_hash,
+                        _event_session_authority(session_row) if session_row is not None else None,
                         now,
                         now,
                         event.event_id,
@@ -20837,7 +20865,7 @@ class Store:
                     raise RuntimeError("accepted event row disappeared")
                 event = HarnessEvent.model_validate_json(event_row["json"])
                 session_cursor = await transaction.execute(
-                    "SELECT json FROM sessions WHERE id = ?",
+                    "SELECT * FROM sessions WHERE id = ?",
                     (processing["session_id"],),
                 )
                 session_row = await session_cursor.fetchone()
@@ -21066,6 +21094,46 @@ class Store:
                             )
                         ):
                             skip_reason = "goal_superseded_before_dispatch"
+
+                if skip_reason is None and not containment_effect:
+                    if (
+                        session_row is None
+                        or processing.get("accepted_session_authority") is None
+                    ):
+                        skip_reason = "accepted_session_authority_missing"
+                    elif processing["accepted_session_authority"] != _event_session_authority(
+                        session_row
+                    ):
+                        skip_reason = "session_authority_changed_before_dispatch"
+                    if skip_reason is None and goal_id:
+                        authority_cursor = await transaction.execute(
+                            "SELECT intent_revision, intent_hash FROM goals WHERE id = ?",
+                            (goal_id,),
+                        )
+                        authority_row = await authority_cursor.fetchone()
+                        if authority_row is None or (
+                            processing.get("accepted_goal_intent_revision")
+                            != authority_row["intent_revision"]
+                            or processing.get("accepted_goal_intent_hash")
+                            != authority_row["intent_hash"]
+                        ):
+                            skip_reason = "goal_intent_changed_before_dispatch"
+                    if skip_reason is None:
+                        # Acceptance order, never vendor timestamps. Include recorded-only
+                        # prompts and finished events: later processing cannot erase input.
+                        input_cursor = await transaction.execute(
+                            "SELECT 1 FROM event_processing AS p "
+                            "JOIN events AS e ON e.event_id = p.event_id "
+                            "WHERE p.session_id = ? AND p.accept_seq > ? "
+                            "AND json_extract(e.json, '$.event_type') = ? LIMIT 1",
+                            (
+                                processing["session_id"],
+                                processing["accept_seq"],
+                                EventType.USER_PROMPT.value,
+                            ),
+                        )
+                        if await input_cursor.fetchone() is not None:
+                            skip_reason = "newer_human_input_before_dispatch"
 
                 if skip_reason is not None:
                     await transaction.commit()

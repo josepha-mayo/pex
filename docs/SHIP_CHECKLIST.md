@@ -16,6 +16,8 @@ The app's existing goal remains active. Its available tools allow status changes
 
 ## Immediate execution plan — latest goal/TODO request, 5 September
 
+**Latest repair progress:** the durable Store boundary now snapshots session/control/project/target authority and rejects changed goal intent or later accepted human input. Cwd ABA and stale-plan target rollback are repaired. Fourteen new regressions and independent review cover this source slice; the latest handoff records final integration/push status. Step 2 is not universally complete: global-pause ABA, raw input, actual transport epochs and post-claim races remain open. Shared transport/coordinator are separate uncommitted WIP awaiting integration review; do not count them as live existing-worker support.
+
 **Goal state: ACTIVE. Release state: NO-GO.** This section refines the next actions; it does not mark new implementation complete. Target remains 6 September WAT. Required quality means demonstrated spec compliance and usefulness, not a promise of literal perfection or a guaranteed win.
 
 1. **Reconfirm the contract and source boundary (main).** Read all three binding specs, current handoff and important status files before each repair cycle. Preserve the unexplained `loop.py` edit. Track every code/configuration path in `CODE_AUDIT_COVERAGE.md`; selected reviews are not a whole-repository audit.

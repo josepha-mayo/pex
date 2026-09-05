@@ -1,5 +1,9 @@
 # Known failures
 
+## Dispatch authority repair and remaining races — 5 Sep 2026
+
+The bounded Store repair now rejects changed goal intent, session pause/resume, target cwd ABA and later accepted human input, without cancelling plans on routine discovery refresh. It also prevents stale event plans from restoring an old cwd. See the handoff for regressions and final integration/push receipt. This does not yet fence actual transport reconnects, raw unaccepted input, global pause/resume ABA or changes after a dispatch claim commits. Codex content normalization, active-steer/idle-continue separation and configuration-preserving same-worker delivery remain required. Shared connector/coordinator work is uncommitted and unintegrated; no live supervision claim follows.
+
 ## Existing Codex session and current setup limits — 5 Sep 2026
 
 The current Codex stdio adapter starts a separate App Server and reads only its notifications. Stored thread listing/resume is not proof of the user's existing worker stream. Shared subscription/reconciliation, live user-client visibility and a safe concurrent-input fence remain open; see `docs/CODEX_EXISTING_SESSION_AUDIT.md`. Failed attachment recovery, polling-derived false activity and missing worker Attach UI still need repair. Provider credential and catalog routing races now pass bounded local regressions, and default source setup no longer mutates Cursor hooks, but clean-profile/provider/native UI/package proof remains absent.
