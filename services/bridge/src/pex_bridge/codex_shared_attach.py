@@ -9,7 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import Depends, HTTPException
-from pex_protocol.project_identity import PathPlatform, ProjectLocatorKind
+from pex_protocol.project_identity import ProjectOrigin
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from pex_bridge.adapters.codex import CodexAdapter
@@ -20,6 +20,19 @@ from pex_bridge.adapters.codex_subscription import (
     CodexExistingThreadSubscription,
     CodexSelectedThread,
     CodexSubscriptionAuthorization,
+)
+from pex_bridge.local_origin_config import (
+    LocalOriginBindingMismatch,
+    LocalOriginChoice,
+    load_local_origin_choice,
+    save_local_origin_choice,
+)
+from pex_bridge.local_workspace import measure_local_directory, require_same_local_directory
+from pex_bridge.workspace_binding import (
+    WorkspaceBinding,
+    require_current_workspace,
+    require_local_locator_consistency,
+    require_locator_directory,
 )
 
 MAX_PENDING = 4
@@ -45,6 +58,15 @@ class SharedCodexConfirm(SharedCodexSelection):
     allow_resume: StrictBool
 
 
+class LocalOriginUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    origin: ProjectOrigin
+    expected_revision: int | None = Field(ge=1)
+    expected_choice_id: str | None = Field(pattern=r"^[a-f0-9]{32}$")
+    confirm_local_origin: StrictBool
+    allow_storage_rebind: StrictBool = False
+
+
 @dataclass
 class _Pending:
     coordinator: CodexExistingThreadSubscription
@@ -52,6 +74,7 @@ class _Pending:
     expiry: asyncio.Task
     deadline: float
     project_binding: str
+    workspace_binding: WorkspaceBinding
 
 
 class SharedCodexAttachments:
@@ -138,19 +161,56 @@ class SharedCodexAttachments:
         except (OSError, RuntimeError, ValueError):
             return None
 
-    async def _project_binding_for_cwd(self, store, project_id: str, cwd: str) -> str:
+    @staticmethod
+    def _origin_path(state) -> Path:
+        # GET/status must not create a data directory. Normal bridge bootstrap
+        # creates it; a missing/inaccessible directory is not a saved choice.
+        return state.settings.home / "local-origin.json"
+
+    def _origin_choice(self, state) -> LocalOriginChoice:
+        choice = load_local_origin_choice(self._origin_path(state))
+        if choice is None:
+            raise HTTPException(409, "Confirm this installation's local origin before attaching.")
+        return choice
+
+    async def _project_binding_for_cwd(
+        self,
+        store,
+        project_id: str,
+        cwd: str,
+        choice: LocalOriginChoice,
+    ) -> WorkspaceBinding:
+        directory = measure_local_directory(cwd)
         binding = await store.project_binding_for_authority(project_id)
-        if self._canonical_local_path(project_id) == cwd:
-            return binding
         resolved = await store.resolve_project_identity(project_id)
-        expected_platform = PathPlatform.WINDOWS if os.name == "nt" else PathPlatform.POSIX
-        if resolved is not None and any(
-            locator.kind == ProjectLocatorKind.LOCAL_PATH
-            and locator.platform == expected_platform
-            and self._canonical_local_path(locator.raw) == cwd
-            for locator in resolved["locators"]
+        if resolved is not None:
+            if binding != f"identity:{resolved['identity'].id}":
+                raise HTTPException(409, "The selected PEX project binding changed.")
+            require_local_locator_consistency(resolved["locators"], choice, directory)
+            for locator in resolved["locators"]:
+                try:
+                    require_locator_directory(locator, choice, directory)
+                except ValueError:
+                    continue
+                return WorkspaceBinding(
+                    project_id=project_id,
+                    project_binding=binding,
+                    origin_choice=choice,
+                    directory=directory,
+                    locator=locator,
+                )
+        elif binding.startswith("legacy:") and self._canonical_local_path(project_id) == (
+            os.path.normcase(directory.cwd)
         ):
-            return binding
+            # Only an actually unregistered key can use the legacy path route.
+            # A typed key spelled like cwd must still pass its locator/origin.
+            return WorkspaceBinding(
+                project_id=project_id,
+                project_binding=binding,
+                origin_choice=choice,
+                directory=directory,
+                locator=None,
+            )
         raise HTTPException(
             409,
             "The PEX project is not authoritatively bound to the selected workspace.",
@@ -162,6 +222,25 @@ class SharedCodexAttachments:
             getattr(old, "transport", None) is None
             or (isinstance(old, CodexSharedAdapter) and not old._connected())
         )
+
+    async def _require_workspace_current(self, state, workspace: WorkspaceBinding) -> None:
+        if not await state.store.project_id_matches_binding(
+            workspace.project_id,
+            workspace.project_binding,
+        ):
+            raise HTTPException(409, "The selected PEX project binding changed.")
+        if workspace.locator is not None:
+            resolved = await state.store.resolve_project_identity(workspace.project_id)
+            if resolved is None or not any(
+                locator == workspace.locator for locator in resolved["locators"]
+            ):
+                raise HTTPException(409, "The selected project locator changed; inspect again.")
+            require_local_locator_consistency(
+                resolved["locators"],
+                workspace.origin_choice,
+                workspace.directory,
+            )
+        require_current_workspace(workspace, self._origin_path(state))
 
     def _active_is_current(self, state, adapter: CodexSharedAdapter) -> bool:
         return (
@@ -175,6 +254,14 @@ class SharedCodexAttachments:
             self._require_open()
             if len(self.pending) >= MAX_PENDING:
                 raise HTTPException(409, "Too many pending Codex selections; wait for expiry.")
+            choice = self._origin_choice(state)
+            workspace = await self._project_binding_for_cwd(
+                state.store,
+                body.project_id,
+                body.cwd,
+                choice,
+            )
+            require_current_workspace(workspace, self._origin_path(state))
             binary = resolve_codex_bin()
             if not binary:
                 raise HTTPException(409, "No configured local Codex executable is available.")
@@ -193,9 +280,17 @@ class SharedCodexAttachments:
                     ),
                     timeout=ATTACH_TIMEOUT_SECONDS,
                 )
-                project_binding = await self._project_binding_for_cwd(
-                    state.store, selected.project_id, selected.cwd
-                )
+                if self._canonical_local_path(selected.cwd) != os.path.normcase(
+                    workspace.directory.cwd
+                ):
+                    raise HTTPException(409, "Codex workspace differs from the inspection.")
+                require_same_local_directory(selected.cwd, workspace.directory)
+                require_current_workspace(workspace, self._origin_path(state))
+                if not await state.store.project_id_matches_binding(
+                    selected.project_id,
+                    workspace.project_binding,
+                ):
+                    raise HTTPException(409, "The selected PEX project binding changed.")
             except BaseException:
                 if transport is not None:
                     await transport.close()
@@ -208,7 +303,8 @@ class SharedCodexAttachments:
                 selected,
                 expiry,
                 deadline,
-                project_binding,
+                workspace.project_binding,
+                workspace,
             )
             return {
                 "inspection_id": inspection_id,
@@ -223,6 +319,7 @@ class SharedCodexAttachments:
                 "model_provider": selected.model_provider,
                 "expires_in_seconds": SELECTION_TTL_SECONDS,
                 "subscribed": False,
+                "workspace_binding": workspace.model_dump(mode="json"),
                 "note": (
                     "Confirm to subscribe to this existing thread. No new turn will be started."
                 ),
@@ -257,6 +354,7 @@ class SharedCodexAttachments:
                     409, "An existing Codex transport must be explicitly detached first."
                 )
             selected = pending.selected
+            require_current_workspace(pending.workspace_binding, self._origin_path(state))
             if not await state.store.project_id_matches_binding(
                 selected.project_id, pending.project_binding
             ):
@@ -299,6 +397,13 @@ class SharedCodexAttachments:
                 raise HTTPException(409, "Codex attachment changed during confirmation.")
             stopped_bare_pump = False
             try:
+                # Authority may have changed while Store reads or expiry-task
+                # settlement yielded. Recheck before the subscription side effect,
+                # not merely before the later SQLite publication.
+                await self._require_workspace_current(state, pending.workspace_binding)
+                await self._require_unexpired(body.inspection_id, pending)
+                if not self._registry_is_unchanged(state, old):
+                    raise HTTPException(409, "Codex attachment changed during confirmation.")
                 await asyncio.wait_for(
                     pending.coordinator.subscribe(
                         selected,
@@ -316,6 +421,10 @@ class SharedCodexAttachments:
                     timeout=ATTACH_TIMEOUT_SECONDS,
                 )
                 adapter = CodexSharedAdapter(pending.coordinator)
+                require_current_workspace(pending.workspace_binding, self._origin_path(state))
+                adapter.session.metadata["workspace_binding"] = (
+                    pending.workspace_binding.model_dump(mode="json")
+                )
                 adapter.session.capabilities = (await adapter.probe()).model_dump(mode="json")
                 if not self._registry_is_unchanged(state, old):
                     raise HTTPException(409, "Codex attachment changed during confirmation.")
@@ -344,6 +453,8 @@ class SharedCodexAttachments:
                             control_state["control_revision"] if control_state is not None else None
                         ),
                         expected_project_binding=pending.project_binding,
+                        expected_workspace=pending.workspace_binding,
+                        local_origin_path=self._origin_path(state),
                     )
                 )
                 # All adapter replacement routes hold this manager lock. No
@@ -438,6 +549,112 @@ class SharedCodexAttachments:
                 raise asyncio.CancelledError
             return receipt
 
+    def origin_status(self, state) -> dict:
+        try:
+            choice = load_local_origin_choice(self._origin_path(state))
+        except LocalOriginBindingMismatch as exc:
+            return {
+                "status": "reconfirmation_required",
+                "choice": exc.choice.model_dump(mode="json"),
+            }
+        except (ValueError, OSError):
+            return {
+                "status": "unavailable",
+                "choice": None,
+                "note": "Local origin could not be verified; existing data was not changed.",
+            }
+        return {
+            "status": "configured" if choice else "unconfigured",
+            "choice": choice.model_dump(mode="json") if choice else None,
+        }
+
+    async def update_origin(self, body: LocalOriginUpdate, state) -> dict:
+        if body.confirm_local_origin is not True:
+            raise HTTPException(400, "Explicit local-origin confirmation is required.")
+        async with self.lock:
+            self._require_open()
+            if self.active is not None:
+                raise HTTPException(
+                    409, "Detach the shared Codex connection before changing origin."
+                )
+
+            async def save_and_invalidate():
+                choice = await asyncio.to_thread(
+                    save_local_origin_choice,
+                    self._origin_path(state),
+                    body.origin,
+                    expected_revision=body.expected_revision,
+                    expected_choice_id=body.expected_choice_id,
+                    allow_storage_rebind=body.allow_storage_rebind,
+                )
+                pending, self.pending = list(self.pending.values()), {}
+                for item in pending:
+                    item.expiry.cancel()
+                await asyncio.gather(*(item.expiry for item in pending), return_exceptions=True)
+                await asyncio.gather(*(item.coordinator.transport.close() for item in pending))
+                return {
+                    "status": "configured",
+                    "choice": choice.model_dump(mode="json"),
+                    "invalidated_selections": len(pending),
+                }
+
+            result, cancelled = await self._settle_publication(save_and_invalidate())
+            if cancelled:
+                raise asyncio.CancelledError
+            return result
+
+    async def status(self, state) -> dict:
+        async with self.lock:
+            connection = None
+            if self.active is not None:
+                inspection_id, selection_id, adapter = self.active
+                current = state.adapters.codex is adapter
+                pump = adapter._pump_task
+                observing = (
+                    current and adapter._connected() and pump is not None and not pump.done()
+                )
+                connection = {
+                    "inspection_id": inspection_id,
+                    "selection_id": selection_id,
+                    "state": "observing"
+                    if observing
+                    else ("disconnected" if current else "ownership_changed"),
+                    "can_detach": current and not self.closed,
+                    "session_id": adapter.session.id,
+                    "thread_id": adapter.session.vendor_session_id,
+                    "project_id": adapter.session.project_id,
+                    "cwd": adapter.session.cwd,
+                    "workspace_binding": adapter.session.metadata.get("workspace_binding"),
+                    "observation_coverage": adapter.session.metadata.get("observation_coverage"),
+                    "worker_delivery_enabled": False,
+                }
+            now = asyncio.get_running_loop().time()
+            pending_status = []
+            for key, item in self.pending.items():
+                valid = False
+                if not self.closed and item.deadline > now and self.active is None:
+                    try:
+                        await self._require_workspace_current(state, item.workspace_binding)
+                        valid = True
+                    except (ValueError, OSError, HTTPException):
+                        pass
+                remaining = max(0, item.deadline - asyncio.get_running_loop().time())
+                pending_status.append(
+                    {
+                        "inspection_id": key,
+                        "selection_id": item.selected.selection_id,
+                        "session_id": item.selected.pex_session_id,
+                        "expires_in_seconds": remaining,
+                        "can_confirm": valid and remaining > 0,
+                    }
+                )
+            return {
+                "origin": self.origin_status(state),
+                "connection": connection,
+                "pending": pending_status,
+                "worker_delivery_enabled": False,
+            }
+
     @staticmethod
     def _receipt(adapter: CodexSharedAdapter) -> dict:
         return {
@@ -447,10 +664,33 @@ class SharedCodexAttachments:
             "session_id": adapter.session.id,
             "subscription": asdict(adapter.subscription.state.receipt),
             "worker_delivery_enabled": False,
+            "workspace_binding": adapter.session.metadata.get("workspace_binding"),
         }
 
 
 def register_shared_codex_routes(app, state, require_token, require_operator_token) -> None:
+    @app.get("/v1/local-workspace-origin")
+    async def get_local_origin(_: object = Depends(require_operator_token)):
+        async with state.codex_shared_attachments.lock:
+            return state.codex_shared_attachments.origin_status(state)
+
+    @app.patch("/v1/local-workspace-origin")
+    async def update_local_origin(
+        body: LocalOriginUpdate, _: object = Depends(require_operator_token)
+    ):
+        try:
+            return await state.codex_shared_attachments.update_origin(body, state)
+        except HTTPException:
+            raise
+        except (ValueError, OSError) as exc:
+            raise HTTPException(
+                409, "Local origin save could not be confirmed; reload before retrying."
+            ) from exc
+
+    @app.get("/v1/adapters/codex/shared/status")
+    async def shared_status(_: object = Depends(require_operator_token)):
+        return await state.codex_shared_attachments.status(state)
+
     @app.post("/v1/adapters/codex/shared/inspect")
     async def inspect_shared(body: SharedCodexInspect, _: None = Depends(require_token)):
         try:

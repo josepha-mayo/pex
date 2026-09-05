@@ -15,6 +15,7 @@ from pex_bridge.codex_shared_attach import (
     SharedCodexSelection,
 )
 from pex_bridge.config import Settings
+from pex_bridge.local_origin_config import save_local_origin_choice
 from pex_bridge.store import Store
 from pex_protocol.enums import EventType, HarnessType, SessionStatus
 from pex_protocol.project_identity import PathPlatform, ProjectLocator, ProjectOrigin
@@ -28,6 +29,12 @@ async def shared_client(tmp_path, monkeypatch):
 
     store = Store(tmp_path / "attach.sqlite")
     await store.connect()
+    save_local_origin_choice(
+        tmp_path / "local-origin.json",
+        ProjectOrigin(namespace="machine", host="attachment-fixture"),
+        expected_revision=None,
+        expected_choice_id=None,
+    )
     await store.register_project_locator(
         legacy_project_id="pex-project-namespace",
         locator=ProjectLocator.path(
@@ -363,7 +370,7 @@ async def test_inspection_rejects_unbound_project_label(shared_client):
         "/v1/adapters/codex/shared/inspect", json={**body, "project_id": "unbound"}
     )
     assert response.status_code == 409
-    assert transports[0].closed
+    assert transports == []  # Reject workspace authority before creating a connector.
     assert manager.pending == {}
     assert adapters.codex.transport is None
 

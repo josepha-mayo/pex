@@ -67,6 +67,12 @@ from pex_bridge.cursor_delivery import (
 )
 from pex_bridge.handoff_views import intervention_audit_action_payload
 from pex_bridge.hook_auth import allowed_hook_routes
+from pex_bridge.local_workspace import require_same_local_directory
+from pex_bridge.workspace_binding import (
+    WorkspaceBinding,
+    require_current_workspace,
+    require_local_locator_consistency,
+)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS goals (
@@ -11034,6 +11040,8 @@ class Store:
         expected_project_binding: str,
         lifecycle_event: HarnessEvent | None = None,
         expected_subscription_id: str | None = None,
+        expected_workspace: WorkspaceBinding | None = None,
+        local_origin_path: Path | None = None,
     ) -> HarnessSession:
         """CAS-publish an explicitly selected observer without inventing activity.
 
@@ -11052,6 +11060,15 @@ class Store:
         expected_binding = validate_project_binding(expected_project_binding)
         incoming = session.model_copy(deep=True)
         incoming_project = _session_project(incoming)
+        if (expected_workspace is None) != (local_origin_path is None):
+            raise ValueError("observer workspace requires its local origin path")
+        workspace = expected_workspace.model_copy(deep=True) if expected_workspace else None
+        if workspace is not None and (
+            workspace.project_id != incoming_project
+            or workspace.project_binding != expected_binding
+            or incoming.metadata.get("workspace_binding") != workspace.model_dump(mode="json")
+        ):
+            raise ValueError("observer selected workspace does not match its session")
         lifecycle = lifecycle_event.model_copy(deep=True) if lifecycle_event is not None else None
         if (lifecycle is None) != (expected_subscription_id is None):
             raise ValueError("observer lifecycle requires exact subscription authority")
@@ -11076,6 +11093,57 @@ class Store:
             return os.path.normcase(str(Path(value).resolve()))
 
         target_cwd = canonical_cwd(incoming.cwd)
+        if workspace is not None and target_cwd != canonical_cwd(workspace.directory.cwd):
+            raise ValueError("observer selected workspace cwd does not match its session")
+
+        async def require_workspace_publication(tx: aiosqlite.Connection) -> None:
+            if workspace is None:
+                return
+            if workspace.locator is None:
+                if not expected_binding.startswith("legacy:"):
+                    raise ValueError("observer registered workspace requires a selected locator")
+            else:
+                if not expected_binding.startswith("identity:"):
+                    raise ValueError("observer locator requires a registered project identity")
+                identity_id = expected_binding.removeprefix("identity:")
+                cursor = await tx.execute(
+                    "SELECT project_identity_id, json FROM project_locators WHERE fingerprint = ?",
+                    (workspace.locator.fingerprint,),
+                )
+                locator_row = await cursor.fetchone()
+                cursor = await tx.execute(
+                    "SELECT json FROM project_identities WHERE id = ?", (identity_id,),
+                )
+                identity_row = await cursor.fetchone()
+                if (
+                    locator_row is None
+                    or locator_row["project_identity_id"] != identity_id
+                    or ProjectLocator.model_validate_json(locator_row["json"]).model_dump(
+                        mode="json"
+                    )
+                    != workspace.locator.model_dump(mode="json")
+                    or identity_row is None
+                    or workspace.locator.fingerprint not in ProjectIdentity.model_validate_json(
+                        identity_row["json"]
+                    ).locator_fingerprints
+                ):
+                    raise ValueError("observer selected project locator changed")
+                cursor = await tx.execute(
+                    "SELECT json FROM project_locators WHERE project_identity_id = ? "
+                    "ORDER BY fingerprint", (identity_id,),
+                )
+                locators = [
+                    ProjectLocator.model_validate_json(item["json"])
+                    for item in await cursor.fetchall()
+                ]
+                require_local_locator_consistency(
+                    locators, workspace.origin_choice, workspace.directory,
+                )
+            # Last authority sample, after every awaited durable read and before
+            # writing. This is not an OS lock on the worker's directory handle.
+            require_current_workspace(workspace, local_origin_path)
+            require_same_local_directory(incoming.cwd, workspace.directory)
+
         async with aiosqlite.connect(self.path, timeout=5.0) as tx:
             await _configure_connection(tx)
             await tx.execute("BEGIN IMMEDIATE")
@@ -11092,6 +11160,9 @@ class Store:
                     # Observation cannot create a goal attachment or pause policy.
                     if incoming.goal_id is not None or incoming.supervision_paused:
                         raise ValueError("new observer cannot assign user control state")
+                    if workspace is None and "workspace_binding" in incoming.metadata:
+                        raise ValueError("observer workspace metadata requires selected authority")
+                    await require_workspace_publication(tx)
                     await tx.execute(
                         "INSERT INTO sessions("
                         "id, vendor_session_id, harness_type, revision, control_revision, "
@@ -11110,6 +11181,38 @@ class Store:
                     if row["control_revision"] != expected_control_revision:
                         raise ValueError("observer session control changed")
                     current, stored_binding = await _load_bound_session(tx, incoming.id)
+                    if workspace is not None and (
+                        _session_project(current) != workspace.project_id
+                        or canonical_cwd(current.cwd) != canonical_cwd(workspace.directory.cwd)
+                    ):
+                        raise ValueError("observer stored target differs from selected workspace")
+                    previous_workspace = current.metadata.get("workspace_binding")
+                    proposed_workspace = incoming.metadata.get("workspace_binding")
+                    previous_receipt = current.metadata.get("subscription_receipt")
+                    same_receipt = (
+                        isinstance(previous_receipt, dict)
+                        and bool(previous_receipt.get("authorization_id"))
+                        and previous_receipt == incoming.metadata.get("subscription_receipt")
+                    )
+                    reducing = incoming.status == SessionStatus.DETACHED and same_receipt
+                    if previous_workspace is not None:
+                        if (same_receipt or lifecycle is not None) and (
+                            proposed_workspace != previous_workspace
+                            and not (reducing and "workspace_binding" not in incoming.metadata)
+                        ):
+                            raise ValueError("observer workspace receipt cannot change in place")
+                        if workspace is None and not reducing:
+                            raise ValueError(
+                                "observer workspace requires renewed selected authority"
+                            )
+                        if workspace is None and proposed_workspace not in (
+                            None, previous_workspace,
+                        ):
+                            raise ValueError("observer workspace receipt cannot be replaced")
+                        if reducing and "workspace_binding" not in incoming.metadata:
+                            incoming.metadata["workspace_binding"] = previous_workspace
+                    elif workspace is None and "workspace_binding" in incoming.metadata:
+                        raise ValueError("observer workspace metadata requires selected authority")
                     if lifecycle is not None:
                         receipt = current.metadata.get("subscription_receipt")
                         proposed_receipt = incoming.metadata.get("subscription_receipt")
@@ -11156,6 +11259,7 @@ class Store:
                     observer_metadata_keys = {
                         "existing_session", "connection_kind", "subscription_receipt",
                         "history_replayed_as_live", "delivery_proven", "observation_coverage",
+                        "workspace_binding",
                     }
                     incoming.metadata = {
                         **current.metadata,
@@ -11169,6 +11273,7 @@ class Store:
                         incoming.metadata["human_decision_attention"] = attention
                     # A new observer incarnation revokes previously accepted
                     # action authority even when its visible cwd/goal is equal.
+                    await require_workspace_publication(tx)
                     await tx.execute(
                         "UPDATE sessions SET json = ?, revision = revision + 1, "
                         "control_revision = control_revision + 1, project_binding = ?, "
