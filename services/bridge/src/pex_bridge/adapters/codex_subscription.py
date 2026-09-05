@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any, Literal, Protocol
 
 from pex_bridge.adapters.base import bounded_adapter_id
+from pex_bridge.adapters.codex import CodexAdapter
+from pex_bridge.adapters.codex_shared import SharedCodexReadSnapshot
 from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
 
 MAX_HISTORY_TURNS = 256
@@ -26,6 +28,14 @@ MAX_IDENTITY_JSON_BYTES = 16_384
 MAX_LIVE_IDENTITIES = 8_192
 SUBSCRIPTION_SCHEMA = "pex.codex-existing-thread-subscription.v1"
 RUNTIME_STATUSES = frozenset({"active", "idle", "notLoaded", "systemError"})
+# Control must not silently drop a future input-bearing item from its intent
+# digest. Unknown items remain observable; adopting a new kind needs review.
+CONTROL_HISTORY_ITEM_TYPES = frozenset({
+    "userMessage", "hookPrompt", "agentMessage", "plan", "reasoning",
+    "commandExecution", "fileChange", "mcpToolCall", "dynamicToolCall",
+    "collabAgentToolCall", "subAgentActivity", "webSearch", "imageView", "sleep",
+    "imageGeneration", "enteredReviewMode", "exitedReviewMode", "contextCompaction",
+})
 RuntimeStatus = Literal["active", "idle", "notLoaded", "systemError", "unknown"]
 
 
@@ -53,6 +63,19 @@ class CodexSubscriptionTransport(Protocol):
     def connection_token(self) -> tuple[str, int]: ...
 
     async def close(self) -> None: ...
+
+    async def read_current_thread(self) -> SharedCodexReadSnapshot: ...
+
+
+@dataclass(frozen=True, slots=True)
+class CodexControlSnapshot:
+    """Fresh observed state, not permission to act or a server-side input lock."""
+
+    receipt: CodexSubscriptionReceipt
+    read: SharedCodexReadSnapshot
+    active_turn_id: str | None
+    user_inputs_json: str
+    user_inputs_digest: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -1269,6 +1292,100 @@ class CodexExistingThreadSubscription:
                 )
             )
         return tuple(accepted)
+
+    async def refresh_control_snapshot(self) -> CodexControlSnapshot:
+        """Read current identity/turns without draining the pipeline's own queue.
+
+        The action caller may already be inside consumer ingestion. Waiting for
+        that consumer here would deadlock; newly discovered input must invalidate
+        its plan instead of being replayed as a synthetic human event.
+        """
+        async with self._lock:
+            state = self._state
+            if state is None or not state.active:
+                raise CodexSubscriptionError("Codex subscription is not active")
+            token = (state.receipt.endpoint_identity, state.receipt.connection_generation)
+            self._require_token(token)
+            read = await self.transport.read_current_thread()
+            self._require_token(token)
+            if not isinstance(read, SharedCodexReadSnapshot) or read.connection_token != token:
+                raise CodexSubscriptionError("Codex control read has no matching witness")
+            response = strict_json_loads(read.result_json)
+            snapshot = _parse_snapshot(response)
+            if not self._selected_identity_matches(state.selected, snapshot):
+                raise CodexSubscriptionError("Codex control read changed selected identity")
+            if snapshot.can_accept_direct_input is not True:
+                raise CodexSubscriptionError("Codex direct input is not available")
+            thread = response["thread"]
+            status = _nullable_consistent((thread, response), "status", "runtime status")
+            if (
+                not isinstance(status, dict)
+                or snapshot.runtime_status not in {"idle", "active"}
+                or snapshot.runtime_flags
+                or (snapshot.runtime_status == "active" and status.get("activeFlags") != [])
+            ):
+                raise CodexSubscriptionError("Codex runtime does not permit ordinary text control")
+            active: list[str] = []
+            inputs: list[dict[str, Any]] = []
+            for turn in thread["turns"]:
+                if (
+                    turn.get("itemsView") != "full" or _is_truncated(turn)
+                    or turn.get("status") not in {
+                        "inProgress", "completed", "interrupted", "failed",
+                    }
+                    or not isinstance(turn.get("items"), list)
+                ):
+                    raise CodexSubscriptionError("Codex control history is incomplete")
+                if turn["status"] == "inProgress":
+                    active.append(turn["id"])
+                for item in turn["items"]:
+                    if (
+                        not isinstance(item.get("type"), str)
+                        or item["type"] not in CONTROL_HISTORY_ITEM_TYPES
+                        or _is_truncated(item)
+                    ):
+                        raise CodexSubscriptionError("Codex control item is incomplete")
+                    if item["type"] != "userMessage":
+                        continue
+                    content = item.get("content")
+                    _, coverage = CodexAdapter._normalize_user_message_content(item)
+                    if (
+                        "clientId" not in item
+                        or (item["clientId"] is not None and (
+                            not isinstance(item["clientId"], str)
+                            or _bounded_id(item["clientId"], "Codex client message id")
+                            != item["clientId"]
+                        ))
+                        or coverage["content_status"] != "complete"
+                        or coverage["content_redacted"] or coverage["content_truncated"]
+                        or not isinstance(content, list) or not content
+                        or any(
+                            not isinstance(part, dict) or part.get("type") != "text"
+                            or not isinstance(part.get("text"), str)
+                            or not part["text"].strip() or "\x00" in part["text"]
+                            or _is_truncated(part)
+                            for part in content
+                        )
+                    ):
+                        # Non-text/unknown content remains observable, but this
+                        # text-control path cannot certify its human intent.
+                        raise CodexSubscriptionError("Codex control input is not complete text")
+                    inputs.append({
+                        "turn_id": turn["id"], "item_id": item["id"],
+                        "client_id": item["clientId"], "content": content,
+                    })
+            if (
+                (snapshot.runtime_status == "idle" and active)
+                or (snapshot.runtime_status == "active" and len(active) != 1)
+            ):
+                raise CodexSubscriptionError("Codex runtime and active turns conflict")
+            encoded = strict_json_dumps(inputs, sort_keys=True, separators=(",", ":"))
+            return CodexControlSnapshot(
+                receipt=state.receipt, read=read,
+                active_turn_id=active[0] if active else None,
+                user_inputs_json=encoded,
+                user_inputs_digest=hashlib.sha256(encoded.encode("utf-8")).hexdigest(),
+            )
 
     async def drain_live(self) -> CodexObservationBatch:
         async with self._lock:

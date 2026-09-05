@@ -21596,6 +21596,60 @@ class Store:
     ) -> dict[str, Any]:
         """Revalidate live intent and grant the sole P0 worker-visible dispatch."""
 
+        return await self._check_main_event_effect_dispatch(
+            event_id=event_id,
+            owner=owner,
+            global_supervision_paused=global_supervision_paused,
+        )
+
+    async def validate_main_event_effect_dispatch(
+        self,
+        *,
+        event_id: str,
+        owner: str,
+        effect_id: str,
+        effect_version: int,
+        expected_action: dict[str, Any],
+        global_supervision_paused: bool = False,
+    ) -> dict[str, Any]:
+        """Check an already claimed action without claiming or updating it again.
+
+        This read transaction is a current local authority sample, not a lock
+        over later vendor I/O. The caller still evaluates live local policy and
+        transport/input authority immediately before its one actual write.
+        """
+        _validate_store_id(effect_id, label="main event effect id")
+        if type(effect_version) is not int or effect_version < 0:
+            raise ValueError("main event effect version is invalid")
+        if type(expected_action) is not dict:
+            raise ValueError("expected main event action must be an object")
+        if type(global_supervision_paused) is not bool:
+            raise ValueError("global supervision pause must be boolean")
+        # Freeze before the first await; canonical JSON preserves JSON types
+        # that Python dictionary equality would equate (for example True == 1).
+        expected_action_json = _canonical_json(expected_action)
+        return await self._check_main_event_effect_dispatch(
+            event_id=event_id,
+            owner=owner,
+            global_supervision_paused=global_supervision_paused,
+            validate_only=True,
+            expected_effect_id=effect_id,
+            expected_effect_version=effect_version,
+            expected_action_json=expected_action_json,
+        )
+
+    async def _check_main_event_effect_dispatch(
+        self,
+        *,
+        event_id: str,
+        owner: str,
+        global_supervision_paused: bool = False,
+        validate_only: bool = False,
+        expected_effect_id: str | None = None,
+        expected_effect_version: int | None = None,
+        expected_action_json: str | None = None,
+    ) -> dict[str, Any]:
+        """Shared complete authority checks for initial claim and final validation."""
         _validate_store_id(event_id, label="event id")
         _validate_store_id(owner, label="event processing owner")
         async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
@@ -21610,6 +21664,9 @@ class Store:
                 if processing_row is None:
                     raise LookupError("event processing row not found")
                 processing = _event_processing_record(processing_row)
+                if validate_only and processing["mode"] != "pipeline":
+                    await transaction.commit()
+                    return {"granted": False, "reason": "event_not_pipeline"}
                 if processing["state"] in EVENT_PROCESSING_TERMINAL_STATES:
                     await transaction.commit()
                     return {
@@ -21645,13 +21702,27 @@ class Store:
                 if effect_row is None:
                     raise LookupError("main event effect not found")
                 effect = _event_effect_record(effect_row)
-                if effect["state"] != "reserved":
+                required_effect_state = "dispatching" if validate_only else "reserved"
+                if effect["state"] != required_effect_state:
                     await transaction.commit()
                     return {
                         "granted": False,
                         "reason": f"effect_already_{effect['state']}",
                         "effect": effect,
                     }
+                if validate_only:
+                    refusal = None
+                    if effect["effect_id"] != expected_effect_id:
+                        refusal = "dispatch_effect_id_mismatch"
+                    elif effect["version"] != expected_effect_version:
+                        refusal = "dispatch_effect_version_mismatch"
+                    elif effect["dispatcher_boot_id"] != self.process_boot_id:
+                        refusal = "dispatch_process_boot_mismatch"
+                    elif expected_action_json != _canonical_json(effect["payload"].get("action")):
+                        refusal = "dispatch_action_mismatch"
+                    if refusal is not None:
+                        await transaction.commit()
+                        return {"granted": False, "reason": refusal, "effect": effect}
 
                 terminal = sorted(EVENT_PROCESSING_TERMINAL_STATES)
                 placeholders = ",".join("?" for _ in terminal)
@@ -21688,6 +21759,13 @@ class Store:
                 plan = processing.get("plan")
                 if not isinstance(plan, dict):
                     raise RuntimeError("planned event is missing its durable plan")
+                if validate_only and expected_action_json != _canonical_json(plan.get("action")):
+                    await transaction.commit()
+                    return {
+                        "granted": False,
+                        "reason": "dispatch_plan_action_mismatch",
+                        "effect": effect,
+                    }
                 intervention_id = str(plan.get("intervention_id") or "")
                 intervention_cursor = await transaction.execute(
                     "SELECT json FROM interventions WHERE id = ?",
@@ -21749,7 +21827,7 @@ class Store:
                         transaction,
                         processing,
                     )
-                expected_effect_id = stable_event_effect_id(event_id, "main")
+                canonical_effect_id = stable_event_effect_id(event_id, "main")
                 expected_request_hash = hashlib.sha256(
                     _canonical_json(payload).encode("utf-8")
                 ).hexdigest()
@@ -21788,7 +21866,7 @@ class Store:
                 elif "required_capability" not in plan:
                     skip_reason = "plan_capability_binding_corrupt"
                 elif (
-                    effect["effect_id"] != expected_effect_id
+                    effect["effect_id"] != canonical_effect_id
                     or effect["ordinal"] != 1
                     or effect["request_hash"] != expected_request_hash
                 ):
@@ -21801,6 +21879,8 @@ class Store:
                     skip_reason = "effect_target_binding_corrupt"
                 elif reserved_intervention is None:
                     skip_reason = "reserved_intervention_missing"
+                elif validate_only and reserved_intervention.policy_verdict != PolicyVerdict.ALLOW:
+                    skip_reason = "intervention_policy_not_allowed"
                 elif reserved_intervention.session_id != processing["session_id"]:
                     skip_reason = "intervention_session_binding_corrupt"
                 elif reserved_intervention.goal_id != processing["goal_id"]:
@@ -21871,6 +21951,8 @@ class Store:
                     skip_reason = f"missing_capability:{required_capability}"
 
                 goal_id = str(processing["goal_id"] or "")
+                if validate_only and skip_reason is None and not containment_effect and not goal_id:
+                    skip_reason = "goal_missing_before_dispatch"
                 if skip_reason is None and goal_id:
                     try:
                         live_goal, live_goal_binding = await _load_bound_goal(
@@ -21956,6 +22038,21 @@ class Store:
                         "reason": skip_reason,
                         "effect": effect,
                     }
+
+                if validate_only:
+                    # Earlier asynchronous project/workspace checks may outlast
+                    # the lease. Validation never renews it or rewrites markers.
+                    if _time_key(datetime.fromisoformat(str(processing["lease_expires_at"]))) <= (
+                        _time_key(utcnow())
+                    ):
+                        await transaction.commit()
+                        return {
+                            "granted": False,
+                            "reason": "processing_lease_expired",
+                            "effect": effect,
+                        }
+                    await transaction.commit()
+                    return {"granted": True, "effect": effect}
 
                 now = utcnow().isoformat()
                 updated = await transaction.execute(

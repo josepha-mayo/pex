@@ -17,6 +17,7 @@ import os
 import stat
 import subprocess
 import sys
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -90,6 +91,53 @@ class SharedCodexTextAcknowledgement:
     received_revision_at_ack: int
     received_chunk_revision_at_write: int
     received_chunk_revision_at_ack: int
+
+
+@dataclass(frozen=True)
+class SharedCodexReadSnapshot:
+    """Immutable response with local routing-time provenance, not server CAS."""
+
+    result_json: str
+    connection_token: tuple[str, int]
+    received_envelope_revision: int
+    received_chunk_revision: int
+    observed_at_monotonic: float
+
+
+class _BoundaryClientProtocol(ClientProtocol):
+    """Track actual completed-parser offsets, including consumed partial headers.
+
+    An empty StreamReader buffer doesn't mean the parser is between frames:
+    its suspended generator may already have consumed a header. Only successful
+    upgrade/frame callbacks advance this boundary. Keep this integration covered
+    by real Sans-I/O parser tests when upgrading websockets.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._fed_bytes = 0
+        self._complete_boundary = -1
+        super().__init__(*args, **kwargs)
+
+    def receive_data(self, data: bytes) -> None:
+        self._fed_bytes += len(data)
+        super().receive_data(data)
+
+    def process_response(self, response: Any) -> None:
+        super().process_response(response)
+        self._complete_boundary = self._fed_bytes - len(self.reader.buffer)
+
+    def recv_frame(self, frame: Frame) -> None:
+        super().recv_frame(frame)
+        self._complete_boundary = self._fed_bytes - len(self.reader.buffer)
+
+    @property
+    def at_complete_boundary(self) -> bool:
+        return bool(
+            self.state is State.OPEN
+            and self.parser_exc is None
+            and self.handshake_exc is None
+            and self._fed_bytes == self._complete_boundary
+        )
 
 
 class RawByteChannel(Protocol):
@@ -545,6 +593,7 @@ class CodexSharedAppServerTransport:
         self._close_task: asyncio.Task[None] | None = None
         self._pending: dict[int | str, asyncio.Future[dict[str, Any]]] = {}
         self._text_pending: set[int] = set()
+        self._read_captures: dict[int, list[SharedCodexReadSnapshot]] = {}
         self._next_id = 1
         self._initialize_lock = asyncio.Lock()
         self._protocol_lock = asyncio.Lock()
@@ -579,6 +628,16 @@ class CodexSharedAppServerTransport:
             and not self._receive_journal_failed
             and self._receive_journal.healthy
             and self._receive_pending == 0
+        )
+
+    @property
+    def receive_protocol_complete(self) -> bool:
+        """All locally received bytes parsed through a complete text message."""
+        return bool(
+            isinstance(self._websocket, _BoundaryClientProtocol)
+            and self._websocket.at_complete_boundary
+            and self._fragment_opcode is None
+            and self.receive_journal_ready
         )
 
     def _require_receive_journal_healthy(self) -> None:
@@ -630,7 +689,7 @@ class CodexSharedAppServerTransport:
                 if self._close_revision != close_revision:
                     raise ConnectionError("shared Codex open was superseded by close")
                 self._channel = channel
-                websocket = ClientProtocol(
+                websocket = _BoundaryClientProtocol(
                     parse_uri("ws://localhost/rpc"), max_size=MAX_MESSAGE_BYTES
                 )
                 self._websocket = websocket
@@ -832,6 +891,17 @@ class CodexSharedAppServerTransport:
                     SharedCodexProtocolError("shared Codex returned a malformed result")
                 )
                 raise SharedCodexProtocolError("shared Codex returned a malformed result")
+            capture = self._read_captures.get(message_id)
+            if capture is not None:
+                # Capture here, not when the waiter resumes: another envelope
+                # may be routed later in this same received chunk.
+                capture.append(SharedCodexReadSnapshot(
+                    result_json=strict_json_dumps(result, separators=(",", ":")),
+                    connection_token=self.connection_token(),
+                    received_envelope_revision=self.received_envelope_revision,
+                    received_chunk_revision=self.received_chunk_revision,
+                    observed_at_monotonic=time.monotonic(),
+                ))
             future.set_result(result)
             return
         raw_method = message.get("method")
@@ -869,7 +939,8 @@ class CodexSharedAppServerTransport:
         self._pending.clear()
 
     async def _request_unchecked(
-        self, method: str, params: dict[str, Any]
+        self, method: str, params: dict[str, Any],
+        *, _capture: list[SharedCodexReadSnapshot] | None = None,
     ) -> dict[str, Any]:
         if len(self._pending) >= MAX_PENDING:
             raise RuntimeError("shared Codex pending request bound reached")
@@ -877,6 +948,8 @@ class CodexSharedAppServerTransport:
         self._next_id += 1
         future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
         self._pending[request_id] = future
+        if _capture is not None:
+            self._read_captures[request_id] = _capture
         try:
             async with asyncio.timeout(self.request_timeout_s):
                 await self._send_json({"id": request_id, "method": method, "params": params})
@@ -895,8 +968,42 @@ class CodexSharedAppServerTransport:
             ) from exc
         finally:
             self._pending.pop(request_id, None)
+            self._read_captures.pop(request_id, None)
             if future.done() and not future.cancelled():
                 future.exception()  # Consume any failure published during cleanup.
+
+    async def read_current_thread(self) -> SharedCodexReadSnapshot:
+        """Read the existing connection only; refuse locally superseded snapshots.
+
+        Does not initialize, resume, reconnect, drain observations or certify
+        idle/input authority. The coordinator must validate the returned history
+        and identity; the final writer must recheck these receive revisions.
+        """
+        token = self.connection_token()
+        if (
+            not self.initialized or self._closing or self._channel is None
+            or not self.receive_protocol_complete
+        ):
+            raise SharedCodexTextDispatchRejected("current-thread read is unavailable")
+        captures: list[SharedCodexReadSnapshot] = []
+        await self._request_unchecked(
+            "thread/read", {"threadId": self.thread_id, "includeTurns": True},
+            _capture=captures,
+        )
+        async with self._protocol_lock:
+            if len(captures) != 1:
+                raise SharedCodexTextDispatchRejected("current-thread response has no witness")
+            snapshot = captures[0]
+            if (
+                not self.initialized or self._closing or self._channel is None
+                or self.connection_token() != token
+                or snapshot.connection_token != token
+                or snapshot.received_envelope_revision != self.received_envelope_revision
+                or snapshot.received_chunk_revision != self.received_chunk_revision
+                or not self.receive_protocol_complete
+            ):
+                raise SharedCodexTextDispatchRejected("current-thread response was superseded")
+            return snapshot
 
     async def ensure_ready(self) -> dict[str, Any]:
         self._require_receive_journal_healthy()
@@ -1013,6 +1120,7 @@ class CodexSharedAppServerTransport:
                 or self.received_envelope_revision != expected_received_revision
                 or self.received_chunk_revision != expected_received_chunk_revision
                 or not self.receive_journal_ready
+                or not self.receive_protocol_complete
                 or self._channel is None
                 or self._websocket is None
                 or self._websocket.state is not State.OPEN
