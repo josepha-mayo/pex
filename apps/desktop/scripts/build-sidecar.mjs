@@ -1388,6 +1388,7 @@ mkdirSync(binaries, { recursive: true });
 const dist = join(repo, "build", "pyinstaller", "dist");
 const work = join(repo, "build", "pyinstaller", "work");
 const specs = join(repo, "build", "pyinstaller", "spec");
+const pyinstallerCleanArgs = process.argv.includes("--preflight-release") ? ["--clean"] : [];
 for (const path of [dist, work, specs]) assertSafeDirectory(path, "PyInstaller build path");
 rmSync(dist, { recursive: true, force: true });
 const dataSeparator = process.platform === "win32" ? ";" : ":";
@@ -1395,7 +1396,7 @@ execFileSync(
   pyinstaller,
   [
     "--noconfirm",
-    "--clean",
+    ...pyinstallerCleanArgs,
     "--onefile",
     "--name",
     "pex-bridge",
@@ -1431,7 +1432,7 @@ execFileSync(
   pyinstaller,
   [
     "--noconfirm",
-    "--clean",
+    ...pyinstallerCleanArgs,
     "--onefile",
     "--name",
     "pex-cursor-hook",
@@ -1453,7 +1454,7 @@ execFileSync(
   pyinstaller,
   [
     "--noconfirm",
-    "--clean",
+    ...pyinstallerCleanArgs,
     "--onefile",
     "--name",
     "pex-cursor-observe",

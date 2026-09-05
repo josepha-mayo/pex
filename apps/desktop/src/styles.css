@@ -361,6 +361,31 @@ p {
   line-height: 1.55;
 }
 
+.settings-sections {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.settings-sections button {
+  min-height: 34px;
+  padding: 6px 13px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.settings-sections button.active {
+  background: rgba(103, 222, 177, 0.11);
+  color: var(--paper);
+}
+
 /* Pet and compact surface */
 
 .compact-surface {

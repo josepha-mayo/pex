@@ -184,3 +184,18 @@ test("source contract wires destination guards and disables every supervisor inp
   for (const control of controls) assert.match(control, /disabled=\{!settingsAvailable \|\| savingSupervisor\}/);
   assert.match(app, /if \(supervisorSaveInFlight\.current\) return;\s+const requestSequence = \+\+settingsRequestSequence\.current/);
 });
+
+test("settings sections expose an accessible keyboard-operated tab contract", () => {
+  // Wiring contract only: native WebView QA separately exercises the rendered tabs.
+  const settings = readFileSync(new URL("./components/SettingsPage.tsx", import.meta.url), "utf8");
+  assert.match(settings, /role="tablist"/);
+  assert.match(settings, /role="tab"/);
+  assert.match(settings, /aria-selected=\{section === item\}/);
+  assert.match(settings, /aria-controls="settings-panel"/);
+  assert.match(settings, /tabIndex=\{section === item \? 0 : -1\}/);
+  assert.match(settings, /\["ArrowLeft", "ArrowRight", "Home", "End"\]/);
+  assert.match(settings, /role="tabpanel"/);
+  assert.match(settings, /aria-labelledby=\{`settings-tab-\$\{section\}`\}/);
+  assert.match(settings, /settingsAvailable && !settingsIssue && supervisor\?\.model_loaded \? "companion" : "supervisor"/);
+  assert.match(settings, /if \(settingsIssue \|\| !settingsAvailable\) setSection\("supervisor"\)/);
+});

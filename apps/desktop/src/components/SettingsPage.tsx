@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { SupervisorAuthMode, SupervisorProtocol, SupervisorCredentialAction } from "../supervisorDraft";
 import type {
   Goal,
@@ -16,6 +16,7 @@ import {
 } from "../viewModel";
 
 type HookHarness = "cursor" | "claude_code" | "qwen" | "hermes" | "opencode";
+type SettingsSection = "companion" | "supervisor" | "connections" | "goals";
 
 export function SettingsPage({
   goals,
@@ -146,6 +147,13 @@ export function SettingsPage({
   onCopyHook: () => void;
   onClearHook: () => void;
 }) {
+  const sections: SettingsSection[] = ["companion", "supervisor", "connections", "goals"];
+  const [section, setSection] = useState<SettingsSection>(
+    settingsAvailable && !settingsIssue && supervisor?.model_loaded ? "companion" : "supervisor",
+  );
+  useEffect(() => {
+    if (settingsIssue || !settingsAvailable) setSection("supervisor");
+  }, [settingsAvailable, settingsIssue]);
   const providers = Array.from(
     new Set([
       ...(supervisor?.providers || []),
@@ -188,8 +196,44 @@ export function SettingsPage({
           </div>
         </header>
 
-        <div className="settings-grid">
-          {workerConnection}
+        <nav className="settings-sections" aria-label="Settings sections" role="tablist">
+          {sections.map((item, index) => (
+            <button
+              type="button"
+              id={`settings-tab-${item}`}
+              role="tab"
+              className={section === item ? "active" : ""}
+              aria-selected={section === item}
+              aria-controls="settings-panel"
+              tabIndex={section === item ? 0 : -1}
+              onClick={() => setSection(item)}
+              onKeyDown={(event) => {
+                if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                event.preventDefault();
+                const nextIndex = event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? sections.length - 1
+                    : (index + (event.key === "ArrowRight" ? 1 : -1) + sections.length) % sections.length;
+                const next = sections[nextIndex];
+                setSection(next);
+                document.getElementById(`settings-tab-${next}`)?.focus();
+              }}
+              key={item}
+            >
+              {item === "goals" ? "Goals" : item[0].toUpperCase() + item.slice(1)}
+            </button>
+          ))}
+        </nav>
+
+        <div
+          className="settings-grid"
+          id="settings-panel"
+          role="tabpanel"
+          aria-labelledby={`settings-tab-${section}`}
+        >
+          {section === "connections" ? workerConnection : null}
+          {section === "companion" ? (
           <section className="settings-card">
             <p className="eyebrow">Companion</p>
             <h2>Appearance</h2>
@@ -230,8 +274,10 @@ export function SettingsPage({
             </p>
             <button type="button" className="solid" onClick={onSaveAppearance}>Save appearance</button>
           </section>
-          {companionRoster}
+          ) : null}
+          {section === "companion" ? companionRoster : null}
 
+          {section === "connections" ? (
           <section className="settings-card settings-wide">
             <p className="eyebrow">Worker integrations</p>
             <h2>Provision a scoped hook</h2>
@@ -293,7 +339,9 @@ export function SettingsPage({
               </div>
             ) : null}
           </section>
+          ) : null}
 
+          {section === "supervisor" ? (
           <section className="settings-card settings-wide">
             <p className="eyebrow">Supervisor inference</p>
             <h2>PEX model</h2>
@@ -452,7 +500,9 @@ export function SettingsPage({
               {savingSupervisor ? "Saving…" : "Save supervisor"}
             </button>
           </section>
+          ) : null}
 
+          {section === "connections" ? (
           <section className="settings-card settings-wide">
             <p className="eyebrow">Attention</p>
             <h2>Remote channels</h2>
@@ -466,7 +516,9 @@ export function SettingsPage({
               ))}
             </ul>
           </section>
+          ) : null}
 
+          {section === "companion" ? (
           <section className="settings-card settings-wide">
             <p className="eyebrow">Custom pet input</p>
             <h2>Generate a base candidate</h2>
@@ -528,7 +580,9 @@ export function SettingsPage({
               </ul>
             ) : null}
           </section>
+          ) : null}
 
+          {section === "companion" ? (
           <section className="settings-card">
             <p className="eyebrow">Bring your own</p>
             <h2>Import pet</h2>
@@ -539,7 +593,9 @@ export function SettingsPage({
             </label>
             <button type="button" className="ghost" disabled={!importDir.trim()} onClick={onImport}>Import hatch-pet</button>
           </section>
+          ) : null}
 
+          {section === "goals" ? (
           <section className="settings-card">
             <p className="eyebrow">Persistent state</p>
             <h2>Stored goals</h2>
@@ -554,6 +610,7 @@ export function SettingsPage({
               </ul>
             ) : <p className="settings-note">No goals stored yet.</p>}
           </section>
+          ) : null}
         </div>
         {note ? <p className="note settings-page-note" role="status" aria-live="polite">{note}</p> : null}
       </div>
