@@ -20,6 +20,8 @@ import {
 import { Inspector } from "./components/Inspector";
 import { PetStage } from "./components/PetStage";
 import { SettingsPage } from "./components/SettingsPage";
+import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
+import { createOperatorRequest } from "./operatorRequest";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
 import { applyPetClickThrough, expandMainSurface, nextPetExpansion, petClickThroughEnabled, releasePetOverlay } from "./releasePet";
@@ -249,6 +251,10 @@ async function bridgeFetch(path: string, init?: RequestInit): Promise<Response> 
   const refreshed = await bridgeToken();
   return send(refreshed);
 }
+
+// Connection/configuration mutations are single-attempt, including auth failure.
+// The user reloads canonical status before deciding whether to try again.
+const sharedConnectionRequest = createOperatorRequest({ baseUrl: BRIDGE, readToken: bridgeToken });
 
 async function bridgeJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await bridgeFetch(path, init);
@@ -2023,6 +2029,7 @@ export function App() {
         hookCredential={hookBootstrap?.token || ""}
         hookCredentialExpiresAt={hookBootstrap?.expires_at || ""}
         provisioningHook={provisioningHook}
+        workerConnection={<SharedConnectionPanel request={sharedConnectionRequest} />}
         onBack={() => { window.location.hash = surface; }}
         onNickname={setNickname}
         onScale={setScale}

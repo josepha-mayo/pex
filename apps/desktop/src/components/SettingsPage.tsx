@@ -51,6 +51,7 @@ export function SettingsPage({
   hookCredentialExpiresAt,
   provisioningHook,
   companionRoster,
+  workerConnection,
   onBack,
   onNickname,
   onScale,
@@ -112,6 +113,7 @@ export function SettingsPage({
   hookCredentialExpiresAt: string;
   provisioningHook: boolean;
   companionRoster?: ReactNode;
+  workerConnection?: ReactNode;
   onBack: () => void;
   onNickname: (value: string) => void;
   onScale: (value: number) => void;
@@ -183,6 +185,7 @@ export function SettingsPage({
         </header>
 
         <div className="settings-grid">
+          {workerConnection}
           <section className="settings-card">
             <p className="eyebrow">Companion</p>
             <h2>Appearance</h2>
