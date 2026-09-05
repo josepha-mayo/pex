@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import inspect
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import UTC, datetime
 
@@ -15,8 +17,13 @@ from pex_protocol.capabilities import AdapterCapabilities, AdapterSupportLabel
 from pex_protocol.enums import EventPhase, EventType, HarnessType, SessionStatus
 from pex_protocol.session import HarnessEvent, HarnessSession
 
-from pex_bridge.adapters.base import HarnessAdapter, bounded_observed_text
+from pex_bridge.adapters.base import AdapterMessageResult, HarnessAdapter, bounded_observed_text
 from pex_bridge.adapters.codex import CodexAdapter
+from pex_bridge.adapters.codex_shared import (
+    SharedCodexDeliveryUncertainError,
+    SharedCodexTextAcknowledgement,
+    SharedCodexTextDispatchRejected,
+)
 from pex_bridge.adapters.codex_subscription import (
     MAX_NOTIFICATIONS_PER_DRAIN,
     CodexExistingThreadSubscription,
@@ -24,8 +31,16 @@ from pex_bridge.adapters.codex_subscription import (
     CodexObservedRecord,
     CodexSubscriptionError,
 )
-from pex_bridge.codex_correction import CodexCorrectionMultiplicityError, canonical
-from pex_bridge.codex_input_baseline import CodexInputBaseline, CodexInputBaselineSnapshot
+from pex_bridge.codex_correction import (
+    CORRECTION_SCHEMA,
+    CodexCorrectionMultiplicityError,
+    canonical,
+)
+from pex_bridge.codex_input_baseline import (
+    BASELINE_SCHEMA,
+    CodexInputBaseline,
+    CodexInputBaselineSnapshot,
+)
 from pex_bridge.codex_input_provenance import CodexInputClassification, CodexInputProvenance
 from pex_bridge.workspace_binding import WorkspaceAuthorityError
 
@@ -183,6 +198,216 @@ class CodexSharedAdapter(HarnessAdapter):
         self.session.capabilities = (await self.probe()).model_dump(mode="json")
         # Discovery never invents a last-activity timestamp or reconnects a worker.
         return [self.session.model_copy(deep=True)]
+
+    async def _dispatch_claimed_text(
+        self,
+        *,
+        correction_json: str,
+        attribution_records: tuple[str, ...],
+        accepted_baseline: CodexInputBaselineSnapshot,
+        final_authority_check: Callable[[], None],
+    ) -> AdapterMessageResult:
+        """Dispatch one Store-claimed correction without enabling generic control.
+
+        Attribution is classification evidence only. The caller's mandatory
+        synchronous callback remains the final Store/policy/control-grant
+        authority, and the transport independently fences received wire state
+        immediately before enqueue.
+        """
+
+        def refuse(message: str, cause: BaseException | None = None):
+            error = SharedCodexTextDispatchRejected(message)
+            if cause is None:
+                raise error
+            raise error from cause
+
+        try:
+            from pex_bridge.adapters.strict_json import strict_json_loads
+
+            correction = strict_json_loads(correction_json)
+            if (
+                type(correction_json) is not str
+                or type(correction) is not dict
+                or canonical(correction) != correction_json
+                or set(correction) != {
+                    "schema", "event_id", "effect_id", "intervention_id",
+                    "client_message_id", "content", "session_id", "thread_id",
+                    "root_session_id", "vendor_project_id", "project_binding",
+                    "workspace_binding", "subscription_receipt",
+                }
+                or correction.get("schema") != CORRECTION_SCHEMA
+                or type(correction.get("content")) is not list
+                or len(correction["content"]) != 1
+                or type(correction["content"][0]) is not dict
+                or set(correction["content"][0]) != {"type", "text", "text_elements"}
+                or correction["content"][0].get("type") != "text"
+                or correction["content"][0].get("text_elements") != []
+            ):
+                raise ValueError("correction is not the exact canonical Store shape")
+            state = self.subscription.state
+            receipt = asdict(state.receipt) if state is not None else None
+            selected = self._selected
+            if (
+                not self._connected()
+                or state is None
+                or not state.active
+                or receipt != self.session.metadata.get("subscription_receipt")
+                or correction.get("subscription_receipt") != receipt
+                or correction.get("session_id") != self.session.id
+                or correction.get("thread_id") != self.session.vendor_session_id
+                or correction.get("root_session_id") != selected.root_session_id
+                or correction.get("vendor_project_id") != selected.vendor_project_id
+                or receipt.get("authorization_id") != self._subscription_id
+                or receipt.get("endpoint_identity") != self._token[0]
+                or receipt.get("connection_generation") != self._token[1]
+                or receipt.get("pex_session_id") != self.session.id
+                or receipt.get("thread_id") != self.session.vendor_session_id
+                or receipt.get("project_id") != self.session.project_id
+                or receipt.get("cwd") != self.session.cwd
+                or not callable(final_authority_check)
+            ):
+                raise ValueError("correction does not match the selected subscription")
+            if (
+                type(accepted_baseline) is not CodexInputBaselineSnapshot
+                or accepted_baseline.schema != BASELINE_SCHEMA
+                or accepted_baseline.complete is not True
+                or type(accepted_baseline.digest) is not str
+                or len(accepted_baseline.digest) != 64
+                or any(
+                    character not in "0123456789abcdef"
+                    for character in accepted_baseline.digest
+                )
+                or accepted_baseline.pending_count != 0
+                or accepted_baseline.reason is not None
+            ):
+                raise ValueError("accepted input baseline is incomplete")
+            installed = CodexInputProvenance.from_store_records(
+                attribution_records,
+                session_id=self.session.id,
+                thread_id=self.session.vendor_session_id,
+            )
+            attempted = False
+            for record_json in attribution_records:
+                record = strict_json_loads(record_json)
+                if canonical(record.get("correction")) == correction_json:
+                    attempted = True
+                    break
+            if not attempted:
+                raise ValueError("current correction has no exact attempted attribution")
+            baseline = self._input_baseline
+            if (
+                not self._input_bootstrap_complete
+                or baseline is None
+                or self._input_provenance is None
+            ):
+                raise ValueError("live input ledger is unavailable")
+
+            # This publication boundary is deliberately synchronous: the
+            # receiver cannot classify a new item against an older index in
+            # between the adapter field and ledger replacement.
+            baseline.replace_provenance(installed)
+            installed = baseline._provenance
+            self._input_provenance = installed
+        except SharedCodexTextDispatchRejected:
+            raise
+        except (TypeError, ValueError, UnicodeError, RecursionError) as exc:
+            refuse("claimed text dispatch binding was refused", exc)
+
+        try:
+            control = await self.subscription.refresh_control_snapshot()
+            state = self.subscription.state
+            current = baseline.snapshot()
+            entries = strict_json_loads(control.user_inputs_json)
+            external = installed.external_snapshot(entries)
+            if (
+                not self._connected()
+                or state is None
+                or not state.active
+                or control.receipt != state.receipt
+                or asdict(control.receipt) != receipt
+                or control.read.connection_token != self._token
+                or self._input_baseline is not baseline
+                or self._input_provenance is not installed
+                or baseline._provenance is not installed
+                or current.complete is not True
+                or current.pending_count != 0
+                or current.reason is not None
+                or external.complete is not True
+                or control.user_inputs_digest
+                != hashlib.sha256(control.user_inputs_json.encode("utf-8")).hexdigest()
+                or current.digest != accepted_baseline.digest
+                or external.digest != accepted_baseline.digest
+            ):
+                raise ValueError("fresh Codex input authority differs from acceptance")
+        except asyncio.CancelledError:
+            raise
+        except (TypeError, ValueError, UnicodeError, RecursionError) as exc:
+            refuse("claimed text dispatch fresh-read fence was refused", exc)
+        except Exception as exc:
+            refuse("claimed text dispatch control read was refused", exc)
+
+        ledger_revision = current.revision
+        ledger_digest = current.digest
+
+        def final_check() -> None:
+            checked = final_authority_check()
+            if inspect.isawaitable(checked):
+                if inspect.iscoroutine(checked):
+                    checked.close()
+                raise ValueError("claimed dispatch authority callback must be synchronous")
+            if checked is not None:
+                raise ValueError("claimed dispatch authority callback must return None")
+            latest_state = self.subscription.state
+            latest = baseline.snapshot()
+            if (
+                not self._connected()
+                or latest_state is None
+                or not latest_state.active
+                or latest_state.receipt != control.receipt
+                or asdict(latest_state.receipt) != receipt
+                or self.transport.connection_token() != self._token
+                or self._input_baseline is not baseline
+                or self._input_provenance is not installed
+                or baseline._provenance is not installed
+                or latest.complete is not True
+                or latest.pending_count != 0
+                or latest.reason is not None
+                or latest.revision != ledger_revision
+                or latest.digest != ledger_digest
+                or latest.digest != accepted_baseline.digest
+            ):
+                raise ValueError("claimed dispatch authority changed before enqueue")
+
+        acknowledgement = await self.transport._dispatch_text(
+            thread_id=self.session.vendor_session_id,
+            text=correction["content"][0]["text"],
+            client_user_message_id=correction["client_message_id"],
+            expected_connection_token=self._token,
+            expected_received_revision=control.read.received_envelope_revision,
+            expected_received_chunk_revision=control.read.received_chunk_revision,
+            expected_turn_id=control.active_turn_id,
+            final_authority_check=final_check,
+        )
+        if (
+            type(acknowledgement) is not SharedCodexTextAcknowledgement
+            or acknowledgement.thread_id != self.session.vendor_session_id
+            or acknowledgement.client_user_message_id != correction["client_message_id"]
+            or acknowledgement.connection_token != self._token
+            or acknowledgement.method
+            != ("turn/steer" if control.active_turn_id is not None else "turn/start")
+            or (
+                control.active_turn_id is not None
+                and acknowledgement.turn_id != control.active_turn_id
+            )
+        ):
+            raise SharedCodexDeliveryUncertainError(
+                "claimed text dispatch returned no exact turn acknowledgement"
+            )
+        return AdapterMessageResult(
+            accepted=True,
+            vendor_session_id=self.session.vendor_session_id,
+            vendor_turn_id=acknowledgement.turn_id,
+        )
 
     def _event(self, record: CodexObservedRecord) -> HarnessEvent | None:
         if record.source != "live_notification" or record.live_sequence is None:

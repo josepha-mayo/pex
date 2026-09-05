@@ -49,7 +49,20 @@ async def bound(publication):
     current = await store.get_session(session.id)
     current.capabilities["send_message"] = True  # Test-only; product remains observe-only.
     await store.upsert_session(current)
+    # Planning/attribution fixtures intentionally authorize this exact scope.
+    # A capability flag or observer attachment alone is never permission.
+    await enable_corrections(store, current)
     return store, await store.get_session(session.id), publication
+
+
+async def enable_corrections(store, session, *, key="correction-fixture-grant"):
+    from test_codex_autonomous_correction_grant import _grant_arguments
+
+    status = await store.get_autonomous_correction_grant_status(session.id)
+    assert status["scope"] is not None, status
+    return await store.set_session_autonomous_corrections(
+        session.id, **_grant_arguments(status, key=key),
+    )
 
 
 async def prepare(bound, *, event_id="correction-trigger", text="  Verify the actual result.\n"):

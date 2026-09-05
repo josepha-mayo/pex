@@ -9,7 +9,7 @@
     "prepare:sidecar": "node scripts/build-sidecar.mjs",
     "validate:pets": "node scripts/build-sidecar.mjs --validate-pets-only",
     "preflight:release": "node scripts/build-sidecar.mjs --preflight-release",
-    "test": "node --test src/viewModel.test.ts src/startupRecovery.test.ts src/supervisorDraft.test.ts src/operatorRequest.test.ts src/sharedConnection.test.ts scripts/release-contract.test.mjs",
+    "test": "node --test src/viewModel.test.ts src/startupRecovery.test.ts src/supervisorDraft.test.ts src/operatorRequest.test.ts src/sharedConnection.test.ts src/autonomousCorrections.test.ts scripts/release-contract.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },

@@ -2963,9 +2963,11 @@ def create_app() -> FastAPI:
 
     pex_mcp, pex_mcp_app = build_mcp_server()
     app = FastAPI(title="PEX Bridge", version="0.1.0", lifespan=lifespan)
+    from pex_bridge.codex_autonomous_control import register_autonomous_correction_routes
     from pex_bridge.codex_shared_attach import register_shared_codex_routes
 
     register_shared_codex_routes(app, state, _require_token, _require_operator_token)
+    register_autonomous_correction_routes(app, state, _require_operator_token)
     app.state.pex_mcp = pex_mcp
 
     @app.exception_handler(RequestValidationError)

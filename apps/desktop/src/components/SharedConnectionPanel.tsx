@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useSyncExternalStore } from "react";
+import { AutonomousCorrectionsPanel } from "./AutonomousCorrectionsPanel";
 import {
   canConfirmConnection, canInspectConnection, createSharedConnectionController, validOrigin,
   type SharedRequest, type WorkspaceReview,
@@ -61,8 +62,9 @@ export function SharedConnectionPanel({ request, onChanged }: {
       <p className="eyebrow">Existing worker connection</p>
       <h2 id={headingId}>Observe your existing Codex thread</h2>
       <p className="settings-note">
-        Keep working in Codex. This connection observes selected lifecycle events only. It cannot send messages,
-        continue work, answer approvals or change worker settings. No new worker or turn is started.
+        Keep working in Codex. Attaching observes selected lifecycle events only; it does not enable messages,
+        continuation, approvals or settings changes. Autonomous corrections require the separate permission below.
+        Attaching starts no new worker or turn.
       </p>
       <div role="status" aria-live="polite">
         {state.busy ? <p>{state.busy === "reload" ? "Loading connection status…" : `${state.busy === "origin" ? "Saving origin" : state.busy === "inspect" ? "Inspecting existing thread" : state.busy === "confirm" ? "Connecting observer" : "Detaching observer"}…`}</p> : null}
@@ -84,6 +86,7 @@ export function SharedConnectionPanel({ request, onChanged }: {
           <p className="settings-note">Coverage is limited to selected lifecycle notifications. Raw-stream completeness is not established; missed events may be unknown. A connected observer is not proof of autonomous supervision or successful worker delivery.</p>
           {typeof connection.observation_coverage?.reason === "string" ? <p>Coverage note: {connection.observation_coverage.reason}</p> : null}
           {connection.workspace_binding ? <WorkspaceReceipt receipt={connection.workspace_binding} /> : null}
+          <AutonomousCorrectionsPanel key={`${connection.session_id}:${connection.inspection_id}`} sessionId={connection.session_id} request={request} />
           <button type="button" className="ghost" disabled={blocked || !connection.can_detach} onClick={() => void changed(controller.detach(), true)}>Detach PEX observer — leave worker running</button>
           {!connection.can_detach ? <p className="settings-note">This bridge no longer owns a detachable connection. Reload to reconcile ownership; do not reconnect blindly.</p> : null}
         </div>

@@ -384,6 +384,23 @@ CREATE TABLE IF NOT EXISTS human_session_control_coverage (
   schema_version INTEGER NOT NULL CHECK(schema_version = 1),
   json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS autonomous_correction_grant_operations (
+  operation_id TEXT PRIMARY KEY,
+  principal_id TEXT NOT NULL CHECK(principal_id = 'local_bridge_operator'),
+  actor_assurance TEXT NOT NULL CHECK(actor_assurance = 'bridge_bearer'),
+  idempotency_key TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  session_id TEXT NOT NULL REFERENCES sessions(id),
+  goal_id TEXT NOT NULL REFERENCES goals(id),
+  project_binding TEXT NOT NULL,
+  control_revision INTEGER NOT NULL CHECK(control_revision >= 0),
+  enabled INTEGER NOT NULL CHECK(enabled IN (0, 1)),
+  created_at TEXT NOT NULL,
+  response_json TEXT NOT NULL,
+  UNIQUE(principal_id, idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS idx_autonomous_correction_grant_active
+ON autonomous_correction_grant_operations(session_id, control_revision, enabled, created_at);
 CREATE TABLE IF NOT EXISTS human_operator_action_coverage (
   action_kind TEXT PRIMARY KEY CHECK(action_kind IN (
     'session_message',
@@ -1040,6 +1057,16 @@ BEFORE DELETE ON human_session_control_coverage
 BEGIN
   SELECT RAISE(ABORT, 'human action coverage is append-only');
 END;
+CREATE TRIGGER IF NOT EXISTS trg_autonomous_correction_grant_immutable
+BEFORE UPDATE ON autonomous_correction_grant_operations
+BEGIN
+  SELECT RAISE(ABORT, 'autonomous correction grant operation is immutable');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_autonomous_correction_grant_no_delete
+BEFORE DELETE ON autonomous_correction_grant_operations
+BEGIN
+  SELECT RAISE(ABORT, 'autonomous correction grant operation is append-only');
+END;
 CREATE TRIGGER IF NOT EXISTS trg_human_operator_action_coverage_immutable
 BEFORE UPDATE ON human_operator_action_coverage
 BEGIN
@@ -1302,6 +1329,9 @@ GOAL_CONTROL_ATTENTION_ACTIONS = frozenset(
 )
 GOAL_CONTROL_ATTENTION_RECEIPT_SCHEMA = "pex.goal-control-attention-receipt.v1"
 GOAL_CONTROL_ATTENTION_MIGRATION_SCHEMA = "pex.goal-control-attention-migration.v1"
+AUTONOMOUS_CORRECTION_GRANT_SCHEMA = "pex.autonomous-correction-grant.v1"
+AUTONOMOUS_CORRECTION_GRANT_REQUEST_SCHEMA = "pex.autonomous-correction-grant-request.v1"
+AUTONOMOUS_CORRECTION_ACTIONS = tuple(sorted(codex_correction.TEXT_ACTIONS))
 HUMAN_DECISION_DELIVERY_CONTRACT_LEGACY = 1
 HUMAN_DECISION_DELIVERY_CONTRACT_EXACT_TURN = 3
 OPERATOR_DELIVERY_CONTRACT_LEGACY = 1
@@ -6712,6 +6742,126 @@ async def _require_processing_workspace_current(
         raise WorkspaceAuthorityError("accepted work lacks its workspace publication snapshot")
 
 
+async def _autonomous_correction_scope(
+    transaction: aiosqlite.Connection,
+    session_row: aiosqlite.Row,
+) -> dict[str, Any]:
+    """Recompute the exact live human-grant scope; never trust session metadata alone."""
+
+    session = HarnessSession.model_validate_json(session_row["json"])
+    receipt = session.metadata.get("subscription_receipt")
+    if (
+        session.harness_type != HarnessType.CODEX
+        or session.metadata.get("connection_kind") != "codex_shared"
+        or session.status == SessionStatus.DETACHED
+        or session.supervision_paused
+        or not session.goal_id
+        or not isinstance(receipt, dict)
+        or receipt.get("schema") != "pex.codex-existing-thread-subscription.v1"
+        or receipt.get("observation_only") is not True
+        or receipt.get("delivery_proven") is not False
+    ):
+        raise ValueError("session is not eligible for autonomous corrections")
+    goal, goal_binding = await _load_bound_goal(transaction, session.goal_id)
+    if goal.paused or await _has_authoritative_goal_successor(
+        transaction, goal, goal_binding
+    ):
+        raise ValueError("goal is not eligible for autonomous corrections")
+    witnessed = await _require_session_workspace_current(transaction, session)
+    if witnessed is None:
+        raise ValueError("autonomous corrections require a witnessed workspace")
+    workspace, _ = witnessed
+    goal_cursor = await transaction.execute(
+        "SELECT intent_revision, intent_hash FROM goals WHERE id = ?", (goal.id,)
+    )
+    goal_row = await goal_cursor.fetchone()
+    if goal_row is None:  # pragma: no cover - bound goal invariant
+        raise RuntimeError("autonomous correction goal disappeared")
+    intent_revision, intent_hash = _validate_goal_intent_scalar_pair(
+        goal_row["intent_revision"], goal_row["intent_hash"]
+    )
+    required_receipt_fields = (
+        "authorization_id",
+        "selection_id",
+        "endpoint_identity",
+        "thread_id",
+        "root_session_id",
+    )
+    if any(
+        not isinstance(receipt.get(name), str) or not receipt[name]
+        for name in required_receipt_fields
+    ):
+        raise ValueError("autonomous correction subscription identity is incomplete")
+    if (
+        type(receipt.get("connection_generation")) is not int
+        or receipt["connection_generation"] < 1
+        or receipt.get("pex_session_id") != session.id
+        or receipt.get("thread_id") != session.vendor_session_id
+        or receipt.get("project_id") != session.project_id
+        or receipt.get("cwd") != session.cwd
+        or session_row["project_binding"] != workspace.project_binding
+        or goal_binding.project_binding != workspace.project_binding
+    ):
+        raise ValueError("autonomous correction subscription scope changed")
+    workspace_json = _canonical_json(workspace.model_dump(mode="json"))
+    final_witness = await _require_session_workspace_current(transaction, session)
+    if (
+        final_witness is None
+        or _canonical_json(final_witness[0].model_dump(mode="json")) != workspace_json
+    ):
+        raise ValueError("autonomous correction workspace changed during validation")
+    return {
+        "schema": AUTONOMOUS_CORRECTION_GRANT_SCHEMA,
+        "session_id": session.id,
+        "thread_id": receipt["thread_id"],
+        "root_session_id": receipt["root_session_id"],
+        "goal_id": goal.id,
+        "goal_intent_revision": intent_revision,
+        "goal_intent_hash": intent_hash,
+        "project_id": workspace.project_id,
+        "project_binding": workspace.project_binding,
+        "workspace_sha256": hashlib.sha256(workspace_json.encode("utf-8")).hexdigest(),
+        "subscription_authorization_id": receipt["authorization_id"],
+        "subscription_selection_id": receipt["selection_id"],
+        "endpoint_identity": receipt["endpoint_identity"],
+        "connection_generation": receipt["connection_generation"],
+        "control_revision": int(session_row["control_revision"]),
+        "allowed_intervention_types": list(AUTONOMOUS_CORRECTION_ACTIONS),
+    }
+
+
+async def _active_autonomous_correction_grant(
+    transaction: aiosqlite.Connection,
+    session_row: aiosqlite.Row,
+) -> dict[str, Any] | None:
+    scope = await _autonomous_correction_scope(transaction, session_row)
+    cursor = await transaction.execute(
+        "SELECT * FROM autonomous_correction_grant_operations "
+        "WHERE session_id = ? AND control_revision = ? AND enabled = 1 "
+        "ORDER BY created_at DESC, operation_id DESC LIMIT 1",
+        (scope["session_id"], scope["control_revision"]),
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        return None
+    response = _strict_json_loads(row["response_json"])
+    grant = response.get("autonomous_correction_grant") if isinstance(response, dict) else None
+    if (
+        not isinstance(grant, dict)
+        or grant.get("schema") != AUTONOMOUS_CORRECTION_GRANT_SCHEMA
+        or grant.get("enabled") is not True
+        or not isinstance(grant.get("scope"), dict)
+        or row["goal_id"] != grant["scope"].get("goal_id")
+        or row["project_binding"] != grant["scope"].get("project_binding")
+        or row["control_revision"] != grant["scope"].get("control_revision")
+        or _canonical_json(response) != row["response_json"]
+    ):
+        raise RuntimeError("stored autonomous correction grant is corrupt")
+    if grant["scope"] != scope:
+        return None
+    return response
+
+
 async def _prepare_main_effect_payload(
     transaction: aiosqlite.Connection, processing: dict[str, Any], *,
     intervention_id: str, action: dict[str, Any], required_capability: Any,
@@ -11869,6 +12019,259 @@ class Store:
         )
         row = await cursor.fetchone()
         return _session_control_receipt(row) if row is not None else None
+
+    async def get_autonomous_correction_grant_status(
+        self, session_id: str
+    ) -> dict[str, Any]:
+        """Return derived standing authority without changing observer capabilities."""
+
+        _validate_store_id(session_id, label="autonomous correction session id")
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN")
+            try:
+                cursor = await transaction.execute(
+                    "SELECT * FROM sessions WHERE id = ?", (session_id,)
+                )
+                row = await cursor.fetchone()
+                if row is None:
+                    await transaction.commit()
+                    return {
+                        "enabled": False,
+                        "reason": "session_not_found",
+                        "scope": None,
+                        "grant": None,
+                    }
+                try:
+                    scope = await _autonomous_correction_scope(transaction, row)
+                    active = await _active_autonomous_correction_grant(transaction, row)
+                    final_scope = await _autonomous_correction_scope(transaction, row)
+                    if final_scope != scope:
+                        raise WorkspaceAuthorityError(
+                            "autonomous correction scope changed during status read"
+                        )
+                except (
+                    LookupError,
+                    ProjectIdentityBlockedError,
+                    WorkspaceAuthorityError,
+                    ValueError,
+                ):
+                    await transaction.commit()
+                    return {
+                        "enabled": False,
+                        "reason": "autonomous_correction_scope_unavailable",
+                        "scope": None,
+                        "grant": None,
+                    }
+                await transaction.commit()
+                return {
+                    "enabled": active is not None,
+                    "reason": "enabled" if active is not None else "explicit_grant_required",
+                    "scope": scope,
+                    "grant": active,
+                }
+            except BaseException:
+                await transaction.rollback()
+                raise
+
+    async def set_session_autonomous_corrections(
+        self,
+        session_id: str,
+        *,
+        enabled: bool,
+        expected_control_revision: int,
+        expected_goal_id: str,
+        expected_goal_intent_revision: int,
+        expected_goal_intent_hash: str,
+        expected_project_binding: str,
+        expected_workspace_sha256: str,
+        expected_subscription_authorization_id: str,
+        expected_connection_generation: int,
+        principal_id: str,
+        actor_assurance: str,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        """Idempotently grant/revoke corrections for one exact observer incarnation."""
+
+        _validate_store_id(session_id, label="autonomous correction session id")
+        _validate_store_id(expected_goal_id, label="autonomous correction goal id")
+        if type(enabled) is not bool:
+            raise ValueError("autonomous correction enabled flag is invalid")
+        if (
+            type(expected_control_revision) is not int
+            or expected_control_revision < 0
+            or type(expected_goal_intent_revision) is not int
+            or expected_goal_intent_revision < 0
+            or type(expected_connection_generation) is not int
+            or expected_connection_generation < 1
+        ):
+            raise ValueError("autonomous correction expected revision is invalid")
+        if (
+            principal_id != "local_bridge_operator"
+            or actor_assurance != OPERATOR_ACTOR_ASSURANCE
+            or not isinstance(idempotency_key, str)
+            or _MCP_REQUEST_ID_PATTERN.fullmatch(idempotency_key) is None
+            or not isinstance(expected_goal_intent_hash, str)
+            or _SHA256_PATTERN.fullmatch(expected_goal_intent_hash) is None
+            or not isinstance(expected_workspace_sha256, str)
+            or _SHA256_PATTERN.fullmatch(expected_workspace_sha256) is None
+            or not isinstance(expected_subscription_authorization_id, str)
+            or not expected_subscription_authorization_id
+        ):
+            raise ValueError("autonomous correction operation authority is invalid")
+        _validate_store_id(
+            expected_subscription_authorization_id,
+            label="autonomous correction subscription authorization id",
+        )
+        expected_project_binding = validate_project_binding(expected_project_binding)
+        request = {
+            "schema": AUTONOMOUS_CORRECTION_GRANT_REQUEST_SCHEMA,
+            "session_id": session_id,
+            "enabled": enabled,
+            "expected_control_revision": expected_control_revision,
+            "expected_goal_id": expected_goal_id,
+            "expected_goal_intent_revision": expected_goal_intent_revision,
+            "expected_goal_intent_hash": expected_goal_intent_hash,
+            "expected_project_binding": expected_project_binding,
+            "expected_workspace_sha256": expected_workspace_sha256,
+            "expected_subscription_authorization_id": (
+                expected_subscription_authorization_id
+            ),
+            "expected_connection_generation": expected_connection_generation,
+        }
+        request_hash = hashlib.sha256(
+            _canonical_json(request).encode("utf-8")
+        ).hexdigest()
+        operation_id = "autonomous_correction_" + hashlib.sha256(
+            _canonical_json(
+                [AUTONOMOUS_CORRECTION_GRANT_SCHEMA, principal_id, idempotency_key]
+            ).encode("utf-8")
+        ).hexdigest()[:40]
+
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN IMMEDIATE")
+            try:
+                replay_cursor = await transaction.execute(
+                    "SELECT request_hash, response_json FROM "
+                    "autonomous_correction_grant_operations "
+                    "WHERE principal_id = ? AND idempotency_key = ?",
+                    (principal_id, idempotency_key),
+                )
+                replay_row = await replay_cursor.fetchone()
+                if replay_row is not None:
+                    if replay_row["request_hash"] != request_hash:
+                        raise OperatorEffectConflictError(
+                            "autonomous correction idempotency key was reused with "
+                            "different content"
+                        )
+                    replay = _strict_json_loads(replay_row["response_json"])
+                    if _canonical_json(replay) != replay_row["response_json"]:
+                        raise RuntimeError("stored autonomous correction response is corrupt")
+                    await transaction.commit()
+                    return {**replay, "replayed": True}
+
+                cursor = await transaction.execute(
+                    "SELECT * FROM sessions WHERE id = ?", (session_id,)
+                )
+                session_row = await cursor.fetchone()
+                if session_row is None:
+                    raise LookupError("session not found")
+                scope = await _autonomous_correction_scope(transaction, session_row)
+                expected = {
+                    "control_revision": expected_control_revision,
+                    "goal_id": expected_goal_id,
+                    "goal_intent_revision": expected_goal_intent_revision,
+                    "goal_intent_hash": expected_goal_intent_hash,
+                    "project_binding": expected_project_binding,
+                    "workspace_sha256": expected_workspace_sha256,
+                    "subscription_authorization_id": (
+                        expected_subscription_authorization_id
+                    ),
+                    "connection_generation": expected_connection_generation,
+                }
+                if any(scope[name] != value for name, value in expected.items()):
+                    raise ValueError("autonomous correction grant scope changed")
+                current = await _active_autonomous_correction_grant(
+                    transaction, session_row
+                )
+                if await _autonomous_correction_scope(transaction, session_row) != scope:
+                    raise WorkspaceAuthorityError(
+                        "autonomous correction scope changed during grant commit"
+                    )
+                currently_enabled = current is not None
+                changed = currently_enabled != enabled
+                final_control_revision = int(session_row["control_revision"])
+                if changed:
+                    updated = await transaction.execute(
+                        "UPDATE sessions SET control_revision = control_revision + 1 "
+                        "WHERE id = ? AND control_revision = ?",
+                        (session_id, expected_control_revision),
+                    )
+                    if updated.rowcount != 1:
+                        raise RuntimeError("autonomous correction control CAS was lost")
+                    final_control_revision += 1
+                final_scope = {**scope, "control_revision": final_control_revision}
+                final_session_cursor = await transaction.execute(
+                    "SELECT * FROM sessions WHERE id = ?", (session_id,)
+                )
+                final_session_row = await final_session_cursor.fetchone()
+                if (
+                    final_session_row is None
+                    or await _autonomous_correction_scope(
+                        transaction, final_session_row
+                    )
+                    != final_scope
+                ):
+                    raise WorkspaceAuthorityError(
+                        "autonomous correction scope changed before grant publication"
+                    )
+                created_at = utcnow().isoformat()
+                grant = {
+                    "schema": AUTONOMOUS_CORRECTION_GRANT_SCHEMA,
+                    "operation_id": operation_id,
+                    "enabled": enabled,
+                    "changed": changed,
+                    "principal_id": principal_id,
+                    "actor_assurance": actor_assurance,
+                    "idempotency_key": idempotency_key,
+                    "request_hash": request_hash,
+                    "created_at": created_at,
+                    "scope": final_scope,
+                }
+                response = {
+                    "session_id": session_id,
+                    "control_revision": final_control_revision,
+                    "autonomous_correction_grant": grant,
+                    "replayed": False,
+                }
+                response_json = _canonical_json(response)
+                await transaction.execute(
+                    "INSERT INTO autonomous_correction_grant_operations("
+                    "operation_id, principal_id, actor_assurance, idempotency_key, "
+                    "request_hash, session_id, goal_id, project_binding, control_revision, "
+                    "enabled, created_at, response_json) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        operation_id,
+                        principal_id,
+                        actor_assurance,
+                        idempotency_key,
+                        request_hash,
+                        session_id,
+                        final_scope["goal_id"],
+                        final_scope["project_binding"],
+                        final_control_revision,
+                        int(enabled),
+                        created_at,
+                        response_json,
+                    ),
+                )
+                await transaction.commit()
+                return response
+            except BaseException:
+                await transaction.rollback()
+                raise
 
     async def attach_session_goal(
         self,
@@ -22348,7 +22751,23 @@ class Store:
                 elif required_capability and not bool(
                     live_session.capabilities.get(required_capability, False)
                 ):
-                    skip_reason = f"missing_capability:{required_capability}"
+                    action_payload = payload.get("action")
+                    grant_projected_capability = bool(
+                        isinstance(action_payload, dict)
+                        and isinstance(payload.get("codex_correction"), dict)
+                        and codex_correction.requires_correction(
+                            live_session, action_payload
+                        )
+                        and required_capability
+                        == (
+                            "resume"
+                            if action_payload.get("type")
+                            == InterventionType.CONTINUE_SESSION.value
+                            else "send_message"
+                        )
+                    )
+                    if not grant_projected_capability:
+                        skip_reason = f"missing_capability:{required_capability}"
 
                 goal_id = str(processing["goal_id"] or "")
                 if validate_only and skip_reason is None and not containment_effect and not goal_id:
@@ -22431,6 +22850,28 @@ class Store:
                         await _require_processing_workspace_current(transaction, processing)
                     except WorkspaceAuthorityError as exc:
                         skip_reason = exc.code
+                if skip_reason is None and "codex_correction" in payload:
+                    action = payload.get("action")
+                    action_type = action.get("type") if isinstance(action, dict) else None
+                    if (
+                        live_session is None
+                        or action_type not in AUTONOMOUS_CORRECTION_ACTIONS
+                    ):
+                        skip_reason = "autonomous_correction_action_not_allowed"
+                    else:
+                        try:
+                            active_grant = await _active_autonomous_correction_grant(
+                                transaction, session_row
+                            )
+                        except (
+                            LookupError,
+                            ProjectIdentityBlockedError,
+                            WorkspaceAuthorityError,
+                            ValueError,
+                        ):
+                            active_grant = None
+                        if active_grant is None:
+                            skip_reason = "autonomous_correction_grant_required"
                 if skip_reason is not None:
                     await transaction.commit()
                     return {

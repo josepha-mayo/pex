@@ -92,6 +92,7 @@ from pex_bridge.executor import (
     HANDOFF_ADAPTER_TIMEOUT_SECONDS,
     ActionExecutionResult,
     ActionExecutor,
+    ClaimedMainEffect,
     _WorkspaceDispatchRefused,
 )
 from pex_bridge.fingerprints import fingerprint_score_features
@@ -718,6 +719,7 @@ class Pipeline:
         # presentation. Keep a strong reference while shielded so cancellation
         # cannot strand a delivered overlay child behind a dispatching parent.
         self._overlay_reconciliation_tasks: set[asyncio.Task] = set()
+        self._main_effect_settlement_tasks: set[asyncio.Task] = set()
 
     async def ingest_observer_lifecycle(
         self, event: HarnessEvent, session: HarnessSession
@@ -2402,6 +2404,32 @@ class Pipeline:
             )
             return committed
 
+        # Generic adapter methods remain observation-only. Tell the supervisor
+        # about the distinct private action route without persisting invented
+        # send/resume capability flags onto the shared session.
+        if session.metadata.get("connection_kind") == "codex_shared":
+            from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
+
+            shared_adapter = self.adapters.for_session(session.id)
+            if isinstance(shared_adapter, CodexSharedAdapter) and shared_adapter._connected():
+                correction_status = await self.store.get_autonomous_correction_grant_status(
+                    session.id,
+                )
+                if correction_status.get("enabled") is True:
+                    permission_note = (
+                        "Standing operator permission enables the private claimed-correction route "
+                        "for this attached goal: SEND_NUDGE, INJECT_CONTEXT, REQUEST_VERIFICATION, "
+                        "CONTINUE_SESSION with exact evidence-grounded text. Generic adapter "
+                        "send/resume flags remain false; this separate route still requires "
+                        "current local policy and input/effect authority. "
+                        "Prefer NOOP when justified."
+                    )
+                else:
+                    permission_note = "Autonomous correction permission is disabled."
+                # Existing trusted prefixes are consumed by deterministic safety
+                # triage. Preserve them and the protocol's bounded notes field.
+                notes = notes[:65_536 - len(permission_note) - 2] + "\n\n" + permission_note
+
         request = SupervisorRequest(
             session=session,
             goal=goal,
@@ -2557,9 +2585,20 @@ class Pipeline:
         verdict = self.policy.decide(action, command=command)
         action_taken = action.type.value
         required_capability = _required_capability(action, verdict)
-        if required_capability and not session.capabilities.get(
-            required_capability,
-            False,
+        private_correction_granted = False
+        if required_capability in {"send_message", "resume"}:
+            from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
+            from pex_bridge.codex_correction import requires_correction
+
+            if (
+                verdict == PolicyVerdict.ALLOW
+                and requires_correction(session, action.model_dump(mode="json"))
+                and isinstance(self.adapters.for_session(session.id), CodexSharedAdapter)
+            ):
+                grant_status = await self.store.get_autonomous_correction_grant_status(session.id)
+                private_correction_granted = grant_status.get("enabled") is True
+        if required_capability and not (
+            session.capabilities.get(required_capability, False) or private_correction_granted
         ):
             action.evidence.append(f"missing_capability:{required_capability}")
             action.rationale = f"Action skipped because the adapter lacks {required_capability}."
@@ -3180,6 +3219,47 @@ class Pipeline:
             raise asyncio.CancelledError
         return result
 
+    async def _durably_settle_main_result(
+        self, *, processing: dict, reserved: Intervention, session: HarnessSession,
+        outcome: str, effect_state: str, code: str, publish: bool,
+        worker_delivery_receipt: dict | None = None,
+        hook_preparation_receipt: dict | None = None,
+    ) -> None:
+        """Own the entire post-executor refresh/seal through observer cancellation."""
+
+        async def finish() -> None:
+            handled, effect = await self._durably_refresh_overlay_child(processing)
+            if handled:
+                return
+            effect_result = None
+            if worker_delivery_receipt is not None or hook_preparation_receipt is not None:
+                effect_result = {
+                    "status": effect_state, "outcome": outcome,
+                    "code": code, "effect_id": effect["effect_id"],
+                }
+                if worker_delivery_receipt is not None:
+                    effect_result["worker_delivery_receipt"] = worker_delivery_receipt
+                if hook_preparation_receipt is not None:
+                    effect_result["hook_preparation_receipt"] = hook_preparation_receipt
+            await self._seal_main_event_effect(
+                processing=processing, effect=effect, reserved=reserved, session=session,
+                outcome=outcome, effect_state=effect_state, code=code, publish=publish,
+                effect_result=effect_result,
+            )
+
+        completion = asyncio.create_task(finish(), name="pex-main-effect-settlement")
+        self._main_effect_settlement_tasks.add(completion)
+        completion.add_done_callback(self._main_effect_settlement_tasks.discard)
+        cancelled = False
+        while not completion.done():
+            try:
+                await asyncio.shield(completion)
+            except asyncio.CancelledError:
+                cancelled = True
+        completion.result()
+        if cancelled:
+            raise asyncio.CancelledError
+
     async def _resume_planned_event(self, processing: dict, *, owner: str) -> None:
         current = await self.store.get_event_processing(str(processing["event_id"]))
         if current is None:
@@ -3309,7 +3389,26 @@ class Pipeline:
                     operation_parent_effect_id=effect["effect_id"],
                 )
             else:
-                execution = await self.executor.execute(action, verdict)
+                if isinstance(effect.get("payload", {}).get("codex_correction"), dict):
+                    frozen_action = action.model_copy(deep=True)
+                    command = event.command or str(frozen_action.payload.get("command") or "")
+
+                    def check_local_authority() -> None:
+                        if self.supervision_paused or self.policy.decide(
+                            frozen_action.model_copy(deep=True), command=command,
+                        ) != PolicyVerdict.ALLOW:
+                            raise ValueError("current local policy refuses shared correction")
+
+                    execution = await self.executor.execute(
+                        action, verdict,
+                        main_effect_context=ClaimedMainEffect(
+                            event_id=event.event_id, owner=owner,
+                            effect_id=effect["effect_id"], effect_version=effect["version"],
+                            check_local_authority=check_local_authority,
+                        ),
+                    )
+                else:
+                    execution = await self.executor.execute(action, verdict)
                 if isinstance(execution, ActionExecutionResult):
                     outcome = execution.outcome
                     worker_delivery_receipt = execution.worker_delivery_receipt
@@ -3317,65 +3416,25 @@ class Pipeline:
                 else:
                     outcome = execution
         except asyncio.CancelledError:
-            handled, linked_effect = await self._durably_refresh_overlay_child(current)
-            if handled:
-                raise
-            await asyncio.shield(
-                self._seal_main_event_effect(
-                    processing=current,
-                    effect=linked_effect or effect,
-                    reserved=reserved,
-                    session=session,
-                    outcome="worker_delivery_uncertain",
-                    effect_state="delivery_uncertain",
-                    code="cancelled_after_dispatch_marker",
-                    publish=False,
-                )
+            await self._durably_settle_main_result(
+                processing=current, reserved=reserved, session=session,
+                outcome="worker_delivery_uncertain", effect_state="delivery_uncertain",
+                code="cancelled_after_dispatch_marker", publish=False,
             )
             raise
         except Exception:
-            handled, linked_effect = await self._durably_refresh_overlay_child(current)
-            if handled:
-                return
-            await asyncio.shield(
-                self._seal_main_event_effect(
-                    processing=current,
-                    effect=linked_effect or effect,
-                    reserved=reserved,
-                    session=session,
-                    outcome="worker_delivery_uncertain",
-                    effect_state="delivery_uncertain",
-                    code="executor_failed_after_dispatch_marker",
-                    publish=False,
-                )
+            await self._durably_settle_main_result(
+                processing=current, reserved=reserved, session=session,
+                outcome="worker_delivery_uncertain", effect_state="delivery_uncertain",
+                code="executor_failed_after_dispatch_marker", publish=False,
             )
             return
-        handled, effect = await self._durably_refresh_overlay_child(current)
-        if handled:
-            return
-        effect_state = self._main_effect_state(outcome)
-        effect_result = None
-        if worker_delivery_receipt is not None or hook_preparation_receipt is not None:
-            effect_result = {
-                "status": effect_state,
-                "outcome": outcome,
-                "code": outcome,
-                "effect_id": effect["effect_id"],
-            }
-            if worker_delivery_receipt is not None:
-                effect_result["worker_delivery_receipt"] = worker_delivery_receipt
-            if hook_preparation_receipt is not None:
-                effect_result["hook_preparation_receipt"] = hook_preparation_receipt
-        await self._seal_main_event_effect(
-            processing=current,
-            effect=effect,
-            reserved=reserved,
-            session=session,
-            outcome=outcome,
-            effect_state=effect_state,
-            code=outcome,
-            publish=True,
-            effect_result=effect_result,
+        await self._durably_settle_main_result(
+            processing=current, reserved=reserved, session=session,
+            outcome=outcome, effect_state=self._main_effect_state(outcome),
+            code=outcome, publish=True,
+            worker_delivery_receipt=worker_delivery_receipt,
+            hook_preparation_receipt=hook_preparation_receipt,
         )
 
     async def recover_unfinished_events(self) -> list[str]:
@@ -3417,10 +3476,13 @@ class Pipeline:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._presentation_tasks.difference_update(tasks)
-        reconciliations = tuple(self._overlay_reconciliation_tasks)
+        reconciliations = tuple(
+            self._overlay_reconciliation_tasks | self._main_effect_settlement_tasks
+        )
         if reconciliations:
             await asyncio.gather(*reconciliations, return_exceptions=True)
         self._overlay_reconciliation_tasks.difference_update(reconciliations)
+        self._main_effect_settlement_tasks.difference_update(reconciliations)
 
     async def _negotiate_capabilities(self, session: HarnessSession) -> bool:
         """Refresh the adapter snapshot, failing closed on an unavailable probe."""

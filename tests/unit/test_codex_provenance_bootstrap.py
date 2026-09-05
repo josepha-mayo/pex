@@ -8,7 +8,7 @@ from pex_bridge.adapters.codex_subscription import CodexObservationInterrupted
 from pex_bridge.codex_correction import CORRECTION_SCHEMA, canonical
 from pex_bridge.codex_input_provenance import CodexInputProvenance
 from pex_protocol.enums import EventType
-from test_codex_correction_store import attempt, prepare
+from test_codex_correction_store import attempt, enable_corrections, prepare
 from test_codex_shared_adapter import eventually
 from test_codex_subscription import _notification, _subscribed
 from test_workspace_continuity_pipeline import bound_pipeline as bound_pipeline
@@ -185,8 +185,8 @@ async def test_durable_duplicate_after_fresh_registry_cannot_retry_or_retain_as_
     bound = bound_pipeline
     store, adapter = bound.store, bound.adapter
     session = await store.get_session(adapter.session.id)
-    session.capabilities["send_message"] = True  # Explicit fixture capability only.
-    await store.upsert_session(session)
+    await enable_corrections(store, session)
+    session = await store.get_session(session.id)
     prepared = await prepare((store, session, None))
     await attempt((store, session, None), prepared)
     loaded = await store.list_codex_correction_attributions(session)

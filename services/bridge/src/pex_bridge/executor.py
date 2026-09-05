@@ -3,10 +3,12 @@ from __future__ import annotations
 import asyncio
 import ctypes
 import errno
+import inspect
 import json
 import os
 import sys
 from collections.abc import Awaitable, Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -58,6 +60,17 @@ class ActionExecutionResult:
     outcome: str
     worker_delivery_receipt: dict[str, str] | None = None
     hook_preparation_receipt: dict[str, str] | None = None
+
+
+@dataclass(frozen=True)
+class ClaimedMainEffect:
+    """An exact claim reference, not a reusable execution permission."""
+
+    event_id: str
+    owner: str
+    effect_id: str
+    effect_version: int
+    check_local_authority: Callable[[], None]
 
 
 class _WorkspaceDispatchRefused(Exception):
@@ -152,6 +165,7 @@ class ActionExecutor:
         lifecycle_resolution_id: str | None = None,
         operation_owner_id: str | None = None,
         operation_parent_effect_id: str | None = None,
+        main_effect_context: ClaimedMainEffect | None = None,
     ) -> str | ActionExecutionResult:
         if action.type == InterventionType.NOOP:
             return "noop"
@@ -312,6 +326,13 @@ class ActionExecutor:
         adapter = self.adapters.for_session(action.session_id)
         if adapter is None:
             return "missing_session_or_adapter"
+
+        from pex_bridge.codex_correction import requires_correction
+
+        if requires_correction(session, action.model_dump(mode="json")):
+            return await self._execute_shared_codex_correction(
+                action, session, adapter, main_effect_context,
+            )
 
         try:
             if action.type == InterventionType.START_AGENT:
@@ -483,6 +504,122 @@ class ActionExecutor:
                 return "notification_not_configured"
             return hub.deliver(text, kind="notify")
         return f"unhandled_{action.type}"
+
+    async def _execute_shared_codex_correction(
+        self,
+        action: ProposedAction,
+        session: HarnessSession,
+        adapter,
+        context: ClaimedMainEffect | None,
+    ) -> str | ActionExecutionResult:
+        """Use only a persisted claim and the private same-connection route."""
+        from pex_bridge.adapters.codex_shared import SharedCodexTextDispatchRejected
+        from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
+        from pex_bridge.codex_correction import canonical
+        from pex_bridge.codex_input_baseline import CodexInputBaselineSnapshot
+        from pex_bridge.store import _validate_observer_input_baseline
+
+        if (
+            not isinstance(context, ClaimedMainEffect)
+            or not callable(context.check_local_authority)
+            or not isinstance(adapter, CodexSharedAdapter)
+        ):
+            return "codex_claimed_dispatch_required"
+        # Freeze caller-owned objects before any Store or transport await.
+        action = action.model_copy(deep=True)
+        session = session.model_copy(deep=True)
+        expected_action = action.model_dump(mode="json")
+        arguments = {
+            "event_id": context.event_id,
+            "owner": context.owner,
+            "effect_id": context.effect_id,
+            "effect_version": context.effect_version,
+            "expected_action": expected_action,
+        }
+
+        def check_local() -> None:
+            checked = context.check_local_authority()
+            if inspect.isawaitable(checked):
+                if inspect.iscoroutine(checked):
+                    checked.close()
+                raise ValueError("local policy callback must be synchronous")
+            if checked is not None:
+                raise ValueError("local policy callback must return None")
+
+        try:
+            check_local()
+            grant = await self.store.validate_main_event_effect_dispatch(**arguments)
+            if grant.get("granted") is not True:
+                return "codex_dispatch_authority_refused"
+            correction = grant["effect"]["payload"]["codex_correction"]
+            correction_json = canonical(correction)
+            event = await self.store.get_event(context.event_id)
+            if event is None or event.session_id != session.id or event.goal_id != action.goal_id:
+                return "codex_dispatch_trigger_mismatch"
+            baseline = event.metadata.get("pex_observer_snapshot", {}).get("input_baseline")
+            _validate_observer_input_baseline(baseline)
+            accepted_baseline = CodexInputBaselineSnapshot(**baseline)
+            if not accepted_baseline.complete:
+                return "codex_dispatch_input_incomplete"
+            attribution_records = await self.store.list_codex_correction_attributions(session)
+            witness = await self.store.require_session_workspace_current(session)
+            if witness is None:
+                return "codex_dispatch_workspace_missing"
+
+            def validate_store() -> None:
+                # Independent connections/loop: never submit work to the
+                # application loop blocked by this synchronous final callback.
+                latest = asyncio.run(self.store.validate_main_event_effect_dispatch(**arguments))
+                if (
+                    latest.get("granted") is not True
+                    or canonical(latest["effect"]["payload"].get("codex_correction"))
+                    != correction_json
+                ):
+                    raise ValueError("claimed correction authority changed")
+
+            def final_check() -> None:
+                check_local()
+                with ThreadPoolExecutor(
+                    max_workers=1, thread_name_prefix="pex-codex-dispatch-check",
+                ) as pool:
+                    pool.submit(validate_store).result()
+                # Database connection cleanup and transport locks may outlast
+                # earlier samples. These local checks immediately precede the
+                # adapter's input fence and transport enqueue checks.
+                check_local()
+                if self.adapters.for_session(session.id) is not adapter:
+                    raise ValueError("registered shared adapter changed")
+                require_current_workspace(*witness)
+                require_same_local_directory(session.cwd, witness[0].directory)
+
+        except Exception:
+            return "codex_dispatch_preparation_refused"
+
+        try:
+            result = await adapter._dispatch_claimed_text(
+                correction_json=correction_json,
+                attribution_records=attribution_records,
+                accepted_baseline=accepted_baseline,
+                final_authority_check=final_check,
+            )
+        except SharedCodexTextDispatchRejected:
+            return "codex_dispatch_refused"
+        except asyncio.CancelledError:
+            # Pipeline seals the already-claimed effect uncertain and never
+            # retries. The transport retains its pre/post-enqueue distinction.
+            raise
+        except Exception:
+            return "codex_delivery_uncertain"
+        accepted_outcome = {
+            InterventionType.SEND_NUDGE: "sent",
+            InterventionType.INJECT_CONTEXT: "sent",
+            InterventionType.REQUEST_VERIFICATION: "verification_requested",
+            InterventionType.CONTINUE_SESSION: "continued",
+        }[action.type]
+        return _message_execution_result(
+            result, session=session, accepted_outcome=accepted_outcome,
+            rejected_outcome="codex_dispatch_failed",
+        )
 
     async def _validated_lifecycle_dispatch_session(
         self,

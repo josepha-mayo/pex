@@ -10,7 +10,7 @@ import pytest
 from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
 from pex_bridge.codex_input_provenance import CodexInputProvenance
 from pex_protocol.enums import EventType
-from test_codex_correction_store import attempt, prepare
+from test_codex_correction_store import attempt, enable_corrections, prepare
 from test_codex_subscription import _notification
 from test_workspace_continuity_pipeline import bound_pipeline as _bound_pipeline_fixture
 
@@ -44,10 +44,9 @@ async def echo_pipeline(tmp_path, monkeypatch):
     bound = await anext(generator)
     try:
         session = await bound.store.get_session(bound.adapter.session.id)
-        # The sole attempt is a Store fixture, never a worker call. Real shared
-        # capability probes remain disabled throughout the actual event pump.
-        session.capabilities["send_message"] = True
-        await bound.store.upsert_session(session)
+        # Explicit standing permission precedes this historical Store fixture
+        # attempt. It is never a worker call or a fabricated public capability.
+        await enable_corrections(bound.store, session)
         session = await bound.store.get_session(session.id)
         publication = (bound.store, session, bound.workspace_binding, bound.origin_path)
         fixture = (bound.store, session, publication)
