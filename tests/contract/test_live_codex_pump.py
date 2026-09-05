@@ -354,6 +354,10 @@ async def test_live_codex_incomplete_stop_sends_specific_continue(tmp_path: Path
 
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
+    # Seed a readable empty target so the isolated Codex sandbox updates an
+    # operator-owned artifact instead of creating a file the parent proof
+    # process cannot inspect on Windows.
+    (tmp_path / "report.txt").write_text("", encoding="utf-8")
     transport = CodexStdioTransport(binary)
     adapter = CodexAdapter(transport)
     registry = AdapterRegistry()
@@ -425,11 +429,13 @@ async def test_live_codex_incomplete_stop_sends_specific_continue(tmp_path: Path
             "continued",
             "verification_requested",
         }
-        assert "missing:report.txt" in initial.evidence
+        assert (initial.metadata or {}).get("verification", {}).get(
+            "acceptance_status"
+        ) == "unsatisfied"
         initial_worker_text = str((initial.proposed_action.payload or {}).get("text") or "")
         assert "report" in initial_worker_text.lower()
         assert not initial_worker_text.startswith("PEX:")
-        assert (tmp_path / "report.txt").read_text(encoding="utf-8").strip() == "shipped"
+        assert (tmp_path / "report.txt").read_text(encoding="utf-8") == "shipped"
         assert final.action_taken == "NOOP"
         assert final.result == "noop"
         assert (final.metadata or {}).get("verification", {}).get(

@@ -23,6 +23,10 @@ Rules:
   Never search for hidden evaluators, benchmark oracles, or planted answers.
 - Return exactly one validated structured decision. Do not chat.
 - Decide immediately and keep the rationale short.
+- Use at most one round of evidence-tool calls, then return the structured
+  decision immediately. When the supplied Verification section already reports
+  supported acceptance and no contradictory external fact is present, choose
+  NOOP without calling more tools.
 - If the worker is making real progress, or evidence is insufficient, choose NOOP.
 - A stop is a trigger to inspect, not proof of failure. Missing an observed test command is not automatic failure.
 - Treat an acceptance artifact as missing only when the Verification section explicitly reports an acceptance gap. A sampled file inventory is not proof of absence.

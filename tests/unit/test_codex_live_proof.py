@@ -375,7 +375,7 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
         payload={"text": "Create report.txt with the required shipped value."},
         result="continued",
     )
-    initial.metadata["verification"] = {"acceptance_status": "acceptance_gap"}
+    initial.metadata["verification"] = {"acceptance_status": "unsatisfied"}
     initial.metadata["worker_delivery_receipt"] = {
         "schema": "pex.worker-delivery.codex-turn.v1",
         "target_session_id": "codex:thread-proof",
@@ -387,6 +387,8 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
         trigger_event_id="codex:thread-proof:turn:two",
         evidence=["artifact:report.txt"],
     )
+    final.evidence = []
+    final.proposed_action.evidence = []
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
     try:
@@ -424,6 +426,35 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
         )
         proof.validate_proof(receipt)
 
+        reserved = copy.deepcopy(receipt)
+        initial_audit = next(
+            row
+            for row in reserved["audit_receipts"]["audit_rows"]
+            if row["intervention_id"] == "int_initial"
+            and row["record_type"] == "created"
+        )
+        initial_audit["record_type"] = "delivery_reserved"
+        initial_audit["payload"]["record_type"] = "delivery_reserved"
+        initial_audit["payload_sha256"] = proof._canonical_fingerprint(
+            initial_audit["payload"]
+        )
+        proof.validate_proof(reserved)
+
+        noop_reserved = copy.deepcopy(receipt)
+        final_audit = next(
+            row
+            for row in noop_reserved["audit_receipts"]["audit_rows"]
+            if row["intervention_id"] == "int_final"
+            and row["record_type"] == "created"
+        )
+        final_audit["record_type"] = "delivery_reserved"
+        final_audit["payload"]["record_type"] = "delivery_reserved"
+        final_audit["payload_sha256"] = proof._canonical_fingerprint(
+            final_audit["payload"]
+        )
+        with pytest.raises(AssertionError, match="audit history is incomplete"):
+            proof.validate_proof(noop_reserved)
+
         def mutate_canonical_delivery_turn(value):
             delivery = value["interventions"][0]["worker_delivery_receipt"]
             delivery["vendor_turn_id"] = "unrelated-turn"
@@ -438,6 +469,9 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
 
         mutations = [
             lambda value: value["interventions"][0].__setitem__("observed_event_refs", []),
+            lambda value: value["interventions"][0].__setitem__(
+                "evidence", ["unrelated evidence"]
+            ),
             lambda value: value["interventions"][0]["action_payload"].__setitem__(
                 "text", "continue"
             ),

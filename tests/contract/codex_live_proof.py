@@ -653,7 +653,6 @@ def _assert_proof_semantics(
             or final.get("delivery_result") != "noop"
             or final.get("worker_delivery_receipt") is not None
             or (final.get("verification") or {}).get("acceptance_status") != "supported"
-            or not final.get("evidence")
             or final.get("outcome")
             or final.get("helped") is not None
             or final.get("observed_event_refs")
@@ -675,11 +674,14 @@ def _assert_proof_semantics(
         }
         action = str(initial.get("action") or "")
         worker_text = str((initial.get("action_payload") or {}).get("text") or "")
+        initial_evidence = [str(item) for item in initial.get("evidence") or []]
         if (
             initial.get("proposed_action") != action
             or delivery_by_action.get(action) != initial.get("delivery_result")
             or not isinstance(delivery, dict)
-            or "missing:report.txt" not in (initial.get("evidence") or [])
+            or (initial.get("verification") or {}).get("acceptance_status")
+            != "unsatisfied"
+            or not any("report.txt" in item for item in initial_evidence)
             or "report" not in worker_text.casefold()
             or worker_text.startswith("PEX:")
             or initial.get("outcome") != "goal_evidence_supported"
@@ -692,7 +694,6 @@ def _assert_proof_semantics(
             or final.get("delivery_result") != "noop"
             or final.get("worker_delivery_receipt") is not None
             or (final.get("verification") or {}).get("acceptance_status") != "supported"
-            or not final.get("evidence")
         ):
             raise AssertionError("final intervention is not an evidence-supported NOOP")
         if initial.get("trigger_event_id") == final.get("trigger_event_id") or str(
@@ -1014,7 +1015,7 @@ def validate_proof(receipt: dict[str, Any]) -> None:
     audited_intervention_ids: set[str] = set()
     latest_by_intervention: dict[str, dict[str, Any]] = {}
     previous_audit_id = 0
-    created_audits: set[str] = set()
+    inception_audits: set[str] = set()
     for row in audit_rows:
         if not isinstance(row, dict) or not isinstance(row.get("payload"), dict):
             raise AssertionError("proof immutable audit row is malformed")
@@ -1036,13 +1037,21 @@ def validate_proof(receipt: dict[str, Any]) -> None:
         recorded_at = _require_utc_timestamp(payload.get("recorded_at"), label="audit record")
         if not started_at <= recorded_at <= completed_at:
             raise AssertionError("proof audit timestamp is outside the proof interval")
-        if row.get("record_type") == "created":
-            created_audits.add(intervention_id)
+        if intervention_id not in audited_intervention_ids:
+            record_type = row.get("record_type")
+            intervention = canonical[intervention_id]
+            delivery = (intervention.metadata or {}).get("worker_delivery_receipt")
+            if record_type == "created" or (
+                record_type == "delivery_reserved"
+                and intervention.proposed_action.type.value != "NOOP"
+                and isinstance(delivery, dict)
+            ):
+                inception_audits.add(intervention_id)
         seen_audit_ids.add(audit_id)
         audited_intervention_ids.add(intervention_id)
         latest_by_intervention[intervention_id] = payload
         previous_audit_id = audit_id
-    if audited_intervention_ids != set(canonical) or created_audits != set(canonical):
+    if audited_intervention_ids != set(canonical) or inception_audits != set(canonical):
         raise AssertionError("proof immutable audit history is incomplete")
     for intervention_id, model in canonical.items():
         _assert_latest_audit_state(model, latest_by_intervention[intervention_id])
