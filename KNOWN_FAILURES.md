@@ -1,5 +1,9 @@
 # Known failures
 
+## Workspace attachment repair and remaining boundary — 5 Sep 2026
+
+Named local-origin/physical attachment binding and the typed raw-cwd bypass are now repaired in source `f08ad80`, with final 545-pass/2-skip integration evidence in the handoff. Review also reproduced and repaired config temporary-file substitution, stale-origin subscription, stale confirmability and conflicting-proof fallback; valid Windows attachment remains covered. This is sampled attachment/publication authority, not continuous post-attachment evidence/action validation, machine attestation or an atomic filesystem lock. Desktop caller, installed runtime/protected endpoint, raw/crash coverage, owned coordinator cleanup and safe same-worker delivery remain unproven. Existing older publication callers without workspace witnesses are not silently certified by the new guard. These current facts supersede older origin-as-unimplemented paragraphs below without deleting their historical evidence.
+
 ## Current shared-observer limits — 5 Sep 2026
 
 Shared attachment, legacy-route serialization, failed-publication pump restoration, cancellation settlement, disconnect-vs-worker semantics, runtime projection and incomplete-input override authority have bounded source repairs with real-Store regressions. The final receipt is in `docs/AGENT_HANDOFF.md`; earlier unintegrated-WIP descriptions below are historical.

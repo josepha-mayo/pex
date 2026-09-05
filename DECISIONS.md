@@ -1,5 +1,11 @@
 # DECISIONS
 
+## 5 Sep 2026 — Explicit origin plus sampled directory evidence for attachment
+
+Bind selected existing-worker attachment to an operator-declared local origin, server-measured directory identity and current registered locator, not a path string or guessed hostname. Preserve project identities/history; separate origin setup from project registration. Even an older bare locator cannot override a conflicting physical claim for that same local directory. Freeze the choice revision/incarnation with the workspace and recheck after authority awaits and at transactional publication. Exact-subscription detach remains possible when the directory/config disappears; it preserves historical evidence, not new action authority. Filesystem samples are deliberately not machine attestation or an atomic worker-cwd lock. Continuous evidence/action fencing remains required before safe worker control.
+
+Origin saves settle their one threaded publication under the attachment lock; uncertain failures require reload. Temporary publication verifies both owned object and exact desired bytes before replacing valid config. Scope stays on the real Recovery loop: backend setup APIs are not finished UI, live observation or Strands outcome proof.
+
 ## 5 Sep 2026 — Preserve observations without reviving disconnected authority
 
 A later invalid/closing notification must not erase a validated prefix. Freeze full bounded batches before queue backpressure; after stream loss, use a dedicated adapter-object-witnessed record-only Pipeline/SQLite path. It preserves canonical duplicate bindings and processing modes, does not project over current session/human controls, and cannot invoke the semantic planner. Keep recovery acceptance, pending counts and the local disconnect receipt distinct. Support both full reconciliation drains, not only normal streaming capacity. Retention bounds/timeouts are explicit, not claims of full raw capture or process-crash durability. Normal live-ingestion authority checks and disabled shared delivery remain unchanged. Official lifecycle semantics were rechecked through the OpenAI Docs skill: [Codex App Server events](https://learn.chatgpt.com/docs/app-server).

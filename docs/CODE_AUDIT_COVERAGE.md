@@ -6,6 +6,12 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Local-origin/workspace attachment addendum — 5 Sep
+
+Source `f08ad80`; main final 26-file gate 545 passed/2 Windows symlink-permission skips. Main read the three specs and new source/test files; independent reviewers covered helper persistence/directory logic, manager integration and Store publication branches. Store review is changed-path only, not full-file approval. Reproduced failures and repair receipts are at the top of the handoff. API guide `docs/adapters/local-workspace-origin.md` was added and reviewed. This is not an exhaustive reinventory or live product approval.
+
+New fully reviewed paths: `services/bridge/src/pex_bridge/local_workspace.py`, `local_origin_config.py`, `workspace_binding.py`; `tests/unit/test_local_workspace.py`, `test_local_origin_config.py`, `test_local_origin_review.py`, `test_workspace_attachment.py`, `test_workspace_attachment_review.py`, `test_workspace_publication.py`. Existing changed paths: `codex_shared_attach.py`, the workspace-publication branch/imports of `store.py`, and the explicit-origin fixture/earlier-rejection assertion in `test_codex_shared_attach.py`. Unowned supervisor `loop.py` is neither edited nor approved. Continuous workspace/evidence/action authority, installed runtime, desktop caller and full audit coverage remain open.
+
 ### Stream-loss retention addendum — 5 Sep
 
 Main and bounded owners reviewed changes to `codex_subscription.py`, `codex_shared_adapter.py`, `codex_shared_attach.py`, `pipeline.py`, `store.py`, `test_codex_subscription.py` and the attachment fixture in `test_codex_shared_attach.py`. Existing large Pipeline/Store received changed-path review only. Independent review covered coordinator/Store and main adapter/Pipeline/wiring, including the reproduced and fixed 2,048-record reconciliation capacity defect. See the current handoff for integration/push evidence; live runtime and complete raw/crash coverage remain unproven.

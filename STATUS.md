@@ -6,6 +6,12 @@
 
 **Date:** 2026-09-05
 
+## Workspace-bound existing-worker attachment — 5 Sep
+
+Reviewed source/API guide pushed as `f08ad8097775fa45b7057983b6365f5e9272623e`, exact remote equality verified. Main final gate: **545 passed, 2 Windows symlink-permission skips in 261.43 seconds across 26 complete files**; scoped Ruff/staged whitespace passed. Explicit local-origin configuration, measured directory binding, transactional locator/physical-conflict checks, safe config publication and reload/status APIs now have bounded real-Store/fake-worker regression evidence. Full details and failed development cases are in the current handoff. No live worker/model/GUI/package/benchmark/deploy/submission run or production origin/ACL change occurred.
+
+Desktop connection caller, continuous post-attachment workspace/evidence/action fences, complete raw/durable observation, owned transport cleanup, safe same-worker control and actual Strands outcomes remain open. All remaining spec, release, eight-pet and visible comparison gates remain required. **Goal ACTIVE, release NO-GO, 6 September WAT target at risk.** Only the unowned `loop.py` edit is excluded from this source checkpoint. Earlier descriptions below are historical where superseded.
+
 ## Shared observer integration and intent-authority repair — 5 Sep
 
 Real local Pipeline/Store regressions now cover explicit shared attachment, cancellation/rollback recovery, record-only observation loss, canonical runtime/coverage projection and incomplete human-input authority. See the current implementation section of `docs/AGENT_HANDOFF.md` for the final combined gate and source checkpoint. Main and bounded independent reviewers reproduced defects before repair. No live Codex/provider/GUI or release proof follows from these tests.
