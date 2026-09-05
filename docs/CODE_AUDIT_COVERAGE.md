@@ -6,6 +6,10 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Fresh control snapshots and final effect validation — `e64270c`
+
+Full new-test review: `test_codex_shared_read_snapshot.py`, `test_codex_control_snapshot.py`, `test_main_effect_live_revalidation.py`. Changed-path review: shared transport parser-boundary/read/routing/dispatch checks, coordinator control-only snapshot and Store main-effect check factoring/final validator. `attachment_review` independently approved transport and authored framed regressions; `transport_review` authored Store, then independently reproduced and approved the coordinator unknown/empty-type fix; main reviewed/integrated all owned paths. Final main 483 passed/18 complete files, no skips; six scoped Python paths Ruff/staged-whitespace clean. Source pushed with exact remote equality. [`Full evidence and limitations`](CONTROL_SNAPSHOT_REVIEW.md). No blanket full-file/whole-repository audit or shared-control activation follows.
+
 ### Production received-byte journal — `db98481`
 
 Main full-new-file review: `codex_received_journal.py` and `test_codex_received_journal{,_attachment,_transport}.py`; changed-path review: `codex_shared.py`, `codex_shared_attach.py`, three existing transport/attachment test files and `.gitignore`. Independent `attachment_review` read the new files and production diffs, reproduced the foreign-WAL defect, then approved the preflight fix and reran the exact failure plus 32 new tests. Main final 456 passed/23 files, all nine scoped Python paths Ruff-clean and ten staged paths whitespace-clean, source pushed with remote equality. [`Complete bounded receipt`](RECEIVED_JOURNAL_REVIEW.md). This does not close the full repository audit, complete crash recovery or approve worker-control activation.
