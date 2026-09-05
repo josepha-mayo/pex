@@ -11585,12 +11585,14 @@ class Store:
         session: HarnessSession,
         *,
         expected_project_binding: str,
+        require_current_workspace: bool = False,
     ) -> list[HarnessEvent]:
-        """Atomically retain a validated observer prefix without worker processing.
+        """Atomically retain validated observations without worker processing.
 
         This internal boundary never projects a session or changes an existing
         event's processing mode. The Pipeline must witness the adapter's actual
-        retained tuple before calling; metadata alone is not ingress authority.
+        retained tuple or queued pending input before calling; metadata alone
+        is not ingress authority.
         """
         if not isinstance(events, tuple) or not events or len(events) > 2048:
             raise ValueError("observer retention requires 1 to 2048 events")
@@ -11732,6 +11734,8 @@ class Store:
             await _configure_connection(tx)
             await tx.execute("BEGIN IMMEDIATE")
             try:
+                if require_current_workspace:
+                    await _require_session_workspace_current(tx, binding_session)
                 current, stored_binding = await _load_bound_session(tx, binding_session.id)
                 if (
                     current.harness_type != binding_session.harness_type
@@ -11770,6 +11774,8 @@ class Store:
                             raise ValueError("observer retention event id collision")
                         canonical_events.append(existing)
                         continue
+                    if "pex_correction_observation" in event.metadata:
+                        await self._require_unique_codex_correction_observation(tx, event)
                     event.goal_id = current.goal_id
                     event.project_id = current.project_id or current.cwd
                     await tx.execute(
@@ -11777,6 +11783,8 @@ class Store:
                         (event.event_id, event.session_id, event.ts.isoformat(), _dump(event)),
                     )
                     canonical_events.append(event)
+                if require_current_workspace:
+                    await _require_session_workspace_current(tx, binding_session)
                 await tx.commit()
                 return canonical_events
             except BaseException:
@@ -21233,6 +21241,161 @@ class Store:
             await _require_session_workspace_current(transaction, snapshot)
             await transaction.commit()
             return tuple(records)
+
+    @staticmethod
+    async def _require_unique_codex_correction_observation(
+        transaction: aiosqlite.Connection, event: HarnessEvent,
+    ) -> None:
+        marker = event.metadata["pex_correction_observation"]
+        if (
+            not isinstance(marker, dict)
+            or not isinstance(marker.get("effect_id"), str)
+            or not isinstance(marker.get("input_sha256"), str)
+        ):
+            raise ValueError("correction observation marker is malformed")
+        cursor = await transaction.execute(
+            "SELECT 1 FROM events WHERE session_id=? AND "
+            "json_extract(json, '$.metadata.pex_correction_observation.effect_id')=? "
+            "AND json_extract(json, "
+            "'$.metadata.pex_correction_observation.input_sha256') IS NOT ? LIMIT 1",
+            (event.session_id, marker["effect_id"], marker["input_sha256"]),
+        )
+        if await cursor.fetchone() is not None:
+            raise codex_correction.CodexCorrectionMultiplicityError(
+                "correction attempt already observed on a different vendor input"
+            )
+
+    async def record_codex_correction_observation(
+        self, event: HarnessEvent, session: HarnessSession, *,
+        raw_item: dict[str, Any], turn_id: str,
+    ) -> HarnessEvent:
+        """Record an exact attempted correction echo without human/planner effects.
+
+        Internal Pipeline callers must also witness the actual queued object.
+        A client metadata flag, correlation prefix or supplied attribution record
+        is not authority to enter this path. Recheck Store-owned provenance here.
+        """
+        from pex_bridge.codex_input_provenance import CodexInputProvenance
+
+        observed = event.model_copy(deep=True)
+        snapshot = session.model_copy(deep=True)
+        item_json = _canonical_json(raw_item)
+        if len(item_json.encode("utf-8")) > 131_072:
+            raise ValueError("correction observation item exceeds bound")
+        item = _strict_json_loads(item_json)
+        receipt = snapshot.metadata.get("subscription_receipt")
+        metadata = observed.metadata
+        if (
+            not isinstance(receipt, dict)
+            or observed.event_type != EventType.STATUS
+            or observed.session_id != snapshot.id
+            or observed.harness_type != HarnessType.CODEX
+            or observed.project_id != snapshot.project_id
+            or metadata.get("source") != "codex_shared_live_notification"
+            or metadata.get("raw_method") != "item/completed"
+            or metadata.get("sequence_scope") != "retained_lifecycle_records_not_raw_frames"
+            or metadata.get("delivery_proven") is not False
+            or metadata.get("vendor_turn_id") != turn_id
+            or metadata.get("subscription_id") != receipt.get("authorization_id")
+            or metadata.get("endpoint_identity") != receipt.get("endpoint_identity")
+            or type(metadata.get("connection_generation")) is not int
+            or metadata["connection_generation"] != receipt.get("connection_generation")
+            or type(metadata.get("ingress_sequence")) is not int
+            or metadata["ingress_sequence"] < 1
+            or observed.message_delta is not None
+        ):
+            raise ValueError("correction observation has invalid live identity")
+        _validate_store_id(observed.event_id, label="correction observation event id")
+        records = await self.list_codex_correction_attributions(snapshot)
+        index = CodexInputProvenance.from_store_records(
+            records, session_id=snapshot.id, thread_id=snapshot.vendor_session_id,
+        )
+        match = index.classify_item(
+            session_id=snapshot.id, thread_id=snapshot.vendor_session_id,
+            turn_id=turn_id, item=item,
+        )
+        if (
+            match.kind != "exact_pex" or match.correction_json is None
+            or match.entry_json is None
+        ):
+            raise ValueError("correction observation is not an exact attempted PEX message")
+        correction = _strict_json_loads(match.correction_json)
+        matching_record = next(
+            _strict_json_loads(record) for record in records
+            if _canonical_json(_strict_json_loads(record)["correction"])
+            == match.correction_json
+        )
+        # Persist identity/digests only; the raw item is checked locally above,
+        # not copied into event metadata or exported by the event bus.
+        marker = {
+            "schema": "pex.codex-correction-observation.v1",
+            "effect_id": correction["effect_id"],
+            "client_message_id": correction["client_message_id"],
+            "vendor_item_id": item["id"],
+            "input_sha256": hashlib.sha256(match.entry_json.encode("utf-8")).hexdigest(),
+        }
+        if _canonical_json(metadata.get("pex_correction_observation")) != _canonical_json(marker):
+            raise ValueError("correction observation marker differs from exact content")
+        if len(_dump(observed).encode("utf-8")) > 1_048_576:
+            raise ValueError("correction observation exceeds event bound")
+
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN IMMEDIATE")
+            try:
+                await _require_session_workspace_current(transaction, snapshot)
+                current, _ = await _load_bound_session(transaction, snapshot.id)
+                cursor = await transaction.execute(
+                    "SELECT * FROM event_effects WHERE effect_id = ?", (correction["effect_id"],),
+                )
+                row = await cursor.fetchone()
+                effect = _event_effect_record(row) if row else None
+                if (
+                    effect is None or effect["state"] != matching_record["effect_state"]
+                    or effect["version"] != matching_record["effect_version"]
+                    or not effect["dispatch_started_at"] or not effect["dispatcher_boot_id"]
+                    or effect["target_session_id"] != snapshot.id
+                    or _canonical_json(effect["payload"].get("codex_correction"))
+                    != match.correction_json
+                    or hashlib.sha256(
+                        _canonical_json(effect["payload"]).encode("utf-8")
+                    ).hexdigest()
+                    != effect["request_hash"]
+                ):
+                    raise ValueError("correction attempt changed before observation commit")
+                await self._require_unique_codex_correction_observation(transaction, observed)
+                cursor = await transaction.execute(
+                    "SELECT e.json, p.mode FROM events e JOIN event_processing p "
+                    "ON p.event_id=e.event_id WHERE e.event_id=?", (observed.event_id,),
+                )
+                prior = await cursor.fetchone()
+                if prior is not None:
+                    existing = HarnessEvent.model_validate_json(prior["json"])
+                    observed.goal_id, observed.project_id = existing.goal_id, existing.project_id
+                    if (
+                        prior["mode"] != "record_only"
+                        or event_semantic_payload(existing) != event_semantic_payload(observed)
+                    ):
+                        raise ValueError("correction observation event id collision")
+                    await _require_session_workspace_current(transaction, snapshot)
+                    await transaction.commit()
+                    return existing
+                observed.goal_id, observed.project_id = current.goal_id, current.project_id
+                await transaction.execute(
+                    "INSERT INTO events(event_id,session_id,ts,json) VALUES (?,?,?,?)",
+                    (
+                        observed.event_id, observed.session_id,
+                        observed.ts.isoformat(), _dump(observed),
+                    ),
+                )
+                # Existing insert trigger creates record_only_complete and its
+                # publication row. No acceptance/planning or session projection.
+                await _require_session_workspace_current(transaction, snapshot)
+                await transaction.commit()
+                return observed
+            except BaseException:
+                await transaction.rollback()
+                raise
 
     async def commit_event_plan(
         self,

@@ -24,6 +24,8 @@ from pex_bridge.adapters.codex_subscription import (
     CodexObservedRecord,
     CodexSubscriptionError,
 )
+from pex_bridge.codex_correction import CodexCorrectionMultiplicityError, canonical
+from pex_bridge.codex_input_provenance import CodexInputClassification, CodexInputProvenance
 from pex_bridge.workspace_binding import WorkspaceAuthorityError
 
 MAX_PENDING_EVENTS = 256
@@ -87,6 +89,10 @@ class CodexSharedAdapter(HarnessAdapter):
         self._enqueueing = False
         self.active_turn_id: str | None = None
         self._user_items: set[tuple[str, str]] = set()
+        self._correction_vendor_items: dict[str, tuple[str, str]] = {}
+        self._input_provenance: CodexInputProvenance | None = None
+        self._provenance_required = False
+        self._correction_items: dict[str, str] = {}
         self._pending: asyncio.Queue[tuple[HarnessEvent, HarnessSession]] = asyncio.Queue(
             maxsize=MAX_PENDING_EVENTS
         )
@@ -198,15 +204,39 @@ class CodexSharedAdapter(HarnessAdapter):
         phase = EventPhase.DURING
         error = None
         event = None
+        correction_item_json = None
         if method.startswith("item/"):
             item = params["item"]
             is_user = item.get("type") == "userMessage"
+            classification = (
+                self._input_provenance.classify_item(
+                    session_id=self.session.id, thread_id=self.session.vendor_session_id,
+                    turn_id=record.turn_id, item=item, completed=method == "item/completed",
+                )
+                if is_user and self._input_provenance is not None else None
+            )
+            exact_correction = classification is not None and classification.kind == "exact_pex"
+            if exact_correction:
+                key = (record.turn_id, str(record.item_id))
+                client_id = item["clientId"]
+                previous = self._correction_vendor_items.get(client_id)
+                if previous is not None and previous != key:
+                    # One attempted correction cannot establish ownership of
+                    # multiple vendor inputs. Match the history classifier's
+                    # uncertainty rule; preserve evidence and revoke the fence.
+                    classification = CodexInputClassification(
+                        "uncertain", reason="duplicate correction correlation",
+                    )
+                    exact_correction = False
+                else:
+                    self._correction_vendor_items[client_id] = key
             if method == "item/started" and not is_user:
                 return None
             if method == "item/started":
                 # Revoke a future delivery fence immediately, but do not mistake
                 # partial user content for the authoritative completed prompt.
-                self.input_revision += 1
+                if classification is None or classification.kind != "uncertain":
+                    self.input_revision += 1
                 metadata["human_input_pending"] = True
             elif is_user:
                 key = (record.turn_id, str(record.item_id))
@@ -215,14 +245,35 @@ class CodexSharedAdapter(HarnessAdapter):
                 if len(self._user_items) >= MAX_USER_ITEMS:
                     raise CodexSubscriptionError("shared human input retention bound reached")
                 self._user_items.add(key)
-                self.input_revision += 1
-            if method == "item/completed":
+                if not exact_correction:
+                    self.input_revision += 1
+            if exact_correction:
+                from pex_bridge.adapters.strict_json import strict_json_loads
+
+                correction = strict_json_loads(classification.correction_json)
+                correction_item_json = canonical(item)
+                metadata["pex_correction_observation"] = {
+                    "schema": "pex.codex-correction-observation.v1",
+                    "effect_id": correction["effect_id"],
+                    "client_message_id": correction["client_message_id"],
+                    "vendor_item_id": item["id"],
+                    "input_sha256": hashlib.sha256(
+                        classification.entry_json.encode("utf-8")
+                    ).hexdigest(),
+                }
+            elif method == "item/completed":
                 event = self._normalizer.normalize_item(
                     self.session,
                     item,
                     event_suffix=record.stable_id,
                     vendor_turn_id=record.turn_id,
                 )
+                if event is not None and classification is not None and classification.kind in {
+                    "uncertain", "incomplete",
+                }:
+                    # Keep visible evidence and stale-action fencing, but never
+                    # let a conflicting correction ID mint human override intent.
+                    event.metadata["content_status"] = "uncertain_input_provenance"
         elif method == "turn/started":
             self.active_turn_id = record.turn_id
             self.session.status = SessionStatus.WORKING
@@ -277,6 +328,8 @@ class CodexSharedAdapter(HarnessAdapter):
             event.event_id = f"codex-shared:{event_identity}"
             event.ts = observed_at
         event.metadata = {**event.metadata, **metadata}
+        if correction_item_json is not None:
+            self._correction_items[event.event_id] = correction_item_json
         if method not in ("thread/status/changed", "thread/started"):
             self.session.last_activity = observed_at
         self.session.metadata["observation_coverage"] = self._coverage("observing")
@@ -319,6 +372,16 @@ class CodexSharedAdapter(HarnessAdapter):
             if not records:
                 await asyncio.sleep(0.025)
 
+    async def _receive_with_provenance(self, loader) -> None:
+        if loader is not None:
+            records = await loader(self.session.model_copy(deep=True))
+            if not self._connected():
+                raise CodexSubscriptionError("connection lost during input provenance bootstrap")
+            self._input_provenance = CodexInputProvenance.from_store_records(
+                records, session_id=self.session.id, thread_id=self.session.vendor_session_id,
+            )
+        await self._receive()
+
     async def _consume(self, ingest) -> None:
         while True:
             event, session = await self._pending.get()
@@ -337,6 +400,7 @@ class CodexSharedAdapter(HarnessAdapter):
                         self.last_ingested_sequence, event.metadata["ingress_sequence"]
                     )
                     self._undelivered.pop(event.event_id, None)
+                    self._correction_items.pop(event.event_id, None)
                     self._ingesting = False
                     self._ingesting_observation = None
                     self.last_pump_error = None
@@ -348,6 +412,11 @@ class CodexSharedAdapter(HarnessAdapter):
                     # Let the owned pump finalizer retain the untouched pending
                     # observations after joining both consumers and producers.
                     self.last_pump_error = exc.code
+                    raise
+                except CodexCorrectionMultiplicityError:
+                    # A fresh attachment may not have seen the first vendor
+                    # item. Store's durable conflict cannot become valid by
+                    # retrying; close and disclose the observation gap.
                     raise
                 except Exception as exc:
                     self.last_pump_error = type(exc).__name__
@@ -391,6 +460,7 @@ class CodexSharedAdapter(HarnessAdapter):
             )
             self._retained_count = len(self._retaining_observations)
             self._undelivered.clear()
+            self._correction_items.clear()
             while not self._pending.empty():
                 self._pending.get_nowait()
             self._ingesting = False
@@ -403,9 +473,12 @@ class CodexSharedAdapter(HarnessAdapter):
             self._retaining_session = None
 
     async def pump_into_pipeline(
-        self, ingest, *, lifecycle_ingest=None, retention_ingest=None
+        self, ingest, *, lifecycle_ingest=None, retention_ingest=None, provenance_loader=None
     ) -> None:
-        receiver = asyncio.create_task(self._receive())
+        self._provenance_required = provenance_loader is not None
+        # The owned receiver bootstrap preserves the no-await publication/bind
+        # boundary and shares ordinary pump cancellation/cleanup ownership.
+        receiver = asyncio.create_task(self._receive_with_provenance(provenance_loader))
         consumer = asyncio.create_task(self._consume(ingest))
         try:
             done, _ = await asyncio.wait((receiver, consumer), return_when=asyncio.FIRST_COMPLETED)
@@ -436,7 +509,10 @@ class CodexSharedAdapter(HarnessAdapter):
         await asyncio.gather(receiver, consumer, return_exceptions=True)
         # No pump can mutate the pending ledger after this join.
         interrupted = self.subscription.interrupted_batch
-        if interrupted is not None and interrupted is not self._received_interrupted_batch:
+        if (
+            interrupted is not None and interrupted is not self._received_interrupted_batch
+            and not (self._provenance_required and self._input_provenance is None)
+        ):
             self._received_interrupted_batch = interrupted
             try:
                 self._prepare_records(interrupted.records)
@@ -484,12 +560,14 @@ class CodexSharedAdapter(HarnessAdapter):
             self.last_pump_error = f"disconnect_receipt_{type(exc).__name__}"
 
     def start_pipeline_pump(
-        self, ingest, *, lifecycle_ingest=None, retention_ingest=None
+        self, ingest, *, lifecycle_ingest=None, retention_ingest=None, provenance_loader=None
     ) -> asyncio.Task:
         if self._pump_task is None:
+            self._provenance_required = provenance_loader is not None
             self._pump_task = asyncio.create_task(
                 self.pump_into_pipeline(
-                    ingest, lifecycle_ingest=lifecycle_ingest, retention_ingest=retention_ingest
+                    ingest, lifecycle_ingest=lifecycle_ingest, retention_ingest=retention_ingest,
+                    provenance_loader=provenance_loader,
                 ),
                 name="codex-shared-pipeline-pump",
             )

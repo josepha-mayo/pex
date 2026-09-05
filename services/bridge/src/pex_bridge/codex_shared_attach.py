@@ -497,6 +497,7 @@ class SharedCodexAttachments:
                     state.pipeline.ingest_shared_codex_event,
                     lifecycle_ingest=state.pipeline.ingest_observer_lifecycle,
                     retention_ingest=state.pipeline.retain_shared_codex_observations,
+                    provenance_loader=state.store.list_codex_correction_attributions,
                 )
                 if cancelled:
                     raise asyncio.CancelledError

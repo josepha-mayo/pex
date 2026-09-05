@@ -920,6 +920,36 @@ class Pipeline:
             ):
                 raise ValueError("shared observation does not own the current ingestion")
             observed = self._freeze_shared_codex_observation(event, session)
+            if (
+                observed.metadata.get("raw_method") == "item/started"
+                and observed.metadata.get("human_input_pending") is True
+            ):
+                # An incomplete user item is evidence of pending input, not
+                # an instruction to reason about. Record it without claiming
+                # PEX authorship or calling the supervisor before completion.
+                _redact_event(observed)
+                binding = await self.store.project_binding_for_authority(session.project_id)
+                retained = await self.store.retain_observer_events(
+                    (observed,), session, expected_project_binding=binding,
+                    require_current_workspace=True,
+                )
+                self._schedule_committed_publication(
+                    "event", retained[0].model_dump(mode="json"),
+                )
+                return None
+            if "pex_correction_observation" in observed.metadata:
+                from pex_bridge.adapters.strict_json import strict_json_loads
+
+                raw = adapter._correction_items.get(event.event_id)
+                if raw is None:
+                    raise ValueError("correction observation lacks its queued raw item")
+                _redact_event(observed)
+                retained = await self.store.record_codex_correction_observation(
+                    observed, session, raw_item=strict_json_loads(raw),
+                    turn_id=event.metadata["vendor_turn_id"],
+                )
+                self._schedule_committed_publication("event", retained.model_dump(mode="json"))
+                return None
             result = await self._ingest_event_locked(observed, session)
             # A stale accepted event may already have been durably settled.
             # Still retire this stream through the adapter's owned finalizer;
@@ -932,7 +962,7 @@ class Pipeline:
     ) -> Intervention | None:
         if event.session_id != session.id or event.harness_type != session.harness_type:
             raise ValueError("event/session identity mismatch")
-        if "pex_observer_snapshot" in event.metadata:
+        if {"pex_observer_snapshot", "pex_correction_observation"} & event.metadata.keys():
             # Only the internal shared adapter callback may attest runtime
             # state. HTTP/plugin metadata cannot manufacture this authority.
             raise ValueError("observer snapshots require the internal ingestion path")

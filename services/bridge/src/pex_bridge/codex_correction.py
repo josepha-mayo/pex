@@ -23,6 +23,10 @@ TEXT_ACTIONS = frozenset({
 })
 
 
+class CodexCorrectionMultiplicityError(ValueError):
+    """A correction ID cannot establish ownership of a second vendor input."""
+
+
 def canonical(value: Any) -> str:
     return strict_json_dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
