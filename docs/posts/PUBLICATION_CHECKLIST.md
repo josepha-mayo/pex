@@ -2,7 +2,7 @@
 
 ## Authority and current state — 5 September 2026
 
-**Latest user update supersedes the earlier draft-only state below:** the user says, "i already published the post." Treat the first article as **user-reported published, public URL/moderation unverified**. Do not click Publish again or recreate it. The pending action-time confirmation is no longer an action request for that article. Next posting step is read-only verification of its stable public URL; no bonus points are claimed. The other two articles remain local drafts. Core product work remains the priority.
+**Verified 5 Sep ~20:01 UTC in the user's existing Brave:** the first article renders **Published Sep 5, 2026**, the intended author/title and short final text at its stable URL below. No publish/edit/like/comment occurred in this check. An unauthenticated web fetch was refused before retrieval, so logged-out availability/moderation clearance remains independently unverified. Do not click Publish again or recreate it. No bonus points are claimed. The other two articles remain local drafts. Core product work remains the priority. Earlier draft-only paragraphs below are historical; [live receipt](../AGENTCORE_LIVE_PREFLIGHT_2026_09_05.md).
 
 The user explicitly requested publishing the hackathon bonus posts and using their **existing logged-in Brave**, not a new browser/profile. A separate task browser session was opened while locating browser access, then closed; do not relaunch it or restart the user's browser. The user then requested short, conversational posts: the three local articles are now approximately 160 words each, with substantive source-linked lessons and explicit limitations. **No posts have been published and no bonus points are claimed.** This authorizes the requested posts, not final Devpost submission, deployment, cloud spend or a change to the product completion bar.
 
@@ -35,7 +35,7 @@ Eligibility and award of bonus points are the organizers' decision. Three source
 
 | Source | Focus | Public URL | Status |
 | --- | --- | --- | --- |
-| `01-strands-agentcore.md` | Strands supervisor and local authority; runtime implementation versus cloud proof | Public URL not independently verified | User reports published; do not duplicate; verify moderation/public state |
+| `01-strands-agentcore.md` | Strands supervisor and local authority; runtime implementation versus cloud proof | [Published article](https://builder.aws.com/content/3IuxELaimn2aM3bayFznibEnnhK/agents-for-humans-teaching-pex-when-to-stay-quiet) | Published date/content verified in signed-in Brave; logged-out access/bonus award unverified; do not duplicate |
 | `02-attention-benchmark.md` | Evaluating attention savings and supervisor overhead without fake results | Not yet published | Short local draft reviewed |
 | `03-safe-approvals.md` | Concrete command-policy boundaries and regressions in the Strands build | Not yet published | Short local draft reviewed |
 
