@@ -2,6 +2,8 @@
 
 ## CURRENT HANDOFF — 5 Sep 2026 — safe provider setup and honest source bootstrap
 
+**Pushed source receipt:** `67168204b11331a4a3db21b20e09a6900f3bbec5` (`Bind provider credentials and make source setup safe`). Main verified exact HEAD/remote `main` equality after push. Only the unowned `loop.py` change remained outside that checkpoint. This receipt is a documentation-only follow-up.
+
 **Active goal; overall NO-GO.** Internal ship target remains 6 September WAT. Main reread the three binding specifications and current operational files, completed the inherited credential-form WIP, and independently reviewed bounded setup/provider repairs. Exactly eight pets; real existing-worker supervision still takes priority over pet polish and comparisons.
 
 ### Completed source repair, not live product proof

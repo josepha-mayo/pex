@@ -8,6 +8,8 @@
 
 ## Provider/setup repair checkpoint — 5 Sep
 
+Reviewed source push: `67168204b11331a4a3db21b20e09a6900f3bbec5`; main verified exact remote equality. The unrelated `loop.py` edit remains uncommitted. This receipt is a docs-only follow-up.
+
 Main verified **147 passed, 1 environment-dependent symlink skip** across seven complete backend/setup files, **97 desktop Node checks**, TypeScript and scoped Ruff. Credential drafts now bind all actual endpoints, including named overrides; configuration reads/saves require explicit revisions; stale responses and stalled requests have bounded recovery. Catalog refresh freezes credential/protocol/endpoint routing against concurrent saves and rejects a mismatched provider before client creation. Default source setup no longer changes Cursor hooks; fake-command PowerShell execution tests prove command order/failure/cwd behavior. Detailed scope and failed development runs are in `docs/AGENT_HANDOFF.md`; no rendered UI, live provider or packaged-install proof follows.
 
 The core Codex existing-session gap is now documented in `docs/CODEX_EXISTING_SESSION_AUDIT.md`: current stdio mode owns a separate App Server, not the user's live stream. Shared-server subscription and safe mutation fencing remain unimplemented/unproven. An initial mock provider test exposed an ambient credential in local assertion output; the user was informed and advised to rotate if live. Corrected tests do not establish rotation. Preserve the still-growing unexplained `loop.py` diff outside this checkpoint. Overall NO-GO remains.
