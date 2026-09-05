@@ -420,6 +420,20 @@ fn bridge_port_state_at_until(
     token: &str,
     deadline: Instant,
 ) -> Result<BridgePortState, String> {
+    // Establish an availability candidate by binding first. On some Windows hosts a connect to
+    // an unused loopback port is silently dropped until timeout instead of
+    // returning WSAECONNREFUSED. Windows uses SO_EXCLUSIVEADDRUSE so a
+    // reuse-enabled or untrusted listener cannot be mistaken for an available
+    // candidate. The spawned bridge must still prove token-bound identity.
+    match bind_bridge_probe(address) {
+        Ok(()) => {
+            return Ok(BridgePortState::Free);
+        }
+        Err(error) if error.kind() == ErrorKind::AddrInUse => {}
+        Err(_) => {
+            return Err("PEX bridge port could not be bound safely".to_string());
+        }
+    }
     let timeout = remaining_timeout(deadline, Duration::from_millis(350))
         .ok_or_else(|| "PEX bridge port state check timed out".to_string())?;
     match TcpStream::connect_timeout(address, timeout) {
@@ -434,6 +448,44 @@ fn bridge_port_state_at_until(
         Err(error) if error.kind() == ErrorKind::ConnectionRefused => Ok(BridgePortState::Free),
         Err(_) => Err("PEX bridge port state could not be established safely".to_string()),
     }
+}
+
+#[cfg(windows)]
+fn bind_bridge_probe(address: &SocketAddr) -> std::io::Result<()> {
+    use socket2::{Domain, Protocol, Socket, Type};
+    use std::os::windows::io::AsRawSocket;
+    use windows_sys::Win32::Networking::WinSock::{
+        setsockopt, SOCKET_ERROR, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
+    };
+
+    let socket = Socket::new(
+        Domain::for_address(*address),
+        Type::STREAM,
+        Some(Protocol::TCP),
+    )?;
+    let exclusive: i32 = 1;
+    let result = unsafe {
+        setsockopt(
+            socket.as_raw_socket() as usize,
+            SOL_SOCKET,
+            SO_EXCLUSIVEADDRUSE,
+            (&exclusive as *const i32).cast(),
+            std::mem::size_of::<i32>() as i32,
+        )
+    };
+    if result == SOCKET_ERROR {
+        return Err(std::io::Error::last_os_error());
+    }
+    socket.bind(&(*address).into())?;
+    socket.listen(1)?;
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn bind_bridge_probe(address: &SocketAddr) -> std::io::Result<()> {
+    let listener = std::net::TcpListener::bind(address)?;
+    drop(listener);
+    Ok(())
 }
 
 fn bridge_port_is_free_for_owned_launch(state: &BridgePortState) -> bool {
@@ -1015,6 +1067,16 @@ mod tests {
         assert!(!bridge_port_is_free_for_owned_launch(
             &BridgePortState::OccupiedUntrusted
         ));
+    }
+
+    #[test]
+    fn released_loopback_port_is_an_available_spawn_candidate() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let state =
+            bridge_port_state_at(&address, "test-operator-token-that-is-long-enough").unwrap();
+        assert_eq!(state, BridgePortState::Free);
     }
 
     #[test]

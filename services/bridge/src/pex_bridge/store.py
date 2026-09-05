@@ -897,8 +897,6 @@ CREATE INDEX IF NOT EXISTS idx_intervention_audit_intervention
 ON intervention_audit(intervention_id, id);
 CREATE INDEX IF NOT EXISTS idx_sessions_vendor ON sessions(vendor_session_id);
 CREATE INDEX IF NOT EXISTS idx_overlays_session ON overlays(session_id);
-CREATE INDEX IF NOT EXISTS idx_overlays_expiry
-ON overlays(expires_at, id) WHERE applied_at IS NOT NULL AND reverted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_overlay_operations_recovery
 ON overlay_operations(state, dispatch_started_at);
 CREATE INDEX IF NOT EXISTS idx_overlay_operations_session

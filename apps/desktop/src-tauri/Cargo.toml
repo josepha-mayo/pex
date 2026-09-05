@@ -18,3 +18,7 @@ hmac = "0.12"
 sha2 = "0.10"
 rand = "0.8"
 hex = "0.4"
+
+[target.'cfg(windows)'.dependencies]
+socket2 = "0.6"
+windows-sys = { version = "0.61", features = ["Win32_Networking_WinSock"] }

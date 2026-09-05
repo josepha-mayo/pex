@@ -17,6 +17,62 @@ from pex_protocol.session import HarnessSession
 ORIGIN = ProjectOrigin(namespace="machine", host="overlay-store-test")
 
 
+@pytest.mark.asyncio
+async def test_connect_migrates_legacy_overlay_before_creating_expiry_index(tmp_path):
+    path = tmp_path / "pex.sqlite"
+    with sqlite3.connect(path) as db:
+        db.execute(
+            "CREATE TABLE overlays ("
+            "id TEXT PRIMARY KEY, session_id TEXT, applied_at TEXT, json TEXT NOT NULL)"
+        )
+        db.execute(
+            "INSERT INTO overlays (id, session_id, applied_at, json) VALUES (?, ?, ?, ?)",
+            ("legacy-overlay", "legacy-session", "2026-09-05T00:00:00Z", '{"legacy":true}'),
+        )
+
+    store = Store(path)
+    await store.connect()
+    try:
+        columns = {
+            str(row["name"])
+            for row in await (await store.db.execute("PRAGMA table_info(overlays)")).fetchall()
+        }
+        indexes = {
+            str(row["name"])
+            for row in await (await store.db.execute("PRAGMA index_list(overlays)")).fetchall()
+        }
+        assert "expires_at" in columns
+        assert "idx_overlays_expiry" in indexes
+    finally:
+        await store.close()
+
+    reopened = Store(path)
+    await reopened.connect()
+    try:
+        row = await (
+            await reopened.db.execute(
+                "SELECT session_id, applied_at, json, expires_at, reverted_at "
+                "FROM overlays WHERE id = ?",
+                ("legacy-overlay",),
+            )
+        ).fetchone()
+        assert row is not None
+        assert tuple(row) == (
+            "legacy-session",
+            "2026-09-05T00:00:00Z",
+            '{"legacy":true}',
+            None,
+            None,
+        )
+        indexes = {
+            str(item["name"])
+            for item in await (await reopened.db.execute("PRAGMA index_list(overlays)")).fetchall()
+        }
+        assert "idx_overlays_expiry" in indexes
+    finally:
+        await reopened.close()
+
+
 def _goal(goal_id: str, project_id: str) -> Goal:
     now = datetime.now(UTC)
     return Goal(
