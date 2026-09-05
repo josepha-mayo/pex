@@ -2,6 +2,8 @@
 
 ## Target and truth standard
 
+**Latest planning refresh:** the native goal remains active; release remains NO-GO. Post-attachment continuity changes are now implemented locally with bounded review, but remain uncommitted pending final acceptance. Main recovered the completed 51-file compatibility result: **967 passed, 3 skipped in 455.51 seconds**. New Ask and operator-handoff files have separate reviewer-reported green gates and must be included in the final frozen-tree gate. These results supersede reproduction-only status, not the live-product gates. See the handoff's **LATEST EXECUTION STATE** for exact ownership, evidence limits and next action.
+
 Latest reviewed workspace-attachment source/API guide: **`f08ad8097775fa45b7057983b6365f5e9272623e`**, exact remote equality verified; **545 passed, 2 environment-dependent symlink skips across 26 full files**, scoped Ruff/staged whitespace passed. Explicit local-origin setup, measured workspace receipt, transactional publication and status/recovery APIs are implemented; desktop caller, continuous evidence/action fencing and live worker/model/release proof remain open. Detailed evidence and failed development cases are in the current handoff.
 
 Latest reviewed shared-observer source push: **`757029700bde782399828981ba099d907e57a3a2`**, exact remote equality verified; **413 passed across 20 full files**, scoped Ruff/whitespace clean. This adds bounded validated-prefix retention to previous source `8a402c2`. No installed worker/model/UI/release claim. The unexplained `loop.py` edit remains excluded.
@@ -13,6 +15,8 @@ User target: **ship tomorrow, 6 September 2026 (Africa/Lagos)**. This is earlier
 Current reviewed provider/setup source: **147 backend/setup tests passed, 1 symlink-environment skip; 97 desktop checks and TypeScript passed.** Credential destinations/revisions/races and safe source setup now have bounded regressions; see the current handoff for the exact scope and security incident. Existing-session Codex control, rendered UI and release readiness remain open. Earlier pushed evidence/startup source: `1574c56d00a41a0f9d1769e3c1b6a85e59e0af72` (332 backend, 74 frontend, 12 Rust tests under a disclosed sidecar override). Preserve the still-changing unowned `loop.py` diff; no clean-tree or live-product claim.
 
 ## Updated working objective
+
+**Goal in one sentence:** deliver a spec-compliant PEX that demonstrably reduces human babysitting of existing coding agents, is safe and easy to use, and has an honestly verified build, eight polished pets and submission evidence strong enough to compete for the win, targeting 6 September 2026 WAT.
 
 Ship a genuinely useful, submission-ready PEX by the user's target of 6 September 2026 WAT, satisfying all three binding specifications and maximizing our chance of winning the hackathon. Independently audit every current code/configuration path, including our own work, and repair incorrect or missing behavior. Prove goal-aware Strands reasoning, independent verification and safe intervention in the user's same existing worker, with current workspace and human-intent authority at evidence, planning and delivery boundaries. Complete the full required cross-harness product and understandable UI/UX; validate the normal release build, then all eight pets and visible fair Cursor/Codex comparisons plus separately labeled OpenCode diagnostics. Count overhead and human actions, with no hidden-evaluator access. Use bounded subagents, independently review every repair, and push verified checkpoints. Completion requires requirement-by-requirement evidence, useful real outcomes and accurate submission artifacts; observer-only support or green local tests cannot complete this goal. Winning is the aim, not a guarantee, and the deadline must not turn missing evidence into a readiness claim.
 
@@ -26,7 +30,7 @@ The app's existing goal remains active, freshly checked for this goal/TODO updat
 
 Follow these steps in order; the seven stages below define their full acceptance criteria. Completed attachment source `f08ad80` and its documentation `f26221a` are the baseline, not evidence that post-attachment supervision is safe.
 
-1. [ ] **Reproduce and repair post-attachment workspace continuity.** Main owns integration. `transport_review` owns only `tests/unit/test_workspace_continuity_pipeline.py`; `legacy_attach_fence` owns only `tests/unit/test_workspace_continuity_store_review.py`. Both are reproduction-only assignments until findings are reviewed. Cover directory replacement, origin-choice refresh, removed/changed locators, forged/dropped workspace metadata, queued/replayed work and changes across asynchronous boundaries. Preserve the accepted observation but durably terminate stale processing without evidence reads, model work or effects; prove unchanged directories and ordinary content edits still work. Inspect dispatch separately: an ingress-only check is insufficient. These tests are uncommitted WIP, not an accepted repair.
+1. [ ] **Accept and publish the post-attachment workspace-continuity repair.** Main owns integration; bounded implementation/reviewer slices are now frozen, not reproduction-only. Independent failures have been reproduced and source changes implemented locally. Finish reviewing the remaining new tests/diffs, then run the final combined 53-file gate including the new Ask and operator-handoff tests; inspect skip reasons, run scoped Ruff/whitespace checks and document remaining limits. Verify stale directory/origin/locator/receipt and queued-call rejection alongside valid controls, durable retention and honest already-started delivery outcomes. Update coverage/failure/API receipts, commit only accepted paths, push and verify the remote hash. The completed 967-pass/3-skip compatibility gate is interim evidence, not final acceptance or live proof.
 2. [ ] **Wire the minimum desktop connection flow.** Review the existing authenticated request helper and the new API contract; assign a bounded UI slice only then. Show explicit origin setup, inspect/confirm, canonical status and detach/reload recovery. Label observation-only capability accurately. Never auto-repeat uncertain mutations; apply React skill guidance and review TypeScript, state-contract tests and the rendered workflow under applicable runtime authority. `attachment_review` is available, but has no current UI edit assignment.
 3. [ ] **Close observation and same-worker control gaps.** Complete required raw/durable recovery and owned cleanup settlement; resolve protected installed-runtime prerequisites. Bind delivery to the actual connection epoch, current intent/input/turn and workspace. Test rejection, cancellation, reconnect and uncertain delivery without starting a substitute worker or weakening protections.
 4. [ ] **Prove the actual supervisor loop.** Real correctly completed task → Strands reasoning → justified NOOP; real incomplete task → external evidence → main proposal → independent verifier → policy → same-worker correction → independently observed outcome. Run ten quiet cases and record real overhead. No synthetic completion claims.
@@ -35,6 +39,18 @@ Follow these steps in order; the seven stages below define their full acceptance
 7. [ ] **Make the final submission decision.** Independently re-review code, UI/UX, usefulness, pets, build identity and every spec requirement. Prepare truthful artifacts and the demo; present an evidence-backed GO/NO-GO. Obtain required explicit authority for final external submission. If essential gates cannot fit the target, report the schedule risk and choices rather than silently changing scope or date.
 
 **For every step:** reproduce → implement → independent review → main verification → update audit/handoff evidence → commit only reviewed paths → push and verify the remote hash. Preserve unrelated `loop.py` edits and unfinished agent tests outside staging. This refresh changes the plan only; it does not mark new implementation, live testing or release gates complete.
+
+### Immediate executable steps and stop conditions
+
+- [x] Recheck the active native goal and record the refined working objective without falsely completing it.
+- [x] Recover the outstanding 51-file compatibility run and distinguish its result from the newest reviewer-only gates.
+- [ ] Main reviews all remaining continuity diffs/tests; resolve concrete findings before accepting source.
+- [ ] Freeze the accepted slice and run all 53 compatibility files, scoped lint and whitespace checks; record exact results and skip reasons.
+- [ ] Update handoff, audit coverage, known failures and continuity/migration contract; scoped commit/push and remote hash verification.
+- [ ] Review the attachment API and existing desktop request/state handling; assign only the minimum necessary connection UI, with independent review.
+- [ ] Finish observation/control prerequisites, then obtain applicable runtime authority and demonstrate the actual existing-worker supervisor loop.
+
+**Acceptance discipline:** an unchecked item stays unchecked until its stated evidence exists. Each stage has its exit criteria below. Reassess the 6 September WAT target after each accepted batch; surface missing prerequisites promptly. Do not spend the remaining time on optional redesign while the real-loop gate is open. Do not call the app perfect, freeze a benchmark, launch a substitute worker, weaken protections or submit externally merely because a checklist says to continue.
 
 ### Next repair cycle — executable TODOs
 
@@ -128,9 +144,9 @@ These are immediate steps within stage 1, not another competing product plan. Pr
 ### Bounded ownership and execution discipline
 
 - **Main:** integrated workspace authority/API/attachment with independent Store work; source checkpoint is accepted/pushed. Next ownership: required connection UI, continuous evidence/action fences and actual safe same-worker loop, assigned in bounded slices after reading applicable skills.
-- **`transport_review`:** prior directory helper/config temp repair and manager review are committed in `f08ad80`. Current reproduction-only ownership: `tests/unit/test_workspace_continuity_pipeline.py`; no production edits assigned.
-- **`attachment_review`:** independent helper/Store review completed; config regression retained in `f08ad80`. No UI edit ownership; available after explicit assignment and skill/API review.
-- **`legacy_attach_fence`:** prior origin persistence and Store publication/conflict-parity work are committed in `f08ad80`. Current reproduction-only ownership: `tests/unit/test_workspace_continuity_store_review.py`; no production edits assigned.
+- **`transport_review`:** current adapter/Pipeline/access regression and Ask-test work is finished and frozen pending main acceptance; Ask reviewer gate is 14 passed. No new edits without a bounded assignment.
+- **`attachment_review`:** current evidence-tool/executor and direct-handoff regression work is finished and frozen pending main acceptance; direct-handoff reviewer gate is 5 passed. No UI ownership is active.
+- **`legacy_attach_fence`:** current Store continuity implementation and two regression files are finished and frozen pending main acceptance. Do not restart from older reproduction-only assignments.
 - Assign exact non-overlapping files; preserve unexplained `loop.py` changes without staging, cleaning or overwriting them.
 
 **Every repair cycle:** read all three specs, handoff and important files → reproduce → implement with regressions → independent diff review → main integration checks → update coverage/handoff → scoped commit/push → verify remote hash. An agent report alone cannot complete a checkbox.
