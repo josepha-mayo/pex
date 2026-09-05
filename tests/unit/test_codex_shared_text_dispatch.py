@@ -3,17 +3,46 @@ from __future__ import annotations
 import asyncio
 from dataclasses import FrozenInstanceError
 from typing import Any
+from uuid import uuid4
 
 import pytest
 from pex_bridge.adapters.codex_shared import (
     MAX_DISPATCH_TEXT_BYTES,
+    CodexSharedAppServerTransport,
     SharedCodexDeliveryUncertainError,
     SharedCodexTextDispatchCancelled,
     SharedCodexTextDispatchRejected,
     SharedCodexTextDispatchRemoteError,
 )
-from test_codex_shared_transport import MemoryAppServerChannel, make_transport
+from pex_bridge.codex_received_journal import CodexReceivedJournal
+from test_codex_shared_transport import MemoryAppServerChannel
 from websockets.frames import Frame, Opcode
+
+
+def make_transport(tmp_path, channel, *, request_timeout_s=1):
+    executable, endpoint = tmp_path / "codex.exe", tmp_path / "codex.sock"
+    executable.write_bytes(b"fake executable never run")
+    endpoint.write_bytes(b"fake rendezvous never opened")
+    journal = CodexReceivedJournal(
+        tmp_path / "received.sqlite3",
+        inspection_id=uuid4().hex,
+        provenance={"requested_thread": "thr_exact", "fixture": True},
+    )
+
+    async def factory(argv):
+        channel.argv = argv
+        return channel
+
+    return CodexSharedAppServerTransport(
+        executable,
+        endpoint,
+        "thr_exact",
+        channel_factory=factory,
+        endpoint_validator=lambda _executable, _endpoint: None,
+        connect_timeout_s=2,
+        request_timeout_s=request_timeout_s,
+        receive_journal=journal,
+    )
 
 
 class TextChannel(MemoryAppServerChannel):
@@ -68,6 +97,7 @@ def dispatch_args(transport, **overrides):
         "client_user_message_id": "pex-effect-1",
         "expected_connection_token": transport.connection_token(),
         "expected_received_revision": transport.received_envelope_revision,
+        "expected_received_chunk_revision": transport.received_chunk_revision,
         "expected_turn_id": None,
         "final_authority_check": lambda: None,
         **overrides,
@@ -251,16 +281,16 @@ async def test_revision_counts_complete_envelopes_responses_and_server_requests(
     assert transport.received_envelope_revision == 1
     channel.server.send_frame(Frame(Opcode.TEXT, b'{"method":"custom/notice",', fin=False))
     await channel._flush()
-    for _ in range(20):
-        await asyncio.sleep(0)
+    async with asyncio.timeout(2):
+        while transport.received_chunk_revision < 3 or not transport.receive_journal_ready:
+            await asyncio.sleep(0.001)
     assert transport.received_envelope_revision == 1
     channel.server.send_frame(Frame(Opcode.CONT, b'"params":{}}', fin=True))
     await channel._flush()
     await channel.emit({"id": "approval", "method": "item/requestApproval", "params": {}})
-    for _ in range(40):
-        if transport.received_envelope_revision == 3:
-            break
-        await asyncio.sleep(0)
+    async with asyncio.timeout(2):
+        while transport.received_envelope_revision < 3:
+            await asyncio.sleep(0.001)
     assert transport.received_envelope_revision == 3
     await transport.request("thread/read", {"threadId": "thr_exact"})
     assert transport.received_envelope_revision == 4

@@ -62,9 +62,10 @@ async def shared_client(tmp_path, monkeypatch):
 
     transports = []
 
-    def transport_factory(*args):
+    def transport_factory(*args, **kwargs):
         response = _thread_response(tmp_path, thread_update={"status": {"type": "idle"}})
         transport = FakeSharedTransport([response] * 3, response)
+        transport.receive_journal = kwargs["receive_journal"]
         transports.append(transport)
         return transport
 

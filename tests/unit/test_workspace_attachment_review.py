@@ -108,9 +108,10 @@ async def test_replaced_workspace_directory_rejects_pending_confirmation(
         ),
     )
 
-    def transport_factory(*args):
+    def transport_factory(*args, **kwargs):
         response = _thread_response(workspace)
         transport = FakeSharedTransport([response] * 3, response)
+        transport.receive_journal = kwargs["receive_journal"]
         transports.append(transport)
         return transport
 

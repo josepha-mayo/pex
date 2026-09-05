@@ -21,6 +21,7 @@ from pex_bridge.adapters.codex_subscription import (
     CodexSelectedThread,
     CodexSubscriptionAuthorization,
 )
+from pex_bridge.codex_received_journal import CodexReceivedJournal
 from pex_bridge.local_origin_config import (
     LocalOriginBindingMismatch,
     LocalOriginChoice,
@@ -249,6 +250,34 @@ class SharedCodexAttachments:
             and (state.adapters.codex is adapter)
         )
 
+    @staticmethod
+    def _new_transport(
+        binary: str,
+        body: SharedCodexInspect,
+        workspace: WorkspaceBinding,
+        inspection_id: str,
+        journal_path: Path,
+    ) -> CodexSharedAppServerTransport:
+        # Before the first connector read: requested provenance is not a verified
+        # subscription. Confirmation must never relabel these historical bytes.
+        journal = CodexReceivedJournal(
+            journal_path,
+            inspection_id=inspection_id,
+            provenance={
+                "schema": "pex.codex-received-attempt.v1",
+                "scope": "connector_received_bytes_not_live_authority",
+                "requested_session_id": f"codex:{body.thread_id}",
+                "requested_thread_id": body.thread_id,
+                "requested_project_id": body.project_id,
+                "requested_cwd": body.cwd,
+                "requested_socket_path": body.socket_path,
+                "workspace_binding_at_inspect": workspace.model_dump(mode="json"),
+            },
+        )
+        return CodexSharedAppServerTransport(
+            binary, body.socket_path, body.thread_id, receive_journal=journal,
+        )
+
     async def inspect(self, body: SharedCodexInspect, state) -> dict:
         async with self.lock:
             self._require_open()
@@ -266,9 +295,11 @@ class SharedCodexAttachments:
             if not binary:
                 raise HTTPException(409, "No configured local Codex executable is available.")
             transport = None
+            inspection_id = uuid4().hex
             try:
                 transport = await asyncio.to_thread(
-                    CodexSharedAppServerTransport, binary, body.socket_path, body.thread_id
+                    self._new_transport, binary, body, workspace, inspection_id,
+                    state.settings.home / "codex-received.sqlite",
                 )
                 coordinator = CodexExistingThreadSubscription(transport)
                 selected = await asyncio.wait_for(
@@ -295,7 +326,6 @@ class SharedCodexAttachments:
                 if transport is not None:
                     await transport.close()
                 raise
-            inspection_id = uuid4().hex
             deadline = asyncio.get_running_loop().time() + SELECTION_TTL_SECONDS
             expiry = asyncio.create_task(self._expire(inspection_id, deadline))
             self.pending[inspection_id] = _Pending(

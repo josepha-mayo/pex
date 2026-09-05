@@ -21,6 +21,11 @@ apps/desktop/src-tauri/target/
 .pex/
 *.db
 *.db-journal
+# Sensitive local receive evidence; never a benchmark or release asset.
+codex-received.sqlite
+codex-received.sqlite-wal
+codex-received.sqlite-shm
+codex-received.sqlite-journal
 .env
 .env.*
 !.env.example

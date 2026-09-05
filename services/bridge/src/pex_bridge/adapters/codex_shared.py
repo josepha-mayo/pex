@@ -29,6 +29,7 @@ from websockets.uri import parse_uri
 
 from pex_bridge.adapters.base import bounded_adapter_id, bounded_observed_mapping
 from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
+from pex_bridge.codex_received_journal import CodexReceivedJournal, CodexReceivedJournalError
 
 CLIENT_INFO = {"name": "pex", "title": "PEX", "version": "0.1.0"}
 INIT_PARAMS = {"clientInfo": CLIENT_INFO, "capabilities": {}}
@@ -87,6 +88,8 @@ class SharedCodexTextAcknowledgement:
     connection_token: tuple[str, int]
     received_revision_at_write: int
     received_revision_at_ack: int
+    received_chunk_revision_at_write: int
+    received_chunk_revision_at_ack: int
 
 
 class RawByteChannel(Protocol):
@@ -498,6 +501,7 @@ class CodexSharedAppServerTransport:
         endpoint_validator: EndpointValidator = validate_shared_endpoint,
         connect_timeout_s: float = 10,
         request_timeout_s: float = 45,
+        receive_journal: CodexReceivedJournal | None = None,
     ) -> None:
         self.codex_bin = _bounded_path(codex_bin, label="Codex executable")
         self.socket_path = _bounded_path(socket_path, label="shared Codex endpoint")
@@ -546,6 +550,10 @@ class CodexSharedAppServerTransport:
         self._protocol_lock = asyncio.Lock()
         self._text_dispatch_lock = asyncio.Lock()
         self._received_envelope_revision = 0
+        self._received_chunk_revision = 0
+        self._receive_pending = 0
+        self._receive_journal = receive_journal
+        self._receive_journal_failed = False
         self._closing = False
         self._close_revision = 0
         self._fragment_opcode: Opcode | None = None
@@ -558,6 +566,27 @@ class CodexSharedAppServerTransport:
     def received_envelope_revision(self) -> int:
         """Local complete-envelope count, not a server/global input revision."""
         return self._received_envelope_revision
+
+    @property
+    def received_chunk_revision(self) -> int:
+        """Local nonempty reads, including partial/malformed protocol bytes."""
+        return self._received_chunk_revision
+
+    @property
+    def receive_journal_ready(self) -> bool:
+        return bool(
+            self._receive_journal is not None
+            and not self._receive_journal_failed
+            and self._receive_journal.healthy
+            and self._receive_pending == 0
+        )
+
+    def _require_receive_journal_healthy(self) -> None:
+        if self._receive_journal_failed or (
+            self._receive_journal is not None and not self._receive_journal.healthy
+        ):
+            self._receive_journal_failed = True
+            raise CodexReceivedJournalError("receive journal unavailable; new inspection required")
 
     def drain_notifications(self, *, limit: int = 256) -> list[dict[str, Any]]:
         if not isinstance(limit, int) or isinstance(limit, bool) or not 0 < limit <= 256:
@@ -582,10 +611,12 @@ class CodexSharedAppServerTransport:
             pass
 
     async def _open(self) -> None:
+        self._require_receive_journal_healthy()
         if self._close_task is not None and not self._close_task.done():
             raise ConnectionError("shared Codex connector cleanup is still in progress")
         self._closing = False
         self.connection_generation += 1
+        connection_token = self.connection_token()
         close_revision = self._close_revision
         channel: RawByteChannel | None = None
         try:
@@ -609,10 +640,9 @@ class CodexSharedAppServerTransport:
                     data = await channel.read(64 * 1024)
                     if not data:
                         raise SharedCodexProtocolError("Codex proxy closed during upgrade")
-                    async with self._protocol_lock:
-                        websocket.receive_data(data)
-                        events = websocket.events_received()
-                        await self._flush(websocket, channel)
+                    events = await self._consume_received_chunk(
+                        data, channel, websocket, connection_token, handshake=True
+                    )
                     if any(isinstance(event, Frame) for event in events):
                         raise SharedCodexProtocolError(
                             "shared Codex sent data before initialization"
@@ -621,7 +651,9 @@ class CodexSharedAppServerTransport:
                     raise SharedCodexProtocolError("Codex proxy rejected the WebSocket upgrade")
                 if self._close_revision != close_revision:
                     raise ConnectionError("shared Codex open was superseded by close")
-                self._reader_task = asyncio.create_task(self._read_loop(channel, websocket))
+                self._reader_task = asyncio.create_task(
+                    self._read_loop(channel, websocket, connection_token)
+                )
         except BaseException:
             if self._channel is channel:
                 self._channel = None
@@ -644,30 +676,80 @@ class CodexSharedAppServerTransport:
             websocket.send_text(encoded)
             await self._flush(websocket, channel)
 
-    async def _read_loop(self, channel: RawByteChannel, websocket: ClientProtocol) -> None:
+    async def _consume_received_chunk(
+        self,
+        data: bytes,
+        channel: RawByteChannel,
+        websocket: ClientProtocol,
+        connection_token: tuple[str, int],
+        *,
+        handshake: bool = False,
+    ) -> list[Any]:
+        # No await before exposing pending bytes. A queued writer must not pass
+        # ahead of received input waiting for the protocol lock or disk commit.
+        self._received_chunk_revision += 1
+        self._receive_pending += 1
+        acquired = False
+        cancelled: asyncio.CancelledError | None = None
+        try:
+            if type(data) is not bytes or not 0 < len(data) <= 65_536:
+                self._receive_journal_failed = True
+                raise CodexReceivedJournalError("connector returned invalid receive chunk")
+            while not acquired:
+                try:
+                    await self._protocol_lock.acquire()
+                    acquired = True
+                except asyncio.CancelledError as exc:
+                    # Bytes already returned by read must still receive their
+                    # single append, even if shutdown cancelled lock acquisition.
+                    cancelled = exc
+            try:
+                self._require_receive_journal_healthy()
+                if self._receive_journal is not None:
+                    await self._receive_journal.append(
+                        endpoint_identity=connection_token[0],
+                        connection_generation=connection_token[1],
+                        data=data,
+                    )
+            except BaseException:
+                self._receive_journal_failed = True
+                raise
+            if cancelled is not None:
+                self._receive_journal_failed = True
+                raise cancelled
+            # Old-epoch bytes remain in the journal, never revived as live data.
+            if self._channel is not channel or self.connection_token() != connection_token:
+                raise ConnectionError("received bytes belong to a retired connection")
+            websocket.receive_data(data)
+            events = websocket.events_received()
+            if not handshake:
+                for event in events:
+                    if isinstance(event, Frame):
+                        message = self._accept_frame(event)
+                        if message is not None:
+                            self._received_envelope_revision += 1
+                            self._route_message(message)
+            async with asyncio.timeout(self.request_timeout_s):
+                await self._flush(websocket, channel)
+            return events
+        finally:
+            self._receive_pending -= 1
+            if acquired:
+                self._protocol_lock.release()
+
+    async def _read_loop(
+        self,
+        channel: RawByteChannel,
+        websocket: ClientProtocol,
+        connection_token: tuple[str, int],
+    ) -> None:
         failure: BaseException = ConnectionError("shared Codex channel closed")
         try:
             while True:
                 data = await channel.read(64 * 1024)
                 if not data:
                     break
-                async with self._protocol_lock:
-                    if self._channel is not channel:
-                        break
-                    websocket.receive_data(data)
-                    events = websocket.events_received()
-                    # Publish every complete envelope before releasing write
-                    # serialization or awaiting a control-frame flush. Otherwise
-                    # a writer can pass its freshness check ahead of input that
-                    # this reader has already decoded.
-                    for event in events:
-                        if isinstance(event, Frame):
-                            message = self._accept_frame(event)
-                            if message is not None:
-                                self._received_envelope_revision += 1
-                                self._route_message(message)
-                    async with asyncio.timeout(self.request_timeout_s):
-                        await self._flush(websocket, channel)
+                await self._consume_received_chunk(data, channel, websocket, connection_token)
                 if websocket.state is State.CLOSED:
                     break
         except asyncio.CancelledError:
@@ -817,6 +899,7 @@ class CodexSharedAppServerTransport:
                 future.exception()  # Consume any failure published during cleanup.
 
     async def ensure_ready(self) -> dict[str, Any]:
+        self._require_receive_journal_healthy()
         if self.initialized and self.init_result is not None:
             return dict(self.init_result)
         async with self._initialize_lock:
@@ -864,6 +947,7 @@ class CodexSharedAppServerTransport:
         client_user_message_id: str,
         expected_connection_token: tuple[str, int],
         expected_received_revision: int,
+        expected_received_chunk_revision: int,
         expected_turn_id: str | None,
         final_authority_check: Callable[[], None],
     ) -> SharedCodexTextAcknowledgement:
@@ -897,6 +981,8 @@ class CodexSharedAppServerTransport:
                 or len(text.encode("utf-8")) > MAX_DISPATCH_TEXT_BYTES
                 or type(expected_received_revision) is not int
                 or expected_received_revision < 0
+                or type(expected_received_chunk_revision) is not int
+                or expected_received_chunk_revision < 0
                 or not isinstance(expected_connection_token, tuple)
                 or len(expected_connection_token) != 2
                 or not isinstance(expected_connection_token[0], str)
@@ -925,6 +1011,8 @@ class CodexSharedAppServerTransport:
                 or self._closing
                 or self.connection_token() != expected_connection_token
                 or self.received_envelope_revision != expected_received_revision
+                or self.received_chunk_revision != expected_received_chunk_revision
+                or not self.receive_journal_ready
                 or self._channel is None
                 or self._websocket is None
                 or self._websocket.state is not State.OPEN
@@ -1005,6 +1093,8 @@ class CodexSharedAppServerTransport:
                         connection_token=expected_connection_token,
                         received_revision_at_write=expected_received_revision,
                         received_revision_at_ack=self.received_envelope_revision,
+                        received_chunk_revision_at_write=expected_received_chunk_revision,
+                        received_chunk_revision_at_ack=self.received_chunk_revision,
                     )
         except SharedCodexRemoteError as exc:
             # JSON-RPC failure (especially internal error) does not establish
