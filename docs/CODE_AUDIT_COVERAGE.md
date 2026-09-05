@@ -6,6 +6,10 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Owned subscription close — accepted `c15a2fc`
+
+New `tests/unit/test_codex_subscription_close_ownership.py`: five cases, full new-file review by main and independent reviewer. Changed-path review: coordinator `_close_after_failed_resume` and its callers in `services/bridge/src/pex_bridge/adapters/codex_subscription.py`; held-close barrier/assertions in `tests/unit/test_codex_subscription.py`. Independent reviewer additionally checked actual shared transport revocation and bounded channel cleanup. Final main 355 passed/17 files; scoped Ruff/staged whitespace clean; source pushed with exact remote equality. This supersedes the separate-unaccepted-test wording below. No blanket coordinator/transport or whole-repository approval; exact failures, gates and limits are in [`WORKSPACE_CONTINUITY_REVIEW.md`](WORKSPACE_CONTINUITY_REVIEW.md).
+
 ### Post-attachment continuity and Ask invocation review — 5 Sep
 
 Main reread all three specs, all new helper/test files, and changed production paths. Bounded owners independently reviewed Store, adapter/Pipeline/access, executor/evidence and real Ask paths. Large Store/Pipeline/App/Executor files received changed-path review, not blanket full-file approval. Reviewed source/API guide **`c0db453`** is pushed with exact remote equality; final main **1,016 passed/3 skipped across 56 files**, scoped Ruff for all 27 Python paths. Exact gates and reproduced late findings are in [`WORKSPACE_CONTINUITY_REVIEW.md`](WORKSPACE_CONTINUITY_REVIEW.md). No live product claim or exhaustive reinventory follows. The new subscription-close test belongs to a separate unaccepted repair.

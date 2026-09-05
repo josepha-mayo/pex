@@ -1,5 +1,7 @@
 # INTEGRATIONS
 
+Latest source `c15a2fc` repairs owned failed-subscription close settlement through repeated cancellation (main 355 passed/17 files, independently reviewed and pushed). No live capability changes. This supersedes pending-close wording in historical checkpoint paragraphs below, not the remaining durable/raw observation, installed-runtime or same-worker delivery gates. A settled failed/cancelled close is not successful termination proof. See [the exact review](docs/WORKSPACE_CONTINUITY_REVIEW.md).
+
 Live capability matrix. Labels are negotiated at runtime. Registration, a binary,
 an open port, an initialize response, or an injected test transport alone is never
 proof of observation or control.

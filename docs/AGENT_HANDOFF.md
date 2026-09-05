@@ -1,5 +1,17 @@
 # PEX agent handoff
 
+## CURRENT EXECUTION AND TODO — accepted cleanup, 5 September 2026
+
+**Goal ACTIVE; release NO-GO; 6 September WAT target remains at risk.** Latest accepted source is **`c15a2fce3ae9b5c9c1db2b530cd76eb4b29a5acc`**, pushed and exact remote main equality verified. It settles the one owned subscription-close task through repeated caller cancellation, retaining the original failure and immediate revoked authority. Main's final 17-file connection/retention gate: **355 passed in 179.14 seconds**, scoped Ruff and staged whitespace clean. Earlier continuity source `c0db453` retains its separate 1,016-pass/3-skip receipt. Do not sum overlapping gates.
+
+Updated objective, prioritized TODOs, seven stages, evidence requirements and stop conditions: [`SHIP_CHECKLIST.md`](SHIP_CHECKLIST.md). The native active goal was checked; its objective cannot be edited through available tools. The checklist holds the refined working objective without falsely completing/replacing the goal. Winning remains the aim, not a guaranteed outcome.
+
+**Exact next action:** reread all three binding specs and current operational files, review `docs/adapters/local-workspace-origin.md` against desktop authenticated request/state handling, and assign the minimum explicit origin → inspect/confirm → status → detach/reload workflow. In a separate bounded slice, close durable/raw observation and actual same-worker control gaps. Do not enable generic shared delivery or substitute a new worker. Then prove actual Strands NOOP/correction/observed outcome before optional expansion. All full-spec, release, eight-pet and visible fair benchmark requirements remain open.
+
+`transport_review` implemented the three-path close repair; `attachment_review` independently approved its bounded ownership behavior and actual transport cleanup boundaries; main reviewed the patch/tests and ran the final gate. All agents are paused without ongoing edit assignments. Full receipt and residual risks are in [`WORKSPACE_CONTINUITY_REVIEW.md`](WORKSPACE_CONTINUITY_REVIEW.md). Only the unowned 28-line supervisor `loop.py` diff remains outside the accepted source checkpoint; preserve it. Tests used the existing dirty checkout, not a clean package. No native worker/model, GUI, benchmark, build/package, deployment or submission ran.
+
+**Historical sections below:** older CURRENT/LATEST headings and pending-continuity/close instructions are retained as chronological evidence, not the current queue. This section and the shipping checklist take precedence. Do not rerun completed repair work from stale assignments.
+
 ## CURRENT REPAIR REVIEW — post-attachment continuity, 5 September 2026
 
 **Goal ACTIVE; release NO-GO.** Reviewed source/API guide pushed as **`c0db4536db3c3cbb7366032e9bfdd9d22237aa4e`**, exact remote equality verified. Final main gate: **1,016 passed/3 skipped in 627.20 seconds across 56 complete files**. Scoped Ruff passed across 27 changed/new Python paths; staged whitespace passed for those plus the API guide. The skips are temporary symlink creation denied in `test_local_workspace.py`, `test_local_origin_config.py` and `test_workspace_inspect.py`. No permission changes or live runtime calls occurred.

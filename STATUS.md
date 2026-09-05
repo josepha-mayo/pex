@@ -1,5 +1,7 @@
 # STATUS
 
+**Latest accepted source:** `c15a2fc`, owned subscription-close settlement; pushed with exact remote equality. Final main affected-path gate: **355 passed in 179.14s across 17 files**, scoped Ruff/whitespace passed. This resolves the close defect described as pending in older checkpoint text below. Next: minimum connection UI, durable/raw observation, safe same-worker control and real Strands outcomes. Goal ACTIVE; release NO-GO. Current plan: [`docs/SHIP_CHECKLIST.md`](docs/SHIP_CHECKLIST.md); exact receipt/limits: [`docs/WORKSPACE_CONTINUITY_REVIEW.md`](docs/WORKSPACE_CONTINUITY_REVIEW.md).
+
 **Not ready for Devpost submission.** Deadline is **September 14, 2026, 5:00 PM PDT**. Overall state is **NO-GO**: no submission, deploy, publish, spend, installer build/package, or freeze is authorized. Verified source commits and pushes are authorized per the policy below. No scored public leaderboard was found, and no validated rank is retained.
 
 **Commit/push policy update, 4 Sep 2026 ~20:22 BST:** the operator has now explicitly authorized committing and pushing each verified source update. Submission, deploy, publish, spend, installer/package, and benchmark-freeze gates remain unauthorized. See the top of `docs/AGENT_HANDOFF.md` for exact exclusions and receipts.

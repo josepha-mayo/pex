@@ -71,8 +71,27 @@ All these are local tests with temporary directories/SQLite and fake vendor/prov
 
 ## Next critical path
 
-This slice is accepted/pushed. The next concrete recovery defect has been independently reproduced: `test_codex_subscription_close_ownership.py` reports **2 failed / 2 passed in 2.48 seconds**. Cancellation lets failed subscription return while its shielded transport-close task remains running. This test is separate uncommitted WIP, not covered by the accepted gate. Fix owned close settlement, independently review it, and verify the affected connection/retention paths before publishing another source slice. Then implement the minimum connection workflow and actual existing-worker control. Do not enable generic shared messaging merely because workspace checks pass. An operator-confirmed single action can be a diagnostic, but does not replace autonomous goal-aware supervision or prove reduced human babysitting.
+The continuity slice and subsequent bounded close-ownership repair are accepted/pushed; the latter is documented below. Next implement the minimum connection workflow and actual existing-worker control, including required durable/raw recovery. Do not enable generic shared messaging merely because workspace checks pass. An operator-confirmed single action can be a diagnostic, but does not replace autonomous goal-aware supervision or prove reduced human babysitting.
 
 OpenAI Docs was used to recheck [App Server turn semantics](https://learn.chatgpt.com/docs/app-server): steering checks the expected active turn; starting a turn is a distinct operation. No documented idle/input compare-and-swap was established. A local lock is not a server-side fence against another client; any cooperative interaction constraint must be explicit, not implied by subscription consent. Rejected steering must never fall back to a new turn.
 
 Then prove real Strands NOOP and exact correction with observed same-worker outcome, ten quiet cases, remaining full-spec/human workflow, normal release, exactly eight pets, visible fair Cursor/Codex four-arm comparisons and separately labeled OpenCode diagnostics, followed by independent submission review. Winning remains the aim, never a fabricated rank or readiness claim.
+
+## Subsequent accepted repair: owned subscription close
+
+Source **`c15a2fce3ae9b5c9c1db2b530cd76eb4b29a5acc`** is pushed with exact remote equality verified. Changed paths: `codex_subscription.py`, existing `test_codex_subscription.py`, new `test_codex_subscription_close_ownership.py`. Main reviewed the changed method/callers and new test file; `transport_review` implemented it and `attachment_review` independently reviewed it plus actual transport cleanup. This is not approval of the entire coordinator/transport file or product.
+
+The baseline fake-transport reproduction was **2 failed / 2 passed in 2.48s**: caller cancellation returned while shielded close remained alive. The fix creates exactly one close task and waits for settlement through repeated cancellation. It never retries close, retains the original failure, and grants no reuse authority. An existing interrupted-prefix test needed its held-close barrier released before awaiting the now-correctly pending caller; all prefix/revocation assertions remain, with new pending/closed assertions. The initial run against its old barrier hung and was interrupted, not counted green; only the exact test-owned pytest child was stopped. All fixture tasks are released and joined.
+
+Final focused owner gate: **90 passed in 4.64s**; independent reviewer: **90 passed in 4.47s**. Main integration: **355 passed in 179.14s across 17 complete files**, no skips. Scoped Ruff and staged whitespace passed for all three paths. Counts overlap each other and the earlier continuity gate; do not sum them. Reproduce with `.venv/Scripts/python.exe -m pytest`, these `tests/unit/` filenames and `-q -ra --tb=short`:
+
+```text
+test_codex_shared_transport.py test_codex_subscription.py test_codex_subscription_close_ownership.py
+test_codex_shared_attach.py test_codex_shared_adapter.py test_observer_session_publication.py
+test_observer_lifecycle_pipeline.py test_codex_attach_serialization.py test_codex_pipeline_pump.py
+test_existing_sessions.py test_generic_dispatch_authority.py test_codex_shared_status_pipeline.py
+test_codex_partial_intent.py test_codex_observation_retention.py test_observer_retention_store.py
+test_codex_reconciliation_retention.py test_workspace_continuity_pipeline.py
+```
+
+Tests cover single and three separately delivered caller cancellations, ordinary settlement, close failure, direct cancellation of the owned close and frozen interrupted-prefix retention. Actual shared transport revokes connection authority before awaited cleanup and bounds channel close; the coordinator does not create a second close. **Task settlement is not successful transport termination:** a failing or directly cancelled close remains an unsuccessful close. An arbitrary noncooperative injected transport could remain pending. No general crash-durability or shared-control proof follows. Tests used temporary state/fake vendors and the unchanged excluded `loop.py` worktree described above; no live worker/provider/GUI/release/submission ran.
