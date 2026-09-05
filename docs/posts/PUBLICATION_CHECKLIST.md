@@ -2,6 +2,8 @@
 
 ## Authority and current state — 5 September 2026
 
+**Latest user update supersedes the earlier draft-only state below:** the user says, "i already published the post." Treat the first article as **user-reported published, public URL/moderation unverified**. Do not click Publish again or recreate it. The pending action-time confirmation is no longer an action request for that article. Next posting step is read-only verification of its stable public URL; no bonus points are claimed. The other two articles remain local drafts. Core product work remains the priority.
+
 The user explicitly requested publishing the hackathon bonus posts and using their **existing logged-in Brave**, not a new browser/profile. A separate task browser session was opened while locating browser access, then closed; do not relaunch it or restart the user's browser. The user then requested short, conversational posts: the three local articles are now approximately 160 words each, with substantive source-linked lessons and explicit limitations. **No posts have been published and no bonus points are claimed.** This authorizes the requested posts, not final Devpost submission, deployment, cloud spend or a change to the product completion bar.
 
 Existing Brave control recovered after the user opened Builder Center and signed in. Main used only the returned existing window, restored it from minimized state, confirmed the intended `joseph-mayo` author, and verified Draft and Published were both empty. No credentials were read or transferred. Direct browser attachment had failed with no exposed CDP endpoint; an earlier on-screen attempt was stopped by URL verification. Do not retry unknown writes or launch another profile.
@@ -33,7 +35,7 @@ Eligibility and award of bonus points are the organizers' decision. Three source
 
 | Source | Focus | Public URL | Status |
 | --- | --- | --- | --- |
-| `01-strands-agentcore.md` | Strands supervisor and local authority; runtime implementation versus cloud proof | Not yet published | Saved in Builder Center; preview verified; awaiting Publish confirmation |
+| `01-strands-agentcore.md` | Strands supervisor and local authority; runtime implementation versus cloud proof | Public URL not independently verified | User reports published; do not duplicate; verify moderation/public state |
 | `02-attention-benchmark.md` | Evaluating attention savings and supervisor overhead without fake results | Not yet published | Short local draft reviewed |
 | `03-safe-approvals.md` | Concrete command-policy boundaries and regressions in the Strands build | Not yet published | Short local draft reviewed |
 
