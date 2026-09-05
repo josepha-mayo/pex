@@ -52,6 +52,7 @@ from pex_protocol.project_identity import (
 from pex_protocol.redaction import redact_mapping, redact_text
 from pex_protocol.session import HarnessEvent, HarnessSession
 
+from pex_bridge import codex_correction
 from pex_bridge.adapters.base import (
     validate_cursor_hook_preparation_receipt,
     validate_worker_delivery_receipt_binding,
@@ -195,6 +196,24 @@ CREATE TABLE IF NOT EXISTS event_effects (
   downstream_operation_id TEXT,
   UNIQUE(event_id, effect_key)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_codex_correction_correlation
+ON event_effects(json_extract(payload_json, '$.codex_correction.client_message_id'))
+WHERE CASE WHEN json_valid(payload_json)
+  THEN json_type(payload_json, '$.codex_correction') IS NOT NULL ELSE 0 END;
+CREATE TRIGGER IF NOT EXISTS trg_codex_correction_authority_immutable
+BEFORE UPDATE ON event_effects
+WHEN (
+  CASE WHEN json_valid(OLD.payload_json)
+    THEN json_type(OLD.payload_json, '$.codex_correction') IS NOT NULL ELSE 0 END
+  OR CASE WHEN json_valid(NEW.payload_json)
+    THEN json_type(NEW.payload_json, '$.codex_correction') IS NOT NULL ELSE 0 END
+) AND (
+  NEW.effect_id IS NOT OLD.effect_id OR NEW.event_id IS NOT OLD.event_id
+  OR NEW.effect_key IS NOT OLD.effect_key OR NEW.ordinal IS NOT OLD.ordinal
+  OR NEW.kind IS NOT OLD.kind OR NEW.target_session_id IS NOT OLD.target_session_id
+  OR NEW.request_hash IS NOT OLD.request_hash OR NEW.payload_json IS NOT OLD.payload_json
+)
+BEGIN SELECT RAISE(ABORT, 'Codex correction authority is immutable'); END;
 CREATE TABLE IF NOT EXISTS operator_effects (
   effect_id TEXT PRIMARY KEY,
   principal_id TEXT NOT NULL,
@@ -6658,6 +6677,46 @@ async def _require_processing_workspace_current(
         and "workspace_binding" in HarnessSession.model_validate_json(row["json"]).metadata
     ):
         raise WorkspaceAuthorityError("accepted work lacks its workspace publication snapshot")
+
+
+async def _prepare_main_effect_payload(
+    transaction: aiosqlite.Connection, processing: dict[str, Any], *,
+    intervention_id: str, action: dict[str, Any], required_capability: Any,
+) -> dict[str, Any]:
+    payload = {
+        "schema": "pex.worker-effect.v1", "event_id": processing["event_id"],
+        "intervention_id": intervention_id, "action": action,
+        "required_capability": required_capability,
+    }
+    cursor = await transaction.execute(
+        "SELECT json FROM sessions WHERE id = ?", (processing["session_id"],),
+    )
+    row = await cursor.fetchone()
+    current = HarnessSession.model_validate_json(row["json"]) if row else None
+    accepted = processing.get("accepted_session")
+    candidates = [item for item in (current, accepted) if isinstance(item, HarnessSession)]
+    if not any(codex_correction.requires_correction(item, action) for item in candidates):
+        return payload
+    if (
+        current is None or not isinstance(accepted, HarnessSession)
+        or not codex_correction.requires_correction(current, action)
+        or not codex_correction.requires_correction(accepted, action)
+        or current.goal_id != accepted.goal_id
+        or processing["goal_id"] != accepted.goal_id
+        or processing["mode"] != "pipeline"
+    ):
+        raise ValueError("Codex correction requires its accepted shared session")
+    witnessed = await _require_session_workspace_current(transaction, accepted)
+    if witnessed is None:
+        raise ValueError("Codex correction requires a published workspace")
+    workspace, _ = witnessed
+    payload["codex_correction"] = codex_correction.build_correction(
+        event_id=processing["event_id"],
+        effect_id=stable_event_effect_id(processing["event_id"], "main"),
+        intervention_id=intervention_id, action=action, required_capability=required_capability,
+        session=accepted, workspace=workspace,
+    )
+    return payload
 
 
 class Store:
@@ -20489,6 +20548,8 @@ class Store:
             raise ValueError("only the stable planner effect may use this reservation API")
         if kind != "supervisor_decision":
             raise ValueError("planner effect kind must be supervisor_decision")
+        if "codex_correction" in payload:
+            raise ValueError("Codex correction provenance is reserved for main worker effects")
         effect_id = stable_event_effect_id(event_id, effect_key)
         _validate_store_id(kind, label="event effect kind")
         _validate_store_id(target_session_id, label="event effect target session id")
@@ -21043,6 +21104,136 @@ class Store:
                 raise
         return recovered
 
+    async def prepare_main_effect_payload(
+        self, *, event_id: str, intervention_id: str, action: dict[str, Any],
+        required_capability: str | None,
+    ) -> dict[str, Any]:
+        """Prepare provenance from durable authority; this grants no dispatch right."""
+        _validate_store_id(event_id, label="event id")
+        _validate_store_id(intervention_id, label="intervention id")
+        if type(action) is not dict:
+            raise ValueError("main effect action must be an object")
+        frozen_action = _strict_json_loads(_canonical_json(action))
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN IMMEDIATE")
+            cursor = await transaction.execute(
+                "SELECT * FROM event_processing WHERE event_id = ?", (event_id,),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                raise LookupError("event processing row not found")
+            payload = await _prepare_main_effect_payload(
+                transaction, _event_processing_record(row), intervention_id=intervention_id,
+                action=frozen_action, required_capability=required_capability,
+            )
+            await transaction.commit()
+            return payload
+
+    async def list_codex_correction_attributions(
+        self, session: HarnessSession,
+    ) -> tuple[str, ...]:
+        """Bounded canonical historical records, never live dispatch grants.
+
+        A dispatch marker establishes an attempt, not delivery. Reserved/skipped
+        plans cannot own an echo. Failed attempts may have written before failing.
+        Consumers must still match exact client ID, content and worker identity.
+        """
+        snapshot = session.model_copy(deep=True)
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN IMMEDIATE")
+            witnessed = await _require_session_workspace_current(transaction, snapshot)
+            if (
+                witnessed is None or snapshot.harness_type != HarnessType.CODEX
+                or snapshot.metadata.get("connection_kind") != "codex_shared"
+            ):
+                raise ValueError("Codex attribution requires a current published shared session")
+            current_scope = codex_correction.correction_scope(snapshot, witnessed[0])
+            cursor = await transaction.execute(
+                "SELECT e.effect_id, e.event_id, e.effect_key, e.ordinal, e.kind, "
+                "e.target_session_id, e.request_hash, e.state, e.version, "
+                "e.dispatch_started_at, e.dispatcher_boot_id, e.payload_json, "
+                "p.accepted_session_json, p.plan_json, p.goal_id, "
+                "p.accepted_project_binding, p.session_id AS processing_session_id "
+                "FROM event_effects e JOIN event_processing p ON p.event_id = e.event_id "
+                "WHERE e.target_session_id = ? AND CASE WHEN json_valid(e.payload_json) "
+                "THEN json_type(e.payload_json, '$.codex_correction') IS NOT NULL ELSE 0 END "
+                "AND e.state IN ('dispatching', 'delivered', 'delivery_uncertain', 'failed') "
+                "ORDER BY p.accept_seq, e.effect_id LIMIT ?",
+                (snapshot.id, codex_correction.MAX_ATTRIBUTION_RECORDS + 1),
+            )
+            rows = []
+            loaded_bytes = 0
+            while (row := await cursor.fetchone()) is not None:
+                loaded_bytes += sum(
+                    len(value.encode("utf-8")) for value in row if isinstance(value, str)
+                )
+                if loaded_bytes > codex_correction.MAX_ATTRIBUTION_BYTES:
+                    raise ValueError("Codex correction attribution coverage exceeds byte bound")
+                rows.append(row)
+                if len(rows) > codex_correction.MAX_ATTRIBUTION_RECORDS:
+                    raise ValueError("Codex correction attribution coverage exceeds record bound")
+            records: list[str] = []
+            for row in rows:
+                effect = _event_effect_record(row)
+                payload = effect["payload"]
+                correction = payload.get("codex_correction")
+                if not isinstance(correction, dict) or not row["accepted_session_json"]:
+                    raise ValueError("Codex correction attribution is corrupt")
+                historical = HarnessSession.model_validate_json(row["accepted_session_json"])
+                workspace = WorkspaceBinding.model_validate(
+                    historical.metadata.get("workspace_binding"),
+                )
+                expected = codex_correction.build_correction(
+                    event_id=effect["event_id"],
+                    effect_id=stable_event_effect_id(effect["event_id"], "main"),
+                    intervention_id=payload.get("intervention_id"), action=payload.get("action"),
+                    required_capability=payload.get("required_capability"),
+                    session=historical, workspace=workspace,
+                )
+                plan = _strict_json_loads(row["plan_json"]) if row["plan_json"] else {}
+                intervention_cursor = await transaction.execute(
+                    "SELECT json FROM interventions WHERE id = ?", (expected["intervention_id"],),
+                )
+                intervention_row = await intervention_cursor.fetchone()
+                reserved = (
+                    _stored_intervention(intervention_row["json"]) if intervention_row else None
+                )
+                if (
+                    _canonical_json(correction) != _canonical_json(expected)
+                    or effect["effect_id"] != expected["effect_id"]
+                    or effect["effect_key"] != "main" or effect["ordinal"] != 1
+                    or effect["kind"] != "worker_action"
+                    or effect["target_session_id"] != historical.id
+                    or row["processing_session_id"] != historical.id
+                    or row["goal_id"] != historical.goal_id
+                    or row["accepted_project_binding"] != workspace.project_binding
+                    or payload.get("schema") != "pex.worker-effect.v1"
+                    or payload.get("event_id") != effect["event_id"]
+                    or hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
+                    != effect["request_hash"]
+                    or plan.get("intervention_id") != expected["intervention_id"]
+                    or _canonical_json(plan.get("action")) != _canonical_json(payload.get("action"))
+                    or reserved is None or reserved.session_id != historical.id
+                    or reserved.goal_id != historical.goal_id
+                    or reserved.metadata.get("trigger_event_id") != effect["event_id"]
+                    or _canonical_json(reserved.proposed_action.model_dump(mode="json"))
+                    != _canonical_json(payload.get("action"))
+                    or not effect["dispatch_started_at"] or not effect["dispatcher_boot_id"]
+                    or effect["version"] < 1
+                ):
+                    raise ValueError("Codex correction attribution binding is corrupt")
+                if codex_correction.correction_scope(historical, workspace) != current_scope:
+                    continue
+                records.append(_canonical_json({
+                    "correction": correction, "effect_state": effect["state"],
+                    "effect_version": effect["version"],
+                }))
+            await _require_session_workspace_current(transaction, snapshot)
+            await transaction.commit()
+            return tuple(records)
+
     async def commit_event_plan(
         self,
         *,
@@ -21063,6 +21254,8 @@ class Store:
 
         _validate_store_id(event_id, label="event id")
         _validate_store_id(owner, label="event processing owner")
+        if main_effect is not None:
+            main_effect = _strict_json_loads(_canonical_json(main_effect))
         plan_json = _canonical_json(plan)
         receipt_json = _canonical_json(receipt) if receipt is not None else None
         if receipt is not None:
@@ -21494,6 +21687,13 @@ class Store:
                         raise ValueError("main event effect action binding mismatch")
                     if payload.get("required_capability") != plan.get("required_capability"):
                         raise ValueError("main event effect capability binding mismatch")
+                    prepared_payload = await _prepare_main_effect_payload(
+                        transaction, processing, intervention_id=intervention.id,
+                        action=action_payload, required_capability=plan.get("required_capability"),
+                    )
+                    if "codex_correction" in prepared_payload or "codex_correction" in payload:
+                        if _canonical_json(payload) != _canonical_json(prepared_payload):
+                            raise ValueError("Codex correction payload is missing, forged or stale")
                     effect_cursor = await transaction.execute(
                         "SELECT * FROM event_effects WHERE event_id = ? AND effect_key = 'main'",
                         (event_id,),

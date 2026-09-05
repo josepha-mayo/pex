@@ -2682,13 +2682,15 @@ class Pipeline:
                 }
 
         if intervention is not None and local_outcome is None:
-            effect_payload = {
-                "schema": "pex.worker-effect.v1",
-                "event_id": event.event_id,
-                "intervention_id": intervention.id,
-                "action": intervention.proposed_action.model_dump(mode="json"),
-                "required_capability": required_capability,
-            }
+            # The Store derives shared-worker correction provenance from the
+            # accepted event and its published workspace, never model metadata.
+            # It revalidates this exact envelope inside commit_event_plan.
+            effect_payload = await self.store.prepare_main_effect_payload(
+                event_id=event.event_id,
+                intervention_id=intervention.id,
+                action=intervention.proposed_action.model_dump(mode="json"),
+                required_capability=required_capability,
+            )
             effect_payload_json = json.dumps(
                 effect_payload,
                 ensure_ascii=False,

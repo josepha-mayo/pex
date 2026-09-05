@@ -55,12 +55,12 @@ async def test_main_marker_refusal_is_terminal_failed_not_stranded(
         await store.claim_event_processing(event.event_id, owner=owner)
         intervention = _planned_intervention(event)
         intervention.proposed_action.payload = {"text": "One evidence-backed continuation"}
-        payload = {
-            "action": intervention.proposed_action.model_dump(mode="json"),
-            "required_capability": "send_message",
-            "event_id": event.event_id,
-            "intervention_id": intervention.id,
-        }
+        payload = await store.prepare_main_effect_payload(
+            event_id=event.event_id,
+            intervention_id=intervention.id,
+            action=intervention.proposed_action.model_dump(mode="json"),
+            required_capability="send_message",
+        )
         await store.commit_event_plan(
             event_id=event.event_id,
             owner=owner,

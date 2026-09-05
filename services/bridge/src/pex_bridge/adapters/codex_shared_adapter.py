@@ -235,7 +235,11 @@ class CodexSharedAdapter(HarnessAdapter):
                 field="Codex turn error",
             )
             metadata["turn_status"] = status
-            self.active_turn_id = None
+            # Another turn may already have started before this terminal
+            # notification arrives. Keep that newer turn's observation; even
+            # a matching completion is not, by itself, a fresh idle grant.
+            if self.active_turn_id == record.turn_id:
+                self.active_turn_id = None
             event_type, phase = EventType.STOP, EventPhase.TERMINAL
             # A failed turn isn't a failed thread. Retain independently observed
             # thread runtime status rather than deriving it from the turn error.

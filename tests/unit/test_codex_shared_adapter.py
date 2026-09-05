@@ -16,6 +16,35 @@ async def eventually(predicate):
     await asyncio.wait_for(wait(), timeout=2)
 
 
+@pytest.mark.parametrize("terminal_status", ["completed", "interrupted", "failed"])
+async def test_older_turn_completion_cannot_clear_newer_active_turn(tmp_path, terminal_status):
+    coordinator, transport = await _subscribed(tmp_path)
+    adapter = CodexSharedAdapter(coordinator)
+    transport.notifications.extend([
+        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "old"}}),
+        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "new"}}),
+        _notification("turn/completed", {
+            "threadId": "thread-1", "turn": {"id": "old", "status": terminal_status},
+        }),
+    ])
+    try:
+        records = (await coordinator.drain_live()).records
+        events = [adapter._event(record) for record in records]
+        assert adapter.active_turn_id == "new"
+        # Keep the old terminal observation; do not manufacture a terminal event
+        # for the current turn or suppress useful historical evidence.
+        assert events[-1].event_type == EventType.STOP
+        assert events[-1].metadata["turn_status"] == terminal_status
+        transport.notifications.append(_notification("turn/completed", {
+            "threadId": "thread-1", "turn": {"id": "new", "status": "completed"},
+        }))
+        for record in (await coordinator.drain_live()).records:
+            adapter._event(record)
+        assert adapter.active_turn_id is None
+    finally:
+        await transport.close()
+
+
 @pytest.mark.asyncio
 async def test_closed_thread_is_a_durable_local_gap_not_fake_worker_completion(tmp_path):
     coordinator, transport = await _subscribed(tmp_path)
