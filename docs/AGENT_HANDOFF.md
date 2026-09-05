@@ -2,6 +2,8 @@
 
 ## CURRENT IMPLEMENTATION — 5 Sep 2026 — shared observer integration and intent safety
 
+Reviewed source is committed/pushed as **`8a402c2221623a95b3d1ffa8b56c20d00d4dfcb6`**. Main verified exact HEAD/remote `main` equality after push. Only the unowned supervisor `loop.py` remained dirty; this source receipt is a documentation-only follow-up, not another implementation or runtime gate.
+
 **Goal ACTIVE; release NO-GO.** This section supersedes older WIP descriptions below, not their historical test receipts. Target remains **6 September WAT**, exactly **eight pets**. The prior planning-only status restatement did not advance implementation; this cycle reproduced and repaired actual failures. Main reread all three binding specs and current handoff/status/decisions/integration/audit files before changes. Use bounded subagents with exact non-overlapping ownership, independent review, real integration tests, and scoped pushes after each repair cycle. Do not stop at observer-only support: same-worker intervention and the complete Recovery loop remain required.
 
 ### Implemented source, not installed-runtime proof

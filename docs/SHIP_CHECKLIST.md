@@ -2,6 +2,8 @@
 
 ## Target and truth standard
 
+Latest reviewed shared-observer source push: **`8a402c2221623a95b3d1ffa8b56c20d00d4dfcb6`**, exact remote equality verified; **357 passed across 17 full files**, scoped Ruff/whitespace clean. No installed worker/model/UI/release claim. The unexplained `loop.py` edit remains excluded.
+
 Current shared-observer source integration and final verification receipt are at the top of `AGENT_HANDOFF.md`. It repairs attachment recovery, runtime/coverage projection and incomplete-input authority; it does not complete live observation, safe delivery or the actual supervisor loop. Previous durable dispatch source push: `125b97649d54902818e36640c6cb50e471ea1406` (162 + 28 distinct compatibility tests at that checkpoint). Preserve unowned `loop.py` edits outside staging. Earlier provider/setup gates below apply to their own checkpoint.
 
 User target: **ship tomorrow, 6 September 2026 (Africa/Lagos)**. This is earlier than the official contest deadline (14 September, 5 PM PDT). Do not use the later contest date to defer essential work.
