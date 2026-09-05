@@ -1,5 +1,13 @@
-# Agents for Humans: Measuring Human Attention as an Agent Benchmark
+# Agents for Humans: Does Another Agent Actually Save You Time?
 
-Status: **DRAFT — not published.** Four-arm PexBench is not frozen. Existing local rows are development evidence spread across different runs, not a coherent four-arm experiment. Do not invent lift. Do not cite leaked 1/5 vs 4/5.
+Adding a supervisor sounds useful. But if it interrupts constantly, asks for unnecessary checks, or doubles the cost, have we actually helped anyone?
 
-Lesson from the build: “task success” is the primary metric, but the headline secondary metric is human interventions per successful task. PEX overhead counts. Paired arms share one TASK.md; the isolated supervisor process cannot see hidden evaluator files. Historical development rows show mixed behavior, but they are not a frozen result and cannot support an impact claim. The deterministic suite deliberately retains the five recovery-spec tasks; a prior 006–036 microtask expansion was removed because benchmark feature work is blocked until the live recovery loop passes. Cursor+PEX also remains blocked until same-session continuation is proven. That honesty is the product: measure attention, do not market a fake win. A synthetic smoke is labeled `synthetic_pex` and is forbidden as a Cursor/Codex arm. The runner refuses to write a result without an evaluator `success` field.
+That's the question behind PEX's evaluation plan. PEX uses Strands Agents for supervisory reasoning and includes an AgentCore runtime integration. The goal is less babysitting, not more agent activity.
+
+I'm starting with task success, then counting human interventions, time and cost. The comparison needs the same tasks with and without PEX. The supervisor's own model calls must count too—moving them to another runtime doesn't make them free.
+
+The [benchmark runner](https://github.com/josepha-mayo/pex/blob/e64270c1e947d3e0f7c95598ec108bc2a28dc282/benchmarks/runner.py#L1082) requires treatment overhead metrics. A [regression test](https://github.com/josepha-mayo/pex/blob/e64270c1e947d3e0f7c95598ec108bc2a28dc282/tests/unit/test_pexbench.py#L428) also keeps synthetic smoke results out of the presentation arms.
+
+There isn't a live improvement result to announce yet. The fair comparison and verified AgentCore deployment are still ahead. My takeaway so far: decide what “helpful” means before building a chart that claims you've achieved it.
+
+Built and written with AI assistance.

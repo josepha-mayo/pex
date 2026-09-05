@@ -1,5 +1,7 @@
 # PEX shipping checklist — 5 September 2026
 
+**Latest accepted source `4f034e1`:** Store-derived correction provenance is wired into Pipeline main-effect planning, transactionally immutable and bounded for historical attribution; stale older-turn completion is repaired. Main **551 passed/19 complete files**, no skips, scoped Ruff/staged whitespace and exact remote push verified. [`Receipt and exact next steps`](CODEX_CORRECTION_REVIEW.md). **Next: exact echo classification/record-only ingestion and coherent accepted human baseline, then actual claimed-effect Executor/shared dispatch.** Shared control and live Strands/AgentCore proof are still incomplete. All existing full-product stages remain required. Bonus posting is side work tracked in [`posts/PUBLICATION_CHECKLIST.md`](posts/PUBLICATION_CHECKLIST.md), not a completion shortcut.
+
 ## Target and truth standard
 
 **Current accepted source: `e64270c`**, fresh routing-time read witness, actual parser-boundary control checks, coordinator full-history/idle-active/input snapshot and validation-only final main-effect authority. Main final **483 passed/18 files**, no skips, scoped Ruff/whitespace clean, independent review and exact remote push verified. [`Evidence and limitations`](CONTROL_SNAPSHOT_REVIEW.md). **Next: durable PEX correction provenance and actual Pipeline/Executor/adapter dispatch**, then installed existing-worker Strands outcomes. No enabled shared control or live-loop completion is claimed. The older checkpoint summaries below remain historical.

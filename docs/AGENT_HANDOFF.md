@@ -1,5 +1,17 @@
 # PEX agent handoff
 
+## CURRENT EXECUTION — correction provenance accepted, 5 September 2026
+
+**Goal ACTIVE; release NO-GO; 6 September WAT target at risk.** Source **`4f034e1a0dfe19a70c931f8269f44df339fdc55e`** is reviewed/pushed with exact remote main equality verified. Main **551 passed in 135.77s across 19 files**, no skips; eight changed Python paths Ruff/staged-whitespace clean. Full receipt: [`CODEX_CORRECTION_REVIEW.md`](CODEX_CORRECTION_REVIEW.md).
+
+Pipeline now obtains Store-derived exact correction provenance before committing the immutable main effect. Store recomputes it transactionally, rejects model correlation, enforces unique correlation/immutable authority and exposes bounded historical attribution without reviving dispatch. Supplied exact continuation text is supported. Independent review repaired endpoint scope and generic-planner injection. Main reproduced/fixed stale older-turn completion erasing a newer active turn. Shared control remains disabled; no live delivery or Strands/AgentCore deployment claim.
+
+**Next:** exact live/history echo classification and Store-validated record-only ingestion; coherent accepted human baseline (never give an initial STOP later reconciliation history); claimed-effect context through Executor to one fresh-policy/Store/transport-fenced start/steer write. Never wait for the action's own consumer drainage. Then actual existing-worker Strands NOOP/correction/outcome and ten quiet cases, followed by all full-spec/UI/backend/cross-harness/release/**eight pets**/fair comparisons. Read all three specs/current checklist, use bounded delegation and independently review each batch.
+
+User confirmed Strands + AgentCore as intended stack and requested short bonus posts as side work. All three local posts are about 160 words. Main recovered the user's existing Brave after they opened Builder Center and signed in; first article is saved/previewed, **not published**, awaiting the computer-use skill's action-time Publish confirmation. Exact draft/status/duplicate checks: [`posts/PUBLICATION_CHECKLIST.md`](posts/PUBLICATION_CHECKLIST.md). No separate browser, credential transfer or bonus-point claim. Final Devpost submission remains separately gated.
+
+Source owners/reviewers finished; `transport_review` has a new read-only baseline/echo design assignment, no edits. Preserve unowned `loop.py` +28 and hash in the receipt. No test handles remain at this checkpoint. Historical CURRENT headings below are evidence, not the active queue.
+
 ## CURRENT EXECUTION — fresh control snapshots accepted, 5 September 2026
 
 **Goal ACTIVE; product/release NO-GO; 6 September WAT target remains at risk.** Source **`e64270c1e947d3e0f7c95598ec108bc2a28dc282`** is independently reviewed/pushed with exact remote main equality verified. Final main **483 passed in 86.41s across 18 complete files**, no skips; six Python paths Ruff-clean and staged whitespace-clean. Full scope, failed reproductions, command inventory and limitations: [`CONTROL_SNAPSHOT_REVIEW.md`](CONTROL_SNAPSHOT_REVIEW.md). This supersedes fresh-snapshot-as-unimplemented wording below; no production dispatch caller or enabled shared control exists yet.
