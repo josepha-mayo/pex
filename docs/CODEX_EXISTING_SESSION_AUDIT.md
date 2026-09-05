@@ -1,5 +1,19 @@
 # Codex existing-session shared App Server audit
 
+## Latest installed-runtime refresh — after `decc74b`, 5 September 2026
+
+The original design/source snapshot below is historical. Shared observation and separately authorized claimed text delivery are now implemented and locally tested; see `CODEX_CLAIMED_DISPATCH_REVIEW.md`. Actual installed-worker supervision is still unverified.
+
+Fresh read-only checks resolved `C:\Users\JosephMayo\AppData\Local\OpenAI\Codex\bin\27d6a192e9c98618\codex.exe`, SHA256 `A1CF6360CA71918D5466BC3A32D9F18B7044C9128756D1949E715D277B88C9B6`. Two running `codex.exe` processes were identified as App Servers (PIDs 13564 and 8188). Neither command line advertised an explicit Unix/WebSocket listener or remote client; a TCP listening-socket query returned no listener owned by either. A top-level `.codex` filename-only check found no socket/daemon/server candidate. These bounded checks do not prove no endpoint exists elsewhere. Command-line credential values and unrelated session content were not printed.
+
+Installed `app-server --help` confirms stdio is the default and advertises Unix/WebSocket listening plus the `proxy --sock` helper. Help is not a listener launch or live protocol test. Installed `app-server daemon version`, selected as a read-only status query, failed with **daemon lifecycle is only supported on Unix platforms**. Do not try `start`, `bootstrap`, `restart`, or enable remote control as a substitute for that failed diagnostic.
+
+Current [official App Server documentation](https://learn.chatgpt.com/docs/app-server) was searched and opened under the OpenAI Docs skill. It describes separate initialized clients connecting to a shared listener, not retroactive attachment to another client's stdio pipe. The next live step needs an actual supported user-owned shared endpoint, or explicit user approval to establish a separate visible demo session on one while preserving the current sessions. Such a demo must be labeled honestly; it would not prove attachment to the current desktop task. Do not weaken ACLs or start a substitute worker silently. No worker, proxy, listener, provider call, model invocation or cloud resource was started in this refresh.
+
+The user's cloud approval remains conditional on **no card charges**; credit eligibility did not establish a hard no-charge protection. Keep this separate from the local worker connection prerequisite. Full goal ACTIVE, release NO-GO; the original three-spec completion bar is unchanged.
+
+## Historical design audit
+
 Date: 2026-09-05 (Africa/Lagos)
 
 Status: design evidence only. No App Server, bridge, provider, model, or desktop process was started or changed for this audit. No live same-session proof has been run.
