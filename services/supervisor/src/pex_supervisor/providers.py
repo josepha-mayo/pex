@@ -1090,6 +1090,26 @@ def refresh_model_catalog(
     bedrock_client: Any | None = None,
 ) -> dict[str, Any]:
     """List models without invoking one; never return credentials or raw error bodies."""
+    # A concurrent settings save can replace the process-wide runtime while
+    # listing runs in a worker thread. Keep its provider/protocol/credential and
+    # destination in one immutable scope, including an explicit unconfigured
+    # (None) snapshot. Never combine an old key with a new endpoint.
+    token = _RUNTIME_SCOPE.set(_active_runtime_config())
+    try:
+        return _refresh_model_catalog(
+            provider, client=client, bedrock_client=bedrock_client
+        )
+    finally:
+        _RUNTIME_SCOPE.reset(token)
+
+
+def _refresh_model_catalog(
+    provider: str | None = None,
+    *,
+    client: httpx.Client | None = None,
+    bedrock_client: Any | None = None,
+) -> dict[str, Any]:
+    """Implementation running under the caller's frozen routing snapshot."""
     _load_dotenv()
     try:
         pid = (provider or resolve_provider_id() or "").strip().lower()
@@ -1100,6 +1120,18 @@ def refresh_model_catalog(
     spec = PROVIDERS.get(pid)
     if spec is None:
         raise ModelCatalogRefreshError("unknown supervisor provider")
+
+    runtime = _active_runtime_config()
+    configured_provider = (
+        runtime.provider or ("custom" if runtime.base_url else None)
+        if runtime is not None
+        else None
+    )
+    if configured_provider is not None and pid != configured_provider:
+        raise ModelCatalogRefreshError(
+            "save the selected provider before refreshing its models; "
+            "the current configuration belongs to another provider"
+        )
 
     kind = _effective_kind(spec)
     if kind == "bedrock":

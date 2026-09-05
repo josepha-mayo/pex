@@ -6,6 +6,12 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Provider/setup repair addendum — 5 Sep
+
+Main and the independent credential reviewer fully read the new `apps/desktop/src/supervisorDraft.ts` and `supervisorDraft.test.ts`, and reviewed changed App/SettingsPage/viewModel-test/package wiring. Main and setup owner fully read `scripts/install.ps1` and new `tests/unit/test_source_setup_contract.py`; the setup owner fully read README, with main reviewing its changed setup/architecture text. Main reviewed the provider runtime-scope/mismatch patch and all new provider/route tests after independent reproduction; this does not equal whole-file approval of `providers.py` or `app.py`. Seven-file final gate: 147 passed/1 symlink skip; desktop: 97 checks/TypeScript. New `docs/CODEX_EXISTING_SESSION_AUDIT.md` records bounded Codex source/protocol review, not a live integration receipt.
+
+The three newly added source/test paths in this cycle must be included when the full inventory is next reconciled. Counts below are historical snapshot/addendum counts, not a fresh exhaustive file inventory. The growing unknown `loop.py` changes are explicitly not reviewed or included in this checkpoint.
+
 Five new paths after the original snapshot bring this ledger to **346 source/configuration paths**. This is not a refreshed exhaustive filesystem inventory; reconcile new files again before release. The initial domain audits recorded 49 full reads. Main and independent reviewers also reviewed the outcome/context/UI repair diffs; that is bounded changed-code review, not full-file approval for the large existing pipeline, Store, adapter or App modules. Remaining findings and actual UI/provider proof stay open in `SHIP_CHECKLIST.md`.
 
 | New file | Review scope / result |

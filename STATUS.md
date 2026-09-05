@@ -6,6 +6,12 @@
 
 **Date:** 2026-09-05
 
+## Provider/setup repair checkpoint — 5 Sep
+
+Main verified **147 passed, 1 environment-dependent symlink skip** across seven complete backend/setup files, **97 desktop Node checks**, TypeScript and scoped Ruff. Credential drafts now bind all actual endpoints, including named overrides; configuration reads/saves require explicit revisions; stale responses and stalled requests have bounded recovery. Catalog refresh freezes credential/protocol/endpoint routing against concurrent saves and rejects a mismatched provider before client creation. Default source setup no longer changes Cursor hooks; fake-command PowerShell execution tests prove command order/failure/cwd behavior. Detailed scope and failed development runs are in `docs/AGENT_HANDOFF.md`; no rendered UI, live provider or packaged-install proof follows.
+
+The core Codex existing-session gap is now documented in `docs/CODEX_EXISTING_SESSION_AUDIT.md`: current stdio mode owns a separate App Server, not the user's live stream. Shared-server subscription and safe mutation fencing remain unimplemented/unproven. An initial mock provider test exposed an ambient credential in local assertion output; the user was informed and advised to rotate if live. Corrected tests do not establish rotation. Preserve the still-growing unexplained `loop.py` diff outside this checkpoint. Overall NO-GO remains.
+
 ## Exact evidence and recoverable startup checkpoint — 5 Sep
 
 Main's final combined local gate passed **332 backend tests across 15 complete files**, **74 desktop Node tests**, TypeScript and scoped Ruff. Main also reran **12 Rust tests** and format checks; the startup owner reports clean Clippy. Exact main/verifier tool observations now survive normal decisions, failures, timeouts and crash replay. Their citations are request/stage/invocation bound; failed/no-model remote results cannot carry worker actions. Original ambiguous responses remain durable while their executable projection is NOOP. Startup now has a visible recovery surface, serialized bounded retries, single-instance handling, safe ownership checks and main-only recovery commands. Independent review closed the evidence, permission and stale-poll findings. Detailed scope and failed intermediate gates are in the current handoff.

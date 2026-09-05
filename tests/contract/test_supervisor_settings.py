@@ -101,6 +101,21 @@ def _custom_payload(**updates):
 
 
 @pytest.mark.asyncio
+async def test_settings_read_exposes_explicit_first_run_and_committed_revisions(supervisor_client):
+    client, _secret_store, _home = supervisor_client
+    initial = await client.get("/v1/supervisor")
+    assert initial.status_code == 200
+    assert initial.json()["revision"] == 0
+    assert state.supervisor_choice is None
+
+    saved = await client.patch("/v1/supervisor", json=_custom_payload())
+    assert saved.status_code == 200
+    current = await client.get("/v1/supervisor")
+    assert current.status_code == 200
+    assert current.json()["revision"] == saved.json()["revision"] == 1
+
+
+@pytest.mark.asyncio
 async def test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint(
     supervisor_client, monkeypatch
 ):
@@ -133,6 +148,49 @@ async def test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint
     assert captured["client_args"]["base_url"] == "https://openrouter.ai/api/v1"
     assert state.supervisor_choice is not None
     assert state.supervisor_choice.base_url == "https://openrouter.ai/api/v1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("keep_override", [True, False])
+async def test_named_provider_key_rotation_uses_explicit_displayed_endpoint(
+    supervisor_client, monkeypatch, keep_override
+):
+    client, _secret_store, _home = supervisor_client
+    monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
+    captured = []
+
+    class FakeOpenAIModel:
+        def __init__(self, **kwargs):
+            captured.append(kwargs)
+
+    monkeypatch.setattr("strands.models.openai.OpenAIModel", FakeOpenAIModel)
+    override = "https://alternate.example.test/v1"
+    initial = await client.patch("/v1/supervisor", json={
+        "expected_revision": 0,
+        "provider": "groq",
+        "auth_mode": "api_key",
+        "model_id": "fixture-model",
+        "base_url": override,
+        "api_key": "fixture-old-key",
+    })
+    assert initial.status_code == 200
+    observed = await client.get("/v1/supervisor")
+    assert observed.json()["base_url"] == override
+
+    rotated = await client.patch("/v1/supervisor", json={
+        "expected_revision": observed.json()["revision"],
+        "provider": "groq",
+        "auth_mode": "api_key",
+        "model_id": "fixture-model",
+        "base_url": observed.json()["base_url"] if keep_override else None,
+        "api_key": "fixture-new-key",
+    })
+    assert rotated.status_code == 200
+    expected_endpoint = override if keep_override else "https://api.groq.com/openai/v1"
+    assert rotated.json()["base_url"] == expected_endpoint
+    assert captured[-1]["client_args"]["base_url"] == expected_endpoint
+    assert captured[-1]["client_args"]["api_key"] == "fixture-new-key"
+    assert "fixture-new-key" not in rotated.text
 
 
 @pytest.mark.asyncio

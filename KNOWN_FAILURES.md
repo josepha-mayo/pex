@@ -1,5 +1,11 @@
 # Known failures
 
+## Existing Codex session and current setup limits — 5 Sep 2026
+
+The current Codex stdio adapter starts a separate App Server and reads only its notifications. Stored thread listing/resume is not proof of the user's existing worker stream. Shared subscription/reconciliation, live user-client visibility and a safe concurrent-input fence remain open; see `docs/CODEX_EXISTING_SESSION_AUDIT.md`. Failed attachment recovery, polling-derived false activity and missing worker Attach UI still need repair. Provider credential and catalog routing races now pass bounded local regressions, and default source setup no longer mutates Cursor hooks, but clean-profile/provider/native UI/package proof remains absent.
+
+A development fixture failure exposed an ambient credential in local tool output. Only a MockTransport was used; no external request carried it. Isolation and assertion output are corrected, but historical exposure remains: the user was informed and should rotate the credential if live. Do not store its value or claim rotation without evidence. The unexplained unowned `loop.py` edit continues to change and must remain untouched pending writer identification.
+
 ## Exact-evidence/startup checkpoint limits — 5 Sep 2026
 
 Exact bounded main/verifier observations, failed-remote-action suppression, timeout/crash replay preservation and visible serialized startup recovery have local regression coverage (332 backend, 74 frontend checks). They are not live model quality or GUI proof. The frozen `pex-cursor-observe` executable remains absent; Rust's 12-test/Clippy checks required an explicitly disclosed process-local externalBin override. Normal release config/preflight still requires all sidecars and remains unproven. No Windows Job Object/parent watchdog reaps an orphan after desktop crash; an occupied unknown port is safely reported, not killed or adopted. Packaged single-instance, retry, process-crash and clean-profile smoke remain open. First-run provider/worker attachment is not completed by adding a startup error screen. Formal benchmark isolation/network enforcement, live same-session usefulness, all-eight-pet review and final submission evidence remain open.

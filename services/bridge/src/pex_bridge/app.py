@@ -2987,6 +2987,9 @@ def create_app() -> FastAPI:
         from pex_supervisor.catalog import catalog as model_catalog
 
         info = _supervisor_health()
+        # First-run authority is an explicit revision, not a client-side guess
+        # from missing fields or an unavailable configuration response.
+        info["revision"] = 0
         if state.supervisor_choice is not None:
             try:
                 stored_key_present = bool(_resolve_choice_secret(state.supervisor_choice))

@@ -1,0 +1,186 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import {
+  isSupervisorRevision,
+  supervisorCredentialAudience,
+  supervisorRequest,
+  supervisorSavePayload,
+  supervisorSaveResponseIsCurrent,
+  type SupervisorDraft,
+} from "./supervisorDraft.ts";
+
+const custom: SupervisorDraft = {
+  provider: "custom",
+  modelId: "example-model",
+  authMode: "custom",
+  protocol: "openai",
+  baseUrl: "https://models.example.test/v1",
+  apiKey: "fixture-key-not-a-real-credential",
+  credentialAction: "keep",
+};
+
+test("a pasted key is sent only with its exact selected destination and current revision", () => {
+  assert.deepEqual(supervisorSavePayload(custom, 7, supervisorCredentialAudience(custom)), {
+    expected_revision: 7,
+    provider: "custom",
+    model_id: "example-model",
+    auth_mode: "custom",
+    protocol: "openai",
+    base_url: "https://models.example.test/v1",
+    api_key: custom.apiKey,
+  });
+});
+
+for (const [field, value] of [
+  ["provider", "openai"],
+  ["authMode", "api_key"],
+  ["protocol", "anthropic"],
+  ["baseUrl", "https://another.example.test/v1"],
+] as const) {
+  test(`changing ${field} cannot carry a previously pasted key`, () => {
+    const changed = { ...custom, [field]: value };
+    assert.throws(() => supervisorSavePayload(changed, 7, supervisorCredentialAudience(custom)), {
+      message: "The credential destination changed. Paste a key for the selected destination.",
+    });
+    // Explicitly pasting a credential for the new destination restores the save path.
+    assert.equal(supervisorSavePayload(changed, 7, supervisorCredentialAudience(changed)).api_key, custom.apiKey);
+  });
+}
+
+test("a missing credential binding cannot dispatch a key or expose it in errors", () => {
+  assert.throws(() => supervisorSavePayload(custom, 7, null), (error: unknown) => {
+    assert.ok(error instanceof Error);
+    assert.ok(!error.message.includes(custom.apiKey));
+    assert.ok(!error.message.includes(custom.baseUrl));
+    return true;
+  });
+});
+
+test("model selection is not a credential destination change", () => {
+  const changed = { ...custom, modelId: "different-model" };
+  assert.equal(supervisorSavePayload(changed, 7, supervisorCredentialAudience(custom)).model_id, "different-model");
+});
+
+test("audience normalization matches the trimmed payload destination", () => {
+  const padded = { ...custom, provider: " custom ", baseUrl: ` ${custom.baseUrl} ` };
+  assert.equal(supervisorCredentialAudience(padded), supervisorCredentialAudience(custom));
+  assert.equal(supervisorSavePayload(padded, 7, supervisorCredentialAudience(custom)).base_url, custom.baseUrl);
+});
+
+test("named provider overrides are explicit and bound, not hidden inherited endpoints", () => {
+  const named = { ...custom, provider: "openai", authMode: "api_key" as const };
+  const payload = JSON.parse(JSON.stringify(supervisorSavePayload(named, 7, supervisorCredentialAudience(named))));
+  assert.equal(payload.base_url, named.baseUrl);
+  assert.ok(!("protocol" in payload));
+  assert.throws(() => supervisorSavePayload({ ...named, baseUrl: "https://other.example.test/v1" }, 7, supervisorCredentialAudience(named)), /destination changed/);
+  const registryDefault = { ...named, baseUrl: "" };
+  assert.equal(supervisorSavePayload(registryDefault, 7, supervisorCredentialAudience(registryDefault)).base_url, null);
+});
+
+for (const authMode of ["login", "local", "bedrock", "agentcore"] as const) {
+  test(`${authMode} rejects a pasted key even if the audience matches`, () => {
+    const changed = { ...custom, authMode };
+    assert.throws(() => supervisorSavePayload(changed, 7, supervisorCredentialAudience(changed)), /does not accept a pasted API key/);
+  });
+}
+
+test("auto-detect never dispatches a pasted key to an unspecified provider", () => {
+  const changed = { ...custom, provider: "" };
+  assert.throws(() => supervisorSavePayload(changed, 7, supervisorCredentialAudience(changed)), /does not accept a pasted API key/);
+});
+
+test("empty-key credential actions are explicit, mutually exclusive, and retain revision", () => {
+  for (const credentialAction of ["keep", "environment", "clear"] as const) {
+    const payload = supervisorSavePayload({ ...custom, apiKey: "", credentialAction }, 7, null);
+    assert.equal(payload.expected_revision, 7);
+    assert.ok(!("api_key" in payload));
+    assert.equal(payload.use_environment_credentials, credentialAction === "environment" ? true : undefined);
+    assert.equal(payload.clear_api_key, credentialAction === "clear" ? true : undefined);
+  }
+});
+
+test("the empty-box action does not override an explicitly pasted destination-bound key", () => {
+  for (const credentialAction of ["environment", "clear"] as const) {
+    const payload = supervisorSavePayload({ ...custom, credentialAction }, 7, supervisorCredentialAudience(custom));
+    assert.equal(payload.api_key, custom.apiKey);
+    assert.ok(!("clear_api_key" in payload));
+    assert.ok(!("use_environment_credentials" in payload));
+  }
+});
+
+test("initial auto-detect opts into environment credentials without treating later keep as reset", () => {
+  const draft = { ...custom, provider: "", apiKey: "" };
+  assert.equal(supervisorSavePayload(draft, 0, null).use_environment_credentials, true);
+  assert.equal(supervisorSavePayload(draft, 7, null).use_environment_credentials, undefined);
+});
+
+test("invalid revisions cannot silently become a first-run write", () => {
+  for (const revision of [undefined, -1, 0.5, NaN, Infinity, 2_147_483_648]) {
+    assert.throws(() => supervisorSavePayload(custom, revision, supervisorCredentialAudience(custom)), /revision is unavailable/);
+  }
+});
+
+test("canonical revision validation rejects missing, coerced and out-of-contract authority", () => {
+  for (const value of [undefined, null, false, "0", {}, [], -1, 0.5, NaN, Infinity, 2_147_483_648]) {
+    assert.equal(isSupervisorRevision(value), false);
+  }
+  for (const value of [0, 1, 2_147_483_647]) assert.equal(isSupervisorRevision(value), true);
+});
+
+test("save responses must still own both the submitted draft and settings view", () => {
+  assert.equal(supervisorSaveResponseIsCurrent(3, 3, 8, 8), true);
+  assert.equal(supervisorSaveResponseIsCurrent(3, 4, 8, 8), false);
+  assert.equal(supervisorSaveResponseIsCurrent(3, 3, 8, 9), false);
+  assert.equal(supervisorSaveResponseIsCurrent(3, 4, 8, 9), false);
+});
+
+test("a stalled settings request aborts once without replaying an uncertain write", async () => {
+  let calls = 0;
+  let seenSignal: AbortSignal | undefined;
+  let finish: ((value: string) => void) | undefined;
+  const pending = supervisorRequest((signal) => {
+    calls += 1;
+    seenSignal = signal;
+    return new Promise<string>((resolve) => { finish = resolve; });
+  }, 5);
+  await assert.rejects(pending, /Reload settings to check its outcome before retrying/);
+  assert.equal(calls, 1);
+  assert.equal(seenSignal?.aborted, true);
+  finish?.("late backend commit");
+  await assert.rejects(pending, /timed out/);
+  assert.equal(calls, 1);
+});
+
+test("a completed or failed settings request clears its deadline without retry", async () => {
+  let seenSignal: AbortSignal | undefined;
+  const value = await supervisorRequest(async (signal) => {
+    seenSignal = signal;
+    return "canonical";
+  }, 5);
+  assert.equal(value, "canonical");
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(seenSignal?.aborted, false);
+  let calls = 0;
+  await assert.rejects(supervisorRequest(async () => {
+    calls += 1;
+    throw new Error("fixture failure");
+  }), /fixture failure/);
+  assert.equal(calls, 1);
+});
+
+test("source contract wires destination guards and disables every supervisor input during save", () => {
+  // Wiring contract only: this does not claim a rendered React or native UI test.
+  const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+  const settings = readFileSync(new URL("./components/SettingsPage.tsx", import.meta.url), "utf8");
+  for (const field of ["Auth", "Protocol", "BaseUrl"]) {
+    assert.ok(app.includes(`changeSupervisorDraft(supervisor${field}, value, setSupervisor${field}, true)`));
+  }
+  assert.match(app, /supervisorKeyAudience\.current = next \? supervisorCredentialAudience\(/);
+  assert.match(app, /if \(supervisorSaveInFlight\.current \|\| current === next\) return/);
+  const form = settings.slice(settings.indexOf('<p className="eyebrow">Supervisor inference</p>'), settings.indexOf('<p className="eyebrow">Attention</p>'));
+  const controls = form.match(/<(?:input|select)\b[^>]*>/g) || [];
+  assert.equal(controls.length, 9);
+  for (const control of controls) assert.match(control, /disabled=\{!settingsAvailable \|\| savingSupervisor\}/);
+  assert.match(app, /if \(supervisorSaveInFlight\.current\) return;\s+const requestSequence = \+\+settingsRequestSequence\.current/);
+});

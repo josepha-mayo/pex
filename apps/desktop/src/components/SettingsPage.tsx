@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { SupervisorAuthMode, SupervisorProtocol, SupervisorCredentialAction } from "../supervisorDraft";
 import type {
   Goal,
   HatchCap,
@@ -15,9 +16,6 @@ import {
 } from "../viewModel";
 
 type HookHarness = "cursor" | "claude_code" | "qwen" | "hermes" | "opencode";
-type SupervisorAuthMode = "api_key" | "login" | "local" | "custom" | "bedrock" | "agentcore";
-type SupervisorProtocol = "openai" | "anthropic";
-type SupervisorCredentialAction = "keep" | "environment" | "clear";
 
 export function SettingsPage({
   goals,
@@ -302,7 +300,7 @@ export function SettingsPage({
                     ? "Available settings remain editable; unavailable sections are not treated as defaults."
                     : "Supervisor configuration controls remain disabled until a current revision loads."}
                 </p>
-                <button type="button" className="ghost" onClick={onReloadSettings}>
+                <button type="button" className="ghost" disabled={savingSupervisor} onClick={onReloadSettings}>
                   Retry settings
                 </button>
               </div>
@@ -311,7 +309,7 @@ export function SettingsPage({
               <label>
                 Provider
                 <select
-                  disabled={!settingsAvailable}
+                  disabled={!settingsAvailable || savingSupervisor}
                   value={supervisorProvider}
                   onChange={(event) => {
                     const next = event.target.value;
@@ -326,7 +324,7 @@ export function SettingsPage({
               </label>
               <label>
                 {catalogIsLive ? "Live provider models" : "Model suggestions (unverified)"}
-                <select disabled={!settingsAvailable} value={inCatalog ? supervisorModel : ""} onChange={(event) => onSupervisorModel(event.target.value)}>
+                <select disabled={!settingsAvailable || savingSupervisor} value={inCatalog ? supervisorModel : ""} onChange={(event) => onSupervisorModel(event.target.value)}>
                   <option value="">paste any model id below</option>
                   {visibleCatalog.map((row) => (
                       <option value={row.model_id} key={`${row.provider}:${row.model_id}:${row.label}`}>
@@ -338,14 +336,14 @@ export function SettingsPage({
             </div>
             <label>
               Model id
-              <input disabled={!settingsAvailable} value={supervisorModel} onChange={(event) => onSupervisorModel(event.target.value)} placeholder="Any supported vendor id" />
+              <input disabled={!settingsAvailable || savingSupervisor} value={supervisorModel} onChange={(event) => onSupervisorModel(event.target.value)} placeholder="Any supported vendor id" />
             </label>
             <div className="form-grid two-column">
               <label>
                 Authentication
                 <select
                   value={supervisorAuth}
-                  disabled={!settingsAvailable}
+                  disabled={!settingsAvailable || savingSupervisor}
                   onChange={(event) => onSupervisorAuth(event.target.value as SupervisorAuthMode)}
                 >
                   {supervisorAuthOptions.map((mode) => (
@@ -358,7 +356,7 @@ export function SettingsPage({
                   Endpoint protocol
                   <select
                     value={supervisorProtocol}
-                    disabled={!settingsAvailable}
+                    disabled={!settingsAvailable || savingSupervisor}
                     onChange={(event) => onSupervisorProtocol(event.target.value as SupervisorProtocol)}
                   >
                     <option value="openai">OpenAI-compatible</option>
@@ -372,12 +370,29 @@ export function SettingsPage({
                 Custom base URL
                 <input
                   value={supervisorBaseUrl}
-                  disabled={!settingsAvailable}
+                  disabled={!settingsAvailable || savingSupervisor}
                   onChange={(event) => onSupervisorBaseUrl(event.target.value)}
                   placeholder="https://models.example.com/v1"
                   autoComplete="off"
                   spellCheck={false}
                 />
+              </label>
+            ) : supervisorProvider ? (
+              <label>
+                Provider endpoint · credential destination
+                <input
+                  value={supervisorBaseUrl}
+                  disabled={!settingsAvailable || savingSupervisor}
+                  readOnly
+                  placeholder="Built-in provider endpoint"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <span className="settings-note">
+                  {supervisorBaseUrl
+                    ? "This saved endpoint is included when you save. Choose custom to edit the destination."
+                    : "Saving selects this provider’s built-in endpoint. Choose custom for a different destination."}
+                </span>
               </label>
             ) : null}
             {supervisorUsesCredential ? (
@@ -387,7 +402,7 @@ export function SettingsPage({
                   <input
                     type="password"
                     value={supervisorApiKey}
-                    disabled={!settingsAvailable}
+                    disabled={!settingsAvailable || savingSupervisor}
                     onChange={(event) => onSupervisorApiKey(event.target.value)}
                     placeholder={supervisor?.credential_configured ? "Stored locally · paste to replace" : "Paste to store in the OS credential vault"}
                     autoComplete="new-password"
@@ -398,7 +413,7 @@ export function SettingsPage({
                   When the key box is empty
                   <select
                     value={supervisorCredentialAction}
-                    disabled={!settingsAvailable}
+                    disabled={!settingsAvailable || savingSupervisor}
                     onChange={(event) => onSupervisorCredentialAction(event.target.value as SupervisorCredentialAction)}
                   >
                     <option value="keep">Keep the current credential source</option>
@@ -415,7 +430,7 @@ export function SettingsPage({
                 </p>
               </>
             ) : null}
-            <button type="button" className="ghost" disabled={!settingsAvailable || refreshingCatalog} onClick={onRefreshCatalog}>
+            <button type="button" className="ghost" disabled={!settingsAvailable || savingSupervisor || refreshingCatalog} onClick={onRefreshCatalog}>
               {refreshingCatalog ? "Refreshing…" : "Refresh configured provider models"}
             </button>
             <button type="button" className="solid" disabled={!settingsAvailable || savingSupervisor} onClick={onSaveSupervisor}>

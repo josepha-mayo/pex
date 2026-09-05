@@ -753,3 +753,185 @@ def test_agentcore_auth_does_not_silently_construct_bedrock(monkeypatch, isolate
     )
 
     assert load_supervisor_model(config) is None
+
+
+@pytest.mark.parametrize(
+    ("provider", "auth_mode", "protocol", "key"),
+    [
+        ("custom", "custom", "openai", "fixture-first-key"),
+        ("custom", "custom", "anthropic", "fixture-first-key"),
+        ("groq", "api_key", None, "fixture-first-key"),
+        ("custom", "custom", "openai", None),
+        ("lmstudio", "local", None, None),
+    ],
+)
+def test_catalog_refresh_keeps_one_runtime_during_concurrent_settings_change(
+    monkeypatch, isolated_runtime, provider, auth_mode, protocol, key
+):
+    import pex_supervisor.providers as providers
+
+    first = SupervisorRuntimeConfig(
+        provider=provider,
+        model_id="fixture-model",
+        auth_mode=auth_mode,
+        protocol=protocol,
+        base_url="https://first.example.test/v1",
+        credential_source="secret_store" if key else "none",
+        api_key=key,
+    )
+    second = SupervisorRuntimeConfig(
+        provider="custom",
+        model_id="other-model",
+        auth_mode="custom",
+        protocol="anthropic" if protocol != "anthropic" else "openai",
+        base_url="https://second.example.test/v1",
+        credential_source="secret_store",
+        api_key="fixture-second-key",
+    )
+    configure_runtime(first)
+    captured = []
+
+    def receive(request):
+        captured.append(request)
+        return httpx.Response(200, json={"data": [{"id": "fixture-model"}]})
+
+    def switch_config_between_key_and_destination(**_kwargs):
+        # This is the real refresh path's client-construction boundary: the
+        # credential has been read but its destination has not. No network.
+        configure_runtime(second)
+        return httpx.Client(transport=httpx.MockTransport(receive))
+
+    monkeypatch.setattr(
+        providers, "credential_safe_http_client", switch_config_between_key_and_destination
+    )
+    result = refresh_model_catalog()
+
+    assert result["provider"] == provider
+    assert len(captured) == 1
+    request = captured[0]
+    assert request.url.host == "first.example.test"
+    if protocol == "anthropic":
+        assert request.headers.get("x-api-key") == key
+        assert "authorization" not in request.headers
+    else:
+        assert request.headers.get("authorization") == (f"Bearer {key}" if key else None)
+        assert "x-api-key" not in request.headers
+    assert providers.current_runtime_config() == second
+    assert providers._active_runtime_config() == second
+
+
+def test_catalog_refresh_restores_enclosing_runtime_scope_after_failure(
+    monkeypatch, isolated_runtime
+):
+    import pex_supervisor.providers as providers
+
+    outer = SupervisorRuntimeConfig(
+        provider="custom",
+        auth_mode="custom",
+        protocol="openai",
+        base_url="https://outer.example.test/v1",
+    )
+    initial_scope = providers._RUNTIME_SCOPE.get()
+    token = providers._RUNTIME_SCOPE.set(outer)
+    try:
+        def fail(_request):
+            return httpx.Response(503, json={"error": "fixture failure"})
+
+        def client_factory(**_kwargs):
+            return httpx.Client(transport=httpx.MockTransport(fail))
+
+        monkeypatch.setattr(providers, "credential_safe_http_client", client_factory)
+        with pytest.raises(ModelCatalogRefreshError):
+            refresh_model_catalog()
+        assert providers._RUNTIME_SCOPE.get() is outer
+    finally:
+        providers._RUNTIME_SCOPE.reset(token)
+    assert providers._RUNTIME_SCOPE.get() is initial_scope
+
+
+def test_catalog_refresh_keeps_environment_mode_when_first_config_is_committed(
+    monkeypatch, isolated_runtime
+):
+    import pex_supervisor.providers as providers
+
+    monkeypatch.setattr(providers, "_load_dotenv", lambda: None)
+    monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "custom")
+    monkeypatch.setenv("PEX_SUPERVISOR_AUTH", "custom")
+    monkeypatch.setenv("PEX_SUPERVISOR_BASE_URL", "https://environment.example.test/v1")
+    monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "fixture-environment-key")
+    configured = SupervisorRuntimeConfig(
+        provider="custom",
+        auth_mode="custom",
+        protocol="openai",
+        base_url="https://configured.example.test/v1",
+    )
+    captured = []
+
+    def receive(request):
+        captured.append(request)
+        return httpx.Response(200, json={"data": [{"id": "fixture-model"}]})
+
+    def commit_first_config(**_kwargs):
+        configure_runtime(configured)
+        return httpx.Client(transport=httpx.MockTransport(receive))
+
+    monkeypatch.setattr(providers, "credential_safe_http_client", commit_first_config)
+    assert refresh_model_catalog()["count"] == 1
+    assert len(captured) == 1
+    assert captured[0].url.host == "environment.example.test"
+    assert captured[0].headers["authorization"] == "Bearer fixture-environment-key"
+    assert providers._active_runtime_config() == configured
+
+
+@pytest.mark.parametrize("requested_provider", ["openrouter", "lmstudio", "bedrock"])
+def test_catalog_refresh_rejects_unsaved_provider_before_creating_client(
+    monkeypatch, isolated_runtime, requested_provider
+):
+    import pex_supervisor.providers as providers
+
+    configure_runtime(SupervisorRuntimeConfig(
+        provider="groq",
+        model_id="fixture-model",
+        auth_mode="api_key",
+        base_url="https://groq-override.example.test/v1",
+        credential_source="secret_store",
+        api_key="fixture-groq-key",
+    ))
+
+    def forbidden_client(*_args, **_kwargs):
+        raise AssertionError("mismatched provider must not construct any client")
+
+    monkeypatch.setattr(providers, "credential_safe_http_client", forbidden_client)
+    monkeypatch.setattr("boto3.client", forbidden_client)
+    with pytest.raises(ModelCatalogRefreshError, match="save the selected provider"):
+        refresh_model_catalog(requested_provider)
+
+
+@pytest.mark.parametrize("committed_auto", [False, True])
+def test_catalog_refresh_preserves_explicit_environment_provider_selection(
+    monkeypatch, isolated_runtime, committed_auto
+):
+    import pex_supervisor.providers as providers
+
+    monkeypatch.setattr(providers, "_load_dotenv", lambda: None)
+    monkeypatch.delenv("PEX_SUPERVISOR_BASE_URL", raising=False)
+    monkeypatch.delenv("PEX_SUPERVISOR_API_KEY", raising=False)
+    monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "groq")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "fixture-openrouter-key")
+    if committed_auto:
+        configure_runtime(SupervisorRuntimeConfig(credential_source="environment"))
+    captured = []
+
+    def receive(request):
+        captured.append(request)
+        return httpx.Response(200, json={"data": [{"id": "fixture-model"}]})
+
+    with httpx.Client(transport=httpx.MockTransport(receive)) as client:
+        result = refresh_model_catalog("openrouter", client=client)
+    assert result["provider"] == "openrouter"
+    assert len(captured) == 1
+    assert captured[0].url.host == "openrouter.ai"
+    correct_credential = (
+        captured[0].headers.get("authorization") == "Bearer fixture-openrouter-key"
+    )
+    assert correct_credential, "catalog request must use only the fixture credential"

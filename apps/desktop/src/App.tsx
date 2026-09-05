@@ -32,6 +32,16 @@ import {
   shouldPollBridgeBootstrap,
   unavailableBridgeBootstrapStatus,
 } from "./startupRecovery";
+import {
+  isSupervisorRevision,
+  supervisorCredentialAudience,
+  supervisorRequest,
+  supervisorSavePayload,
+  supervisorSaveResponseIsCurrent,
+  type SupervisorAuthMode,
+  type SupervisorCredentialAction,
+  type SupervisorProtocol,
+} from "./supervisorDraft";
 import type {
   BenchRun,
   BenchState,
@@ -113,9 +123,6 @@ import {
 
 const BRIDGE = "http://127.0.0.1:7420";
 const EVENT_CURSOR_STORAGE_KEY = "pex.event_cursor.v1";
-type SupervisorAuthMode = "api_key" | "login" | "local" | "custom" | "bedrock" | "agentcore";
-type SupervisorProtocol = "openai" | "anthropic";
-type SupervisorCredentialAction = "keep" | "environment" | "clear";
 
 function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
   if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return "local";
@@ -395,6 +402,9 @@ export function App() {
   const identitySelectionRevision = useRef(0);
   const identitySelectedProjectIdRef = useRef("");
   const settingsRequestSequence = useRef(0);
+  const supervisorDraftRevision = useRef(0);
+  const supervisorSaveInFlight = useRef(false);
+  const supervisorKeyAudience = useRef<string | null>(null);
   const goalEvidenceKey = useRef<string | null>(null);
   const bridgeStartupRef = useRef(bridgeStartup);
   const bridgeAvailable = bridgeBootstrapAvailable(
@@ -717,13 +727,14 @@ export function App() {
   }, [pet?.appearance?.scale, pet?.settings?.click_through, pet?.settings?.custom_name, pet?.settings?.scale]);
 
   const loadSettings = useCallback(async () => {
+    if (supervisorSaveInFlight.current) return;
     const requestSequence = ++settingsRequestSequence.current;
     const [supervisorResult, channelsResult] = await Promise.allSettled([
-      bridgeJson<SupervisorInfo>("/v1/supervisor"),
-      bridgeJson<ChannelHubStatus>("/v1/channels"),
+      supervisorRequest((signal) => bridgeJson<SupervisorInfo>("/v1/supervisor", { signal })),
+      supervisorRequest((signal) => bridgeJson<ChannelHubStatus>("/v1/channels", { signal })),
     ]);
     if (requestSequence !== settingsRequestSequence.current) return;
-    if (supervisorResult.status === "fulfilled") {
+    if (supervisorResult.status === "fulfilled" && isSupervisorRevision(supervisorResult.value?.revision)) {
       const data = supervisorResult.value;
       setSupervisor(data);
       setSupervisorProvider(data.backend || "");
@@ -733,12 +744,13 @@ export function App() {
           defaultSupervisorAuth(data.backend || ""),
       );
       setSupervisorProtocol(data.protocol || "openai");
-      setSupervisorBaseUrl(data.backend === "custom" ? data.base_url || "" : "");
+      setSupervisorBaseUrl(data.base_url || "");
       setSupervisorApiKey("");
+      supervisorKeyAudience.current = null;
       setSupervisorCredentialAction("keep");
       markCanonical("supervisor", "fresh");
     } else {
-      markCanonical("supervisor", "failed", "Supervisor settings could not be refreshed.");
+      markCanonical("supervisor", "failed", "Supervisor settings and their revision could not be refreshed.");
     }
     if (channelsResult.status === "fulfilled") {
       setChannels(channelsResult.value);
@@ -1763,74 +1775,96 @@ export function App() {
   }
 
   async function saveSupervisor() {
-    if (savingSupervisor) return;
+    if (supervisorSaveInFlight.current) return;
     if (!settingsAvailable) {
       setNote("Supervisor settings are unavailable. Reload them before saving.");
       return;
     }
+    supervisorSaveInFlight.current = true;
+    const requestSequence = ++settingsRequestSequence.current;
+    const draftRevision = supervisorDraftRevision.current;
     setSavingSupervisor(true);
     try {
-      const payload: Record<string, unknown> = {
-        expected_revision: supervisor?.revision || 0,
-        provider: supervisorProvider.trim(),
-        model_id: supervisorModel.trim() || undefined,
-        auth_mode: supervisorAuth,
-        protocol: supervisorProvider === "custom" ? supervisorProtocol : undefined,
-        base_url: supervisorProvider === "custom" ? supervisorBaseUrl.trim() : undefined,
-      };
-      if (supervisorApiKey) {
-        payload.api_key = supervisorApiKey;
-      } else if (
-        supervisorCredentialAction === "environment" ||
-        (!supervisorProvider.trim() && !supervisor?.revision)
-      ) {
-        payload.use_environment_credentials = true;
-      } else if (supervisorCredentialAction === "clear") {
-        payload.clear_api_key = true;
-      }
-      const data = await bridgeJson<SupervisorInfo>("/v1/supervisor", {
+      const payload = supervisorSavePayload({
+        provider: supervisorProvider,
+        modelId: supervisorModel,
+        authMode: supervisorAuth,
+        protocol: supervisorProtocol,
+        baseUrl: supervisorBaseUrl,
+        apiKey: supervisorApiKey,
+        credentialAction: supervisorCredentialAction,
+      }, supervisor?.revision, supervisorKeyAudience.current);
+      const data = await supervisorRequest((signal) => bridgeJson<SupervisorInfo>("/v1/supervisor", {
         method: "PATCH",
+        signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      });
+      }));
+      if (!isSupervisorRevision(data.revision) || data.revision !== Number(payload.expected_revision) + 1) {
+        throw new Error("The save response did not confirm the next configuration revision. Reload settings.");
+      }
+      if (!supervisorSaveResponseIsCurrent(
+        draftRevision, supervisorDraftRevision.current,
+        requestSequence, settingsRequestSequence.current,
+      )) {
+        markCanonical("supervisor", "failed", "A save completed after the settings view changed. Reload before editing.");
+        setNote("Supervisor choice saved. Reload settings to see the committed configuration.");
+        return;
+      }
       setSupervisor(data);
       markCanonical("supervisor", "fresh");
-      setSupervisorProvider(data.backend || supervisorProvider);
-      setSupervisorModel(data.model_id || supervisorModel);
-      setSupervisorAuth((data.auth_mode as SupervisorAuthMode | null) || supervisorAuth);
-      setSupervisorProtocol(data.protocol || supervisorProtocol);
-      setSupervisorBaseUrl(data.backend === "custom" ? data.base_url || supervisorBaseUrl : "");
+      setSupervisorProvider(data.backend || "");
+      setSupervisorModel(data.model_id || "");
+      setSupervisorAuth((data.auth_mode as SupervisorAuthMode | null) || defaultSupervisorAuth(data.backend || ""));
+      setSupervisorProtocol(data.protocol || "openai");
+      setSupervisorBaseUrl(data.base_url || "");
       setSupervisorApiKey("");
+      supervisorKeyAudience.current = null;
       setSupervisorCredentialAction("keep");
       setNote(data.model_loaded ? `Supervisor set to ${data.backend || "configured"} / ${data.model_id || "default"}.` : "Choice saved. PEX will remain deterministic until the configured model is available.");
     } catch (error) {
+      markCanonical("supervisor", "failed", "The save was not confirmed. Reload the current configuration before another save.");
       setNote(operationError(error, "Could not save supervisor configuration."));
     } finally {
+      supervisorSaveInFlight.current = false;
       setSavingSupervisor(false);
     }
   }
 
+  function changeSupervisorDraft<T>(current: T, next: T, setter: (value: T) => void, audience = false) {
+    if (supervisorSaveInFlight.current || current === next) return;
+    supervisorDraftRevision.current += 1;
+    settingsRequestSequence.current += 1;
+    if (audience) {
+      supervisorKeyAudience.current = null;
+      setSupervisorApiKey("");
+      setSupervisorCredentialAction("keep");
+      setNote("Credential destination changed. Any pasted key was cleared; select credentials for this destination.");
+    }
+    setter(next);
+  }
+
   async function refreshSupervisorCatalog() {
-    if (refreshingCatalog) return;
+    if (refreshingCatalog || supervisorSaveInFlight.current || !settingsAvailable) return;
+    const requestSequence = settingsRequestSequence.current;
     setRefreshingCatalog(true);
     try {
-      const data = await bridgeJson<{
+      const data = await supervisorRequest((signal) => bridgeJson<{
         provider: string;
         catalog: NonNullable<SupervisorInfo["catalog"]>;
         count: number;
         inference_calls: number;
       }>("/v1/supervisor/catalog/refresh", {
         method: "POST",
+        signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider: supervisorProvider.trim() || undefined }),
-      });
-      setSupervisor((current) => ({
-        ...current,
-        backend: current?.backend || data.provider,
-        catalog: data.catalog,
       }));
+      if (requestSequence !== settingsRequestSequence.current) return;
+      setSupervisor((current) => current ? { ...current, catalog: data.catalog } : current);
       setNote(`Listed ${data.count} models from ${data.provider}; no inference call was made.`);
     } catch (error) {
+      if (requestSequence !== settingsRequestSequence.current) return;
       setNote(operationError(error, "Could not refresh this provider's model list."));
     } finally {
       setRefreshingCatalog(false);
@@ -1994,20 +2028,27 @@ export function App() {
         onScale={setScale}
         onClickThrough={setClickThrough}
         onSaveAppearance={() => void saveAppearance()}
-        onSupervisorProvider={(value) => {
-          setSupervisorProvider(value);
-          setSupervisorAuth(defaultSupervisorAuth(value));
+        onSupervisorProvider={(value) => changeSupervisorDraft(supervisorProvider, value, (next) => {
+          setSupervisorProvider(next);
+          setSupervisorAuth(defaultSupervisorAuth(next));
           setSupervisorProtocol("openai");
           setSupervisorBaseUrl("");
-          setSupervisorApiKey("");
-          setSupervisorCredentialAction(value ? "keep" : "environment");
-        }}
-        onSupervisorModel={setSupervisorModel}
-        onSupervisorAuth={setSupervisorAuth}
-        onSupervisorProtocol={setSupervisorProtocol}
-        onSupervisorBaseUrl={setSupervisorBaseUrl}
-        onSupervisorApiKey={setSupervisorApiKey}
-        onSupervisorCredentialAction={setSupervisorCredentialAction}
+          setSupervisorCredentialAction(next ? "keep" : "environment");
+        }, true)}
+        onSupervisorModel={(value) => changeSupervisorDraft(supervisorModel, value, setSupervisorModel)}
+        onSupervisorAuth={(value) => changeSupervisorDraft(supervisorAuth, value, setSupervisorAuth, true)}
+        onSupervisorProtocol={(value) => changeSupervisorDraft(supervisorProtocol, value, setSupervisorProtocol, true)}
+        onSupervisorBaseUrl={(value) => changeSupervisorDraft(supervisorBaseUrl, value, setSupervisorBaseUrl, true)}
+        onSupervisorApiKey={(value) => changeSupervisorDraft(supervisorApiKey, value, (next) => {
+          supervisorKeyAudience.current = next ? supervisorCredentialAudience({
+            provider: supervisorProvider,
+            authMode: supervisorAuth,
+            protocol: supervisorProtocol,
+            baseUrl: supervisorBaseUrl,
+          }) : null;
+          setSupervisorApiKey(next);
+        })}
+        onSupervisorCredentialAction={(value) => changeSupervisorDraft(supervisorCredentialAction, value, setSupervisorCredentialAction)}
         onSaveSupervisor={() => void saveSupervisor()}
         onReloadSettings={() => void loadSettings()}
         onRefreshCatalog={() => void refreshSupervisorCatalog()}

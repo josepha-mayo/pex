@@ -638,7 +638,7 @@ test("settings fetch failure cannot submit the empty fallback form", async () =>
 
   assert.match(
     app,
-    /Promise\.allSettled\(\[\s*bridgeJson<SupervisorInfo>\("\/v1\/supervisor"\),\s*bridgeJson<ChannelHubStatus>\("\/v1\/channels"\)/u,
+    /Promise\.allSettled\(\[\s*supervisorRequest\(\(signal\) => bridgeJson<SupervisorInfo>\("\/v1\/supervisor", \{ signal \}\)\),\s*supervisorRequest\(\(signal\) => bridgeJson<ChannelHubStatus>\("\/v1\/channels", \{ signal \}\)\)/u,
   );
   assert.match(
     app,
