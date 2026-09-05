@@ -919,12 +919,26 @@ class CodexExistingThreadSubscription:
             )
 
     async def _close_after_failed_resume(self) -> None:
-        try:
-            await asyncio.shield(self.transport.close())
-        except BaseException:
-            # The original failure remains primary.  A caller must not reuse a
-            # transport after this path, even if its close operation also failed.
-            pass
+        # Own exactly one close operation. Cancelling its shielded await does
+        # not stop that operation, so settle it before releasing the coordinator
+        # lock or returning the original subscription failure. Never retry close.
+        close_task = asyncio.create_task(self.transport.close())
+        while not close_task.done():
+            try:
+                await asyncio.shield(close_task)
+            except asyncio.CancelledError:
+                # Either another caller cancellation or cancellation of the
+                # owned close itself; the loop's done check distinguishes them.
+                continue
+            except BaseException:
+                break
+        if not close_task.cancelled():
+            try:
+                close_task.result()
+            except BaseException:
+                # The original failure remains primary. Settled cleanup is not
+                # proof of successful closure, and grants no reuse authority.
+                pass
 
     async def subscribe(
         self,

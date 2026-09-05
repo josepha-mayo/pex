@@ -1255,8 +1255,14 @@ async def test_interrupted_prefix_is_frozen_before_cancellable_connection_cleanu
         # or receiving an exception from the draining task.
         assert not draining.done()
         draining.cancel()
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert not draining.done()
+        assert coordinator.interrupted_batch is batch
+        release.set()
         result = (await asyncio.gather(draining, return_exceptions=True))[0]
         assert isinstance(result, (asyncio.CancelledError, CodexObservationInterrupted))
+        assert closed.is_set()
         assert coordinator.interrupted_batch is batch
     finally:
         release.set()
