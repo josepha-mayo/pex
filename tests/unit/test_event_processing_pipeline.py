@@ -10,8 +10,16 @@ from pex_bridge.config import Settings
 from pex_bridge.pipeline import Pipeline
 from pex_bridge.store import ProjectIdentityBlockedError, Store
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
-from pex_protocol.enums import Authority, EventPhase, EventType
-from pex_protocol.goal import Goal
+from pex_protocol.context import ContextItem
+from pex_protocol.enums import (
+    Authority,
+    ContextKind,
+    EventPhase,
+    EventType,
+    Sensitivity,
+    SourceKind,
+)
+from pex_protocol.goal import Decision, Goal
 from pex_protocol.project_identity import PathPlatform, ProjectLocator, ProjectOrigin
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorResult
@@ -166,6 +174,82 @@ async def _drain_presentations(pipeline: Pipeline) -> None:
     # Drain the whole tree, not only the tasks present at the first snapshot.
     while pipeline._presentation_tasks:
         await asyncio.gather(*tuple(pipeline._presentation_tasks), return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_supervisor_gets_durable_context_and_replay_keeps_first_packet(tmp_path):
+    import hashlib
+    import json
+
+    store, _, session, pipeline = await _pipeline(tmp_path)
+    requests = []
+
+    class CapturingSupervisor(_NudgeSupervisor):
+        async def decide(self, request, *, local_model):
+            requests.append(request.model_copy(deep=True))
+            return await super().decide(request, local_model=local_model)
+
+    pipeline.supervisor = CapturingSupervisor()
+    now = datetime.now(UTC)
+    context = ContextItem(
+        id="context-sibling-result", project_id=session.project_id, goal_id=session.goal_id,
+        kind=ContextKind.RESULT, content="Sibling test receipt: the parser rejects empty rows.",
+        source_refs=["sibling-test-event"], provenance=SourceKind.TEST, valid_from=now,
+        metadata={"source_session_id": "codex:sibling"},
+    )
+    decision = Decision(
+        id="decision-avoid-rejected-parser", goal_id=session.goal_id,
+        statement="Preserve empty-row validation.",
+        alternatives_rejected=["Reusing the parser that silently drops rows"], created_at=now,
+    )
+    try:
+        await store.add_context(context)
+        await store.add_context(context.model_copy(update={
+            "id": "context-private", "content": "Private source must not enter inference.",
+            "sensitivity": Sensitivity.LOCAL_ONLY,
+        }))
+        await store.add_decision(decision)
+        event = _event(session, "durable-supervisor-context")
+        intervention = await pipeline.ingest_event(event, session)
+        assert len(requests) == 1
+        envelope = requests[0].supervisor_context
+        assert envelope is not None
+        assert context.id in envelope.offered_context_ids
+        assert "context-private" not in envelope.offered_context_ids
+        assert decision.id in envelope.offered_decision_ids
+        selected = next(item for item in envelope.context_items if item.id == context.id)
+        assert selected.content == context.content
+        assert selected.source_refs == tuple(context.source_refs)
+        assert envelope.decisions[0].alternatives_rejected == tuple(decision.alternatives_rejected)
+
+        planner = await store.get_event_effect(event.event_id, "planner")
+        frozen_request = planner["payload"]["request"]
+        assert frozen_request["supervisor_context"]["offered_context_ids"] == list(
+            envelope.offered_context_ids
+        )
+        assert "Private source must not enter inference" not in json.dumps(frozen_request)
+        assert intervention is not None
+        reference = intervention.metadata["supervisor_context_reference"]
+        assert reference["offered_context_ids"] == list(envelope.offered_context_ids)
+        expected_hash = hashlib.sha256(json.dumps(
+            envelope.model_dump(mode="json", by_alias=True), sort_keys=True,
+            separators=(",", ":"), ensure_ascii=False, allow_nan=False,
+        ).encode("utf-8")).hexdigest()
+        assert reference["packet_sha256"] == expected_hash
+        assert store._intervention_audit_record(intervention, "test")[
+            "supervisor_context_reference"
+        ] == reference
+
+        await store.add_context(context.model_copy(update={
+            "id": "context-added-after-inference", "content": "A later observation.",
+        }))
+        assert await pipeline.ingest_event(event, session) == intervention
+        assert len(requests) == 1
+        replayed = await store.get_event_effect(event.event_id, "planner")
+        assert replayed["payload"]["request"] == frozen_request
+    finally:
+        await _drain_presentations(pipeline)
+        await store.close()
 
 
 async def _followup_row(store: Store, event_id: str, kind: str) -> dict:

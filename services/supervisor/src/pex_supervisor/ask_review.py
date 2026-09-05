@@ -181,6 +181,8 @@ def review_tool_names() -> tuple[str, ...]:
         "get_recent_events",
         "get_scores",
         "get_context",
+        "get_context_items",
+        "get_decisions",
         "inspect_workspace",
         "inspect_git",
         "inspect_file",

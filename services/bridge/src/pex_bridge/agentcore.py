@@ -378,6 +378,14 @@ def cloud_request(request: SupervisorRequest) -> SupervisorRequest:
     prefetched = request.scores.features.get("prefetched_evidence")
     if isinstance(prefetched, Mapping):
         allowed_features["prefetched_evidence"] = compact_workspace_evidence(prefetched)
+    supervisor_context = None
+    if request.supervisor_context is not None:
+        context_data = request.supervisor_context.model_dump(mode="json", by_alias=True)
+        context_data["project_id"] = project_id
+        for item in context_data.get("context_items") or []:
+            if isinstance(item, dict):
+                item["project_id"] = project_id
+        supervisor_context = _bounded_json(context_data, local_values=local_values)
     data = {
         "session": {
             "id": session.id,
@@ -416,6 +424,7 @@ def cloud_request(request: SupervisorRequest) -> SupervisorRequest:
             "claim_contradiction": request.scores.claim_contradiction,
             "features": _bounded_json(allowed_features, local_values=local_values),
         },
+        "supervisor_context": supervisor_context,
         "autonomy": request.autonomy,
         "notes": _safe_text(request.notes, 1_500, local_values),
     }
@@ -443,6 +452,13 @@ def _validate_request_binding(request: SupervisorRequest) -> None:
         raise AgentCoreProtocolError("AgentCore request has inconsistent goal binding")
     if request.goal and not _project_matches(request.goal.project_id, session.project_id):
         raise AgentCoreProtocolError("AgentCore request has inconsistent project binding")
+    context = request.supervisor_context
+    if context is not None and (
+        context.target_session_id != session.id
+        or not _project_matches(context.project_id, session.project_id)
+        or context.goal_id != expected_goal
+    ):
+        raise AgentCoreProtocolError("AgentCore context has inconsistent authority binding")
     for event in request.recent_events:
         if event.session_id != session.id:
             raise AgentCoreProtocolError(

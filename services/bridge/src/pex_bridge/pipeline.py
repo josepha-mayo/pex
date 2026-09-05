@@ -73,6 +73,7 @@ from pex_bridge.adapters.base import (
     validate_worker_delivery_receipt_binding,
 )
 from pex_bridge.adapters.desktop import is_desktop_observe_session
+from pex_bridge.adapters.opencode_outcomes import event_matches_opencode_delivery
 from pex_bridge.agentcore import (
     AgentCoreDeliveryUncertainError,
     SupervisorRouter,
@@ -129,6 +130,7 @@ from pex_bridge.store import (
     stable_operator_effect_id,
     utcnow,
 )
+from pex_bridge.supervisor_context import build_supervisor_context
 
 _HANDOFF_SIGNAL = re.compile(
     r"\b(?:artifact|blocked|checkpoint|constraint|decision|dependency|error|failed|"
@@ -1995,6 +1997,12 @@ class Pipeline:
             scores=scores,
             autonomy=self.settings.autonomy,
             notes=notes,
+            supervisor_context=build_supervisor_context(
+                session,
+                [*context_items, *plan_contexts],
+                [*stored_decisions, *plan_decisions],
+                now=event.ts,
+            ),
         )
         planner_effect: dict | None = await self.store.get_event_effect(
             event.event_id,
@@ -2282,6 +2290,22 @@ class Pipeline:
         if intervention is not None:
             intervention.metadata["event_accept_seq"] = int(processing["accept_seq"])
             intervention.metadata["event_accepted_at"] = processing["accepted_at"]
+            if request.supervisor_context is not None:
+                context_packet = request.supervisor_context.model_dump(mode="json", by_alias=True)
+                # These IDs were offered to inference, not proven to have been
+                # selected, understood or used by the model. The exact packet
+                # is retained in the immutable planner request for replay.
+                intervention.metadata["supervisor_context_reference"] = {
+                    "offered_context_ids": list(request.supervisor_context.offered_context_ids),
+                    "offered_decision_ids": list(request.supervisor_context.offered_decision_ids),
+                    "observed_at": request.supervisor_context.observed_at.isoformat(),
+                    "packet_sha256": hashlib.sha256(
+                        json.dumps(
+                            context_packet, sort_keys=True, separators=(",", ":"),
+                            ensure_ascii=False, allow_nan=False,
+                        ).encode("utf-8")
+                    ).hexdigest(),
+                }
 
         if intervention is not None and local_outcome is None:
             effect_payload = {
@@ -2993,6 +3017,16 @@ class Pipeline:
         persist: bool = True,
     ) -> list[Intervention]:
         updates: list[Intervention] = []
+        if (
+            event.session_id != session.id
+            or event.harness_type != session.harness_type
+            or (event.goal_id is not None and event.goal_id != session.goal_id)
+            or (
+                event.project_id is not None
+                and not _same_project(event.project_id, session.project_id)
+            )
+        ):
+            return updates
         observable = {
             EventType.AGENT_RESPONSE,
             EventType.FILE_EDIT,
@@ -3042,8 +3076,22 @@ class Pipeline:
         ]
         candidates: list[Intervention] = []
         for item in eligible:
+            if session.harness_type not in {HarnessType.CODEX, HarnessType.OPENCODE}:
+                # A later event in the same session is not a descendant receipt.
+                # Preserve the observation without converting unsupported
+                # correlation into a claimed successful/failed intervention.
+                self._record_observed_event(item, event)
+                item.outcome = "post_delivery_activity_observed_causality_unavailable"
+                item.helped = None
+                item.metadata["outcome_final"] = True
+                item.metadata["causal_continuation_proven"] = False
+                if persist:
+                    await self.store.update_intervention(item)
+                    await self.bus.publish("intervention", item.model_dump(mode="json"))
+                updates.append(item)
+                continue
             if (
-                session.harness_type.value == "codex"
+                session.harness_type in {HarnessType.CODEX, HarnessType.OPENCODE}
                 and not isinstance(
                     (item.metadata or {}).get("worker_delivery_receipt"),
                     dict,
@@ -3165,13 +3213,29 @@ class Pipeline:
     ) -> bool:
         """Require proven continuation identity before attributing worker outcomes."""
 
+        if (
+            intervention.session_id != session.id
+            or intervention.goal_id != session.goal_id
+            or event.session_id != session.id
+            or event.harness_type != session.harness_type
+            or (event.goal_id is not None and event.goal_id != session.goal_id)
+            or (
+                event.project_id is not None
+                and not _same_project(event.project_id, session.project_id)
+            )
+        ):
+            return False
         if session.harness_type.value == "cursor":
             # A queued response or even a flushed hook is not vendor acceptance.
             # The separate Cursor ledger records bounded, ordered observations;
             # it must not enter this generic causal/helpfulness path.
             return False
+        if session.harness_type == HarnessType.OPENCODE:
+            return event_matches_opencode_delivery(intervention, session, event)
         if session.harness_type.value != "codex":
-            return True
+            # Each harness needs its own exact vendor continuation proof.
+            # Generic acceptance is never sufficient for outcome attribution.
+            return False
         receipt = (intervention.metadata or {}).get("worker_delivery_receipt")
         if not isinstance(receipt, dict):
             return False

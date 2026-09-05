@@ -43,6 +43,9 @@ export function Inspector({
   editingGoal,
   note,
   canonicalStateAvailable = true,
+  canonicalStateIssue,
+  sessionActionsAvailable = true,
+  goalActionsAvailable = true,
   onEvidence,
   onOpen,
   onPause,
@@ -77,6 +80,9 @@ export function Inspector({
   editingGoal?: boolean;
   note?: string | null;
   canonicalStateAvailable?: boolean;
+  canonicalStateIssue?: string | null;
+  sessionActionsAvailable?: boolean;
+  goalActionsAvailable?: boolean;
   onEvidence: () => void;
   onOpen: () => void;
   onPause: () => void;
@@ -126,6 +132,11 @@ export function Inspector({
           Open command deck
         </button>
       </header>
+      {canonicalStateIssue ? (
+        <p className="canonical-state-warning" role="status" aria-live="polite">
+          {canonicalStateIssue} Revision-dependent controls stay disabled until refresh succeeds.
+        </p>
+      ) : null}
       {sessions.length > 1 ? (
         <div className="session-chips" role="group" aria-label="Sessions">
           {sessions.map((session) => (
@@ -178,7 +189,7 @@ export function Inspector({
               <button type="button" className="solid" onClick={onOpen} disabled={!canOpen}>
                 {canOpen ? "Open agent" : "Open unavailable"}
               </button>
-              <button type="button" className="ghost" onClick={onPause}>
+              <button type="button" className="ghost" onClick={onPause} disabled={!sessionActionsAvailable}>
                 {current.supervision_paused ? "Resume supervision" : "Pause supervision"}
               </button>
             </div>
@@ -252,7 +263,7 @@ export function Inspector({
                 : "Observe-only tile"}
               <select
                 value={canAttach ? current.goal_id || "" : ""}
-                disabled={attachingGoal || !canAttach}
+                disabled={attachingGoal || !canAttach || !goalActionsAvailable}
                 onChange={(event) => onAttachGoal(event.target.value)}
               >
                 <option value="">
@@ -296,7 +307,7 @@ export function Inspector({
             </div>
             {onEditGoal ? (
               <div className="button-row">
-                <button type="button" className="ghost" onClick={onEditGoal} disabled={savingGoal}>
+                <button type="button" className="ghost" onClick={onEditGoal} disabled={savingGoal || !goalActionsAvailable}>
                   Edit this ledger
                 </button>
               </div>
@@ -320,6 +331,7 @@ export function Inspector({
           <GoalEditor
             draft={goalDraft}
             saving={savingGoal}
+            disabled={!goalActionsAvailable}
             willAttach={canAttach && !editingGoal}
             editing={editingGoal}
             projectIdentity={current?.project_id || current?.cwd || undefined}

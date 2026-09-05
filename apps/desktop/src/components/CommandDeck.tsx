@@ -98,6 +98,8 @@ export function CommandDeck({
   selectedSessionId,
   loading,
   error,
+  mutationsAvailable = true,
+  auditMutationsAvailable = true,
   decisionFeedback,
   identityConflicts,
   identityConflictsLoading,
@@ -141,6 +143,8 @@ export function CommandDeck({
   selectedSessionId?: string;
   loading: boolean;
   error?: string | null;
+  mutationsAvailable?: boolean;
+  auditMutationsAvailable?: boolean;
   decisionFeedback: DecisionFeedback | null;
   identityConflicts: ProjectIdentityConflictPage | null;
   identityConflictsLoading: boolean;
@@ -233,6 +237,7 @@ export function CommandDeck({
               interventions={interventions}
               attentionMetrics={attentionMetrics}
               degraded={Boolean(error)}
+              mutationsAvailable={mutationsAvailable}
               onSelect={onSelectSession}
               onOpen={onOpenSession}
               onPause={onPauseSession}
@@ -253,6 +258,7 @@ export function CommandDeck({
               identityError={identityError}
               identityResolving={identityResolving}
               identityFeedback={identityFeedback}
+              mutationsAvailable={mutationsAvailable}
               onOpen={onOpenSession}
               onResolve={onResolveDecision}
               onSelectIdentityProject={onSelectIdentityProject}
@@ -273,6 +279,7 @@ export function CommandDeck({
             <InterventionsView
               interventions={auditInterventions}
               handoffAssimilation={handoffAssimilation}
+              mutationsAvailable={auditMutationsAvailable}
               onUndo={onUndo}
             />
           ) : null}
@@ -303,6 +310,7 @@ function NowView({
   interventions,
   attentionMetrics,
   degraded,
+  mutationsAvailable,
   onSelect,
   onOpen,
   onPause,
@@ -312,6 +320,7 @@ function NowView({
   interventions: Intervention[];
   attentionMetrics: AttentionMetrics | null;
   degraded: boolean;
+  mutationsAvailable: boolean;
   onSelect: (sessionId: string) => void;
   onOpen: (session: SessionRow) => void;
   onPause: (session: SessionRow) => void;
@@ -433,7 +442,7 @@ function NowView({
                 {canOpen ? "Open agent" : "Open unavailable"}
               </button>
               <button type="button" className="ghost" onClick={() => onSelect(session.id)}>Inspect</button>
-              <button type="button" className="ghost" onClick={() => onPause(session)}>
+              <button type="button" className="ghost" disabled={!mutationsAvailable} onClick={() => onPause(session)}>
                 {session.supervision_paused ? "Resume" : "Pause"}
               </button>
             </div>
@@ -459,6 +468,7 @@ function DecisionsView({
   identityError,
   identityResolving,
   identityFeedback,
+  mutationsAvailable,
   onOpen,
   onResolve,
   onSelectIdentityProject,
@@ -479,6 +489,7 @@ function DecisionsView({
   identityError: string | null;
   identityResolving: boolean;
   identityFeedback: ProjectIdentityFeedback | null;
+  mutationsAvailable: boolean;
   onOpen: (session: SessionRow) => void;
   onResolve: (intervention: Intervention, decision: HumanDecisionChoice) => void;
   onSelectIdentityProject: (legacyProjectId: string) => void;
@@ -541,7 +552,7 @@ function DecisionsView({
         const session = sessions.find((row) => row.id === item.session_id);
         const details = permissionRequestDetails(item);
         const feedbackForItem = feedback?.interventionId === item.id ? feedback : null;
-        const busy = feedback?.state === "submitting";
+        const busy = !mutationsAvailable || feedback?.state === "submitting";
         const responseMode = String(session?.capabilities?.permission_response_mode || "none");
         const canRespondLater = responseMode === "async" || responseMode === "both";
         const canAllow = canRespondLater && session?.capabilities?.approve === true;
@@ -639,7 +650,7 @@ function DecisionsView({
       {lifecycleActions.map((item) => {
         const session = sessions.find((row) => row.id === item.session_id);
         const feedbackForItem = feedback?.interventionId === item.id ? feedback : null;
-        const busy = feedback?.state === "submitting";
+        const busy = !mutationsAvailable || feedback?.state === "submitting";
         const evidenceId = `lifecycle-evidence-${item.id}`;
         const statusId = `lifecycle-status-${item.id}`;
         return (
@@ -717,7 +728,7 @@ function DecisionsView({
           intervention={item}
           session={sessions.find((row) => row.id === item.session_id)}
           feedback={feedback?.interventionId === item.id ? feedback : null}
-          busy={feedback?.state === "submitting"}
+          busy={!mutationsAvailable || feedback?.state === "submitting"}
           onOpen={onOpen}
           onResolve={onResolve}
         />
@@ -1103,10 +1114,12 @@ function interventionHandoffEffectId(item: Intervention): string | null {
 function InterventionsView({
   interventions,
   handoffAssimilation,
+  mutationsAvailable,
   onUndo,
 }: {
   interventions: Intervention[];
   handoffAssimilation: Record<string, HandoffAssimilationStatus | "unreachable">;
+  mutationsAvailable: boolean;
   onUndo: (intervention: Intervention) => void;
 }) {
   if (!interventions.length) {
@@ -1189,7 +1202,7 @@ function InterventionsView({
                 </div>
               ) : null}
               {isSafelyUndoable(item.action_taken, item.reversible, item.result) ? (
-                <button type="button" className="text-button" onClick={() => onUndo(item)}>Undo</button>
+                <button type="button" className="text-button" disabled={!mutationsAvailable} onClick={() => onUndo(item)}>Undo</button>
               ) : null}
             </div>
           </article>

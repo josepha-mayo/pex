@@ -1,4 +1,7 @@
 import type {
+  CanonicalResourceKey,
+  CanonicalResourceMap,
+  CanonicalResourceStatus,
   CatalogPet,
   ContextHealthSignals,
   ContextItem,
@@ -464,7 +467,7 @@ export function askPexQuestions(
 }
 
 export function companionHeadline(pet: PetSnapshot | null): string {
-  if (!pet) return "All quiet";
+  if (!pet) return "Checking local state";
   const raw = (pet.headline || "").trim();
   if (!raw || raw === "quiet") {
     const working = pet.working || 0;
@@ -491,12 +494,112 @@ export function supervisorHonestyCopy(info: {
   return `${loaded} Auth mode: ${mode}. ${login}`;
 }
 
-export function statusCopy(pet: PetSnapshot | null, bridgeError: string | null): StatusCopy {
-  if (bridgeError) {
+export const CANONICAL_RESOURCE_KEYS: readonly CanonicalResourceKey[] = [
+  "pet",
+  "pets",
+  "goals",
+  "deck",
+  "context",
+  "interventions",
+  "decisions",
+  "completion",
+  "supervisor",
+  "channels",
+];
+
+export function initialCanonicalResources(): CanonicalResourceMap {
+  return Object.fromEntries(
+    CANONICAL_RESOURCE_KEYS.map((key) => [
+      key,
+      { status: "loading", error: null, lastSuccessAt: null },
+    ]),
+  ) as CanonicalResourceMap;
+}
+
+export function settleCanonicalResource(
+  current: CanonicalResourceMap,
+  key: CanonicalResourceKey,
+  outcome: "fresh" | "failed" | "loading" | "reset",
+  options: { error?: string; observedAt?: string } = {},
+): CanonicalResourceMap {
+  const prior = current[key];
+  let nextStatus: CanonicalResourceStatus;
+  if (outcome === "fresh") nextStatus = "fresh";
+  else if (outcome === "loading" || outcome === "reset") nextStatus = "loading";
+  else nextStatus = prior.lastSuccessAt ? "stale" : "unavailable";
+  const next = {
+    status: nextStatus,
+    error: outcome === "failed" ? options.error?.trim() || "Canonical data is unavailable." : null,
+    lastSuccessAt:
+      outcome === "fresh"
+        ? options.observedAt || new Date().toISOString()
+        : outcome === "reset"
+          ? null
+          : prior.lastSuccessAt,
+  };
+  if (
+    prior.status === next.status
+    && prior.error === next.error
+    && prior.lastSuccessAt === next.lastSuccessAt
+  ) return current;
+  return { ...current, [key]: next };
+}
+
+export function canonicalResourcesAreFresh(
+  resources: CanonicalResourceMap,
+  keys: readonly CanonicalResourceKey[],
+): boolean {
+  return keys.every((key) => resources[key].status === "fresh");
+}
+
+export function canonicalResourceIsFreshForScope(
+  resources: CanonicalResourceMap,
+  key: CanonicalResourceKey,
+  observedScope: string | null,
+  requestedScope: string,
+): boolean {
+  return observedScope === requestedScope && resources[key].status === "fresh";
+}
+
+export function canonicalResourceIssue(
+  resources: CanonicalResourceMap,
+  keys: readonly CanonicalResourceKey[],
+): string | null {
+  const affected = keys.filter((key) => resources[key].status !== "fresh");
+  if (!affected.length) return null;
+  const cached = affected.some((key) => resources[key].status === "stale");
+  const loading = affected.every((key) => resources[key].status === "loading");
+  if (loading) return "Checking canonical local state…";
+  const names = affected.map((key) => key.replace("supervisor", "settings")).join(", ");
+  return cached
+    ? `Cached state · ${names} could not be refreshed.`
+    : `Canonical state unavailable · ${names}.`;
+}
+
+export function statusCopy(
+  pet: PetSnapshot | null,
+  bridgeError: string | null,
+  freshness: CanonicalResourceStatus = pet ? "fresh" : "loading",
+): StatusCopy {
+  if (freshness === "loading" && !pet && !bridgeError) {
+    return {
+      tone: "quiet",
+      label: "Checking local state",
+      detail: "PEX has not observed canonical local state yet.",
+    };
+  }
+  if (bridgeError || freshness === "unavailable") {
     return {
       tone: "offline",
       label: "Bridge offline",
       detail: "Local state is unavailable. PEX will not invent an answer.",
+    };
+  }
+  if (freshness === "stale") {
+    return {
+      tone: "offline",
+      label: "Last observed state",
+      detail: "Cached pet state is visible, but current local state is unavailable.",
     };
   }
   const label = companionHeadline(pet);

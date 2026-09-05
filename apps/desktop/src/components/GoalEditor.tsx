@@ -17,6 +17,7 @@ export type GoalDraft = {
 export function GoalEditor({
   draft,
   saving,
+  disabled = false,
   willAttach,
   editing,
   projectIdentity,
@@ -26,6 +27,7 @@ export function GoalEditor({
 }: {
   draft: GoalDraft;
   saving: boolean;
+  disabled?: boolean;
   willAttach: boolean;
   editing?: boolean;
   projectIdentity?: string;
@@ -149,6 +151,7 @@ export function GoalEditor({
           type="submit"
           disabled={
             saving ||
+            disabled ||
             !draft.title.trim() ||
             !draft.objective.trim() ||
             (!projectIdentity && !draft.projectId.trim())

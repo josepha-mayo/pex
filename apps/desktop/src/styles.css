@@ -964,6 +964,31 @@ p {
   margin-top: 12px;
 }
 
+.canonical-state-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(245, 184, 86, 0.42);
+  border-radius: 10px;
+  background: rgba(245, 184, 86, 0.08);
+  color: var(--paper);
+}
+
+.canonical-state-warning p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.canonical-state-warning button {
+  flex: none;
+}
+
 .goal-project-identity {
   display: grid;
   gap: 5px;

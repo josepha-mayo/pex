@@ -27,6 +27,7 @@ import type {
   BenchState,
   AttentionMetrics,
   CatalogPet,
+  CanonicalResourceKey,
   ChannelHubStatus,
   ContextItem,
   DecisionFeedback,
@@ -57,6 +58,9 @@ import {
   canAttachPersistentGoal,
   canFocusSession,
   canOpenSession,
+  canonicalResourceIssue,
+  canonicalResourceIsFreshForScope,
+  canonicalResourcesAreFresh,
   createGoalPayload,
   currentGoals,
   canonicalEventCursor,
@@ -71,6 +75,7 @@ import {
   isPendingLifecycleDecision,
   isPendingRequestedHumanDecision,
   moodForState,
+  initialCanonicalResources,
   prepareGoalControlAttempt,
   type GoalControlAttempt,
   prepareHatchBaseCandidateAttempt,
@@ -84,6 +89,7 @@ import {
   selectPrimarySession,
   sessionGoalAttachmentPayload,
   splitPetCatalog,
+  settleCanonicalResource,
   sessionExternalUrl,
   starterInventoryFromDiscover,
   statusCopy,
@@ -262,6 +268,7 @@ function operationError(error: unknown, fallback: string): string {
 export function App() {
   const [pet, setPet] = useState<PetSnapshot | null>(null);
   const [bridgeError, setBridgeError] = useState<string | null>(null);
+  const [canonicalResources, setCanonicalResources] = useState(initialCanonicalResources);
   const [shell, setShell] = useState<Shell>(() => shellFromHash());
   const [surface, setSurface] = useState<Surface>(() => surfaceFromHash());
   const [activeView, setActiveView] = useState<DeckView>("now");
@@ -282,6 +289,7 @@ export function App() {
   const [petFleetIssues, setPetFleetIssues] = useState<string[]>([]);
   const [deck, setDeck] = useState<DeckData>({});
   const [contextItems, setContextItems] = useState<ContextItem[]>([]);
+  const [contextProjectId, setContextProjectId] = useState<string | null>(null);
   const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [handoffAssimilation, setHandoffAssimilation] =
     useState<Record<string, HandoffAssimilationStatus | "unreachable">>({});
@@ -345,6 +353,21 @@ export function App() {
   const identityResolutionRequestSequence = useRef(0);
   const identitySelectionRevision = useRef(0);
   const identitySelectedProjectIdRef = useRef("");
+  const settingsRequestSequence = useRef(0);
+  const goalEvidenceKey = useRef<string | null>(null);
+
+  const markCanonical = useCallback((
+    key: CanonicalResourceKey,
+    outcome: "fresh" | "failed" | "loading" | "reset",
+    error?: string,
+  ) => {
+    setCanonicalResources((currentState) => settleCanonicalResource(
+      currentState,
+      key,
+      outcome,
+      { error },
+    ));
+  }, []);
 
   const refreshPet = useCallback(async () => {
     const requestSequence = ++petRequestSequence.current;
@@ -355,15 +378,17 @@ export function App() {
       }
       setPet(snapshot);
       setBridgeError(null);
+      markCanonical("pet", "fresh");
       return { status: "applied" as const, snapshot };
     } catch {
       if (requestSequence !== petRequestSequence.current) {
         return { status: "superseded" as const };
       }
       setBridgeError("Bridge offline");
+      markCanonical("pet", "failed", "Pet state could not be refreshed.");
       return { status: "failed" as const };
     }
-  }, []);
+  }, [markCanonical]);
 
   const loadBaseState = useCallback(async (includeHatch = false, includeCapability = includeHatch) => {
     const requestSequence = ++baseRequestSequence.current;
@@ -378,7 +403,12 @@ export function App() {
         : Promise.resolve<HatchCap | null>(null),
     ]);
     if (requestSequence !== baseRequestSequence.current) return;
-    if (goalsResult.status === "fulfilled") setGoals(Array.isArray(goalsResult.value) ? goalsResult.value : []);
+    if (goalsResult.status === "fulfilled" && Array.isArray(goalsResult.value)) {
+      setGoals(goalsResult.value);
+      markCanonical("goals", "fresh");
+    } else {
+      markCanonical("goals", "failed", "Persistent goals could not be refreshed.");
+    }
     if (petsResult.status === "fulfilled") {
       const partitioned = splitPetCatalog(
         petsResult.value.starters || [],
@@ -387,10 +417,13 @@ export function App() {
       setBuiltInRoster(partitioned.builtIns);
       setCustomRoster(partitioned.custom);
       setPetFleetIssues(partitioned.fleetIssues);
+      markCanonical("pets", "fresh");
+    } else {
+      markCanonical("pets", "failed", "Pet catalog could not be refreshed.");
     }
     if (hatchResult.status === "fulfilled" && hatchResult.value) setHatchJobs(hatchResult.value.jobs || []);
     if (capResult.status === "fulfilled" && capResult.value) setHatchCap(capResult.value);
-  }, []);
+  }, [markCanonical]);
 
   useEffect(() => {
     let cancelled = false;
@@ -586,34 +619,45 @@ export function App() {
     setClickThrough(petClickThroughEnabled(pet?.settings?.click_through));
   }, [pet?.appearance?.scale, pet?.settings?.click_through, pet?.settings?.custom_name, pet?.settings?.scale]);
 
+  const loadSettings = useCallback(async () => {
+    const requestSequence = ++settingsRequestSequence.current;
+    const [supervisorResult, channelsResult] = await Promise.allSettled([
+      bridgeJson<SupervisorInfo>("/v1/supervisor"),
+      bridgeJson<ChannelHubStatus>("/v1/channels"),
+    ]);
+    if (requestSequence !== settingsRequestSequence.current) return;
+    if (supervisorResult.status === "fulfilled") {
+      const data = supervisorResult.value;
+      setSupervisor(data);
+      setSupervisorProvider(data.backend || "");
+      setSupervisorModel(data.model_id || "");
+      setSupervisorAuth(
+        (data.auth_mode as SupervisorAuthMode | null) ||
+          defaultSupervisorAuth(data.backend || ""),
+      );
+      setSupervisorProtocol(data.protocol || "openai");
+      setSupervisorBaseUrl(data.backend === "custom" ? data.base_url || "" : "");
+      setSupervisorApiKey("");
+      setSupervisorCredentialAction("keep");
+      markCanonical("supervisor", "fresh");
+    } else {
+      markCanonical("supervisor", "failed", "Supervisor settings could not be refreshed.");
+    }
+    if (channelsResult.status === "fulfilled") {
+      setChannels(channelsResult.value);
+      markCanonical("channels", "fresh");
+    } else {
+      markCanonical("channels", "failed", "Channel settings could not be refreshed.");
+    }
+  }, [markCanonical]);
+
   useEffect(() => {
     if (shell !== "settings") return;
-    let cancelled = false;
-    void bridgeJson<SupervisorInfo>("/v1/supervisor")
-      .then((data) => {
-        if (cancelled) return;
-        setSupervisor(data);
-        setSupervisorProvider(data.backend || "");
-        setSupervisorModel(data.model_id || "");
-        setSupervisorAuth(
-          (data.auth_mode as SupervisorAuthMode | null) ||
-            defaultSupervisorAuth(data.backend || ""),
-        );
-        setSupervisorProtocol(data.protocol || "openai");
-        setSupervisorBaseUrl(data.backend === "custom" ? data.base_url || "" : "");
-        setSupervisorApiKey("");
-        setSupervisorCredentialAction("keep");
-      })
-      .catch(() => undefined);
-    void bridgeJson<ChannelHubStatus>("/v1/channels")
-      .then((data) => {
-        if (!cancelled) setChannels(data);
-      })
-      .catch(() => undefined);
+    void loadSettings();
     return () => {
-      cancelled = true;
+      settingsRequestSequence.current += 1;
     };
-  }, [shell]);
+  }, [loadSettings, shell]);
 
   const sessions = useMemo(() => {
     const merged = new Map<string, SessionRow>();
@@ -634,6 +678,13 @@ export function App() {
     .join(" ") || null;
 
   useEffect(() => {
+    detailRequestSequence.current += 1;
+    setContextItems([]);
+    setContextProjectId(null);
+    markCanonical("context", "reset");
+  }, [markCanonical, projectId]);
+
+  useEffect(() => {
     identitySelectionRevision.current += 1;
     identitySelectedProjectIdRef.current = projectId;
     identityStatusRequestSequence.current += 1;
@@ -646,9 +697,20 @@ export function App() {
 
   useEffect(() => {
     if (!attachedGoal?.id) {
+      goalEvidenceKey.current = null;
       setLedgerDecisions([]);
       setGoalCompletion(null);
+      markCanonical("decisions", "fresh");
+      markCanonical("completion", "fresh");
       return;
+    }
+    const evidenceKey = `${attachedGoal.id}:${attachedGoal.intent_revision ?? "unknown"}`;
+    if (goalEvidenceKey.current !== evidenceKey) {
+      goalEvidenceKey.current = evidenceKey;
+      setLedgerDecisions([]);
+      setGoalCompletion(null);
+      markCanonical("decisions", "reset");
+      markCanonical("completion", "reset");
     }
     let cancelled = false;
     const goalId = encodeURIComponent(attachedGoal.id);
@@ -657,23 +719,34 @@ export function App() {
       bridgeJson<GoalCompletion>(`/v1/goals/${goalId}/completion`),
     ]).then(([decisionsResult, completionResult]) => {
       if (cancelled) return;
-      setLedgerDecisions(
-        decisionsResult.status === "fulfilled" && Array.isArray(decisionsResult.value)
-          ? decisionsResult.value
-          : [],
+      if (decisionsResult.status === "fulfilled") {
+        setLedgerDecisions(Array.isArray(decisionsResult.value) ? decisionsResult.value : []);
+      }
+      markCanonical(
+        "decisions",
+        decisionsResult.status === "fulfilled" ? "fresh" : "failed",
+        "Goal decisions could not be refreshed.",
       );
-      setGoalCompletion(
-        completionResult.status === "fulfilled" ? completionResult.value : null,
+      if (completionResult.status === "fulfilled") setGoalCompletion(completionResult.value);
+      markCanonical(
+        "completion",
+        completionResult.status === "fulfilled" ? "fresh" : "failed",
+        "Goal completion could not be refreshed.",
       );
     });
     return () => {
       cancelled = true;
     };
-  }, [attachedGoal?.id, attachedGoal?.intent_revision, sessions]);
+  }, [attachedGoal?.id, attachedGoal?.intent_revision, markCanonical, sessions]);
 
   const loadDetails = useCallback(async (includeDeck = false, showLoading = false) => {
     const requestSequence = ++detailRequestSequence.current;
-    if (showLoading) setDetailsLoading(true);
+    if (showLoading) {
+      setDetailsLoading(true);
+      markCanonical("context", "loading");
+      markCanonical("interventions", "loading");
+      if (includeDeck) markCanonical("deck", "loading");
+    }
     const contextPath = projectId ? `/v1/context?project_id=${encodeURIComponent(projectId)}` : "/v1/context";
     const interventionRequest = bridgeJson<Intervention[]>(
       "/v1/interventions?include_handoff_bundle=true",
@@ -691,9 +764,27 @@ export function App() {
       bridgeJson<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] }>("/v1/discover"),
     ]);
     if (requestSequence !== detailRequestSequence.current) return;
-    if (deckResult.status === "fulfilled" && deckResult.value) setDeck(deckResult.value);
-    if (contextResult.status === "fulfilled") setContextItems(Array.isArray(contextResult.value) ? contextResult.value : []);
-    if (interventionResult.status === "fulfilled") setInterventions(Array.isArray(interventionResult.value) ? interventionResult.value : []);
+    if (includeDeck) {
+      if (deckResult.status === "fulfilled" && deckResult.value) {
+        setDeck(deckResult.value);
+        markCanonical("deck", "fresh");
+      } else {
+        markCanonical("deck", "failed", "Command deck state could not be refreshed.");
+      }
+    }
+    if (contextResult.status === "fulfilled" && Array.isArray(contextResult.value)) {
+      setContextItems(contextResult.value);
+      setContextProjectId(projectId);
+      markCanonical("context", "fresh");
+    } else {
+      markCanonical("context", "failed", "Context could not be refreshed.");
+    }
+    if (interventionResult.status === "fulfilled" && Array.isArray(interventionResult.value)) {
+      setInterventions(interventionResult.value);
+      markCanonical("interventions", "fresh");
+    } else {
+      markCanonical("interventions", "failed", "Intervention history could not be refreshed.");
+    }
     setHandoffAssimilation(assimilationResult.status === "fulfilled" ? assimilationResult.value : {});
     setAttentionMetrics(attentionResult.status === "fulfilled" ? attentionResult.value : null);
     const coreFailed = [contextResult, interventionResult, attentionResult].some((item) => item.status === "rejected") ||
@@ -720,7 +811,7 @@ export function App() {
       }));
     }
     if (showLoading) setDetailsLoading(false);
-  }, [projectId]);
+  }, [markCanonical, projectId]);
 
   const loadProjectIdentityConflicts = useCallback(async (options: {
     conflictOffset?: number;
@@ -860,7 +951,57 @@ export function App() {
     };
   }, [activeView, loadProjectIdentityStatus, shell, surface]);
 
-  const status = useMemo(() => statusCopy(pet, bridgeError), [bridgeError, pet]);
+  const petState = canonicalResources.pet;
+  const sessionStateFresh = !bridgeError
+    && canonicalResourcesAreFresh(canonicalResources, ["pet"]);
+  const goalStateFresh = canonicalResourcesAreFresh(canonicalResources, ["goals"]);
+  const goalMutationAvailable = goalStateFresh && (!current || sessionStateFresh);
+  const goalEvidenceFresh = !attachedGoal || canonicalResourcesAreFresh(
+    canonicalResources,
+    ["decisions", "completion"],
+  );
+  const contextStateFresh = canonicalResourceIsFreshForScope(
+    canonicalResources,
+    "context",
+    contextProjectId,
+    projectId,
+  );
+  const inspectorCanonicalStateAvailable = sessionStateFresh
+    && goalStateFresh
+    && goalEvidenceFresh
+    && contextStateFresh;
+  const inspectorIssue = contextProjectId !== projectId
+    ? "Checking canonical context for the selected project…"
+    : canonicalResourceIssue(
+        canonicalResources,
+        attachedGoal
+          ? ["pet", "goals", "context", "decisions", "completion"]
+          : ["pet", "goals", "context"],
+      );
+  const deckMutationsAvailable = canonicalResourcesAreFresh(
+    canonicalResources,
+    ["deck", "goals"],
+  );
+  const auditMutationsAvailable = canonicalResourcesAreFresh(
+    canonicalResources,
+    ["interventions", "goals"],
+  );
+  const settingsAvailable = canonicalResourcesAreFresh(canonicalResources, ["supervisor"]);
+  const settingsIssue = canonicalResourceIssue(
+    canonicalResources,
+    ["supervisor", "channels", "pets"],
+  );
+  const compactGoalIssue = canonicalResourceIssue(canonicalResources, ["goals"]);
+  const deckIssue = bridgeError
+    ? "Bridge offline. Cached rows below are not current."
+    : contextProjectId !== projectId
+      ? "Checking canonical context for the selected project…"
+      : canonicalResourceIssue(canonicalResources, ["deck", "context", "interventions"])
+        || detailsError;
+  const status = useMemo(
+    () => statusCopy(pet, bridgeError, petState.status),
+    [bridgeError, pet, petState.status],
+  );
   const mood = moodForState(pet, bridgeError);
   const sheet = useBridgeAsset(
     pet?.appearance?.atlas_ready === true ? pet.appearance.spritesheet_url : undefined,
@@ -921,6 +1062,13 @@ export function App() {
   async function pauseOrResume(session?: SessionRow) {
     const row = session || current;
     if (!row) return;
+    const sourceFresh = session
+      ? canonicalResourcesAreFresh(canonicalResources, ["deck"])
+      : sessionStateFresh;
+    if (bridgeError || !sourceFresh) {
+      setNote("Current session control state is unavailable. Refresh before changing supervision.");
+      return;
+    }
     const path = row.supervision_paused ? "resume-supervision" : "pause-supervision";
     try {
       await bridgeJson(`/v1/sessions/${encodeURIComponent(row.id)}/${path}`, { method: "POST" });
@@ -965,6 +1113,10 @@ export function App() {
   }
 
   async function attachSelectedGoal(goalId: string) {
+    if (!goalMutationAvailable) {
+      setNote("Canonical goal and session state is unavailable. Refresh before attaching.");
+      return;
+    }
     if (!current || !goalId || attachingGoal || !canAttachPersistentGoal(current)) return;
     const selectedGoal = availableGoals.find((goal) => goal.id === goalId);
     if (
@@ -1003,6 +1155,10 @@ export function App() {
 
   async function savePersistentGoal(event: FormEvent) {
     event.preventDefault();
+    if (!goalMutationAvailable) {
+      setNote("Canonical goal state is unavailable. Refresh before saving changes.");
+      return;
+    }
     const goalProjectId = current?.project_id || current?.cwd || goalDraft.projectId.trim();
     if (
       !goalDraft.title.trim() ||
@@ -1043,6 +1199,7 @@ export function App() {
           === prepared.attempt.idempotencyKey
         ) goalControlAttempts.current.delete(attemptKey);
         setGoals((rows) => [updated, ...rows.filter((row) => row.id !== updated.id)]);
+        markCanonical("goals", "fresh");
         setEditingGoalId(null);
         setGoalDraft(EMPTY_GOAL);
         const ledgerNote = updated.goal_mutation_receipt.changed
@@ -1054,7 +1211,9 @@ export function App() {
             `/v1/goals/${encodeURIComponent(updated.id)}/decisions`,
           );
           setLedgerDecisions(Array.isArray(rows) ? rows : []);
+          markCanonical("decisions", "fresh");
         } catch {
+          markCanonical("decisions", "failed", "Goal decisions could not be refreshed.");
           setNote(`${ledgerNote} Its decision view could not refresh yet.`);
         }
         return;
@@ -1089,6 +1248,7 @@ export function App() {
         === prepared.attempt.idempotencyKey
       ) goalControlAttempts.current.delete(attemptKey);
       setGoals((rows) => [created, ...rows.filter((row) => row.id !== created.id)]);
+      markCanonical("goals", "fresh");
       setGoalDraft(EMPTY_GOAL);
       if (current && canAttachPersistentGoal(current)) {
         setAttachingGoal(true);
@@ -1149,6 +1309,11 @@ export function App() {
   }
 
   async function undoIntervention(intervention?: Intervention) {
+    const sourceFresh = intervention ? auditMutationsAvailable : sessionStateFresh;
+    if (!sourceFresh) {
+      setNote("Current intervention state is unavailable. Refresh before undoing an action.");
+      return;
+    }
     const id = intervention?.id || action?.id;
     const reversible = intervention?.reversible ?? action?.reversible;
     const actionType = intervention?.action_taken || action?.action;
@@ -1210,6 +1375,15 @@ export function App() {
     intervention: Intervention,
     decision: HumanDecisionChoice,
   ) {
+    if (!deckMutationsAvailable) {
+      setDecisionFeedback({
+        state: "error",
+        interventionId: intervention.id,
+        decision,
+        message: "Current decision authority is unavailable. Refresh before responding.",
+      });
+      return;
+    }
     if (
       !isPendingHumanDecision(intervention) ||
       decisionFeedback?.state === "submitting"
@@ -1487,6 +1661,10 @@ export function App() {
 
   async function saveSupervisor() {
     if (savingSupervisor) return;
+    if (!settingsAvailable) {
+      setNote("Supervisor settings are unavailable. Reload them before saving.");
+      return;
+    }
     setSavingSupervisor(true);
     try {
       const payload: Record<string, unknown> = {
@@ -1513,6 +1691,7 @@ export function App() {
         body: JSON.stringify(payload),
       });
       setSupervisor(data);
+      markCanonical("supervisor", "fresh");
       setSupervisorProvider(data.backend || supervisorProvider);
       setSupervisorModel(data.model_id || supervisorModel);
       setSupervisorAuth((data.auth_mode as SupervisorAuthMode | null) || supervisorAuth);
@@ -1674,6 +1853,8 @@ export function App() {
         supervisorApiKey={supervisorApiKey}
         supervisorCredentialAction={supervisorCredentialAction}
         channels={channels}
+        settingsAvailable={settingsAvailable}
+        settingsIssue={settingsIssue}
         savingSupervisor={savingSupervisor}
         refreshingCatalog={refreshingCatalog}
         hatchCap={hatchCap}
@@ -1710,6 +1891,7 @@ export function App() {
         onSupervisorApiKey={setSupervisorApiKey}
         onSupervisorCredentialAction={setSupervisorCredentialAction}
         onSaveSupervisor={() => void saveSupervisor()}
+        onReloadSettings={() => void loadSettings()}
         onRefreshCatalog={() => void refreshSupervisorCatalog()}
         onHatchName={(value) => changeHatchIntent(hatchName, value, setHatchName)}
         onHatchNotes={(value) => changeHatchIntent(hatchNotes, value, setHatchNotes)}
@@ -1812,15 +1994,15 @@ export function App() {
             />
             <div
               className="compact-metrics"
-              aria-label={bridgeError ? "PEX counts unavailable" : "Live PEX counts"}
+              aria-label={sessionStateFresh ? "Live PEX counts" : "PEX counts unavailable"}
             >
-              <span><strong>{bridgeError ? "—" : pet?.working || 0}</strong> working</span>
-              <span><strong>{bridgeError ? "—" : pet?.needs_you || 0}</strong> need you</span>
-              <span><strong>{bridgeError ? "—" : pet?.drifting || 0}</strong> drifting</span>
+              <span><strong>{sessionStateFresh ? pet?.working || 0 : "—"}</strong> working</span>
+              <span><strong>{sessionStateFresh ? pet?.needs_you || 0 : "—"}</strong> need you</span>
+              <span><strong>{sessionStateFresh ? pet?.drifting || 0 : "—"}</strong> drifting</span>
             </div>
           {attachedGoal ? (
             <p className="compact-goal">
-              <span>Persistent goal</span>
+              <span>{goalStateFresh ? "Persistent goal" : "Cached persistent goal"}</span>
               <strong>{attachedGoal.title}</strong>
             </p>
           ) : null}
@@ -1828,7 +2010,12 @@ export function App() {
               Inspect what PEX knows
             </button>
           </div>
-          {!sessions.length && !bridgeError ? (
+          {compactGoalIssue ? (
+            <p className="canonical-state-warning compact-state-warning" role="status" aria-live="polite">
+              {compactGoalIssue} Goal controls stay unavailable until refresh succeeds.
+            </p>
+          ) : null}
+          {!sessions.length && sessionStateFresh ? (
             <p className="empty-copy compact-empty">
               Already-open Cursor, Codex, OpenCode, Hermes, and Claude Code sessions are
               listed in place. A closed harness stays unavailable until its app or API is
@@ -1858,7 +2045,10 @@ export function App() {
           attachingGoal={attachingGoal}
           editingGoal={Boolean(editingGoalId)}
           note={note}
-          canonicalStateAvailable={!bridgeError}
+          canonicalStateAvailable={inspectorCanonicalStateAvailable}
+          canonicalStateIssue={inspectorIssue}
+          sessionActionsAvailable={sessionStateFresh}
+          goalActionsAvailable={goalMutationAvailable}
           onEvidence={() => setEvidenceOpen((open) => !open)}
           onOpen={() => void openSession()}
           onPause={() => void pauseOrResume()}
@@ -1906,13 +2096,15 @@ export function App() {
           auditInterventions={displayedInterventions}
           handoffAssimilation={handoffAssimilation}
           attentionMetrics={attentionMetrics}
-          contextItems={contextItems}
+          contextItems={contextProjectId === projectId ? contextItems : []}
           fingerprints={deck.fingerprints || []}
           adapters={deck.adapters || []}
           bench={bench}
           selectedSessionId={current?.id}
           loading={detailsLoading}
-          error={bridgeError ? "Bridge offline. Cached rows below are not current." : detailsError}
+          error={deckIssue}
+          mutationsAvailable={deckMutationsAvailable}
+          auditMutationsAvailable={auditMutationsAvailable}
           decisionFeedback={decisionFeedback}
           identityConflicts={identityConflicts}
           identityConflictsLoading={identityConflictLoading}

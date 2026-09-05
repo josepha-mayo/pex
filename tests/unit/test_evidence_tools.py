@@ -17,6 +17,8 @@ def test_evidence_tools_are_request_scoped_read_only_and_audited():
         "get_recent_events",
         "get_scores",
         "get_context",
+        "get_context_items",
+        "get_decisions",
         "inspect_workspace",
         "inspect_git",
         "inspect_file",

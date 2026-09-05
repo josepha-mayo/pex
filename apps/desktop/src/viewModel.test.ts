@@ -66,9 +66,14 @@ import {
   ASK_PEX_QUESTIONS,
   askPexQuestions,
   companionHeadline,
+  canonicalResourceIssue,
+  canonicalResourceIsFreshForScope,
+  canonicalResourcesAreFresh,
   contextItemMarks,
+  initialCanonicalResources,
   supervisorHonestyCopy,
   statusCopy,
+  settleCanonicalResource,
   starterHarnessInventoryCopy,
   starterInventoryFromDiscover,
   STARTER_HARNESS_IDS,
@@ -548,6 +553,124 @@ test("offline status never presents stale state as current", () => {
   assert.match(copy.detail, /will not invent/i);
 });
 
+test("initial companion state is checking until canonical pet state is observed", () => {
+  const resources = initialCanonicalResources();
+  const copy = statusCopy(null, null, resources.pet.status);
+
+  assert.equal(resources.pet.status, "loading");
+  assert.equal(copy.label, "Checking local state");
+  assert.match(copy.detail, /has not observed canonical local state/i);
+  assert.doesNotMatch(`${copy.label} ${copy.detail}`, /all quiet|nothing needs babysitting/i);
+});
+
+test("canonical resource failures stay independent and preserve only same-resource cache", () => {
+  assert.equal(statusCopy(null, "Bridge offline").label, "Bridge offline");
+  const initial = initialCanonicalResources();
+  const petFresh = settleCanonicalResource(initial, "pet", "fresh", {
+    observedAt: "2026-09-05T10:00:00.000Z",
+  });
+  const partialFailure = settleCanonicalResource(
+    petFresh,
+    "goals",
+    "failed",
+    { error: "Persistent goals could not be refreshed." },
+  );
+
+  assert.equal(partialFailure.pet.status, "fresh");
+  assert.equal(partialFailure.pets.status, "loading");
+  assert.equal(partialFailure.goals.status, "unavailable");
+  assert.equal(canonicalResourcesAreFresh(partialFailure, ["pet"]), true);
+  assert.equal(canonicalResourcesAreFresh(partialFailure, ["pet", "goals"]), false);
+  assert.match(canonicalResourceIssue(partialFailure, ["goals"]) || "", /unavailable/i);
+
+  const goalsFresh = settleCanonicalResource(partialFailure, "goals", "fresh", {
+    observedAt: "2026-09-05T10:01:00.000Z",
+  });
+  const cached = settleCanonicalResource(goalsFresh, "goals", "failed", {
+    error: "Persistent goals could not be refreshed.",
+  });
+  assert.equal(cached.goals.status, "stale");
+  assert.equal(cached.goals.lastSuccessAt, "2026-09-05T10:01:00.000Z");
+  assert.match(canonicalResourceIssue(cached, ["goals"]) || "", /cached state/i);
+  assert.equal(canonicalResourcesAreFresh(cached, ["goals"]), false);
+
+  const catalogFailure = settleCanonicalResource(cached, "pets", "failed", {
+    error: "Pet catalog could not be refreshed.",
+  });
+  assert.equal(catalogFailure.pets.status, "unavailable");
+  assert.equal(catalogFailure.pet.status, "fresh");
+  assert.equal(catalogFailure.goals.status, "stale");
+
+  const interventionFailure = settleCanonicalResource(
+    catalogFailure,
+    "interventions",
+    "failed",
+    { error: "Intervention history could not be refreshed." },
+  );
+  assert.equal(interventionFailure.interventions.status, "unavailable");
+  assert.equal(canonicalResourcesAreFresh(interventionFailure, ["pet"]), true);
+
+  const contextFresh = settleCanonicalResource(interventionFailure, "context", "fresh", {
+    observedAt: "2026-09-05T10:02:00.000Z",
+  });
+  assert.equal(canonicalResourceIsFreshForScope(contextFresh, "context", "project-a", "project-a"), true);
+  assert.equal(canonicalResourceIsFreshForScope(contextFresh, "context", "project-a", "project-b"), false);
+});
+
+test("stale goal and settings authority disable revision-dependent controls", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const inspector = await readFile(new URL("./components/Inspector.tsx", import.meta.url), "utf8");
+  const settings = await readFile(new URL("./components/SettingsPage.tsx", import.meta.url), "utf8");
+
+  assert.match(app, /goalMutationAvailable = goalStateFresh && \(!current \|\| sessionStateFresh\)/u);
+  assert.match(app, /if \(!goalMutationAvailable\) \{[\s\S]*?Refresh before attaching/u);
+  assert.match(app, /if \(!settingsAvailable\) \{[\s\S]*?Reload them before saving/u);
+  assert.match(inspector, /disabled=\{attachingGoal \|\| !canAttach \|\| !goalActionsAvailable\}/u);
+  assert.match(inspector, /disabled=\{savingGoal \|\| !goalActionsAvailable\}/u);
+  assert.match(settings, /disabled=\{!settingsAvailable \|\| savingSupervisor\}/u);
+  assert.match(settings, /Retry settings/u);
+});
+
+test("settings fetch failure cannot submit the empty fallback form", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+
+  assert.match(
+    app,
+    /Promise\.allSettled\(\[\s*bridgeJson<SupervisorInfo>\("\/v1\/supervisor"\),\s*bridgeJson<ChannelHubStatus>\("\/v1\/channels"\)/u,
+  );
+  assert.match(
+    app,
+    /supervisorResult\.status === "fulfilled"[\s\S]*?markCanonical\("supervisor", "fresh"\)[\s\S]*?markCanonical\("supervisor", "failed"/u,
+  );
+  assert.match(app, /settingsAvailable=\{settingsAvailable\}/u);
+  assert.match(app, /onReloadSettings=\{\(\) => void loadSettings\(\)\}/u);
+});
+
+test("intervention mutations and context stay bound to their actual live source", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const deck = await readFile(new URL("./components/CommandDeck.tsx", import.meta.url), "utf8");
+
+  assert.match(
+    app,
+    /interventionResult\.status === "fulfilled" && Array\.isArray\(interventionResult\.value\)[\s\S]*?markCanonical\("interventions", "fresh"\)[\s\S]*?markCanonical\("interventions", "failed"/u,
+  );
+  assert.match(
+    app,
+    /auditMutationsAvailable = canonicalResourcesAreFresh\([\s\S]*?\["interventions", "goals"\]/u,
+  );
+  assert.match(app, /sourceFresh = intervention \? auditMutationsAvailable : sessionStateFresh/u);
+  assert.match(deck, /mutationsAvailable=\{auditMutationsAvailable\}/u);
+  assert.match(
+    app,
+    /useEffect\(\(\) => \{\s*detailRequestSequence\.current \+= 1;\s*setContextItems\(\[\]\);\s*setContextProjectId\(null\);\s*markCanonical\("context", "reset"\);\s*\}, \[markCanonical, projectId\]\)/u,
+  );
+  assert.match(app, /canonicalResourceIsFreshForScope\([\s\S]*?contextProjectId,[\s\S]*?projectId/u);
+  assert.match(app, /contextItems=\{contextProjectId === projectId \? contextItems : \[\]\}/u);
+});
+
 test("offline state immediately suppresses stale agent prompts", async () => {
   const { readFile } = await import("node:fs/promises");
   const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
@@ -555,7 +678,7 @@ test("offline state immediately suppresses stale agent prompts", async () => {
   const deck = await readFile(new URL("./components/CommandDeck.tsx", import.meta.url), "utf8");
 
   assert.match(app, /currentSocket\.onclose = \(\) => \{[\s\S]*?void refreshPet\(\)/);
-  assert.match(app, /canonicalStateAvailable=\{!bridgeError\}/);
+  assert.match(app, /canonicalStateAvailable=\{inspectorCanonicalStateAvailable\}/);
   assert.match(app, /attentionMetrics\?\.current_pending\.items \|\| deck\.interventions \|\| \[\]/);
   assert.match(inspector, /canonicalStateAvailable \? askPexQuestions\(sessions, action\) : \[\]/);
   assert.match(inspector, /Verified complete for the current persistent intent\./);

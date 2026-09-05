@@ -6,7 +6,17 @@
 
 **Date:** 2026-09-05
 
+## Shipping execution board and current local repair — 5 Sep
+
+The internal target is **6 September WAT**. `docs/SHIP_CHECKLIST.md` holds the updated working objective, seven ordered steps, prioritized TODOs, deadline discipline and explicit exit conditions. The app goal remains active; its tools do not support editing an unfinished objective. Whole-code audit, actual UI/backend usefulness, eight-pet visual review, live comparisons and release gates remain incomplete.
+
+The outcome/context/UI repair has fresh local evidence: **298 backend tests**, then a separate overlapping **191-test harness/compatibility run**, plus **67 frontend checks and TypeScript success**; scoped Ruff and diff checks clean. Generic activity no longer receives causal helped credit; OpenCode attribution requires exact admitted parent lineage; Cursor unsupported completion no longer fabricates acceptance; bounded durable context/decisions reach frozen supervisor requests; UI resources retain independent loading/stale/failure states and block unsafe stale-revision controls. Independent bounded integration review approved this slice. See the handoff for exact file scopes, timing, failures and evidence limits. These checks are not live provider, rendered desktop, package or whole-repository proof.
+
+Next critical work: exact main/verifier tool-observation receipts, real same-session supervisor demonstration, usable onboarding and recoverable startup, then remaining audit/integrity/release gates. No live calls, services, installed hooks, package or submission were changed in this batch. Overall **NO-GO** remains.
+
 ## Current production repair — truthful Cursor stop delivery
+
+Verified source checkpoint **`c519883190c57566e6b5823042193b0e20936146`** is pushed and remote-verified. Three disjoint local gates passed **307 tests across 15 files**, with independent bounded reviews and clean scoped Ruff. This is not a whole-repository audit or live product proof. The next batch addresses false generic/OpenCode outcome credit, missing semantic context, and unverified/stale UI state; it requires new verification.
 
 Cursor hook follow-ups now have separate event-bound preparation, authenticated full-stdout-flush acknowledgment, and ordered same-session activity observations. No local queued message is reported as vendor-accepted. Aborted/error stops do not dispatch a continuation. Original effects remain delivery-uncertain; activity has explicit incomplete-coverage/non-causal flags and no helped credit. First ACKs are project/nonce/boot/age/accept-sequence fenced, with durable append-only observations and no raw nonce in audit. Final stable-source test/push receipts are in the handoff; this is not live-provider or submission proof. Deadline refreshed from the official contest overview: September 14, 5 PM PDT / September 15, 01:00 WAT.
 

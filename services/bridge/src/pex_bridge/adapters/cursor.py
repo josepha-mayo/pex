@@ -509,12 +509,13 @@ class CursorAdapter(HarnessAdapter):
     async def wait_for_turn_completion(
         self, session: HarnessSession, turn_id: str, timeout: float = 600
     ):
-        """Followups land on the next stop hook. Do not spawn a worker turn."""
-        _ = (session, timeout)
+        """Hooks provide no vendor turn acceptance/completion query."""
+        _ = (session, turn_id, timeout)
         return {
-            "status": "delivery_accepted_completion_unobserved",
-            "id": turn_id,
+            "status": "unsupported",
+            "reason": "cursor_hooks_do_not_expose_vendor_turn_completion",
             "completion_observed": False,
+            "vendor_acceptance_proven": False,
         }
 
     async def continue_or_resume(

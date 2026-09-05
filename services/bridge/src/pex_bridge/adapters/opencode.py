@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import math
 import ntpath
 from datetime import UTC, datetime
 from time import monotonic
@@ -42,6 +43,10 @@ from pex_bridge.adapters.desktop import (
     upsert_desktop_observe_session,
 )
 from pex_bridge.adapters.http_json import HttpJsonTransport, transport_events_since
+from pex_bridge.adapters.opencode_outcomes import (
+    OPENCODE_MESSAGE_LINEAGE_KEY,
+    opencode_message_lineage,
+)
 from pex_bridge.adapters.strict_json import strict_json_dumps
 
 OPENCODE_DESKTOP_IMAGES = ("OpenCode.exe", "opencode.exe")
@@ -71,6 +76,9 @@ class OpenCodeAdapter(HarnessAdapter):
         self._plugin_sessions_seen_at: dict[str, float] = {}
         self._permission_requests: set[tuple[str, str]] = set()
         self._message_roles: dict[tuple[str, str], str] = {}
+        self._message_parents: dict[tuple[str, str], str] = {}
+        self._removed_messages: set[tuple[str, str]] = set()
+        self._completed_terminal_parents: dict[str, str] = {}
         self._message_send_locks: dict[str, asyncio.Lock] = {}
         self._last_pump_error: str | None = None
         self._event_gap_detected = False
@@ -83,6 +91,14 @@ class OpenCodeAdapter(HarnessAdapter):
             and not self._pump_task.done()
         ):
             raise RuntimeError("detach the active OpenCode transport before replacing it")
+        if self.transport is not None and self.transport is not transport:
+            # A replacement transport has no resumable SSE cursor shared with
+            # the old one. Preserve the gap as a fail-closed lineage boundary.
+            self._event_gap_detected = True
+            self._message_roles.clear()
+            self._message_parents.clear()
+            self._removed_messages.clear()
+            self._completed_terminal_parents.clear()
         self.transport = transport
 
     def _pumping(self) -> bool:
@@ -346,9 +362,16 @@ class OpenCodeAdapter(HarnessAdapter):
                 json={"parts": [{"type": "text", "text": cleaned}]},
             )
         except DeliveryUncertainError:
+            # The vendor may have admitted a new turn. Retaining the old marker
+            # could suppress the only later idle observation for that turn.
+            self._completed_terminal_parents.pop(session.id, None)
             raise
         except Exception:
             return False
+        # A successfully admitted prompt starts a new turn even before its SSE
+        # user-message frame arrives. Do not let the prior turn's final-message
+        # marker suppress this turn's idle fallback if later frames are lost.
+        self._completed_terminal_parents.pop(session.id, None)
         inbox.append(cleaned)
         turn_id = await self._new_prompt_turn_id(
             session,
@@ -407,11 +430,14 @@ class OpenCodeAdapter(HarnessAdapter):
             info = item.get("info")
             if not isinstance(info, dict) or info.get("role") != "user":
                 continue
+            raw_message_id = info.get("id")
             try:
                 message_id = bounded_adapter_id(
-                    info.get("id") or "", field="OpenCode message id"
+                    raw_message_id or "", field="OpenCode message id"
                 )
             except ValueError:
+                continue
+            if not message_id or message_id != raw_message_id:
                 continue
             ids.add(message_id)
         return ids
@@ -465,10 +491,13 @@ class OpenCodeAdapter(HarnessAdapter):
             if cleaned not in texts:
                 continue
             try:
+                raw_message_id = info.get("id")
                 message_id = bounded_adapter_id(
-                    info.get("id") or "", field="OpenCode message id"
+                    raw_message_id or "", field="OpenCode message id"
                 )
             except ValueError:
+                continue
+            if not message_id or message_id != raw_message_id:
                 continue
             if message_id not in prior_message_ids:
                 candidates.add(message_id)
@@ -806,22 +835,118 @@ class OpenCodeAdapter(HarnessAdapter):
         info = props.get("info") if isinstance(props.get("info"), dict) else {}
         state = part.get("state") if isinstance(part.get("state"), dict) else {}
         raw_message_id = info.get("id") or part.get("messageID")
-        message_id = (
-            bounded_adapter_id(raw_message_id, field="OpenCode message id")
-            if isinstance(raw_message_id, str) and raw_message_id
-            else ""
-        )
+        message_id = ""
+        if isinstance(raw_message_id, str) and raw_message_id:
+            bounded_message_id = bounded_adapter_id(
+                raw_message_id, field="OpenCode message id"
+            )
+            if bounded_message_id == raw_message_id:
+                message_id = bounded_message_id
         raw_role = info.get("role")
-        role = (
-            bounded_adapter_id(raw_role, field="OpenCode message role").lower()
-            if isinstance(raw_role, str) and raw_role
-            else ""
+        role = ""
+        if isinstance(raw_role, str) and raw_role:
+            bounded_role = bounded_adapter_id(raw_role, field="OpenCode message role")
+            if bounded_role == raw_role:
+                role = bounded_role
+        assistant_message_error = bool(
+            kind == "message.updated"
+            and role == "assistant"
+            and info.get("error") is not None
         )
-        if kind == "message.updated" and message_id and role:
-            if len(self._message_roles) < MAX_MESSAGE_ROLES:
-                self._message_roles[(session.id, message_id)] = role
+        raw_finish = info.get("finish")
+        try:
+            bounded_finish = (
+                bounded_adapter_id(raw_finish, field="OpenCode assistant finish")
+                if isinstance(raw_finish, str) and raw_finish
+                else ""
+            )
+            assistant_finish = bounded_finish if bounded_finish == raw_finish else ""
+        except ValueError:
+            assistant_finish = ""
+        time_info = info.get("time") if isinstance(info.get("time"), dict) else {}
+        created_time = time_info.get("created")
+        completed_time = time_info.get("completed")
+        assistant_message_completed = bool(
+            kind == "message.updated"
+            and role == "assistant"
+            and not assistant_message_error
+            and assistant_finish == "stop"
+            and type(created_time) in {int, float}
+            and type(completed_time) in {int, float}
+            and math.isfinite(created_time)
+            and math.isfinite(completed_time)
+            and created_time >= 0
+            and completed_time >= created_time
+        )
+        parent_message_id = ""
+        if kind == "message.updated" and role == "assistant":
+            raw_parent_id = info.get("parentID")
+            try:
+                bounded_parent_id = (
+                    bounded_adapter_id(raw_parent_id, field="OpenCode parent message id")
+                    if isinstance(raw_parent_id, str) and raw_parent_id
+                    else ""
+                )
+                parent_message_id = (
+                    bounded_parent_id if bounded_parent_id == raw_parent_id else ""
+                )
+            except ValueError:
+                parent_message_id = ""
+        if kind == "message.updated" and message_id:
+            message_key = (session.id, message_id)
+            # A fresh full-message frame replaces, rather than supplements,
+            # any cached lineage. A malformed/missing parent must not allow a
+            # later part frame to inherit an older valid parent.
+            self._message_roles.pop(message_key, None)
+            self._message_parents.pop(message_key, None)
+            if role and len(self._message_roles) < MAX_MESSAGE_ROLES:
+                self._message_roles[message_key] = role
+            if role == "user":
+                self._removed_messages.discard(message_key)
+                self._completed_terminal_parents.pop(session.id, None)
+            elif role == "assistant" and parent_message_id:
+                if len(self._message_parents) < MAX_MESSAGE_ROLES:
+                    self._message_parents[message_key] = parent_message_id
         elif message_id:
             role = self._message_roles.get((session.id, message_id), "")
+            if role == "assistant":
+                parent_message_id = self._message_parents.get((session.id, message_id), "")
+        removed_message_id = ""
+        if kind == "message.removed":
+            raw_removed_id = props.get("messageID")
+            try:
+                removed_message_id = (
+                    bounded_adapter_id(raw_removed_id, field="OpenCode removed message id")
+                    if isinstance(raw_removed_id, str) and raw_removed_id
+                    else ""
+                )
+            except ValueError:
+                removed_message_id = ""
+            if removed_message_id:
+                removed_key = (session.id, removed_message_id)
+                self._message_roles.pop(removed_key, None)
+                self._message_parents.pop(removed_key, None)
+                if len(self._removed_messages) < MAX_MESSAGE_ROLES:
+                    self._removed_messages.add(removed_key)
+                elif removed_key not in self._removed_messages:
+                    # Losing a removal tombstone could later make an orphaned
+                    # assistant look like an intact descendant. Treat bounded
+                    # cache exhaustion as a permanent stream gap instead.
+                    self._event_gap_detected = True
+                    self._message_roles.clear()
+                    self._message_parents.clear()
+                    self._removed_messages.clear()
+                    self._completed_terminal_parents.clear()
+        idle_after_exact_terminal = bool(
+            kind == "session.idle"
+            and session.id in self._completed_terminal_parents
+        )
+        duplicate_terminal_for_parent = bool(
+            kind == "message.updated"
+            and assistant_message_completed
+            and parent_message_id
+            and self._completed_terminal_parents.get(session.id) == parent_message_id
+        )
         mapping = {
             "message.updated": EventType.AGENT_RESPONSE,
             "message.part.updated": EventType.AGENT_RESPONSE,
@@ -845,6 +970,26 @@ class OpenCodeAdapter(HarnessAdapter):
             )
         elif kind in {"message.updated", "message.part.updated"} and role == "user":
             event_type = EventType.USER_PROMPT
+        elif idle_after_exact_terminal:
+            # OpenCode emits session.idle after the final assistant update. The
+            # exact parent-bound message is the richer terminal event; emitting
+            # a second STOP would dispatch the supervisor twice for one turn.
+            event_type = EventType.STATUS
+        elif duplicate_terminal_for_parent:
+            # A turn has one terminal assistant response. Some OpenCode builds
+            # can persist duplicate final siblings for the same user parent;
+            # a second semantic STOP would double-dispatch the supervisor.
+            event_type = EventType.STATUS
+        elif kind == "message.updated" and assistant_message_error:
+            event_type = EventType.ERROR
+        elif (
+            kind == "message.updated"
+            and assistant_message_completed
+            and parent_message_id
+        ):
+            # OpenCode's completed assistant Message is exact turn-level proof:
+            # unlike session.idle, it retains the admitted user parentID.
+            event_type = EventType.STOP
         else:
             event_type = mapping.get(kind, EventType.STATUS)
         text = (
@@ -891,16 +1036,48 @@ class OpenCodeAdapter(HarnessAdapter):
             if replied_id:
                 self._permission_requests.discard((session.id, replied_id))
         tool_input = bounded_observed_mapping(state.get("input"))
+        lineage = (
+            opencode_message_lineage(
+                session=session,
+                message_id=message_id,
+                role=role,
+                parent_message_id=parent_message_id,
+                source_event_type=kind,
+                stream_contiguous=not self._event_gap_detected,
+                parent_removed_observed=(
+                    bool(parent_message_id)
+                    and (session.id, parent_message_id) in self._removed_messages
+                ),
+                assistant_message_completed=assistant_message_completed,
+                assistant_message_error=assistant_message_error,
+                assistant_finish=assistant_finish,
+            )
+            if kind in {"message.updated", "message.part.updated"} and message_id and role
+            else None
+        )
+        metadata: dict[str, object] = {"sse_type": kind}
+        if lineage is not None:
+            metadata[OPENCODE_MESSAGE_LINEAGE_KEY] = lineage
+        if (
+            assistant_message_completed
+            and lineage is not None
+            and lineage["stream_contiguous"] is True
+            and lineage["parent_removed_observed"] is False
+        ):
+            self._completed_terminal_parents[session.id] = parent_message_id
+        elif kind == "session.deleted":
+            self._completed_terminal_parents.pop(session.id, None)
         return HarnessEvent(
             event_id=_event_id(session.id, payload),
             ts=datetime.now(UTC),
             harness_type=HarnessType.OPENCODE,
             session_id=session.id,
             project_id=session.project_id,
+            goal_id=session.goal_id,
             event_type=event_type,
             phase=(
                 EventPhase.TERMINAL
-                if kind in {"session.idle", "session.deleted"}
+                if event_type in {EventType.STOP, EventType.SESSION_END}
                 else EventPhase.BEFORE
                 if permission
                 else EventPhase.AFTER
@@ -918,12 +1095,13 @@ class OpenCodeAdapter(HarnessAdapter):
             else [],
             error=_optional_bounded_text(state.get("error"), field="SSE error"),
             approval_request={"request_id": request_id} if permission and request_id else None,
-            metadata={"sse_type": kind},
+            metadata=metadata,
         )
 
     async def pump_into_pipeline(self, ingest) -> None:
         seen = 0
         active_transport: HttpJsonTransport | None = None
+        stream_was_connected = False
         while True:
             try:
                 transport = self.transport
@@ -931,15 +1109,33 @@ class OpenCodeAdapter(HarnessAdapter):
                     await asyncio.sleep(0.25)
                     continue
                 if transport is not active_transport:
+                    if active_transport is not None:
+                        self._event_gap_detected = True
+                        self._message_roles.clear()
+                        self._message_parents.clear()
+                        self._removed_messages.clear()
+                        self._completed_terminal_parents.clear()
                     active_transport = transport
                     seen = 0
-                    self._event_gap_detected = False
+                    stream_was_connected = False
                 ensure = getattr(transport, "ensure_sse", None)
                 if ensure is not None:
                     await ensure("/global/event")
+                stream_connected = self._events_connected()
+                if stream_was_connected and not stream_connected:
+                    self._event_gap_detected = True
+                    self._message_roles.clear()
+                    self._message_parents.clear()
+                    self._removed_messages.clear()
+                    self._completed_terminal_parents.clear()
+                stream_was_connected = stream_connected
                 next_seen, events, dropped = transport_events_since(transport, seen)
                 if dropped:
                     self._event_gap_detected = True
+                    self._message_roles.clear()
+                    self._message_parents.clear()
+                    self._removed_messages.clear()
+                    self._completed_terminal_parents.clear()
                 for raw_payload in events:
                     payload = _unwrap_global_event(raw_payload)
                     if payload is None:
@@ -959,6 +1155,11 @@ class OpenCodeAdapter(HarnessAdapter):
                 raise
             except Exception as exc:
                 self._last_pump_error = type(exc).__name__
+                self._event_gap_detected = True
+                self._message_roles.clear()
+                self._message_parents.clear()
+                self._removed_messages.clear()
+                self._completed_terminal_parents.clear()
                 await asyncio.sleep(0.5)
 
     def start_pipeline_pump(self, ingest) -> asyncio.Task:

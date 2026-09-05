@@ -4,32 +4,46 @@ Snapshot: 341 unique tracked or untracked source/configuration paths from the cu
 
 All entries start `PENDING` for the fresh independent audit. Replace status only with specific coverage evidence from the reviewer; reading a diff, searching a symbol or passing a test does not equal full-file review. Record unresolved findings in SHIP_CHECKLIST.md or a linked findings log. New source files must be added and changed files re-reviewed.
 
+## New-path addendum and bounded repair review
+
+Five new paths after the original snapshot bring this ledger to **346 source/configuration paths**. This is not a refreshed exhaustive filesystem inventory; reconcile new files again before release. The initial domain audits recorded 49 full reads. Main and independent reviewers also reviewed the outcome/context/UI repair diffs; that is bounded changed-code review, not full-file approval for the large existing pipeline, Store, adapter or App modules. Remaining findings and actual UI/provider proof stay open in `SHIP_CHECKLIST.md`.
+
+| New file | Review scope / result |
+| --- | --- |
+| `services/bridge/src/pex_bridge/adapters/opencode_outcomes.py` | FULL READ by main and harness owner; exact receipt/parent/scope checks; offline positive and adversarial coverage, not live proof |
+| `services/bridge/src/pex_bridge/supervisor_context.py` | FULL READ by main and supervisor owner; scope, redaction, validity and bounded selection; exact evidence observations remain separate |
+| `tests/unit/test_opencode_outcome_lineage.py` | FULL READ by harness owner; main reviewed terminal and attribution cases; offline fixtures only |
+| `tests/unit/test_supervisor_context.py` | FULL READ by supervisor owner; main reviewed integration and pagination boundaries; no real model execution |
+| `tests/unit/test_worker_outcome_attribution.py` | FULL READ by main and independent integration reviewer; generic false-credit and foreign-authority regressions |
+
+## Original snapshot
+
 | File | Audit responsibility | Fresh audit status |
 | --- | --- | --- |
-| `apps/desktop/package.json` | UI / release | PENDING |
+| `apps/desktop/package.json` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/scripts/build-sidecar.mjs` | UI / release | PENDING |
-| `apps/desktop/scripts/record_submission_demo.py` | UI / release | PENDING |
-| `apps/desktop/scripts/release-contract.mjs` | UI / release | PENDING |
-| `apps/desktop/scripts/release-contract.test.mjs` | UI / release | PENDING |
-| `apps/desktop/src-tauri/build.rs` | UI / release | PENDING |
-| `apps/desktop/src-tauri/capabilities/default.json` | UI / release | PENDING |
-| `apps/desktop/src-tauri/capabilities/pet.json` | UI / release | PENDING |
-| `apps/desktop/src-tauri/Cargo.toml` | UI / release | PENDING |
-| `apps/desktop/src-tauri/permissions/focus.toml` | UI / release | PENDING |
-| `apps/desktop/src-tauri/src/main.rs` | UI / release | PENDING |
-| `apps/desktop/src-tauri/tauri.conf.json` | UI / release | PENDING |
-| `apps/desktop/src/App.tsx` | UI / release | PENDING |
-| `apps/desktop/src/components/AskPex.tsx` | UI / release | PENDING |
-| `apps/desktop/src/components/CommandDeck.tsx` | UI / release | PENDING |
-| `apps/desktop/src/components/GoalEditor.tsx` | UI / release | PENDING |
-| `apps/desktop/src/components/Inspector.tsx` | UI / release | PENDING |
-| `apps/desktop/src/components/PetStage.tsx` | UI / release | PENDING |
-| `apps/desktop/src/components/ProjectIdentityPanel.tsx` | UI / release | PENDING |
-| `apps/desktop/src/components/SettingsPage.tsx` | UI / release | PENDING |
-| `apps/desktop/src/decisionContract.ts` | UI / release | PENDING |
-| `apps/desktop/src/main.tsx` | UI / release | PENDING |
-| `apps/desktop/src/pets/atlas.tsx` | UI / release | PENDING |
-| `apps/desktop/src/pets/atlasMath.ts` | UI / release | PENDING |
+| `apps/desktop/scripts/record_submission_demo.py` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/scripts/release-contract.mjs` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/scripts/release-contract.test.mjs` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src-tauri/build.rs` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src-tauri/capabilities/default.json` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src-tauri/capabilities/pet.json` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src-tauri/Cargo.toml` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src-tauri/permissions/focus.toml` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src-tauri/src/main.rs` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src-tauri/tauri.conf.json` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/App.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/components/AskPex.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/components/CommandDeck.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/components/GoalEditor.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/components/Inspector.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/components/PetStage.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/components/ProjectIdentityPanel.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/components/SettingsPage.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/decisionContract.ts` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/main.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/pets/atlas.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/pets/atlasMath.ts` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src/pets/drift/pet.json` | UI / release | PENDING |
 | `apps/desktop/src/pets/ember/pet.json` | UI / release | PENDING |
 | `apps/desktop/src/pets/ledger/pet.json` | UI / release | PENDING |
@@ -38,15 +52,15 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 | `apps/desktop/src/pets/pex/pet.json` | UI / release | PENDING |
 | `apps/desktop/src/pets/quiet/pet.json` | UI / release | PENDING |
 | `apps/desktop/src/pets/release-manifest.json` | UI / release | PENDING |
-| `apps/desktop/src/pets/types.ts` | UI / release | PENDING |
+| `apps/desktop/src/pets/types.ts` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src/pets/von/pet.json` | UI / release | PENDING |
-| `apps/desktop/src/releasePet.ts` | UI / release | PENDING |
-| `apps/desktop/src/types.ts` | UI / release | PENDING |
+| `apps/desktop/src/releasePet.ts` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/types.ts` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src/viewModel.test.ts` | UI / release | PENDING |
-| `apps/desktop/src/viewModel.ts` | UI / release | PENDING |
+| `apps/desktop/src/viewModel.ts` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src/vite-env.d.ts` | UI / release | PENDING |
-| `apps/desktop/tsconfig.json` | UI / release | PENDING |
-| `apps/desktop/vite.config.ts` | UI / release | PENDING |
+| `apps/desktop/tsconfig.json` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/vite.config.ts` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `benchmarks/boundary.py` | Harness / integrity | PENDING |
 | `benchmarks/cursor_capture.py` | Harness / integrity | PENDING |
 | `benchmarks/cursor_isolated_stop.py` | Harness / integrity | PENDING |
@@ -78,22 +92,22 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 | `packages/protocol-ts/src/index.ts` | Backend / release cross-review | PENDING |
 | `packages/protocol/pyproject.toml` | Backend / release cross-review | PENDING |
 | `packages/protocol/src/pex_protocol/__init__.py` | Backend / release cross-review | PENDING |
-| `packages/protocol/src/pex_protocol/actions.py` | Backend / release cross-review | PENDING |
+| `packages/protocol/src/pex_protocol/actions.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `packages/protocol/src/pex_protocol/capabilities.py` | Backend / release cross-review | PENDING |
 | `packages/protocol/src/pex_protocol/context.py` | Backend / release cross-review | PENDING |
-| `packages/protocol/src/pex_protocol/enums.py` | Backend / release cross-review | PENDING |
+| `packages/protocol/src/pex_protocol/enums.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `packages/protocol/src/pex_protocol/fingerprint.py` | Backend / release cross-review | PENDING |
-| `packages/protocol/src/pex_protocol/goal.py` | Backend / release cross-review | PENDING |
-| `packages/protocol/src/pex_protocol/intervention.py` | Backend / release cross-review | PENDING |
+| `packages/protocol/src/pex_protocol/goal.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
+| `packages/protocol/src/pex_protocol/intervention.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `packages/protocol/src/pex_protocol/overlay.py` | Backend / release cross-review | PENDING |
 | `packages/protocol/src/pex_protocol/project_identity.py` | Backend / release cross-review | PENDING |
 | `packages/protocol/src/pex_protocol/redaction.py` | Backend / release cross-review | PENDING |
-| `packages/protocol/src/pex_protocol/session.py` | Backend / release cross-review | PENDING |
-| `packages/protocol/src/pex_protocol/supervisor.py` | Backend / release cross-review | PENDING |
+| `packages/protocol/src/pex_protocol/session.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
+| `packages/protocol/src/pex_protocol/supervisor.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `packages/protocol/src/pex_protocol/verification.py` | Backend / release cross-review | PENDING |
 | `pyproject.toml` | Backend / release cross-review | PENDING |
 | `rust-toolchain.toml` | Backend / release cross-review | PENDING |
-| `scripts/install.ps1` | Backend / release cross-review | PENDING |
+| `scripts/install.ps1` | Backend / release cross-review | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `scripts/pet_atlas_runtime_contract.py` | Backend / release cross-review | PENDING |
 | `services/bridge/pyproject.toml` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/__init__.py` | Backend / release cross-review | PENDING |
@@ -128,16 +142,16 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 | `services/bridge/src/pex_bridge/agentcore.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/app.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/ask.py` | Backend / release cross-review | PENDING |
-| `services/bridge/src/pex_bridge/benchmark_public.py` | Backend / release cross-review | PENDING |
+| `services/bridge/src/pex_bridge/benchmark_public.py` | Backend / release cross-review | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `services/bridge/src/pex_bridge/bus.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/channels.py` | Backend / release cross-review | PENDING |
-| `services/bridge/src/pex_bridge/claims.py` | Backend / release cross-review | PENDING |
+| `services/bridge/src/pex_bridge/claims.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `services/bridge/src/pex_bridge/config.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/context/__init__.py` | Backend / release cross-review | PENDING |
-| `services/bridge/src/pex_bridge/context/health.py` | Backend / release cross-review | PENDING |
-| `services/bridge/src/pex_bridge/context/mesh.py` | Backend / release cross-review | PENDING |
+| `services/bridge/src/pex_bridge/context/health.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
+| `services/bridge/src/pex_bridge/context/mesh.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `services/bridge/src/pex_bridge/cursor_delivery.py` | Backend / release cross-review | PENDING |
-| `services/bridge/src/pex_bridge/decision_delivery.py` | Backend / release cross-review | PENDING |
+| `services/bridge/src/pex_bridge/decision_delivery.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `services/bridge/src/pex_bridge/decisions.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/deep_links.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/demo.py` | Backend / release cross-review | PENDING |
@@ -145,12 +159,12 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 | `services/bridge/src/pex_bridge/fingerprints.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/handoff_views.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/hook_auth.py` | Backend / release cross-review | PENDING |
-| `services/bridge/src/pex_bridge/intent.py` | Backend / release cross-review | PENDING |
+| `services/bridge/src/pex_bridge/intent.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `services/bridge/src/pex_bridge/ledger.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/main.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/mcp_auth.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/mcp_server.py` | Backend / release cross-review | PENDING |
-| `services/bridge/src/pex_bridge/observe.py` | Backend / release cross-review | PENDING |
+| `services/bridge/src/pex_bridge/observe.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `services/bridge/src/pex_bridge/origin_guard.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/overlay_runtime.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/pets/__init__.py` | Backend / release cross-review | PENDING |
@@ -160,9 +174,9 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 | `services/bridge/src/pex_bridge/pets/imagegen.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/pipeline.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/policy/__init__.py` | Backend / release cross-review | PENDING |
-| `services/bridge/src/pex_bridge/policy/engine.py` | Backend / release cross-review | PENDING |
+| `services/bridge/src/pex_bridge/policy/engine.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `services/bridge/src/pex_bridge/request_limits.py` | Backend / release cross-review | PENDING |
-| `services/bridge/src/pex_bridge/scoring.py` | Backend / release cross-review | PENDING |
+| `services/bridge/src/pex_bridge/scoring.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `services/bridge/src/pex_bridge/secrets.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/shell_state.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/speculative.py` | Backend / release cross-review | PENDING |
@@ -174,16 +188,16 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 | `services/supervisor/src/pex_supervisor/background.py` | Backend / release cross-review | PENDING |
 | `services/supervisor/src/pex_supervisor/catalog.py` | Backend / release cross-review | PENDING |
 | `services/supervisor/src/pex_supervisor/drift.py` | Backend / release cross-review | PENDING |
-| `services/supervisor/src/pex_supervisor/evidence_tools.py` | Backend / release cross-review | PENDING |
+| `services/supervisor/src/pex_supervisor/evidence_tools.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `services/supervisor/src/pex_supervisor/inspect_http.py` | Backend / release cross-review | PENDING |
-| `services/supervisor/src/pex_supervisor/loop.py` | Backend / release cross-review | PENDING |
-| `services/supervisor/src/pex_supervisor/planner.py` | Backend / release cross-review | PENDING |
+| `services/supervisor/src/pex_supervisor/loop.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
+| `services/supervisor/src/pex_supervisor/planner.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `services/supervisor/src/pex_supervisor/providers.py` | Backend / release cross-review | PENDING |
 | `services/supervisor/src/pex_supervisor/public_task.py` | Backend / release cross-review | PENDING |
 | `services/supervisor/src/pex_supervisor/runtime.py` | Backend / release cross-review | PENDING |
 | `services/supervisor/src/pex_supervisor/search.py` | Backend / release cross-review | PENDING |
 | `services/supervisor/src/pex_supervisor/verify.py` | Backend / release cross-review | PENDING |
-| `services/supervisor/src/pex_supervisor/workspace.py` | Backend / release cross-review | PENDING |
+| `services/supervisor/src/pex_supervisor/workspace.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `tests/__init__.py` | Test cross-review | PENDING |
 | `tests/chaos/test_malformed_events.py` | Test cross-review | PENDING |
 | `tests/conftest.py` | Test cross-review | PENDING |

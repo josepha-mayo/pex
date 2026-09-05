@@ -715,3 +715,25 @@ export type StatusCopy = {
   label: string;
   detail: string;
 };
+
+export type CanonicalResourceKey =
+  | "pet"
+  | "pets"
+  | "goals"
+  | "deck"
+  | "context"
+  | "interventions"
+  | "decisions"
+  | "completion"
+  | "supervisor"
+  | "channels";
+
+export type CanonicalResourceStatus = "loading" | "fresh" | "stale" | "unavailable";
+
+export type CanonicalResourceState = {
+  status: CanonicalResourceStatus;
+  error: string | null;
+  lastSuccessAt: string | null;
+};
+
+export type CanonicalResourceMap = Record<CanonicalResourceKey, CanonicalResourceState>;

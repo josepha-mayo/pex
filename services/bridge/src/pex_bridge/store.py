@@ -22890,6 +22890,8 @@ class Store:
             "transport_status": metadata.get("transport_status"),
             "evidence_tools": metadata.get("evidence_tools") or [],
             "independent_verifier": metadata.get("independent_verifier"),
+            "supervisor_context_reference": metadata.get("supervisor_context_reference"),
+            "causal_continuation_proven": metadata.get("causal_continuation_proven"),
             "traces": metadata.get("traces") or [],
             "trigger_event_id": metadata.get("trigger_event_id"),
             "observed_event_refs": metadata.get("outcome_event_ids") or [],

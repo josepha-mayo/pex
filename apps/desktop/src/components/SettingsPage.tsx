@@ -34,6 +34,8 @@ export function SettingsPage({
   supervisorApiKey,
   supervisorCredentialAction,
   channels,
+  settingsAvailable,
+  settingsIssue,
   savingSupervisor,
   refreshingCatalog,
   hatchCap,
@@ -64,6 +66,7 @@ export function SettingsPage({
   onSupervisorApiKey,
   onSupervisorCredentialAction,
   onSaveSupervisor,
+  onReloadSettings,
   onRefreshCatalog,
   onHatchName,
   onHatchNotes,
@@ -92,6 +95,8 @@ export function SettingsPage({
   supervisorApiKey: string;
   supervisorCredentialAction: SupervisorCredentialAction;
   channels: ChannelHubStatus | null;
+  settingsAvailable: boolean;
+  settingsIssue?: string | null;
   savingSupervisor: boolean;
   refreshingCatalog: boolean;
   hatchCap: HatchCap | null;
@@ -122,6 +127,7 @@ export function SettingsPage({
   onSupervisorApiKey: (value: string) => void;
   onSupervisorCredentialAction: (value: SupervisorCredentialAction) => void;
   onSaveSupervisor: () => void;
+  onReloadSettings: () => void;
   onRefreshCatalog: () => void;
   onHatchName: (value: string) => void;
   onHatchNotes: (value: string) => void;
@@ -278,14 +284,34 @@ export function SettingsPage({
           <section className="settings-card settings-wide">
             <p className="eyebrow">Supervisor inference</p>
             <h2>PEX model</h2>
-            <p className="settings-note">{supervisorHonestyCopy(supervisor)}</p>
             <p className="settings-note">
-              {supervisor?.login_note || "This is PEX’s supervisor model, not a worker harness. Keys stay in .env."}
+              {supervisor
+                ? supervisorHonestyCopy(supervisor)
+                : "Supervisor configuration has not been observed from canonical local state."}
             </p>
+            <p className="settings-note">
+              {supervisor?.login_note || (supervisor
+                ? "This is PEX’s supervisor model, not a worker harness. Use the displayed credential source."
+                : "No provider or credential source is assumed while settings are unavailable.")}
+            </p>
+            {settingsIssue ? (
+              <div className="canonical-state-warning" role="status" aria-live="polite">
+                <p>
+                  {settingsIssue}{" "}
+                  {settingsAvailable
+                    ? "Available settings remain editable; unavailable sections are not treated as defaults."
+                    : "Supervisor configuration controls remain disabled until a current revision loads."}
+                </p>
+                <button type="button" className="ghost" onClick={onReloadSettings}>
+                  Retry settings
+                </button>
+              </div>
+            ) : null}
             <div className="form-grid two-column">
               <label>
                 Provider
                 <select
+                  disabled={!settingsAvailable}
                   value={supervisorProvider}
                   onChange={(event) => {
                     const next = event.target.value;
@@ -300,7 +326,7 @@ export function SettingsPage({
               </label>
               <label>
                 {catalogIsLive ? "Live provider models" : "Model suggestions (unverified)"}
-                <select value={inCatalog ? supervisorModel : ""} onChange={(event) => onSupervisorModel(event.target.value)}>
+                <select disabled={!settingsAvailable} value={inCatalog ? supervisorModel : ""} onChange={(event) => onSupervisorModel(event.target.value)}>
                   <option value="">paste any model id below</option>
                   {visibleCatalog.map((row) => (
                       <option value={row.model_id} key={`${row.provider}:${row.model_id}:${row.label}`}>
@@ -312,13 +338,14 @@ export function SettingsPage({
             </div>
             <label>
               Model id
-              <input value={supervisorModel} onChange={(event) => onSupervisorModel(event.target.value)} placeholder="Any supported vendor id" />
+              <input disabled={!settingsAvailable} value={supervisorModel} onChange={(event) => onSupervisorModel(event.target.value)} placeholder="Any supported vendor id" />
             </label>
             <div className="form-grid two-column">
               <label>
                 Authentication
                 <select
                   value={supervisorAuth}
+                  disabled={!settingsAvailable}
                   onChange={(event) => onSupervisorAuth(event.target.value as SupervisorAuthMode)}
                 >
                   {supervisorAuthOptions.map((mode) => (
@@ -331,6 +358,7 @@ export function SettingsPage({
                   Endpoint protocol
                   <select
                     value={supervisorProtocol}
+                    disabled={!settingsAvailable}
                     onChange={(event) => onSupervisorProtocol(event.target.value as SupervisorProtocol)}
                   >
                     <option value="openai">OpenAI-compatible</option>
@@ -344,6 +372,7 @@ export function SettingsPage({
                 Custom base URL
                 <input
                   value={supervisorBaseUrl}
+                  disabled={!settingsAvailable}
                   onChange={(event) => onSupervisorBaseUrl(event.target.value)}
                   placeholder="https://models.example.com/v1"
                   autoComplete="off"
@@ -358,6 +387,7 @@ export function SettingsPage({
                   <input
                     type="password"
                     value={supervisorApiKey}
+                    disabled={!settingsAvailable}
                     onChange={(event) => onSupervisorApiKey(event.target.value)}
                     placeholder={supervisor?.credential_configured ? "Stored locally · paste to replace" : "Paste to store in the OS credential vault"}
                     autoComplete="new-password"
@@ -368,6 +398,7 @@ export function SettingsPage({
                   When the key box is empty
                   <select
                     value={supervisorCredentialAction}
+                    disabled={!settingsAvailable}
                     onChange={(event) => onSupervisorCredentialAction(event.target.value as SupervisorCredentialAction)}
                   >
                     <option value="keep">Keep the current credential source</option>
@@ -384,10 +415,10 @@ export function SettingsPage({
                 </p>
               </>
             ) : null}
-            <button type="button" className="ghost" disabled={refreshingCatalog} onClick={onRefreshCatalog}>
+            <button type="button" className="ghost" disabled={!settingsAvailable || refreshingCatalog} onClick={onRefreshCatalog}>
               {refreshingCatalog ? "Refreshing…" : "Refresh configured provider models"}
             </button>
-            <button type="button" className="solid" disabled={savingSupervisor} onClick={onSaveSupervisor}>
+            <button type="button" className="solid" disabled={!settingsAvailable || savingSupervisor} onClick={onSaveSupervisor}>
               {savingSupervisor ? "Saving…" : "Save supervisor"}
             </button>
           </section>

@@ -16,10 +16,15 @@ from typing import Any
 
 from pex_protocol.redaction import redact_mapping
 from pex_protocol.session import HarnessEvent
-from pex_protocol.supervisor import SupervisorRequest
+from pex_protocol.supervisor import (
+    SupervisorContextItem,
+    SupervisorDecisionItem,
+    SupervisorRequest,
+)
 from strands import tool
 
 _TOOL_JSON_LIMIT = 8_000
+_CONTEXT_PAGE_SIZE = 3
 _SCORE_FEATURES = {
     "event_count",
     "repeated_command_count",
@@ -123,6 +128,81 @@ def _event_view(event: HarnessEvent) -> dict[str, Any]:
         "file_paths": [_clip(path, 300) for path in event.file_paths[:20]],
         "error": _clip(event.error, 500) or None,
         "cost": event.cost,
+    }
+
+
+def _page_offset(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def _context_item_summary(item: SupervisorContextItem) -> dict[str, object]:
+    return {
+        "id": item.id,
+        "kind": str(getattr(item, "kind", "")),
+        "semantic_kind": _clip(getattr(item, "semantic_kind", ""), 120) or None,
+        "status": _clip(getattr(item, "status", ""), 120) or None,
+        "provenance": str(getattr(item, "provenance", "")),
+        "verified": bool(getattr(item, "verified", False)),
+        "content_preview": _clip(getattr(item, "content", ""), 240),
+        "source_session_id": _clip(getattr(item, "source_session_id", ""), 200)
+        or None,
+    }
+
+
+def _context_item_detail(item: SupervisorContextItem) -> dict[str, object]:
+    content = str(getattr(item, "content", "") or "")
+    source_refs = list(getattr(item, "source_refs", ()) or ())
+    tags = list(getattr(item, "relevance_tags", ()) or ())
+    return {
+        **_context_item_summary(item),
+        "content": _clip(content, 1_200),
+        "content_truncated": len(content) > 1_200,
+        "source_refs": [_clip(value, 200) for value in source_refs[:6]],
+        "source_refs_omitted": max(0, len(source_refs) - 6),
+        "relevance_tags": [_clip(value, 120) for value in tags[:8]],
+        "relevance_tags_omitted": max(0, len(tags) - 8),
+        "confidence": getattr(item, "confidence", None),
+        "valid_from": item.valid_from.isoformat(),
+        "stale_after": (
+            item.stale_after.isoformat() if item.stale_after is not None else None
+        ),
+        "supersedes": _clip(getattr(item, "supersedes", ""), 200) or None,
+        "sensitivity": str(getattr(item, "sensitivity", "")),
+    }
+
+
+def _decision_summary(item: SupervisorDecisionItem) -> dict[str, object]:
+    return {
+        "id": item.id,
+        "statement_preview": _clip(getattr(item, "statement", ""), 240),
+        "source": str(getattr(item, "source", "")),
+        "status": str(getattr(item, "status", "")),
+        "confidence": getattr(item, "confidence", None),
+        "source_session_id": _clip(getattr(item, "source_session_id", ""), 200)
+        or None,
+    }
+
+
+def _decision_detail(item: SupervisorDecisionItem) -> dict[str, object]:
+    statement = str(getattr(item, "statement", "") or "")
+    rationale = str(getattr(item, "rationale", "") or "")
+    alternatives = list(getattr(item, "alternatives_rejected", ()) or ())
+    source_refs = list(getattr(item, "source_refs", ()) or ())
+    return {
+        **_decision_summary(item),
+        "statement": _clip(statement, 1_200),
+        "statement_truncated": len(statement) > 1_200,
+        "rationale": _clip(rationale, 800) or None,
+        "rationale_truncated": len(rationale) > 800,
+        "alternatives_rejected": [_clip(value, 500) for value in alternatives[:6]],
+        "alternatives_omitted": max(0, len(alternatives) - 6),
+        "scope": _clip(getattr(item, "scope", ""), 500) or None,
+        "created_at": item.created_at.isoformat(),
+        "source_refs": [_clip(value, 200) for value in source_refs[:6]],
+        "source_refs_omitted": max(0, len(source_refs) - 6),
+        "sensitivity": str(getattr(item, "sensitivity", "")),
     }
 
 
@@ -240,9 +320,9 @@ def build_evidence_tools(
     @tool(
         name="get_context",
         description=(
-            "Return an index of inspectable evidence. Query inspect_workspace, inspect_git, "
-            "inspect_file, inspect_artifact, inspect_process, run_verification, web_search, "
-            "and scrape_url for state."
+            "Return an index of inspectable evidence and selected durable context. Query "
+            "get_context_items, get_decisions, inspect_workspace, inspect_git, inspect_file, "
+            "inspect_artifact, inspect_process, run_verification, web_search, and scrape_url."
         ),
     )
     def get_context() -> str:
@@ -252,6 +332,8 @@ def build_evidence_tools(
             "get_context",
             {
                 "query": [
+                    "get_context_items",
+                    "get_decisions",
                     "inspect_workspace",
                     "inspect_git",
                     "inspect_file",
@@ -264,6 +346,198 @@ def build_evidence_tools(
                 "claims_present": bool(features.get("claims")),
                 "verification_present": bool(features.get("verification")),
                 "workspace_prefetched": bool(workspace),
+                "offered_context_count": len(
+                    request.supervisor_context.offered_context_ids
+                    if request.supervisor_context is not None
+                    else ()
+                ),
+                "context_first_ids": list(
+                    request.supervisor_context.offered_context_ids[:_CONTEXT_PAGE_SIZE]
+                    if request.supervisor_context is not None
+                    else ()
+                ),
+                "context_next_offset": (
+                    _CONTEXT_PAGE_SIZE
+                    if request.supervisor_context is not None
+                    and len(request.supervisor_context.offered_context_ids)
+                    > _CONTEXT_PAGE_SIZE
+                    else None
+                ),
+                "context_next_ids": list(
+                    request.supervisor_context.offered_context_ids[
+                        _CONTEXT_PAGE_SIZE : _CONTEXT_PAGE_SIZE * 2
+                    ]
+                    if request.supervisor_context is not None
+                    else ()
+                ),
+                "offered_decision_count": len(
+                    request.supervisor_context.offered_decision_ids
+                    if request.supervisor_context is not None
+                    else ()
+                ),
+                "decision_first_ids": list(
+                    request.supervisor_context.offered_decision_ids[:_CONTEXT_PAGE_SIZE]
+                    if request.supervisor_context is not None
+                    else ()
+                ),
+                "decision_next_offset": (
+                    _CONTEXT_PAGE_SIZE
+                    if request.supervisor_context is not None
+                    and len(request.supervisor_context.offered_decision_ids)
+                    > _CONTEXT_PAGE_SIZE
+                    else None
+                ),
+                "decision_next_ids": list(
+                    request.supervisor_context.offered_decision_ids[
+                        _CONTEXT_PAGE_SIZE : _CONTEXT_PAGE_SIZE * 2
+                    ]
+                    if request.supervisor_context is not None
+                    else ()
+                ),
+            },
+        )
+
+    @tool(
+        name="get_context_items",
+        description=(
+            "Page through bounded provenance-bearing durable context, or retrieve one "
+            "offered item by exact context_id. Use next_offset until it is null."
+        ),
+    )
+    def get_context_items(context_id: str = "", offset: int = 0) -> str:
+        envelope = request.supervisor_context
+        if envelope is None:
+            return record("get_context_items", {"available": False, "items": []})
+        if context_id:
+            if offset != 0:
+                return record(
+                    "get_context_items",
+                    {"available": True, "error": "context_id and offset are mutually exclusive"},
+                )
+            selected = next(
+                (item for item in envelope.context_items if item.id == context_id),
+                None,
+            )
+            if selected is None:
+                return record(
+                    "get_context_items",
+                    {
+                        "available": True,
+                        "mode": "item",
+                        "error": "context_id was not offered",
+                        "context_id": _clip(context_id, 200),
+                    },
+                )
+            return record(
+                "get_context_items",
+                {
+                    "available": True,
+                    "mode": "item",
+                    "observed_at": envelope.observed_at.isoformat(),
+                    "item": _context_item_detail(selected),
+                },
+            )
+        start = _page_offset(offset)
+        if start is None:
+            return record(
+                "get_context_items",
+                {"available": True, "error": "offset must be a non-negative integer"},
+            )
+        page = envelope.context_items[start : start + _CONTEXT_PAGE_SIZE]
+        next_offset = start + len(page)
+        if next_offset >= len(envelope.context_items):
+            next_offset = None
+        next_ids = (
+            envelope.offered_context_ids[
+                next_offset : next_offset + _CONTEXT_PAGE_SIZE
+            ]
+            if next_offset is not None
+            else ()
+        )
+        return record(
+            "get_context_items",
+            {
+                "available": True,
+                "mode": "page",
+                "observed_at": envelope.observed_at.isoformat(),
+                "offered_count": len(envelope.context_items),
+                "offset": start,
+                "items": [_context_item_summary(item) for item in page],
+                "next_offset": next_offset,
+                "next_ids": list(next_ids),
+                "omitted_count": max(0, len(envelope.context_items) - start - len(page)),
+            },
+        )
+
+    @tool(
+        name="get_decisions",
+        description=(
+            "Page through bounded active or unresolved durable decisions, or retrieve one "
+            "offered decision by exact decision_id. Use next_offset until it is null."
+        ),
+    )
+    def get_decisions(decision_id: str = "", offset: int = 0) -> str:
+        envelope = request.supervisor_context
+        if envelope is None:
+            return record("get_decisions", {"available": False, "decisions": []})
+        if decision_id:
+            if offset != 0:
+                return record(
+                    "get_decisions",
+                    {"available": True, "error": "decision_id and offset are mutually exclusive"},
+                )
+            selected = next(
+                (item for item in envelope.decisions if item.id == decision_id),
+                None,
+            )
+            if selected is None:
+                return record(
+                    "get_decisions",
+                    {
+                        "available": True,
+                        "mode": "item",
+                        "error": "decision_id was not offered",
+                        "decision_id": _clip(decision_id, 200),
+                    },
+                )
+            return record(
+                "get_decisions",
+                {
+                    "available": True,
+                    "mode": "item",
+                    "observed_at": envelope.observed_at.isoformat(),
+                    "decision": _decision_detail(selected),
+                },
+            )
+        start = _page_offset(offset)
+        if start is None:
+            return record(
+                "get_decisions",
+                {"available": True, "error": "offset must be a non-negative integer"},
+            )
+        page = envelope.decisions[start : start + _CONTEXT_PAGE_SIZE]
+        next_offset = start + len(page)
+        if next_offset >= len(envelope.decisions):
+            next_offset = None
+        next_ids = (
+            envelope.offered_decision_ids[
+                next_offset : next_offset + _CONTEXT_PAGE_SIZE
+            ]
+            if next_offset is not None
+            else ()
+        )
+        return record(
+            "get_decisions",
+            {
+                "available": True,
+                "mode": "page",
+                "observed_at": envelope.observed_at.isoformat(),
+                "offered_count": len(envelope.decisions),
+                "offset": start,
+                "decisions": [_decision_summary(item) for item in page],
+                "next_offset": next_offset,
+                "next_ids": list(next_ids),
+                "omitted_count": max(0, len(envelope.decisions) - start - len(page)),
             },
         )
 
@@ -443,6 +717,8 @@ def build_evidence_tools(
         get_recent_events,
         get_scores,
         get_context,
+        get_context_items,
+        get_decisions,
         inspect_workspace,
         inspect_git,
         inspect_file,

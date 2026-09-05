@@ -181,6 +181,7 @@ def _format_user(request: SupervisorRequest) -> str:
     event_text = _clip(request.event.command or request.event.message_delta or "", 2_000)
     claims = request.scores.features.get("claims") if request.scores.features else []
     verification = request.scores.features.get("verification") if request.scores.features else {}
+    context = request.supervisor_context
     rendered = (
         "Normalized supervision request.\n"
         f"Harness: {request.session.harness_type}\n"
@@ -192,6 +193,14 @@ def _format_user(request: SupervisorRequest) -> str:
         f"Evidence requirements: {_bounded_items(goal.evidence_requirements) if goal else []}\n"
         f"Extracted claims: {_clip(claims, 4_000)}\n"
         f"Verification: {_clip(verification, 6_000)}\n"
+        "Offered durable context: "
+        f"count={len(context.offered_context_ids) if context else 0} "
+        f"first_ids={list(context.offered_context_ids[:3]) if context else []}\n"
+        "Offered durable decisions: "
+        f"count={len(context.offered_decision_ids) if context else 0} "
+        f"first_ids={list(context.offered_decision_ids[:3]) if context else []}\n"
+        "Page through get_context_items and get_decisions, or query an exact offered ID, "
+        "for durable project/goal context. "
         "Query inspect_workspace, inspect_git, inspect_file, inspect_artifact, "
         "inspect_process, and run_verification for repo, diff, tests, artifacts, "
         "and process state. Use web_search or scrape_url only for a public claim "
@@ -469,6 +478,7 @@ def _format_verifier_user(
         separators=(",", ":"),
     )[:8_000]
     features = request.scores.features or {}
+    context = request.supervisor_context
     rendered = (
         "Independently verify this proposed intervention.\n"
         f"Harness={request.session.harness_type.value} session={_clip(request.session.id, 200)}\n"
@@ -477,8 +487,17 @@ def _format_verifier_user(
         f"Goal={_clip(goal.objective, 4_000) if goal else 'unattached'}\n"
         f"Acceptance={_bounded_items(goal.acceptance_criteria) if goal else []}\n"
         f"Verification={_clip(features.get('verification') or 'none', 6_000)}\n"
+        "OfferedContext="
+        f"count={len(context.offered_context_ids) if context else 0} "
+        f"first_ids={list(context.offered_context_ids[:3]) if context else []}\n"
+        "OfferedDecisions="
+        f"count={len(context.offered_decision_ids) if context else 0} "
+        f"first_ids={list(context.offered_decision_ids[:3]) if context else []}\n"
         f"Proposal={proposal_json}\n"
-        "Query inspect_workspace, inspect_git, inspect_file, inspect_artifact, "
+        "Page through get_context_items and get_decisions, or query an exact offered ID, "
+        "when durable context or user decisions justify the proposal. Query "
+        "inspect_workspace, inspect_git, inspect_file, "
+        "inspect_artifact, "
         "inspect_process, and run_verification when local state is required. "
         "Use web_search or scrape_url only for a public claim the worker cited. "
         "Approve or reject; do not propose or execute a different action."
