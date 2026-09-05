@@ -159,6 +159,23 @@ class CodexObservationBatch:
     records: tuple[CodexObservedRecord, ...]
 
 
+class CodexObservationInterrupted(CodexSubscriptionError):
+    """Validated observations before loss, never continuing delivery authority."""
+
+    def __init__(self, message: str, *, batch: CodexObservationBatch, reason: str) -> None:
+        super().__init__(message)
+        self.batch = batch
+        self.reason = reason
+
+
+class _CodexRawDrainInterrupted(CodexSubscriptionError):
+    """Bounded JSON prefix; semantic identity still requires validation."""
+
+    def __init__(self, message: str, records: list[dict[str, Any]]) -> None:
+        super().__init__(message)
+        self.records = records
+
+
 @dataclass(frozen=True, slots=True)
 class _ThreadSnapshot:
     thread_id: str
@@ -574,10 +591,19 @@ class CodexExistingThreadSubscription:
         self._live_phase: dict[tuple[str, str | None], int] = {}
         self._runtime_status: RuntimeStatus = "unknown"
         self._runtime_flags: tuple[str, ...] = ()
+        self._interrupted_batch: CodexObservationBatch | None = None
 
     @property
     def state(self) -> CodexSubscriptionState | None:
         return self._state
+
+    @property
+    def interrupted_batch(self) -> CodexObservationBatch | None:
+        """Frozen prefix available even if cleanup cancellation hides the error.
+
+        This is record-only recovery evidence, never a live subscription token.
+        """
+        return self._interrupted_batch
 
     def _token(self) -> tuple[str, int]:
         try:
@@ -1020,31 +1046,37 @@ class CodexExistingThreadSubscription:
             batch = self.transport.drain_notifications(limit=min(256, remaining))
             if not isinstance(batch, list) or len(batch) > min(256, remaining):
                 self._invalidate("notification_retention_bound")
-                raise CodexSubscriptionError("Codex notifications exceeded the safety bound")
-            if any(not isinstance(record, dict) for record in batch):
-                self._invalidate("malformed_notification")
-                raise CodexSubscriptionError("Codex notification was not an object")
-            try:
-                encoded_bytes += sum(
-                    len(
+                raise _CodexRawDrainInterrupted(
+                    "Codex notifications exceeded the safety bound", records
+                )
+            for record in batch:
+                if not isinstance(record, dict):
+                    self._invalidate("malformed_notification")
+                    raise _CodexRawDrainInterrupted(
+                        "Codex notification was not an object", records
+                    )
+                try:
+                    encoded_bytes += len(
                         strict_json_dumps(
                             record, sort_keys=True, separators=(",", ":")
                         ).encode("utf-8")
                     )
-                    for record in batch
-                )
-            except (TypeError, ValueError, RecursionError) as exc:
-                self._invalidate("malformed_notification")
-                raise CodexSubscriptionError(
-                    "Codex notification was not strict JSON"
-                ) from exc
-            if encoded_bytes > MAX_NOTIFICATION_BATCH_JSON_BYTES:
-                self._invalidate("notification_retention_bound")
-                raise CodexSubscriptionError("Codex notifications exceeded the byte bound")
-            records.extend(batch)
-            if len(records) > MAX_NOTIFICATIONS_PER_DRAIN:
-                self._invalidate("notification_retention_bound")
-                raise CodexSubscriptionError("Codex notifications exceeded the safety bound")
+                except (TypeError, ValueError, RecursionError) as exc:
+                    self._invalidate("malformed_notification")
+                    raise _CodexRawDrainInterrupted(
+                        "Codex notification was not strict JSON", records
+                    ) from exc
+                if encoded_bytes > MAX_NOTIFICATION_BATCH_JSON_BYTES:
+                    self._invalidate("notification_retention_bound")
+                    raise _CodexRawDrainInterrupted(
+                        "Codex notifications exceeded the byte bound", records
+                    )
+                if len(records) >= MAX_NOTIFICATIONS_PER_DRAIN:
+                    self._invalidate("notification_retention_bound")
+                    raise _CodexRawDrainInterrupted(
+                        "Codex notifications exceeded the safety bound", records
+                    )
+                records.append(record)
             if not batch:
                 break
         return records
@@ -1055,9 +1087,11 @@ class CodexExistingThreadSubscription:
         thread_id: str,
         connection_generation: int,
         history_shape: tuple[tuple[str, tuple[str, ...]], ...],
+        *,
+        accepted_prefix: list[CodexObservedRecord] | None = None,
     ) -> tuple[CodexObservedRecord, ...]:
         history_turns = {turn_id for turn_id, _ in history_shape}
-        accepted: list[CodexObservedRecord] = []
+        accepted = accepted_prefix if accepted_prefix is not None else []
         for notification in notifications:
             frozen, encoded, method = self._notification_envelope(
                 notification, connection_generation
@@ -1077,6 +1111,25 @@ class CodexExistingThreadSubscription:
                     "Codex selected thread became unavailable"
                 )
             if method in {"thread/started", "thread/status/changed"}:
+                if method == "thread/status/changed":
+                    thread = params.get("thread")
+                    try:
+                        status = _nullable_consistent(
+                            (params, thread if isinstance(thread, dict) else {}),
+                            "status",
+                            "runtime status",
+                        )
+                    except CodexSubscriptionError:
+                        self._invalidate("conflicting_runtime_status")
+                        raise
+                    if not isinstance(status, dict):
+                        self._invalidate("malformed_runtime_status")
+                        raise CodexSubscriptionError("Codex runtime status is malformed")
+                    try:
+                        flags = _runtime_flags(status)
+                    except CodexSubscriptionError:
+                        self._invalidate("malformed_runtime_flags")
+                        raise
                 if len(self._seen_live) >= MAX_LIVE_IDENTITIES:
                     self._invalidate("live_identity_bound")
                     raise CodexSubscriptionError(
@@ -1102,21 +1155,6 @@ class CodexExistingThreadSubscription:
                     )
                 )
                 if method == "thread/status/changed":
-                    thread = params.get("thread")
-                    try:
-                        status = _nullable_consistent(
-                            (params, thread if isinstance(thread, dict) else {}),
-                            "status",
-                            "runtime status",
-                        )
-                    except CodexSubscriptionError:
-                        self._invalidate("conflicting_runtime_status")
-                        raise
-                    try:
-                        flags = _runtime_flags(status)
-                    except CodexSubscriptionError:
-                        self._invalidate("malformed_runtime_flags")
-                        raise
                     self._runtime_status = _runtime_status(status)
                     self._runtime_flags = flags
                 continue
@@ -1226,20 +1264,50 @@ class CodexExistingThreadSubscription:
             token = (state.receipt.endpoint_identity, state.receipt.connection_generation)
             self._require_token(token)
             after = self._live_watermark
-            raw = self._drain_raw()
+            raw_failure: _CodexRawDrainInterrupted | None = None
+            try:
+                raw = self._drain_raw()
+            except _CodexRawDrainInterrupted as exc:
+                raw = exc.records
+                raw_failure = exc
             self._require_token(token)
+            accepted_prefix: list[CodexObservedRecord] = []
             try:
                 records = self._accept_live(
                     raw,
                     state.receipt.thread_id,
                     token[1],
                     state.reconciled_history_shape,
+                    accepted_prefix=accepted_prefix,
                 )
-            except _CodexThreadUnavailable:
+                if raw_failure is not None:
+                    raise raw_failure
+            except CodexSubscriptionError as exc:
+                if self._state is not None and self._state.active:
+                    self._invalidate("live_observation_interrupted")
+                reason = (
+                    self._state.invalidation_reason if self._state is not None else None
+                ) or "live_observation_interrupted"
+                interrupted = CodexObservationInterrupted(
+                    str(exc),
+                    batch=CodexObservationBatch(
+                        endpoint_identity=token[0],
+                        connection_generation=token[1],
+                        thread_id=state.receipt.thread_id,
+                        after_live_watermark=after,
+                        live_watermark=self._live_watermark,
+                        records=tuple(accepted_prefix),
+                    ),
+                    reason=reason,
+                )
+                # Publish the immutable prefix before the cleanup await. An
+                # adapter finalizer may need it even if cancellation prevents
+                # its receiver from handling the interruption exception.
+                self._interrupted_batch = interrupted.batch
                 # This is only the dedicated observer/proxy connection. Never
                 # send stop, delete, unsubscribe or another worker-side action.
                 await self._close_after_failed_resume()
-                raise
+                raise interrupted from exc
             if (
                 self._runtime_status != state.runtime_status
                 or self._runtime_flags != state.runtime_flags

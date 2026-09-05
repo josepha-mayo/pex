@@ -355,6 +355,7 @@ class SharedCodexAttachments:
                 adapter.start_pipeline_pump(
                     state.pipeline.ingest_shared_codex_event,
                     lifecycle_ingest=state.pipeline.ingest_observer_lifecycle,
+                    retention_ingest=state.pipeline.retain_shared_codex_observations,
                 )
                 if cancelled:
                     raise asyncio.CancelledError

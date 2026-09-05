@@ -11196,6 +11196,204 @@ class Store:
                 await tx.rollback()
                 raise
 
+    async def retain_observer_events(
+        self,
+        events: tuple[HarnessEvent, ...],
+        session: HarnessSession,
+        *,
+        expected_project_binding: str,
+    ) -> list[HarnessEvent]:
+        """Atomically retain a validated observer prefix without worker processing.
+
+        This internal boundary never projects a session or changes an existing
+        event's processing mode. The Pipeline must witness the adapter's actual
+        retained tuple before calling; metadata alone is not ingress authority.
+        """
+        if not isinstance(events, tuple) or not events or len(events) > 2048:
+            raise ValueError("observer retention requires 1 to 2048 events")
+        expected_binding = validate_project_binding(expected_project_binding)
+        binding_session = session.model_copy(deep=True)
+        _validate_store_id(binding_session.id, label="observer retention session id")
+        receipt = binding_session.metadata.get("subscription_receipt")
+        if (
+            binding_session.harness_type != HarnessType.CODEX
+            or binding_session.id != f"codex:{binding_session.vendor_session_id}"
+            or not isinstance(receipt, dict)
+            or receipt.get("schema") != "pex.codex-existing-thread-subscription.v1"
+            or not isinstance(receipt.get("authorization_id"), str)
+            or not receipt["authorization_id"]
+            or receipt.get("pex_session_id") != binding_session.id
+            or receipt.get("thread_id") != binding_session.vendor_session_id
+            or type(receipt.get("connection_generation")) is not int
+            or receipt["connection_generation"] < 1
+            or not isinstance(receipt.get("endpoint_identity"), str)
+            or not receipt["endpoint_identity"]
+            or not isinstance(receipt.get("project_id"), str)
+            or not receipt["project_id"]
+            or receipt.get("observation_only") is not True
+            or receipt.get("delivery_proven") is not False
+        ):
+            raise ValueError("observer retention subscription identity is invalid")
+
+        def canonical_cwd(value: str | None) -> str:
+            if not isinstance(value, str) or not value or not Path(value).is_absolute():
+                raise ValueError("observer retention requires an absolute local cwd")
+            return os.path.normcase(str(Path(value).resolve()))
+
+        target_cwd = canonical_cwd(binding_session.cwd)
+        if canonical_cwd(receipt.get("cwd")) != target_cwd:
+            raise ValueError("observer retention receipt cwd changed")
+        snapshot_keys = {
+            "schema", "subscription_receipt", "status", "last_activity", "observation_coverage",
+        }
+        coverage_keys = {
+            "schema", "state", "scope", "raw_stream_complete", "history_replayed_as_live",
+            "durable_before_ingest", "last_observed_live_sequence", "last_ingested_live_sequence",
+            "pending_normalized_events", "unobserved_event_count", "reason",
+        }
+        retention_coverage_keys = {
+            "disconnect_retention_state", "disconnect_retention_error",
+            "retained_after_disconnect_count", "last_retained_live_sequence",
+        }
+        retained: list[HarnessEvent] = []
+        seen_ids: set[str] = set()
+        last_sequence = 0
+        total_bytes = 0
+        for event in events:
+            if not isinstance(event, HarnessEvent):
+                raise ValueError("observer retention event must be typed")
+            frozen = event.model_copy(deep=True)
+            _validate_store_id(frozen.event_id, label="observer retention event id")
+            marker = frozen.metadata.get("pex_observer_snapshot")
+            sequence = frozen.metadata.get("ingress_sequence")
+            if (
+                frozen.event_id in seen_ids
+                or frozen.session_id != binding_session.id
+                or frozen.harness_type != HarnessType.CODEX
+                or frozen.metadata.get("source") != "codex_shared_live_notification"
+                or frozen.metadata.get("delivery_proven") is not False
+                or frozen.metadata.get("sequence_scope")
+                != "retained_lifecycle_records_not_raw_frames"
+                or frozen.metadata.get("subscription_id") != receipt["authorization_id"]
+                or frozen.metadata.get("endpoint_identity") != receipt["endpoint_identity"]
+                or type(frozen.metadata.get("connection_generation")) is not int
+                or frozen.metadata["connection_generation"] != receipt["connection_generation"]
+                or type(sequence) is not int
+                or not last_sequence < sequence <= 2**63 - 1
+                or not isinstance(marker, dict)
+                or set(marker) != snapshot_keys
+                or marker.get("schema") != "pex.codex-live-observation.v1"
+                or marker.get("subscription_receipt") != receipt
+                or not isinstance(marker.get("status"), str)
+                or marker["status"] not in {status.value for status in SessionStatus}
+                or frozen.ts.tzinfo is None
+                or frozen.ts.utcoffset() is None
+            ):
+                raise ValueError("observer retention event identity, order or snapshot is invalid")
+            activity = marker["last_activity"]
+            if activity is not None:
+                if not isinstance(activity, str):
+                    raise ValueError("observer retention activity must be ISO text")
+                try:
+                    parsed_activity = datetime.fromisoformat(activity)
+                except ValueError as exc:
+                    raise ValueError("observer retention activity is invalid") from exc
+                if parsed_activity.tzinfo is None or parsed_activity.utcoffset() is None:
+                    raise ValueError("observer retention activity requires timezone")
+            coverage = marker["observation_coverage"]
+            if (
+                not isinstance(coverage, dict)
+                or not coverage_keys <= set(coverage)
+                or set(coverage) - coverage_keys - retention_coverage_keys
+                or coverage.get("schema") != "pex.codex-observation-coverage.v1"
+                or coverage.get("state") != "observing"
+                or coverage.get("scope") != "selected_lifecycle_notifications"
+                or coverage.get("raw_stream_complete") is not False
+                or coverage.get("history_replayed_as_live") is not False
+                or coverage.get("durable_before_ingest") is not False
+                or coverage.get("unobserved_event_count") is not None
+                or coverage.get("reason") is not None
+                or type(coverage.get("last_observed_live_sequence")) is not int
+                or coverage["last_observed_live_sequence"] != sequence
+                or type(coverage.get("last_ingested_live_sequence")) is not int
+                or not 0 <= coverage["last_ingested_live_sequence"] <= sequence
+                or type(coverage.get("pending_normalized_events")) is not int
+                or not 0 <= coverage["pending_normalized_events"] <= 2048
+            ):
+                raise ValueError("observer retention coverage is invalid")
+            if retention_coverage_keys & set(coverage) and (
+                not retention_coverage_keys <= set(coverage)
+                or not isinstance(coverage.get("disconnect_retention_state"), str)
+                or not coverage["disconnect_retention_state"]
+                or len(coverage["disconnect_retention_state"]) > 64
+                or coverage.get("disconnect_retention_error") is not None
+                or type(coverage.get("retained_after_disconnect_count")) is not int
+                or coverage["retained_after_disconnect_count"] != 0
+                or type(coverage.get("last_retained_live_sequence")) is not int
+                or coverage["last_retained_live_sequence"] != 0
+            ):
+                raise ValueError("observer retention coverage counters are invalid")
+            size = len(_dump(frozen).encode("utf-8"))
+            total_bytes += size
+            if size > 1_048_576 or total_bytes > 32 * 1_048_576:
+                raise ValueError("observer retention serialized size bound exceeded")
+            retained.append(frozen)
+            seen_ids.add(frozen.event_id)
+            last_sequence = sequence
+
+        async with aiosqlite.connect(self.path, timeout=5.0) as tx:
+            await _configure_connection(tx)
+            await tx.execute("BEGIN IMMEDIATE")
+            try:
+                current, stored_binding = await _load_bound_session(tx, binding_session.id)
+                if (
+                    current.harness_type != binding_session.harness_type
+                    or current.vendor_session_id != binding_session.vendor_session_id
+                    or current.metadata.get("subscription_receipt") != receipt
+                    or canonical_cwd(current.cwd) != target_cwd
+                    or stored_binding != expected_binding
+                    or await _project_binding_snapshot(tx, _session_project(current))
+                    != expected_binding
+                    or await _project_binding_snapshot(tx, _session_project(binding_session))
+                    != expected_binding
+                    or await _project_binding_snapshot(tx, receipt["project_id"])
+                    != expected_binding
+                ):
+                    raise ValueError("observer retention current target or subscription changed")
+                canonical_events: list[HarnessEvent] = []
+                for event in retained:
+                    if event.project_id is not None and (
+                        await _project_binding_snapshot(tx, event.project_id) != expected_binding
+                    ):
+                        raise ValueError("observer retention event project changed")
+                    cursor = await tx.execute(
+                        "SELECT json FROM events WHERE event_id = ?", (event.event_id,),
+                    )
+                    existing_row = await cursor.fetchone()
+                    if existing_row is not None:
+                        existing = HarnessEvent.model_validate_json(existing_row["json"])
+                        candidate = event.model_copy(deep=True)
+                        # A previous acceptance owns its original goal/project;
+                        # never rebind or downgrade it after a later user edit.
+                        candidate.goal_id = existing.goal_id
+                        candidate.project_id = existing.project_id
+                        if event_semantic_payload(candidate) != event_semantic_payload(existing):
+                            raise ValueError("observer retention event id collision")
+                        canonical_events.append(existing)
+                        continue
+                    event.goal_id = current.goal_id
+                    event.project_id = current.project_id or current.cwd
+                    await tx.execute(
+                        "INSERT INTO events(event_id, session_id, ts, json) VALUES (?, ?, ?, ?)",
+                        (event.event_id, event.session_id, event.ts.isoformat(), _dump(event)),
+                    )
+                    canonical_events.append(event)
+                await tx.commit()
+                return canonical_events
+            except BaseException:
+                await tx.rollback()
+                raise
+
     async def get_session(self, session_id: str) -> HarnessSession | None:
         cur = await self.db.execute("SELECT json FROM sessions WHERE id = ?", (session_id,))
         row = await cur.fetchone()

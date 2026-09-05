@@ -792,6 +792,88 @@ class Pipeline:
                 raise RuntimeError("committed observer lifecycle event is missing")
             self._schedule_committed_publication("event", stored_event.model_dump(mode="json"))
 
+    @staticmethod
+    def _freeze_shared_codex_observation(
+        event: HarnessEvent, session: HarnessSession
+    ) -> HarnessEvent:
+        """Use the same immutable receipt for live acceptance and loss recovery."""
+        observed = event.model_copy(deep=True)
+        observed.metadata["pex_observer_snapshot"] = {
+            "schema": "pex.codex-live-observation.v1",
+            "subscription_receipt": dict(session.metadata["subscription_receipt"]),
+            "status": session.status.value,
+            "last_activity": session.last_activity.isoformat() if session.last_activity else None,
+            "observation_coverage": dict(session.metadata["observation_coverage"]),
+        }
+        return observed
+
+    async def retain_shared_codex_observations(
+        self,
+        observations: tuple[tuple[HarnessEvent, HarnessSession], ...],
+        session: HarnessSession,
+    ) -> None:
+        """Persist the actual stopped pump's pending ledger without planning.
+
+        This callback is not a public ingest mode. Object witnesses attest the
+        original observations; Store separately fences their durable identity.
+        Frozen per-event state is retained as provenance, never projected over
+        current human controls or a replacement connection.
+        """
+        from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
+
+        async with self._session_locks_guard:
+            lock = self._session_locks.setdefault(session.id, asyncio.Lock())
+        async with lock:
+            adapter = self.adapters.for_session(session.id)
+            receipt = session.metadata.get("subscription_receipt")
+
+            def validate_owner() -> None:
+                if (
+                    not isinstance(adapter, CodexSharedAdapter)
+                    or self.adapters.for_session(session.id) is not adapter
+                    or adapter._retaining_observations is not observations
+                    or adapter._retaining_session is not session
+                    or adapter._connected()
+                    or not adapter._invalid
+                    or not isinstance(observations, tuple)
+                    or not observations
+                    or session.status != SessionStatus.DETACHED
+                    or not isinstance(receipt, dict)
+                    or receipt != adapter.session.metadata.get("subscription_receipt")
+                    or receipt.get("authorization_id") != adapter._subscription_id
+                ):
+                    raise ValueError("retained observations do not own the stopped ingestion")
+
+            validate_owner()
+            events = []
+            for event, snapshot in observations:
+                held = adapter._undelivered.get(event.event_id)
+                if (
+                    event.session_id != session.id
+                    or snapshot.id != session.id
+                    or event.harness_type != HarnessType.CODEX
+                    or snapshot.harness_type != HarnessType.CODEX
+                    or snapshot.vendor_session_id != session.vendor_session_id
+                    or snapshot.cwd != session.cwd
+                    or snapshot.project_id != session.project_id
+                    or snapshot.metadata.get("subscription_receipt") != receipt
+                    or event.metadata.get("subscription_id") != adapter._subscription_id
+                    or held is None
+                    or held[0] is not event
+                    or held[1] is not snapshot
+                ):
+                    raise ValueError("retained observation identity changed")
+                observed = self._freeze_shared_codex_observation(event, snapshot)
+                _redact_event(observed)
+                events.append(observed)
+            binding = await self.store.project_binding_for_authority(session.project_id)
+            validate_owner()
+            retained = await self.store.retain_observer_events(
+                tuple(events), session, expected_project_binding=binding
+            )
+            for event in retained:
+                self._schedule_committed_publication("event", event.model_dump(mode="json"))
+
     async def ingest_shared_codex_event(
         self, event: HarnessEvent, session: HarnessSession
     ) -> Intervention | None:
@@ -822,16 +904,7 @@ class Pipeline:
                 or event.metadata.get("subscription_id") != adapter._subscription_id
             ):
                 raise ValueError("shared observation does not own the current ingestion")
-            observed = event.model_copy(deep=True)
-            observed.metadata["pex_observer_snapshot"] = {
-                "schema": "pex.codex-live-observation.v1",
-                "subscription_receipt": dict(receipt),
-                "status": session.status.value,
-                "last_activity": (
-                    session.last_activity.isoformat() if session.last_activity else None
-                ),
-                "observation_coverage": dict(session.metadata["observation_coverage"]),
-            }
+            observed = self._freeze_shared_codex_observation(event, session)
             return await self._ingest_event_locked(observed, session)
 
     async def ingest_event(

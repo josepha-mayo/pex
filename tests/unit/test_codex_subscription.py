@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import replace
@@ -12,6 +13,7 @@ from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
 from pex_bridge.adapters.codex_subscription import (
     SUBSCRIPTION_SCHEMA,
     CodexExistingThreadSubscription,
+    CodexObservationInterrupted,
     CodexSelectedThread,
     CodexSubscriptionAuthorization,
     CodexSubscriptionError,
@@ -1040,3 +1042,225 @@ async def test_turn_error_and_warning_do_not_imply_thread_or_connection_closure(
     assert batch.records[0].payload()["params"]["turn"]["status"] == "failed"
     assert coordinator.state is not None and coordinator.state.active
     assert not transport.closed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("failure", "reason"),
+    [
+        (_notification("thread/closed", {"threadId": "thread-1"}), "vendor_thread_closed"),
+        (_notification("thread/archived", {"threadId": "thread-1"}), "vendor_thread_archived"),
+        (_notification("thread/deleted", {"threadId": "thread-1"}), "vendor_thread_deleted"),
+        (_notification("turn/completed", {"threadId": "thread-1"}),
+         "conflicting_notification_identity"),
+        (_notification("turn/started", {"threadId": "foreign", "turn": {"id": "foreign"}}),
+         "foreign_thread_notification"),
+        (_notification("thread/status/changed", {
+            "threadId": "thread-1", "status": {"type": "active", "activeFlags": "bad"},
+        }), "malformed_runtime_flags"),
+        (_notification("thread/status/changed", {
+            "threadId": "thread-1", "status": "idle",
+            "thread": {"id": "thread-1", "status": "active"},
+        }), "conflicting_runtime_status"),
+        (_notification("thread/status/changed", {
+            "threadId": "thread-1", "status": "active",
+        }), "malformed_runtime_status"),
+        (_notification("thread/status/changed", {
+            "threadId": "thread-1",
+        }), "malformed_runtime_status"),
+        ("not an object", "malformed_notification"),
+        (_notification("account/updated", {"value": float("nan")}), "malformed_notification"),
+        (_notification("turn/started", {
+            "threadId": "thread-1", "turn": {"id": "old-generation"},
+        }, generation=2), "foreign_notification_generation"),
+    ],
+)
+async def test_interrupted_live_batch_retains_only_valid_prefix(
+    tmp_path: Path, failure: Any, reason: str,
+) -> None:
+    coordinator, transport = await _subscribed(tmp_path)
+    original_token = transport.connection_token()
+    calls_before = deepcopy(transport.calls)
+    prefix = [
+        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "live"}}),
+        _notification("item/completed", {
+            "threadId": "thread-1", "turnId": "live",
+            "item": {"id": "message", "type": "agentMessage", "text": "real prefix"},
+        }),
+    ]
+    transport.notifications.extend([
+        *prefix, failure,
+        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "suffix"}}),
+    ])
+
+    with pytest.raises(CodexObservationInterrupted) as caught:
+        await coordinator.drain_live()
+
+    batch = caught.value.batch
+    assert caught.value.reason == reason
+    assert (batch.endpoint_identity, batch.connection_generation) == original_token
+    assert batch.thread_id == "thread-1"
+    assert batch.after_live_watermark == 0
+    assert batch.live_watermark == coordinator._live_watermark == 2
+    assert [record.live_sequence for record in batch.records] == [1, 2]
+    assert [record.payload() for record in batch.records] == prefix
+    assert len(coordinator._seen_live) == 2
+    assert all(record.source == "live_notification" for record in batch.records)
+    assert coordinator.state is not None and not coordinator.state.active
+    assert coordinator.state.invalidation_reason == reason
+    assert transport.closed
+    assert transport.calls == calls_before
+    with pytest.raises(CodexSubscriptionError, match="not active"):
+        await coordinator.drain_live()
+
+
+@pytest.mark.asyncio
+async def test_interrupted_prefix_preserves_previous_watermark_and_coalesces_duplicates(
+    tmp_path: Path,
+) -> None:
+    coordinator, transport = await _subscribed(tmp_path)
+    started = _notification("turn/started", {
+        "threadId": "thread-1", "turn": {"id": "live"},
+    })
+    transport.notifications.append(started)
+    prior = await coordinator.drain_live()
+    transport.notifications.extend([
+        deepcopy(started),
+        _notification("item/completed", {
+            "threadId": "thread-1", "turnId": "live", "item": {"id": "message"},
+        }),
+        _notification("thread/closed", {"threadId": "thread-1"}),
+    ])
+
+    with pytest.raises(CodexObservationInterrupted) as caught:
+        await coordinator.drain_live()
+
+    batch = caught.value.batch
+    assert batch.after_live_watermark == prior.live_watermark == 1
+    assert batch.live_watermark == 2
+    assert len(batch.records) == 1
+    assert batch.records[0].live_sequence == 2
+    assert batch.records[0].item_id == "message"
+    assert batch.records[0].stable_id != prior.records[0].stable_id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bound", ["count", "bytes"])
+async def test_raw_retention_bound_preserves_only_bounded_valid_prefix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bound: str,
+) -> None:
+    coordinator, transport = await _subscribed(tmp_path)
+    prefix = _notification("turn/started", {
+        "threadId": "thread-1", "turn": {"id": "prefix"},
+    })
+    if bound == "count":
+        monkeypatch.setattr(subscription_module, "MAX_NOTIFICATIONS_PER_DRAIN", 1)
+    else:
+        monkeypatch.setattr(subscription_module, "MAX_NOTIFICATION_BATCH_JSON_BYTES", 250)
+    transport.notifications.extend([
+        prefix, _notification("account/updated", {"value": "x" * 300}),
+        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "suffix"}}),
+    ])
+
+    with pytest.raises(CodexObservationInterrupted) as caught:
+        await coordinator.drain_live()
+
+    assert caught.value.reason == "notification_retention_bound"
+    assert [record.payload() for record in caught.value.batch.records] == [prefix]
+    assert caught.value.batch.live_watermark == 1
+
+
+@pytest.mark.asyncio
+async def test_connection_loss_before_raw_identity_check_does_not_expose_unverified_prefix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    coordinator, transport = await _subscribed(tmp_path)
+    transport.notifications.append(_notification("turn/started", {
+        "threadId": "thread-1", "turn": {"id": "unverified"},
+    }))
+    original = transport.drain_notifications
+
+    def lost_during_drain(*, limit: int = 256):
+        records = original(limit=limit)
+        transport.connection_generation = 2
+        return records
+
+    monkeypatch.setattr(transport, "drain_notifications", lost_during_drain)
+    with pytest.raises(CodexSubscriptionError, match="generation changed") as caught:
+        await coordinator.drain_live()
+    assert not isinstance(caught.value, CodexObservationInterrupted)
+    assert coordinator._live_watermark == 0
+    assert coordinator.state is not None and not coordinator.state.active
+
+
+@pytest.mark.asyncio
+async def test_initial_reconciliation_prefix_never_establishes_partial_subscription(
+    tmp_path: Path,
+) -> None:
+    response = _thread_response(tmp_path)
+
+    def interrupted(transport: FakeSharedTransport) -> None:
+        transport.notifications.extend([
+            _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "prefix"}}),
+            _notification("thread/closed", {"threadId": "thread-1"}),
+        ])
+
+    transport = FakeSharedTransport(
+        [response, response, response], _thread_response(tmp_path, include_turns=False),
+        on_resume=interrupted,
+    )
+    coordinator = CodexExistingThreadSubscription(transport)
+    selected = await _inspect(coordinator, tmp_path)
+    with pytest.raises(CodexSubscriptionError, match="became unavailable") as caught:
+        await coordinator.subscribe(selected, _authorization(selected))
+    assert not isinstance(caught.value, CodexObservationInterrupted)
+    assert coordinator.state is None
+    assert coordinator.interrupted_batch is None
+    assert transport.closed
+    with pytest.raises(ValueError, match="authorized active subscription"):
+        CodexSharedAdapter(coordinator)
+
+
+@pytest.mark.asyncio
+async def test_interrupted_prefix_is_frozen_before_cancellable_connection_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    coordinator, transport = await _subscribed(tmp_path)
+    token = transport.connection_token()
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    closed = asyncio.Event()
+    original_close = transport.close
+
+    async def delayed_close():
+        entered.set()
+        await release.wait()
+        await original_close()
+        closed.set()
+
+    monkeypatch.setattr(transport, "close", delayed_close)
+    transport.notifications.extend([
+        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "prefix"}}),
+        _notification("thread/closed", {"threadId": "thread-1"}),
+    ])
+    draining = asyncio.create_task(coordinator.drain_live())
+    try:
+        await asyncio.wait_for(entered.wait(), timeout=2)
+        batch = coordinator.interrupted_batch
+        assert batch is not None
+        assert (batch.endpoint_identity, batch.connection_generation) == token
+        assert [record.live_sequence for record in batch.records] == [1]
+        assert coordinator.state is not None and not coordinator.state.active
+        # The caller must have recovery evidence without waiting for cleanup
+        # or receiving an exception from the draining task.
+        assert not draining.done()
+        draining.cancel()
+        result = (await asyncio.gather(draining, return_exceptions=True))[0]
+        assert isinstance(result, (asyncio.CancelledError, CodexObservationInterrupted))
+        assert coordinator.interrupted_batch is batch
+    finally:
+        release.set()
+        await asyncio.wait_for(closed.wait(), timeout=2)
+        await asyncio.gather(draining, return_exceptions=True)
+    assert transport.closed
+    assert coordinator.interrupted_batch is batch

@@ -18,7 +18,9 @@ from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_bridge.adapters.base import HarnessAdapter, bounded_observed_text
 from pex_bridge.adapters.codex import CodexAdapter
 from pex_bridge.adapters.codex_subscription import (
+    MAX_NOTIFICATIONS_PER_DRAIN,
     CodexExistingThreadSubscription,
+    CodexObservationInterrupted,
     CodexObservedRecord,
     CodexSubscriptionError,
 )
@@ -26,6 +28,12 @@ from pex_bridge.adapters.codex_subscription import (
 MAX_PENDING_EVENTS = 256
 MAX_USER_ITEMS = 4096
 DISCONNECT_INGEST_TIMEOUT_SECONDS = 2
+RETENTION_INGEST_TIMEOUT_SECONDS = 10
+# Reconciliation combines pre- and post-read live drains; ordinary streaming
+# can additionally have one queue plus one in-flight event from a prior batch.
+MAX_UNDELIVERED_EVENTS = max(
+    2 * MAX_NOTIFICATIONS_PER_DRAIN, MAX_PENDING_EVENTS + MAX_NOTIFICATIONS_PER_DRAIN + 1
+)
 
 
 def _runtime_status(value: str, flags: tuple[str, ...] = ()) -> SessionStatus:
@@ -64,6 +72,17 @@ class CodexSharedAdapter(HarnessAdapter):
         self.last_ingested_sequence = 0
         self._ingesting = False
         self._ingesting_observation: tuple[HarnessEvent, HarnessSession] | None = None
+        # Freeze an entire bounded batch before queue backpressure can yield.
+        # This includes queued, enqueueing and in-flight events until ACKed.
+        self._undelivered: dict[str, tuple[HarnessEvent, HarnessSession]] = {}
+        self._retaining_observations: tuple[tuple[HarnessEvent, HarnessSession], ...] | None = None
+        self._retaining_session: HarnessSession | None = None
+        self._cleanup_task: asyncio.Task | None = None
+        self._retention_state = "not_attempted"
+        self._retention_error: str | None = None
+        self._retained_count = 0
+        self._last_retained_sequence = 0
+        self._received_interrupted_batch = None
         self._enqueueing = False
         self.active_turn_id: str | None = None
         self._user_items: set[tuple[str, str]] = set()
@@ -103,9 +122,11 @@ class CodexSharedAdapter(HarnessAdapter):
             "durable_before_ingest": False,
             "last_observed_live_sequence": self.ingress_sequence,
             "last_ingested_live_sequence": self.last_ingested_sequence,
-            "pending_normalized_events": (
-                self._pending.qsize() + int(self._ingesting) + int(self._enqueueing)
-            ),
+            "pending_normalized_events": len(self._undelivered),
+            "disconnect_retention_state": self._retention_state,
+            "disconnect_retention_error": self._retention_error,
+            "retained_after_disconnect_count": self._retained_count,
+            "last_retained_live_sequence": self._last_retained_sequence,
             "unobserved_event_count": None,
             "reason": reason,
         }
@@ -256,19 +277,39 @@ class CodexSharedAdapter(HarnessAdapter):
         self.session.metadata["observation_coverage"] = self._coverage("observing")
         return event
 
+    def _prepare_records(
+        self, records: tuple[CodexObservedRecord, ...]
+    ) -> tuple[tuple[HarnessEvent, HarnessSession], ...]:
+        prepared = []
+        for record in records:
+            if len(self._undelivered) >= MAX_UNDELIVERED_EVENTS:
+                raise CodexSubscriptionError("shared undelivered observation bound reached")
+            event = self._event(record)
+            if event is not None:
+                observation = (event, self.session.model_copy(deep=True))
+                self._undelivered[event.event_id] = observation
+                prepared.append(observation)
+        return tuple(prepared)
+
     async def _receive(self) -> None:
         records = self._initial
         self._initial = ()
         while True:
+            prepared = self._prepare_records(records)
             if not self._connected():
                 raise CodexSubscriptionError("shared Codex connection continuity lost")
-            for record in records:
-                event = self._event(record)
-                if event is not None:
-                    self._enqueueing = True
-                    await self._pending.put((event, self.session.model_copy(deep=True)))
-                    self._enqueueing = False
-            batch = await self.subscription.drain_live()
+            for observation in prepared:
+                self._enqueueing = True
+                await self._pending.put(observation)
+                self._enqueueing = False
+            try:
+                batch = await self.subscription.drain_live()
+            except CodexObservationInterrupted as exc:
+                # Already invalidated: retain provenance, never re-enter the
+                # live consumer or authorize semantic/worker effects.
+                self._received_interrupted_batch = exc.batch
+                self._prepare_records(exc.batch.records)
+                raise
             records = batch.records
             if not records:
                 await asyncio.sleep(0.025)
@@ -287,7 +328,10 @@ class CodexSharedAdapter(HarnessAdapter):
                     # Keep the exact event and receipt time across a transient
                     # Store/pipeline failure; its durable acceptance is idempotent.
                     await ingest(event, session)
-                    self.last_ingested_sequence = event.metadata["ingress_sequence"]
+                    self.last_ingested_sequence = max(
+                        self.last_ingested_sequence, event.metadata["ingress_sequence"]
+                    )
+                    self._undelivered.pop(event.event_id, None)
                     self._ingesting = False
                     self._ingesting_observation = None
                     self.last_pump_error = None
@@ -298,7 +342,58 @@ class CodexSharedAdapter(HarnessAdapter):
                     self.last_pump_error = type(exc).__name__
                     await asyncio.sleep(0.1)
 
-    async def pump_into_pipeline(self, ingest, *, lifecycle_ingest=None) -> None:
+    async def _retain_pending(self, retention_ingest) -> None:
+        if not self._undelivered:
+            self._retention_state = "not_needed"
+            return
+        self._retention_state = "pending"
+        self._retaining_observations = tuple(self._undelivered.values())
+        self._retaining_session = self.session.model_copy(deep=True)
+
+        async def attempt() -> None:
+            if retention_ingest is None:
+                raise ValueError("dedicated observer retention sink is unavailable")
+            while True:
+                try:
+                    await retention_ingest(self._retaining_observations, self._retaining_session)
+                    return
+                except ValueError:
+                    # Revoked identity or conflicting content cannot be retried
+                    # into authority. Leave retained objects and disclose failure.
+                    raise
+                except Exception as exc:
+                    self._retention_error = type(exc).__name__
+                    await asyncio.sleep(0.05)
+
+        try:
+            await asyncio.wait_for(attempt(), timeout=RETENTION_INGEST_TIMEOUT_SECONDS)
+        except Exception as exc:
+            self._retention_state = "failed"
+            self._retention_error = type(exc).__name__
+            self.last_pump_error = f"observation_retention_{type(exc).__name__}"
+        else:
+            self._last_retained_sequence = max(
+                event.metadata["ingress_sequence"] for event, _ in self._retaining_observations
+            )
+            self.last_ingested_sequence = max(
+                self.last_ingested_sequence, self._last_retained_sequence
+            )
+            self._retained_count = len(self._retaining_observations)
+            self._undelivered.clear()
+            while not self._pending.empty():
+                self._pending.get_nowait()
+            self._ingesting = False
+            self._ingesting_observation = None
+            self._enqueueing = False
+            self._retention_state = "retained"
+            self._retention_error = None
+        finally:
+            self._retaining_observations = None
+            self._retaining_session = None
+
+    async def pump_into_pipeline(
+        self, ingest, *, lifecycle_ingest=None, retention_ingest=None
+    ) -> None:
         receiver = asyncio.create_task(self._receive())
         consumer = asyncio.create_task(self._consume(ingest))
         try:
@@ -311,53 +406,80 @@ class CodexSharedAdapter(HarnessAdapter):
             self.last_pump_error = type(exc).__name__
         finally:
             self._invalid = True
-            self.session.status = SessionStatus.DETACHED
             for task in (receiver, consumer):
                 task.cancel()
-            await asyncio.gather(receiver, consumer, return_exceptions=True)
-            await self.transport.close()
-            self.session.capabilities = (await self.probe()).model_dump(mode="json")
-            state = self.subscription.state
-            reason = (
-                (state.invalidation_reason if state is not None else None)
-                or self.last_pump_error
-                or "observation_stopped"
+            self._cleanup_task = asyncio.create_task(
+                self._finish_observation(receiver, consumer, lifecycle_ingest, retention_ingest)
             )
-            coverage = self._coverage("disconnected", reason=reason)
-            self.session.metadata["observation_coverage"] = coverage
-            # This is a local coverage/lifecycle receipt, NOT a vendor STOP or
-            # evidence the worker finished. Never advance worker last_activity.
-            disconnected = HarnessEvent(
-                event_id=f"codex-shared-disconnected:{self._subscription_id}",
-                ts=datetime.now(UTC),
-                harness_type=HarnessType.CODEX,
-                session_id=self.session.id,
-                project_id=self.session.project_id,
-                event_type=EventType.STATUS,
-                metadata={
-                    "source": "pex_observer_lifecycle",
-                    "timestamp_kind": "pex_receipt_time",
-                    "subscription_id": self._subscription_id,
-                    "observation_coverage": coverage,
-                    "worker_stopped": False,
-                    "delivery_proven": False,
-                },
-            )
-            try:
-                if lifecycle_ingest is None:
-                    raise RuntimeError("dedicated observer lifecycle sink is unavailable")
-                await asyncio.wait_for(
-                    lifecycle_ingest(disconnected, self.session.model_copy(deep=True)),
-                    timeout=DISCONNECT_INGEST_TIMEOUT_SECONDS,
-                )
-            except Exception as exc:
-                # Store unavailability cannot be reported as durable gap capture.
-                self.last_pump_error = f"disconnect_receipt_{type(exc).__name__}"
+            cancelled = False
+            while not self._cleanup_task.done():
+                try:
+                    await asyncio.shield(self._cleanup_task)
+                except asyncio.CancelledError:
+                    cancelled = True
+            self._cleanup_task.result()
+            if cancelled:
+                raise asyncio.CancelledError
 
-    def start_pipeline_pump(self, ingest, *, lifecycle_ingest=None) -> asyncio.Task:
+    async def _finish_observation(self, receiver, consumer, lifecycle_ingest, retention_ingest):
+        await asyncio.gather(receiver, consumer, return_exceptions=True)
+        # No pump can mutate the pending ledger after this join.
+        interrupted = self.subscription.interrupted_batch
+        if interrupted is not None and interrupted is not self._received_interrupted_batch:
+            self._received_interrupted_batch = interrupted
+            try:
+                self._prepare_records(interrupted.records)
+            except Exception as exc:
+                # Preserve any already-normalized prefix and disclose the gap.
+                self.last_pump_error = f"observation_normalization_{type(exc).__name__}"
+        await self.transport.close()
+        self.session.status = SessionStatus.DETACHED
+        self.session.capabilities = (await self.probe()).model_dump(mode="json")
+        state = self.subscription.state
+        reason = (
+            (state.invalidation_reason if state is not None else None)
+            or self.last_pump_error
+            or "observation_stopped"
+        )
+        await self._retain_pending(retention_ingest)
+        coverage = self._coverage("disconnected", reason=reason)
+        self.session.metadata["observation_coverage"] = coverage
+        # Separate local receipt, not a vendor STOP or worker-completion claim.
+        disconnected = HarnessEvent(
+            event_id=f"codex-shared-disconnected:{self._subscription_id}",
+            ts=datetime.now(UTC),
+            harness_type=HarnessType.CODEX,
+            session_id=self.session.id,
+            project_id=self.session.project_id,
+            event_type=EventType.STATUS,
+            metadata={
+                "source": "pex_observer_lifecycle",
+                "timestamp_kind": "pex_receipt_time",
+                "subscription_id": self._subscription_id,
+                "observation_coverage": coverage,
+                "worker_stopped": False,
+                "delivery_proven": False,
+            },
+        )
+        try:
+            if lifecycle_ingest is None:
+                raise RuntimeError("dedicated observer lifecycle sink is unavailable")
+            await asyncio.wait_for(
+                lifecycle_ingest(disconnected, self.session.model_copy(deep=True)),
+                timeout=DISCONNECT_INGEST_TIMEOUT_SECONDS,
+            )
+        except Exception as exc:
+            # Store unavailability cannot be reported as durable gap capture.
+            self.last_pump_error = f"disconnect_receipt_{type(exc).__name__}"
+
+    def start_pipeline_pump(
+        self, ingest, *, lifecycle_ingest=None, retention_ingest=None
+    ) -> asyncio.Task:
         if self._pump_task is None:
             self._pump_task = asyncio.create_task(
-                self.pump_into_pipeline(ingest, lifecycle_ingest=lifecycle_ingest),
+                self.pump_into_pipeline(
+                    ingest, lifecycle_ingest=lifecycle_ingest, retention_ingest=retention_ingest
+                ),
                 name="codex-shared-pipeline-pump",
             )
         return self._pump_task

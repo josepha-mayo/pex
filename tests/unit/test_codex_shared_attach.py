@@ -48,6 +48,11 @@ async def shared_client(tmp_path, monkeypatch):
         # exercised separately through the actual Pipeline callback tests.
         return await state.pipeline.ingest_event(event, session)
 
+    async def retain_shared(observations, session):
+        # Attachment wiring only; record-only durability/authority is covered
+        # by test_codex_observation_retention with actual Pipeline and Store.
+        events.extend(event for event, _ in observations)
+
     transports = []
 
     def transport_factory(*args):
@@ -68,6 +73,7 @@ async def shared_client(tmp_path, monkeypatch):
             ingest_event=ingest,
             ingest_shared_codex_event=ingest_shared,
             ingest_observer_lifecycle=ingest,
+            retain_shared_codex_observations=retain_shared,
         ),
     )
     monkeypatch.setattr(state, "settings", Settings(home=tmp_path, require_auth=True, token=None))
