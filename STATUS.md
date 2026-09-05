@@ -10,7 +10,9 @@
 
 Real local Pipeline/Store regressions now cover explicit shared attachment, cancellation/rollback recovery, record-only observation loss, canonical runtime/coverage projection and incomplete human-input authority. See the current implementation section of `docs/AGENT_HANDOFF.md` for the final combined gate and source checkpoint. Main and bounded independent reviewers reproduced defects before repair. No live Codex/provider/GUI or release proof follows from these tests.
 
-Shared worker delivery remains disabled pending current connection/input/turn authority. Named-project origin binding, dropped valid prefixes when a later batch record fails, complete raw/durable ingress and protected installed-runtime prerequisites remain open. The real Strands NOOP/correction/outcome loop, primary user workflow, normal sidecar release build, eight pets and visible comparisons remain required. User target is **6 September WAT**; release remains **NO-GO**. Unowned `loop.py` stays outside this checkpoint. Historical sections below describe their own source snapshots.
+Validated prefixes now survive later batch failure through bounded record-only recovery; real Store/Pipeline and cancellation regressions plus independent review are in the current handoff, with final integration/push state. This retains provenance without semantic processing or changing human controls; it is not complete raw capture or crash recovery.
+
+Shared worker delivery remains disabled pending current connection/input/turn authority. Named-project origin binding, complete raw/durable ingress, owned transport-close settlement and protected installed-runtime prerequisites remain open. The real Strands NOOP/correction/outcome loop, primary user workflow, normal sidecar release build, eight pets and visible comparisons remain required. User target is **6 September WAT**, at risk with these gates unproven; release remains **NO-GO**. Unowned `loop.py` stays outside this checkpoint. Historical sections below describe their own source snapshots.
 
 ## Durable dispatch authority repair — 5 Sep
 

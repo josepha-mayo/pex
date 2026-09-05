@@ -1,5 +1,9 @@
 # DECISIONS
 
+## 5 Sep 2026 — Preserve observations without reviving disconnected authority
+
+A later invalid/closing notification must not erase a validated prefix. Freeze full bounded batches before queue backpressure; after stream loss, use a dedicated adapter-object-witnessed record-only Pipeline/SQLite path. It preserves canonical duplicate bindings and processing modes, does not project over current session/human controls, and cannot invoke the semantic planner. Keep recovery acceptance, pending counts and the local disconnect receipt distinct. Support both full reconciliation drains, not only normal streaming capacity. Retention bounds/timeouts are explicit, not claims of full raw capture or process-crash durability. Normal live-ingestion authority checks and disabled shared delivery remain unchanged. Official lifecycle semantics were rechecked through the OpenAI Docs skill: [Codex App Server events](https://learn.chatgpt.com/docs/app-server).
+
 ## 5 Sep 2026 — Observer state is not worker activity or control authority
 
 Existing-thread Codex observations use a dedicated internal callback with an in-flight adapter object witness. It freezes a per-event runtime/activity/coverage snapshot; generic HTTP/plugin ingestion cannot supply that reserved marker. SQLite rechecks the durable subscription receipt and cwd, then projects from the canonical accepted event rather than current mutable adapter state or arbitrary planned metadata. Thread runtime and turn terminal status remain independent. Local observer loss is atomic record-only state, never a synthetic worker STOP or supervisor trigger. A new observer incarnation preserves current human goal/pause and revokes old session-control authority; task cancellation settles publication, but process-crash recovery remains required.

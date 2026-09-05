@@ -6,6 +6,16 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Stream-loss retention addendum — 5 Sep
+
+Main and bounded owners reviewed changes to `codex_subscription.py`, `codex_shared_adapter.py`, `codex_shared_attach.py`, `pipeline.py`, `store.py`, `test_codex_subscription.py` and the attachment fixture in `test_codex_shared_attach.py`. Existing large Pipeline/Store received changed-path review only. Independent review covered coordinator/Store and main adapter/Pipeline/wiring, including the reproduced and fixed 2,048-record reconciliation capacity defect. See the current handoff for integration/push evidence; live runtime and complete raw/crash coverage remain unproven.
+
+New test paths (additions, not a refreshed exhaustive inventory):
+
+- `tests/unit/test_codex_observation_retention.py`: full main and independent review; 12 real temporary-Store/Pipeline regressions for prefix loss, semantic suppression, retry, queue/cancellation, canonical replay and ownership.
+- `tests/unit/test_observer_retention_store.py`: full owner/main review and independent Store review; 25 SQLite cases for record-only atomic retention, target/receipt/binding, controls, duplicate/collision/order and byte limits.
+- `tests/unit/test_codex_reconciliation_retention.py`: full independent owner/main review; both real coordinator reconciliation drains (2,048 records), queue saturation and cancellation, with explicitly fake retention sink.
+
 ### Shared observer source and intent-authority addendum — 5 Sep
 
 New paths below are additions to the historical inventory, not a fresh exhaustive count. Full module review by the transport/attachment owners and main's integration/diff review cover the bounded new shared source; existing huge app/pipeline/Store/Codex files received changed-path review, not whole-file approval. Independent reviewers reproduced recovery, false-status and partial-input authority bugs and reviewed their repairs. The final complete-file integration gate is in the current handoff. No live worker, provider, UI or complete-trajectory claim follows. Origin binding, lost batch prefixes, raw/durable capture and same-worker control remain open.
