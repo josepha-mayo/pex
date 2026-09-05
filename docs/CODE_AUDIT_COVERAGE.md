@@ -6,6 +6,10 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Connection UI and inactive text control — `cd39913`, `03045b5`
+
+Main read new `apps/desktop/src/{operatorRequest.ts,operatorRequest.test.ts,sharedConnection.ts,sharedConnection.test.ts,components/SharedConnectionPanel.tsx}`, both `apps/desktop/tests/connection-qa.{html,tsx}` fixtures and new `tests/unit/test_codex_shared_text_dispatch.py`. Changed-path review: App, Settings, package test script, and `codex_shared.py` dispatch/receive-routing/close/error changes. Independent review covered controller/mount/request contract and framed transport; reproduced findings were repaired. Main 154 desktop tests, TypeScript/frontend build, isolated rendered recovery, 406 backend tests/18 files. All 12 staged source/test paths passed whitespace checks; both Python paths passed Ruff. New-file/diff coverage is not whole-App/Settings/transport approval or a complete reinventory. [`Detailed evidence and limits`](CONNECTION_CONTROL_REVIEW.md).
+
 ### Owned subscription close — accepted `c15a2fc`
 
 New `tests/unit/test_codex_subscription_close_ownership.py`: five cases, full new-file review by main and independent reviewer. Changed-path review: coordinator `_close_after_failed_resume` and its callers in `services/bridge/src/pex_bridge/adapters/codex_subscription.py`; held-close barrier/assertions in `tests/unit/test_codex_subscription.py`. Independent reviewer additionally checked actual shared transport revocation and bounded channel cleanup. Final main 355 passed/17 files; scoped Ruff/staged whitespace clean; source pushed with exact remote equality. This supersedes the separate-unaccepted-test wording below. No blanket coordinator/transport or whole-repository approval; exact failures, gates and limits are in [`WORKSPACE_CONTINUITY_REVIEW.md`](WORKSPACE_CONTINUITY_REVIEW.md).

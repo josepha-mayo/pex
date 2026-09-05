@@ -1,6 +1,6 @@
 # Local workspace origin and existing Codex attachment
 
-This is the backend connection contract, not proof of installed Codex compatibility or a finished desktop connection screen. Shared worker messaging, approvals and configuration changes remain disabled. PEX still needs its real same-worker supervisory loop.
+This is the backend connection contract. Settings now contains the explicit connection/recovery caller, reviewed in source `cd39913`, with isolated rendered verification; it is not proof of installed Codex compatibility. Shared worker messaging, approvals and configuration changes remain disabled. PEX still needs its real same-worker supervisory loop. See [connection/control review](../CONNECTION_CONTROL_REVIEW.md).
 
 ## Why an origin is required
 
@@ -53,4 +53,4 @@ Older workspace-bound sessions without that durable witness require explicit det
 
 Ask PEX reports changed/uncertain workspace authority and revokes local evidence reads and new outer fallback attempts after its review ends. Already-entered provider work cannot be retracted by these checks. See [the continuity review](../WORKSPACE_CONTINUITY_REVIEW.md) for exact verification state, failed cases and remaining sampling/concurrency limits.
 
-Complete raw event capture, crash recovery, safe same-worker delivery, installed runtime compatibility, and the desktop setup flow still require separate verification. Passing local attachment/continuity tests does not certify those gates.
+Complete raw event capture, crash recovery, safe same-worker delivery and installed runtime compatibility still require separate verification. The desktop source flow is reviewed and tested with an explicit fake API; native end-to-end setup remains unverified. Passing local attachment/continuity tests does not certify those gates.

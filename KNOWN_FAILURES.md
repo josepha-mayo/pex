@@ -1,5 +1,11 @@
 # Known failures
 
+## Current connection/control activation blockers — 5 Sep
+
+Connection UI is now source-integrated (`cd39913`), including a repaired independent full-confirmation-receipt mismatch and nullable-model case. Internal text transport is reviewed (`03045b5`); a reproduced concurrent-reader close ownership failure is fixed, with main 406 backend tests passed. Full receipts: [`docs/CONNECTION_CONTROL_REVIEW.md`](docs/CONNECTION_CONTROL_REVIEW.md).
+
+**Not fixed by these checkpoints:** uncertain transport close clears undrained received notifications; independent held-ack reproduction saw one received human notification become zero after timeout. Durable raw journaling must precede activation. Fresh turn/input reconciliation, PEX-input provenance and durable goal/policy/effect caller are absent. Generic shared control stays disabled. Installed runtime compatibility, real Strands correction/NOOP/outcome, normal sidecar build/startup, final UX/gradient contrast, eight pets, fair live benchmarks and submission remain open. A matching JSON-RPC error is not proof of no side effect; no vendor exactly-once or cross-client atomicity claim is made.
+
 ## Continuous workspace and Ask review repair — 5 Sep 2026
 
 Post-attachment replacement/origin/locator/receipt gaps are repaired in source **`c0db453`**, with final main **1,016 passed/3 skipped** across 56 files and verified push in [`docs/WORKSPACE_CONTINUITY_REVIEW.md`](docs/WORKSPACE_CONTINUITY_REVIEW.md). Main independently reproduced the initial 15 failures. Review later reproduced real Ask fallback entry after revocation/timeout (2 failed/1 passed), which outer-answer mocks had missed; a revocable per-review check now covers fallback branches, queued Strands entry and each HTTP attempt. Detached historical sessions no longer suppress valid current same-goal progress. Their tests use real answer/Store paths and fake providers, not live effectiveness evidence.

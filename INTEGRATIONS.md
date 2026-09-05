@@ -1,5 +1,7 @@
 # INTEGRATIONS
 
+Current connection UI source `cd39913` provides explicit origin/inspect/confirm/status/detach in Settings with independently reviewed recovery. Browser evidence is a labeled fake-API component test, not installed-worker compatibility. Internal transport `03045b5` has framed start/steer tests but **no production caller**; shared Codex remains observe-only. Durable raw receipt retention and current goal/policy/input/turn/effect integration are activation prerequisites. Main backend gate 406 passed/18 files. [`Exact scope and next actions`](docs/CONNECTION_CONTROL_REVIEW.md). This supersedes older statements that no desktop caller exists; it does not upgrade live support labels.
+
 Latest source `c15a2fc` repairs owned failed-subscription close settlement through repeated cancellation (main 355 passed/17 files, independently reviewed and pushed). No live capability changes. This supersedes pending-close wording in historical checkpoint paragraphs below, not the remaining durable/raw observation, installed-runtime or same-worker delivery gates. A settled failed/cancelled close is not successful termination proof. See [the exact review](docs/WORKSPACE_CONTINUITY_REVIEW.md).
 
 Live capability matrix. Labels are negotiated at runtime. Registration, a binary,
