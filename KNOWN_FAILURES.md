@@ -1,5 +1,11 @@
 # Known failures
 
+## Claimed-correction integration review — 5 Sep, current verification
+
+Standing correction consent and the private claimed-effect dispatch path are reviewed and pushed as `fe34a3a`; older statements that all callers/provenance are absent are historical. Review found and repaired old fixtures that lacked the new grant, a permission-context prefix that interfered with existing safety triage, and interrupted post-Executor receipt settlement. The latter has two independently reproduced red tests; main 969-pass combined and final 6-case focused evidence are in [`docs/CODEX_CLAIMED_DISPATCH_REVIEW.md`](docs/CODEX_CLAIMED_DISPATCH_REVIEW.md). An exploratory interrupted teardown stall was not reproduced in later repeated gates; no blanket deadlock-cause claim. Do not promote these repairs to live-product proof.
+
+The installed Codex binary changed since the old audit. Fresh read-only checks still find no usable shared endpoint and the production ACL validator rejects AppData/Local ancestry; no process or permissions were changed. AWS account was identified by the user but region/spend cap and actual AgentCore runtime are not verified. Browser auto-connect cannot currently attach to the user's Brave. Actual supervisor outcomes/quiet cases, full crash recovery, native/rendered UI, release, eight pets and fair live comparisons remain open. A briefly blocking final Store check is not strictly wall-time bounded, and local samples are not server-side cross-client CAS.
+
 ## Received-byte loss reproduction repaired; control remains inactive
 
 Source `db98481` durably journals bounded receive chunks before parsing/clearing. The held-ack human-notification loss below now has a passing durable-prefix regression. Independent review additionally reproduced foreign-WAL modification on format rejection; no-write header preflight repairs that exact case. Final main 456 passed/23 files; [`details and limits`](docs/RECEIVED_JOURNAL_REVIEW.md). This is not full stream/crash recovery: unreceived bytes, crash before commit and ambiguous initialization remain unproven; no live replay or complete-coverage claim. Fresh turn/input reconciliation, PEX-message provenance, durable supervisor dispatch, installed runtime and real outcomes are still required. Older descriptions of the journal absence are historical.

@@ -1,5 +1,11 @@
 # DECISIONS
 
+## 5 Sep 2026 — Separate standing correction consent and finish claimed results durably
+
+Observation attachment is not correction consent. Grant the four same-thread text actions through an authenticated, exact-scope, revocable Store operation; keep generic adapter capabilities and the original observation-only receipt truthful. Permission is standing authorization, not a per-correction dialog. The model may learn the current route state but cannot author its authority. Preserve existing safety-triage prefixes when appending that context.
+
+Executor receives an exact existing main-effect claim, installs persisted correction attribution before fresh history comparison, and performs final Store/local/transport checks immediately before one start or exact-turn steer. No uncertain retry or fallback. Once Executor returns or is cancelled after a claim, join the entire result-refresh/seal task through repeated cancellation; observer shutdown must not discard a known ACK or strand intentional cleanup between those steps. These are local implementation contracts, not proof of real Strands/AgentCore outcomes. Current review and limitations: [`docs/CODEX_CLAIMED_DISPATCH_REVIEW.md`](docs/CODEX_CLAIMED_DISPATCH_REVIEW.md).
+
 ## 5 Sep 2026 — Carry workspace authority through processing without rewriting history
 
 Persist the server-selected workspace/subscription/origin-path witness at dedicated observer publication. Never derive missing authority from a request or database location. Recheck at transactional planning/dispatch and actual queued local-read/provider/adapter entry, with post-read rejection of stale evidence. Generic session refresh cannot mint or erase observer authority. Old witnessed metadata without the new durable server row requires explicit reattachment, not guessed migration.
