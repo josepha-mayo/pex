@@ -1,5 +1,15 @@
 # PEX agent handoff
 
+## CURRENT PLAN — 5 Sep 2026 — refreshed goal, TODOs and execution order
+
+The user's latest request is to edit the goal and create a TODO list and steps. The native goal was inspected and remains **active**; available goal tools cannot rewrite its unfinished objective. The updated working objective and detailed ordered plan are in `SHIP_CHECKLIST.md`, especially **Immediate execution plan — latest goal/TODO request, 5 September**. Do not falsely complete or replace the goal to change its text. Internal target remains **6 September WAT**, exactly **eight pets**, overall **NO-GO**.
+
+Next priority: independently reproduce and repair stale generic dispatch authority before enabling shared Codex mutations. The read-only credential reviewer reports actual temporary-Store reproductions granting an older action after a same-goal objective edit, pause/resume, and later accepted user prompt. The reviewer also reproduced loss of documented `userMessage.content` text during normalization, and identified that current nudges can use `turn/start` plus configuration overrides. These are reviewer findings awaiting main verification/repair, not completed fixes. Separate exact-active-turn steering from idle continuation; do not silently change the user's session configuration or fall back from failed steering to a new turn.
+
+Bounded parallel ownership: `codex_audit` owns only new shared transport/test files; `opencode_audit` owns only new subscription coordinator/test files; `credential_review` independently reviews delivery/authority without source edits; main owns integration, authority fixes, final review and receipts. Transport/subscription designs are in progress, not installed-runtime proof. Preserve unowned `loop.py` changes and all agent-owned WIP; stage only reviewed paths. Read the three specs/current handoff before each grind and audit every repair.
+
+After the authority/connection work: prove real main/verifier NOOP and same-worker correction, then ten quiet cases; finish primary UI/backend flows and remaining source audit; validate normal release and clean-profile setup; inspect all eight pets; run fair visible Cursor/Codex comparisons plus separately labeled OpenCode diagnostics; perform final independent release review. Applicable live/provider/process/package/publication authority gates remain. This update changes planning documentation only and adds no new test, runtime, benchmark or readiness claim.
+
 ## CURRENT HANDOFF — 5 Sep 2026 — safe provider setup and honest source bootstrap
 
 **Pushed source receipt:** `67168204b11331a4a3db21b20e09a6900f3bbec5` (`Bind provider credentials and make source setup safe`). Main verified exact HEAD/remote `main` equality after push. Only the unowned `loop.py` change remained outside that checkpoint. This receipt is a documentation-only follow-up.
@@ -33,7 +43,7 @@ Next: solve actual existing-session observation/control, recoverable adapter att
 
 At the user's request, `SHIP_CHECKLIST.md` now records the revised winning-oriented working objective and an ordered next-cycle TODO list with owners, dependencies and evidence-based completion rules. The native goal remains active; its tool cannot edit an unfinished objective, so do not falsely complete it to replace the text. Internal ship target remains 6 September WAT. This is a planning-only update, not new implementation or validation evidence.
 
-Current local source work must be preserved: the credential draft repair in `apps/desktop/src/App.tsx` and new `apps/desktop/src/supervisorDraft.ts` is incomplete and unverified. Finish its callback/key-audience wiring and regression coverage before treating it as usable. The separate unexplained `services/supervisor/src/pex_supervisor/loop.py` edit remains untouched and outside reviewed checkpoints. Follow the next-cycle TODOs before moving to the gated live loop, eight-pet review and comparisons.
+Historical planning state, superseded by the provider/setup receipt above: the credential draft repair was incomplete when this earlier plan was written; its reviewed source repair is now pushed in `67168204b11331a4a3db21b20e09a6900f3bbec5`. Rendered UI/provider proof remains open. The separate unexplained `services/supervisor/src/pex_supervisor/loop.py` edit remains untouched and outside reviewed checkpoints. Follow the latest immediate execution plan before moving to the gated live loop, eight-pet review and comparisons.
 
 ## CURRENT HANDOFF — 5 Sep 2026 — exact model evidence and recoverable desktop startup
 
