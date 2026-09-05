@@ -12,6 +12,8 @@ The internal target is **6 September WAT**. `docs/SHIP_CHECKLIST.md` holds the u
 
 The outcome/context/UI repair has fresh local evidence: **298 backend tests**, then a separate overlapping **191-test harness/compatibility run**, plus **67 frontend checks and TypeScript success**; scoped Ruff and diff checks clean. Generic activity no longer receives causal helped credit; OpenCode attribution requires exact admitted parent lineage; Cursor unsupported completion no longer fabricates acceptance; bounded durable context/decisions reach frozen supervisor requests; UI resources retain independent loading/stale/failure states and block unsafe stale-revision controls. Independent bounded integration review approved this slice. See the handoff for exact file scopes, timing, failures and evidence limits. These checks are not live provider, rendered desktop, package or whole-repository proof.
 
+Pushed source **`a779404082edb3fe861a643bf1f981eeb5373b40`** was verified equal to `origin/main`, with a clean working tree after push. This paragraph is the documentation-only receipt follow-up.
+
 Next critical work: exact main/verifier tool-observation receipts, real same-session supervisor demonstration, usable onboarding and recoverable startup, then remaining audit/integrity/release gates. No live calls, services, installed hooks, package or submission were changed in this batch. Overall **NO-GO** remains.
 
 ## Current production repair — truthful Cursor stop delivery

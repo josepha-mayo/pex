@@ -4,6 +4,8 @@
 
 **Reviewed local source checkpoint, not submission readiness.** The active goal remains active. `SHIP_CHECKLIST.md` now contains the updated working objective, ordered steps, prioritized TODOs, stage-by-stage execution board, exit conditions and deadline discipline. Goal tools cannot edit an unfinished goal's objective; do not falsely complete it to replace it. Internal target remains **6 September WAT**, with exactly eight pets and the visible comparison phase after real-product/integrity gates.
 
+**Pushed source receipt:** `a779404082edb3fe861a643bf1f981eeb5373b40` (`Bind supervisor context and outcomes to honest canonical state`) is on `origin/main`. Local HEAD and the remote branch hash matched exactly, with a clean working tree immediately after push. This receipt is a documentation-only follow-up; no source changed after the recorded final gates.
+
 ### What changed in this batch
 
 - `pipeline.py` rejects foreign session/harness/goal/project observations before touching outcome state. Non-Codex/OpenCode activity is recorded as noncausal observation with `helped=None`; generic transport acceptance is not enough to claim a useful result. Cursor's legacy completion query now explicitly returns unsupported with no invented turn ID or vendor acceptance. Existing immutable Cursor preparation/flush/activity history is preserved.
@@ -24,7 +26,7 @@ Main reviewed bounded changes; independent pipeline/Store cross-review approved 
 
 ### Exact next steps and limits
 
-1. Verify and record this source checkpoint's remote hash; keep push-per-verified-update discipline.
+1. Source checkpoint push is verified above. Keep push-per-verified-update discipline for the next repair.
 2. Implement exact bounded timestamped request/event-bound tool-observation receipts separately for main and verifier, persist them, and test workspace mutation between calls. Offered-context hashes and tool names do not solve this.
 3. Complete first-run connection and recoverable visible startup; verify the actual primary human workflows. Investigate evidence polling under slow endpoints, not only helper tests.
 4. Establish real Strands main/verifier and same-session Codex NOOP/correction evidence, then ten quiet cases. Resolve applicable live/provider authority and budget at execution, preserving the existing bridge and sessions.
