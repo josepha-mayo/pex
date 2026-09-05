@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -27,6 +28,12 @@ from tests.contract.live_gate import require_live_authorization
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PROOF_SCRATCH = _REPO_ROOT / "benchmarks" / "results" / "_scratch"
+
+
+def _live_codex_turn_params() -> dict[str, str]:
+    """Pin the intentionally modest worker used by the recovery proof."""
+
+    return {"model": os.environ.get("PEX_LIVE_CODEX_MODEL", "gpt-5.3-codex-spark")}
 
 
 def _turn_receipts(transport, session) -> list[dict]:
@@ -240,6 +247,7 @@ async def test_live_codex_stop_inspects_with_strands(tmp_path: Path):
             session,
             "Create a file named ping.txt containing exactly the word pong. "
             "Then stop. Do not do anything else.",
+            _live_codex_turn_params(),
         )
         for _ in range(360):
             rows = await store.list_interventions(session.id)
@@ -402,6 +410,7 @@ async def test_live_codex_incomplete_stop_sends_specific_continue(tmp_path: Path
             session,
             "Stop immediately after one short sentence. "
             "Do not create report.txt or any other file.",
+            _live_codex_turn_params(),
         )
         for _ in range(360):
             rows = await store.list_interventions(session.id)
