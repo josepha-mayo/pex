@@ -236,6 +236,7 @@ async def test_apply_reserves_before_probe_and_dispatches_only_canonical_grant()
 
     store = SimpleNamespace(
         reserve_overlay_apply=AsyncMock(side_effect=reserve),
+        require_session_workspace_current=AsyncMock(return_value=None),
         get_session=AsyncMock(return_value=session),
         start_overlay_operation=AsyncMock(side_effect=start),
         finalize_overlay_operation=AsyncMock(side_effect=finalize),
@@ -299,6 +300,7 @@ async def test_apply_preflight_refusal_terminalizes_reserved_without_start_or_io
 
     store = SimpleNamespace(
         reserve_overlay_apply=AsyncMock(return_value=reserved),
+        require_session_workspace_current=AsyncMock(return_value=None),
         get_session=AsyncMock(return_value=session),
         finalize_overlay_operation=AsyncMock(side_effect=finalize),
         start_overlay_operation=AsyncMock(side_effect=AssertionError("start must not run")),
@@ -347,6 +349,7 @@ async def test_opencode_store_projection_never_calls_overlay_adapter():
     }
     store = SimpleNamespace(
         reserve_overlay_apply=AsyncMock(return_value=reserved),
+        require_session_workspace_current=AsyncMock(return_value=None),
         get_session=AsyncMock(return_value=session),
         active_overlays=AsyncMock(return_value=[]),
         start_overlay_operation=AsyncMock(
@@ -501,6 +504,7 @@ async def test_apply_cancellation_retains_finalize_task_before_reraising():
 
     store = SimpleNamespace(
         reserve_overlay_apply=AsyncMock(return_value=reserved),
+        require_session_workspace_current=AsyncMock(return_value=None),
         get_session=AsyncMock(return_value=session),
         start_overlay_operation=AsyncMock(
             return_value={

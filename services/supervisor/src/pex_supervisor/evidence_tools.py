@@ -7,14 +7,18 @@ or access hidden benchmark material.
 
 from __future__ import annotations
 
+import json
 import math
 import re
-from collections.abc import MutableSequence
+from collections.abc import Callable, Iterator, MutableSequence
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from pex_protocol.redaction import redact_mapping
-from pex_protocol.session import HarnessEvent
+from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import (
     SupervisorContextItem,
     SupervisorDecisionItem,
@@ -44,6 +48,75 @@ _SCORE_FEATURES = {
     "span_seconds",
     "pytest_failed",
 }
+
+
+@dataclass
+class _WorkspaceEvidenceGuard:
+    target: str
+    check: Callable[[], None]
+    active: bool = True
+
+
+_WORKSPACE_EVIDENCE_GUARD: ContextVar[_WorkspaceEvidenceGuard | None] = ContextVar(
+    "pex_workspace_evidence_guard", default=None,
+)
+
+
+def _workspace_target(session: HarnessSession) -> str:
+    binding = session.metadata.get("workspace_binding")
+    if not isinstance(binding, dict) or not binding:
+        raise ValueError("workspace evidence requires an exact selected binding")
+    rendered = json.dumps(
+        {
+            "id": session.id,
+            "vendor_session_id": session.vendor_session_id,
+            "harness_type": session.harness_type.value,
+            "project_id": session.project_id,
+            "cwd": session.cwd,
+            "workspace_binding": binding,
+        },
+        sort_keys=True, separators=(",", ":"), allow_nan=False,
+    )
+    if len(rendered.encode("utf-8")) > 65_536:
+        raise ValueError("workspace evidence binding exceeds its bound")
+    return rendered
+
+
+@contextmanager
+def workspace_evidence_guard(
+    session: HarnessSession, check: Callable[[], None],
+) -> Iterator[None]:
+    """Install server-owned authority for one local evidence invocation.
+
+    The callback is never reconstructed from request metadata. Context copies
+    share revocation, so tasks/threads cannot keep reading after the invocation
+    exits. Pre/post samples do not make filesystem reads atomic or undo bytes
+    already read by an in-flight thread.
+    """
+    if not callable(check):
+        raise TypeError("workspace evidence guard requires a trusted callback")
+    guard = _WorkspaceEvidenceGuard(_workspace_target(session), check)
+    token = _WORKSPACE_EVIDENCE_GUARD.set(guard)
+    try:
+        yield
+    finally:
+        guard.active = False
+        _WORKSPACE_EVIDENCE_GUARD.reset(token)
+
+
+def _workspace_read_allowed(session: HarnessSession) -> bool:
+    guard = _WORKSPACE_EVIDENCE_GUARD.get()
+    if guard is None:
+        # Existing unbound observations retain their legacy behavior; a copied
+        # workspace receipt is not itself permission to open a local path.
+        return "workspace_binding" not in session.metadata
+    try:
+        if not guard.active or guard.target != _workspace_target(session):
+            return False
+        guard.check()
+        return guard.active
+    except Exception:
+        return False
 
 
 def _clip(value: object, limit: int) -> str:
@@ -237,6 +310,30 @@ def build_evidence_tools(
             ),
             value=(cleaned or {}).get("evidence"),
         )
+
+    def local_record(
+        name: str,
+        read: Callable[[], object],
+        arguments: dict[str, object] | None = None,
+    ) -> str:
+        unavailable = {
+            "available": False, "observed": False,
+            "error": "workspace_authority_unavailable",
+        }
+        if not _workspace_read_allowed(request.session):
+            return record(name, unavailable, arguments)
+        try:
+            value = read()
+        except Exception:
+            value = {
+                "available": False, "observed": False,
+                "error": "local_evidence_read_failed",
+            }
+        # Recheck even after a failed read. Never collect or return stale bytes
+        # (or exception text) from a replaced root or a revoked invocation.
+        if not _workspace_read_allowed(request.session):
+            value = unavailable
+        return record(name, value, arguments)
 
     @tool(
         name="get_goal",
@@ -561,23 +658,23 @@ def build_evidence_tools(
         features = request.scores.features or {}
         workspace = features.get("prefetched_evidence")
         if isinstance(workspace, dict) and workspace:
-            return record("inspect_workspace", workspace)
+            return local_record("inspect_workspace", lambda: workspace)
         cwd = request.session.cwd
         if not cwd:
             return record("inspect_workspace", {"observed": False, "reason": "cwd unavailable"})
         from pex_supervisor.workspace import snapshot
 
-        raw = snapshot(cwd, run_pytest=False)
-        return record(
-            "inspect_workspace",
-            {
+        def read() -> dict:
+            raw = snapshot(cwd, run_pytest=False)
+            return {
                 "observed": not bool(raw.get("error")),
                 "error": raw.get("error"),
                 "files": list(raw.get("files") or [])[:80],
                 "files_truncated": bool(raw.get("files_truncated")),
                 "pytest": raw.get("pytest"),
-            },
-        )
+            }
+
+        return local_record("inspect_workspace", read)
 
     @tool(
         name="inspect_git",
@@ -588,19 +685,21 @@ def build_evidence_tools(
         if cwd:
             from pex_supervisor.workspace import git_snapshot
 
-            raw = git_snapshot(Path(cwd))
-            return record(
-                "inspect_git",
-                {
+            def read() -> dict:
+                raw = git_snapshot(Path(cwd))
+                return {
                     "available": raw.get("available"),
                     "error": raw.get("error"),
                     "status": _clip(raw.get("status"), 1_500),
                     "diff_stat": _clip(raw.get("diff_stat"), 1_500),
                     "diff": _clip(raw.get("diff"), 2_500),
-                },
-            )
+                }
+
+            return local_record("inspect_git", read)
         git = ((request.scores.features or {}).get("prefetched_evidence") or {}).get("git")
-        return record("inspect_git", git or {"available": False, "reason": "git not prefetched"})
+        return local_record(
+            "inspect_git", lambda: git or {"available": False, "reason": "git not prefetched"},
+        )
 
     @tool(
         name="inspect_file",
@@ -621,7 +720,10 @@ def build_evidence_tools(
         if cwd:
             from pex_supervisor.workspace import read_visible
 
-            return emit(read_visible(Path(cwd), rel, limit=1_200))
+            return local_record(
+                "inspect_file", lambda: read_visible(Path(cwd), rel, limit=1_200),
+                {"path": path},
+            )
         files = ((request.scores.features or {}).get("prefetched_evidence") or {}).get(
             "files"
         ) or []
@@ -629,12 +731,13 @@ def build_evidence_tools(
             str(item.get("path") if isinstance(item, dict) else item)
             for item in files[:80]
         ]
-        return emit(
-            {
+        return local_record(
+            "inspect_file", lambda: {
                 "path": rel,
                 "in_inventory": rel in names or any(name.endswith(rel) for name in names),
                 "content": "unavailable_remote",
             },
+            {"path": path},
         )
 
     @tool(
@@ -642,21 +745,19 @@ def build_evidence_tools(
         description="Inspect a bounded tail of an observed result artifact such as results.jsonl.",
     )
     def inspect_artifact(path: str = "") -> str:
-        def emit(value: object) -> str:
-            return record("inspect_artifact", value, {"path": path})
-
         rel = _safe_relpath(path) if path else None
         cwd = request.session.cwd
         if cwd:
             from pex_supervisor.workspace import artifact_tails
 
-            tails = artifact_tails(Path(cwd), limit=800)
-            if rel:
-                match = next((item for item in tails if item.get("path") == rel), None)
-                return emit(
-                    match or {"error": "artifact not observed", "path": rel},
-                )
-            return emit({"artifacts": tails[:12]})
+            def read() -> dict:
+                tails = artifact_tails(Path(cwd), limit=800)
+                if rel:
+                    match = next((item for item in tails if item.get("path") == rel), None)
+                    return match or {"error": "artifact not observed", "path": rel}
+                return {"artifacts": tails[:12]}
+
+            return local_record("inspect_artifact", read, {"path": path})
         artifacts = (
             ((request.scores.features or {}).get("prefetched_evidence") or {}).get("artifacts")
             or []
@@ -670,10 +771,14 @@ def build_evidence_tools(
                 ),
                 None,
             )
-            return emit(
-                match or {"error": "artifact not prefetched", "path": rel},
+            return local_record(
+                "inspect_artifact",
+                lambda: match or {"error": "artifact not prefetched", "path": rel},
+                {"path": path},
             )
-        return emit({"artifacts": artifacts[:12]})
+        return local_record(
+            "inspect_artifact", lambda: {"artifacts": artifacts[:12]}, {"path": path},
+        )
 
     @tool(
         name="inspect_process",

@@ -24,6 +24,7 @@ from pex_bridge.adapters.codex_subscription import (
     CodexObservedRecord,
     CodexSubscriptionError,
 )
+from pex_bridge.workspace_binding import WorkspaceAuthorityError
 
 MAX_PENDING_EVENTS = 256
 MAX_USER_ITEMS = 4096
@@ -337,6 +338,12 @@ class CodexSharedAdapter(HarnessAdapter):
                     self.last_pump_error = None
                     break
                 except asyncio.CancelledError:
+                    raise
+                except WorkspaceAuthorityError as exc:
+                    # Authority loss is not transient Store unavailability.
+                    # Let the owned pump finalizer retain the untouched pending
+                    # observations after joining both consumers and producers.
+                    self.last_pump_error = exc.code
                     raise
                 except Exception as exc:
                     self.last_pump_error = type(exc).__name__

@@ -178,7 +178,13 @@ async def test_stale_durable_subscription_is_not_overwritten(lifecycle):
     event, snapshot = await disconnected(adapter)
     current = await store.get_session(snapshot.id)
     current.metadata["subscription_receipt"]["authorization_id"] = "new-subscription"
-    await store.upsert_session(current)
+    control = await store.get_session_control_state(current.id)
+    # Generic discovery cannot replace observer-owned subscription authority.
+    await store.publish_observer_session(
+        current,
+        expected_control_revision=control["control_revision"],
+        expected_project_binding=control["project_binding"],
+    )
     with pytest.raises(ValueError, match="durable connection changed"):
         await pipeline.ingest_observer_lifecycle(event, snapshot)
     assert await store.get_event(event.event_id) is None

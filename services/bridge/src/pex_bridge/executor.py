@@ -6,9 +6,11 @@ import errno
 import json
 import os
 import sys
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import TypeVar
 from uuid import uuid4
 
 from pex_protocol.actions import InterventionType, ProposedAction
@@ -25,12 +27,14 @@ from pex_bridge.adapters.base import (
     CursorHookPreparation,
     resolve_adapter_message_result,
 )
+from pex_bridge.local_workspace import require_same_local_directory
 from pex_bridge.store import (
     Store,
     _canonical_lifecycle_path,
     _lifecycle_entity_identity,
     utcnow,
 )
+from pex_bridge.workspace_binding import require_current_workspace
 
 OVERLAY_ADAPTER_TIMEOUT_SECONDS = 10.0
 OVERLAY_EXPIRY_PAGE_SIZE = 1_000
@@ -46,6 +50,7 @@ MAX_CLEANUP_RESOURCES = 128
 AT_FDCWD = -100
 RENAME_NOREPLACE = 1
 RENAME_EXCL = 0x00000004
+_DispatchResult = TypeVar("_DispatchResult")
 
 
 @dataclass(frozen=True)
@@ -53,6 +58,10 @@ class ActionExecutionResult:
     outcome: str
     worker_delivery_receipt: dict[str, str] | None = None
     hook_preparation_receipt: dict[str, str] | None = None
+
+
+class _WorkspaceDispatchRefused(Exception):
+    """Only raised before an adapter operation is entered, never after it."""
 
 
 def _message_execution_result(
@@ -100,6 +109,40 @@ class ActionExecutor:
         self.channels = channels
         self._overlay_lock = asyncio.Lock()
 
+    async def _workspace_dispatch(
+        self,
+        session: HarnessSession,
+        operation: Callable[[], Awaitable[_DispatchResult]],
+        *,
+        sources: Sequence[HarnessSession] = (),
+    ) -> _DispatchResult:
+        # This coroutine runs inside wait_for's task: a check performed before
+        # constructing that task would miss changes while it waits to start.
+        try:
+            witnesses = [
+                (target, await self.store.require_session_workspace_current(target))
+                for target in (session, *sources)
+            ]
+            # Store commit/connection closure and later source checks can yield.
+            # Sample trusted witnesses once more with no await before adapter I/O.
+            for target, witness in witnesses:
+                if witness is not None:
+                    binding, origin_path = witness
+                    require_current_workspace(binding, origin_path)
+                    require_same_local_directory(target.cwd, binding.directory)
+        except Exception as exc:
+            raise _WorkspaceDispatchRefused from exc
+        return await operation()
+
+    async def _workspace_is_current(self, session) -> bool:
+        async def checked() -> bool:
+            return True
+
+        try:
+            return await self._workspace_dispatch(session, checked)
+        except _WorkspaceDispatchRefused:
+            return False
+
     async def execute(
         self,
         action: ProposedAction,
@@ -121,6 +164,8 @@ class ActionExecutor:
             adapter = self.adapters.for_session(action.session_id)
             if session is None or adapter is None:
                 return "permission_missing_session_or_adapter"
+            if not await self._workspace_is_current(session):
+                return "workspace_authority_changed"
             try:
                 response_mode = PermissionResponseMode(
                     session.capabilities.get("permission_response_mode", "none")
@@ -162,9 +207,13 @@ class ActionExecutor:
                 return "permission_delivery_unsupported"
             try:
                 ok = await asyncio.wait_for(
-                    adapter.respond_permission(session, request_id, decision),
+                    self._workspace_dispatch(
+                        session, lambda: adapter.respond_permission(session, request_id, decision),
+                    ),
                     timeout=PERMISSION_ADAPTER_TIMEOUT_SECONDS,
                 )
+            except _WorkspaceDispatchRefused:
+                return "workspace_authority_changed"
             except Exception:
                 # The external harness may have received a response before the
                 # transport raised. Surface uncertainty and never claim success.
@@ -177,6 +226,8 @@ class ActionExecutor:
             if session:
                 if action.goal_id != session.goal_id:
                     return "action_goal_mismatch"
+                if not await self._workspace_is_current(session):
+                    return "workspace_authority_changed"
                 # Never trust a model-supplied status snapshot. Preserve a
                 # stopped source as stopped; the pending intervention itself is
                 # the durable decision signal.
@@ -256,20 +307,25 @@ class ActionExecutor:
                 session,
                 lifecycle_resolution_id=lifecycle_resolution_id,
             )
+        if not await self._workspace_is_current(session):
+            return "workspace_authority_changed"
         adapter = self.adapters.for_session(action.session_id)
         if adapter is None:
             return "missing_session_or_adapter"
 
-        if action.type == InterventionType.START_AGENT:
-            return await self._start_agent(action, session, adapter)
-        if action.type == InterventionType.STOP_AGENT:
-            return await self._stop_agent(
-                session,
-                adapter,
-                defer_control_projection=lifecycle_resolution_id is not None,
-            )
-        if action.type == InterventionType.FORK_PROBE:
-            return await self._fork_probe(action, session, adapter)
+        try:
+            if action.type == InterventionType.START_AGENT:
+                return await self._start_agent(action, session, adapter)
+            if action.type == InterventionType.STOP_AGENT:
+                return await self._stop_agent(
+                    session,
+                    adapter,
+                    defer_control_projection=lifecycle_resolution_id is not None,
+                )
+            if action.type == InterventionType.FORK_PROBE:
+                return await self._fork_probe(action, session, adapter)
+        except _WorkspaceDispatchRefused:
+            return "workspace_authority_changed"
 
         text = str(action.payload.get("text") or "")
         if len(text) > MAX_ACTION_TEXT_CHARS:
@@ -279,9 +335,11 @@ class ActionExecutor:
                 return "send_skipped_empty"
             try:
                 ok = await asyncio.wait_for(
-                    adapter.send_message(session, text),
+                    self._workspace_dispatch(session, lambda: adapter.send_message(session, text)),
                     timeout=MESSAGE_ADAPTER_TIMEOUT_SECONDS,
                 )
+            except _WorkspaceDispatchRefused:
+                return "workspace_authority_changed"
             except Exception:
                 return "send_delivery_uncertain"
             return _message_execution_result(
@@ -295,9 +353,11 @@ class ActionExecutor:
                 return "verification_skipped_no_specific_probe"
             try:
                 ok = await asyncio.wait_for(
-                    adapter.send_message(session, text),
+                    self._workspace_dispatch(session, lambda: adapter.send_message(session, text)),
                     timeout=MESSAGE_ADAPTER_TIMEOUT_SECONDS,
                 )
+            except _WorkspaceDispatchRefused:
+                return "workspace_authority_changed"
             except Exception:
                 return "verification_delivery_uncertain"
             return _message_execution_result(
@@ -346,16 +406,23 @@ class ActionExecutor:
                     ):
                         return "handoff_context_mismatch"
                     ok = await asyncio.wait_for(
-                        adapter.inject_context(session, bundle),
+                        self._workspace_dispatch(
+                            session, lambda: adapter.inject_context(session, bundle),
+                            sources=sources,
+                        ),
                         timeout=HANDOFF_ADAPTER_TIMEOUT_SECONDS,
                     )
                 else:
                     if not text.strip():
                         return "handoff_skipped_no_specific_context"
                     ok = await asyncio.wait_for(
-                        adapter.send_message(session, text),
+                        self._workspace_dispatch(
+                            session, lambda: adapter.send_message(session, text),
+                        ),
                         timeout=HANDOFF_ADAPTER_TIMEOUT_SECONDS,
                     )
+            except _WorkspaceDispatchRefused:
+                return "workspace_authority_changed"
             except ValidationError:
                 return "handoff_failed"
             except TimeoutError:
@@ -375,9 +442,13 @@ class ActionExecutor:
         if action.type == InterventionType.CONTINUE_SESSION:
             try:
                 ok = await asyncio.wait_for(
-                    adapter.continue_or_resume(session, text or None),
+                    self._workspace_dispatch(
+                        session, lambda: adapter.continue_or_resume(session, text or None),
+                    ),
                     timeout=MESSAGE_ADAPTER_TIMEOUT_SECONDS,
                 )
+            except _WorkspaceDispatchRefused:
+                return "workspace_authority_changed"
             except Exception:
                 return "continue_delivery_uncertain"
             return _message_execution_result(
@@ -389,9 +460,11 @@ class ActionExecutor:
         if action.type == InterventionType.FOCUS_UI:
             try:
                 ok = await asyncio.wait_for(
-                    adapter.focus_ui(session),
+                    self._workspace_dispatch(session, lambda: adapter.focus_ui(session)),
                     timeout=FOCUS_ADAPTER_TIMEOUT_SECONDS,
                 )
+            except _WorkspaceDispatchRefused:
+                return "workspace_authority_changed"
             except Exception:
                 return "focus_delivery_uncertain"
             return "focused" if ok else "focus_failed"
@@ -457,9 +530,15 @@ class ActionExecutor:
     ) -> bool:
         """Re-probe immediately before a lifecycle side effect and fail closed."""
         try:
-            capabilities = await asyncio.wait_for(adapter.probe(), timeout=2.0)
+            capabilities = await asyncio.wait_for(
+                self._workspace_dispatch(session, adapter.probe), timeout=2.0,
+            )
+        except _WorkspaceDispatchRefused:
+            raise
         except Exception:
             return False
+        if not await self._workspace_is_current(session):
+            raise _WorkspaceDispatchRefused
         session.capabilities = capabilities.model_dump(mode="json")
         if persist:
             await self.store.upsert_session(session)
@@ -492,11 +571,15 @@ class ActionExecutor:
             return "agent_start_unsupported"
         try:
             created = await asyncio.wait_for(
-                adapter.start_session(
-                    project, prompt, config if isinstance(config, dict) else None
+                self._workspace_dispatch(
+                    source, lambda: adapter.start_session(
+                        project, prompt, config if isinstance(config, dict) else None,
+                    ),
                 ),
                 timeout=LIFECYCLE_ADAPTER_TIMEOUT_SECONDS,
             )
+        except _WorkspaceDispatchRefused:
+            raise
         except Exception:
             # The harness may have created a session before transport failure.
             return "agent_start_delivery_uncertain"
@@ -550,9 +633,11 @@ class ActionExecutor:
             return "agent_stop_unsupported"
         try:
             stopped = await asyncio.wait_for(
-                adapter.stop(session),
+                self._workspace_dispatch(session, lambda: adapter.stop(session)),
                 timeout=LIFECYCLE_ADAPTER_TIMEOUT_SECONDS,
             )
+        except _WorkspaceDispatchRefused:
+            raise
         except Exception:
             return "agent_stop_delivery_uncertain"
         if not stopped:
@@ -590,9 +675,13 @@ class ActionExecutor:
             return "probe_fork_unsupported"
         try:
             child = await asyncio.wait_for(
-                adapter.fork_or_fresh_handoff(session, bundle),
+                self._workspace_dispatch(
+                    session, lambda: adapter.fork_or_fresh_handoff(session, bundle),
+                ),
                 timeout=LIFECYCLE_ADAPTER_TIMEOUT_SECONDS,
             )
+        except _WorkspaceDispatchRefused:
+            raise
         except Exception:
             return "probe_fork_delivery_uncertain"
         if child is None:
@@ -662,7 +751,9 @@ class ActionExecutor:
         if parent_objective:
             try:
                 await asyncio.wait_for(
-                    adapter.continue_or_resume(parent, parent_objective),
+                    self._workspace_dispatch(
+                        parent, lambda: adapter.continue_or_resume(parent, parent_objective),
+                    ),
                     timeout=MESSAGE_ADAPTER_TIMEOUT_SECONDS,
                 )
             except Exception:
@@ -1400,7 +1491,14 @@ class ActionExecutor:
                 )
                 return _overlay_operation_outcome(skipped, kind="apply")
             try:
-                capabilities = await asyncio.wait_for(adapter.probe(), timeout=2.0)
+                capabilities = await asyncio.wait_for(
+                    self._workspace_dispatch(session, adapter.probe), timeout=2.0,
+                )
+            except _WorkspaceDispatchRefused:
+                skipped = await self._finalize_overlay_skipped(
+                    operation_id, code="workspace_authority_changed",
+                )
+                return _overlay_operation_outcome(skipped, kind="apply")
             except asyncio.CancelledError:
                 await self._finalize_overlay_skipped(
                     operation_id,
@@ -1447,6 +1545,11 @@ class ActionExecutor:
                     )
                     return _overlay_operation_outcome(skipped, kind="apply")
 
+            if not await self._workspace_is_current(session):
+                skipped = await self._finalize_overlay_skipped(
+                    operation_id, code="workspace_authority_changed",
+                )
+                return _overlay_operation_outcome(skipped, kind="apply")
             started = await self._start_overlay_operation(
                 operation,
                 kind="apply",
@@ -1811,7 +1914,9 @@ class ActionExecutor:
         try:
             if kind == "apply":
                 succeeded = await asyncio.wait_for(
-                    adapter.apply_overlay(session, overlay),
+                    self._workspace_dispatch(
+                        session, lambda: adapter.apply_overlay(session, overlay),
+                    ),
                     timeout=OVERLAY_ADAPTER_TIMEOUT_SECONDS,
                 )
             else:
@@ -1819,6 +1924,10 @@ class ActionExecutor:
                     adapter.revert_overlay(overlay.id, rollback),
                     timeout=OVERLAY_ADAPTER_TIMEOUT_SECONDS,
                 )
+        except _WorkspaceDispatchRefused:
+            return await self._finalize_overlay_skipped(
+                operation_id, code="workspace_authority_changed",
+            )
         except asyncio.CancelledError:
             await self._finalize_overlay_with_recovery(
                 operation_id,

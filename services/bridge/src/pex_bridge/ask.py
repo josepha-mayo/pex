@@ -9,6 +9,7 @@ from pex_protocol.goal import Goal
 from pex_protocol.intervention import Intervention
 from pex_protocol.redaction import redact_text
 from pex_protocol.session import HarnessSession
+from pex_supervisor.review_authority import require_review_authority
 
 _REVIEW_SYSTEM = (
     "You are PEX, a goal-aware supervisor that reviews coding agents. "
@@ -89,6 +90,7 @@ def answer_question(
         try:
             from pex_supervisor.ask_review import complete_inspect_review
 
+            require_review_authority()
             inspected = complete_inspect_review(
                 question,
                 sessions,
@@ -103,6 +105,7 @@ def answer_question(
     try:
         from pex_supervisor.inspect_http import complete_review_answer
 
+        require_review_authority()
         answer, _, _ = complete_review_answer(
             _REVIEW_SYSTEM,
             _review_user(question, sessions, interventions, goals or []),

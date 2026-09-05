@@ -69,6 +69,7 @@ from pex_bridge.handoff_views import intervention_audit_action_payload
 from pex_bridge.hook_auth import allowed_hook_routes
 from pex_bridge.local_workspace import require_same_local_directory
 from pex_bridge.workspace_binding import (
+    WorkspaceAuthorityError,
     WorkspaceBinding,
     require_current_workspace,
     require_local_locator_consistency,
@@ -121,6 +122,14 @@ CREATE TABLE IF NOT EXISTS events (
   session_id TEXT,
   ts TEXT,
   json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS observer_workspace_authorities (
+  session_id TEXT PRIMARY KEY REFERENCES sessions(id),
+  subscription_id TEXT NOT NULL,
+  project_binding TEXT NOT NULL,
+  workspace_json TEXT NOT NULL,
+  subscription_json TEXT NOT NULL,
+  local_origin_path TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS event_processing (
   accept_seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2440,6 +2449,10 @@ class OperatorEffectConflictError(ValueError):
     """A caller reused an idempotency key for a different logical request."""
 
 
+_OBSERVER_SESSION_METADATA_KEYS = frozenset({
+    "workspace_binding", "subscription_receipt", "observation_coverage",
+})
+
 _EVENT_SESSION_METADATA_KEYS = frozenset(
     {
         "active_files",
@@ -4379,7 +4392,10 @@ def _merge_event_session_projection(
     if current is None:
         if observer is not None:
             raise ValueError("observer projection lost its durable session")
-        return planned.model_copy(deep=True)
+        unbound = planned.model_copy(deep=True)
+        for key in _OBSERVER_SESSION_METADATA_KEYS:
+            unbound.metadata.pop(key, None)
+        return unbound
     if current.harness_type != planned.harness_type:
         raise ValueError("event session projection cannot change harness identity")
     if current.vendor_session_id != planned.vendor_session_id:
@@ -4436,7 +4452,7 @@ def _merge_event_session_projection(
     # allowing a stale plan to erase newer adapter/control metadata.
     merged.metadata = dict(current.metadata)
     for key, value in planned.metadata.items():
-        if key == "observation_coverage":
+        if key in _OBSERVER_SESSION_METADATA_KEYS:
             # Only the canonical trusted event can advance observer coverage.
             continue
         if key not in _EVENT_SESSION_METADATA_KEYS:
@@ -6502,6 +6518,146 @@ async def _event_project_identity_failure_reason(
     if current_binding != accepted_binding:
         return "event_project_identity_changed"
     return None
+
+
+async def _require_session_workspace_current(
+    transaction: aiosqlite.Connection,
+    snapshot: HarnessSession,
+) -> tuple[WorkspaceBinding, Path] | None:
+    """Validate a witnessed workspace using only its durable server-selected path.
+
+    Missing witnesses are never reconstructed from metadata or database location.
+    This samples authority, not an atomic lock on a running worker's cwd handle.
+    """
+    try:
+        cursor = await transaction.execute(
+            "SELECT json, project_binding FROM sessions WHERE id = ?", (snapshot.id,),
+        )
+        session_row = await cursor.fetchone()
+        current = HarnessSession.model_validate_json(session_row["json"]) if session_row else None
+        cursor = await transaction.execute(
+            "SELECT * FROM observer_workspace_authorities WHERE session_id = ?", (snapshot.id,),
+        )
+        authority = await cursor.fetchone()
+        current_has_workspace = current is not None and "workspace_binding" in current.metadata
+        snapshot_has_workspace = "workspace_binding" in snapshot.metadata
+        if authority is None and not current_has_workspace and not snapshot_has_workspace:
+            return None
+        if (
+            authority is None or current is None
+            or not current_has_workspace or not snapshot_has_workspace
+        ):
+            raise ValueError("workspace receipt has no matching durable publication witness")
+        workspace = WorkspaceBinding.model_validate_json(authority["workspace_json"])
+        frozen_workspace = _canonical_json(workspace.model_dump(mode="json"))
+        receipt = _strict_json_loads(authority["subscription_json"])
+        if (
+            frozen_workspace != authority["workspace_json"]
+            or _canonical_json(current.metadata["workspace_binding"]) != frozen_workspace
+            or _canonical_json(snapshot.metadata["workspace_binding"]) != frozen_workspace
+            or not isinstance(receipt, dict)
+            or not isinstance(receipt.get("authorization_id"), str)
+            or not receipt["authorization_id"]
+            or receipt["authorization_id"] != authority["subscription_id"]
+            or _canonical_json(current.metadata.get("subscription_receipt"))
+            != authority["subscription_json"]
+            or _canonical_json(snapshot.metadata.get("subscription_receipt"))
+            != authority["subscription_json"]
+            or current.id != snapshot.id
+            or current.harness_type != snapshot.harness_type
+            or current.vendor_session_id != snapshot.vendor_session_id
+            or _session_project(current) != workspace.project_id
+            or _session_project(snapshot) != workspace.project_id
+            or authority["project_binding"] != workspace.project_binding
+            or session_row["project_binding"] != workspace.project_binding
+            or current.status == SessionStatus.DETACHED
+            or snapshot.status == SessionStatus.DETACHED
+        ):
+            raise ValueError("workspace publication target or receipt changed")
+        if (
+            await _project_binding_snapshot(transaction, workspace.project_id)
+            != workspace.project_binding
+        ):
+            raise ValueError("workspace project identity changed")
+        locators: list[ProjectLocator] = []
+        if workspace.locator is None:
+            if not workspace.project_binding.startswith("legacy:"):
+                raise ValueError("registered workspace lost its locator")
+        else:
+            if not workspace.project_binding.startswith("identity:"):
+                raise ValueError("workspace locator has no registered identity")
+            identity_id = workspace.project_binding.removeprefix("identity:")
+            cursor = await transaction.execute(
+                "SELECT json FROM project_identities WHERE id = ?", (identity_id,),
+            )
+            identity_row = await cursor.fetchone()
+            cursor = await transaction.execute(
+                "SELECT fingerprint, json FROM project_locators WHERE project_identity_id = ? "
+                "ORDER BY fingerprint", (identity_id,),
+            )
+            locator_rows = await cursor.fetchall()
+            selected = next(
+                (
+                    row for row in locator_rows
+                    if row["fingerprint"] == workspace.locator.fingerprint
+                ),
+                None,
+            )
+            if (
+                identity_row is None or selected is None
+                or workspace.locator.fingerprint not in ProjectIdentity.model_validate_json(
+                    identity_row["json"]
+                ).locator_fingerprints
+                or _canonical_json(ProjectLocator.model_validate_json(selected["json"]).model_dump(
+                    mode="json"
+                )) != _canonical_json(workspace.locator.model_dump(mode="json"))
+            ):
+                raise ValueError("selected workspace locator changed")
+            locators = [ProjectLocator.model_validate_json(row["json"]) for row in locator_rows]
+        raw_path = authority["local_origin_path"]
+        if (
+            not isinstance(raw_path, str) or not raw_path
+            or len(raw_path) > 8192 or "\x00" in raw_path
+        ):
+            raise ValueError("trusted local origin path is invalid")
+        origin_path = Path(raw_path)
+        if not origin_path.is_absolute():
+            raise ValueError("trusted local origin path is not absolute")
+        # All database reads precede the filesystem samples. No network/model/
+        # worker call is performed here, including after a Store reopen.
+        require_local_locator_consistency(locators, workspace.origin_choice, workspace.directory)
+        require_current_workspace(workspace, origin_path)
+        require_same_local_directory(current.cwd, workspace.directory)
+        require_same_local_directory(snapshot.cwd, workspace.directory)
+        return workspace, origin_path
+    except WorkspaceAuthorityError:
+        raise
+    except (ValueError, OSError, LookupError) as exc:
+        raise WorkspaceAuthorityError(
+            "workspace authority changed; inspect and attach again"
+        ) from exc
+
+
+async def _require_processing_workspace_current(
+    transaction: aiosqlite.Connection, processing: dict[str, Any],
+) -> None:
+    accepted = processing.get("accepted_session")
+    if isinstance(accepted, HarnessSession):
+        await _require_session_workspace_current(transaction, accepted)
+        return
+    cursor = await transaction.execute(
+        "SELECT json FROM sessions WHERE id = ?", (processing["session_id"],),
+    )
+    row = await cursor.fetchone()
+    cursor = await transaction.execute(
+        "SELECT 1 FROM observer_workspace_authorities WHERE session_id = ?",
+        (processing["session_id"],),
+    )
+    if await cursor.fetchone() is not None or (
+        row is not None
+        and "workspace_binding" in HarnessSession.model_validate_json(row["json"]).metadata
+    ):
+        raise WorkspaceAuthorityError("accepted work lacks its workspace publication snapshot")
 
 
 class Store:
@@ -10841,6 +10997,7 @@ class Store:
         allow_goal_change: bool = False,
         allow_supervision_change: bool = False,
     ) -> None:
+        session = session.model_copy(deep=True)
         # Event pumps and discovery can finish out of order. Serialize the read/merge/write
         # so an older snapshot cannot roll back a newer status, human goal attachment, or
         # supervision pause decision.
@@ -10851,6 +11008,14 @@ class Store:
                 cur = await tx.execute("SELECT * FROM sessions WHERE id = ?", (session.id,))
                 row = await cur.fetchone()
                 existing = HarnessSession.model_validate_json(row["json"]) if row else None
+                # Only witnessed observer publication can install these fields.
+                # Generic discovery/event snapshots cannot erase or mint them.
+                session.metadata = dict(session.metadata)
+                for key in _OBSERVER_SESSION_METADATA_KEYS:
+                    if existing is not None and key in existing.metadata:
+                        session.metadata[key] = existing.metadata[key]
+                    else:
+                        session.metadata.pop(key, None)
                 incoming_generation = _session_discovery_generation(session)
                 incoming_binding = session.project_id or session.cwd
                 existing_binding = (
@@ -11032,6 +11197,27 @@ class Store:
                 await tx.rollback()
                 raise
 
+    async def require_session_workspace_current(
+        self, session: HarnessSession,
+    ) -> tuple[WorkspaceBinding, Path] | None:
+        """Return the validated workspace/path witness, or None for unbound legacy.
+
+        Consumers must recheck around awaited work; this does not lock the OS
+        directory or establish transport continuity. Recovery uses the exact
+        server-selected path persisted at publication, never inferred metadata.
+        """
+        snapshot = session.model_copy(deep=True)
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN")
+            try:
+                result = await _require_session_workspace_current(transaction, snapshot)
+                await transaction.commit()
+                return result
+            except BaseException:
+                await transaction.rollback()
+                raise
+
     async def publish_observer_session(
         self,
         session: HarnessSession,
@@ -11069,6 +11255,18 @@ class Store:
             or incoming.metadata.get("workspace_binding") != workspace.model_dump(mode="json")
         ):
             raise ValueError("observer selected workspace does not match its session")
+        if workspace is not None:
+            receipt = incoming.metadata.get("subscription_receipt")
+            if (
+                not isinstance(receipt, dict)
+                or not isinstance(receipt.get("authorization_id"), str)
+                or not receipt["authorization_id"]
+                or not isinstance(local_origin_path, Path)
+                or not local_origin_path.is_absolute()
+            ):
+                raise WorkspaceAuthorityError(
+                    "workspace publication requires exact subscription/path"
+                )
         lifecycle = lifecycle_event.model_copy(deep=True) if lifecycle_event is not None else None
         if (lifecycle is None) != (expected_subscription_id is None):
             raise ValueError("observer lifecycle requires exact subscription authority")
@@ -11285,6 +11483,27 @@ class Store:
                             incoming.id,
                         ),
                     )
+                if workspace is not None:
+                    await tx.execute(
+                        "INSERT INTO observer_workspace_authorities("
+                        "session_id, subscription_id, project_binding, workspace_json, "
+                        "subscription_json, local_origin_path) VALUES (?, ?, ?, ?, ?, ?) "
+                        "ON CONFLICT(session_id) DO UPDATE SET "
+                        "subscription_id = excluded.subscription_id, "
+                        "project_binding = excluded.project_binding, "
+                        "workspace_json = excluded.workspace_json, "
+                        "subscription_json = excluded.subscription_json, "
+                        "local_origin_path = excluded.local_origin_path",
+                        (
+                            incoming.id,
+                            incoming.metadata["subscription_receipt"]["authorization_id"],
+                            expected_binding,
+                            _canonical_json(workspace.model_dump(mode="json")),
+                            _canonical_json(incoming.metadata["subscription_receipt"]),
+                            str(local_origin_path),
+                        ),
+                    )
+                    await require_workspace_publication(tx)
                 if lifecycle is not None:
                     # The existing SQL trigger binds this as record_only_complete.
                     # No semantic plan or worker-effect reservation is created.
@@ -11351,6 +11570,8 @@ class Store:
         snapshot_keys = {
             "schema", "subscription_receipt", "status", "last_activity", "observation_coverage",
         }
+        if "workspace_binding" in binding_session.metadata:
+            snapshot_keys.add("workspace_binding")
         coverage_keys = {
             "schema", "state", "scope", "raw_stream_complete", "history_replayed_as_live",
             "durable_before_ingest", "last_observed_live_sequence", "last_ingested_live_sequence",
@@ -11389,6 +11610,8 @@ class Store:
                 or set(marker) != snapshot_keys
                 or marker.get("schema") != "pex.codex-live-observation.v1"
                 or marker.get("subscription_receipt") != receipt
+                or _canonical_json(marker.get("workspace_binding"))
+                != _canonical_json(binding_session.metadata.get("workspace_binding"))
                 or not isinstance(marker.get("status"), str)
                 or marker["status"] not in {status.value for status in SessionStatus}
                 or frozen.ts.tzinfo is None
@@ -11453,6 +11676,8 @@ class Store:
                 current, stored_binding = await _load_bound_session(tx, binding_session.id)
                 if (
                     current.harness_type != binding_session.harness_type
+                    or _canonical_json(current.metadata.get("workspace_binding"))
+                    != _canonical_json(binding_session.metadata.get("workspace_binding"))
                     or current.vendor_session_id != binding_session.vendor_session_id
                     or current.metadata.get("subscription_receipt") != receipt
                     or canonical_cwd(current.cwd) != target_cwd
@@ -14314,6 +14539,7 @@ class Store:
                         _canonical_json(receipt),
                     ),
                 )
+                await _require_session_workspace_current(transaction, session)
                 await transaction.commit()
             except aiosqlite.IntegrityError as exc:
                 await transaction.rollback()
@@ -16809,6 +17035,9 @@ class Store:
                     else None
                 )
                 stored_session_binding: str | None = None
+                if stored_session is not None and "workspace_binding" in stored_session.metadata:
+                    if session_snapshot is None:
+                        raise WorkspaceAuthorityError("observer event lacks its accepted workspace")
                 if "pex_observer_snapshot" in event.metadata:
                     observer = event.metadata["pex_observer_snapshot"]
                     if (
@@ -16828,16 +17057,24 @@ class Store:
                         or stored_session.cwd != session_snapshot.cwd
                     ):
                         raise ValueError("trusted observer subscription changed before acceptance")
+                    expected_observer_keys = {
+                        "schema", "subscription_receipt", "status", "last_activity",
+                        "observation_coverage",
+                    }
+                    if "workspace_binding" in stored_session.metadata:
+                        expected_observer_keys.add("workspace_binding")
                     if (
-                        set(observer) != {
-                            "schema", "subscription_receipt", "status", "last_activity",
-                            "observation_coverage",
-                        }
+                        set(observer) != expected_observer_keys
                         or not isinstance(observer.get("status"), str)
                         or observer["status"] not in {status.value for status in SessionStatus}
                         or not isinstance(observer.get("observation_coverage"), dict)
                     ):
                         raise ValueError("trusted observer snapshot projection mismatch")
+                    if "workspace_binding" in stored_session.metadata and (
+                        _canonical_json(observer.get("workspace_binding"))
+                        != _canonical_json(stored_session.metadata["workspace_binding"])
+                    ):
+                        raise WorkspaceAuthorityError("trusted observer workspace snapshot changed")
                     observer_activity = observer.get("last_activity")
                     if observer_activity is not None:
                         if not isinstance(observer_activity, str):
@@ -17038,6 +17275,8 @@ class Store:
                         "processing": processing,
                     }
 
+                if session_snapshot is not None:
+                    await _require_session_workspace_current(transaction, session_snapshot)
                 serialized = _dump(event)
                 await transaction.execute(
                     "INSERT INTO events(event_id, session_id, ts, json) VALUES (?, ?, ?, ?)",
@@ -17096,6 +17335,8 @@ class Store:
                         "Optional handoff evidence derivation failed for event_id=%s",
                         event.event_id,
                     )
+                if session_snapshot is not None:
+                    await _require_session_workspace_current(transaction, session_snapshot)
                 await transaction.commit()
                 return {"created": True, "event": event, "processing": processing}
             except Exception:
@@ -20330,6 +20571,7 @@ class Store:
                         raise ValueError("event effect key collision contains different content")
                     await transaction.commit()
                     return {"created": False, "effect": existing}
+                await _require_processing_workspace_current(transaction, processing)
                 await transaction.execute(
                     "INSERT INTO event_effects("
                     "effect_id, event_id, effect_key, ordinal, kind, "
@@ -20357,6 +20599,7 @@ class Store:
                 if row is None:  # pragma: no cover - transaction invariant
                     raise RuntimeError("reserved event effect row disappeared")
                 effect = _event_effect_record(row)
+                await _require_processing_workspace_current(transaction, processing)
                 await transaction.commit()
                 return {"created": True, "effect": effect}
             except Exception:
@@ -20461,6 +20704,11 @@ class Store:
                 if await older_cursor.fetchone() is not None:
                     await transaction.commit()
                     return {"granted": False, "reason": "earlier_event_unfinished"}
+                try:
+                    await _require_processing_workspace_current(transaction, processing)
+                except WorkspaceAuthorityError as exc:
+                    await transaction.commit()
+                    return {"granted": False, "reason": exc.code, "effect": effect}
                 now = utcnow().isoformat()
                 updated = await transaction.execute(
                     "UPDATE event_effects SET state = 'dispatching', "
@@ -20494,6 +20742,11 @@ class Store:
                 if dispatched_row is None:  # pragma: no cover - transaction invariant
                     raise RuntimeError("dispatching event effect row disappeared")
                 dispatched = _event_effect_record(dispatched_row)
+                try:
+                    await _require_processing_workspace_current(transaction, processing)
+                except WorkspaceAuthorityError as exc:
+                    await transaction.rollback()
+                    return {"granted": False, "reason": exc.code, "effect": effect}
                 await transaction.commit()
                 return {"granted": True, "effect": dispatched}
             except Exception:
@@ -21007,6 +21260,7 @@ class Store:
                 canonical_event_row = await canonical_event_cursor.fetchone()
                 if canonical_event_row is None:
                     raise RuntimeError("accepted event disappeared before session projection")
+                await _require_processing_workspace_current(transaction, processing)
                 planned_session = _merge_event_session_projection(
                     processing,
                     stored_session,
@@ -21324,6 +21578,7 @@ class Store:
                 if committed_row is None:  # pragma: no cover - transaction invariant
                     raise RuntimeError("committed event plan row disappeared")
                 committed = _event_processing_record(committed_row)
+                await _require_processing_workspace_current(transaction, processing)
                 await transaction.commit()
             except Exception:
                 await transaction.rollback()
@@ -21689,6 +21944,11 @@ class Store:
                         if await input_cursor.fetchone() is not None:
                             skip_reason = "newer_human_input_before_dispatch"
 
+                if skip_reason is None:
+                    try:
+                        await _require_processing_workspace_current(transaction, processing)
+                    except WorkspaceAuthorityError as exc:
+                        skip_reason = exc.code
                 if skip_reason is not None:
                     await transaction.commit()
                     return {
@@ -21721,6 +21981,11 @@ class Store:
                 if dispatch_row is None:  # pragma: no cover - transaction invariant
                     raise RuntimeError("dispatching main event effect disappeared")
                 dispatched = _event_effect_record(dispatch_row)
+                try:
+                    await _require_processing_workspace_current(transaction, processing)
+                except WorkspaceAuthorityError as exc:
+                    await transaction.rollback()
+                    return {"granted": False, "reason": exc.code, "effect": effect}
                 await transaction.commit()
                 return {"granted": True, "effect": dispatched}
             except Exception:
@@ -21946,6 +22211,7 @@ class Store:
                     )
                     audit_written = True
 
+                finalized_session = None
                 if session is not None:
                     session_cursor = await transaction.execute(
                         "SELECT json FROM sessions WHERE id = ?",
@@ -21977,16 +22243,20 @@ class Store:
                     canonical_event_row = await canonical_event_cursor.fetchone()
                     if canonical_event_row is None:
                         raise RuntimeError("accepted event disappeared before session projection")
-                    finalized_session = _merge_event_session_projection(
-                        processing,
-                        current_session,
-                        session,
-                        event=HarnessEvent.model_validate_json(canonical_event_row["json"]),
-                    )
-                    await transaction.execute(
-                        "UPDATE sessions SET json = ?, revision = revision + 1 WHERE id = ?",
-                        (_dump(finalized_session), finalized_session.id),
-                    )
+                    try:
+                        await _require_processing_workspace_current(transaction, processing)
+                    except WorkspaceAuthorityError:
+                        # An observed outcome still belongs in the effect ledger.
+                        # Stale workspace authority cannot project new live state,
+                        # but must not erase or relabel a known delivery outcome.
+                        pass
+                    else:
+                        finalized_session = _merge_event_session_projection(
+                            processing,
+                            current_session,
+                            session,
+                            event=HarnessEvent.model_validate_json(canonical_event_row["json"]),
+                        )
 
                 now = utcnow().isoformat()
                 processing_update = await transaction.execute(
@@ -22012,6 +22282,16 @@ class Store:
                 if final_row is None:  # pragma: no cover - transaction invariant
                     raise RuntimeError("final event processing row disappeared")
                 final = _event_processing_record(final_row)
+                if finalized_session is not None:
+                    try:
+                        await _require_processing_workspace_current(transaction, processing)
+                    except WorkspaceAuthorityError:
+                        pass
+                    else:
+                        await transaction.execute(
+                            "UPDATE sessions SET json = ?, revision = revision + 1 WHERE id = ?",
+                            (_dump(finalized_session), finalized_session.id),
+                        )
                 await transaction.commit()
             except Exception:
                 await transaction.rollback()

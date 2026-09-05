@@ -22,6 +22,17 @@ from pex_bridge.local_workspace import (
 )
 
 
+class WorkspaceAuthorityError(ValueError):
+    """A saved workspace witness no longer authorizes new processing.
+
+    Historical observation and effect receipts remain valid records. Callers
+    must settle them without treating this error as proof that dispatched work
+    never ran, or as permission to inspect a replacement directory.
+    """
+
+    code = "workspace_authority_changed"
+
+
 class WorkspaceBinding(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -81,3 +92,19 @@ def require_current_workspace(binding: WorkspaceBinding, origin_path: Path) -> N
         measure_local_directory(binding.project_id).cwd
     ) != os.path.normcase(binding.directory.cwd):
         raise ValueError("unregistered project must name the exact selected local directory")
+
+
+def require_workspace_sample(
+    binding: WorkspaceBinding, origin_path: Path, *, cwd: str | None = None
+) -> None:
+    """Recheck a server-issued witness at a synchronous local-read boundary.
+
+    This does not replace Store's transactional locator/session validation or
+    make filesystem sampling atomic. Never construct the path from event data.
+    """
+    try:
+        require_current_workspace(binding, origin_path)
+        if cwd is not None:
+            require_same_local_directory(cwd, binding.directory)
+    except (ValueError, OSError) as exc:
+        raise WorkspaceAuthorityError("workspace authority changed before evidence use") from exc

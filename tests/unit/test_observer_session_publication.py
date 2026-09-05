@@ -112,7 +112,7 @@ async def test_stale_publication_cannot_rollback_control_or_target(observer, cha
 @pytest.mark.parametrize("change", ["vendor", "harness", "cwd", "project"])
 async def test_current_revision_does_not_authorize_a_different_target(observer, change, tmp_path):
     store, session, binding = observer
-    await store.upsert_session(session)
+    await _publish(store, session, binding)
     wrong = session.model_copy(deep=True)
     if change == "vendor":
         wrong.vendor_session_id = "other-worker"

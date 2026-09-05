@@ -125,9 +125,16 @@ async def test_stale_target_cannot_retain_any_records(retention, tmp_path, chang
         current = await store.get_session(session.id)
         if change == "receipt":
             current.metadata["subscription_receipt"]["authorization_id"] = "another-subscription"
+            control = await store.get_session_control_state(current.id)
+            # A replacement receipt uses observer publication, not discovery.
+            await store.publish_observer_session(
+                current,
+                expected_control_revision=control["control_revision"],
+                expected_project_binding=control["project_binding"],
+            )
         else:
             current.cwd = str(tmp_path / "another-workspace")
-        await store.upsert_session(current)
+            await store.upsert_session(current)
     elif change == "binding":
         binding = await store.project_binding_for_authority("another-project")
     else:

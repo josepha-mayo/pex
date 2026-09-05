@@ -45,4 +45,12 @@ A registered project must retain its selected local locator and immutable projec
 
 Workspace authority is rechecked before subscription and during Store publication. The Store checks locator ownership/membership, conflicting local claims, the current origin choice and the actual session path, while preserving current human goal/pause state. These are sampled checks plus a SQLite transaction, not an atomic filesystem lock, a guarantee against inode reuse, or proof of the cwd handle retained by a worker process.
 
-Continuous post-attachment evidence/action authority, complete raw event capture, crash recovery, safe same-worker delivery, installed runtime compatibility, and the desktop setup flow require separate verification. Passing these local attachment tests does not certify any of them.
+## Continuous authority and migration
+
+Dedicated publication now also persists a server-owned workspace/subscription witness and the exact origin configuration path in SQLite. Generic session updates cannot grant, replace or drop these fields. Accepted events, new local inspection, planning and adapter-entry paths recheck current workspace authority. A stale connection is retired without reusing the receipt to inspect a replacement directory. Historical observations and actual delivery outcomes remain records; they do not authorize new actions.
+
+Older workspace-bound sessions without that durable witness require explicit detach/reinspection after upgrade. PEX never reconstructs the origin path from client metadata or guesses it from the database location. Truly unbound legacy paths retain their previous contract; they are not newly certified by this change.
+
+Ask PEX reports changed/uncertain workspace authority and revokes local evidence reads and new outer fallback attempts after its review ends. Already-entered provider work cannot be retracted by these checks. See [the continuity review](../WORKSPACE_CONTINUITY_REVIEW.md) for exact verification state, failed cases and remaining sampling/concurrency limits.
+
+Complete raw event capture, crash recovery, safe same-worker delivery, installed runtime compatibility, and the desktop setup flow still require separate verification. Passing local attachment/continuity tests does not certify those gates.

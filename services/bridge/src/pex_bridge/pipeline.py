@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import time
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
@@ -50,6 +51,7 @@ from pex_protocol.verification import (
 )
 from pex_supervisor.background import confirm_abandoned_background, find_abandoned_background
 from pex_supervisor.drift import duplicate_sibling_work, goal_path_names
+from pex_supervisor.evidence_tools import workspace_evidence_guard
 from pex_supervisor.loop import (
     _action_from_proposal,
     _preserve_deterministic_truth,
@@ -89,6 +91,7 @@ from pex_bridge.executor import (
     HANDOFF_ADAPTER_TIMEOUT_SECONDS,
     ActionExecutionResult,
     ActionExecutor,
+    _WorkspaceDispatchRefused,
 )
 from pex_bridge.fingerprints import fingerprint_score_features
 from pex_bridge.handoff_views import handoff_bundle_receipt, public_intervention
@@ -131,6 +134,13 @@ from pex_bridge.store import (
     utcnow,
 )
 from pex_bridge.supervisor_context import build_supervisor_context
+from pex_bridge.workspace_access import workspace_read_check
+from pex_bridge.workspace_binding import WorkspaceAuthorityError, require_workspace_sample
+
+
+class _WorkspacePlannerNotStarted(WorkspaceAuthorityError):
+    """Internal proof that the scheduled provider invocation never began."""
+
 
 _HANDOFF_SIGNAL = re.compile(
     r"\b(?:artifact|blocked|checkpoint|constraint|decision|dependency|error|failed|"
@@ -805,6 +815,11 @@ class Pipeline:
             "last_activity": session.last_activity.isoformat() if session.last_activity else None,
             "observation_coverage": dict(session.metadata["observation_coverage"]),
         }
+        if "workspace_binding" in session.metadata:
+            # Freeze this observation's workspace, not a later attachment's.
+            observed.metadata["pex_observer_snapshot"]["workspace_binding"] = (
+                session.model_copy(deep=True).metadata["workspace_binding"]
+            )
         return observed
 
     async def retain_shared_codex_observations(
@@ -905,7 +920,12 @@ class Pipeline:
             ):
                 raise ValueError("shared observation does not own the current ingestion")
             observed = self._freeze_shared_codex_observation(event, session)
-            return await self._ingest_event_locked(observed, session)
+            result = await self._ingest_event_locked(observed, session)
+            # A stale accepted event may already have been durably settled.
+            # Still retire this stream through the adapter's owned finalizer;
+            # later records cannot regain authority by retrying this receipt.
+            await self.store.require_session_workspace_current(session)
+            return result
 
     async def ingest_event(
         self, event: HarnessEvent, session: HarnessSession
@@ -1074,7 +1094,14 @@ class Pipeline:
         processing = await self.store.get_event_processing(event_id)
         if processing is None or processing["state"] not in EVENT_PROCESSING_TERMINAL_STATES:
             return intervention
+        if processing["state"] == "failed":
+            return intervention
         event, accepted_session, _ = await self._processing_inputs(processing)
+        try:
+            await self.store.require_session_workspace_current(accepted_session)
+        except WorkspaceAuthorityError:
+            # Terminal history is replayable; it is not new handoff authority.
+            return intervention
         plan = processing.get("plan")
         verification = dict(plan.get("verification") or {}) if isinstance(plan, dict) else {}
         followup_owner = f"{self._event_worker_id}:followup:{uuid4().hex}"
@@ -1497,6 +1524,50 @@ class Pipeline:
             restored_updates,
         )
 
+    async def _invoke_supervisor(self, request: SupervisorRequest, *, semantic: bool, witness):
+        async def invoke():
+            # wait_for schedules a new task. Recheck in that task, not merely
+            # before it was queued, then enter the provider without another
+            # bridge-owned scheduling boundary.
+            try:
+                current = await self.store.require_session_workspace_current(request.session)
+                if current != witness:
+                    raise WorkspaceAuthorityError("workspace changed before inference")
+                if witness is not None:
+                    require_workspace_sample(*witness, cwd=request.session.cwd)
+            except WorkspaceAuthorityError as exc:
+                raise _WorkspacePlannerNotStarted(str(exc)) from exc
+            if (
+                semantic
+                and self.settings.supervisor_mode in {"agentcore", "hybrid"}
+                and self.supervisor.agentcore is not None
+            ):
+                return await self.supervisor.agentcore.decide(request)
+            return await self.supervisor.decide(request, local_model=self.model)
+
+        scope = (
+            workspace_evidence_guard(
+                request.session,
+                workspace_read_check(self.store, request.session, witness),
+            )
+            if witness is not None
+            else nullcontext()
+        )
+        # Revoked on normal return, timeout and cancellation. A surviving model
+        # thread cannot reopen local files after this invocation has ended.
+        with scope:
+            if (
+                semantic
+                and self.settings.supervisor_mode in {"agentcore", "hybrid"}
+                and self.supervisor.agentcore is not None
+            ):
+                # No hybrid second call after an ambiguous remote boundary.
+                result = await asyncio.wait_for(invoke(), timeout=30)
+                return _preserve_deterministic_truth(
+                    request, plan_deterministic(request), result
+                )
+            return await asyncio.wait_for(invoke(), timeout=30)
+
     async def _resolve_durable_supervisor(
         self,
         request: SupervisorRequest,
@@ -1570,36 +1641,28 @@ class Pipeline:
             owner=owner,
         )
         if not dispatch["granted"]:
+            if dispatch.get("reason") == WorkspaceAuthorityError.code:
+                raise WorkspaceAuthorityError("workspace changed before planner dispatch")
             raise RuntimeError(str(dispatch.get("reason") or "planner dispatch refused"))
 
         try:
+            witness = await self.store.require_session_workspace_current(request.session)
+        except WorkspaceAuthorityError:
+            # No provider call has started. Retire this reservation truthfully,
+            # rather than leaving a dispatch marker that invites reconciliation.
+            await self.store.finalize_event_effect(
+                event_id=event.event_id,
+                effect_key="planner",
+                state="failed",
+                result={
+                    "status": "failed", "code": WorkspaceAuthorityError.code,
+                    "provider_started": False,
+                },
+            )
+            raise
+        try:
             semantic = needs_semantic_inference(request)
-            if (
-                semantic
-                and self.settings.supervisor_mode in {"agentcore", "hybrid"}
-                and self.supervisor.agentcore is not None
-            ):
-                # Bypass SupervisorRouter's hybrid local fallback.  A timed-out
-                # AgentCore thread can still finish after cancellation; starting
-                # another semantic call would violate the durable effect budget.
-                result = await asyncio.wait_for(
-                    self.supervisor.agentcore.decide(request),
-                    timeout=30,
-                )
-                # The direct client call avoids Router's hybrid second-model
-                # fallback after an ambiguous AgentCore boundary. Restore the
-                # Router's pure local truth-preservation step explicitly so a
-                # remote NOOP cannot erase a deterministic acceptance gap.
-                result = _preserve_deterministic_truth(
-                    request,
-                    plan_deterministic(request),
-                    result,
-                )
-            else:
-                result = await asyncio.wait_for(
-                    self.supervisor.decide(request, local_model=self.model),
-                    timeout=30,
-                )
+            result = await self._invoke_supervisor(request, semantic=semantic, witness=witness)
             ambiguous = (
                 result.inference_status in {"timeout"}
                 or result.execution_mode == "hybrid_local_fallback"
@@ -1647,6 +1710,17 @@ class Pipeline:
                 downstream_operation_id=downstream_id,
             )
             return result, effect, planning_snapshot
+        except _WorkspacePlannerNotStarted:
+            await self.store.finalize_event_effect(
+                event_id=event.event_id,
+                effect_key="planner",
+                state="failed",
+                result={
+                    "status": "failed", "code": WorkspaceAuthorityError.code,
+                    "provider_started": False,
+                },
+            )
+            raise
         except AgentCoreDeliveryUncertainError as exc:
             effect = await asyncio.shield(
                 self.store.finalize_event_effect(
@@ -1709,7 +1783,7 @@ class Pipeline:
                 owner=owner,
                 reconcile_uncertain=False,
             )
-        except ProjectIdentityBlockedError as exc:
+        except (ProjectIdentityBlockedError, WorkspaceAuthorityError) as exc:
             await self.store.fail_event_processing(
                 event_id=str(processing["event_id"]),
                 owner=owner,
@@ -1736,7 +1810,7 @@ class Pipeline:
                 owner=owner,
                 reconcile_uncertain=True,
             )
-        except ProjectIdentityBlockedError as exc:
+        except (ProjectIdentityBlockedError, WorkspaceAuthorityError) as exc:
             await self.store.fail_event_processing(
                 event_id=str(current["event_id"]),
                 owner=owner,
@@ -1849,6 +1923,46 @@ class Pipeline:
         self._presentation_tasks.add(task)
         task.add_done_callback(self._presentation_tasks.discard)
 
+    async def _snapshot_for_session(self, session: HarnessSession) -> dict:
+        """Fence queued reads and discard results if workspace authority changes.
+
+        In-thread samples cover queue delay; the final Store check covers
+        locator/session changes while reading. Neither is a filesystem lock.
+        """
+        witness = await self.store.require_session_workspace_current(session)
+        check = workspace_read_check(self.store, session, witness) if witness is not None else None
+
+        def observe() -> dict:
+            if check is not None:
+                check()
+            try:
+                return snapshot(session.cwd, run_pytest=False)
+            finally:
+                if check is not None:
+                    check()
+
+        operation = asyncio.create_task(asyncio.to_thread(observe))
+        try:
+            result = await asyncio.shield(operation)
+        except asyncio.CancelledError:
+            # Cancelling the await does not stop the filesystem thread. Settle
+            # this owned read before its pump reports observation shutdown.
+            while not operation.done():
+                try:
+                    await asyncio.shield(operation)
+                except asyncio.CancelledError:
+                    continue
+                except Exception:
+                    break
+            if not operation.cancelled():
+                operation.exception()
+            raise
+        except Exception:
+            await self.store.require_session_workspace_current(session)
+            raise
+        await self.store.require_session_workspace_current(session)
+        return result
+
     async def _build_and_commit_event_plan(
         self,
         processing: dict,
@@ -1859,6 +1973,7 @@ class Pipeline:
         """Build one acceptance-bound plan, then atomically persist its projections."""
 
         event, session, goal = await self._processing_inputs(processing)
+        await self.store.require_session_workspace_current(session)
         _update_context_routing_state(session, event)
         await self._negotiate_capabilities(session)
         session.last_activity = event.ts
@@ -1968,11 +2083,9 @@ class Pipeline:
         ):
             workspace: dict = {}
             try:
-                workspace = await asyncio.to_thread(
-                    snapshot,
-                    session.cwd,
-                    run_pytest=False,
-                )
+                workspace = await self._snapshot_for_session(session)
+            except WorkspaceAuthorityError:
+                raise
             except Exception:
                 workspace = {}
             missing = missing_required_files(goal, workspace)
@@ -1996,11 +2109,7 @@ class Pipeline:
             )
             if session.cwd:
                 try:
-                    workspace = await asyncio.to_thread(
-                        snapshot,
-                        session.cwd,
-                        run_pytest=False,
-                    )
+                    workspace = await self._snapshot_for_session(session)
                     if workspace and not workspace.get("error"):
                         workspace_snapshot_state = "inspected"
                         workspace_snapshot_reason = None
@@ -2008,6 +2117,8 @@ class Pipeline:
                         workspace_snapshot_reason = str(
                             workspace.get("error") or "workspace_snapshot_empty"
                         )[:256]
+                except WorkspaceAuthorityError:
+                    raise
                 except Exception as exc:
                     workspace = {}
                     workspace_snapshot_reason = f"workspace_snapshot_failed:{type(exc).__name__}"
@@ -2302,6 +2413,9 @@ class Pipeline:
                 owner=owner,
                 planning_snapshot=planning_snapshot,
             )
+            # Record an actual inference outcome before rejecting stale use of
+            # it. This never describes an already-called model as unexecuted.
+            await self.store.require_session_workspace_current(request.session)
             raw_request = (planner_effect.get("payload") or {}).get("request")
             if isinstance(raw_request, dict):
                 request = SupervisorRequest.model_validate(raw_request)
@@ -3068,6 +3182,20 @@ class Pipeline:
             # recovery turns it into a terminal uncertain effect first.
             return
 
+        try:
+            await self.store.require_session_workspace_current(session)
+        except WorkspaceAuthorityError as exc:
+            await self._seal_main_event_effect(
+                processing=current,
+                effect=effect,
+                reserved=reserved,
+                session=None,
+                outcome=exc.code,
+                effect_state="skipped",
+                code=exc.code,
+                publish=True,
+            )
+            return
         claim = await self.store.claim_main_event_effect(
             event_id=event.event_id,
             owner=owner,
@@ -4600,8 +4728,20 @@ class Pipeline:
 
         try:
             ok = await asyncio.wait_for(
-                adapter.inject_context(dispatch["target"], dispatch["bundle"]),
+                self.executor._workspace_dispatch(
+                    dispatch["target"],
+                    lambda: adapter.inject_context(dispatch["target"], dispatch["bundle"]),
+                    sources=(dispatch["source"],),
+                ),
                 timeout=HANDOFF_ADAPTER_TIMEOUT_SECONDS,
+            )
+        except _WorkspaceDispatchRefused:
+            final = await durable_finalize(
+                "failed",
+                {
+                    "status": "failed", "reason": WorkspaceAuthorityError.code,
+                    "adapter_started": False,
+                },
             )
         except asyncio.CancelledError:
             try:
@@ -4755,7 +4895,9 @@ class Pipeline:
         workspace: dict = {}
         if session.cwd:
             try:
-                workspace = await asyncio.to_thread(snapshot, session.cwd, run_pytest=False)
+                workspace = await self._snapshot_for_session(session)
+            except WorkspaceAuthorityError:
+                raise
             except Exception:
                 workspace = {"error": "workspace_snapshot_failed"}
         verification = verify_claims(extracted_claims, recent, goal, workspace)
@@ -4977,6 +5119,7 @@ class Pipeline:
             "item": receipt_item.model_dump(mode="json"),
             "intervention": intervention.model_dump(mode="json"),
         }
+        await self.store.require_session_workspace_current(session)
         committed = await self.store.commit_claim_verification(
             principal_id=principal.principal_id,
             tool=MCP_VERIFY_CLAIM_TOOL,

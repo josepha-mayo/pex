@@ -13,6 +13,7 @@ from typing import Any
 import httpx
 
 from pex_supervisor.providers import credential_safe_http_client, openai_compat_client_config
+from pex_supervisor.review_authority import require_review_authority
 
 
 class InspectUnavailable(RuntimeError):
@@ -192,6 +193,7 @@ def _chat_json(
                 ],
             }
             try:
+                require_review_authority()
                 with client.stream(
                     "POST", url, headers=headers, json=payload, timeout=timeout
                 ) as response:

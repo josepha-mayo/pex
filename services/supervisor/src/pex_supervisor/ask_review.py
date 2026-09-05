@@ -20,6 +20,7 @@ from pex_protocol.supervisor import SupervisorRequest, TrajectoryScores
 from pydantic import BaseModel, ConfigDict, Field
 
 from pex_supervisor.evidence_tools import build_evidence_tools
+from pex_supervisor.review_authority import require_review_authority
 
 _REVIEW_SYSTEM = (
     "You are PEX, a goal-aware supervisor that reviews coding agents. "
@@ -124,13 +125,15 @@ async def complete_inspect_review_async(
         callback_handler=None,
         model=model,
     )
-    invocation = asyncio.create_task(
-        agent.invoke_async(
+    async def invoke():
+        require_review_authority()
+        return await agent.invoke_async(
             _user_prompt(question, request),
             structured_output_model=ReviewAnswer,
             limits={"turns": 3, "output_tokens": 800, "total_tokens": 8_000},
         )
-    )
+
+    invocation = asyncio.create_task(invoke())
     try:
         result = await asyncio.wait_for(asyncio.shield(invocation), timeout=wall_timeout)
     except TimeoutError:

@@ -12,7 +12,7 @@ import os
 import secrets
 import stat
 import threading
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
@@ -5215,7 +5215,12 @@ def create_app() -> FastAPI:
     async def ask(body: AskIn, _: None = Depends(_require_token)):
         from datetime import UTC, datetime
 
+        from pex_supervisor.evidence_tools import workspace_evidence_guard
+        from pex_supervisor.review_authority import review_invocation_guard
+
         from pex_bridge.ask import answer_question, asks_about_goal_completion
+        from pex_bridge.workspace_access import workspace_read_check
+        from pex_bridge.workspace_binding import WorkspaceAuthorityError
 
         try:
             await asyncio.wait_for(
@@ -5288,9 +5293,28 @@ def create_app() -> FastAPI:
                         "completion; it will not combine evidence across goals."
                     )
                 }
+            try:
+                for candidate in authority_sessions:
+                    if (candidate.goal_id in candidate_goal_ids
+                            and candidate.status != SessionStatus.DETACHED):
+                        await state.store.require_session_workspace_current(candidate)
+            except WorkspaceAuthorityError:
+                return {
+                    "answer": (
+                        "Completion is uncertain: the workspace connection has changed. "
+                        "Earlier STOP evidence cannot verify the replacement workspace."
+                    )
+                }
             completion = await state.store.goal_completion_projection(
                 next(iter(candidate_goal_ids))
             )
+            try:
+                for candidate in authority_sessions:
+                    if (candidate.goal_id in candidate_goal_ids
+                            and candidate.status != SessionStatus.DETACHED):
+                        await state.store.require_session_workspace_current(candidate)
+            except WorkspaceAuthorityError:
+                return {"answer": "Completion is uncertain: workspace authority changed."}
             answer = {
                 "verified_complete": "Yes. Current-intent STOP evidence supports completion.",
                 "incomplete": "No. Current evidence shows unmet acceptance requirements.",
@@ -5300,18 +5324,58 @@ def create_app() -> FastAPI:
                 ),
             }[str(completion["status"])]
             return {"answer": answer, "completion": completion}
+        # Match Ask's one selected review workspace. A model may inspect this
+        # target only under server-owned publication authority, never metadata
+        # alone. The scope is revoked even if a timed-out thread keeps running.
+        selected = next((row for row in sessions if row.cwd), sessions[0] if sessions else None)
         try:
-            answer = await asyncio.wait_for(
-                asyncio.to_thread(
-                    answer_question,
-                    body.question,
-                    sessions,
-                    interventions,
-                    goals,
-                    state.pipeline.model,
-                    context=items,
-                ),
-                timeout=ASK_MODEL_TIMEOUT_SECONDS,
+            witness = (
+                await state.store.require_session_workspace_current(selected)
+                if selected is not None else None
+            )
+            scope = (
+                workspace_evidence_guard(
+                    selected, workspace_read_check(state.store, selected, witness)
+                )
+                if witness is not None else nullcontext()
+            )
+            invocation_active = threading.Event()
+            invocation_active.set()
+            review_model = state.pipeline.model
+            check = (
+                workspace_read_check(state.store, selected, witness)
+                if witness is not None else None
+            )
+
+            def check_invocation():
+                if not invocation_active.is_set():
+                    raise WorkspaceAuthorityError("Ask invocation expired before it started")
+                if check is not None:
+                    check()
+                if not invocation_active.is_set():
+                    raise WorkspaceAuthorityError("Ask invocation expired during validation")
+
+            def invoke_answer():
+                check_invocation()
+                return answer_question(
+                    body.question, sessions, interventions, goals,
+                    review_model, context=items,
+                )
+
+            try:
+                with scope, review_invocation_guard(check_invocation):
+                    answer = await asyncio.wait_for(
+                        asyncio.to_thread(invoke_answer),
+                        timeout=ASK_MODEL_TIMEOUT_SECONDS,
+                    )
+            finally:
+                invocation_active.clear()
+            if selected is not None:
+                await state.store.require_session_workspace_current(selected)
+        except WorkspaceAuthorityError:
+            answer = (
+                "The selected workspace connection has changed. Reconnect it before "
+                "using a fresh inspection; earlier observations remain in the timeline."
             )
         except TimeoutError:
             answer = answer_question(
