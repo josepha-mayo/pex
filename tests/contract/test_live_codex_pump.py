@@ -204,6 +204,10 @@ async def test_live_codex_stop_inspects_with_strands(tmp_path: Path):
 
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
+    # On Windows the isolated worker can create a file with an ACL that the
+    # parent proof process cannot reopen. Seed the operator-owned evidence
+    # target so the worker updates it and verification can inspect the result.
+    (tmp_path / "ping.txt").write_text("", encoding="utf-8")
     transport = CodexStdioTransport(binary)
     adapter = CodexAdapter(transport)
     registry = AdapterRegistry()
