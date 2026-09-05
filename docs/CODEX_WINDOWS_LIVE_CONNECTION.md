@@ -1,0 +1,29 @@
+# Actual Windows shared connection — 5 September 2026
+
+User authorization resumed local work: a separate demo is allowed provided it does not bill the card. Existing desktop sessions must remain untouched. Native goal is ACTIVE again, with all three specs and full submission scope intact. AWS no-card-charge uncertainty remains a separate limit, not a reason to stop local work.
+
+## Reproduced installed-runtime defect and repair
+
+The installed Codex Windows listener created a real endpoint with `st_mode=0o100666`, attributes `0x420`, reparse tag `0x80000023`, `is_symlink=False`. Production endpoint validation rejected it as a reparse point before connection. [Microsoft's reparse-tag specification](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/c8e77b37-3909-4fe6-a4ea-2b9d423b1ee4) identifies this exact tag as `IO_REPARSE_TAG_AF_UNIX`, a Unix domain socket, not a name-surrogate link.
+
+Main repaired `_reject_reparse_components` to admit only the exact Windows AF_UNIX regular-file **final socket leaf**, through an explicit internal allowance used by endpoint validation and launch-identity checks. Executables, every ancestor, unknown tags, symlinks, junctions, and non-Windows cases remain strict. All ownership/ACL and executable hashing checks remain active. This is not a generic reparse-point bypass or an atomic path/handle security guarantee.
+
+Sol-low independently reviewed the production diff and supplied eight boundary regressions. Main read those tests, fixed import formatting, and ran **150 passed in 7.90s** across complete files: `test_codex_windows_socket_leaf`, `test_codex_shared_transport`, `test_codex_shared_text_dispatch`, `test_codex_shared_read_snapshot`, `test_codex_shared_claimed_dispatch`. Scoped Ruff passed after formatting. Earlier overlapping 50-case and independent eight-case gates are not additional coverage. Live endpoint validation failed before the production repair and passed afterward without a fake validator.
+
+## Actual local setup and proof
+
+New private directory: `C:\Users\JosephMayo\pex-live-demo`. Only this new directory's ACL was set to current user/SYSTEM/Administrators; no existing ACL was changed. Parent paths passed the production protected-path checker. Four native installed executables were copied there and each source/destination SHA256 matched: `codex.exe`, `codex-code-mode-host.exe`, `codex-command-runner.exe`, `codex-windows-sandbox-setup.exe`. Codex hash is `A1CF6360CA71918D5466BC3A32D9F18B7044C9128756D1949E715D277B88C9B6`; CLI reports v0.153.4. These are local demo files, not a PEX release package or committed binaries.
+
+- New listener: `codex.exe app-server --listen unix://C:/Users/JosephMayo/pex-live-demo/control.sock`, started from its private `workspace` child. Owned exec session **7657**, observed PID **14856**. Existing App Servers 13564 and 8188 were not restarted or modified. Revalidate live handles before reuse; do not restart on an observation timeout alone.
+- Production `CodexSharedAppServerTransport` launched its normal official proxy and completed real WebSocket/JSON-RPC initialize/initialized successfully, then closed only that connector.
+- CLI `login status` reported **Logged in using ChatGPT**; no credential value was read/copied or included in the receipt. No model turn was requested in this checkpoint.
+- An interactive CLI on the same endpoint selected **gpt-5.6-sol low**, creating demo thread `01a07342-0d32-7b81-99f7-15cc429c6e96`. Its initial inherited unrestricted permissions were noticed before any task prompt. That owned client was cleanly disconnected with `/quit`, then the same thread resumed with explicit `-s read-only -a on-request`. Listener and existing desktop sessions stayed up.
+- Current owned CLI exec session: **64982**. The former **90152** completed. TERM=dumb produced a compatibility warning; continuing rendered the TUI. The request to show the current terminal in the Codex right panel returned **queued**, not verified visible. Do not claim visual/UI review or that the user has seen it.
+- A separate production PEX transport read that exact CLI thread with `includeTurns=False`, confirmed its ID and private workspace, successfully subscribed with exact-thread `thread/resume`, then unsubscribed and closed its connector. This proves same-listener/same-thread read/subscription, not event/outcome supervision.
+- An earlier `thread/read` using `includeTurns=True` on the never-prompted thread returned a vendor protocol error. The successful metadata read does not certify turn-history completeness. Investigate after a real first turn; do not bypass completeness checks to make attachment pass.
+
+## Next exact milestone
+
+Keep the demo listener/client under their current handles, verify explicit permissions, and establish the full PEX goal/workspace-bound attachment. Then capture real worker events and a real Strands supervisor decision through an authorized, no-card-charge provider path. Prove NOOP and justified correction, observed useful outcome and ten quiet cases. Current metadata subscription and fixture tests are not that milestone. AWS deployment, normal UI/release, all eight pets and fair visible comparisons remain open. No cloud resources, paid API calls, worker prompts, corrections, benchmark results or submission occurred here.
+
+Preserve unowned supervisor `loop.py` +28 outside staging. Retained demo artifacts are deliberate and recoverable; do not recursively delete the directory or terminate unrelated Codex processes. New agents use Sol low, bounded ownership and independent review.

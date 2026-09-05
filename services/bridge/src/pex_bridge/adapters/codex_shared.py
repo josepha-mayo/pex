@@ -164,7 +164,7 @@ def _bounded_path(value: str | os.PathLike[str], *, label: str) -> Path:
     return path
 
 
-def _reject_reparse_components(path: Path) -> None:
+def _reject_reparse_components(path: Path, *, allow_windows_socket_leaf: bool = False) -> None:
     current = Path(path.anchor)
     for part in path.parts[1:]:
         current /= part
@@ -177,6 +177,17 @@ def _reject_reparse_components(path: Path) -> None:
         attributes = getattr(info, "st_file_attributes", 0)
         reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
         if attributes & reparse:
+            # Windows AF_UNIX rendezvous files are reparse points, but are not
+            # name-surrogate links. Admit only this exact tag at the endpoint
+            # leaf; executable paths and every ancestor retain strict rejection.
+            if (
+                allow_windows_socket_leaf
+                and sys.platform == "win32"
+                and current == path
+                and stat.S_ISREG(info.st_mode)
+                and getattr(info, "st_reparse_tag", None) == 0x80000023
+            ):
+                continue
             raise ValueError("shared Codex endpoint path crosses a reparse point")
 
 
@@ -391,7 +402,7 @@ def validate_shared_endpoint(codex_bin: Path, socket_path: Path) -> None:
         raise ValueError("shared Codex endpoint must exist") from exc
     if not (stat.S_ISREG(endpoint_mode) or stat.S_ISSOCK(endpoint_mode)):
         raise ValueError("shared Codex endpoint must be an existing rendezvous file")
-    _reject_reparse_components(socket_path)
+    _reject_reparse_components(socket_path, allow_windows_socket_leaf=True)
     if sys.platform == "win32":
         for launch_path in (codex_bin, *codex_bin.parents, *socket_path.parents):
             if not _windows_owned_by_current_user(launch_path, protected_launch=True):
@@ -422,7 +433,7 @@ def _launch_identity(codex_bin: Path, socket_path: Path) -> tuple[Any, ...]:
     between validation and OS launch/connect. No vendor-authenticity claim.
     """
     _reject_reparse_components(codex_bin)
-    _reject_reparse_components(socket_path)
+    _reject_reparse_components(socket_path, allow_windows_socket_leaf=True)
     identities = []
     for path in (codex_bin, socket_path):
         info = path.stat()

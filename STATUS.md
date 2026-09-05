@@ -1,5 +1,7 @@
 # STATUS
 
+**Goal ACTIVE again; release NO-GO:** authorized separate local demo now has real production-transport initialization, exact CLI-thread read and subscription. Actual Windows socket validation defect repaired; independently reviewed, **150 focused tests passed**, scoped Ruff clean. [Live setup and exact limits](docs/CODEX_WINDOWS_LIVE_CONNECTION.md). No-card-charge cloud condition retained. Full real Strands decision/correction/outcome and all submission gates remain open; older BLOCKED state below is historical.
+
 **Goal BLOCKED, release NO-GO:** repeated safe checks have exhausted the current live-runtime path. Await a supported existing-worker endpoint or approval for the separate visible shared-listener demo; preserve current sessions. AWS no-card-charge protection remains unverified, so no cloud creation/inference. See the top of `docs/AGENT_HANDOFF.md`. This is an authorization/runtime stop, not completion or a reduced objective; older ACTIVE statements are historical.
 
 **Latest authorization / repair:** AWS approval is conditional on **no card charges**; eligible general credits were observed, but hard no-charge protection remains unverified. Cloud writes/model calls remain paused. Preflight now rejects region/qualifier targets that the bridge rejects; main **91 preflight/client tests passed**, scoped lint/whitespace clean. [Exact evidence and remaining limitations](docs/AGENTCORE_LIVE_PREFLIGHT_2026_09_05.md). Goal ACTIVE; release NO-GO. Private billing details are excluded from git.
