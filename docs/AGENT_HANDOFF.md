@@ -1,5 +1,15 @@
 # PEX agent handoff
 
+## CURRENT PLAN — 5 Sep 2026 — goal and shipping TODO refresh
+
+The user requested an updated goal, TODO list and steps. The native goal was checked and remains ACTIVE; available tools cannot edit an unfinished objective. `SHIP_CHECKLIST.md` records the refined working objective without shrinking the full three-spec goal. Release remains NO-GO, internal ship target 6 September WAT, exactly eight pets.
+
+The checklist now has one current seven-stage execution order with checkboxes and exit conditions: existing-worker connection integration; safe same-worker control; actual Strands main/verifier loop and quiet cases; remaining full-spec audit and human workflow; normal release build and eight-pet visual review; visible fair Cursor/Codex comparisons plus a separate OpenCode pair; final independent review/submission preparation. Completed Store/provider source repairs are no longer listed as unfixed. Detailed acceptance checklists remain required; one observed Codex thread does not satisfy the whole product.
+
+Shared transport/coordinator/adapter/attachment and human-content normalization changes remain uncommitted integration WIP, not a released or live-verified connector. Component reports require main's combined gate and independent review. Attachment recovery/authorization, legacy-route serialization, embedded completion-item handling and disconnect/crash observation coverage remain review items. Shared delivery is disabled. Protected launch-path validation currently rejects modifiable AppData ancestry; do not relax it or silently change host ACLs. No real endpoint/proxy/provider launch is evidenced by this planning update.
+
+Follow current checklist ownership: main integrates; credential reviewer owns hardened transport/tests; OpenCode reviewer owns coordinator and manager/tests plus only the explicitly delegated app registration call; Codex reviewer owns human-content normalization/tests and independent adapter review. Preserve unowned `loop.py`. Before the next implementation cycle, reread all three specs and important files, inspect current worktree, then reproduce, repair, independently review, integrate, record and push only verified paths. This update changes planning documentation, not release readiness.
+
 ## CURRENT REPAIR — 5 Sep 2026 — durable dispatch authority
 
 **Active goal; overall NO-GO.** Main implemented the first authority repair in `services/bridge/src/pex_bridge/store.py`, with 14 new cases in `tests/unit/test_generic_dispatch_authority.py`. This is a bounded backend repair, not a live independent-supervisor or release receipt. Main's stable seven-file integration gate passed **162 tests in 194.86 seconds**; scoped Ruff and whitespace checks passed. Reviewed source is pushed as **`125b97649d54902818e36640c6cb50e471ea1406`**; main verified exact HEAD/remote equality. This receipt is a documentation-only follow-up; agent-owned shared Codex files and unowned `loop.py` remain outside the source checkpoint.

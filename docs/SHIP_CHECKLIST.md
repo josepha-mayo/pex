@@ -10,89 +10,103 @@ Current reviewed provider/setup source: **147 backend/setup tests passed, 1 syml
 
 ## Updated working objective
 
-Maximize PEX's chance of winning the hackathon by delivering a useful, spec-compliant, evidence-backed submission-ready app, targeting 6 September 2026 WAT. Independently audit all current code against the three binding specifications and repair missing or incorrect behavior. Prove a real independent goal-aware supervisor over the user's existing worker, with easy and genuinely helpful UI/UX; then re-review all eight pets and perform visible live Cursor, OpenCode, and Codex baseline/+PEX comparisons with honest evidence, counted overhead, and no hidden-data leakage. Re-review every repair, push verified checkpoints, and keep working until the release gates are genuinely met or a specific external blocker needs the user. Winning is the aim, not a result we can guarantee.
+Maximize PEX's chance of winning the hackathon by shipping a genuinely useful, fully spec-compliant, evidence-backed app, targeting 6 September 2026 WAT. Independently audit every current code/configuration path, including our own changes, against all three binding specifications; fix incorrect behavior and build missing requirements. First prove real goal-aware Strands supervision and safe intervention in the user's existing worker, then complete the full cross-harness product and easy, helpful UI/UX. Verify a reproducible release build, re-review all eight pets, and perform visible live Cursor, OpenCode and Codex baseline/+PEX comparisons with honest outcomes, counted overhead and no hidden-data leakage. Use bounded subagents with independent review after each repair cycle; push only verified checkpoints. Finish with requirement-by-requirement release evidence and accurate submission artifacts. Keep the complete goal active until all required gates are met or a genuine external blocker needs the user; observation-only support and passing local tests are intermediate milestones, not success. Winning is the aim, not a guarantee.
 
 The app's existing goal remains active. Its available tools allow status changes but not editing an unfinished goal's objective; this document records the updated working objective without falsely completing/replacing that goal.
 
-## Immediate execution plan — latest goal/TODO request, 5 September
+## Prioritized TODOs and steps — current plan, 5 September
 
-**Latest repair progress:** the durable Store boundary now snapshots session/control/project/target authority and rejects changed goal intent or later accepted human input. Cwd ABA and stale-plan target rollback are repaired. Fourteen new regressions and independent review cover this source slice; the latest handoff records final integration/push status. Step 2 is not universally complete: global-pause ABA, raw input, actual transport epochs and post-claim races remain open. Shared transport/coordinator are separate uncommitted WIP awaiting integration review; do not count them as live existing-worker support.
+**Goal ACTIVE; release NO-GO.** This order supersedes the duplicate older plans. Detailed P0–P4 acceptance checklists below remain required. A planning update is not implementation or live-verification evidence.
 
-**Goal state: ACTIVE. Release state: NO-GO.** This section refines the next actions; it does not mark new implementation complete. Target remains 6 September WAT. Required quality means demonstrated spec compliance and usefulness, not a promise of literal perfection or a guaranteed win.
+### Completed source checkpoints (not live product proof)
 
-1. **Reconfirm the contract and source boundary (main).** Read all three binding specs, current handoff and important status files before each repair cycle. Preserve the unexplained `loop.py` edit. Track every code/configuration path in `CODE_AUDIT_COVERAGE.md`; selected reviews are not a whole-repository audit.
-2. **Close stale-action authority before enabling shared mutations (main implementation; credential reviewer independent review).** Reproduce the reviewer's temporary-Store findings: an older action was granted after a same-goal objective change, pause/resume, and a later accepted human prompt. Atomically compare the accepted intent revision/hash, session control revision and human-input watermark at the actual dispatch boundary. Exit: each stale case is denied before adapter effects, valid current actions still work, and replay/concurrency tests plus independent diff review pass. These findings are reviewer-reproduced, not yet main-verified or fixed.
-3. **Build and integrate the actual existing-worker connection (transport and subscription owners; main integration).** Implement the proposed shared endpoint transport and exact selected-thread subscription separately. Bind endpoint, connection generation, thread, project/cwd and explicit selection authority; reconcile history and live events without invented timestamps, completion or coverage. Reject malformed identity, gaps and stale generations. Main then implements authenticated recoverable attachment and truthful per-session state. Exit: bounded fake-transport tests and cross-review first, followed by separately authorized installed-runtime proof. A read-only connection is an intermediate slice, not the finished supervisor.
-4. **Separate active steering from idle continuation (main; credential reviewer).** Validate the installed protocol before live use. Active nudges must target the exact active turn; rejection must not fall back to starting a turn. Idle continuation needs its own authority and concurrency policy. Preserve the user's existing cwd, approval and sandbox configuration unless a separate explicit overlay authorizes a change. Capture documented human-message content and immediate turn/input watermarks before asynchronous reasoning. Exit: stale/wrong-turn, newer-human-input, autonomy-level and configuration-preservation regressions pass; actual same-worker delivery/outcome proof remains separately required.
-5. **Prove the real supervisor, then finish the human workflow (main + independent evidence reviewer).** Complete actual Strands main/verifier NOOP and specific-correction cases, then ten quiet cases, with real observations, same-worker outcomes and measured overhead. Verify provider setup → existing worker → persistent goal → supervision → pause/decision/undo/reconnect in the rendered app. Close all remaining release-blocking source audit findings. Do not substitute mocks or helper tests for these receipts.
-6. **Finish release, all eight pets, visible comparisons and final review.** Verify normal build/sidecars and clean-profile startup; inspect all eight pets in the actual app after primary flows work. With PEX visible and the applicable UI skills, run the four formal Cursor/Codex baseline/+PEX arms and separately labeled OpenCode pair only after fairness/isolation gates. Record failures and uncertainty, prepare accurate demo/setup artifacts, and make an evidence-backed GO/NO-GO. Final publication/submission still requires explicit authority.
+- [x] Provider/settings and source bootstrap repair: reviewed and pushed as `67168204b11331a4a3db21b20e09a6900f3bbec5`.
+- [x] Durable dispatch authority repair: reviewed and pushed as `125b97649d54902818e36640c6cb50e471ea1406`. Accepted intent revision/hash, session control/target authority and later accepted human prompts now fence Store dispatch; cwd ABA and stale-plan target rollback are repaired. Raw-input, transport-epoch and post-claim races remain open.
 
-### Bounded agent ownership for the next repair cycle
+### 1. Finish existing-worker connection integration — NOW
 
-| Owner | Bounded responsibility | Current evidence/state |
-| --- | --- | --- |
-| Main | Authority repair, existing adapter/API integration, UI-to-backend integration and final verification | Planned; no new completion claim in this planning update |
-| `codex_audit` | New `codex_shared.py` transport and `test_codex_shared_transport.py` | Assigned; implementation/review receipt pending |
-| `opencode_audit` | New `codex_subscription.py` coordinator and `test_codex_subscription.py` | Coordinator source exists as unlinted, untested WIP; tests and independent review pending |
-| `credential_review` | Independent delivery/authority review and reproduction; no overlapping source edits | Reported three stale-authority reproductions and human-prompt normalization gap; main verification pending |
+- [ ] Main fully re-reviews hardened shared transport, coordinator, adapter, attachment API and tests together; component reports are not a combined integration pass.
+- [ ] Finish authenticated inspect → explicit confirm → detach/recovery: operator authority, monotonic expiry, exact PEX project/cwd binding, vendor-project namespace separation, retry safety, shutdown cleanup and serialization across legacy/shared attachment routes.
+- [ ] Preserve actual human content and terminal/status semantics; review embedded completion items, queue backpressure and ingestion retries. Persist or disclose disconnect/crash observation gaps; in-memory buffering is not durable complete coverage.
+- [ ] Resolve a protected executable/endpoint path before authorized installed-runtime testing. Launch validation currently rejects modifiable AppData ancestry; do not weaken it or silently change permissions.
+- [ ] Run combined new-module and existing Codex/pipeline/attachment gates, cross-review and push only verified changes.
 
-**Working checklist for every step:** [ ] reproduce/read evidence → [ ] implement with focused regressions → [ ] independently review the diff → [ ] run integration checks → [ ] update coverage/handoff and remaining blockers → [ ] commit only reviewed paths and push → [ ] verify remote hash. Do not mark a step complete from an agent report alone. Keep live/provider, process disruption, package/freeze and publication gates explicit; continue safe independent work while a gated action awaits authority.
+**Exit:** reviewed recoverable selected-existing-worker observation, then installed-version runtime evidence. Observation is intermediate: shared delivery remains disabled and is required next. A new PEX-owned worker cannot substitute for the user's original session.
 
-**Delivery race to retain in the design:** an expected active-turn ID does not fence newer human input inside that same turn. Local accepted-input checks alone also cannot exclude input not yet observed. Verify observation coverage and disclose any remaining race; strict exclusion may require a cooperating input arbiter/window, especially for idle launch. Unknown coverage must not be promoted to proof of current authority.
+### 2. Complete safe same-worker control
 
-## Next-cycle TODOs — execute in this order
+- [ ] Bind actions to actual connection epoch, selected session/project/cwd, current intent and observed input/turn state.
+- [ ] Separate active-turn steering from idle continuation; rejected steering must never fall back to starting a turn. Preserve worker approval, sandbox and cwd configuration.
+- [ ] Fence or explicitly constrain newer human input, observation gaps and post-claim races. An expected turn ID alone does not exclude newer input within the same turn.
+- [ ] Test stale/wrong targets, pause/resume, reconnect, concurrency, cancellation, retry and uncertain delivery; prove valid authorized actions still work.
+- [ ] Capture real same-worker acceptance and independently observed continuation/outcome under applicable run authority.
 
-These are actionable next steps, not completed work. Main owns integration and the final evidence checks; bounded subagents review non-overlapping domains. Preserve unrelated local edits throughout.
+**Exit:** safe actual existing-session control, not a dispatch marker or fake adapter response. Global-pause ABA is a latent internal risk: review found no production user-facing global toggle. Do not build that feature just to fix hypothetical use; existing per-session pause remains in scope.
 
-- [x] **Finish the current credential-settings source repair (main).** Destination binding now includes visible named-provider endpoints; callbacks, stale-response guards, explicit revision authority and bounded uncertain-write recovery are wired. Independent review drove an additional backend catalog credential-race repair. Local regression and TypeScript gates passed; the current handoff records exact evidence. Rendered UI/provider proof remains a separate unchecked gate.
-- [ ] **Resolve existing-worker attachment truth (Codex reviewer, main integration).** The independent source review reports that attachment launches a separate PEX-owned app-server child and reads only that child's notifications; listing/resuming stored thread IDs does not prove observation or control of the original user's active worker. Main must verify these findings, establish a supported same-session event/control path, and implement and test the smallest spec-correct connection flow. Also check failed-attach recovery and the missing desktop attach action. Do not label an isolated session as proof of existing-worker control.
-- [x] **Repair first-run source instructions and bootstrap (setup reviewer, main integration).** Correct uv/npm sequence, fail-fast native commands, no default global hook mutation, all-sidecar requirements and real worker/session/goal instructions are implemented and reviewed. Isolated fake-command PowerShell tests verify execution order and cwd restoration. No actual install or packaged/clean-profile proof is claimed.
-- [x] **Integrate and push the bounded provider/setup repair checkpoint (main).** Reviewed changed lines, ran combined gates, updated audit coverage/handoff, staged only reviewed files and verified remote equality for `67168204b11331a4a3db21b20e09a6900f3bbec5`. The unexplained `loop.py` edit remains outside the checkpoint. Repeat this discipline for each subsequent batch.
-- [ ] **Prove the core live loop (main, independent evidence reviewer).** Check source identity, provider access and applicable run authority first. Capture one correctly completed task yielding real model-backed NOOP and one incomplete task yielding a specific verified correction to the same worker, followed by independently verified completion. Then run ten quiet cases. Record actual main/verifier calls, costs, failures and outcomes; no synthetic substitute.
-- [ ] **Close primary user-flow and remaining audit gaps (domain owners).** Verify provider → existing worker → persistent goal → supervision → decision/pause/undo/reconnect, including failure and accessibility states. Finish the path-by-path audit and fix remaining release-blocking findings. Do not expand optional features while core gates remain open.
-- [ ] **Finish the release candidate and final visual phase (main + reviewers).** Validate all required sidecars and normal release configuration, then clean-profile startup and all eight pets in the actual app. Retain exact build/artifact identity. Follow applicable authority gates before packaging or launching disruptive processes.
-- [ ] **Run fair visible comparisons and final release review (main + independent reviewer).** First close raw-event, human-action accounting and runtime/evaluator isolation gaps. Run the four formal Cursor/Codex arms and separately labeled OpenCode diagnostic pair, with PEX visible. Prepare accurate setup/demo/submission artifacts and an evidence-backed GO/NO-GO; obtain explicit final publication/submission authority.
+### 3. Prove the independent supervisor before feature expansion
 
-**Completion rule:** a checkbox is complete only when its stated exit condition has a linked receipt (review, tests, runtime evidence or artifact as appropriate). A local test does not satisfy a live UI, same-session, provider or release requirement. Keep blocked items visible with the precise missing prerequisite; continue safe independent work without silently lowering the bar.
+- [ ] Correctly completed real task → actual Strands main reasoning → justified NOOP.
+- [ ] Incomplete real task → legitimate external evidence → specific main proposal → independent verifier → local policy → same-worker correction → independently verified outcome.
+- [ ] Ten quiet cases; record real model calls, overhead, failures and harmful/useless interventions.
+- [ ] Retain the complete observation → goal → evidence/reasoning → decision → policy → delivery → outcome trail; unknown remains unknown.
 
-## Ordered steps
+**Exit:** Recovery's real Codex closed loop is proven. Canned warnings, prompt suffixes, mock telemetry and hidden-evaluator access do not qualify.
 
-1. **Read and inventory:** reread all three specs and important docs; inventory all code/configuration; establish a fresh independent audit ledger.
-2. **Audit and prioritize:** split backend, harness/integrity, and UI/release reviews; turn evidence-backed findings into ranked repair tasks.
-3. **Repair the real loop:** fix supervisor reasoning/evidence, same-session control, persistence, context, policy, outcome tracking, and recovery; prove both specific intervention and quiet NOOP.
-4. **Complete the product:** fix onboarding and every primary UI-to-backend workflow; verify accessibility, offline/reconnect behavior, setup, and release artifacts.
-5. **Review pets:** inspect and validate all eight built-ins in the actual app after the core/user flows are sound.
-6. **Visible live verification:** keep PEX open for the user, inspect eligible UI with Computer Use, and run fair Cursor/OpenCode/Codex baseline/+PEX comparisons only after integrity gates pass.
-7. **Final independent release review:** verify tests, actual usefulness, raw evidence, build identity, demo/docs, and remaining defects; give a concrete GO/NO-GO and obtain explicit authority for final publication/submission.
+### 4. Complete the audited human workflow and all remaining spec requirements
 
-## Execution board and deadline order
+- [ ] Finish the path-by-path code/configuration audit in `CODE_AUDIT_COVERAGE.md`: severity, spec clause, reproduction, owner and evidence for every finding.
+- [ ] Verify real provider setup → existing worker → persistent goal → supervision → decision/pause/undo/reconnect in the rendered app, including failures, accessibility and narrow-window states.
+- [ ] Prove Build's cross-harness story: relevant context transfer, premature-stop correction, routine policy approval, consequential human decision and verified completion.
+- [ ] Verify useful intent/context/trajectory handling, Ask PEX, reversible overlay, truthful capability labels and strongest practical support for remaining required harnesses. One Codex path does not finish the product.
+- [ ] Complete required Strands/AgentCore, memory, observability and deployment evidence under applicable authority; mocks are not deployment proof.
 
-The objective is maximizing the chance of winning by shipping a useful, credible product, not maximizing test counts or claiming perfection. Work down this board; audit and repair can overlap across bounded owners, but live comparisons cannot bypass the real-product and integrity gates.
+**Exit:** remaining P0/P1 and three-spec requirements have traceable evidence; users can understand and use PEX with less supervisory work.
 
-| Stage | Current state | Next concrete action / exit condition |
-| --- | --- | --- |
-| Spec-first audit | IN PROGRESS | Finish the path-by-path coverage ledger. Three independent domain reviews have findings; 49 initial paths have recorded full reads, not whole-repository approval. Re-review repaired paths. |
-| Critical backend repairs | IN PROGRESS | Exact separately bound main/verifier observations and timeout/crash preservation now pass local regressions, alongside prior outcome/context repairs. Next: prove the real same-session supervisor loop and ten quiet cases. |
-| Human-facing product | IN PROGRESS | Canonical state and visible serialized startup recovery have source/unit checks. Next: usable first-run connection and actual primary-flow UI-to-backend verification. Missing frozen cursor-observe binary still blocks normal release-build proof. |
-| Eight-pet review | NOT STARTED in this fresh audit | After core and primary flows work, inspect all eight pets at actual desktop size and in meaningful states; validate packaged assets. |
-| Visible harness comparisons | NOT STARTED | Verify running source identity, approved access/budget, and enforced evidence isolation. Run the four spec-defined Cursor/Codex arms plus the separately labeled OpenCode diagnostic pair; report all failures and unknowns. |
-| Release decision | NO-GO | Complete clean-profile/package checks, accurate demo/setup/submission artifacts, final independent review, and explicit final publication/submission authorization. |
+### 5. Verify normal release build, then all eight pets
 
-**Deadline discipline:** 6 September WAT is the internal ship target. Prioritize one genuinely working supervised human workflow, then remaining required coverage; defer optional expansion and cosmetic redesign. Do not defer safety, real model evidence, same-session control, recoverable setup, or honest reporting. If the target is at risk, report the exact remaining gates and tradeoffs instead of silently moving the date or checking unverified items.
+- [ ] Pass normal release configuration with all required sidecars, including the missing frozen cursor-observe binary; no test-only override as release proof.
+- [ ] Verify isolated clean-profile startup, setup, retry, crash/reconnect and packaged assets; retain exact source/artifact hashes.
+- [ ] After core/primary flows work, use applicable pet/desktop skills to inspect pex, ledger, mesh, nudge, drift, quiet, ember and von.
+- [ ] Check actual desktop-size animation, transparency/cropping, placement/drag, click-through, compact/expanded and offline/pause behavior.
 
-**Every repair cycle:** reread the applicable spec sections and current handoff → reproduce the finding → assign non-overlapping implementation ownership → implement with regressions → independent diff review → integration checks → update this board/handoff → commit and push only verified scoped changes → verify the remote hash. A subagent's green report alone is not the integration gate.
+**Exit:** reproducible usable build and all eight pets verified in the actual app, not only atlas tests.
 
-Earlier verified source push: **`a779404082edb3fe861a643bf1f981eeb5373b40`** (outcome/context/UI repair and updated execution board). The working tree was clean immediately after that historical push, not necessarily now. Local gates then: 298 backend tests; separate overlapping 191-test compatibility run; 67 frontend checks and TypeScript. The newer source checkpoint is listed at the top of this document. Full scopes and limitations are in the handoff; no live/product/release claim follows from these counts.
+### 6. Run visible fair comparisons
 
-The user requested a fresh audit of all current code, including our own changes, against all three specs; a prioritized repair/build list; useful, easy UI/UX and sound backend logic; then a final eight-pet visual review and live Cursor, OpenCode, and Codex comparisons with PEX visibly open. This supersedes the old handoff's six-cell-only development restriction. It does not authorize fake results, silently dropped requirements, unsafe actions, or final public submission.
+- [ ] Verify live source identity, installed harness versions, provider access/budget, raw-event coverage, human-action accounting and enforced runtime/evaluator isolation before runs.
+- [ ] Keep PEX visibly open; use applicable skills for eligible desktop/browser surfaces and supported protocol/CLI or user participation for restricted surfaces.
+- [ ] Run four formal Cursor/Codex baseline/+PEX arms with equivalent within-harness settings and fresh environments.
+- [ ] Run the separately labeled OpenCode baseline/+PEX diagnostic pair; do not silently change the frozen four-arm specification.
+- [ ] Preserve immutable raw outcomes, overhead, failures/aborts and human actions; small demos are not statistical proof.
+- [ ] Check for an official leaderboard at this checkpoint; use it as context if available, otherwise continue product improvement without inventing a rank.
 
-**Status: NOT READY.** Passing local tests, a running window, or a sent message alone cannot complete a release item. Every checked item needs source/commit plus a test, runtime trace, screenshot, or artifact. Keep implemented, locally tested, live verified, and unverified separate. Do not promise literal perfection.
+**Exit:** honest reproducible comparisons and visible product behavior, with no benchmark-only privileges or hidden-data leakage.
+
+### 7. Final independent review and submission preparation
+
+- [ ] Re-review all repaired code and remaining requirements, actual UI/UX, usefulness, safety, pets, evidence and release identity.
+- [ ] Prepare accurate README/setup/license, architecture, testable build, demo of at most five minutes and submission text; verify current official eligibility/artifact requirements.
+- [ ] Present evidence-backed GO/NO-GO with unresolved P0/P1 issues named; obtain applicable explicit authority for final publication/deployment/submission.
+
+**Exit:** all required deliverables are verified and the app is genuinely submission-ready. Winning is the aim, not a guarantee; do not call the app perfect while required evidence is missing.
+
+### Bounded ownership and execution discipline
+
+- **Main:** shared adapter/API integration, cross-domain review, full-spec audit, runtime/UI verification and final evidence acceptance.
+- **`credential_review`:** hardened shared transport/tests; bounded independent security review after releasing implementation ownership.
+- **`opencode_audit`:** coordinator and attachment manager/tests; only the explicitly delegated app registration call, not other app edits.
+- **`codex_audit`:** documented human-content normalization/tests and independent adapter review.
+- Assign exact non-overlapping files; preserve unexplained `loop.py` changes without staging, cleaning or overwriting them.
+
+**Every repair cycle:** read all three specs, handoff and important files → reproduce → implement with regressions → independent diff review → main integration checks → update coverage/handoff → scoped commit/push → verify remote hash. An agent report alone cannot complete a checkbox.
+
+**Deadline:** 6 September WAT. Prioritize this critical path and overlap only independent audit/review. Defer optional expansion and cosmetic redesign, not required behavior or safety. If the target is at risk, name missing gates and tradeoffs instead of moving the date or lowering the bar. Obtain required runtime authority once prerequisites are ready; continue safe independent work meanwhile.
 
 ## Binding inputs and audit discipline
 
-- [x] Main reread `PEX_CORE_SPEC.md` completely this turn.
-- [x] Main reread `PEX_BUILD_SPEC.md` completely this turn.
-- [x] Main reread `PEX_IMPLEMENTATION_RECOVERY_SPEC.md` completely this turn.
+- [x] Prior audit cycle recorded a complete main-agent read of `PEX_CORE_SPEC.md`; this planning update is not a fresh full-read claim.
+- [x] Prior audit cycle recorded a complete main-agent read of `PEX_BUILD_SPEC.md`; reread before the next repair cycle.
+- [x] Prior audit cycle recorded a complete main-agent read of `PEX_IMPLEMENTATION_RECOVERY_SPEC.md`; its real-loop-first requirement still governs execution.
 - [x] Current handoff, status, known failures, architecture decisions, and integration matrix inspected; historical claims are not fresh evidence.
 - [x] Initial tracked/new code and configuration inventory created in `CODE_AUDIT_COVERAGE.md`: 341 paths including tests, integration JS, desktop scripts and release configuration. Every fresh-review status starts pending; excluded generated/raw/asset/document groups need separate targeted coverage.
 - [ ] Independent backend/logic review: supervisor, bridge, protocol, evidence, policy, intent/context, persistence, outcome attribution.
