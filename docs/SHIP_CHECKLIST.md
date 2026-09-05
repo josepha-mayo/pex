@@ -4,6 +4,8 @@
 
 User target: **ship tomorrow, 6 September 2026 (Africa/Lagos)**. This is earlier than the official contest deadline (14 September, 5 PM PDT). Do not use the later contest date to defer essential work.
 
+Latest source checkpoint: **`1574c56d00a41a0f9d1769e3c1b6a85e59e0af72`**, pushed and remote-verified: exact main/verifier evidence, failed-response action suppression, timeout/crash preservation, visible serialized startup recovery. Local gates: 332 backend tests, 74 frontend checks/TypeScript, 12 Rust tests under the disclosed test-only sidecar override. See the handoff for limits and an unexpected post-freeze uncommitted `loop.py` duplicate that must be preserved until its writer is identified. No live product/package readiness is claimed.
+
 ## Updated working objective
 
 Audit all current PEX code independently against the three binding specifications, repair missing or incorrect behavior, and deliver an evidence-backed submission-ready app by 6 September 2026 WAT. Prove that the backend is a real independent goal-aware supervisor and the UI/UX is easy and genuinely helpful; then re-review all eight pets and perform visible live Cursor, OpenCode, and Codex baseline/+PEX comparisons with honest evidence, counted overhead, and no hidden-data leakage. Re-review every repair, push verified checkpoints, and keep working until the release gates are genuinely met or a specific external blocker needs the user.
