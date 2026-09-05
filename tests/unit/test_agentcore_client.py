@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import io
 import json
 import threading
@@ -30,9 +31,11 @@ from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import (
     IndependentVerifierReceipt,
+    SupervisorEvidenceObservation,
     SupervisorRequest,
     SupervisorResult,
     TrajectoryScores,
+    supervisor_request_digest,
 )
 from pydantic import ValidationError
 
@@ -134,13 +137,34 @@ def _result(
     )
 
 
-def _approved_verifier_receipt() -> IndependentVerifierReceipt:
+def _observation(request: SupervisorRequest, stage: str) -> SupervisorEvidenceObservation:
+    observation_id = "pexobs_" + ("1" if stage == "main" else "2") * 32
+    output = json.dumps({
+        "pex_observation_id": observation_id,
+        "status": "supported",
+        "evidence": ["observed verification receipt"],
+    }, separators=(",", ":"))
+    return SupervisorEvidenceObservation(
+        observation_id=observation_id, invocation_id=f"pexinv_{stage}_fixture",
+        stage=stage, request_digest=supervisor_request_digest(cloud_request(request)),
+        session_id=request.session.id, goal_id=request.goal.id,
+        event_id=request.event.event_id, observed_at=datetime.now(UTC),
+        tool_name="run_verification", arguments_json="{}", output=output,
+        output_sha256=hashlib.sha256(output.encode()).hexdigest(),
+    )
+
+
+def _approved_verifier_receipt(request: SupervisorRequest) -> IndependentVerifierReceipt:
+    observation = _observation(request, "verifier")
     return IndependentVerifierReceipt(
         approved=True,
         status="approved",
         rationale="A separate verifier checked observable evidence.",
         evidence=["observed verification receipt"],
         evidence_tools=["run_verification"],
+        invocation_id=observation.invocation_id,
+        evidence_observations=[observation],
+        evidence_refs=[observation.observation_id],
         model_call_count=2,
         input_tokens=4,
         output_tokens=3,
@@ -150,6 +174,10 @@ def _approved_verifier_receipt() -> IndependentVerifierReceipt:
 
 def _remote_nudge(request: SupervisorRequest) -> SupervisorResult:
     remote = _result(request)
+    observation = _observation(request, "main")
+    remote.local_invocation_id = observation.invocation_id
+    remote.evidence_observations = [observation]
+    remote.evidence_refs = [observation.observation_id]
     remote.action = ProposedAction(
         type=InterventionType.SEND_NUDGE,
         session_id=request.session.id,
@@ -273,7 +301,7 @@ async def test_agentcore_client_invokes_bound_runtime_with_sanitized_payload(tmp
 async def test_agentcore_action_is_reconstructed_under_local_authority_contract(tmp_path):
     request = _request()
     remote = _remote_nudge(request)
-    remote.independent_verifier = _approved_verifier_receipt()
+    remote.independent_verifier = _approved_verifier_receipt(request)
     remote.model_call_count = 3
     client = AgentCoreSupervisorClient(
         _settings(tmp_path),
@@ -345,9 +373,8 @@ async def test_agentcore_rejected_verifier_receipt_is_preserved_but_action_is_no
     [
         ({"status": "rejected"}, "invalid_status"),
         ({"model_call_count": 0}, "missing_verifier_call"),
-        ({"evidence": []}, "missing_evidence"),
-        ({"evidence_tools": []}, "missing_evidence_tool"),
-        ({"evidence_tools": ["get_goal"]}, "missing_evidence_tool"),
+        ({"evidence_refs": []}, "missing_evidence_observation"),
+        ({"evidence_observations": [], "evidence_refs": []}, "missing_evidence_observation"),
     ],
 )
 async def test_agentcore_incomplete_approved_verifier_receipt_is_noop(
@@ -357,7 +384,7 @@ async def test_agentcore_incomplete_approved_verifier_receipt_is_noop(
 ):
     request = _request()
     remote = _remote_nudge(request)
-    remote.independent_verifier = _approved_verifier_receipt().model_copy(
+    remote.independent_verifier = _approved_verifier_receipt(request).model_copy(
         update=receipt_update
     )
     remote.model_call_count = 3
@@ -385,7 +412,7 @@ async def test_agentcore_verifier_receipt_requires_distinct_main_inference(
 ):
     request = _request()
     remote = _remote_nudge(request)
-    remote.independent_verifier = _approved_verifier_receipt()
+    remote.independent_verifier = _approved_verifier_receipt(request)
     remote.used_llm = used_llm
     remote.model_call_count = aggregate_calls
     client = AgentCoreSupervisorClient(
@@ -411,7 +438,7 @@ async def test_agentcore_runtime_cannot_approve_from_uncertain_verification_alon
         "evidence": ["no_external_check"],
     }
     remote = _remote_nudge(request)
-    remote.independent_verifier = _approved_verifier_receipt()
+    remote.independent_verifier = _approved_verifier_receipt(request)
     remote.model_call_count = 3
     client = AgentCoreSupervisorClient(
         _settings(tmp_path),
@@ -473,7 +500,7 @@ async def test_agentcore_verifier_receipt_is_redacted_before_local_provenance(tm
     remote = _remote_nudge(request)
     secret = "super-secret-verifier-value"
     workspace = request.session.cwd
-    remote.independent_verifier = _approved_verifier_receipt().model_copy(
+    remote.independent_verifier = _approved_verifier_receipt(request).model_copy(
         update={
             "rationale": f"Checked {workspace}; token={secret}",
             "evidence": [f"Observed {workspace}\\report.txt password={secret}"],
@@ -526,6 +553,153 @@ def test_cloud_request_is_valid_and_keeps_only_numeric_capabilities():
     assert safe.session.vendor_session_id.startswith("vendor_")
     assert safe.goal is not None
     assert safe.goal.project_id.startswith("p_")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stage", ["main", "verifier"])
+@pytest.mark.parametrize("field", ["request_digest", "session_id", "goal_id", "event_id"])
+async def test_remote_observation_must_match_exact_dispatched_request(tmp_path, stage, field):
+    request = _request()
+    remote = _remote_nudge(request)
+    remote.independent_verifier = _approved_verifier_receipt(request)
+    remote.model_call_count = 3
+    receipt = remote if stage == "main" else remote.independent_verifier
+    receipt.evidence_observations = [receipt.evidence_observations[0].model_copy(update={
+        field: "f" * 64 if field == "request_digest" else "foreign-authority",
+    })]
+    aws = FakeAwsClient(_aws_response(request, remote))
+    client = AgentCoreSupervisorClient(_settings(tmp_path), client=aws)
+    with pytest.raises(AgentCoreDeliveryUncertainError) as caught:
+        await client.decide(request)
+    assert caught.value.reason_code == "response_protocol_failure"
+    assert len(aws.calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("unsafe", ["secret", "escaped_path", "bad_hash", "unresolved_ref"])
+async def test_remote_exact_observations_are_rejected_not_rewritten(tmp_path, unsafe):
+    request = _request()
+    remote = _remote_nudge(request)
+    remote.independent_verifier = _approved_verifier_receipt(request)
+    remote.model_call_count = 3
+    observation = remote.evidence_observations[0]
+    if unsafe == "unresolved_ref":
+        remote.evidence_refs = ["pexobs_" + "f" * 32]
+    elif unsafe == "bad_hash":
+        remote.evidence_observations = [observation.model_copy(update={"output_sha256": "0" * 64})]
+    else:
+        value = {"password": "not-for-a-model-123"} if unsafe == "secret" else {
+            "file": request.session.cwd + "\\report.txt",
+        }
+        output = json.dumps({"pex_observation_id": observation.observation_id, **value})
+        remote.evidence_observations = [observation.model_copy(update={
+            "output": output, "output_sha256": hashlib.sha256(output.encode()).hexdigest(),
+        })]
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path), client=FakeAwsClient(_aws_response(request, remote)),
+    )
+    with pytest.raises(AgentCoreDeliveryUncertainError) as caught:
+        await client.decide(request)
+    assert caught.value.reason_code == "response_protocol_failure"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("invalid", ["shared_invocation", "shared_observation", "unsafe_label"])
+async def test_remote_observation_stages_have_distinct_safe_identity(tmp_path, invalid):
+    request = _request()
+    remote = _remote_nudge(request)
+    verifier = _approved_verifier_receipt(request)
+    remote.independent_verifier = verifier
+    remote.model_call_count = 3
+    observation = verifier.evidence_observations[0]
+    if invalid == "shared_invocation":
+        verifier.invocation_id = remote.local_invocation_id
+        observation = observation.model_copy(update={"invocation_id": remote.local_invocation_id})
+    elif invalid == "shared_observation":
+        shared_id = remote.evidence_observations[0].observation_id
+        output = json.dumps({"pex_observation_id": shared_id, "status": "supported"})
+        observation = observation.model_copy(update={
+            "observation_id": shared_id, "output": output,
+            "output_sha256": hashlib.sha256(output.encode()).hexdigest(),
+        })
+        verifier.evidence_refs = [shared_id]
+    else:
+        observation = observation.model_copy(update={"tool_name": "password=private-value"})
+    verifier.evidence_observations = [observation]
+    aws = FakeAwsClient(_aws_response(request, remote))
+    client = AgentCoreSupervisorClient(_settings(tmp_path), client=aws)
+    with pytest.raises(AgentCoreDeliveryUncertainError) as caught:
+        await client.decide(request)
+    assert caught.value.reason_code == "response_protocol_failure"
+    assert len(aws.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_remote_tool_names_cannot_disguise_uncertain_verification_only(tmp_path):
+    request = _request()
+    request.scores.features["verification"] = {
+        "status": "uncertain", "acceptance_status": "uncertain",
+    }
+    remote = _remote_nudge(request)
+    remote.independent_verifier = _approved_verifier_receipt(request)
+    remote.independent_verifier.evidence_tools = ["run_verification", "get_recent_events"]
+    remote.model_call_count = 3
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path), client=FakeAwsClient(_aws_response(request, remote)),
+    )
+    result = await client.decide(request)
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.evidence == ["agentcore_verifier_contract:uncertain_evidence"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("event_type", [EventType.STOP, EventType.AGENT_RESPONSE])
+@pytest.mark.parametrize(
+    ("inference_status", "used_llm", "model_call_count", "reason"),
+    [
+        ("failed", True, 3, "main_inference_not_completed"),
+        ("timeout", True, 3, "main_inference_not_completed"),
+        ("not_attempted", False, 0, "main_inference_not_completed"),
+        ("completed", False, 3, "missing_main_inference"),
+        ("completed", True, 0, "missing_main_inference"),
+    ],
+)
+async def test_every_remote_intervention_requires_completed_main_inference(
+    tmp_path, event_type, inference_status, used_llm, model_call_count, reason,
+):
+    request = _request()
+    request.event.event_type = event_type
+    remote = _remote_nudge(request)
+    remote.independent_verifier = _approved_verifier_receipt(request)
+    remote.inference_status = inference_status
+    remote.used_llm = used_llm
+    remote.model_call_count = model_call_count
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path), client=FakeAwsClient(_aws_response(request, remote)),
+    )
+    result = await client.decide(request)
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.evidence == [f"agentcore_verifier_contract:{reason}"]
+    assert result.evidence_observations == remote.evidence_observations
+    assert result.inference_status == inference_status
+
+
+@pytest.mark.asyncio
+async def test_remote_intervention_requires_main_observation_refs_too(tmp_path):
+    request = _request()
+    remote = _remote_nudge(request)
+    remote.evidence_refs = []
+    remote.independent_verifier = _approved_verifier_receipt(request)
+    remote.model_call_count = 3
+    client = AgentCoreSupervisorClient(
+        _settings(tmp_path), client=FakeAwsClient(_aws_response(request, remote)),
+    )
+    result = await client.decide(request)
+    assert result.action.type == InterventionType.NOOP
+    assert result.action.evidence == [
+        "agentcore_verifier_contract:missing_main_evidence_observation",
+    ]
+    assert result.evidence_observations == remote.evidence_observations
 
 
 def test_cloud_request_does_not_mislabel_external_absolute_path_as_workspace():

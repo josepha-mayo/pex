@@ -1,0 +1,139 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  advanceBridgeBootstrapStatus,
+  bridgeBootstrapAvailable,
+  initialBridgeBootstrapStatus,
+  normalizeBridgeBootstrapStatus,
+  shouldPollBridgeBootstrap,
+  startupRecoveryCopy,
+  unavailableBridgeBootstrapStatus,
+} from "./startupRecovery.ts";
+
+test("initial startup is explicitly pending and has a bounded-wait presentation", () => {
+  assert.equal(initialBridgeBootstrapStatus.phase, "starting");
+  const copy = startupRecoveryCopy(initialBridgeBootstrapStatus);
+  assert.equal(copy.tone, "starting");
+  assert.match(copy.guidance || "", /20-second deadline/u);
+});
+
+test("unverified port ownership remains explicit and never suggests automatic takeover", () => {
+  const status = normalizeBridgeBootstrapStatus({
+    phase: "failed",
+    code: "port_occupied_untrusted",
+    message: "safe Rust detail",
+    retryable: true,
+    source: "unverified_port_owner",
+    attempt: 2,
+  });
+  const copy = startupRecoveryCopy(status);
+  assert.equal(status.source, "unverified_port_owner");
+  assert.match(copy.detail, /could not prove/u);
+  assert.match(copy.guidance || "", /will not stop or reuse/u);
+});
+
+test("malformed or widened desktop state fails closed without retry", () => {
+  for (const value of [
+    null,
+    {},
+    {
+      phase: "ready",
+      code: null,
+      message: "forged",
+      retryable: false,
+      source: "unverified_port_owner",
+      attempt: 1,
+    },
+    {
+      phase: "failed",
+      code: "arbitrary_internal_error",
+      message: "raw private diagnostic",
+      retryable: true,
+      source: "not_ready",
+      attempt: 1,
+    },
+    {
+      phase: "failed",
+      code: "sidecar_spawn_failed",
+      message: "x".repeat(241),
+      retryable: true,
+      source: "not_ready",
+      attempt: 1,
+    },
+  ]) {
+    const normalized = normalizeBridgeBootstrapStatus(value);
+    assert.equal(normalized.phase, "failed");
+    assert.equal(normalized.code, "desktop_control_unavailable");
+    assert.equal(normalized.retryable, false);
+  }
+});
+
+test("a verified ready state is bound to the desktop-owned sidecar", () => {
+  const status = normalizeBridgeBootstrapStatus({
+    phase: "ready",
+    code: null,
+    message: "ready",
+    retryable: false,
+    source: "owned_sidecar",
+    attempt: 3,
+  });
+  assert.equal(status.phase, "ready");
+  assert.equal(status.source, "owned_sidecar");
+  assert.equal(status.attempt, 3);
+});
+
+test("startup orchestration rejects stale polling and same-attempt resurrection", () => {
+  const ready = normalizeBridgeBootstrapStatus({
+    phase: "ready",
+    code: null,
+    message: "ready",
+    retryable: false,
+    source: "owned_sidecar",
+    attempt: 4,
+  });
+  const failed = normalizeBridgeBootstrapStatus({
+    phase: "failed",
+    code: "bridge_process_stopped",
+    message: "stopped",
+    retryable: true,
+    source: "owned_sidecar",
+    attempt: 4,
+  });
+  const retrying = normalizeBridgeBootstrapStatus({
+    phase: "starting",
+    code: null,
+    message: "starting",
+    retryable: false,
+    source: "not_ready",
+    attempt: 5,
+  });
+
+  assert.equal(advanceBridgeBootstrapStatus(ready, failed), failed);
+  assert.equal(advanceBridgeBootstrapStatus(failed, ready), failed);
+  assert.equal(advanceBridgeBootstrapStatus(retrying, failed), retrying);
+  assert.equal(advanceBridgeBootstrapStatus(retrying, ready), retrying);
+});
+
+test("only main desktop surfaces poll or mutate bridge bootstrap state", () => {
+  assert.equal(shouldPollBridgeBootstrap(true, "main"), true);
+  assert.equal(shouldPollBridgeBootstrap(true, "settings"), true);
+  assert.equal(shouldPollBridgeBootstrap(true, "pet"), false);
+  assert.equal(shouldPollBridgeBootstrap(false, "main"), false);
+});
+
+test("control-read availability gates ready UI without corrupting native generation state", () => {
+  const ready = normalizeBridgeBootstrapStatus({
+    phase: "ready",
+    code: null,
+    message: "ready",
+    retryable: false,
+    source: "owned_sidecar",
+    attempt: 7,
+  });
+  assert.equal(bridgeBootstrapAvailable(true, "main", true, ready), true);
+  assert.equal(bridgeBootstrapAvailable(true, "main", false, ready), false);
+  assert.equal(unavailableBridgeBootstrapStatus(ready.attempt).attempt, 7);
+  assert.equal(advanceBridgeBootstrapStatus(ready, ready), ready);
+  assert.equal(bridgeBootstrapAvailable(true, "main", true, ready), true);
+});

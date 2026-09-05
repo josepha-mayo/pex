@@ -25,6 +25,7 @@ from pex_protocol.supervisor import (
     INDEPENDENT_VERIFIER_EVIDENCE_TOOLS,
     SupervisorRequest,
     SupervisorResult,
+    supervisor_request_digest,
 )
 from pex_supervisor.loop import (
     _action_from_proposal,
@@ -474,18 +475,92 @@ def _validate_request_binding(request: SupervisorRequest) -> None:
             )
 
 
+def _exact_observation_text_is_safe(value: object, local_values: tuple[str, ...]) -> bool:
+    """Reject unsafe returned observations instead of rewriting their hashed bytes."""
+
+    if isinstance(value, str):
+        return _safe_text(value, len(value), local_values) == value
+    if isinstance(value, dict):
+        cleaned, _ = redact_mapping(value)
+        return cleaned == value and all(
+            _exact_observation_text_is_safe(key, local_values)
+            and _exact_observation_text_is_safe(item, local_values)
+            for key, item in value.items()
+        )
+    if isinstance(value, list):
+        return all(_exact_observation_text_is_safe(item, local_values) for item in value)
+    return value is None or isinstance(value, (bool, int, float))
+
+
+def _validate_remote_observations(
+    request: SupervisorRequest,
+    result: SupervisorResult,
+    *,
+    dispatched_request_digest: str,
+) -> None:
+    """Bind exact remote tool results to the actual sanitized request sent to AWS.
+
+    A locally generated digest is correlation, not attestation of remote execution.
+    Never sanitize/re-hash an incompatible observation and call it what a model saw.
+    """
+
+    local_values = tuple(
+        value for value in (
+            request.session.cwd, request.session.repo, request.session.external_url,
+        ) if value
+    )
+    verifier = result.independent_verifier
+    groups = [("main", result.local_invocation_id, result.evidence_observations)]
+    if verifier is not None:
+        groups.append(("verifier", verifier.invocation_id, verifier.evidence_observations))
+    expected_goal = request.goal.id if request.goal is not None else None
+    observed_ids: set[str] = set()
+    for stage, invocation_id, observations in groups:
+        for observation in observations:
+            if (
+                observation.stage != stage
+                or observation.invocation_id != invocation_id
+                or observation.request_digest != dispatched_request_digest
+                or observation.session_id != request.session.id
+                or observation.goal_id != expected_goal
+                or observation.event_id != request.event.event_id
+            ):
+                raise AgentCoreProtocolError("AgentCore evidence observation binding mismatch")
+            if observation.observation_id in observed_ids:
+                raise AgentCoreProtocolError("AgentCore stages reused an evidence observation ID")
+            observed_ids.add(observation.observation_id)
+            if not all(
+                _safe_text(value, len(value), local_values) == value
+                for value in (observation.invocation_id, observation.tool_name)
+            ):
+                raise AgentCoreProtocolError("AgentCore evidence observation labels are unsafe")
+            # Protocol validation bounds/decodes each JSON string. Parse again
+            # here only to check escaped secrets and local paths before storage.
+            for rendered in (observation.arguments_json, observation.output):
+                parsed = json.loads(rendered)
+                if not _exact_observation_text_is_safe(parsed, local_values):
+                    raise AgentCoreProtocolError("AgentCore evidence observation is not sanitized")
+    if (
+        verifier is not None and verifier.evidence_observations
+        and verifier.invocation_id == result.local_invocation_id
+    ):
+        raise AgentCoreProtocolError("AgentCore verifier reused the main invocation identity")
+
+
 def _remote_verifier_contract_failure(
     request: SupervisorRequest,
     result: SupervisorResult,
 ) -> str | None:
-    """Return a closed reason when a remote STOP action lacks verifier authority."""
+    """Require cited main evidence and independent verification for STOP actions."""
 
-    if (
-        request.event.event_type != EventType.STOP
-        or result.inference_status != "completed"
-        or result.action.type == InterventionType.NOOP
-    ):
+    if result.action.type == InterventionType.NOOP:
         return None
+    if result.inference_status != "completed":
+        return "main_inference_not_completed"
+    if not result.used_llm or result.model_call_count < 1:
+        return "missing_main_inference"
+    if request.event.event_type != EventType.STOP:
+        return None if result.evidence_refs else "missing_main_evidence_observation"
     receipt = result.independent_verifier
     if receipt is None:
         return "missing_receipt"
@@ -496,18 +571,23 @@ def _remote_verifier_contract_failure(
             return "invalid_status"
         if receipt.model_call_count < 1:
             return "missing_verifier_call"
-        if not any(item.strip() for item in receipt.evidence):
-            return "missing_evidence"
-        if not (
-            INDEPENDENT_VERIFIER_EVIDENCE_TOOLS.intersection(
-                receipt.evidence_tools
-            )
+        if not receipt.evidence_refs or not receipt.evidence_observations:
+            return "missing_evidence_observation"
+        if not any(
+            item.observation_id in receipt.evidence_refs
+            and item.tool_name in INDEPENDENT_VERIFIER_EVIDENCE_TOOLS
+            for item in receipt.evidence_observations
         ):
             return "missing_evidence_tool"
         return "invalid_receipt"
-    if not result.used_llm or result.model_call_count <= receipt.model_call_count:
+    if not result.evidence_refs:
+        return "missing_main_evidence_observation"
+    if result.model_call_count <= receipt.model_call_count:
         return "missing_main_inference"
-    verifier_tools = set(receipt.evidence_tools)
+    verifier_tools = {
+        item.tool_name for item in receipt.evidence_observations
+        if item.observation_id in receipt.evidence_refs
+    }
     verification = (request.scores.features or {}).get("verification") or {}
     if not isinstance(verification, Mapping):
         return "invalid_verification_state"
@@ -679,6 +759,10 @@ class AgentCoreSupervisorClient:
         invocation_id = transport_invocation_id(request)
         try:
             payload = request_envelope(request, max_bytes=self.max_request_bytes)
+            # Compute against the exact sanitized payload, not a second mutable
+            # reconstruction from the local workspace-bearing request.
+            dispatched_request = SupervisorRequest.model_validate(json.loads(payload)["request"])
+            dispatched_digest = supervisor_request_digest(dispatched_request)
         except AgentCoreProtocolError as exc:
             # This is the one protocol phase that is provably pre-dispatch.
             # The messages originate in this module and contain no provider data.
@@ -750,6 +834,9 @@ class AgentCoreSupervisorClient:
             )
         try:
             result = SupervisorResult.model_validate(envelope["result"])
+            _validate_remote_observations(
+                request, result, dispatched_request_digest=dispatched_digest,
+            )
         except Exception:
             raise AgentCoreDeliveryUncertainError(
                 transport_invocation_id=invocation_id,

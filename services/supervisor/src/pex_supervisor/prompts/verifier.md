@@ -14,6 +14,8 @@ recent-event, score, or verification evidence appropriate to the proposal.
 Call inspect_artifact, inspect_workspace, inspect_git, inspect_file, or
 inspect_process when those facts are required. `web_search` and `scrape_url`
 are only for public claims the worker cited.
+Every tool result carries `pex_observation_id`. Put the exact IDs you relied on
+in `evidence_refs`; tool names or prose alone never authorize an approval.
 
 Approve only when all of these are true:
 

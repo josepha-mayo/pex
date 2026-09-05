@@ -8,7 +8,7 @@ from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings
 from pex_bridge.pipeline import Pipeline
-from pex_bridge.store import ProjectIdentityBlockedError, Store
+from pex_bridge.store import ProjectIdentityBlockedError, Store, stable_event_artifact_id
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.context import ContextItem
 from pex_protocol.enums import (
@@ -215,6 +215,13 @@ async def test_supervisor_gets_durable_context_and_replay_keeps_first_packet(tmp
         envelope = requests[0].supervisor_context
         assert envelope is not None
         assert context.id in envelope.offered_context_ids
+        planned_id = stable_event_artifact_id(event.event_id, "event_context")
+        assert planned_id in envelope.offered_context_ids
+        planned = next(item for item in envelope.context_items if item.id == planned_id)
+        assert planned.source_refs == (event.event_id,)
+        assert planned.content == event.message_delta
+        assert planned.provenance == SourceKind.HARNESS
+        assert planned.verified is False
         assert "context-private" not in envelope.offered_context_ids
         assert decision.id in envelope.offered_decision_ids
         selected = next(item for item in envelope.context_items if item.id == context.id)
@@ -236,6 +243,10 @@ async def test_supervisor_gets_durable_context_and_replay_keeps_first_packet(tmp
             separators=(",", ":"), ensure_ascii=False, allow_nan=False,
         ).encode("utf-8")).hexdigest()
         assert reference["packet_sha256"] == expected_hash
+        committed = await store.list_context_for_authority(
+            session.project_id, goal_id=session.goal_id,
+        )
+        assert any(item.id == planned_id for item in committed)
         assert store._intervention_audit_record(intervention, "test")[
             "supervisor_context_reference"
         ] == reference

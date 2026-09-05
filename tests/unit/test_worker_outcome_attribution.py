@@ -85,6 +85,9 @@ async def test_unsupported_correlation_records_unknown_not_helpful(tmp_path):
         persisted = (await store.list_interventions(session.id))[0]
         assert persisted.helped is None
         assert persisted.result == "sent"  # Delivery history is not rewritten.
+        audit = store._intervention_audit_record(persisted, "test")
+        assert audit["causal_continuation_proven"] is False
+        assert audit["helped"] is None
         assert await pipeline._observe_prior_intervention(session, event) == []
     finally:
         await store.close()

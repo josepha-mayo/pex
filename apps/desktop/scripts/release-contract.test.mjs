@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   EXPECTED_BUNDLE_ICONS,
+  EXPECTED_BRIDGE_RECOVERY_PERMISSION,
   EXPECTED_FOCUS_PERMISSION,
   EXPECTED_MAIN_PERMISSIONS,
   EXPECTED_PET_PERMISSIONS,
@@ -38,7 +39,12 @@ function wiringFixture() {
         beforeBuildCommand: "npm run prepare:sidecar && npm run build",
         frontendDist: "../dist",
       },
-      app: { windows: [{ label: "main" }, { label: "pet", url: "pet.html" }] },
+      app: {
+        windows: [
+          { label: "main", visible: true },
+          { label: "pet", url: "pet.html", visible: false },
+        ],
+      },
       bundle: {
         active: true,
         targets: "all",
@@ -58,6 +64,7 @@ function wiringFixture() {
     },
     cargoVersion: packageJson.version,
     focusPermission: EXPECTED_FOCUS_PERMISSION,
+    bridgeRecoveryPermission: EXPECTED_BRIDGE_RECOVERY_PERMISSION,
   };
 }
 
@@ -212,6 +219,18 @@ test("Tauri release wiring rejects capability widening and window-scope widening
   const resourceAlias = structuredClone(fixture);
   resourceAlias.tauri.bundle.resources = ["../secrets"];
   assert.equal(tauriReleaseWiringMatches(resourceAlias), false);
+
+  const hiddenMain = structuredClone(fixture);
+  hiddenMain.tauri.app.windows[0].visible = false;
+  assert.equal(tauriReleaseWiringMatches(hiddenMain), false);
+
+  const visiblePet = structuredClone(fixture);
+  visiblePet.tauri.app.windows[1].visible = true;
+  assert.equal(tauriReleaseWiringMatches(visiblePet), false);
+
+  const widenedRecovery = structuredClone(fixture);
+  widenedRecovery.bridgeRecoveryPermission += '\ncommands.allow = ["bridge_token"]';
+  assert.equal(tauriReleaseWiringMatches(widenedRecovery), false);
 });
 
 test("sidecar stamp is exact and rejects stale, forged, malformed, and extended records", () => {

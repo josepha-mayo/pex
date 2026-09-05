@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections.abc import AsyncGenerator
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from pex_protocol.supervisor import SupervisorResult
+from pex_supervisor.evidence_observations import EvidenceObservationCollector
 from pex_supervisor.loop import (
     _action_from_proposal,
     _bounded_wall_timeout,
@@ -26,10 +28,11 @@ class FakeStructuredModel(Model):
         *,
         verifier_approved: bool = True,
         verifier_evidence: list[str] | None = None,
-        evidence_tool_calls: int = 0,
+        evidence_tool_calls: int | None = None,
         verifier_evidence_tool_calls: int = 0,
         verifier_evidence_tool_name: str = "run_verification",
         message: str | None = None,
+        cite_evidence: bool = True,
     ) -> None:
         self.action_type = action_type
         self.verifier_approved = verifier_approved
@@ -38,10 +41,15 @@ class FakeStructuredModel(Model):
             if verifier_evidence is None
             else verifier_evidence
         )
-        self.evidence_tool_calls = evidence_tool_calls
+        self.evidence_tool_calls = (
+            int(action_type != "NOOP")
+            if evidence_tool_calls is None
+            else evidence_tool_calls
+        )
         self.verifier_evidence_tool_calls = verifier_evidence_tool_calls
         self.verifier_evidence_tool_name = verifier_evidence_tool_name
         self.message = message
+        self.cite_evidence = cite_evidence
         self.captured_messages: list[str] = []
 
     def update_config(self, **model_config: Any) -> None:
@@ -69,7 +77,14 @@ class FakeStructuredModel(Model):
         tool_choice=None,
         **kwargs,
     ) -> AsyncGenerator[dict[str, Any], None]:
-        self.captured_messages.append(json.dumps(messages))
+        serialized_messages = json.dumps(messages)
+        self.captured_messages.append(serialized_messages)
+        observation_ids = re.findall(r"pexobs_[a-f0-9]{32}", serialized_messages)
+        evidence_refs = (
+            list(dict.fromkeys(observation_ids))[-20:]
+            if self.cite_evidence
+            else []
+        )
         specs = list(tool_specs or [])
         verifier = next(
             (spec for spec in specs if spec["name"] == "IndependentVerifierDecision"),
@@ -115,6 +130,7 @@ class FakeStructuredModel(Model):
                 "approved": self.verifier_approved,
                 "rationale": "independent fake verification",
                 "evidence": self.verifier_evidence,
+                "evidence_refs": evidence_refs,
             }
         else:
             message = self.message
@@ -128,6 +144,7 @@ class FakeStructuredModel(Model):
                 "action_type": self.action_type,
                 "rationale": "validated fake decision",
                 "evidence": ["workspace fact"],
+                "evidence_refs": evidence_refs,
                 "message": message,
                 "confidence": 0.9,
                 "risk": "low",
@@ -192,16 +209,29 @@ async def test_real_strands_agent_returns_validated_structured_decision():
     assert result.inference_status == "completed"
     assert result.runtime == "strands-agents"
     assert result.runtime_version
-    assert result.model_call_count == 1
+    assert result.model_call_count == 2
     assert result.model_name == "fake-local"
     assert result.model_class and result.model_class.endswith("FakeStructuredModel")
     assert result.inference_request_id is None
     assert result.local_invocation_id and result.local_invocation_id.startswith("pexinv_")
-    assert result.input_tokens == 3
-    assert result.output_tokens == 4
+    assert result.input_tokens == 5
+    assert result.output_tokens == 5
     assert result.action.type.value == "SEND_NUDGE"
     assert result.action.payload["text"] == "Create report.txt containing shipped."
-    assert len(model.captured_messages) == 1
+    assert len(model.captured_messages) == 2
+
+
+@pytest.mark.asyncio
+async def test_returned_but_uncited_tool_output_cannot_authorize_main_action():
+    result = await run_strands_async(
+        _request(0.95),
+        model=FakeStructuredModel("SEND_NUDGE", cite_evidence=False),
+    )
+
+    assert result.action.type.value == "NOOP"
+    assert "invalid_evidence_refs" in result.diagnosis
+    assert len(result.evidence_observations) == 1
+    assert result.evidence_refs == []
 
 
 @pytest.mark.asyncio
@@ -697,8 +727,8 @@ async def test_semantic_only_intervention_requires_independent_verifier_approval
 
     assert result.action.type.value == "SEND_NUDGE"
     assert "independent_verifier_approved" in result.diagnosis
-    assert result.model_call_count == 3
-    assert len(model.captured_messages) == 3
+    assert result.model_call_count == 4
+    assert len(model.captured_messages) == 4
     assert "get_recent_events" in result.evidence_tools
     assert result.independent_verifier is not None
     assert result.independent_verifier.approved is True
@@ -726,7 +756,7 @@ async def test_uncertain_verification_receipt_alone_cannot_authorize_interventio
 
     assert result.action.type.value == "NOOP"
     assert "independent_verifier_rejected" in result.diagnosis
-    assert result.model_call_count == 3
+    assert result.model_call_count == 4
     assert "run_verification" in result.evidence_tools
     assert any("independent_verifier_status=uncertain_evidence" in item for item in result.traces)
 
@@ -761,13 +791,13 @@ async def test_verifier_approval_without_an_evidence_tool_fails_closed():
 
     assert result.action.type.value == "NOOP"
     assert "independent_verifier_rejected" in result.diagnosis
-    assert result.model_call_count == 2
+    assert result.model_call_count == 3
     assert result.independent_verifier is not None
     assert result.independent_verifier.approved is False
-    assert result.independent_verifier.status == "missing_evidence_tool"
+    assert result.independent_verifier.status == "missing_or_invalid_evidence_refs"
     assert result.independent_verifier.model_call_count == 1
     assert any(
-        "independent_verifier_status=missing_evidence_tool" in item
+        "independent_verifier_status=missing_or_invalid_evidence_refs" in item
         for item in result.traces
     )
 
@@ -842,14 +872,14 @@ async def test_raw_verifier_numeric_telemetry_does_not_coerce_strings_or_boolean
     )
     result = await decide_async(request, model=FakeStructuredModel("SEND_NUDGE"))
 
-    assert result.action.type.value == "SEND_NUDGE"
+    assert result.action.type.value == "NOOP"
     assert result.independent_verifier is not None
-    assert result.independent_verifier.authorizes_intervention() is True
+    assert result.independent_verifier.authorizes_intervention() is False
     assert result.independent_verifier.input_tokens == 0
     assert result.independent_verifier.output_tokens == 0
     assert result.independent_verifier.latency_ms == 0
-    assert result.input_tokens == 3
-    assert result.output_tokens == 4
+    assert result.input_tokens == 5
+    assert result.output_tokens == 5
 
 
 @pytest.mark.asyncio
@@ -870,7 +900,7 @@ async def test_verifier_rejection_or_empty_evidence_fails_closed(approved, evide
 
     assert result.action.type.value == "NOOP"
     assert "independent_verifier_rejected" in result.diagnosis
-    assert result.model_call_count == 3
+    assert result.model_call_count == 4
 
 
 @pytest.mark.asyncio
@@ -887,10 +917,98 @@ async def test_verifier_setup_failure_preserves_main_inference_provenance(
 
     assert result.used_llm is True
     assert result.inference_status == "completed"
-    assert result.model_call_count == 1
+    assert result.model_call_count == 2
     assert result.action.type.value == "NOOP"
     assert "independent_verifier_rejected" in result.diagnosis
     assert any(
         "independent_verifier_status=failed:RuntimeError" in item
         for item in result.traces
     )
+
+
+@pytest.mark.asyncio
+async def test_foreign_verifier_observations_fail_closed_without_losing_main_receipts(
+    monkeypatch,
+):
+    request = _request(0.1)
+    foreign = request.model_copy(deep=True)
+    foreign.session.id = "foreign-session"
+    collector = EvidenceObservationCollector(
+        foreign,
+        stage="verifier",
+        invocation_id="foreign-verifier",
+    )
+    collector.record(
+        tool_name="get_recent_events",
+        arguments_json="{}",
+        value={"events": []},
+    )
+    observation = collector.observations[0]
+
+    async def forged_receipt(*_args, **_kwargs):
+        return {
+            "approved": True,
+            "status": "approved",
+            "rationale": "foreign receipt",
+            "evidence": ["foreign evidence"],
+            "invocation_id": "foreign-verifier",
+            "evidence_observations": [observation],
+            "evidence_refs": [observation.observation_id],
+            "model_call_count": 1,
+        }
+
+    monkeypatch.setattr(
+        "pex_supervisor.loop.run_independent_verifier_async",
+        forged_receipt,
+    )
+    result = await decide_async(request, model=FakeStructuredModel("SEND_NUDGE"))
+
+    assert result.action.type.value == "NOOP"
+    assert len(result.evidence_observations) == 1
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.evidence_observations == []
+    assert result.independent_verifier.authorizes_intervention() is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("raw_invocation_id", [None, "token=unsafe-verifier-secret"])
+async def test_invalid_verifier_invocation_drops_receipts_without_losing_main_receipts(
+    monkeypatch,
+    raw_invocation_id,
+):
+    request = _request(0.1)
+    collector = EvidenceObservationCollector(
+        request,
+        stage="verifier",
+        invocation_id="valid-verifier",
+    )
+    collector.record(
+        tool_name="get_recent_events",
+        arguments_json="{}",
+        value={"events": []},
+    )
+    observation = collector.observations[0]
+
+    async def forged_receipt(*_args, **_kwargs):
+        return {
+            "approved": True,
+            "status": "approved",
+            "rationale": "invalid invocation receipt",
+            "evidence": ["claimed evidence"],
+            "invocation_id": raw_invocation_id,
+            "evidence_observations": [observation],
+            "evidence_refs": [observation.observation_id],
+            "model_call_count": 1,
+        }
+
+    monkeypatch.setattr(
+        "pex_supervisor.loop.run_independent_verifier_async",
+        forged_receipt,
+    )
+    result = await decide_async(request, model=FakeStructuredModel("SEND_NUDGE"))
+
+    assert result.action.type.value == "NOOP"
+    assert len(result.evidence_observations) == 1
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.evidence_observations == []
+    assert result.independent_verifier.evidence_refs == []

@@ -3,6 +3,15 @@ import type { PetMood } from "./pets/atlas";
 export type Surface = "compact" | "inspector" | "deck";
 export type DeckView = "now" | "decisions" | "context" | "interventions" | "agents" | "bench";
 
+export type BridgeBootstrapStatus = {
+  phase: "starting" | "ready" | "failed";
+  code: string | null;
+  message: string;
+  retryable: boolean;
+  source: "not_ready" | "owned_sidecar" | "unverified_port_owner";
+  attempt: number;
+};
+
 export type SessionRow = {
   id: string;
   harness_type: string;

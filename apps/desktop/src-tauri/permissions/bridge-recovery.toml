@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-bridge-recovery"
+description = "Read and retry the serialized desktop-owned PEX bridge bootstrap"
+commands.allow = ["bridge_bootstrap_status", "retry_bridge"]

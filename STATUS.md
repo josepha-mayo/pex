@@ -6,6 +6,14 @@
 
 **Date:** 2026-09-05
 
+## Exact evidence and recoverable startup checkpoint — 5 Sep
+
+Main's final combined local gate passed **332 backend tests across 15 complete files**, **74 desktop Node tests**, TypeScript and scoped Ruff. Main also reran **12 Rust tests** and format checks; the startup owner reports clean Clippy. Exact main/verifier tool observations now survive normal decisions, failures, timeouts and crash replay. Their citations are request/stage/invocation bound; failed/no-model remote results cannot carry worker actions. Original ambiguous responses remain durable while their executable projection is NOOP. Startup now has a visible recovery surface, serialized bounded retries, single-instance handling, safe ownership checks and main-only recovery commands. Independent review closed the evidence, permission and stale-poll findings. Detailed scope and failed intermediate gates are in the current handoff.
+
+**Release caveat:** the frozen `pex-cursor-observe` executable is missing. Rust tests/Clippy used a process-local externalBin override containing only the two existing frozen binaries; the tracked release contract still requires all sidecars. This is not unmodified release/package or live GUI/provider proof. Crash-orphan cleanup remains a diagnosed unknown-owner case, not automatic takeover. Push receipt is pending remote verification.
+
+Next: real Codex same-session main/verifier usefulness and quiet-case proof, first-run/provider/worker/goal flow, then audit/integrity/package/pet/demo gates. The internal target remains **6 September WAT**, exactly eight pets, and **NO-GO** until the actual product and release evidence exists. No live provider/service/hook/package/submission changes occurred here.
+
 ## Shipping execution board and current local repair — 5 Sep
 
 The internal target is **6 September WAT**. `docs/SHIP_CHECKLIST.md` holds the updated working objective, seven ordered steps, prioritized TODOs, deadline discipline and explicit exit conditions. The app goal remains active; its tools do not support editing an unfinished objective. Whole-code audit, actual UI/backend usefulness, eight-pet visual review, live comparisons and release gates remain incomplete.

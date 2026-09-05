@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from pex_supervisor.evidence_observations import EvidenceObservationCollector
 from pex_supervisor.evidence_tools import build_evidence_tools
 from test_supervisor_loop import _request
 
@@ -84,6 +85,9 @@ def test_evidence_tools_omit_raw_local_and_adapter_payloads_and_bound_output():
 
 def test_evidence_tools_bound_cyclic_depth_and_oversized_integers_before_redaction():
     request = _request(0.1)
+    inspect_workspace = next(
+        item for item in build_evidence_tools(request, []) if item.tool_name == "inspect_workspace"
+    )
     cyclic: dict[str, object] = {}
     cyclic["self"] = cyclic
     request.scores.features["prefetched_evidence"] = {
@@ -91,9 +95,6 @@ def test_evidence_tools_bound_cyclic_depth_and_oversized_integers_before_redacti
         "huge": 10**5_000,
     }
 
-    inspect_workspace = next(
-        item for item in build_evidence_tools(request, []) if item.tool_name == "inspect_workspace"
-    )
     parsed = json.loads(inspect_workspace())
 
     assert parsed["huge"] == (1 << 63) - 1
@@ -152,3 +153,22 @@ def test_web_search_and_scrape_tools_refuse_oracles_and_empty_inputs(monkeypatch
     assert local_scrape["ok"] is False
     local_error = str(local_scrape.get("error") or "").lower()
     assert "blocked" in local_error or "local" in local_error
+
+
+def test_parameterized_tool_receipt_captures_sanitized_exact_arguments():
+    request = _request(0.1)
+    collector = EvidenceObservationCollector(
+        request,
+        stage="main",
+        invocation_id="main-invocation",
+    )
+    tools = {
+        item.tool_name: item
+        for item in build_evidence_tools(request, [], collector=collector)
+    }
+
+    output = tools["inspect_file"](path="../rejected.txt")
+
+    observation = collector.observations[0]
+    assert observation.output == output
+    assert json.loads(observation.arguments_json) == {"path": "../rejected.txt"}

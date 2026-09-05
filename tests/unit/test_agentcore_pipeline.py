@@ -15,6 +15,8 @@ from pex_protocol.enums import EventType, HarnessType, SessionStatus
 from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import IndependentVerifierReceipt, SupervisorResult
+from pex_supervisor.evidence_observations import EvidenceObservationCollector
+from pex_supervisor.evidence_tools import build_evidence_tools
 
 
 class _FailedRemoteSupervisor:
@@ -121,6 +123,144 @@ class _CrashingSupervisor:
     async def decide(self, request, *, local_model):
         del request, local_model
         raise RuntimeError("supervisor exploded")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("inference_status", ["completed", "failed", "timeout"])
+@pytest.mark.parametrize("crash_after_receipt", [False, True])
+async def test_exact_main_and_verifier_observations_survive_noop_and_replay(
+    tmp_path, inference_status, crash_after_receipt,
+):
+    """Real file tools + Store, fake inference; this is not live model evidence."""
+    observed = {}
+    artifact = tmp_path / "report.txt"
+    artifact.write_text("first observed file state", encoding="utf-8")
+
+    class ObservingSupervisor(_FailedRemoteSupervisor):
+        calls = 0
+
+        async def decide(self, request, *, local_model):
+            self.calls += 1
+            main = EvidenceObservationCollector(request, stage="main", invocation_id="pexinv_main")
+            main_file = next(
+                item for item in build_evidence_tools(request, [], collector=main)
+                if item.tool_name == "inspect_file"
+            )
+            first_output = main_file("report.txt")
+            artifact.write_text("second observed file state", encoding="utf-8")
+            verifier = EvidenceObservationCollector(
+                request, stage="verifier", invocation_id="pexver_independent",
+            )
+            verifier_file = next(
+                item for item in build_evidence_tools(request, [], collector=verifier)
+                if item.tool_name == "inspect_file"
+            )
+            second_output = verifier_file("report.txt")
+            observed.update(main=main, verifier=verifier, first=first_output, second=second_output)
+            result = await super().decide(request, local_model=local_model)
+            result.used_llm = True  # Simulated model telemetry, not a provider call.
+            result.inference_status = inference_status
+            result.local_invocation_id = main.invocation_id
+            result.evidence_observations = list(main.observations)
+            result.evidence_refs = [main.observations[0].observation_id]
+            result.independent_verifier = IndependentVerifierReceipt(
+                approved=False, status="rejected", invocation_id=verifier.invocation_id,
+                evidence_observations=list(verifier.observations),
+                evidence_refs=[verifier.observations[0].observation_id],
+                model_call_count=1,
+            )
+            if inference_status == "timeout":
+                result.action = ProposedAction(
+                    type=InterventionType.SEND_NUDGE,
+                    session_id=request.session.id,
+                    goal_id=request.goal.id,
+                    rationale="An ambiguous proposal must not be executed.",
+                    payload={"message": "Do not send this timed-out proposal."},
+                )
+            return result
+
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    pipeline = None
+    try:
+        now = datetime.now(UTC)
+        session = await _bound_session(store, tmp_path, vendor_session_id="observations", now=now)
+        pipeline = Pipeline(
+            store, AdapterRegistry(), EventBus(),
+            Settings.for_test(require_auth=False, home=tmp_path, autonomy="manage"),
+        )
+        supervisor = ObservingSupervisor()
+        pipeline.supervisor = supervisor
+        event = HarnessEvent(
+            event_id="observations-event", ts=now, harness_type=HarnessType.CODEX,
+            session_id=session.id, project_id=session.project_id, goal_id=session.goal_id,
+            event_type=EventType.STOP, message_delta="Stopping for inspection.",
+        )
+        if crash_after_receipt:
+            class SimulatedCrash(BaseException):
+                pass
+
+            async def crash_before_plan_commit(**kwargs):
+                raise SimulatedCrash("receipt saved before the plan commit")
+
+            store.commit_event_plan = crash_before_plan_commit
+            with pytest.raises(SimulatedCrash):
+                await pipeline.ingest_event(event, session)
+            original_planner = await store.get_event_effect(event.event_id, "planner")
+            await store.close()
+            artifact.write_text("changed after crash", encoding="utf-8")
+            store = Store(tmp_path / "pex.sqlite", process_boot_id="receipt-recovery-boot")
+            await store.connect()
+            pipeline = Pipeline(
+                store, AdapterRegistry(), EventBus(),
+                Settings.for_test(require_auth=False, home=tmp_path, autonomy="manage"),
+            )
+            pipeline.supervisor = supervisor
+            assert await pipeline.recover_unfinished_events() == [event.event_id]
+            assert (await store.get_event_effect(event.event_id, "planner"))["result"] == (
+                original_planner["result"]
+            )
+        intervention = await pipeline.ingest_event(event, session)
+        assert intervention is not None
+        assert intervention.result == "noop"
+        first = observed["main"].observations[0]
+        second = observed["verifier"].observations[0]
+        assert first.output == observed["first"]
+        assert second.output == observed["second"]
+        assert "first observed file state" in first.output
+        assert "second observed file state" in second.output
+        assert first.output_sha256 != second.output_sha256
+        assert first.request_digest == second.request_digest
+        assert first.invocation_id != second.invocation_id
+
+        stored = (await store.list_interventions(session.id))[0]
+        expected_main = [first.model_dump(mode="json")]
+        assert stored.metadata["evidence_observations"] == expected_main
+        assert stored.metadata["independent_verifier"]["evidence_observations"] == [
+            second.model_dump(mode="json"),
+        ]
+        audit = json.loads(store.audit_path.read_text(encoding="utf-8").splitlines()[0])
+        assert audit["evidence_observations"] == expected_main
+        assert audit["independent_verifier"]["evidence_observations"][0]["output"] == second.output
+        planner = await store.get_event_effect(event.event_id, "planner")
+        assert planner["result"]["supervisor_result"]["evidence_observations"] == expected_main
+        if inference_status == "timeout":
+            assert planner["state"] == "delivery_uncertain"
+            assert stored.metadata["inference_status"] == "timeout"
+            assert planner["result"]["supervisor_result"]["action"]["type"] == "SEND_NUDGE"
+            assert stored.proposed_action.type == InterventionType.NOOP
+        artifact.write_text("later file change must not rewrite receipts", encoding="utf-8")
+        assert await pipeline.ingest_event(event, session) == intervention
+        assert supervisor.calls == 1
+        replayed = await store.get_event_effect(event.event_id, "planner")
+        assert replayed["result"] == planner["result"]
+    finally:
+        if pipeline is not None:
+            while pipeline._presentation_tasks:
+                import asyncio
+
+                await asyncio.gather(*tuple(pipeline._presentation_tasks), return_exceptions=True)
+        await store.close()
 
 
 @pytest.mark.asyncio

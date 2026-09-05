@@ -1181,6 +1181,29 @@ class Pipeline:
         )
 
     @staticmethod
+    def _reconcile_supervisor_effect(
+        request: SupervisorRequest,
+        effect: dict,
+        *,
+        reason: str,
+    ) -> SupervisorResult:
+        """Keep returned observations, never authorize an ambiguous proposal."""
+
+        raw_result = (effect.get("result") or {}).get("supervisor_result")
+        if raw_result is None:
+            return Pipeline._deterministic_reconciliation_result(request, reason=reason)
+        # The durable record retains the original response. This separate NOOP
+        # projection preserves its telemetry without replaying inference or action.
+        result = SupervisorResult.model_validate(raw_result).model_copy(deep=True)
+        result.action = _action_from_proposal(
+            request,
+            {"type": "NOOP", "rationale": reason, "evidence": [reason]},
+        )
+        result.diagnosis = f"ambiguous_semantic_result:{reason}"
+        result.traces = [*result.traces[-254:], reason, "ambiguous_semantic_action_ignored"]
+        return result
+
+    @staticmethod
     def _event_planning_snapshot(
         *,
         claims: list[dict],
@@ -1328,8 +1351,9 @@ class Pipeline:
             return SupervisorResult.model_validate(raw_result), effect, planning_snapshot
         if effect["state"] in {"failed", "skipped", "delivery_uncertain"}:
             return (
-                self._deterministic_reconciliation_result(
+                self._reconcile_supervisor_effect(
                     request,
+                    effect,
                     reason=f"planner_effect_{effect['state']}",
                 ),
                 effect,
@@ -1386,6 +1410,7 @@ class Pipeline:
                 uncertain_result = {
                     "status": "delivery_uncertain",
                     "code": "semantic_dispatch_result_ambiguous",
+                    "supervisor_result": result.model_dump(mode="json"),
                 }
                 effect = await self.store.finalize_event_effect(
                     event_id=event.event_id,
@@ -1394,8 +1419,9 @@ class Pipeline:
                     result=uncertain_result,
                 )
                 return (
-                    self._deterministic_reconciliation_result(
+                    self._reconcile_supervisor_effect(
                         request,
+                        effect,
                         reason="semantic_dispatch_result_ambiguous",
                     ),
                     effect,
@@ -2031,8 +2057,9 @@ class Pipeline:
             ) = self._restore_event_planning_snapshot(raw_snapshot)
             planning_snapshot = raw_snapshot
             request = SupervisorRequest.model_validate(raw_request)
-            result = self._deterministic_reconciliation_result(
+            result = self._reconcile_supervisor_effect(
                 request,
+                planner_effect,
                 reason="prior_planner_dispatch_uncertain",
             )
         else:
@@ -4980,6 +5007,10 @@ class Pipeline:
                 "runtime_version": result.runtime_version,
                 "model_class": result.model_class,
                 "evidence_tools": result.evidence_tools,
+                "evidence_refs": list(result.evidence_refs),
+                "evidence_observations": [
+                    item.model_dump(mode="json") for item in result.evidence_observations
+                ],
                 "independent_verifier": (
                     result.independent_verifier.model_dump(mode="json")
                     if result.independent_verifier is not None else None

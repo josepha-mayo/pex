@@ -3,14 +3,14 @@
 use std::io::{ErrorKind, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use hmac::{Hmac, Mac};
 use rand::{rngs::OsRng, RngCore};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use tauri::Manager;
-use tauri_plugin_shell::{process::CommandChild, ShellExt};
+use tauri_plugin_shell::{process::CommandChild, process::CommandEvent, ShellExt};
 
 const BRIDGE_HOST: &str = "127.0.0.1";
 const BRIDGE_PORT: &str = "7420";
@@ -18,10 +18,204 @@ const BRIDGE_ADDRESS: &str = "127.0.0.1:7420";
 const BRIDGE_IDENTITY_PATH: &str = "/health/identity";
 const MIN_BRIDGE_TOKEN_BYTES: usize = 32;
 const MAX_BRIDGE_TOKEN_CHARS: usize = 512;
+const BRIDGE_STARTUP_TIMEOUT: Duration = Duration::from_secs(20);
+const BRIDGE_PROBE_TIMEOUT: Duration = Duration::from_millis(1_500);
+const BRIDGE_RETRY_INTERVAL: Duration = Duration::from_millis(100);
 type HmacSha256 = Hmac<Sha256>;
 
-#[derive(Default)]
-struct OwnedBridge(Mutex<Option<CommandChild>>);
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum BridgeBootstrapPhase {
+    Starting,
+    Ready,
+    Failed,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum BridgeSource {
+    NotReady,
+    OwnedSidecar,
+    UnverifiedPortOwner,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+struct BridgeBootstrapStatus {
+    phase: BridgeBootstrapPhase,
+    code: Option<String>,
+    message: String,
+    retryable: bool,
+    source: BridgeSource,
+    attempt: u64,
+}
+
+impl BridgeBootstrapStatus {
+    fn starting(attempt: u64) -> Self {
+        Self {
+            phase: BridgeBootstrapPhase::Starting,
+            code: None,
+            message: "Starting the authenticated local PEX bridge.".to_string(),
+            retryable: false,
+            source: BridgeSource::NotReady,
+            attempt,
+        }
+    }
+
+    fn ready(attempt: u64) -> Self {
+        Self {
+            phase: BridgeBootstrapPhase::Ready,
+            code: None,
+            message: "The authenticated local PEX bridge is ready.".to_string(),
+            retryable: false,
+            source: BridgeSource::OwnedSidecar,
+            attempt,
+        }
+    }
+
+    fn failed(
+        attempt: u64,
+        code: &str,
+        message: &str,
+        retryable: bool,
+        source: BridgeSource,
+    ) -> Self {
+        Self {
+            phase: BridgeBootstrapPhase::Failed,
+            code: Some(code.to_string()),
+            message: message.to_string(),
+            retryable,
+            source,
+            attempt,
+        }
+    }
+
+    fn unavailable() -> Self {
+        Self::failed(
+            0,
+            "desktop_state_unavailable",
+            "PEX could not read its local bridge startup state.",
+            false,
+            BridgeSource::NotReady,
+        )
+    }
+}
+
+struct BridgeRuntimeInner {
+    status: BridgeBootstrapStatus,
+    operator_token: Option<String>,
+    child: Option<CommandChild>,
+}
+
+struct BridgeRuntime(Mutex<BridgeRuntimeInner>);
+
+impl Default for BridgeRuntime {
+    fn default() -> Self {
+        Self(Mutex::new(BridgeRuntimeInner {
+            status: BridgeBootstrapStatus::failed(
+                0,
+                "not_started",
+                "The local PEX bridge has not started yet.",
+                true,
+                BridgeSource::NotReady,
+            ),
+            operator_token: None,
+            child: None,
+        }))
+    }
+}
+
+impl BridgeRuntime {
+    fn status(&self) -> BridgeBootstrapStatus {
+        self.0
+            .lock()
+            .map(|inner| inner.status.clone())
+            .unwrap_or_else(|_| BridgeBootstrapStatus::unavailable())
+    }
+
+    fn begin_attempt(&self) -> Option<u64> {
+        let mut inner = self.0.lock().ok()?;
+        if matches!(
+            inner.status.phase,
+            BridgeBootstrapPhase::Starting | BridgeBootstrapPhase::Ready
+        ) {
+            return None;
+        }
+        if !inner.status.retryable {
+            return None;
+        }
+        let attempt = inner.status.attempt.saturating_add(1);
+        inner.status = BridgeBootstrapStatus::starting(attempt);
+        Some(attempt)
+    }
+
+    fn token_for_attempt(&self, attempt: u64) -> Result<String, String> {
+        let mut inner = self
+            .0
+            .lock()
+            .map_err(|_| "PEX bridge process state is unavailable".to_string())?;
+        if inner.status.attempt != attempt || inner.status.phase != BridgeBootstrapPhase::Starting {
+            return Err("PEX bridge startup attempt is no longer current".to_string());
+        }
+        if let Some(token) = &inner.operator_token {
+            return Ok(token.clone());
+        }
+        let auth = BridgeAuth::generate()?;
+        inner.operator_token = Some(auth.operator_token.clone());
+        Ok(auth.operator_token)
+    }
+
+    fn set_owned_child(&self, attempt: u64, child: CommandChild) -> Result<(), CommandChild> {
+        let Ok(mut inner) = self.0.lock() else {
+            return Err(child);
+        };
+        if inner.status.attempt != attempt
+            || inner.status.phase != BridgeBootstrapPhase::Starting
+            || inner.child.is_some()
+        {
+            return Err(child);
+        }
+        inner.child = Some(child);
+        Ok(())
+    }
+
+    fn finish_ready(&self, attempt: u64) {
+        if let Ok(mut inner) = self.0.lock() {
+            if inner.status.attempt == attempt
+                && inner.status.phase == BridgeBootstrapPhase::Starting
+            {
+                inner.status = BridgeBootstrapStatus::ready(attempt);
+            }
+        }
+    }
+
+    fn finish_failed(
+        &self,
+        attempt: u64,
+        code: &str,
+        message: &str,
+        retryable: bool,
+        source: BridgeSource,
+    ) -> Option<CommandChild> {
+        let mut inner = self.0.lock().ok()?;
+        if inner.status.attempt != attempt {
+            return None;
+        }
+        inner.status = BridgeBootstrapStatus::failed(attempt, code, message, retryable, source);
+        inner.child.take()
+    }
+
+    fn ready_token(&self) -> Option<(u64, String)> {
+        let inner = self.0.lock().ok()?;
+        if inner.status.phase != BridgeBootstrapPhase::Ready {
+            return None;
+        }
+        Some((inner.status.attempt, inner.operator_token.clone()?))
+    }
+
+    fn take_child(&self) -> Option<CommandChild> {
+        self.0.lock().ok()?.child.take()
+    }
+}
 
 struct BridgeAuth {
     operator_token: String,
@@ -154,15 +348,33 @@ fn bridge_is_healthy_with_token(token: &str) -> bool {
 }
 
 fn bridge_is_healthy_at(address: &SocketAddr, token: &str) -> bool {
+    bridge_is_healthy_at_until(address, token, Instant::now() + BRIDGE_PROBE_TIMEOUT)
+}
+
+fn remaining_timeout(deadline: Instant, maximum: Duration) -> Option<Duration> {
+    let remaining = deadline.checked_duration_since(Instant::now())?;
+    if remaining.is_zero() {
+        return None;
+    }
+    Some(remaining.min(maximum))
+}
+
+fn bridge_is_healthy_at_until(address: &SocketAddr, token: &str, deadline: Instant) -> bool {
     let mut challenge_bytes = [0_u8; 32];
     if OsRng.try_fill_bytes(&mut challenge_bytes).is_err() {
         return false;
     }
     let challenge = hex::encode(challenge_bytes);
-    let Ok(mut stream) = TcpStream::connect_timeout(address, Duration::from_millis(350)) else {
+    let Some(connect_timeout) = remaining_timeout(deadline, Duration::from_millis(350)) else {
         return false;
     };
-    let timeout = Some(Duration::from_millis(750));
+    let Ok(mut stream) = TcpStream::connect_timeout(address, connect_timeout) else {
+        return false;
+    };
+    let Some(io_timeout) = remaining_timeout(deadline, Duration::from_millis(750)) else {
+        return false;
+    };
+    let timeout = Some(io_timeout);
     if stream.set_read_timeout(timeout).is_err() || stream.set_write_timeout(timeout).is_err() {
         return false;
     }
@@ -176,6 +388,12 @@ fn bridge_is_healthy_at(address: &SocketAddr, token: &str) -> bool {
     let mut response = Vec::with_capacity(1_024);
     let mut chunk = [0_u8; 4_096];
     loop {
+        let Some(read_timeout) = remaining_timeout(deadline, Duration::from_millis(750)) else {
+            return false;
+        };
+        if stream.set_read_timeout(Some(read_timeout)).is_err() {
+            return false;
+        }
         match stream.read(&mut chunk) {
             Ok(0) => break,
             Ok(count) => {
@@ -193,16 +411,21 @@ fn bridge_is_healthy_at(address: &SocketAddr, token: &str) -> bool {
     is_pex_identity_response(&response, &challenge, token)
 }
 
-fn bridge_port_state(token: &str) -> Result<BridgePortState, String> {
-    let address = bridge_address()?;
-    bridge_port_state_at(&address, token)
+fn bridge_port_state_at(address: &SocketAddr, token: &str) -> Result<BridgePortState, String> {
+    bridge_port_state_at_until(address, token, Instant::now() + BRIDGE_PROBE_TIMEOUT)
 }
 
-fn bridge_port_state_at(address: &SocketAddr, token: &str) -> Result<BridgePortState, String> {
-    match TcpStream::connect_timeout(address, Duration::from_millis(350)) {
+fn bridge_port_state_at_until(
+    address: &SocketAddr,
+    token: &str,
+    deadline: Instant,
+) -> Result<BridgePortState, String> {
+    let timeout = remaining_timeout(deadline, Duration::from_millis(350))
+        .ok_or_else(|| "PEX bridge port state check timed out".to_string())?;
+    match TcpStream::connect_timeout(address, timeout) {
         Ok(stream) => {
             drop(stream);
-            if bridge_is_healthy_at(address, token) {
+            if bridge_is_healthy_at_until(address, token, deadline) {
                 Ok(BridgePortState::Trusted)
             } else {
                 Ok(BridgePortState::OccupiedUntrusted)
@@ -213,14 +436,12 @@ fn bridge_port_state_at(address: &SocketAddr, token: &str) -> Result<BridgePortS
     }
 }
 
-fn bridge_launch_required(state: BridgePortState) -> Result<bool, String> {
-    match state {
-        BridgePortState::Free => Ok(true),
-        BridgePortState::Trusted => Ok(false),
-        BridgePortState::OccupiedUntrusted => {
-            Err("Port 7420 is occupied by a process that cannot prove PEX identity".to_string())
-        }
-    }
+fn bridge_port_is_free_for_owned_launch(state: &BridgePortState) -> bool {
+    matches!(state, BridgePortState::Free)
+}
+
+fn command_event_is_terminal(event: &CommandEvent) -> bool {
+    matches!(event, CommandEvent::Terminated(_) | CommandEvent::Error(_))
 }
 
 fn bridge_address() -> Result<SocketAddr, String> {
@@ -238,28 +459,330 @@ fn bridge_sidecar_args() -> [&'static str; 4] {
 }
 
 fn stop_owned_bridge(app: &tauri::AppHandle) {
-    let Some(state) = app.try_state::<OwnedBridge>() else {
+    let Some(state) = app.try_state::<BridgeRuntime>() else {
         return;
     };
-    let Ok(mut guard) = state.0.lock() else {
-        return;
-    };
-    if let Some(child) = guard.take() {
+    if let Some(child) = state.take_child() {
         let _ = child.kill();
     }
 }
 
 #[tauri::command]
-async fn bridge_token(auth: tauri::State<'_, BridgeAuth>) -> Result<String, String> {
-    let token = auth.operator_token.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        if !bridge_is_healthy_with_token(&token) {
-            return Err("PEX bridge identity could not be verified".to_string());
-        }
-        Ok(token)
+async fn bridge_token(
+    app: tauri::AppHandle,
+    runtime: tauri::State<'_, BridgeRuntime>,
+) -> Result<String, String> {
+    let (attempt, token) = runtime
+        .ready_token()
+        .ok_or_else(|| "PEX bridge is not ready".to_string())?;
+    let token_for_probe = token.clone();
+    let verified = tauri::async_runtime::spawn_blocking(move || {
+        bridge_is_healthy_with_token(&token_for_probe)
     })
     .await
-    .map_err(|_| "PEX bridge identity check could not complete".to_string())?
+    .map_err(|_| "PEX bridge identity check could not complete".to_string())?;
+    if verified {
+        if runtime
+            .ready_token()
+            .is_some_and(|(current_attempt, current_token)| {
+                current_attempt == attempt && current_token == token
+            })
+        {
+            return Ok(token);
+        }
+        return Err(
+            "PEX bridge startup generation changed during identity verification".to_string(),
+        );
+    }
+    fail_bridge_attempt(
+        &app,
+        attempt,
+        "bridge_identity_lost",
+        "The owned PEX bridge stopped proving its identity.",
+        true,
+        BridgeSource::OwnedSidecar,
+    );
+    Err("PEX bridge identity could not be verified".to_string())
+}
+
+#[tauri::command]
+fn bridge_bootstrap_status(runtime: tauri::State<'_, BridgeRuntime>) -> BridgeBootstrapStatus {
+    runtime.status()
+}
+
+#[tauri::command]
+fn retry_bridge(app: tauri::AppHandle) -> BridgeBootstrapStatus {
+    schedule_bridge_bootstrap(&app)
+}
+
+fn fail_bridge_attempt(
+    app: &tauri::AppHandle,
+    attempt: u64,
+    code: &str,
+    message: &str,
+    retryable: bool,
+    source: BridgeSource,
+) {
+    let runtime = app.state::<BridgeRuntime>();
+    if let Some(child) = runtime.finish_failed(attempt, code, message, retryable, source) {
+        let _ = child.kill();
+    }
+    let current = runtime.status();
+    if current.attempt == attempt && current.phase == BridgeBootstrapPhase::Failed {
+        if let Some(pet) = app.get_webview_window("pet") {
+            let _ = pet.hide();
+        }
+    }
+}
+
+fn monitor_owned_bridge(
+    app: tauri::AppHandle,
+    attempt: u64,
+    mut events: tauri::async_runtime::Receiver<CommandEvent>,
+) {
+    tauri::async_runtime::spawn(async move {
+        while let Some(event) = events.recv().await {
+            if command_event_is_terminal(&event) {
+                fail_bridge_attempt(
+                    &app,
+                    attempt,
+                    "bridge_process_stopped",
+                    "The owned PEX bridge process stopped.",
+                    true,
+                    BridgeSource::OwnedSidecar,
+                );
+                return;
+            }
+            // Stdout and stderr are intentionally discarded. Bridge output can
+            // contain private workspace or provider diagnostics.
+        }
+        fail_bridge_attempt(
+            &app,
+            attempt,
+            "bridge_process_stopped",
+            "The owned PEX bridge event channel closed.",
+            true,
+            BridgeSource::OwnedSidecar,
+        );
+    });
+}
+
+fn run_bridge_bootstrap(app: tauri::AppHandle, attempt: u64) {
+    let deadline = Instant::now() + BRIDGE_STARTUP_TIMEOUT;
+    let token = match app.state::<BridgeRuntime>().token_for_attempt(attempt) {
+        Ok(token) => token,
+        Err(_) => {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "token_generation_failed",
+                "PEX could not create its in-memory bridge credential.",
+                true,
+                BridgeSource::NotReady,
+            );
+            return;
+        }
+    };
+    let address = match bridge_address() {
+        Ok(address) => address,
+        Err(_) => {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "bridge_address_invalid",
+                "PEX could not validate its loopback bridge address.",
+                false,
+                BridgeSource::NotReady,
+            );
+            return;
+        }
+    };
+
+    let port_state = bridge_port_state_at_until(&address, &token, deadline);
+    match port_state {
+        Ok(state) if !bridge_port_is_free_for_owned_launch(&state) => {
+            // A fresh desktop credential is known only by a child this process
+            // owns. Before spawn there is no owned child, so every occupied port
+            // is an unverified owner and must never be reused or killed.
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "port_occupied_untrusted",
+                "Port 7420 is in use by a process that cannot be verified as this PEX bridge.",
+                true,
+                BridgeSource::UnverifiedPortOwner,
+            );
+            return;
+        }
+        Err(_) => {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "port_check_failed",
+                "PEX could not safely establish whether its loopback bridge port is available.",
+                true,
+                BridgeSource::NotReady,
+            );
+            return;
+        }
+        Ok(_) => {}
+    }
+
+    // Recheck immediately before launch. The single-instance plugin serializes
+    // PEX desktop launches; this second check also fails closed if another local
+    // process claimed the fixed port during preparation.
+    match bridge_port_state_at_until(&address, &token, deadline) {
+        Ok(state) if bridge_port_is_free_for_owned_launch(&state) => {}
+        Ok(_) => {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "port_occupied_untrusted",
+                "Port 7420 was claimed by a process that cannot be verified as this PEX bridge.",
+                true,
+                BridgeSource::UnverifiedPortOwner,
+            );
+            return;
+        }
+        Err(_) => {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "port_check_failed",
+                "PEX could not safely recheck its loopback bridge port.",
+                true,
+                BridgeSource::NotReady,
+            );
+            return;
+        }
+    }
+
+    let command = match app.shell().sidecar("pex-bridge") {
+        Ok(command) => command,
+        Err(_) => {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "sidecar_missing",
+                "The packaged PEX bridge executable is unavailable.",
+                false,
+                BridgeSource::NotReady,
+            );
+            return;
+        }
+    };
+    let spawned = command
+        // Pin the release sidecar to authenticated loopback operation. The
+        // bearer remains only in this process and its owned child environment.
+        .args(bridge_sidecar_args())
+        .env("PEX_HOST", BRIDGE_HOST)
+        .env("PEX_PORT", BRIDGE_PORT)
+        .env("PEX_REQUIRE_AUTH", "true")
+        .env("PEX_TOKEN", &token)
+        .spawn();
+    let (mut events, child) = match spawned {
+        Ok(spawned) => spawned,
+        Err(_) => {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "sidecar_spawn_failed",
+                "PEX could not start its packaged local bridge.",
+                true,
+                BridgeSource::NotReady,
+            );
+            return;
+        }
+    };
+    if let Err(child) = app.state::<BridgeRuntime>().set_owned_child(attempt, child) {
+        let _ = child.kill();
+        return;
+    }
+
+    loop {
+        for _ in 0..64 {
+            if Instant::now() >= deadline {
+                fail_bridge_attempt(
+                    &app,
+                    attempt,
+                    "identity_timeout",
+                    "The owned PEX bridge did not prove its identity before the startup deadline.",
+                    true,
+                    BridgeSource::OwnedSidecar,
+                );
+                return;
+            }
+            match events.try_recv() {
+                Ok(event) if command_event_is_terminal(&event) => {
+                    fail_bridge_attempt(
+                        &app,
+                        attempt,
+                        "sidecar_exited_early",
+                        "The owned PEX bridge exited before it became ready.",
+                        true,
+                        BridgeSource::OwnedSidecar,
+                    );
+                    return;
+                }
+                Ok(CommandEvent::Stdout(_) | CommandEvent::Stderr(_)) => {
+                    // Drain a bounded batch without exposing private diagnostics.
+                }
+                Ok(_) => {}
+                Err(_) if events.is_closed() => {
+                    fail_bridge_attempt(
+                        &app,
+                        attempt,
+                        "sidecar_exited_early",
+                        "The owned PEX bridge event channel closed before startup completed.",
+                        true,
+                        BridgeSource::OwnedSidecar,
+                    );
+                    return;
+                }
+                Err(_) => break,
+            }
+        }
+        if bridge_is_healthy_at_until(&address, &token, deadline) {
+            app.state::<BridgeRuntime>().finish_ready(attempt);
+            monitor_owned_bridge(app, attempt, events);
+            return;
+        }
+        let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "identity_timeout",
+                "The owned PEX bridge did not prove its identity before the startup deadline.",
+                true,
+                BridgeSource::OwnedSidecar,
+            );
+            return;
+        };
+        if remaining.is_zero() {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "identity_timeout",
+                "The owned PEX bridge did not prove its identity before the startup deadline.",
+                true,
+                BridgeSource::OwnedSidecar,
+            );
+            return;
+        }
+        std::thread::sleep(remaining.min(BRIDGE_RETRY_INTERVAL));
+    }
+}
+
+fn schedule_bridge_bootstrap(app: &tauri::AppHandle) -> BridgeBootstrapStatus {
+    let runtime = app.state::<BridgeRuntime>();
+    if let Some(attempt) = runtime.begin_attempt() {
+        if let Some(pet) = app.get_webview_window("pet") {
+            let _ = pet.hide();
+        }
+        let handle = app.clone();
+        tauri::async_runtime::spawn_blocking(move || run_bridge_bootstrap(handle, attempt));
+    }
+    runtime.status()
 }
 
 fn normalize_bridge_token(raw: &str) -> Result<String, String> {
@@ -296,59 +819,32 @@ fn navigation_guard<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
 fn main() {
     tauri::Builder::default()
+        // This plugin must remain first: a second desktop activation focuses the
+        // existing command surface and exits before it can probe or spawn a bridge.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(navigation_guard())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![bridge_token])
+        .invoke_handler(tauri::generate_handler![
+            bridge_token,
+            bridge_bootstrap_status,
+            retry_bridge
+        ])
         .setup(|app| {
-            app.manage(OwnedBridge::default());
-            let auth = BridgeAuth::generate()?;
-            let operator_token = auth.operator_token.clone();
-            app.manage(auth);
-            bridge_address()?;
-            if bridge_launch_required(bridge_port_state(&operator_token)?)? {
-                let (mut events, child) = app
-                    .shell()
-                    .sidecar("pex-bridge")?
-                    // Pin the release sidecar to authenticated loopback operation.
-                    // The operator bearer exists only in this Rust process and its
-                    // owned bridge child's environment; worker integrations receive
-                    // separately scoped ingest credentials.
-                    .args(bridge_sidecar_args())
-                    .env("PEX_HOST", BRIDGE_HOST)
-                    .env("PEX_PORT", BRIDGE_PORT)
-                    .env("PEX_REQUIRE_AUTH", "true")
-                    .env("PEX_TOKEN", &operator_token)
-                    .spawn()?;
-                {
-                    let state = app.state::<OwnedBridge>();
-                    let mut guard = state
-                        .0
-                        .lock()
-                        .map_err(|_| "PEX bridge process state is unavailable")?;
-                    *guard = Some(child);
-                }
-                // The shell plugin uses piped stdout/stderr. Drain all events so a
-                // chatty bridge can never block on a full pipe; do not surface logs
-                // here because provider diagnostics can contain sensitive context.
-                tauri::async_runtime::spawn(async move { while events.recv().await.is_some() {} });
-
-                for _ in 0..200 {
-                    if bridge_is_healthy_with_token(&operator_token) {
-                        break;
-                    }
-                    std::thread::sleep(Duration::from_millis(100));
-                }
-                if !bridge_is_healthy_with_token(&operator_token) {
-                    stop_owned_bridge(app.handle());
-                    return Err("PEX bridge sidecar did not prove its identity".into());
-                }
-            }
+            app.manage(BridgeRuntime::default());
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.show();
             }
             if let Some(pet) = app.get_webview_window("pet") {
                 let _ = pet.set_background_color(Some(tauri::window::Color(0, 0, 0, 0)));
             }
+            // Startup is deliberately off the setup/UI thread. Expected bridge
+            // failures become visible typed state instead of aborting hidden setup.
+            schedule_bridge_bootstrap(app.handle());
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -375,13 +871,18 @@ fn main() {
 mod tests {
     use std::io::{Read, Write};
     use std::net::TcpListener;
+    use std::sync::Arc;
     use std::thread;
+    use std::time::{Duration, Instant};
 
     use super::{
-        bridge_address, bridge_identity_proof, bridge_launch_required, bridge_port_state_at,
-        bridge_sidecar_args, is_pex_identity_response, normalize_bridge_token,
-        trusted_webview_navigation, BridgeAuth, BridgePortState, MAX_BRIDGE_TOKEN_CHARS,
+        bridge_address, bridge_identity_proof, bridge_port_is_free_for_owned_launch,
+        bridge_port_state_at, bridge_sidecar_args, command_event_is_terminal,
+        is_pex_identity_response, normalize_bridge_token, remaining_timeout,
+        trusted_webview_navigation, BridgeAuth, BridgeBootstrapPhase, BridgePortState,
+        BridgeRuntime, BridgeSource, MAX_BRIDGE_TOKEN_CHARS,
     };
+    use tauri_plugin_shell::process::CommandEvent;
 
     fn identity_response(body: &str, extra_headers: &str) -> Vec<u8> {
         format!(
@@ -507,11 +1008,83 @@ mod tests {
 
     #[test]
     fn occupied_untrusted_port_is_never_a_spawn_candidate() {
-        assert_eq!(bridge_launch_required(BridgePortState::Free), Ok(true));
-        assert_eq!(bridge_launch_required(BridgePortState::Trusted), Ok(false));
-        assert!(bridge_launch_required(BridgePortState::OccupiedUntrusted)
-            .unwrap_err()
-            .contains("cannot prove PEX identity"));
+        assert!(bridge_port_is_free_for_owned_launch(&BridgePortState::Free));
+        assert!(!bridge_port_is_free_for_owned_launch(
+            &BridgePortState::Trusted
+        ));
+        assert!(!bridge_port_is_free_for_owned_launch(
+            &BridgePortState::OccupiedUntrusted
+        ));
+    }
+
+    #[test]
+    fn bootstrap_attempts_are_serialized_and_retry_increments_generation() {
+        let runtime = Arc::new(BridgeRuntime::default());
+        let mut workers = Vec::new();
+        for _ in 0..16 {
+            let runtime = Arc::clone(&runtime);
+            workers.push(thread::spawn(move || runtime.begin_attempt()));
+        }
+        let attempts: Vec<u64> = workers
+            .into_iter()
+            .filter_map(|worker| worker.join().unwrap())
+            .collect();
+        assert_eq!(attempts, vec![1]);
+        assert_eq!(runtime.status().phase, BridgeBootstrapPhase::Starting);
+
+        assert!(runtime
+            .finish_failed(
+                1,
+                "identity_timeout",
+                "safe failure",
+                true,
+                BridgeSource::OwnedSidecar,
+            )
+            .is_none());
+        assert_eq!(runtime.begin_attempt(), Some(2));
+        assert_eq!(runtime.begin_attempt(), None);
+    }
+
+    #[test]
+    fn token_is_available_only_after_the_current_attempt_is_ready() {
+        let runtime = BridgeRuntime::default();
+        assert!(runtime.ready_token().is_none());
+        let attempt = runtime.begin_attempt().unwrap();
+        let token = runtime.token_for_attempt(attempt).unwrap();
+        assert!(runtime.ready_token().is_none());
+        runtime.finish_ready(attempt);
+        assert_eq!(runtime.ready_token(), Some((attempt, token)));
+        assert!(runtime.begin_attempt().is_none());
+    }
+
+    #[test]
+    fn non_retryable_failure_cannot_be_restarted_through_ipc_state() {
+        let runtime = BridgeRuntime::default();
+        let attempt = runtime.begin_attempt().unwrap();
+        runtime.finish_failed(
+            attempt,
+            "sidecar_missing",
+            "safe failure",
+            false,
+            BridgeSource::NotReady,
+        );
+        assert_eq!(runtime.begin_attempt(), None);
+        assert_eq!(runtime.status().code.as_deref(), Some("sidecar_missing"));
+    }
+
+    #[test]
+    fn deadlines_and_terminal_events_fail_closed_without_a_live_process() {
+        assert!(remaining_timeout(
+            Instant::now() - Duration::from_millis(1),
+            Duration::from_secs(1)
+        )
+        .is_none());
+        assert!(command_event_is_terminal(&CommandEvent::Error(
+            "synthetic wait failure".to_string()
+        )));
+        assert!(!command_event_is_terminal(&CommandEvent::Stdout(
+            b"private output is discarded".to_vec()
+        )));
     }
 
     #[test]
@@ -539,7 +1112,7 @@ mod tests {
             bridge_port_state_at(&address, "test-operator-token-that-is-long-enough").unwrap();
         server.join().unwrap();
         assert_eq!(state, BridgePortState::OccupiedUntrusted);
-        assert!(bridge_launch_required(state).is_err());
+        assert!(!bridge_port_is_free_for_owned_launch(&state));
     }
 
     #[test]
@@ -547,11 +1120,21 @@ mod tests {
         let config: serde_json::Value =
             serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
         let windows = config["app"]["windows"].as_array().unwrap();
+        let main = windows
+            .iter()
+            .find(|window| window["label"] == "main")
+            .unwrap();
+        let pet = windows
+            .iter()
+            .find(|window| window["label"] == "pet")
+            .unwrap();
+        assert_eq!(main["visible"], true);
+        assert_eq!(pet["visible"], false);
         assert!(windows.iter().all(|window| {
             window
                 .get("url")
                 .and_then(|value| value.as_str())
-                .map_or(true, |url| !url.contains("://") && !url.starts_with("//"))
+                .is_none_or(|url| !url.contains("://") && !url.starts_with("//"))
         }));
         let csp = config["app"]["security"]["csp"].as_object().unwrap();
         let default_src = csp["default-src"].as_str().unwrap();

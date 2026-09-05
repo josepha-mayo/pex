@@ -17,11 +17,15 @@ from pex_protocol.enums import Authority
 from pex_protocol.redaction import redact_text
 from pex_protocol.supervisor import (
     IndependentVerifierReceipt,
+    SupervisorEvidenceObservation,
     SupervisorRequest,
     SupervisorResult,
+    supervisor_request_digest,
+    validate_evidence_observation_bindings,
 )
 from pydantic import BaseModel, ConfigDict, Field
 
+from pex_supervisor.evidence_observations import EvidenceObservationCollector
 from pex_supervisor.evidence_tools import build_evidence_tools
 from pex_supervisor.planner import plan_deterministic
 from pex_supervisor.providers import describe_backend, load_supervisor_model
@@ -38,6 +42,7 @@ class SupervisorDecision(BaseModel):
     action_type: InterventionType
     rationale: str = Field(min_length=1, max_length=2_000)
     evidence: list[str] = Field(default_factory=list, max_length=20)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=20)
     message: str = Field(default="", max_length=4_000)
     payload: dict[str, Any] = Field(default_factory=dict)
     confidence: float = Field(default=0.6, ge=0.0, le=1.0)
@@ -52,6 +57,7 @@ class IndependentVerifierDecision(BaseModel):
     approved: bool
     rationale: str = Field(min_length=1, max_length=2_000)
     evidence: list[str] = Field(default_factory=list, max_length=20)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=20)
 
 
 def _safe_text(value: object) -> str:
@@ -431,16 +437,17 @@ def build_agent(
     *,
     model=None,
     used_tools: list[str] | None = None,
+    collector: EvidenceObservationCollector | None = None,
 ):
     from strands import Agent
 
     observed_tools = used_tools if used_tools is not None else []
     kwargs = {
         "system_prompt": _system_prompt(),
-        # These request-scoped tools expose only the immutable, redacted evidence
-        # already gathered by the bridge. No tool can execute code, touch a
-        # harness, mutate PEX, or read hidden benchmark material.
-        "tools": build_evidence_tools(request, observed_tools),
+        # These request-scoped tools expose bounded redacted evidence. Some make
+        # fresh read-only workspace/public-web observations; none execute worker
+        # code, touch a harness, mutate PEX, or read hidden benchmark material.
+        "tools": build_evidence_tools(request, observed_tools, collector=collector),
         "callback_handler": None,
     }
     if model is not None:
@@ -453,13 +460,14 @@ def build_verifier_agent(
     *,
     model: object,
     used_tools: list[str],
+    collector: EvidenceObservationCollector,
 ):
     """Create a fresh agent that can only inspect the same bounded evidence."""
     from strands import Agent
 
     return Agent(
         system_prompt=_verifier_system_prompt(),
-        tools=build_evidence_tools(request, used_tools),
+        tools=build_evidence_tools(request, used_tools, collector=collector),
         callback_handler=None,
         model=model,
     )
@@ -584,6 +592,8 @@ def _result_metadata(
     inference_status: str,
     metrics: object | None,
     evidence_tools: list[str],
+    evidence_observations: list[SupervisorEvidenceObservation],
+    evidence_refs: list[str],
 ) -> dict[str, Any]:
     provenance = _model_provenance(model)
     model_name = _clip(
@@ -612,8 +622,58 @@ def _result_metadata(
         "auth_mode": auth_mode or None,
         "config_fingerprint": config_fingerprint or None,
         "evidence_tools": list(dict.fromkeys(evidence_tools))[:20],
+        "evidence_observations": evidence_observations,
+        "evidence_refs": evidence_refs,
         "backend": provider or None,
     }
+
+
+def _resolve_evidence_refs(
+    request: SupervisorRequest,
+    *,
+    observations: list[SupervisorEvidenceObservation],
+    raw_refs: object,
+    stage: str,
+    invocation_id: str,
+) -> tuple[list[str], bool]:
+    """Resolve model-cited observation IDs under exact request authority."""
+
+    if (
+        not isinstance(raw_refs, (list, tuple))
+        or len(raw_refs) > 20
+        or any(type(value) is not str or not value or len(value) > 128 for value in raw_refs)
+    ):
+        return [], False
+    refs = list(raw_refs)
+    try:
+        validate_evidence_observation_bindings(
+            observations,
+            refs,
+            stage="verifier" if stage == "verifier" else "main",
+            request_digest=supervisor_request_digest(request),
+            session_id=request.session.id,
+            goal_id=request.goal.id if request.goal else None,
+            event_id=request.event.event_id,
+            invocation_id=invocation_id,
+        )
+    except ValueError:
+        return [], False
+    return refs, True
+
+
+def _uncertain_verification_only(
+    request: SupervisorRequest,
+    referenced_tools: set[str],
+) -> bool:
+    verification = (request.scores.features or {}).get("verification") or {}
+    verification_status = str(verification.get("status") or "unavailable")
+    acceptance_status = str(verification.get("acceptance_status") or "unavailable")
+    return (
+        bool(referenced_tools)
+        and referenced_tools <= {"get_goal", "run_verification"}
+        and verification_status in {"no_claims", "uncertain", "unavailable"}
+        and acceptance_status in {"uncertain", "unavailable"}
+    )
 
 
 async def run_strands_async(
@@ -628,7 +688,17 @@ async def run_strands_async(
     started = time.perf_counter()
     local_invocation_id = f"pexinv_{uuid4()}"
     used_tools: list[str] = []
-    agent = build_agent(request, model=model, used_tools=used_tools)
+    collector = EvidenceObservationCollector(
+        request,
+        stage="main",
+        invocation_id=local_invocation_id,
+    )
+    agent = build_agent(
+        request,
+        model=model,
+        used_tools=used_tools,
+        collector=collector,
+    )
     invocation = asyncio.create_task(
         agent.invoke_async(
             _format_user(request),
@@ -658,6 +728,8 @@ async def run_strands_async(
             inference_status="timeout",
             metrics=metrics,
             evidence_tools=used_tools,
+            evidence_observations=list(collector.observations),
+            evidence_refs=[],
         )
         return SupervisorResult(
             action=_action_from_proposal(
@@ -690,6 +762,8 @@ async def run_strands_async(
             inference_status="failed",
             metrics=metrics,
             evidence_tools=used_tools,
+            evidence_observations=list(collector.observations),
+            evidence_refs=[],
         )
         detail = type(exc).__name__
         return SupervisorResult(
@@ -710,6 +784,16 @@ async def run_strands_async(
 
     metrics = getattr(result, "metrics", None)
     structured = getattr(result, "structured_output", None)
+    evidence_refs: list[str] = []
+    refs_valid = True
+    if isinstance(structured, SupervisorDecision):
+        evidence_refs, refs_valid = _resolve_evidence_refs(
+            request,
+            observations=list(collector.observations),
+            raw_refs=structured.evidence_refs,
+            stage="main",
+            invocation_id=local_invocation_id,
+        )
     meta = _result_metadata(
         request=request,
         model=model,
@@ -717,6 +801,8 @@ async def run_strands_async(
         inference_status="completed" if isinstance(structured, SupervisorDecision) else "failed",
         metrics=metrics,
         evidence_tools=used_tools,
+        evidence_observations=list(collector.observations),
+        evidence_refs=evidence_refs,
     )
     input_tokens, output_tokens = _usage(result)
     if not isinstance(structured, SupervisorDecision):
@@ -737,10 +823,24 @@ async def run_strands_async(
             latency_ms=int((time.perf_counter() - started) * 1000),
             **meta,
         )
+    action = _action_from_proposal(request, _decision_proposal(structured))
+    if action.type != InterventionType.NOOP and (not refs_valid or not evidence_refs):
+        action = _action_from_proposal(
+            request,
+            {
+                "type": "NOOP",
+                "rationale": "Supervisor intervention lacked cited request-bound evidence.",
+                "evidence": ["missing_or_invalid_evidence_refs"],
+            },
+        )
     return SupervisorResult(
-        action=_action_from_proposal(request, _decision_proposal(structured)),
+        action=action,
         used_llm=True,
-        diagnosis="strands_structured_decision",
+        diagnosis=(
+            "strands_structured_decision"
+            if action.type == structured.action_type
+            else "strands_structured_decision:invalid_evidence_refs"
+        ),
         traces=[f"stop_reason={getattr(result, 'stop_reason', None)}"],
         input_tokens=input_tokens,
         output_tokens=output_tokens,
@@ -759,8 +859,19 @@ async def run_independent_verifier_async(
     """Run a fresh second Agent; failure or missing evidence rejects the action."""
 
     started = time.perf_counter()
+    verifier_invocation_id = f"pexver_{uuid4()}"
     used_tools: list[str] = []
-    agent = build_verifier_agent(request, model=model, used_tools=used_tools)
+    collector = EvidenceObservationCollector(
+        request,
+        stage="verifier",
+        invocation_id=verifier_invocation_id,
+    )
+    agent = build_verifier_agent(
+        request,
+        model=model,
+        used_tools=used_tools,
+        collector=collector,
+    )
     invocation = asyncio.create_task(
         agent.invoke_async(
             _format_verifier_user(request, proposal),
@@ -789,6 +900,9 @@ async def run_independent_verifier_async(
             "rationale": "Independent verifier timed out; semantic-only action rejected.",
             "evidence": [],
             "evidence_tools": list(dict.fromkeys(used_tools))[:20],
+            "invocation_id": verifier_invocation_id,
+            "evidence_observations": list(collector.observations),
+            "evidence_refs": [],
             "model_call_count": _model_call_count(metrics),
             "input_tokens": 0,
             "output_tokens": 0,
@@ -809,6 +923,9 @@ async def run_independent_verifier_async(
             "rationale": "Independent verifier failed; semantic-only action rejected.",
             "evidence": [],
             "evidence_tools": list(dict.fromkeys(used_tools))[:20],
+            "invocation_id": verifier_invocation_id,
+            "evidence_observations": list(collector.observations),
+            "evidence_refs": [],
             "model_call_count": _model_call_count(metrics),
             "input_tokens": 0,
             "output_tokens": 0,
@@ -825,6 +942,9 @@ async def run_independent_verifier_async(
             "rationale": "Independent verifier returned no validated verdict.",
             "evidence": [],
             "evidence_tools": list(dict.fromkeys(used_tools))[:20],
+            "invocation_id": verifier_invocation_id,
+            "evidence_observations": list(collector.observations),
+            "evidence_refs": [],
             "model_call_count": _model_call_count(metrics),
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
@@ -835,7 +955,19 @@ async def run_independent_verifier_async(
         for item in structured.evidence[:20]
         if item.strip()
     ]
-    unique_tools = set(used_tools)
+    evidence_refs, refs_valid = _resolve_evidence_refs(
+        request,
+        observations=list(collector.observations),
+        raw_refs=structured.evidence_refs,
+        stage="verifier",
+        invocation_id=verifier_invocation_id,
+    )
+    referenced = {
+        item.observation_id: item for item in collector.observations
+    }
+    unique_tools = {
+        referenced[item].tool_name for item in evidence_refs if item in referenced
+    }
     evidence_tool_used = bool(
         unique_tools
         & {
@@ -851,30 +983,21 @@ async def run_independent_verifier_async(
             "run_verification",
         }
     )
-    verification = (request.scores.features or {}).get("verification") or {}
-    verification_status = str(verification.get("status") or "unavailable")
-    acceptance_status = str(verification.get("acceptance_status") or "unavailable")
-    verification_only = bool(unique_tools) and unique_tools <= {
-        "get_goal",
-        "run_verification",
-    }
-    uncertain_verification_only = (
-        verification_only
-        and verification_status
-        in {
-            "no_claims",
-            "uncertain",
-            "unavailable",
-        }
-        and acceptance_status in {"uncertain", "unavailable"}
-    )
+    uncertain_verification_only = _uncertain_verification_only(request, unique_tools)
     approved = bool(
-        structured.approved and evidence and evidence_tool_used and not uncertain_verification_only
+        structured.approved
+        and evidence
+        and refs_valid
+        and bool(evidence_refs)
+        and evidence_tool_used
+        and not uncertain_verification_only
     )
     if approved:
         status = "approved"
     elif structured.approved and evidence and uncertain_verification_only:
         status = "uncertain_evidence"
+    elif structured.approved and (not refs_valid or not evidence_refs):
+        status = "missing_or_invalid_evidence_refs"
     elif structured.approved and evidence and not evidence_tool_used:
         status = "missing_evidence_tool"
     else:
@@ -885,6 +1008,9 @@ async def run_independent_verifier_async(
         "rationale": _clip(_redact_request_text(request, structured.rationale), 2_000),
         "evidence": evidence,
         "evidence_tools": list(dict.fromkeys(used_tools))[:20],
+        "invocation_id": verifier_invocation_id,
+        "evidence_observations": list(collector.observations),
+        "evidence_refs": evidence_refs,
         "model_call_count": _model_call_count(metrics),
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
@@ -1028,12 +1154,80 @@ def _apply_verifier_receipt(
         _clip(_redact_request_text(request, item), 1_000)
         for item in receipt_evidence[:20]
     ]
-    raw_tools = receipt.get("evidence_tools")
-    receipt_tools = raw_tools if isinstance(raw_tools, (list, tuple)) else []
-    verifier_tools = [
-        _clip(_redact_request_text(request, item), 128)
-        for item in receipt_tools[:20]
-    ]
+    raw_invocation_id = receipt.get("invocation_id")
+    invocation_id = None
+    if (
+        type(raw_invocation_id) is str
+        and raw_invocation_id
+        and len(raw_invocation_id) <= 128
+        and _redact_request_text(request, raw_invocation_id) == raw_invocation_id
+    ):
+        invocation_id = raw_invocation_id
+    observations: list[SupervisorEvidenceObservation] = []
+    raw_observations = receipt.get("evidence_observations")
+    observations_valid = (
+        isinstance(raw_observations, (list, tuple))
+        and len(raw_observations) <= 24
+    )
+    if observations_valid:
+        try:
+            observations = [
+                item
+                if isinstance(item, SupervisorEvidenceObservation)
+                else SupervisorEvidenceObservation.model_validate(item)
+                for item in raw_observations[:24]
+            ]
+        except Exception:
+            observations_valid = False
+            observations = []
+    raw_refs = receipt.get("evidence_refs")
+    verifier_refs: list[str] = []
+    refs_valid = False
+    bindings_valid = False
+    if observations_valid and invocation_id is not None:
+        try:
+            validate_evidence_observation_bindings(
+                observations,
+                [],
+                stage="verifier",
+                request_digest=supervisor_request_digest(request),
+                session_id=request.session.id,
+                goal_id=request.goal.id if request.goal else None,
+                event_id=request.event.event_id,
+                invocation_id=invocation_id,
+            )
+            bindings_valid = True
+        except ValueError:
+            observations = []
+    if not bindings_valid:
+        observations = []
+    if bindings_valid:
+        verifier_refs, refs_valid = _resolve_evidence_refs(
+            request,
+            observations=observations,
+            raw_refs=raw_refs,
+            stage="verifier",
+            invocation_id=invocation_id,
+        )
+    if invocation_id == semantic.local_invocation_id:
+        observations = []
+        refs_valid = False
+        verifier_refs = []
+    referenced_ids = set(verifier_refs)
+    referenced_tools = {
+        item.tool_name
+        for item in observations
+        if item.observation_id in referenced_ids
+    }
+    verifier_tools = list(dict.fromkeys(item.tool_name for item in observations))[:20]
+    if receipt.get("approved") is True and (
+        not refs_valid or _uncertain_verification_only(request, referenced_tools)
+    ):
+        status = (
+            "uncertain_evidence"
+            if refs_valid and _uncertain_verification_only(request, referenced_tools)
+            else "invalid_evidence_refs"
+        )
     verifier_model_call_count = _strict_verifier_int(
         receipt.get("model_call_count"), maximum=1_000_000
     )
@@ -1048,6 +1242,9 @@ def _apply_verifier_receipt(
         rationale=rationale,
         evidence=verifier_evidence,
         evidence_tools=verifier_tools,
+        invocation_id=invocation_id,
+        evidence_observations=observations,
+        evidence_refs=verifier_refs,
         model_call_count=verifier_model_call_count,
         input_tokens=verifier_input_tokens,
         output_tokens=verifier_output_tokens,

@@ -1167,6 +1167,10 @@ function runReleasePreflight(petSources) {
   const petCapability = JSON.parse(readFileSync(join(tauriDir, "capabilities", "pet.json"), "utf8"));
   const cargoToml = readFileSync(join(tauriDir, "Cargo.toml"), "utf8");
   const focusPermission = readFileSync(join(tauriDir, "permissions", "focus.toml"), "utf8");
+  const bridgeRecoveryPermission = readFileSync(
+    join(tauriDir, "permissions", "bridge-recovery.toml"),
+    "utf8",
+  );
   const packageSection = cargoToml.match(/\[package\]([\s\S]*?)(?=\r?\n\[|$)/u)?.[1] ?? "";
   const cargoVersion = packageSection.match(/^version\s*=\s*"([^"]+)"\s*$/mu)?.[1];
   const wiringOk = tauriReleaseWiringMatches({
@@ -1176,6 +1180,7 @@ function runReleasePreflight(petSources) {
     petCapability,
     cargoVersion,
     focusPermission,
+    bridgeRecoveryPermission,
   });
   if (!wiringOk) addBlocker("tauri_release_wiring", "Tauri, capability, version, or sidecar wiring is not exact");
 

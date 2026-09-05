@@ -1,13 +1,12 @@
 """Bounded, request-scoped evidence tools for the Strands supervisor.
 
-These tools never read the filesystem, execute code, call a harness, or mutate
-PEX state. The bridge gathers and redacts evidence before inference; a fresh
-tool set exposes only that immutable request snapshot to one fresh Agent.
+These tools are read-only and request scoped. Some inspect the bound workspace
+or public web, but none execute worker code, call a harness, mutate PEX state,
+or access hidden benchmark material.
 """
 
 from __future__ import annotations
 
-import json
 import math
 import re
 from collections.abc import MutableSequence
@@ -23,7 +22,11 @@ from pex_protocol.supervisor import (
 )
 from strands import tool
 
-_TOOL_JSON_LIMIT = 8_000
+from pex_supervisor.evidence_observations import (
+    EvidenceObservationCollector,
+    canonical_arguments,
+)
+
 _CONTEXT_PAGE_SIZE = 3
 _SCORE_FEATURES = {
     "event_count",
@@ -76,22 +79,6 @@ def _safe_relpath(path: str) -> str | None:
     if not parts or any(item == ".." for item in parts):
         return None
     return "/".join(parts)
-
-
-def _tool_json(value: object) -> str:
-    rendered = json.dumps(
-        _bounded(value),
-        ensure_ascii=False,
-        allow_nan=False,
-        separators=(",", ":"),
-    )
-    if len(rendered) <= _TOOL_JSON_LIMIT:
-        return rendered
-    return json.dumps(
-        {"truncated": True, "preview": rendered[: _TOOL_JSON_LIMIT - 80]},
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
 
 
 def _mask_local_strings(value: object, local_values: tuple[str, ...]) -> object:
@@ -209,8 +196,17 @@ def _decision_detail(item: SupervisorDecisionItem) -> dict[str, object]:
 def build_evidence_tools(
     request: SupervisorRequest,
     used_tools: MutableSequence[str],
+    *,
+    collector: EvidenceObservationCollector | None = None,
 ) -> list[object]:
-    """Build fresh zero-side-effect tools bound to one validated request."""
+    """Build fresh read-only tools bound to one validated request."""
+
+    if collector is None:
+        collector = EvidenceObservationCollector(
+            request,
+            stage="main",
+            invocation_id="pextool_compatibility",
+        )
 
     local_values = tuple(
         value
@@ -222,13 +218,25 @@ def build_evidence_tools(
         if value
     )
 
-    def record(name: str, value: object) -> str:
+    def record(
+        name: str,
+        value: object,
+        arguments: dict[str, object] | None = None,
+    ) -> str:
         used_tools.append(name)
         # Bound depth/count/width before any recursive masking or redaction so a
         # malformed internal Any value cannot overflow the evidence tool.
         masked = _mask_local_strings(_bounded(value), local_values)
         cleaned, _ = redact_mapping({"evidence": masked})
-        return _tool_json((cleaned or {}).get("evidence"))
+        raw_arguments = _mask_local_strings(_bounded(arguments or {}), local_values)
+        cleaned_arguments, _ = redact_mapping({"arguments": raw_arguments})
+        return collector.record(
+            tool_name=name,
+            arguments_json=canonical_arguments(
+                (cleaned_arguments or {}).get("arguments") or {}
+            ),
+            value=(cleaned or {}).get("evidence"),
+        )
 
     @tool(
         name="get_goal",
@@ -405,13 +413,19 @@ def build_evidence_tools(
         ),
     )
     def get_context_items(context_id: str = "", offset: int = 0) -> str:
+        def emit(value: object) -> str:
+            return record(
+                "get_context_items",
+                value,
+                {"context_id": context_id, "offset": offset},
+            )
+
         envelope = request.supervisor_context
         if envelope is None:
-            return record("get_context_items", {"available": False, "items": []})
+            return emit({"available": False, "items": []})
         if context_id:
             if offset != 0:
-                return record(
-                    "get_context_items",
+                return emit(
                     {"available": True, "error": "context_id and offset are mutually exclusive"},
                 )
             selected = next(
@@ -419,8 +433,7 @@ def build_evidence_tools(
                 None,
             )
             if selected is None:
-                return record(
-                    "get_context_items",
+                return emit(
                     {
                         "available": True,
                         "mode": "item",
@@ -428,8 +441,7 @@ def build_evidence_tools(
                         "context_id": _clip(context_id, 200),
                     },
                 )
-            return record(
-                "get_context_items",
+            return emit(
                 {
                     "available": True,
                     "mode": "item",
@@ -439,8 +451,7 @@ def build_evidence_tools(
             )
         start = _page_offset(offset)
         if start is None:
-            return record(
-                "get_context_items",
+            return emit(
                 {"available": True, "error": "offset must be a non-negative integer"},
             )
         page = envelope.context_items[start : start + _CONTEXT_PAGE_SIZE]
@@ -454,8 +465,7 @@ def build_evidence_tools(
             if next_offset is not None
             else ()
         )
-        return record(
-            "get_context_items",
+        return emit(
             {
                 "available": True,
                 "mode": "page",
@@ -477,13 +487,19 @@ def build_evidence_tools(
         ),
     )
     def get_decisions(decision_id: str = "", offset: int = 0) -> str:
+        def emit(value: object) -> str:
+            return record(
+                "get_decisions",
+                value,
+                {"decision_id": decision_id, "offset": offset},
+            )
+
         envelope = request.supervisor_context
         if envelope is None:
-            return record("get_decisions", {"available": False, "decisions": []})
+            return emit({"available": False, "decisions": []})
         if decision_id:
             if offset != 0:
-                return record(
-                    "get_decisions",
+                return emit(
                     {"available": True, "error": "decision_id and offset are mutually exclusive"},
                 )
             selected = next(
@@ -491,8 +507,7 @@ def build_evidence_tools(
                 None,
             )
             if selected is None:
-                return record(
-                    "get_decisions",
+                return emit(
                     {
                         "available": True,
                         "mode": "item",
@@ -500,8 +515,7 @@ def build_evidence_tools(
                         "decision_id": _clip(decision_id, 200),
                     },
                 )
-            return record(
-                "get_decisions",
+            return emit(
                 {
                     "available": True,
                     "mode": "item",
@@ -511,8 +525,7 @@ def build_evidence_tools(
             )
         start = _page_offset(offset)
         if start is None:
-            return record(
-                "get_decisions",
+            return emit(
                 {"available": True, "error": "offset must be a non-negative integer"},
             )
         page = envelope.decisions[start : start + _CONTEXT_PAGE_SIZE]
@@ -526,8 +539,7 @@ def build_evidence_tools(
             if next_offset is not None
             else ()
         )
-        return record(
-            "get_decisions",
+        return emit(
             {
                 "available": True,
                 "mode": "page",
@@ -595,19 +607,21 @@ def build_evidence_tools(
         description="Inspect one visible relative workspace file. Hidden evaluators are refused.",
     )
     def inspect_file(path: str = "") -> str:
+        def emit(value: object) -> str:
+            return record("inspect_file", value, {"path": path})
+
         if not _clip(path, 240).strip():
-            return record(
-                "inspect_file",
+            return emit(
                 {"error": "path required", "hint": "relative workspace file such as report.txt"},
             )
         rel = _safe_relpath(path)
         if not rel:
-            return record("inspect_file", {"error": "path rejected"})
+            return emit({"error": "path rejected"})
         cwd = request.session.cwd
         if cwd:
             from pex_supervisor.workspace import read_visible
 
-            return record("inspect_file", read_visible(Path(cwd), rel, limit=1_200))
+            return emit(read_visible(Path(cwd), rel, limit=1_200))
         files = ((request.scores.features or {}).get("prefetched_evidence") or {}).get(
             "files"
         ) or []
@@ -615,8 +629,7 @@ def build_evidence_tools(
             str(item.get("path") if isinstance(item, dict) else item)
             for item in files[:80]
         ]
-        return record(
-            "inspect_file",
+        return emit(
             {
                 "path": rel,
                 "in_inventory": rel in names or any(name.endswith(rel) for name in names),
@@ -629,6 +642,9 @@ def build_evidence_tools(
         description="Inspect a bounded tail of an observed result artifact such as results.jsonl.",
     )
     def inspect_artifact(path: str = "") -> str:
+        def emit(value: object) -> str:
+            return record("inspect_artifact", value, {"path": path})
+
         rel = _safe_relpath(path) if path else None
         cwd = request.session.cwd
         if cwd:
@@ -637,11 +653,10 @@ def build_evidence_tools(
             tails = artifact_tails(Path(cwd), limit=800)
             if rel:
                 match = next((item for item in tails if item.get("path") == rel), None)
-                return record(
-                    "inspect_artifact",
+                return emit(
                     match or {"error": "artifact not observed", "path": rel},
                 )
-            return record("inspect_artifact", {"artifacts": tails[:12]})
+            return emit({"artifacts": tails[:12]})
         artifacts = (
             ((request.scores.features or {}).get("prefetched_evidence") or {}).get("artifacts")
             or []
@@ -655,11 +670,10 @@ def build_evidence_tools(
                 ),
                 None,
             )
-            return record(
-                "inspect_artifact",
+            return emit(
                 match or {"error": "artifact not prefetched", "path": rel},
             )
-        return record("inspect_artifact", {"artifacts": artifacts[:12]})
+        return emit({"artifacts": artifacts[:12]})
 
     @tool(
         name="inspect_process",
@@ -697,7 +711,11 @@ def build_evidence_tools(
     def web_search(query: str = "") -> str:
         from pex_supervisor.search import web_search as search_web
 
-        return record("web_search", search_web(_clip(query, 300), limit=5))
+        return record(
+            "web_search",
+            search_web(_clip(query, 300), limit=5),
+            {"query": query},
+        )
 
     @tool(
         name="scrape_url",
@@ -709,7 +727,7 @@ def build_evidence_tools(
     def scrape_url(url: str = "") -> str:
         from pex_supervisor.search import scrape_url as fetch_url
 
-        return record("scrape_url", fetch_url(_clip(url, 500)))
+        return record("scrape_url", fetch_url(_clip(url, 500)), {"url": url})
 
     return [
         get_goal,

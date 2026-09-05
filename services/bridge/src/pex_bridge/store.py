@@ -22889,6 +22889,8 @@ class Store:
             "transport_request_id": metadata.get("transport_request_id"),
             "transport_status": metadata.get("transport_status"),
             "evidence_tools": metadata.get("evidence_tools") or [],
+            "evidence_refs": metadata.get("evidence_refs") or [],
+            "evidence_observations": metadata.get("evidence_observations") or [],
             "independent_verifier": metadata.get("independent_verifier"),
             "supervisor_context_reference": metadata.get("supervisor_context_reference"),
             "causal_continuation_proven": metadata.get("causal_continuation_proven"),

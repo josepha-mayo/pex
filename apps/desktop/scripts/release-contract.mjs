@@ -24,6 +24,7 @@ export const EXPECTED_MAIN_PERMISSIONS = [
   "core:window:allow-outer-size",
   "core:window:allow-set-background-color",
   "allow-bridge-token",
+  "allow-bridge-recovery",
 ];
 
 export const EXPECTED_PET_PERMISSIONS = [
@@ -41,6 +42,13 @@ export const EXPECTED_FOCUS_PERMISSION = [
   'identifier = "allow-bridge-token"',
   'description = "Read the in-memory bearer for the desktop-owned, identity-proven local PEX bridge"',
   'commands.allow = ["bridge_token"]',
+].join("\n");
+
+export const EXPECTED_BRIDGE_RECOVERY_PERMISSION = [
+  "[[permission]]",
+  'identifier = "allow-bridge-recovery"',
+  'description = "Read and retry the serialized desktop-owned PEX bridge bootstrap"',
+  'commands.allow = ["bridge_bootstrap_status", "retry_bridge"]',
 ].join("\n");
 
 function sameJson(left, right) {
@@ -123,6 +131,7 @@ export function tauriReleaseWiringMatches({
   petCapability,
   cargoVersion,
   focusPermission,
+  bridgeRecoveryPermission,
 }) {
   const windows = tauri?.app?.windows ?? [];
   return packageJson?.scripts?.["prepare:sidecar"] === "node scripts/build-sidecar.mjs"
@@ -137,6 +146,8 @@ export function tauriReleaseWiringMatches({
     && sameJson(tauri?.bundle?.icon, EXPECTED_BUNDLE_ICONS)
     && tauri?.bundle?.resources === undefined
     && sameJson(windows.map((window) => window?.label), ["main", "pet"])
+    && windows[0]?.visible === true
+    && windows[1]?.visible === false
     && windows[1]?.url === "pet.html"
     && mainCapability?.identifier === "main"
     && sameJson(mainCapability?.windows, ["main"])
@@ -145,6 +156,7 @@ export function tauriReleaseWiringMatches({
     && sameJson(petCapability?.windows, ["pet"])
     && sameJson(petCapability?.permissions, EXPECTED_PET_PERMISSIONS)
     && focusPermission.trim().replaceAll("\r\n", "\n") === EXPECTED_FOCUS_PERMISSION
+    && bridgeRecoveryPermission.trim().replaceAll("\r\n", "\n") === EXPECTED_BRIDGE_RECOVERY_PERMISSION
     && cargoVersion === packageJson?.version
     && tauri?.version === packageJson?.version;
 }

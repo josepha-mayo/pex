@@ -20,12 +20,23 @@ import {
 import { Inspector } from "./components/Inspector";
 import { PetStage } from "./components/PetStage";
 import { SettingsPage } from "./components/SettingsPage";
+import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
 import { applyPetClickThrough, expandMainSurface, nextPetExpansion, petClickThroughEnabled, releasePetOverlay } from "./releasePet";
+import {
+  advanceBridgeBootstrapStatus,
+  bridgeBootstrapAvailable,
+  browserDevelopmentBridgeStatus,
+  initialBridgeBootstrapStatus,
+  normalizeBridgeBootstrapStatus,
+  shouldPollBridgeBootstrap,
+  unavailableBridgeBootstrapStatus,
+} from "./startupRecovery";
 import type {
   BenchRun,
   BenchState,
   AttentionMetrics,
+  BridgeBootstrapStatus,
   CatalogPet,
   CanonicalResourceKey,
   ChannelHubStatus,
@@ -165,6 +176,31 @@ const HOOK_ENVIRONMENT: Record<HookHarness, string> = {
 };
 let bridgeTokenRequest: Promise<string> | null = null;
 
+async function readBridgeBootstrapStatus(): Promise<BridgeBootstrapStatus | null> {
+  if (!TAURI) return browserDevelopmentBridgeStatus;
+  try {
+    const { invoke: call } = await import("@tauri-apps/api/core");
+    const status = normalizeBridgeBootstrapStatus(await call<unknown>("bridge_bootstrap_status"));
+    return status.code === "desktop_control_unavailable" || status.code === "desktop_state_unavailable"
+      ? null
+      : status;
+  } catch {
+    return null;
+  }
+}
+
+async function retryDesktopBridge(): Promise<BridgeBootstrapStatus | null> {
+  try {
+    const { invoke: call } = await import("@tauri-apps/api/core");
+    const status = normalizeBridgeBootstrapStatus(await call<unknown>("retry_bridge"));
+    return status.code === "desktop_control_unavailable" || status.code === "desktop_state_unavailable"
+      ? null
+      : status;
+  } catch {
+    return null;
+  }
+}
+
 async function bridgeToken(): Promise<string | null> {
   if (!TAURI) return null;
   if (bridgeTokenRequest) return bridgeTokenRequest;
@@ -268,6 +304,11 @@ function operationError(error: unknown, fallback: string): string {
 export function App() {
   const [pet, setPet] = useState<PetSnapshot | null>(null);
   const [bridgeError, setBridgeError] = useState<string | null>(null);
+  const [bridgeStartup, setBridgeStartup] = useState<BridgeBootstrapStatus>(() => (
+    TAURI ? initialBridgeBootstrapStatus : browserDevelopmentBridgeStatus
+  ));
+  const [bridgeControlAvailable, setBridgeControlAvailable] = useState(true);
+  const [bridgeRetrying, setBridgeRetrying] = useState(false);
   const [canonicalResources, setCanonicalResources] = useState(initialCanonicalResources);
   const [shell, setShell] = useState<Shell>(() => shellFromHash());
   const [surface, setSurface] = useState<Surface>(() => surfaceFromHash());
@@ -355,6 +396,61 @@ export function App() {
   const identitySelectedProjectIdRef = useRef("");
   const settingsRequestSequence = useRef(0);
   const goalEvidenceKey = useRef<string | null>(null);
+  const bridgeStartupRef = useRef(bridgeStartup);
+  const bridgeAvailable = bridgeBootstrapAvailable(
+    TAURI,
+    shell,
+    bridgeControlAvailable,
+    bridgeStartup,
+  );
+
+  const acceptBridgeStartupStatus = useCallback((incoming: BridgeBootstrapStatus) => {
+    const previous = bridgeStartupRef.current;
+    const next = advanceBridgeBootstrapStatus(previous, incoming);
+    if (next === previous) return;
+    bridgeStartupRef.current = next;
+    if (previous.phase !== "ready" && next.phase === "ready") {
+      // A new bridge generation must earn fresh canonical state before any
+      // authoritative control becomes available.
+      setCanonicalResources(initialCanonicalResources());
+      setBridgeError(null);
+    }
+    if (previous.phase === "ready" && next.phase !== "ready") {
+      bridgeTokenRequest = null;
+    }
+    setBridgeStartup(next);
+  }, []);
+
+  useEffect(() => {
+    if (!shouldPollBridgeBootstrap(TAURI, shell)) return;
+    let cancelled = false;
+    let inFlight = false;
+    const refresh = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      const next = await readBridgeBootstrapStatus();
+      inFlight = false;
+      if (cancelled) return;
+      setBridgeControlAvailable(next !== null);
+      if (next) acceptBridgeStartupStatus(next);
+    };
+    void refresh();
+    const poll = window.setInterval(() => void refresh(), 750);
+    return () => {
+      cancelled = true;
+      window.clearInterval(poll);
+    };
+  }, [acceptBridgeStartupStatus, shell]);
+
+  const retryBridgeBootstrap = useCallback(async () => {
+    if (!bridgeStartup.retryable || bridgeRetrying) return;
+    setBridgeRetrying(true);
+    bridgeTokenRequest = null;
+    const next = await retryDesktopBridge();
+    setBridgeControlAvailable(next !== null);
+    if (next) acceptBridgeStartupStatus(next);
+    setBridgeRetrying(false);
+  }, [acceptBridgeStartupStatus, bridgeRetrying, bridgeStartup.retryable]);
 
   const markCanonical = useCallback((
     key: CanonicalResourceKey,
@@ -426,6 +522,7 @@ export function App() {
   }, [markCanonical]);
 
   useEffect(() => {
+    if (!bridgeAvailable) return;
     let cancelled = false;
     void refreshPet();
     const poll = window.setInterval(() => {
@@ -521,10 +618,10 @@ export function App() {
       if (retryTimer != null) window.clearTimeout(retryTimer);
       socket?.close();
     };
-  }, [refreshPet]);
+  }, [bridgeAvailable, refreshPet]);
 
   useEffect(() => {
-    if (shell === "pet") return;
+    if (!bridgeAvailable || shell === "pet") return;
     const includeHatch = shell === "settings";
     void loadBaseState(includeHatch, includeHatch);
     const poll = window.setInterval(
@@ -535,7 +632,7 @@ export function App() {
       baseRequestSequence.current += 1;
       window.clearInterval(poll);
     };
-  }, [loadBaseState, shell]);
+  }, [bridgeAvailable, loadBaseState, shell]);
 
   useEffect(() => {
     const route = () => {
@@ -609,9 +706,9 @@ export function App() {
   }, [pet?.settings?.click_through, shell]);
 
   useEffect(() => {
-    if (!TAURI || !pet?.appearance?.id || shell === "pet") return;
+    if (!TAURI || !bridgeAvailable || !pet?.appearance?.id || shell === "pet") return;
     void releasePetOverlay();
-  }, [pet?.appearance?.id, shell]);
+  }, [bridgeAvailable, pet?.appearance?.id, shell]);
 
   useEffect(() => {
     setScale(pet?.settings?.scale ?? pet?.appearance?.scale ?? 1);
@@ -652,12 +749,12 @@ export function App() {
   }, [markCanonical]);
 
   useEffect(() => {
-    if (shell !== "settings") return;
+    if (!bridgeAvailable || shell !== "settings") return;
     void loadSettings();
     return () => {
       settingsRequestSequence.current += 1;
     };
-  }, [loadSettings, shell]);
+  }, [bridgeAvailable, loadSettings, shell]);
 
   const sessions = useMemo(() => {
     const merged = new Map<string, SessionRow>();
@@ -696,6 +793,12 @@ export function App() {
   }, [projectId]);
 
   useEffect(() => {
+    if (!bridgeAvailable) {
+      goalEvidenceKey.current = null;
+      markCanonical("decisions", "reset");
+      markCanonical("completion", "reset");
+      return;
+    }
     if (!attachedGoal?.id) {
       goalEvidenceKey.current = null;
       setLedgerDecisions([]);
@@ -737,7 +840,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [attachedGoal?.id, attachedGoal?.intent_revision, markCanonical, sessions]);
+  }, [attachedGoal?.id, attachedGoal?.intent_revision, bridgeAvailable, markCanonical, sessions]);
 
   const loadDetails = useCallback(async (includeDeck = false, showLoading = false) => {
     const requestSequence = ++detailRequestSequence.current;
@@ -911,7 +1014,7 @@ export function App() {
   }, [identitySelectedProjectId]);
 
   useEffect(() => {
-    if (surface === "compact" || shell !== "main") return;
+    if (!bridgeAvailable || surface === "compact" || shell !== "main") return;
     setBench((state) => ({ ...state, loading: state.runs.length === 0 && !state.message }));
     void loadDetails(true, true);
     let ticks = 0;
@@ -923,10 +1026,10 @@ export function App() {
       detailRequestSequence.current += 1;
       window.clearInterval(poll);
     };
-  }, [loadDetails, shell, surface, pet?.last_action?.id]);
+  }, [bridgeAvailable, loadDetails, shell, surface, pet?.last_action?.id]);
 
   useEffect(() => {
-    if (surface === "compact" || shell !== "main") return;
+    if (!bridgeAvailable || surface === "compact" || shell !== "main") return;
     void loadProjectIdentityConflicts({ showLoading: true });
     const poll = window.setInterval(() => {
       void loadProjectIdentityConflicts();
@@ -936,10 +1039,10 @@ export function App() {
       setIdentityConflictLoading(false);
       window.clearInterval(poll);
     };
-  }, [loadProjectIdentityConflicts, shell, surface]);
+  }, [bridgeAvailable, loadProjectIdentityConflicts, shell, surface]);
 
   useEffect(() => {
-    if (surface !== "deck" || shell !== "main" || activeView !== "decisions") return;
+    if (!bridgeAvailable || surface !== "deck" || shell !== "main" || activeView !== "decisions") return;
     void loadProjectIdentityStatus({ showLoading: true });
     const poll = window.setInterval(() => {
       void loadProjectIdentityStatus();
@@ -949,7 +1052,7 @@ export function App() {
       setIdentityStatusLoading(false);
       window.clearInterval(poll);
     };
-  }, [activeView, loadProjectIdentityStatus, shell, surface]);
+  }, [activeView, bridgeAvailable, loadProjectIdentityStatus, shell, surface]);
 
   const petState = canonicalResources.pet;
   const sessionStateFresh = !bridgeError
@@ -1819,7 +1922,22 @@ export function App() {
     window.location.hash = next;
   }
 
+  if (!bridgeAvailable) {
+    return (
+      <StartupRecovery
+        status={bridgeControlAvailable
+          ? bridgeStartup
+          : unavailableBridgeBootstrapStatus(bridgeStartup.attempt)}
+        retrying={bridgeRetrying}
+        onRetry={() => void retryBridgeBootstrap()}
+      />
+    );
+  }
+
   if (shell === "pet") {
+    if (!pet) {
+      return <main className="pet-desktop" aria-label="PEX pet is waiting for its verified local bridge" />;
+    }
     return (
       <main className={`pet-desktop tone-${status.tone}`}>
         <PetStage
