@@ -1,5 +1,7 @@
 # Existing-worker connection and internal text control — 5 September 2026
 
+**Subsequent source update:** `db98481` implements production received-byte journaling and raw-chunk/pending dispatch fencing, with final main 456 tests/23 files and independent approval. The raw-loss activation blocker described below is repaired in this bounded scope; fresh turn/input/provenance/durable-dispatch and actual-loop gates remain. [`Current journal receipt`](RECEIVED_JOURNAL_REVIEW.md). Historical measurements below are unchanged and must not be summed.
+
 **Goal ACTIVE; release NO-GO; user target 6 September WAT remains at risk.** Source checkpoints, both pushed with exact remote main equality verified at push:
 
 - Desktop connection: `cd399133eddd7384994a7bc7f917b4d1871ef43e`.

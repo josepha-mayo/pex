@@ -1,5 +1,7 @@
 # Local workspace origin and existing Codex attachment
 
+The production inspect route now creates `codex-received.sqlite` in the existing PEX data directory before connecting. It retains potentially sensitive exact received bytes locally, including invalid/partial/vendor data, with immutable requested-inspection provenance; it is not a raw HTTP/model/export or live-replay API. Capacity/failure stops capture without deleting old evidence. Source `db98481` is reviewed and tested; full recovery/installed-worker proof remains open. See [received journal review](../RECEIVED_JOURNAL_REVIEW.md) before handling or copying this private data.
+
 This is the backend connection contract. Settings now contains the explicit connection/recovery caller, reviewed in source `cd39913`, with isolated rendered verification; it is not proof of installed Codex compatibility. Shared worker messaging, approvals and configuration changes remain disabled. PEX still needs its real same-worker supervisory loop. See [connection/control review](../CONNECTION_CONTROL_REVIEW.md).
 
 ## Why an origin is required

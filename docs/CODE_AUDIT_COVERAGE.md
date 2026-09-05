@@ -6,6 +6,10 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Production received-byte journal — `db98481`
+
+Main full-new-file review: `codex_received_journal.py` and `test_codex_received_journal{,_attachment,_transport}.py`; changed-path review: `codex_shared.py`, `codex_shared_attach.py`, three existing transport/attachment test files and `.gitignore`. Independent `attachment_review` read the new files and production diffs, reproduced the foreign-WAL defect, then approved the preflight fix and reran the exact failure plus 32 new tests. Main final 456 passed/23 files, all nine scoped Python paths Ruff-clean and ten staged paths whitespace-clean, source pushed with remote equality. [`Complete bounded receipt`](RECEIVED_JOURNAL_REVIEW.md). This does not close the full repository audit, complete crash recovery or approve worker-control activation.
+
 ### Connection UI and inactive text control — `cd39913`, `03045b5`
 
 Main read new `apps/desktop/src/{operatorRequest.ts,operatorRequest.test.ts,sharedConnection.ts,sharedConnection.test.ts,components/SharedConnectionPanel.tsx}`, both `apps/desktop/tests/connection-qa.{html,tsx}` fixtures and new `tests/unit/test_codex_shared_text_dispatch.py`. Changed-path review: App, Settings, package test script, and `codex_shared.py` dispatch/receive-routing/close/error changes. Independent review covered controller/mount/request contract and framed transport; reproduced findings were repaired. Main 154 desktop tests, TypeScript/frontend build, isolated rendered recovery, 406 backend tests/18 files. All 12 staged source/test paths passed whitespace checks; both Python paths passed Ruff. New-file/diff coverage is not whole-App/Settings/transport approval or a complete reinventory. [`Detailed evidence and limits`](CONNECTION_CONTROL_REVIEW.md).

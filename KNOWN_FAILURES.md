@@ -1,5 +1,9 @@
 # Known failures
 
+## Received-byte loss reproduction repaired; control remains inactive
+
+Source `db98481` durably journals bounded receive chunks before parsing/clearing. The held-ack human-notification loss below now has a passing durable-prefix regression. Independent review additionally reproduced foreign-WAL modification on format rejection; no-write header preflight repairs that exact case. Final main 456 passed/23 files; [`details and limits`](docs/RECEIVED_JOURNAL_REVIEW.md). This is not full stream/crash recovery: unreceived bytes, crash before commit and ambiguous initialization remain unproven; no live replay or complete-coverage claim. Fresh turn/input reconciliation, PEX-message provenance, durable supervisor dispatch, installed runtime and real outcomes are still required. Older descriptions of the journal absence are historical.
+
 ## Current connection/control activation blockers — 5 Sep
 
 Connection UI is now source-integrated (`cd39913`), including a repaired independent full-confirmation-receipt mismatch and nullable-model case. Internal text transport is reviewed (`03045b5`); a reproduced concurrent-reader close ownership failure is fixed, with main 406 backend tests passed. Full receipts: [`docs/CONNECTION_CONTROL_REVIEW.md`](docs/CONNECTION_CONTROL_REVIEW.md).
