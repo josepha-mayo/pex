@@ -94,6 +94,35 @@ def _context(
     )
 
 
+@pytest.mark.parametrize(
+    "local_project,foreign_project",
+    [
+        ("/work/PEX", "/work/pex"),
+        ("project:PEX", "project:pex"),
+        ("C:/work/straße", "C:/work/strasse"),
+        ("C:/", "C:"),
+    ],
+)
+def test_foreign_project_context_cannot_enter_or_supersede_local_context(
+    local_project: str,
+    foreign_project: str,
+) -> None:
+    now = datetime.now(UTC)
+    session, _, _ = _bound(now)
+    session = session.model_copy(update={"project_id": local_project})
+    local = _context(now, "local", project_id=local_project)
+    foreign = _context(
+        now,
+        "foreign",
+        project_id=foreign_project,
+        supersedes="local",
+        content="FOREIGN_CONTEXT_SENTINEL",
+    )
+    envelope = build_supervisor_context(session, [local, foreign], [], now)
+    assert envelope.offered_context_ids == ("local",)
+    assert "FOREIGN_CONTEXT_SENTINEL" not in envelope.model_dump_json()
+
+
 def _decision(
     now: datetime,
     decision_id: str,
@@ -137,9 +166,7 @@ def test_build_supervisor_context_exposes_useful_provenance_and_rejected_approac
     assert envelope.context_items[0].verified is True
     assert envelope.context_items[0].semantic_kind == "verified_sibling_result"
     assert envelope.context_items[0].source_session_id == "cursor:sibling"
-    assert envelope.decisions[0].alternatives_rejected == (
-        "Reuse the obsolete README example.",
-    )
+    assert envelope.decisions[0].alternatives_rejected == ("Reuse the obsolete README example.",)
 
     request = SupervisorRequest(
         session=session,
@@ -156,12 +183,8 @@ def test_build_supervisor_context_exposes_useful_provenance_and_rejected_approac
         "ctx-result",
         "ctx-project",
     ]
-    assert [item["id"] for item in decision_payload["decisions"]] == [
-        "decision-schema"
-    ]
-    decision_detail = json.loads(
-        tools["get_decisions"](decision_id="decision-schema")
-    )
+    assert [item["id"] for item in decision_payload["decisions"]] == ["decision-schema"]
+    decision_detail = json.loads(tools["get_decisions"](decision_id="decision-schema"))
     assert "obsolete README" in decision_detail["decision"]["alternatives_rejected"][0]
     assert used == ["get_context_items", "get_decisions", "get_decisions"]
 

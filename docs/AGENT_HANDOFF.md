@@ -2,6 +2,39 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+NATIVE BUILD AND PACKAGE VERIFICATION COMPLETE on clean `60ffa76`.
+Exec 46349 terminated successfully: release Rust compile 19m43s, both MSI/NSIS
+generated. One nonfatal dead-code warning for test-used `bridge_port_state_at`.
+Exec 89984 package verifier also passed, both extracted inventories verified,
+three helper hashes match source preflight, desktop variants differ only by the
+exact expected four-byte Tauri marker. Checkout remains clean. Receipt:
+`C:/Users/JosephMayo/Projects/pex-verify-5ee1ee7/build/pex-package-receipt-60ffa76.json`
+SHA256 `8BA32227276F02AAC9F2CA761F700B9F849D1B88604F2DD6F2C006253DF7E0E3`.
+Its `release_ready=true` means PACKAGE stage only; product remains NO-GO.
+Artifacts under that checkout's `apps/desktop/src-tauri/target/release/bundle/`:
+
+- `msi/PEX_0.1.0_x64_en-US.msi`, 122535936 bytes, SHA256
+  `1fd9773399bd21c2429824bc9a5e35555fc88f5ab70864823055e684e1faedb9`.
+- `nsis/PEX_0.1.0_x64-setup.exe`, 121247412 bytes, SHA256
+  `d2172517d216daef027aad7d3cf5af18b872d88c309585fa840f648944546425`.
+
+Verifier used existing main-worktree portable 7-Zip via process-local PATH;
+no download, installation, native UI launch or model call. Preserve this checkout
+and artifacts: the later context repairs are not in these binaries. Final-source
+rebuild/verification remains sprint G. A is now checked only for this exact source.
+Next native gate is C (actual cold start/retry/restart), subject to renewed
+native interaction permission. B remains protected-loop permission dependent;
+unprotected code auditing remains available, so the overall goal is not blocked.
+
+Supervisor context boundary follow-up: four new regressions proved a foreign
+lookalike project could both enter the model envelope and supersede local facts.
+`supervisor_context.py` now uses the shared conservative project comparator before
+supersession. Four red cases before repair; three full files (supervisor context,
+Codex autonomous context and context mesh) **34 passed in 28.02s**, thread warnings
+as errors. Scoped Ruff/whitespace and changed-path review passed. Protected loop
+SHA256 remains `392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`.
+This is main-source mocked/local evidence, not a clean full run or live-model proof.
+
 Context-selection project boundary repair: `context/mesh.py` still independently
 case-folded every project ID despite the shared comparator introduced earlier.
 Eight new regressions failed before repair (goal and target boundaries, POSIX

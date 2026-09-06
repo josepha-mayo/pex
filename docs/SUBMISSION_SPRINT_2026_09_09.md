@@ -15,10 +15,14 @@ drop requirements or declare an unverified product ready.
 
 ### Day 1 — usable runtime and real supervision
 
-- [ ] **A. Finish the native release build and verify packaged bytes.**
-  Current: clean source `60ffa76`, checkout `pex-verify-5ee1ee7`, live exec
-  `46349`, two Cargo jobs, offline dependencies. Fresh helper rebuild completed;
-  desktop/bundle success is still unproven. Poll this build, do not duplicate it.
+- [x] **A. Finish the native release build and verify packaged bytes.**
+  Proven for clean source `60ffa76`, checkout `pex-verify-5ee1ee7`: both MSI and
+  NSIS built and passed extracted-payload verification. Execs 46349 and 89984
+  are terminal. Receipt `build/pex-package-receipt-60ffa76.json`, SHA256
+  `8BA32227276F02AAC9F2CA761F700B9F849D1B88604F2DD6F2C006253DF7E0E3`.
+  Newly rebuilt bridge lifetime checks: 3 passed. This is a baseline package
+  gate, NOT installed UX or final-source approval. Later context fixes are not
+  included in these installers; G requires final-source rebuild and verification.
   Acceptance: MSI/NSIS contain the expected desktop and three helpers; retain
   source/hash-bound package receipt and rerun frozen lifetime checks for new bytes.
 - [ ] **B. Close the semantic trajectory gap, not only stop-time checks.**

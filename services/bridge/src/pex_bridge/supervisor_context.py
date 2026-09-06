@@ -6,6 +6,7 @@ from unicodedata import category
 from pex_protocol.context import ContextItem
 from pex_protocol.enums import ContextKind, DecisionStatus, Sensitivity, SourceKind
 from pex_protocol.goal import Decision
+from pex_protocol.project_binding import project_binding_key
 from pex_protocol.redaction import redact_text
 from pex_protocol.session import HarnessSession
 from pex_protocol.supervisor import (
@@ -34,10 +35,6 @@ _STRONG_PROVENANCE = {
     SourceKind.WORKSPACE,
 }
 _VERIFIABLE_PROVENANCE = {SourceKind.TEST, SourceKind.WORKSPACE}
-
-
-def _project_key(value: str) -> str:
-    return value.strip().replace("\\", "/").rstrip("/").casefold()
 
 
 def _aware(value: datetime) -> bool:
@@ -174,7 +171,7 @@ def build_supervisor_context(
             not isinstance(item, ContextItem)
             or not _aware(item.valid_from)
             or (item.stale_after is not None and not _aware(item.stale_after))
-            or _project_key(item.project_id) != _project_key(project_id)
+            or project_binding_key(item.project_id) != project_binding_key(project_id)
             or item.goal_id not in {None, goal_id}
             or item.valid_from > observed_at
             or (item.stale_after is not None and item.stale_after <= observed_at)
