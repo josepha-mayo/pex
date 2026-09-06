@@ -184,6 +184,8 @@ async def test_trajectory_review_coalesces_across_restart_without_refunding(
     from pex_supervisor.loop import decide_async
 
     counted = _RemoteNoop()
+    review_clock = datetime.now(UTC)
+    monkeypatch.setattr("pex_bridge.store.utcnow", lambda: review_clock)
 
     async def mock_strands(request, model=None):
         return await counted.decide(request)
@@ -224,6 +226,16 @@ async def test_trajectory_review_coalesces_across_restart_without_refunding(
                         event.error = failure_kind
                         event.process_state = {"exit_code": 1}
                         await pipeline.ingest_event(event, session)
+                    if failure_kind == "new failure":
+                        deferred = await store.get_event_effect(event.event_id, "planner")
+                        assert deferred["result"]["code"] == "trajectory_review_deferred"
+                        assert deferred["result"]["provider_started"] is False
+                        assert counted.calls == 1
+                        review_clock += timedelta(seconds=61)
+                        later = event.model_copy(update={
+                            "event_id": "new-failure-after-interval", "ts": datetime.now(UTC),
+                        })
+                        await pipeline.ingest_event(later, session)
                     assert counted.calls == 2
                 exhausted = await store.get_event_effect(event.event_id, "planner")
                 assert exhausted["result"]["code"] == "supervisor_dispatch_budget_exhausted"

@@ -1723,6 +1723,7 @@ class Pipeline:
         if not dispatch["granted"]:
             if dispatch.get("reason") in {
                 "supervisor_dispatch_budget_exhausted", "trajectory_review_coalesced",
+                "trajectory_review_deferred",
             }:
                 reason = dispatch["reason"]
                 result = SupervisorResult(

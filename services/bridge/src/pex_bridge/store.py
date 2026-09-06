@@ -218,6 +218,8 @@ CREATE TABLE IF NOT EXISTS trajectory_review_reservations (
   reserved_at TEXT NOT NULL,
   PRIMARY KEY(session_id, candidate_key)
 );
+CREATE INDEX IF NOT EXISTS idx_trajectory_review_session_time
+ON trajectory_review_reservations(session_id, reserved_at);
 CREATE TRIGGER IF NOT EXISTS trg_codex_correction_authority_immutable
 BEFORE UPDATE ON event_effects
 WHEN (
@@ -21381,6 +21383,21 @@ class Store:
                     if int(count_row[0]) >= semantic_dispatch_limit:
                         await transaction.commit()
                         return {"granted": False, "reason": "supervisor_dispatch_budget_exhausted"}
+                    if trajectory_candidate_key is not None:
+                        latest = await transaction.execute(
+                            "SELECT reserved_at FROM trajectory_review_reservations "
+                            "WHERE session_id = ? ORDER BY reserved_at DESC LIMIT 1",
+                            (processing["session_id"],),
+                        )
+                        latest_row = await latest.fetchone()
+                        if latest_row is not None and (
+                            datetime.fromisoformat(now)
+                            - datetime.fromisoformat(latest_row[0])
+                        ).total_seconds() < 60:
+                            # Do not consume the cap or candidate key: a later
+                            # material event may earn review after the interval.
+                            await transaction.commit()
+                            return {"granted": False, "reason": "trajectory_review_deferred"}
                     # Same transaction as the dispatch CAS. Never refund failure,
                     # timeout or cancellation, which can conceal provider work.
                     await transaction.execute(

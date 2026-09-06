@@ -30,7 +30,8 @@ drop requirements or declare an unverified product ready.
   Current: P0 OPEN; durable opt-in dispatch cap exists, but material mid-task
   review now has a first bounded repeated-command-failure path with durable
   coalescing, exact evidence and local/remote independent-verifier enforcement.
-  Broader material signals, pacing, complete model-use accounting and live proof
+  Distinct reviews have durable 60-second pacing. Broader material signals,
+  complete model-use accounting and live proof
   remain open. See `TRAJECTORY_SEMANTIC_REVIEW.md` for source gates and limits.
   Acceptance: shared local/remote eligibility, evidence-bound decisions, quiet
   routine progress, bounded review and same-worker outcome. Mocked tests first;

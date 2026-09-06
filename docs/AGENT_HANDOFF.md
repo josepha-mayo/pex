@@ -2,6 +2,14 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Pacing follow-up to `e5e4ad3`: new material trajectory reviews are at least 60
+seconds apart per session, using persisted reservation time in the same dispatch
+transaction. Deferred candidates spend neither cap nor coalescing key; a later
+material event can qualify. STOP behavior is unchanged. The local/remote restart
+test proves deferral, later review, and cap exhaustion. Both full event-processing
+pipeline/Store files passed: **52 passed in 80.80s**, strict thread warnings;
+scoped Ruff/whitespace and changed-path review passed. No live calls occurred.
+
 Continuation update: compact status-message dismissal fixed and pushed as
 `b312dd8`; 195 frontend tests and production build passed. Static contact-sheet
 review covered all eight source pets without regeneration or native input.

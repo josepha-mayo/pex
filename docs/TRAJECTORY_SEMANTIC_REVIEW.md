@@ -19,6 +19,11 @@ failure and observed progress anchor; repeated keys become audited
 `trajectory_review_coalesced` NOOP without provider dispatch, including after
 restart. New failure text can be reviewed until the cap is exhausted. Failure,
 timeout and cancellation do not refund a possibly consumed reservation.
+Pacing follow-up: distinct trajectory reviews are also at least 60 seconds
+apart per session, checked atomically against durable reservation time. An early
+candidate is an audited `trajectory_review_deferred` NOOP; it consumes neither
+the candidate key nor cap, so a later material event can earn review. STOP
+reviews retain their prior behavior. No timer creates autonomous provider calls.
 
 Codex normalization retains typed exit codes even when no pytest receipt exists.
 Local evidence tools and the redacted cloud request carry exact candidate event
@@ -35,7 +40,7 @@ No live model calls, provider settings changes or remote deployments occurred.
 
 This is one material signal, not section 15 completion. Semantic search repetition,
 dependency/constraint/context candidates, measured restraint and same-worker live
-outcomes, time-based pacing and aggregate model-call/token/cost accounting remain
+outcomes and aggregate model-call/token/cost accounting remain
 open. The existing dispatch cap is not a spending guarantee. Native UX, other
 spec requirements and final-source packaging remain separate unclosed gates.
 
