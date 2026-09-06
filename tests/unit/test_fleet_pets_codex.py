@@ -1225,6 +1225,30 @@ def test_compact_release_validation_creates_a_missing_temp_root_before_regenerat
     assert 'removeSafeDirectory(generated, "Pet validation temp directory")' in source
 
 
+def test_byte_hashed_pet_release_text_is_materialized_as_lf_on_every_checkout():
+    repo = Path(__file__).resolve().parents[2]
+    paths = [
+        "apps/desktop/src/pets/release-manifest.json",
+        *[f"apps/desktop/src/pets/{pet.id}/pet.json" for pet in STARTERS],
+        "apps/desktop/src/pets/release-evidence/independent-reviews.json",
+        "apps/desktop/src/pets/release-evidence/structural.json",
+        "apps/desktop/src/pets/release-evidence/visual-attestation.json",
+        "apps/desktop/src/pets/judge-gallery.html",
+    ]
+    result = subprocess.run(
+        ["git", "check-attr", "text", "eol", "--", *paths],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    lines = result.stdout.splitlines()
+    assert len(lines) == len(paths) * 2
+    assert all(line.endswith(": text: set") or line.endswith(": eol: lf") for line in lines)
+    for relative_path in paths:
+        assert b"\r\n" not in (repo / relative_path).read_bytes()
+
+
 def test_release_preflight_is_structured_and_never_claims_package_readiness():
     repo = Path(__file__).resolve().parents[2]
     result = subprocess.run(

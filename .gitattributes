@@ -1,0 +1,4 @@
+apps/desktop/src/pets/release-manifest.json text eol=lf
+apps/desktop/src/pets/*/pet.json text eol=lf
+apps/desktop/src/pets/release-evidence/*.json text eol=lf
+apps/desktop/src/pets/judge-gallery.html text eol=lf
