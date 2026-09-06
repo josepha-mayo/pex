@@ -69,9 +69,9 @@ def unrelated_refactor(event: HarnessEvent, goal: Goal | None) -> str | None:
     return None
 
 
-def _path_names(event: HarnessEvent) -> set[str]:
+def _observed_paths(event: HarnessEvent) -> set[str]:
     return {
-        PurePosixPath(str(path).replace("\\", "/")).name.casefold()
+        str(PurePosixPath(str(path).replace("\\", "/")))
         for path in event.file_paths
         if str(path).strip()
     }
@@ -81,10 +81,10 @@ def duplicate_sibling_work(
     event: HarnessEvent,
     siblings: list[tuple[str, str, list[HarnessEvent]]],
 ) -> dict[str, str] | None:
-    """Return evidence when a sibling already did the same observed work."""
+    """Return overlap candidates, not proof of duplicate or completed work."""
     if event.event_type not in {EventType.FILE_EDIT, EventType.SHELL, EventType.TOOL_CALL}:
         return None
-    current_paths = _path_names(event)
+    current_paths = _observed_paths(event)
     command = str(event.command or "").strip()
     if _ROUTINE_TEST.search(command):
         command = ""
@@ -92,7 +92,7 @@ def duplicate_sibling_work(
         return None
     for session_id, harness, events in siblings:
         for prior in events:
-            overlap = sorted(current_paths & _path_names(prior))
+            overlap = sorted(current_paths & _observed_paths(prior))
             if overlap:
                 return {
                     "sibling_session_id": session_id,

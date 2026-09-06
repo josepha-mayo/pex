@@ -547,19 +547,14 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
     duplicate = request.scores.features.get("duplicate_work")
     if isinstance(duplicate, dict) and duplicate.get("harness"):
         target = str(duplicate.get("path") or duplicate.get("command") or "that work")
-        harness = str(duplicate["harness"]).replace("_", " ").strip() or "A sibling agent"
-        harness = harness[:1].upper() + harness[1:]
-        return _nudge(
+        return _noop(
             request,
-            "A sibling agent already performed this observed work.",
+            "Sibling overlap needs semantic review; "
+            "shared paths or commands do not prove duplicate work.",
             [
                 f"sibling:{duplicate.get('sibling_session_id') or 'unknown'}",
                 f"overlap:{target[:200]}",
             ],
-            (
-                f"{harness} already worked on {target}. "
-                "Use that observed result instead of repeating the investigation."
-            ),
         )
 
     drifted = unrelated_refactor(event, goal)

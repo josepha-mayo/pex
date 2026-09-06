@@ -743,7 +743,7 @@ def test_cursor_without_modify_config_still_checkpoints_forgotten_facts():
     assert not text.startswith("PEX:")
 
 
-def test_duplicate_sibling_work_is_redirected_without_leaking_vendor_ids():
+def test_sibling_overlap_is_not_deterministic_proof_of_duplicate_work():
     request = SupervisorRequest(
         session=_session(),
         goal=_goal(),
@@ -764,13 +764,11 @@ def test_duplicate_sibling_work_is_redirected_without_leaking_vendor_ids():
         ),
     )
     action = plan_deterministic(request)
-    assert action.type == InterventionType.SEND_NUDGE
+    assert action.type == InterventionType.NOOP
     text = str(action.payload.get("text") or "")
-    assert "parser.py" in text
-    assert "Cursor" in text
-    assert "secret-vendor-99" not in text
-    assert "repeating" in text
-    assert not text.startswith("PEX:")
+    assert text == ""
+    assert "semantic review" in action.rationale
+    assert "overlap:parser.py" in action.evidence
 
 
 def test_ambiguous_user_prompt_is_rewritten_against_the_ledger():

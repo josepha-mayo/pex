@@ -25,14 +25,20 @@ def test_duplicate_sibling_work_matches_overlapping_path():
         event_id="e2",
         session_id="codex:two",
         harness_type=HarnessType.CODEX,
-        file_paths=["lib/parser.py"],
+        file_paths=["src\\parser.py"],
     )
     found = duplicate_sibling_work(current, [("cursor:one", "cursor", [prior])])
     assert found == {
         "sibling_session_id": "cursor:one",
         "harness": "cursor",
-        "path": "parser.py",
+        "path": "src/parser.py",
     }
+
+
+def test_same_basename_in_different_directories_is_not_overlap():
+    prior = _event(session_id="cursor:one", file_paths=["src/parser.py"])
+    current = _event(session_id="codex:two", file_paths=["lib/parser.py"])
+    assert duplicate_sibling_work(current, [("cursor:one", "cursor", [prior])]) is None
 
 
 def test_duplicate_sibling_work_matches_identical_non_test_command():

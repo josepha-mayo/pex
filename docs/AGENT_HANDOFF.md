@@ -2,6 +2,23 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Trajectory audit found an unjustified automatic sibling-work correction:
+`src/parser.py` and `lib/parser.py` matched by basename, and even genuine path
+overlap was treated as proof that a sibling had completed the same work. Root
+fully read `drift.py` and its unit tests, plus bounded planner/pipeline/semantic
+gate paths. Overlap now preserves directory and case identity (separator
+normalization only), and deterministic planning retains candidate evidence as
+NOOP rather than telling the worker to reuse an unverified result. This follows
+recovery spec section 15: detection is not intervention. Drift/planner **45
+tests passed**; synthetic HTTP two-worker no-message regression **1 passed in
+12.49s**; scoped Ruff passed. The initial API expectation of a NOOP record was
+corrected because the pipeline can suppress nonmaterial NOOP records; worker
+inbox remains empty. This is not a new live model or cross-harness proof.
+Important remaining gap: `needs_semantic_inference` normally invokes semantic
+inspection on STOP only unless forced; genuine trajectory review is not finished.
+The broad-refactor lexical rule also still needs evidence/semantic review.
+Protected `loop.py` hash unchanged; it was read but not edited or staged.
+
 Native bridge bounded audit: existing Rust suite passed 15 tests. Added an actual
 ephemeral loopback identity exchange covering fragmented authenticated response
 delivery with the server kept open until the client returns. It uses only a test

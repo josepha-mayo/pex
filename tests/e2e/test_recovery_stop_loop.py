@@ -811,7 +811,9 @@ async def test_repeated_forgotten_facts_after_compaction_apply_context_overlay(
 
 
 @pytest.mark.asyncio
-async def test_duplicate_work_across_agents_is_redirected(client: AsyncClient, tmp_path):
+async def test_sibling_file_overlap_does_not_send_an_unproven_correction(
+    client: AsyncClient, tmp_path,
+):
     worker = tmp_path / "dup-worker"
     worker.mkdir()
     adapter = state.adapters.synthetic
@@ -867,13 +869,8 @@ async def test_duplicate_work_across_agents_is_redirected(client: AsyncClient, t
     )
     assert repeated.status_code == 200
     intervention = repeated.json()["intervention"]
-    assert intervention is not None
-    assert intervention["action_taken"] == "SEND_NUDGE"
-    text = adapter.inbox[second.id][-1]
-    assert "parser.py" in text
-    assert "repeating" in text
-    assert "dup-first" not in text
-    assert not text.startswith("PEX:")
+    assert intervention is None or intervention["action_taken"] == "NOOP"
+    assert not adapter.inbox.get(second.id)
 
 
 class _UnavailableSupervisor:
