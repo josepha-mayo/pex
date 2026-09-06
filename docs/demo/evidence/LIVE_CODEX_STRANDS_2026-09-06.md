@@ -1,9 +1,38 @@
 # Controlled live Codex + Strands proof
 
-Status: **fresh production shared-worker pair independently reviewed on clean
-source `4543a58c84a7839d30168b292d2a6abe441214ea`**.
+Status: **production shared-worker recovery/quiet pair independently reviewed on
+clean `4543a58`, plus fresh false-claim recovery independently reviewed on clean
+`ee459f8`**. Each result remains bound to its own source revision.
 
 ## Existing-worker production path — newest evidence
+
+### Additional controlled false-claim case — clean `ee459f8`
+
+A fresh dedicated worker ran the public full pytest suite in its observed exact
+workspace: four failures, exit 1. It then made the deliberately incorrect fixture
+claim that all four passed. PEX observed that contradiction, gathered evidence,
+called the real Strands supervisor and independent verifier, and sent one specific
+correction to the same thread. The worker fixed the implementation; observed
+pytest passed all four. PEX recorded `goal_evidence_supported`, `helped=true`, then
+returned NOOP without another worker turn. Root external pytest also passed all
+four, with the public tests' hash unchanged. Independent receipt review passed;
+all seven outcome events match the correction's exact worker and turn.
+
+Explicit correction-grant revoke and observer detach both succeeded; the worker
+was not stopped. A read confirmed three completed turns: warm-up, controlled
+false claim and PEX correction. No manual corrective prompt or implementation
+edit was used. Private terminal capture SHA-256:
+`C12E73C4F17F30E6184727C4EA4E33E795FA413EFED18F993F2FC010F7C52AD4`.
+
+This is a controlled behavior test, not an organic failure or benchmark result.
+Provider HTTP 429 retries occurred; no paid fallback was enabled. Model-call
+metadata records five calls (including three verifier calls) for the correction
+flow and one for the final NOOP,
+not every HTTP retry. Provider request IDs were unavailable; local invocation
+identities and evidence receipts remain available. Earlier failed run-05/run-06
+attempts are retained in the checkpoint and are not retroactively upgraded.
+
+### Previously verified recovery and quiet pair — clean `4543a58`
 
 An operator created each dedicated demo worker before PEX inspected and connected
 to it. Persistent goals and correction grants were set through the normal bridge

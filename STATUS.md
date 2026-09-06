@@ -5,12 +5,13 @@
 **Goal active; submission NO-GO.** The [current checkpoint](docs/CHECKPOINT_2026_09_06.md)
 supersedes all historical source/package dates below. Real shared Codex recovery
 and a separate correct-completion NOOP passed independent review on `4543a58`.
-The false-test-claim fixture produced a real correction and four independently
-passing unchanged tests, but typed evidence and observer continuity remain open
-pending repair and fresh replay. The receive journal traced the disconnect to a
-rejected foreign-thread lifecycle pair, not selected-worker closure.
-Literal PowerShell test provenance was repaired in
-`7a41a24`; this does not retroactively upgrade old live receipts.
+Fresh clean `ee459f8` run-07 now observed a wrong test-success claim after four
+real failures in the exact fixture directory, sent one real Strands-approved
+correction to that same worker, observed four passing tests and a supported
+outcome (`helped=true`), then returned NOOP. External pytest also passed all four
+unchanged public tests. Grant revoke and observer detach succeeded without stopping
+the worker. Independent causal-receipt review passed. Earlier failed/uncertain
+attempts remain retained and are not retroactively upgraded.
 
 Clean `da6d1b8` release: desktop 192 tests, frontend build, Rust 15 tests, source
 preflight and both installer inventories passed. Package-integrity receipt:
@@ -18,6 +19,9 @@ preflight and both installer inventories passed. Package-integrity receipt:
 Installers are unsigned, predate the parser repair, and have not been installed
 or smoke-tested in this continuation. Full Python gate, installed-build replay,
 remaining live behavior/integrations, benchmark and submission artifacts remain open.
+The full clean `84d9bd3` Python run has since completed: 3,691 passed, 29 skipped,
+zero failures/errors, one aiosqlite thread-cleanup warning under investigation.
+That source predates the latest output repair; it is not warning-clean release proof.
 
 The user is sharing the PC with other agents. Native mouse/keyboard and focus
 changes are paused, including PEX-targeted clicks. Continue background work only

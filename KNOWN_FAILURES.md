@@ -5,6 +5,18 @@
 Read [the current checkpoint](docs/CHECKPOINT_2026_09_06.md) before using older
 entries below: they preserve historical failures, not current blanket blockers.
 
+- Clean `ee459f8` run-07 repaired the controlled false-claim proof: exact command
+  directory, failed/full-suite evidence, one same-thread correction, supported
+  outcome and final NOOP are retained. Root external pytest: 4 passed; public
+  tests unchanged. Independent causal-receipt review passed. This does not
+  prove ten varied quiet tasks, uncertain-evidence handling, cross-harness flows
+  or current installed-build behavior. Free-provider HTTP 429 retries occurred;
+  the successful recorded model calls do not include every HTTP retry attempt.
+- Full offline clean `84d9bd3`: 3,691 passed / 29 skipped / zero failures or
+  errors, but an aiosqlite thread attempted to notify a closed event loop.
+  Keep this cleanup warning open until resource ownership is diagnosed and
+  repaired; a zero exit code is not proof of a warning-clean run.
+
 - Clean `4543a58` passed one real Strands shared-thread recovery and a separate
   quiet completion. This does not prove all required behavior or fair benchmarks.
 - Run-05's controlled false test claim was corrected in the same worker; root
