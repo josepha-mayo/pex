@@ -2,6 +2,19 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+FULL CLEAN INTEGRATION REGRESSION RUNNING: exec **16849**, source
+`d7b3a644a813a35ff58ee76033dd0146571dc15c`, separate detached checkout
+`C:/Users/JosephMayo/Projects/pex-verify-d7b3a64`. New checkout was absent before
+creation; offline frozen sync installed 113 packages. All three package imports
+verified inside it; git status clean. Command:
+`python -m pytest -q -rs -W error::pytest.PytestUnhandledThreadExceptionWarning`
+with marker expression `not live_llm and not live_codex and not live_opencode and
+not live_agentcore and not live_desktop`, output
+`build/full-regression-d7b3a64.xml`. Poll the same handle; do not duplicate the run
+or change this checkout. No result is known yet. Prior failure receipt and
+verified `60ffa76` installer checkout remain intact. This integration run is
+justified by the shared authority changes, not final-product completion.
+
 Store authority comparison repair: four database-backed red cases demonstrated
 `_same_live_project_binding` accepted distinct opaque/POSIX/Unicode/drive-relative
 projects when neither had a v2 registration. `_same_project` now uses the shared
