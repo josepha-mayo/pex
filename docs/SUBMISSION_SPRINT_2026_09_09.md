@@ -27,16 +27,19 @@ our build-spec target, subject to the user's no-card-charge authorization.
   total turns (one baseline warm-up, one controlled stop, one PEX correction).
 - [x] Repair and recapture missing causal outcome/worker-response audit fields
   (clean 4543a58 run-03, independently reviewed, terminal helped=true).
-- [ ] Retain a separate production-path correct-completion silence case.
+- [x] Retain a separate production-path correct-completion silence case
+  (clean 4543a58 run-04, independently reviewed, real Strands NOOP).
 - [ ] Complete false-claim, uncertain-evidence and varied quiet-task live cases.
 - [ ] Diagnose native post-start bridge failure; retain original failure code.
 - [ ] Repeat cold start, normal retry and restart persistence on release sources.
 
 The controlled report case proves transport/recovery behavior only. It is not an
 organic failure example, benchmark score or measured productivity improvement.
-Private source-1e645cd evidence is under the clean worktree's ignored
-`build/shared-demo-client-receipts-02`; never publish credentials or raw private
-worker state. An exact artifact is not a substitute for complete audit fields.
+Historical source-1e645cd evidence remains under the clean worktree's ignored
+`build/shared-demo-client-receipts-02`; fresh source-4543a58 recovery and quiet
+receipts are in sibling run-03 and run-04 directories. Never publish credentials
+or raw private worker state. An exact artifact is not a substitute for complete
+audit fields. See the sanitized `demo/evidence/LIVE_CODEX_STRANDS_2026-09-06.md`.
 
 ## 2. Product experience and integration evidence — second gate
 

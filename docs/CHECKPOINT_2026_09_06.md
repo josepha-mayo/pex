@@ -7,6 +7,16 @@ STATUS, shipping checklist and submission draft.
 
 ## Source and package boundaries
 
+### Current native-control boundary
+
+The user pressed physical Escape again during window discovery after the live
+proofs. Native mouse/keyboard checks are paused until new permission. No close
+action was sent; the old dev PEX window was not closed. Continue safe backend,
+release build and evidence work without native input. The clean release worktree
+is building `da6d1b8`; prior compile failed only because generated external sidecar
+binaries were not prepared before Rust. The authorized sequence now prepares
+release sidecars, then runs Rust, preflight, normal Tauri build and package verifier.
+
 ### Fresh real shared recovery: passed on clean source 4543a58
 
 Run-03 closes the prior outcome-audit gap. Existing operator-owned thread
@@ -30,6 +40,23 @@ baseline `capture-20260906T133443108957Z.json`, terminal
 `capture-20260906T133551035188Z.json`, plus revoke/detach receipts. This is a
 controlled premature-stop recovery case, not an organic-failure benchmark,
 general performance claim, remote-provider attestation or final submission gate.
+
+Separate run-04 correct completion also passed independent review. The existing
+operator-created worker (exact identity in its private connection receipt) produced
+the same exact eight-byte artifact in its first task turn after warm-up. With
+corrections enabled, real Strands chose only NOOP (one call, 3,175 ms). No correction scope or
+delivery receipt was created. Revoke/detach succeeded, and post-detach read
+confirmed two completed turns, idle status, no error, preserved worker.
+Private terminal capture in `build/shared-demo-client-receipts-04` is
+`capture-20260906T134543956015Z.json`; the earlier working/missing-artifact capture
+is `capture-20260906T134330169247Z.json`. This is one terminal quiet decision, not
+future silence or ten varied tasks. Its warm-up waiter was closed only after an
+independent read confirmed completion; no duplicate warm-up was sent.
+
+Default AWS CLI identity check found no credentials. The only named local profile
+is for another project (`trainium-frontier`) and was not selected or modified.
+No cloud resources or paid fallback were started. AgentCore remains conditional
+on the user's no-card-charge limit; this does not block unrelated local work.
 
 Fresh release checkout `pex-release-4543a58` stopped before packaging because a
 frontend source-contract test assumed LF while Git materialized CRLF. Dependency
@@ -75,8 +102,9 @@ A new operator-owned proof thread was created before PEX attachment:
 Warm-up notification waiting timed out; an independent `thread/read` confirmed
 one completed turn with no error and idle status. The private operator reader now
 retains notifications arriving before an RPC response. Do not send another warm-up
-or describe this timeout as a failed worker completion. No PEX goal/grant/trigger
-has been sent for this new thread yet. Historical run-02 evidence stays unchanged.
+or describe this timeout as a failed worker completion. The subsequent goal/grant/
+recovery/revocation/detach all completed as recorded in the newer section above.
+Historical run-02 evidence stays unchanged.
 
 ### New live continuation: existing-worker setup and native recovery
 
@@ -301,17 +329,18 @@ not a native startup failure or a completed authenticated browser test.
 
 ## Remaining execution order
 
-1. **P0: finish native UI restart/retry verification of the reviewed repair below**, then finish real
-   native setup and persistence. First-run UX is pushed as `726a3d2` with remote equality.
-   The stronger proof contract, clean full-suite and controlled live recovery pair
-   now pass on their exact revisions above; they do not close pre-existing-worker proof.
+1. **P0: finish the clean release build and native restart/retry verification**, then
+   finish real native setup and persistence. Clean shared-worker recovery and quiet
+   cases pass on `4543a58`; this does not establish installed-build behavior. The
+   release worktree is building `da6d1b8` (same production code, CRLF-safe test/docs).
    Keep the measured large-fleet authority-read amplification tracked separately;
    correcting the 65-delivery fixture did not repair production fleet scalability.
 2. Complete native close/restore/restart and all-eight-pet checks. Settings layout,
    pet hide, message dismissal and restore have native evidence; restart does not yet.
-3. Recapture the real Codex + Strands restraint/recovery pair on the final runtime,
-   including independent verifier evidence where required and ten quiet tasks.
-   The latest retained v4 live pair proves source `6212b62`; see the curated live receipt.
+3. Recapture the real Codex + Strands restraint/recovery pair through the final
+   native runtime, then complete false-claim, uncertain-evidence and varied quiet
+   cases. The newest existing-worker production-path pair proves `4543a58`; older
+   v4 and repeated identical tasks remain historical, separately scoped evidence.
 4. Complete required cross-harness behavior, honest isolated comparisons, AgentCore
    deployment under the user's no-card-charge condition, and the final audited package.
 5. Record the real public demo video and finish the truthful submission artifacts.

@@ -1,7 +1,47 @@
 # Controlled live Codex + Strands proof
 
-Status: **fresh v4 pair validated on source revision
-`6212b625f01232405d8708cc134d1e515853387e`**.
+Status: **fresh production shared-worker pair independently reviewed on clean
+source `4543a58c84a7839d30168b292d2a6abe441214ea`**.
+
+## Existing-worker production path — newest evidence
+
+An operator created each dedicated demo worker before PEX inspected and connected
+to it. Persistent goals and correction grants were set through the normal bridge
+HTTP API. PEX neither started a replacement harness nor used a test-only delivery
+override. Worker configuration requested `gpt-5.3-codex-spark`; this is not an
+attestation of executed model identity. Supervisor inference used real Strands
+and the explicitly configured free Muse model, with no paid fallback.
+
+| Case | Observed behavior | Worker turns |
+| --- | --- | --- |
+| Controlled premature stop | Empty artifact → one evidence-grounded correction → exact `shipped\n` artifact → supported outcome, `helped=true` → NOOP | One warm-up, one deliberate stop, one PEX correction in the same thread |
+| Correct completion | Worker produced exact `shipped\n`; PEX returned NOOP with corrections enabled | One warm-up, one completion; no PEX-generated turn |
+
+Recovery used three main and three independently gathered verifier observations.
+An independent review recomputed all six output hashes and verified goal/session/
+trigger/request bindings and separate invocation IDs. The delivered correction,
+worker response, shell observations and final STOP share the exact correction
+turn. Immutable delivery scope also binds subscription, endpoint and connection
+generation across effect, intervention and durable audit. Final artifact bytes
+were checked independently, not inferred from the worker's completion claim.
+
+The quiet case made one real Strands decision (`used_llm=true`, 3,175 ms recorded
+inference latency) and produced no correction receipt. Both grants were revoked
+and both observers detached; separate worker reads confirmed idle completed
+threads without stopping their App Server. Warm-up notifications were not
+reliably delivered to the operator's waiter: one timed out and the other was
+closed after read-only inspection established completion. Neither warm-up was
+resent. This is retained as an operator-driver limitation, not erased as success.
+
+Private terminal capture SHA-256 values:
+
+- Recovery: `D5FA8E24115D159FBDC87665298E7F30210BBA34599DE0FB2CC1433A13441F1F`.
+- Quiet: `A7DEB3CE10DE35DD0C979FDFF802D8075EBBE694C05CB413AEFF040CDE464FB3`.
+
+These are controlled dedicated-worker cases, not proof on an unrelated user's
+ongoing work, ten varied tasks, productivity lift, deployed AgentCore, future
+silence, or final installed-build behavior. Earlier evidence below remains
+historical and is not silently relabeled as this production path.
 
 ## Fresh independently bound pair
 

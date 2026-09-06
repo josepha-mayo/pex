@@ -4,7 +4,11 @@
 
 Start with [CHECKPOINT_2026_09_06.md](CHECKPOINT_2026_09_06.md). It records the newer
 source, exact retained package, clean-checkout failure diagnosis, native pet-close proof,
-settings repairs, physical-Escape UI stop, protected file, owners and next actions.
+settings repairs, native-control boundaries, protected file, owners and next
+actions. Native checks resumed with permission, but a newer physical Escape
+stopped them again: do not send native input until permission is renewed.
+Fresh shared-worker recovery and separate quiet
+proofs now pass on clean `4543a58`; final installed-build gates remain open.
 All `current` or `final` headings below are historical wherever they conflict.
 The goal remains active and the full three-spec submission scope remains incomplete.
 Latest user cost instruction: subagents use **GPT-5.6 Terra, medium reasoning**;
