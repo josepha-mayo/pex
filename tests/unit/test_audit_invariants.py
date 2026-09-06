@@ -43,7 +43,7 @@ def test_grok_build_acp_is_agent_stdio_not_grok_acp(tmp_path):
     assert acp_command(str(grok)) == [str(grok), "agent", "stdio"]
 
 
-def test_pexbench_manifest_stays_unfrozen_without_one_coherent_live_run():
+def test_pexbench_manifest_stays_unfrozen_without_one_coherent_live_run(tmp_path, monkeypatch):
     import yaml
 
     path = Path("benchmarks/four_arm.py")
@@ -51,10 +51,15 @@ def test_pexbench_manifest_stays_unfrozen_without_one_coherent_live_run():
     module = importlib.util.module_from_spec(spec)
     assert spec.loader
     spec.loader.exec_module(module)
+    # The repository intentionally does not track raw result JSONL files. Keep
+    # this honesty invariant independent of ignored developer-local runs.
+    monkeypatch.setattr(module.runner, "RESULTS", tmp_path / "empty-results")
     manifest = yaml.safe_load(Path("benchmarks/manifest.yaml").read_text(encoding="utf-8"))
     blockers = module.freeze_blockers()
     assert blockers
-    assert "single immutable result file" in blockers[0]
+    assert module.coherent_presentation_runs() == []
+    assert any("no result for cursor/" in blocker for blocker in blockers)
+    assert any("no result for codex_pex/" in blocker for blocker in blockers)
     assert manifest.get("frozen") is False
 
 
