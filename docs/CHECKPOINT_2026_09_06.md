@@ -48,8 +48,26 @@ the mismatched ID, invalidates its connection, and the adapter later records onl
 the generic subscription exception. This is not selected-worker closure.
 The [official App Server documentation](https://learn.chatgpt.com/docs/app-server)
 describes that lifecycle pair on idle unload, but does not explicitly establish
-recipient broadcast policy. A narrowly validated foreign-lifecycle routing fix
-is under review; no arbitrary foreign events should enter selected-worker state.
+recipient broadcast policy. The foreign identity matched the earlier run-03
+worker in private receipts. A reviewed routing repair now discards only exact,
+schema-minimal foreign status/closed notifications after journaling and receipt
+revision updates. Selected lifecycle events remain observable; foreign requests,
+turns/items, malformed/ambiguous IDs and expanded payloads remain rejected.
+Foreign status payloads with `activeFlags` still conservatively disconnect; this
+is not a general broadcast-compatibility claim. Fresh live replay remains open.
+
+Independent review caught a whitespace-normalized foreign-ID exception in the
+initial patch; exact raw/canonical equality now rejects it. Final root six-file
+transport/subscription/shared-adapter/lifecycle/claimed-dispatch/causal gate:
+**169 passed in 9.21s**. The preceding run had **168 passed, 1 failed** because an
+existing 20 ms timeout fixture expired during initialization before its intended
+request was written. Setup now finishes with the normal timeout before applying
+20 ms only to the withheld request. Runtime timeout and no-retry assertions are
+unchanged. Independent transport gate: 55 passed; Ruff passed.
+
+The old live bridge process (PID 18168 when checked) still ran after its historical
+exec handle became unavailable; do not treat a missing tool handle as process exit.
+No worker, bridge or desktop restart occurred in this repair cycle.
 
 Regression expansion after parser repair: shared accepted records preserve both
 failed and passed pytest state and exact targeted scope (8 tests passed); the

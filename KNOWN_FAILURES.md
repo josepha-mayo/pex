@@ -15,8 +15,11 @@ entries below: they preserve historical failures, not current blanket blockers.
   was only `CodexSubscriptionError`; receive-journal inspection subsequently found
   a foreign-thread `thread/status/changed` (`notLoaded`) and `thread/closed` pair.
   The transport rejected their thread ID and closed its observer. Selected-worker
-  closure was not observed. Safe lifecycle routing is under review. Post-detach
-  effective correction authority is false; explicit revoke did not succeed.
+  closure was not observed. Reviewed minimal foreign-lifecycle filtering now
+  preserves selected-worker observation and all freshness revisions (169 affected
+  tests passed), but fresh live replay remains open. Foreign statuses with
+  `activeFlags` still fail closed. Post-detach effective correction authority is
+  false; explicit revoke did not succeed.
 - Clean `da6d1b8` package integrity passed after reusing the retained extractor;
   the initial missing-extractor failure receipt remains retained. These unsigned
   packages predate the parser repair and do not prove current installed behavior.
