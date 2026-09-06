@@ -2,6 +2,16 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Background tracker completion: repeated running observations for the same
+session/PID formerly created duplicate pending launches, and foreign-session
+terminal events could settle a matching PID. Two regressions failed before
+repair; a same-PID/different-session case guards against over-deduplication.
+The tracker now replaces only the same session/PID observation and binds
+settlement to session identity. **25 targeted background unit/API tests passed,
+15 deselected in 16.38s**, scoped Ruff clean. PID reuse/process birth identity,
+PID-less concurrent identical commands and true abandonment intent remain
+unproven; do not describe this as complete background supervision.
+
 Semantic-gate follow-up inspected the existing force option across pipeline,
 local/AgentCore routing and remote runtime. It is not a safe one-line bypass:
 the pipeline semantic flag also affects ambiguous-dispatch accounting, and each

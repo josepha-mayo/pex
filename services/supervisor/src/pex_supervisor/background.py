@@ -43,6 +43,12 @@ def find_abandoned_background(events: list[HarnessEvent]) -> dict[str, Any] | No
     for event in ordered:
         launch = _launch_from(event)
         if launch is not None:
+            if launch["pid"] is not None:
+                launches = [
+                    prior for prior in launches
+                    if (prior["session_id"], prior["pid"])
+                    != (launch["session_id"], launch["pid"])
+                ]
             launches.append(launch)
             continue
         if not launches:
@@ -129,6 +135,7 @@ def _launch_from(event: HarnessEvent) -> dict[str, Any] | None:
         "command": command[:200],
         "command_identity": _command_identity(command),
         "pid": pid,
+        "session_id": event.session_id,
         "event_id": event.event_id,
     }
 
@@ -148,6 +155,8 @@ def _observed_pid(state: dict[str, Any]) -> int | None:
 
 
 def _finishes(event: HarnessEvent, launch: dict[str, Any]) -> bool:
+    if event.session_id != launch.get("session_id"):
+        return False
     state = event.process_state if isinstance(event.process_state, dict) else {}
     if state.get("running") is not False and state.get("exit_code") is None:
         return False

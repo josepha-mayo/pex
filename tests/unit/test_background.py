@@ -32,6 +32,33 @@ def test_background_jobs_can_finish_out_of_launch_order():
     assert find_abandoned_background(events) is None
 
 
+def test_repeated_running_observations_do_not_duplicate_a_pid_bound_job():
+    events = [_job_event(0, pid=101), _job_event(1, pid=101),
+              _job_event(2, pid=101, running=False)]
+    assert find_abandoned_background(events) is None
+
+
+def test_foreign_session_terminal_event_cannot_settle_a_job():
+    foreign = _job_event(1, pid=101, running=False).model_copy(
+        update={"session_id": "synthetic:other"},
+    )
+    result = find_abandoned_background([_job_event(0, pid=101), foreign])
+    assert result is not None
+    assert result["event_id"] == "e0"
+
+
+def test_same_pid_observations_in_different_sessions_do_not_replace_each_other():
+    foreign_launch = _job_event(1, pid=101).model_copy(
+        update={"session_id": "synthetic:other"},
+    )
+    foreign_exit = _job_event(2, pid=101, running=False).model_copy(
+        update={"session_id": "synthetic:other"},
+    )
+    result = find_abandoned_background([_job_event(0, pid=101), foreign_launch, foreign_exit])
+    assert result is not None
+    assert result["event_id"] == "e0"
+
+
 def test_unidentified_command_exit_does_not_finish_an_identified_job():
     events = [_job_event(0, pid=101),
               _job_event(1, running=False, command="git status")]
