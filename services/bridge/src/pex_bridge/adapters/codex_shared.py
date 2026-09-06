@@ -41,6 +41,9 @@ MAX_PATH_CHARS = 4_096
 MAX_DISPATCH_TEXT_BYTES = 65_536
 CLEANUP_TIMEOUT_SECONDS = 3.5
 _CONNECTOR_REAPERS: set[asyncio.Task[None]] = set()
+_FOREIGN_LIFECYCLE_STATUS_TYPES = frozenset({
+    "active", "idle", "notLoaded", "systemError", "unknown",
+})
 
 
 class SharedCodexProtocolError(RuntimeError):
@@ -922,6 +925,12 @@ class CodexSharedAppServerTransport:
         params = bounded_observed_mapping(message.get("params"))
         if params is None:
             raise SharedCodexProtocolError("shared Codex event has malformed params")
+        if self._is_ignorable_foreign_lifecycle_notification(message, method, params):
+            # App Server lifecycle broadcasts for another thread are neither
+            # selected-worker evidence nor a request PEX may answer.  The
+            # bytes and envelope revisions were already journaled above, so a
+            # later dispatch remains conservatively bound to their receipt.
+            return
         event_thread_id = params.get("threadId")
         if event_thread_id is not None and event_thread_id != self.thread_id:
             raise SharedCodexProtocolError("shared Codex event targets the wrong thread")
@@ -937,6 +946,47 @@ class CodexSharedAppServerTransport:
                 "connection_generation": self.connection_generation,
             }
         )
+
+    def _is_ignorable_foreign_lifecycle_notification(
+        self, message: dict[str, Any], method: str, params: dict[str, Any]
+    ) -> bool:
+        """Accept only a schema-minimal, non-request lifecycle broadcast.
+
+        Everything else that names another thread remains an integrity error:
+        turns/items can carry selected-worker semantics, and server requests
+        must never be discarded in a way that could imply an approval path.
+        """
+        envelope_keys = set(message)
+        if (
+            "id" in message
+            or method not in {"thread/status/changed", "thread/closed"}
+            or envelope_keys not in ({"method", "params"}, {"jsonrpc", "method", "params"})
+            or ("jsonrpc" in message and message["jsonrpc"] != "2.0")
+        ):
+            return False
+        raw_thread_id = params.get("threadId")
+        try:
+            thread_id = bounded_adapter_id(raw_thread_id, field="shared Codex event thread id")
+        except ValueError:
+            return False
+        # This ignored broadcast must already carry its canonical identity.
+        # Never let normalization turn an ambiguous foreign identity into an
+        # ignorable one.
+        if raw_thread_id != thread_id:
+            return False
+        if thread_id == self.thread_id:
+            return False
+        if method == "thread/closed":
+            return set(params) == {"threadId"}
+        if set(params) != {"threadId", "status"}:
+            return False
+        status = params["status"]
+        # The observed expiry broadcast carries just ``type: notLoaded``.
+        # A flag or a future status extension is not needed for this narrowly
+        # ignorable shape, so retain the existing fail-closed boundary.
+        if not isinstance(status, dict) or set(status) != {"type"}:
+            return False
+        return status.get("type") in _FOREIGN_LIFECYCLE_STATUS_TYPES
 
     def _invalidate(self, failure: BaseException) -> None:
         self.initialized = False

@@ -329,9 +329,126 @@ async def test_wrong_thread_notification_invalidates_connection(tmp_path: Path) 
 
 
 @pytest.mark.asyncio
+async def test_pure_foreign_lifecycle_broadcast_is_ignored_without_weakening_freshness(
+    tmp_path: Path,
+) -> None:
+    channel = MemoryAppServerChannel()
+    transport = make_transport(tmp_path, channel)
+    await transport.ensure_ready()
+    before = transport.received_envelope_revision
+    before_chunk = transport.received_chunk_revision
+    generation = transport.connection_generation
+
+    await channel.emit({
+        "jsonrpc": "2.0",
+        "method": "thread/status/changed",
+        "params": {"threadId": "thr_other", "status": {"type": "notLoaded"}},
+    })
+    await channel.emit({"method": "thread/closed", "params": {"threadId": "thr_other"}})
+    await channel.emit({"method": "turn/completed", "params": {"threadId": "thr_exact"}})
+    for _ in range(40):
+        if (
+            transport.notifications
+            and transport.received_envelope_revision == before + 3
+            and transport.received_chunk_revision == before_chunk + 3
+        ):
+            break
+        await asyncio.sleep(0)
+
+    assert transport.initialized is True
+    assert transport.connection_generation == generation
+    assert transport.received_envelope_revision == before + 3
+    assert transport.received_chunk_revision == before_chunk + 3
+    assert transport.drain_notifications() == [{
+        "method": "turn/completed",
+        "params": {"threadId": "thr_exact"},
+        "shared_server_request": False,
+        "connection_generation": generation,
+    }]
+    await transport.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("message", [
+    {"method": "thread/status/changed", "params": {"threadId": "thr_other"}},
+    {"method": "thread/status/changed", "params": {
+        "threadId": "thr_other", "status": {"type": "idle"}, "turn": {},
+    }},
+    {"method": "thread/status/changed", "params": {
+        "threadId": "thr_other", "status": {"type": "active", "activeFlags": []},
+    }},
+    {"jsonrpc": "1.0", "method": "thread/closed", "params": {"threadId": "thr_other"}},
+    {"method": "thread/status/changed", "params": {
+        "threadId": "thr_other", "status": {"type": "futureStatus"},
+    }},
+    {"method": "thread/closed", "params": {"threadId": " thr_other "}},
+    {"method": "thread/closed", "params": {"threadId": "thr_other", "status": {}}},
+    {"id": None, "method": "thread/closed", "params": {"threadId": "thr_other"}},
+    {"id": "foreign-request", "method": "thread/closed", "params": {"threadId": "thr_other"}},
+    {"method": "item/completed", "params": {"threadId": "thr_other", "item": {}}},
+])
+async def test_nonminimal_or_request_foreign_lifecycle_notification_invalidates(
+    tmp_path: Path, message: dict[str, Any],
+) -> None:
+    channel = MemoryAppServerChannel()
+    transport = make_transport(tmp_path, channel)
+    await transport.ensure_ready()
+
+    await channel.emit(message)
+    for _ in range(20):
+        if not transport.initialized:
+            break
+        await asyncio.sleep(0)
+
+    assert transport.initialized is False
+    assert transport.notifications == []
+    assert not any(response.get("id") == "foreign-request" for response in channel.messages)
+    await transport.close()
+
+
+@pytest.mark.asyncio
+async def test_selected_thread_close_remains_a_retained_notification(tmp_path: Path) -> None:
+    channel = MemoryAppServerChannel()
+    transport = make_transport(tmp_path, channel)
+    await transport.ensure_ready()
+
+    await channel.emit({"method": "thread/closed", "params": {"threadId": "thr_exact"}})
+    for _ in range(20):
+        if transport.notifications:
+            break
+        await asyncio.sleep(0)
+
+    assert transport.initialized is True
+    assert transport.drain_notifications()[0]["method"] == "thread/closed"
+    await transport.close()
+
+
+@pytest.mark.asyncio
+async def test_selected_thread_status_remains_a_retained_notification(tmp_path: Path) -> None:
+    channel = MemoryAppServerChannel()
+    transport = make_transport(tmp_path, channel)
+    await transport.ensure_ready()
+
+    await channel.emit({
+        "method": "thread/status/changed",
+        "params": {"threadId": "thr_exact", "status": {"type": "idle"}},
+    })
+    for _ in range(20):
+        if transport.notifications:
+            break
+        await asyncio.sleep(0)
+
+    assert transport.initialized is True
+    assert transport.drain_notifications()[0]["method"] == "thread/status/changed"
+    await transport.close()
+
+
+@pytest.mark.asyncio
 async def test_written_request_timeout_is_uncertain_and_not_retried(tmp_path: Path) -> None:
     channel = MemoryAppServerChannel(withhold={"thread/resume"})
-    transport = make_transport(tmp_path, channel, request_timeout_s=0.02)
+    transport = make_transport(tmp_path, channel)
+    await transport.ensure_ready()
+    transport.request_timeout_s = 0.02
 
     with pytest.raises(SharedCodexDeliveryUncertainError):
         await transport.request("thread/resume", {"threadId": "thr_exact"})
