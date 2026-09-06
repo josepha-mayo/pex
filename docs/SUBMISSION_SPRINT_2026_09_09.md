@@ -38,7 +38,10 @@ our build-spec target, subject to the user's no-card-charge authorization.
   complete test evidence (reviewed offline; fresh live recapture remains open).
 - [x] Rerun full clean-source Python after directory/shutdown repairs: `84d9bd3`,
   3,691 passed / 29 skipped / one warning, not warning-clean release proof.
-- [ ] Repair the aiosqlite cleanup warning and recheck final release sources.
+- [x] Repair fixture ownership and complete a strict full clean gate (`f529644`:
+  3,718 passed, 27 skipped, zero failures/errors or thread-warning recurrence).
+- [ ] Verify latest probe-reference repair on clean sources and repeat the
+  uncertain-evidence live case (run-08 failed safely before message delivery).
 - [ ] Diagnose native post-start bridge failure; retain original failure code.
 - [ ] Repeat cold start, normal retry and restart persistence on release sources.
 

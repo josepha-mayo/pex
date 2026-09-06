@@ -1,5 +1,12 @@
 # Controlled live Codex + Strands proof
 
+Latest failed case retained: run-08's missing-test-evidence scenario on clean
+`ee459f8` gathered evidence and reached a real model decision, but a probe-reference
+dispatch mismatch produced fail-closed NOOP before any verification message was
+sent. It is not counted as a successful quiet task. See
+[the failure and repair record](../../VERIFICATION_REFERENCE_REVIEW.md).
+The validated recovery cases below keep their original source-specific scope.
+
 Status: **production shared-worker recovery/quiet pair independently reviewed on
 clean `4543a58`, plus fresh false-claim recovery independently reviewed on clean
 `ee459f8`**. Each result remains bound to its own source revision.

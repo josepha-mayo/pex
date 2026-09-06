@@ -1,5 +1,21 @@
 # Known failures
 
+## 6 September current: verification-reference binding
+
+Run-08 on clean `ee459f8` gathered real evidence and minted a valid PYTEST probe.
+The real model selected its exact ID/kind, but dispatch required a full object;
+the final action was fail-closed NOOP, `verification_probe_not_bridge_minted`.
+The model-facing/parser-redacted full object also fails the old exact comparison.
+Original planner effect proves the reference match; final NOOP payload is not the
+original proposal. No verification message was sent. Scoped local reference
+binding repair passed targeted tests and independent review; fresh clean-source
+and live evidence are still required.
+See `docs/VERIFICATION_REFERENCE_REVIEW.md` for exact receipts and cleanup.
+
+Strict full clean `f529644`: 3,718 passed / 27 skipped, no thread warning, zero
+failures/errors. Historical warning attribution remains unproven; the new full
+gate did not reproduce it. This result predates the probe-reference repair.
+
 ## Current authority — 6 September shared-worker recovery and release
 
 Read [the current checkpoint](docs/CHECKPOINT_2026_09_06.md) before using older

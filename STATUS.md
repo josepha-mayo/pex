@@ -23,6 +23,14 @@ The full clean `84d9bd3` Python run has since completed: 3,691 passed, 29 skippe
 zero failures/errors, one aiosqlite thread-cleanup warning under investigation.
 That source predates the latest output repair; it is not warning-clean release proof.
 
+The strict full clean `f529644` run is now green: **3,718 passed / 27 skipped**,
+zero failures/errors, no thread-warning recurrence; root verified JUnit and source.
+This predates the latest verification-reference repair. Controlled run-08 exposed
+a real failure: Strands selected the correct offered probe by ID/kind, but bridge
+dispatch required the full probe object and safely rejected it. Failed evidence
+is retained; source repair and fresh live replay must pass before claiming this
+behavior works. No independent sandbox test-execution capability is claimed.
+
 The user is sharing the PC with other agents. Native mouse/keyboard and focus
 changes are paused, including PEX-targeted clicks. Continue background work only
 until foreground checks are agreed. Do not treat earlier pet screenshots as a

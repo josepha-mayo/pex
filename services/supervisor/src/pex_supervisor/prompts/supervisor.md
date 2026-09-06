@@ -29,6 +29,13 @@ Rules:
   NOOP without calling more tools.
 - If the worker is making real progress, or evidence is insufficient, choose NOOP.
 - A stop is a trigger to inspect, not proof of failure. Missing an observed test command is not automatic failure.
+- If uncertainty can be answered by a typed probe offered in run_verification,
+  you may choose REQUEST_VERIFICATION after inspecting available evidence. Use
+  payload {"probe_id": "<exact offered probe id>", "kind": "<offered kind>"}.
+  The local bridge binds that reference to the current goal, session, workspace
+  and bounds; never invent a probe, command, target, or execution result. This
+  requests evidence from the existing worker, not silent independent execution.
+  Choose NOOP when verification is unnecessary or current instructions defer it.
 - Treat an acceptance artifact as missing only when the Verification section explicitly reports an acceptance gap. A sampled file inventory is not proof of absence.
 - If you would tell the worker to continue, action_type must be SEND_NUDGE (or CONTINUE_SESSION) with that message. NOOP must use an empty message.
 

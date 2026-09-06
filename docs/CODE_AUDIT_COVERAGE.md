@@ -6,6 +6,21 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Verification reference binding — 6 Sep
+
+New source/test paths: `services/bridge/src/pex_bridge/verification_actions.py`
+and `tests/unit/test_verification_action_binding.py`. Root reviewed both entire
+new files; changed-path scope covers pipeline dispatch binding, supervisor prompt
+contract and the additional handoff E2E regressions, not all of those existing
+files. Independent review identified model-text authority leakage with an otherwise
+valid reference; canonical locally generated text now replaces it for every form.
+See [VERIFICATION_REFERENCE_REVIEW.md](VERIFICATION_REFERENCE_REVIEW.md) for live
+failure provenance, final targeted gates and remaining live/clean-source limits.
+
+The earlier fixture-ownership strict full clean `f529644` gate is complete:
+3,718 passed / 27 skipped, zero failures/errors and no thread-warning recurrence.
+This is not full-file audit completion or a full run of the newer probe repair.
+
 ### Handoff fixture resource ownership — 6 Sep
 
 Changed-path review only: `tests/e2e/test_handoff_and_permissions.py` client

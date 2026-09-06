@@ -12,8 +12,10 @@ from shared mouse, keyboard and foreground focus, even when targeting only PEX.
 Fresh shared-worker recovery and separate quiet proofs passed on clean `4543a58`;
 the false-test-claim recovery now passed independent review on clean `ee459f8`.
 Full clean `84d9bd3` testing completed with 3,691 passes, 29 skips and one cleanup
-warning. A fixture ownership repair is pushed as `f529644`; the new full strict
-run is active on that revision. Consult the checkpoint for exact handles/receipts.
+warning. The new full strict run on fixture repair `f529644` passed: 3,718 passed,
+27 skipped, zero failures/errors or thread warnings. Run-08 exposed a genuine
+verification-probe binding failure; its exact original decision and terminal
+receipts are retained. Consult the checkpoint before continuing the repair/live replay.
 Final installed-build gates remain open.
 All `current` or `final` headings below are historical wherever they conflict.
 The goal remains active and the full three-spec submission scope remains incomplete.

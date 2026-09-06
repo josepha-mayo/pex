@@ -16,16 +16,32 @@ Continue background work; ask before the next foreground PEX check.
 
 ### Latest full strict offline gate
 
-Latest full strict offline gate is active on clean detached
+Latest full strict offline gate passed on clean detached
 `f52964472ed8f257a228afde4e9e685e4665808f` in the reused owned
 `pex-verify-84d9bd3` worktree (old ignored receipts preserved). Wrapper session
 `91498`, owned PID `11360`, started `2026-09-06T16:10:53Z`, BelowNormal priority,
-30-minute process cap. Locked sync including AgentCore extra passed (114 packages).
-Pytest promotes `PytestUnhandledThreadExceptionWarning` to error. New receipts:
+30-minute process cap. It finished normally at `16:35:01Z`; owned processes exited.
+Locked sync including AgentCore extra passed (114 packages).
+Pytest promotes `PytestUnhandledThreadExceptionWarning` to error. Result:
+**3,718 passed, 27 skipped in 1,441.70s**, exit 0, no warning summary, empty stderr.
+JUnit: 3,745 tests, zero failures/errors, 27 skips, 1,440.120s. Root independently
+checked XML totals/hash, exact revision and tracked-clean worktree. Receipts:
 `build/pytest-full-f529644.{xml,stdout.log,stderr.log,cap.log}`. All live flags and
-provider/AWS credentials are disabled for that child. Do not restart it merely
-because a polling call expires; check the same handle/process. No terminal result
-is claimed yet.
+provider/AWS credentials were disabled for that child. XML SHA-256:
+`7FE2851868776152D6A173765E692477E4FA3A5199C9BF922320AD618460560A`.
+This run predates the new verification-reference repair. The historical warning's
+exact attribution is still unproven; it did not recur in this strict full gate.
+
+### Missing-test-evidence run-08 — retained failure and repair
+
+Run-08 independently gathered evidence and selected the exact offered probe by
+ID/kind, but dispatch required its full object and replaced the request with
+fail-closed NOOP. No verification message was sent. Original durable planner
+effect, safe detach, worker state and local repair are documented in
+[VERIFICATION_REFERENCE_REVIEW.md](VERIFICATION_REFERENCE_REVIEW.md).
+Fresh clean-source/live replay is required; this is not successful restraint.
+PEX still lacks an independent sandbox test runner: its REQUEST_VERIFICATION
+asks the existing worker for scoped evidence and must observe actual execution.
 
 ### Fresh false-test-claim recovery — clean `ee459f8`, run-07
 

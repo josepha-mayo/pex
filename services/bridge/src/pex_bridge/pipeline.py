@@ -139,6 +139,7 @@ from pex_bridge.store import (
     utcnow,
 )
 from pex_bridge.supervisor_context import build_supervisor_context
+from pex_bridge.verification_actions import bind_verification_action
 from pex_bridge.workspace_access import workspace_read_check
 from pex_bridge.workspace_binding import WorkspaceAuthorityError, require_workspace_sample
 
@@ -2574,7 +2575,19 @@ class Pipeline:
                 )
             except (TypeError, ValueError):
                 minted_gathering = None
-            if minted_gathering is None or _exact_action_probe(action, minted_gathering) is None:
+            bound_action = (
+                bind_verification_action(action, minted_gathering, request)
+                if minted_gathering is not None
+                else None
+            )
+            if bound_action is not None:
+                result.action = action = bound_action
+                result.traces = [*result.traces[-255:], "verification_probe_bound_locally"]
+            if (
+                bound_action is None
+                or minted_gathering is None
+                or _exact_action_probe(action, minted_gathering) is None
+            ):
                 result.action = _action_from_proposal(
                     request,
                     {
