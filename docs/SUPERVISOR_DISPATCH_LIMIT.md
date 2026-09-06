@@ -30,4 +30,10 @@ outlive a caller timeout. A free-provider label is not a billing guarantee.
 No new mid-task inference is enabled by this setting. A user-facing budget editor,
 aggregate account limits, exact per-model accounting and semantic trajectory
 review remain separate unfinished requirements. Treat the retained planner
-receipt as the audit source; this change does not add a dedicated UI warning.
+receipt as the audit source. When the latest projected action is a budget-skipped
+NOOP, the desktop status says "Review skipped" and explains that PEX did not
+verify that stop. This replaces worker completion narration, but never hides
+offline/stale state, human decisions, blocked workers or drift. Concurrent
+working counts remain visible. The notice describes the last review; it is not
+an inventory of all exhausted sessions or proof that a limit is still configured.
+A later projected action replaces it. There is no automatic spending escalation.

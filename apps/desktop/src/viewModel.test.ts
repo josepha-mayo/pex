@@ -694,6 +694,37 @@ test("malformed context expiry fails closed as stale", () => {
   assert.equal(isStale(null), false);
 });
 
+test("a skipped budget-limited review is not presented as verified completion", () => {
+  const pet = {
+    headline: "quiet",
+    working: 0,
+    drifting: 0,
+    blocked: 0,
+    needs_you: 0,
+    sessions: [],
+    last_message: "Done, all tests pass.",
+    last_action: {
+      id: "budget-stop", session_id: "codex:budget", action: "NOOP",
+      diagnosis: "supervisor_dispatch_budget_exhausted", used_llm: false,
+    },
+  };
+  const copy = statusCopy(pet, null);
+  assert.equal(copy.tone, "watch");
+  assert.equal(copy.label, "Review skipped");
+  assert.match(copy.detail, /review limit.*did not verify/i);
+  assert.doesNotMatch(copy.detail, /all tests pass/i);
+  assert.equal(statusCopy({ ...pet, working: 2 }, null).label, "2 working · review skipped");
+  assert.equal(statusCopy({ ...pet, needs_you: 1 }, null).tone, "need");
+  assert.match(statusCopy({ ...pet, blocked: 1, headline: "1 blocked" }, null).label, /blocked/);
+  assert.match(statusCopy({ ...pet, drifting: 1, headline: "1 drifting" }, null).label, /drifting/);
+  assert.equal(statusCopy(pet, null, "stale").label, "Last observed state");
+  assert.equal(statusCopy(pet, "offline").label, "Bridge offline");
+  assert.notEqual(statusCopy({ ...pet, last_action: null }, null).label, "Review skipped");
+  assert.notEqual(statusCopy({ ...pet, last_action: {
+    ...pet.last_action, diagnosis: "Completion supported by current evidence.",
+  } }, null).label, "Review skipped");
+});
+
 test("blocked state is never presented as quiet", () => {
   const pet = {
     headline: "1 blocked",

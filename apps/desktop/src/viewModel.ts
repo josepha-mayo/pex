@@ -627,6 +627,17 @@ export function statusCopy(
       detail: observed || `${pet.drifting} drifting`,
     };
   }
+  if (
+    pet?.last_action?.action === "NOOP" &&
+    pet.last_action.diagnosis === "supervisor_dispatch_budget_exhausted"
+  ) {
+    return {
+      tone: "watch",
+      label: pet.working ? `${pet.working} working · review skipped` : "Review skipped",
+      detail:
+        "The last review hit its session review limit. PEX did not verify that stop. Other sessions may still be supervised.",
+    };
+  }
   if (pet?.working) {
     return {
       tone: "work",

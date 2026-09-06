@@ -223,6 +223,9 @@ async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(tmp_pat
         assert effect["result"]["provider_started"] is False
         assert effect["result"]["supervisor_result"]["action"]["type"] == "NOOP"
         assert not adapters.synthetic.inbox.get(session.id)
+        snapshot = await pipeline.pet_snapshot()
+        assert snapshot["last_action"]["diagnosis"] == "supervisor_dispatch_budget_exhausted"
+        assert snapshot["last_action"]["used_llm"] is False
         await _drain_presentations(pipeline)
     finally:
         await store.close()

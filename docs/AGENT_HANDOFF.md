@@ -2,6 +2,19 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Desktop budget-skip honesty: a red regression showed a skipped review presented
+as quiet alongside a worker completion claim. `statusCopy` now renders "Review
+skipped" from the latest audited NOOP diagnosis, explicitly states that PEX did
+not verify that stop, and preserves urgent/freshness priority and concurrent
+working counts. This is latest-review history, not a persistent all-session
+budget inventory. Backend local/AgentCore mock matrix confirms this diagnosis
+and `used_llm=false` reach the pet snapshot after restart/replay: **4 passed,
+15 deselected in 19.71s**. Desktop view-model suite **64 passed**, TypeScript
+check passed. Before these changes, complete dispatch/store gate **50 passed
+in 60.49s**, thread warnings as errors. Protected loop hash unchanged. No live
+model calls, native input, bridge restart or paid operations; native rendering
+and current-source complete test/package gates remain unverified.
+
 Dispatch-cap review expanded the restart/failure/replay test to both local and
 direct AgentCore routing, and explicitly replays the exhausted event. **4
 mocked matrix cases passed, 15 deselected in 20.09s**, scoped Ruff clean.
