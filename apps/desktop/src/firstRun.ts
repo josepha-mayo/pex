@@ -28,7 +28,7 @@ export function statusWithFirstRunGuidance(
     return {
       ...status,
       label: "No worker connected",
-      detail: "Connect your existing work below to get started.",
+      detail: "Connect an existing worker to begin.",
     };
   }
   if (guidance.state === "set_goal") {

@@ -57,6 +57,19 @@ test("floating pet uses canonical first-run status instead of raw quiet copy", (
   assert.doesNotMatch(petRoute, /<PetStage[\s\S]*?status=\{status\}/u);
 });
 
+test("floating pet refreshes canonical goals without loading heavy settings state", () => {
+  const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+
+  assert.match(
+    app,
+    /const refreshPetGoals = useCallback\([\s\S]*?bridgeJson<Goal\[\]>\("\/v1\/goals"\)[\s\S]*?markCanonical\("goals", "fresh"\)/u,
+  );
+  assert.match(
+    app,
+    /if \(!bridgeAvailable \|\| shell !== "pet"\) return;[\s\S]*?refreshPetGoals\(\)[\s\S]*?baseRequestSequence\.current \+= 1/u,
+  );
+});
+
 test("a missing credential binding cannot dispatch a key or expose it in errors", () => {
   assert.throws(() => supervisorSavePayload(custom, 7, null), (error: unknown) => {
     assert.ok(error instanceof Error);

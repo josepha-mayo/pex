@@ -7,6 +7,37 @@ STATUS, shipping checklist and submission draft.
 
 ## Source and package boundaries
 
+### Latest review cycle: shared outcome persistence and responsive pet assets
+
+The initial shared outcome patch was rejected by independent review: adding
+`shared_delivery_scope` during settlement violated the Store metadata contract.
+Root reproduced the failure in cancellation settlement (126 passed, 2 failed);
+the reviewer reproduced it in correction/framed flows (21 passed, 5 failed).
+The current repair captures immutable subscription scope at acknowledged dispatch,
+validates its Store/effect/audit binding and rejects a later subscription generation
+even if the same vendor turn ID reappears. Final independent gate is pending.
+
+A separate native responsiveness repair offloads bounded atlas reads/full Pillow
+validation to the framework thread pool. Four pet API tests passed, including a
+blocked-reader case that completes the real HMAC identity endpoint while artwork
+requests remain pending. This establishes event-loop responsiveness for that case,
+not the root cause of the earlier native exit. Identity limits remain unchanged.
+
+The floating-pet shell now refreshes canonical goals with a lightweight 30-second
+poll and stale-response fencing, without loading the heavy Settings catalog.
+Desktop tests: 192 passed; production build passed. Native roster reinspection
+again showed all eight previews and the persisted hidden-pet checkbox. The older
+native binary is still running; latest-source cold-start/restart remains pending.
+
+A new operator-owned proof thread was created before PEX attachment:
+`01a076df-926d-7701-adb4-ff8c78838e9d`, workspace
+`C:\Users\JosephMayo\pex-live-demo\workspace\shared-recovery-20260906-03`.
+Warm-up notification waiting timed out; an independent `thread/read` confirmed
+one completed turn with no error and idle status. The private operator reader now
+retains notifications arriving before an RPC response. Do not send another warm-up
+or describe this timeout as a failed worker completion. No PEX goal/grant/trigger
+has been sent for this new thread yet. Historical run-02 evidence stays unchanged.
+
 ### New live continuation: existing-worker setup and native recovery
 
 The current execution checklist is `SUBMISSION_SPRINT_2026_09_09.md`.

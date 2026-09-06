@@ -6,6 +6,15 @@ Read all three binding specs and `CHECKPOINT_2026_09_06.md` before each work cyc
 Use Terra / medium for bounded independent reviews. Preserve the protected
 supervisor `loop.py` change. Push only reviewed, scoped updates.
 
+Official read-only recheck on 6 September: the
+[rules](https://agentsforhumans.devpost.com/rules) list 14 September, 5 PM PDT as
+the organizer's deadline. We keep the earlier 9 September internal target.
+The [project gallery](https://agentsforhumans.devpost.com/project-gallery) is not
+published yet, so no public ranked comparison was available there. Use the specs,
+judge criteria and retained live evidence as the quality bar; do not invent a rank.
+AgentCore is encouraged but not required by those official rules; it remains in
+our build-spec target, subject to the user's no-card-charge authorization.
+
 ## 1. Core product and reliability — first gate
 
 - [x] Real shared Codex thread inspected and confirmed without creating its work.

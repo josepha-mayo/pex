@@ -34,6 +34,7 @@ from pex_protocol.project_identity import ProjectLocator
 from pex_protocol.session import HarnessEvent, HarnessSession
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
+from starlette.concurrency import run_in_threadpool
 
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.acp_client import AcpRpcError
@@ -4168,7 +4169,9 @@ def create_app() -> FastAPI:
                 except (OSError, ValueError) as exc:
                     raise HTTPException(409, "imported pet spritesheet is unavailable") from exc
             try:
-                data = _read_pet_atlas(sheet)
+                # Disk reads and full Pillow validation must not block identity
+                # probes when the roster requests several atlases at once.
+                data = await run_in_threadpool(_read_pet_atlas, sheet)
             except FileNotFoundError as exc:
                 raise HTTPException(409, "pet spritesheet is unavailable") from exc
             except ValueError as exc:

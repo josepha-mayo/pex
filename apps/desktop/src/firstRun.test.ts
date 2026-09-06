@@ -93,7 +93,7 @@ test("first-run wording only replaces a genuinely quiet unpaused status", () => 
   assert.deepEqual(statusWithFirstRunGuidance(quiet, connect, false), {
     tone: "quiet",
     label: "No worker connected",
-    detail: "Connect your existing work below to get started.",
+    detail: "Connect an existing worker to begin.",
   });
 
   const paused: StatusCopy = { tone: "quiet", label: "PEX", detail: "Supervision is paused. PEX will not intervene until it is resumed." };

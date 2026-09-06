@@ -1,4 +1,8 @@
+import asyncio
+import hashlib
+import hmac
 import json
+import threading
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
@@ -481,6 +485,49 @@ async def test_command_deck_fingerprints_use_stop_verification_counts(client: As
     assert cursor["verified_success_rate"] == pytest.approx(1 / 3)
     assert cursor["token_efficiency"] is None
     assert "good at" not in response.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_pet_atlas_loading_keeps_authenticated_identity_responsive(client, monkeypatch):
+    release = threading.Event()
+    entered = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    payload = b"validated-atlas-test-bytes"
+
+    def blocked_reader(_path):
+        loop.call_soon_threadsafe(entered.set)
+        release.wait(5)
+        return payload
+
+    monkeypatch.setattr("pex_bridge.app._read_pet_atlas", blocked_reader)
+    monkeypatch.setattr("pex_bridge.pets.resolve_spritesheet", lambda _id: "fixture.webp")
+    monkeypatch.setattr(state.settings, "require_auth", True)
+    monkeypatch.setattr(state, "token", "unit-test-identity-token")
+    requests = [
+        asyncio.create_task(client.get(
+            "/v1/pets/pex/spritesheet",
+            headers={"Authorization": "Bearer unit-test-identity-token"},
+        ))
+        for _ in range(2)
+    ]
+    try:
+        await asyncio.wait_for(entered.wait(), 2)
+        assert all(not request.done() for request in requests)
+        challenge = "a" * 64
+        identity = await asyncio.wait_for(
+            client.get("/health/identity", params={"challenge": challenge}), 1
+        )
+        assert identity.status_code == 200
+        assert identity.json()["proof"] == hmac.new(
+            b"unit-test-identity-token", challenge.encode(), hashlib.sha256
+        ).hexdigest()
+        assert all(not request.done() for request in requests)
+    finally:
+        release.set()
+        responses = await asyncio.gather(*requests)
+    assert all(response.status_code == 200 for response in responses)
+    assert all(response.content == payload for response in responses)
+    assert all(response.headers["content-type"] == "image/webp" for response in responses)
 
 
 @pytest.mark.asyncio

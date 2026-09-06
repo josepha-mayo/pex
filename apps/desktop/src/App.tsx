@@ -553,6 +553,20 @@ export function App() {
     if (capResult.status === "fulfilled" && capResult.value) setHatchCap(capResult.value);
   }, [markCanonical]);
 
+  const refreshPetGoals = useCallback(async () => {
+    const requestSequence = ++baseRequestSequence.current;
+    try {
+      const refreshed = await bridgeJson<Goal[]>("/v1/goals");
+      if (requestSequence !== baseRequestSequence.current) return;
+      if (!Array.isArray(refreshed)) throw new Error("invalid goal list");
+      setGoals(refreshed);
+      markCanonical("goals", "fresh");
+    } catch {
+      if (requestSequence !== baseRequestSequence.current) return;
+      markCanonical("goals", "failed", "Persistent goals could not be refreshed.");
+    }
+  }, [markCanonical]);
+
   useEffect(() => {
     if (!bridgeAvailable) return;
     let cancelled = false;
@@ -664,6 +678,16 @@ export function App() {
       window.clearInterval(poll);
     };
   }, [bridgeAvailable, loadBaseState, shell]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || shell !== "pet") return;
+    void refreshPetGoals();
+    const poll = window.setInterval(() => void refreshPetGoals(), 30000);
+    return () => {
+      baseRequestSequence.current += 1;
+      window.clearInterval(poll);
+    };
+  }, [bridgeAvailable, refreshPetGoals, shell]);
 
   useEffect(() => {
     const route = () => {
