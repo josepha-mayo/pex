@@ -4,7 +4,13 @@ import asyncio
 
 import pytest
 from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
-from pex_protocol.enums import EventType, SessionStatus
+from pex_protocol.enums import EventType, HarnessType, SessionStatus
+from pex_protocol.verification import (
+    PytestInvocationScope,
+    VerificationProbe,
+    VerificationProbeKind,
+    classify_pytest_invocation,
+)
 from test_codex_subscription import _notification, _subscribed
 
 
@@ -14,6 +20,78 @@ async def eventually(predicate):
             await asyncio.sleep(0.005)
 
     await asyncio.wait_for(wait(), timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_shared_completed_powershell_pytest_keeps_exact_target_scope(tmp_path):
+    coordinator, transport = await _subscribed(tmp_path)
+    adapter = CodexSharedAdapter(coordinator)
+    command = (
+        r'"C:\runtime\pwsh.exe" -Command '
+        "'C:/workspace/.venv/Scripts/python.exe -m pytest -q test_normalizer.py'"
+    )
+    for turn_id, item_id, output, exit_code in (
+        ("turn-failed", "pytest-failed", "FAILED test_normalizer.py::test_trim\n4 failed", 1),
+        ("turn-passed", "pytest-passed", "4 passed in 0.31s", 0),
+    ):
+        transport.notifications.append(
+            _notification(
+                "turn/started",
+                {"threadId": "thread-1", "turn": {"id": turn_id}},
+            )
+        )
+        transport.notifications.append(
+            _notification(
+                "item/completed",
+                {
+                    "threadId": "thread-1",
+                    "turnId": turn_id,
+                    "item": {
+                        "id": item_id,
+                        "type": "commandExecution",
+                        "command": command,
+                        "cwd": "C:/workspace",
+                        "aggregatedOutput": output,
+                        "exitCode": exit_code,
+                        "status": "completed" if exit_code == 0 else "failed",
+                    },
+                },
+            )
+        )
+    try:
+        events = [adapter._event(record) for record in (await coordinator.drain_live()).records]
+        shells = [
+            event
+            for event in events
+            if event is not None and event.event_type == EventType.SHELL
+        ]
+        assert len(shells) == 2
+        assert shells[0].process_state["pytest"]["ok"] is False
+        assert shells[0].process_state["pytest"]["exit_code"] == 1
+        assert shells[1].process_state["pytest"]["ok"] is True
+        assert shells[1].process_state["pytest"]["exit_code"] == 0
+        assert shells[1].process_state["pytest"]["passed"] == 4
+
+        invocation = classify_pytest_invocation(shells[1].command)
+        assert invocation is not None
+        assert invocation.scope == PytestInvocationScope.TARGETED
+        assert invocation.relative_targets == ("test_normalizer.py",)
+        exact_probe = VerificationProbe(
+            id="probe-shared-targeted-pytest",
+            kind=VerificationProbeKind.PYTEST,
+            harness_type=HarnessType.CODEX,
+            session_id=adapter.session.id,
+            project_id=adapter.session.project_id,
+            goal_id="goal-shared-targeted-pytest",
+            request_event_id="request-stop",
+            cwd=adapter.session.cwd,
+            relative_targets=("test_normalizer.py",),
+        )
+        full_probe = exact_probe.model_copy(update={"relative_targets": ()})
+        assert exact_probe.matches_pytest_invocation(invocation) is True
+        assert full_probe.matches_pytest_invocation(invocation) is False
+    finally:
+        await transport.close()
 
 
 @pytest.mark.parametrize("terminal_status", ["completed", "interrupted", "failed"])
