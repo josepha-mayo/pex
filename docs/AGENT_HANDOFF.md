@@ -2,6 +2,21 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Updated clean backend gate: verified `pex-verify-5ee1ee7` had no tracked/untracked
+changes, then advanced that existing detached verification checkout to `89c6436`
+(its directory name is now historical). Offline frozen sync checked 113 packages;
+all three PEX package imports resolve inside that checkout. Nine-file suite:
+`test_event_processing_store.py`, `test_event_processing_pipeline.py`,
+`test_pet_snapshot.py`, `test_verify.py`, `test_evidence_tools.py`,
+`test_workspace_inspect.py`, `test_background.py`, `test_drift.py`,
+`test_planner.py`: **237 passed, 1 skipped in 83.37s** with unhandled thread
+warnings treated as errors. Skip: filesystem denies symlink creation, line 204
+of workspace inspection test. All five live-provider/desktop markers excluded.
+This supersedes the older six-file clean gate for this selected scope and includes
+the dispatch cap and pet-projection regression. It does not prove full Python,
+real semantic trajectory, installed native UX or package readiness. Protected
+main-checkout loop remains untouched; no live bridge was switched or restarted.
+
 Current frontend integration gate at `38cba80`: normal `npm test` covers all
 seven tracked desktop TypeScript test files plus both release/package contract
 suites, including pet gesture/dismissal regressions inside `viewModel.test.ts`.
