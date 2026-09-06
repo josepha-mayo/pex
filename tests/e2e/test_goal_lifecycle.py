@@ -184,13 +184,16 @@ async def test_attach_validates_goal_project_and_explicit_replacement(client: As
 
 
 @pytest.mark.asyncio
-async def test_goal_create_keeps_fenced_examples_out_of_persistent_lists(client: AsyncClient):
+@pytest.mark.parametrize("heading_prefix", ["", "## "])
+async def test_goal_create_keeps_fenced_examples_out_of_persistent_lists(
+    client: AsyncClient, heading_prefix: str,
+):
     objective = (
         "Implement the real feature.\n\n```markdown\n"
-        "Acceptance criteria:\n- Example acceptance\n"
-        "Decisions:\n- Example decision\n```\n"
-        "Acceptance criteria:\n- Real acceptance\n"
-        "Decisions:\n- Real decision\n"
+        f"{heading_prefix}Acceptance criteria:\n- Example acceptance\n"
+        f"{heading_prefix}Decisions:\n- Example decision\n```\n"
+        f"{heading_prefix}Acceptance criteria:\n- Real acceptance\n"
+        f"{heading_prefix}Decisions:\n- Real decision\n"
     )
     created = await client.post("/v1/goals", json={
         "project_id": "demo", "title": "Fenced examples", "objective": objective,

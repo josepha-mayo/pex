@@ -2,6 +2,17 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Markdown goal usability: recognized hash headings (`#` through `######`, optional
+colon/closing hashes, up to three spaces indentation) now lift exact known
+section names into structured lists. Previously ordinary `## Acceptance criteria`
+was silently left unstructured. Five red regressions preceded repair; negative
+cases retain quoted, malformed, unknown and fenced headings as objective text
+only. Expanded HTTP create test confirms actual acceptance/decision persistence
+for both plain and Markdown labels. Full two-file gate: **41 passed in 27.97s**,
+thread warnings as errors, scoped Ruff/diff checks clean. Original objective and
+explicit-list precedence are unchanged. Setext headings and arbitrary Markdown
+semantics remain outside this bounded parser; full intent extraction is not proven.
+
 Intent extraction repair: full read of `public_task.py` found fenced Markdown
 examples were being lifted into authoritative acceptance/decision lists. Five
 new unit cases failed before repair. Parser now skips backtick/tilde fenced

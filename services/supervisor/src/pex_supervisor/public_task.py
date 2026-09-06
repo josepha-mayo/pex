@@ -16,6 +16,7 @@ _SECTION = re.compile(
 )
 _BULLET = re.compile(r"^\s*(?:[-*]|\d+[.)])\s+(?P<item>\S.*)$")
 _FENCE = re.compile(r"^ {0,3}(?P<marker>`{3,}|~{3,})(?P<info>.*)$")
+_ATX_HEADING = re.compile(r"^ {0,3}#{1,6}[ \t]+(?P<body>.*)$")
 _SECTION_KEYS = {
     "acceptance criteria": "acceptance_criteria",
     "constraints": "constraints",
@@ -87,7 +88,15 @@ def parse_public_task(task_md: str) -> dict[str, str | list[str]]:
             fence_marker = fence.group("marker")
             current = None
             continue
-        heading = _SECTION.match(line.strip())
+        section_label = line.strip()
+        markdown_heading = _ATX_HEADING.match(line)
+        if markdown_heading:
+            section_label = re.sub(
+                r"[ \t]+#+[ \t]*$", "", markdown_heading.group("body"),
+            ).strip()
+            if not section_label.endswith(":"):
+                section_label += ":"
+        heading = _SECTION.match(section_label)
         if heading:
             current = _SECTION_KEYS[heading.group("name").casefold()]
             continue

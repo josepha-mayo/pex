@@ -5,6 +5,30 @@ from pex_protocol.goal import Goal
 from pex_supervisor.public_task import fill_empty_goal_lists_from_objective, parse_public_task
 
 
+@pytest.mark.parametrize("heading", [
+    "# Acceptance criteria", "## Acceptance criteria:",
+    "### Acceptance criteria ###", "   ###### Acceptance criteria: ##",
+])
+def test_public_task_extracts_markdown_section_headings(heading):
+    task = f"# Ship the parser\n\n{heading}\n- Tests pass\n## Notes\n- Not a criterion"
+    parsed = parse_public_task(task)
+    assert parsed["objective"] == task
+    assert parsed["acceptance_criteria"] == ["Tests pass"]
+
+
+@pytest.mark.parametrize("heading", [
+    "####### Acceptance criteria", "##Acceptance criteria", "> ## Acceptance criteria",
+    "    ## Acceptance criteria", "## Acceptance criteria for examples",
+])
+def test_public_task_does_not_guess_unrecognized_markdown_sections(heading):
+    assert parse_public_task(f"{heading}\n- Not adopted")["acceptance_criteria"] == []
+
+
+def test_markdown_sections_inside_fences_remain_examples():
+    task = "```md\n## Decisions\n- Example decision\n```\n## Decisions\n- Real decision"
+    assert parse_public_task(task)["decisions"] == ["Real decision"]
+
+
 @pytest.mark.parametrize("fence", ["```", "~~~", "````", "~~~~"])
 def test_public_task_does_not_promote_fenced_examples_to_goal_requirements(fence):
     task = (
