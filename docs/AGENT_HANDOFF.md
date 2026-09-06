@@ -112,6 +112,17 @@ route policy out of quoted human intent. This is narrow lexical triage repair,
 not proof of general semantic intent understanding. Focused unit/planner/contract
 gate: 79 passed in 21.27s. No Q03 attempt or fresh live claim yet; sandbox-local
 fixture temp/cache preparation remains open. Protected supervisor loop unchanged.
+Pre-attempt fixture update completed for Q03-Q10 only: each now has immutable
+`pytest.ini` with `-p no:cacheprovider --basetemp=.pex-test-tmp`; its case manifest
+includes that config and TASK documents pytest-only disposable local scratch.
+The requested full-suite command and public acceptance tests are unchanged.
+Root collect-only validation passed for all eight: 4,4,5,5,5,7,5,5 tests respectively.
+No `.pex-test-tmp` directory exists yet, so the sandboxed worker, not the root
+operator, will create its test scratch. Q01/Q02 and shared system temp paths/ACLs
+were untouched. This is collection/config validation, not proof the sandbox can
+execute the suite. Next: clean bb32b0f-source runtime and Q03 live verification;
+current dedicated 7435 bridge still runs 6f929ea and must not be mistaken for the
+new intent repair. All earlier live failure receipts remain authoritative.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 
