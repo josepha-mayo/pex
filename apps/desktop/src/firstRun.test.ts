@@ -23,6 +23,8 @@ test("first-run guidance does not infer readiness from stale session or goal sta
 test("first-run guidance distinguishes no usable worker from an attachable unbound worker", () => {
   const noWorker = firstRunGuidance({ sessionFresh: true, goalFresh: true });
   assert.deepEqual(noWorker?.cta, { intent: "connect", label: "How to connect a worker" });
+  const petWindowNoWorker = firstRunGuidance({ sessionFresh: true, goalFresh: false });
+  assert.equal(petWindowNoWorker?.title, "Connect an existing worker");
 
   const desktopOnly = firstRunGuidance({
     current: { ...worker, id: "codex:desktop", metadata: { source: "desktop" } },

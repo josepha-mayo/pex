@@ -222,7 +222,12 @@ impl BridgeRuntime {
         source: BridgeSource,
     ) -> Option<CommandChild> {
         let mut inner = self.0.lock().ok()?;
-        if inner.status.attempt != attempt {
+        if inner.status.attempt != attempt
+            || !matches!(
+                inner.status.phase,
+                BridgeBootstrapPhase::Starting | BridgeBootstrapPhase::Ready
+            )
+        {
             return None;
         }
         inner.status = BridgeBootstrapStatus::failed(attempt, code, message, retryable, source);
@@ -1213,6 +1218,37 @@ mod tests {
             .is_none());
         assert_eq!(runtime.begin_attempt(), Some(2));
         assert_eq!(runtime.begin_attempt(), None);
+    }
+
+    #[test]
+    fn first_same_generation_failure_survives_a_later_terminal_event() {
+        let runtime = BridgeRuntime::default();
+        let attempt = runtime.begin_attempt().unwrap();
+        runtime.finish_ready(attempt);
+        assert!(runtime
+            .finish_failed(
+                attempt,
+                "bridge_identity_lost",
+                "identity proof failed",
+                true,
+                BridgeSource::OwnedSidecar,
+            )
+            .is_none());
+        assert!(runtime
+            .finish_failed(
+                attempt,
+                "bridge_process_stopped",
+                "later terminal event",
+                true,
+                BridgeSource::OwnedSidecar,
+            )
+            .is_none());
+        assert_eq!(
+            runtime.status().code.as_deref(),
+            Some("bridge_identity_lost")
+        );
+        assert_eq!(runtime.begin_attempt(), Some(2));
+        assert_eq!(runtime.status().phase, BridgeBootstrapPhase::Starting);
     }
 
     #[test]

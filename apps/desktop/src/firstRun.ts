@@ -74,11 +74,11 @@ export function firstRunGuidance({
   sessionFresh: boolean;
   goalFresh: boolean;
 }): FirstRunGuidance | null {
-  if (!sessionFresh || !goalFresh) {
+  if (!sessionFresh) {
     return {
       state: "unavailable",
-      title: "Checking worker and goal state",
-      detail: "PEX will not infer readiness from cached or incomplete canonical state.",
+      title: "Checking local state",
+      detail: "Connecting to your local bridge…",
       cta: null,
     };
   }
@@ -88,6 +88,14 @@ export function firstRunGuidance({
       title: "Connect an existing worker",
       detail: "Open a supported worker first. PEX discovers existing sessions without starting a new harness.",
       cta: { intent: "connect", label: "How to connect a worker" },
+    };
+  }
+  if (!goalFresh) {
+    return {
+      state: "unavailable",
+      title: "Checking local state",
+      detail: "Loading this worker’s goal…",
+      cta: null,
     };
   }
   if (current.goal_id) {

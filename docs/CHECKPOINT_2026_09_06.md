@@ -9,6 +9,8 @@ STATUS, shipping checklist and submission draft.
 
 ### New live continuation: existing-worker setup and native recovery
 
+The current execution checklist is `SUBMISSION_SPRINT_2026_09_09.md`.
+
 The operator approved resuming native checks. On source `065cb22`, the native
 Home rendered correctly, but opening Companion settings was followed by a real
 `bridge_process_stopped` failure. This is not a passing stability result. Normal
@@ -23,8 +25,31 @@ shared session with no activity timestamp was excluded from the canonical pet
 snapshot. The projection now keeps that session selectable before its first live
 event; ordinary historical idle rows remain excluded. Focused root verification:
 **25 passed, 1 skipped** (pet snapshot and HTTP helper tests). Goal attachment and
-real correction through this shared-worker production path are still pending;
-the observer connection alone is not closed-loop proof.
+real correction through this shared-worker production path were pending at that
+snapshot. A fresh clean `1e645cd` bridge subsequently passed goal attachment and
+grant, independently generated and verified a specific correction through real
+Strands, sent it to the same existing worker, and observed a final NOOP. The
+external artifact oracle verified exact bytes `736869707065640a` (eight bytes).
+The worker has three total turns including its earlier one-turn warm-up.
+Grant revocation and observer detach both succeeded; a post-detach worker read
+confirmed it remained idle and readable. Private capture:
+`pex-shared-live-065/build/shared-demo-client-receipts-02/capture-20260906T125941539159Z.json`.
+
+**Audit gap, not complete proof:** the delivered intervention still has empty
+worker-response/outcome fields and `helped=null`. Shared event IDs differ from
+the isolated Codex normalizer IDs expected by the outcome matcher, and shared
+STOP lacks its raw turn reference. Repair and fresh recapture are required;
+never retrofit success into the historical receipt.
+
+Native follow-up confirmed message-minus hides only the bubble and pet-X saves
+`quiet=true`, reflected by unchecked Show desktop pet. A frontend repair also
+routes floating-pet text through Home's canonical first-run state; no worker is
+no longer falsely described as All quiet. Full frontend gate: **191 passed** and
+production build passed. React review confirmed the change adds no new poller or
+effect. Native first-failure-wins handling preserves an earlier identity failure
+against a follow-on child shutdown; **15 Rust tests passed**, with root's focused
+regression independently passing. Neither repair establishes the original native
+exit's cause or final installed-build stability.
 
 - `43690b8e728f8c69d3b4cdad7939f724ee7adb3f` was pushed and verified against remote
   main. It pins all five frozen public benchmark prompts to LF through `.gitattributes`.

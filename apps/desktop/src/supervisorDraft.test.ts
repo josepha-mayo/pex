@@ -48,6 +48,15 @@ for (const [field, value] of [
   });
 }
 
+test("floating pet uses canonical first-run status instead of raw quiet copy", () => {
+  const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+  const start = app.indexOf('if (shell === "pet") {\n    return (');
+  const petRoute = app.slice(start, app.indexOf("if (!bridgeAvailable)", start));
+
+  assert.match(petRoute, /<PetStage[\s\S]*?status=\{homeStatus\}/u);
+  assert.doesNotMatch(petRoute, /<PetStage[\s\S]*?status=\{status\}/u);
+});
+
 test("a missing credential binding cannot dispatch a key or expose it in errors", () => {
   assert.throws(() => supervisorSavePayload(custom, 7, null), (error: unknown) => {
     assert.ok(error instanceof Error);

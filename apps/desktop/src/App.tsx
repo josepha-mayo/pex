@@ -2043,7 +2043,7 @@ export function App() {
           mood={mood}
           scale={scale}
           reducedMotion={reducedMotion}
-          status={status}
+          status={homeStatus}
           onActivate={() => void expandMainSurface()}
           onDismiss={() => void changePetVisibility(false)}
         />
