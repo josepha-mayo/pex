@@ -962,6 +962,14 @@ class CodexSharedAppServerTransport:
         must never be discarded in a way that could imply an approval path.
         """
         envelope_keys = set(message)
+        # Current App Server broadcasts include a wall-clock receipt field.
+        # It carries no thread/control authority; accept only a bounded integer,
+        # never arbitrary extra envelope fields or a server-request ID.
+        if "emittedAtMs" in message:
+            emitted_at = message["emittedAtMs"]
+            if type(emitted_at) is not int or not 0 <= emitted_at <= 2**53 - 1:
+                return False
+            envelope_keys.remove("emittedAtMs")
         if (
             "id" in message
             or method not in {"thread/status/changed", "thread/closed"}

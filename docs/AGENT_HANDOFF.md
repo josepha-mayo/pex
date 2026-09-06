@@ -53,6 +53,20 @@ Receipt: clean `pex-live-5ff58f6/build/quiet-live-20260906/Q01/client/`
 `E3BA8D5686D64CF90AEC7D87F3AEF6EF5533A841EF92E99C4DE7587F50CE76E1`.
 Progress: 0 quiet successes, 0 proven false positives, 1 inconclusive, 9 pending
 out of the ten declared cases. Dedicated bridge 7434 remains alive and detached.
+Root diagnosed Q01 from read-only receive-journal frames: chunk 106 contains
+foreign run-09 `thread/status/changed` (notLoaded) and `thread/closed` broadcasts,
+both with the vendor envelope field `emittedAtMs`. The prior minimal-envelope
+allowlist rejected that timestamp and disconnected the selected Q01 observer.
+The narrow transport repair accepts only integer timestamps in [0, 2**53-1] on
+the already allowed foreign lifecycle shapes; no arbitrary envelope extras,
+server requests, selected-thread closures, or malformed identities are ignored.
+Root gate: 160 tests passed in 5.61s across shared transport, subscription and
+adapter tests, with thread warnings as errors; scoped Ruff clean. This is not a
+new live pass. Existing bridge/source remains clean 5ff58f6 without this repair;
+use a fresh clean repaired-source bridge/profile for Q02 and retain Q01 unchanged.
+Private read-only diagnosis helper: `build/audit_quiet_q01.py`; it parses only the
+retained inspection's journal frames and prints bounded envelope metadata, not
+raw prompts, message text, credentials, or execution payloads.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 
