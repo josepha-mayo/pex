@@ -40,17 +40,66 @@ test("every known startup error renders an actionable safe non-retryable state",
         retrying: false,
         onRetry: () => undefined,
       }));
-      assert.match(html, /Copy safe error details/u, code);
+      assert.match(html, /Copy safe details/u, code);
       assert.doesNotMatch(html, /disabled/u, code);
       assert.doesNotMatch(html, /Retry bridge/u, code);
       assert.match(html, new RegExp(`<code>${code}</code>`, "u"), code);
+      assert.match(html, /Safe technical details/u, code);
+      assert.match(html, /Startup attempt/u, code);
+      assert.match(html, /Bridge state/u, code);
       const diagnostic = startupDiagnosticText(status);
       assert.ok(diagnostic?.startsWith(`PEX startup error: ${code}.`), code);
       assert.doesNotMatch(diagnostic, /private native message/u, code);
+      const copy = startupRecoveryCopy(status);
+      assert.notEqual(copy.title, "PEX could not start its bridge", code);
+      assert.ok(copy.detail.length > 20, code);
+      assert.ok((copy.guidance || "").length > 20, code);
     }
   } finally {
     await vite.close();
   }
+});
+
+test("retryable startup errors keep Retry and always expose safe copy", async () => {
+  const vite = await createServer({ root: process.cwd(), server: { middlewareMode: true }, appType: "custom" });
+  try {
+    const loaded = await vite.ssrLoadModule("/src/components/StartupRecovery.tsx") as {
+      StartupRecovery: ComponentType<{
+        status: ReturnType<typeof normalizeBridgeBootstrapStatus>;
+        retrying: boolean;
+        onRetry: () => void;
+      }>;
+    };
+    for (const code of KNOWN_BRIDGE_FAILURE_CODES) {
+      const status = normalizeBridgeBootstrapStatus({
+        phase: "failed",
+        code,
+        message: "private native message",
+        retryable: true,
+        source: code === "port_occupied_untrusted" ? "unverified_port_owner" : "not_ready",
+        attempt: 999999,
+      });
+      const html = renderToStaticMarkup(createElement(loaded.StartupRecovery, {
+        status,
+        retrying: false,
+        onRetry: () => undefined,
+      }));
+      assert.match(html, /Retry bridge/u, code);
+      assert.match(html, /Copy safe details/u, code);
+      assert.doesNotMatch(html, /private native message/u, code);
+    }
+  } finally {
+    await vite.close();
+  }
+});
+
+test("startup recovery CSS wraps actions and remains scrollable at high zoom", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const css = await readFile(new URL("./styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.startup-recovery\s*\{[\s\S]*?overflow:\s*auto/u);
+  assert.match(css, /\.startup-recovery-actions\s*\{[\s\S]*?flex-wrap:\s*wrap/u);
+  assert.match(css, /@media \(max-width: 440px\), \(max-height: 360px\)/u);
+  assert.match(css, /overflow-wrap:\s*anywhere/u);
 });
 
 test("initial startup is explicitly pending and has a bounded-wait presentation", () => {

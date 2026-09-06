@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
-import { startupDiagnosticText, startupRecoveryCopy } from "../startupRecovery";
+import {
+  startupDiagnosticText,
+  startupRecoveryCopy,
+  startupRecoverySourceCopy,
+} from "../startupRecovery";
 import type { BridgeBootstrapStatus } from "../types";
 
 export function StartupRecovery({
@@ -40,25 +44,37 @@ export function StartupRecovery({
         aria-live={status.phase === "failed" ? "assertive" : "polite"}
         aria-busy={status.phase === "starting" || retrying}
       >
-        <span className="startup-recovery-mark" aria-hidden="true">PEX</span>
-        <p className="eyebrow">{copy.eyebrow}</p>
-        <h1 ref={heading} tabIndex={-1}>{copy.title}</h1>
-        <p>{copy.detail}</p>
+        <header className="startup-recovery-header">
+          <span className="startup-recovery-mark" aria-hidden="true">PEX</span>
+          <span>
+            <p className="eyebrow">{copy.eyebrow}</p>
+            <h1 ref={heading} tabIndex={-1}>{copy.title}</h1>
+          </span>
+        </header>
+        <p className="startup-recovery-detail">{copy.detail}</p>
         {copy.guidance ? <p className="startup-recovery-guidance">{copy.guidance}</p> : null}
         {status.phase === "failed" ? (
-          <div className="startup-recovery-actions">
-            {status.retryable ? (
-              <button type="button" className="solid" onClick={onRetry} disabled={retrying}>
-                {retrying ? "Retrying…" : "Retry bridge"}
+          <>
+            <details className="startup-recovery-technical">
+              <summary>Safe technical details</summary>
+              <dl>
+                <div><dt>Error code</dt><dd><code>{status.code}</code></dd></div>
+                <div><dt>Startup attempt</dt><dd>{status.attempt}</dd></div>
+                <div><dt>Bridge state</dt><dd>{startupRecoverySourceCopy(status.source)}</dd></div>
+              </dl>
+            </details>
+            <div className="startup-recovery-actions">
+              {status.retryable ? (
+                <button type="button" className="solid" onClick={onRetry} disabled={retrying}>
+                  {retrying ? "Retrying…" : "Retry bridge"}
+                </button>
+              ) : null}
+              <button type="button" className="ghost" onClick={() => void copyDiagnostic()}>
+                Copy safe details
               </button>
-            ) : (
-              <button type="button" className="solid" onClick={() => void copyDiagnostic()}>
-                Copy safe error details
-              </button>
-            )}
-            <code>{status.code}</code>
+            </div>
             {copyFeedback ? <span role="status" aria-live="polite">{copyFeedback}</span> : null}
-          </div>
+          </>
         ) : (
           <div className="startup-recovery-progress" aria-hidden="true"><span /></div>
         )}

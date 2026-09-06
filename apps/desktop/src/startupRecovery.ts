@@ -6,6 +6,7 @@ export const KNOWN_BRIDGE_FAILURE_CODES = [
   "bridge_process_stopped",
   "desktop_control_unavailable",
   "desktop_state_unavailable",
+  "desktop_state_unavailable",
   "identity_timeout",
   "not_started",
   "port_check_failed",
@@ -118,6 +119,14 @@ export type StartupRecoveryCopy = {
   tone: "starting" | "failed";
 };
 
+export function startupRecoverySourceCopy(source: BridgeBootstrapStatus["source"]): string {
+  switch (source) {
+    case "owned_sidecar": return "Previously verified desktop bridge";
+    case "unverified_port_owner": return "Unknown process on the local bridge port";
+    default: return "No verified bridge owner";
+  }
+}
+
 export function startupRecoveryCopy(status: BridgeBootstrapStatus): StartupRecoveryCopy {
   if (status.phase === "starting") {
     return {
@@ -136,26 +145,90 @@ export function startupRecoveryCopy(status: BridgeBootstrapStatus): StartupRecov
     tone: "failed",
   };
   switch (status.code) {
+    case "bridge_address_invalid":
+      return {
+        ...base,
+        title: "PEX has an invalid local bridge address",
+        detail: "This desktop build could not resolve its fixed local-only bridge address.",
+        guidance: "Repair or reinstall PEX. The app will not connect to another address automatically.",
+      };
     case "port_occupied_untrusted":
       return {
         ...base,
+        title: "Another process is using PEX’s local port",
         detail: "Port 7420 is already in use, but that process could not prove it is this PEX bridge.",
         guidance: "Close the process using port 7420 if you recognize it, then choose Retry. PEX will not stop or reuse it for you.",
       };
     case "sidecar_missing":
       return {
         ...base,
+        title: "This PEX installation is incomplete",
         detail: "This desktop build does not contain the packaged PEX bridge executable.",
         guidance: "Repair or reinstall this PEX desktop build before retrying.",
       };
-    case "identity_timeout":
-    case "sidecar_exited_early":
+    case "token_generation_failed":
+      return {
+        ...base,
+        title: "PEX could not create a local session secret",
+        detail: "The desktop app could not create the temporary secret used to authenticate its local bridge.",
+        guidance: "Retry after checking that Windows security services are available. No weaker authentication will be used.",
+      };
+    case "desktop_control_unavailable":
+    case "desktop_state_unavailable":
+      return {
+        ...base,
+        title: "PEX cannot read desktop recovery state",
+        detail: "The app could not access the trusted desktop control needed to verify its local bridge.",
+        guidance: "Close PEX from the window controls, then reopen it. Repair or reinstall if this continues.",
+      };
+    case "not_started":
+      return {
+        ...base,
+        title: "The local PEX bridge has not started",
+        detail: "The desktop app has not begun a verified bridge startup attempt yet.",
+        guidance: "Choose Retry to start one bounded attempt.",
+      };
+    case "port_check_failed":
+      return {
+        ...base,
+        title: "PEX could not verify its local port",
+        detail: "The desktop app could not safely determine whether its fixed local bridge port is available.",
+        guidance: "Check local security or networking software, then choose Retry. PEX will not take over an unknown process.",
+      };
     case "sidecar_spawn_failed":
+      return {
+        ...base,
+        title: "Windows could not launch the PEX bridge",
+        detail: "The packaged bridge executable was found, but the desktop app could not start it.",
+        guidance: "Check Windows Security for a blocked-app prompt, then choose Retry. Repair the installation if this continues.",
+      };
+    case "sidecar_exited_early":
+      return {
+        ...base,
+        title: "The PEX bridge stopped during startup",
+        detail: "The packaged bridge exited before it established a verified ready state.",
+        guidance: "Choose Retry once. If it happens again, copy the safe details and repair the installation.",
+      };
+    case "identity_timeout":
+      return {
+        ...base,
+        title: "PEX could not verify its bridge in time",
+        detail: "The packaged bridge did not prove its identity before the bounded startup deadline.",
+        guidance: "Check whether Windows Security is waiting for a response, then choose Retry.",
+      };
     case "bridge_process_stopped":
+      return {
+        ...base,
+        title: "The PEX bridge stopped",
+        detail: "The desktop-owned bridge process stopped after startup.",
+        guidance: "Choose Retry to launch a new bounded, authenticated bridge attempt.",
+      };
     case "bridge_identity_lost":
       return {
         ...base,
-        detail: "The desktop-owned PEX bridge did not reach or keep a verified ready state.",
+        title: "PEX lost contact with its verified bridge",
+        detail: "The process on the local bridge port no longer proves the identity established at startup.",
+        guidance: "Choose Retry. PEX will verify ownership again before enabling any controls.",
       };
     default:
       return base;
