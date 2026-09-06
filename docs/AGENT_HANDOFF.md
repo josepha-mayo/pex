@@ -2,6 +2,38 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Fresh release helpers and frozen lifetime evidence on clean `60ffa76`:
+`node apps/desktop/scripts/build-sidecar.mjs --release-build` completed in
+`C:/Users/JosephMayo/Projects/pex-verify-5ee1ee7` (exec 58402 is terminal).
+Initial preflight had only missing/stale sidecars; post-build preflight has
+**source_ready=true, release_ready=false, blockers=[]**, matching source/stamp
+fingerprints, all 261 inputs tracked, verified pinned toolchains/Tauri wiring,
+8 atlases/584 runtime cells and verified frozen inventory. Native pet proof is
+explicitly false. Receipt `build/release-preflight-60ffa76.json`, SHA256
+`CF30F631BE94180F43868A33C02EE54433C3DE8C03A292114330E3BC4420AF90`.
+Fresh binaries under that checkout's `apps/desktop/src-tauri/binaries/`:
+
+- bridge `pex-bridge-x86_64-pc-windows-msvc.exe`, SHA256
+  `aebe7e91162e3429793a7d6f3e81ba732d252980b02f10ae636efbe5d987eea0`;
+- Cursor hook SHA256 `b441e98e2cd8c2e27f2776770fa1abedcbe2ea3ea7cf4f11c2a09c909f90709d`;
+- Cursor observe SHA256 `44eac1fbda06078bff410db43447e9dbbb410d1b28303d5c8e61745dce307a33`.
+
+Opted the exact fresh bridge into `tests/contract/test_frozen_bridge_lifetime.py`:
+**3 passed in 91.40s**, thread warnings as errors. Two hidden, temporary,
+job-owned starts proved nonce/HMAC identity; terminating each retained bootloader
+reaped its payload while the job remained open and released its private listener.
+Standalone `--verify-bundle` passed without parent PID/token. JUnit
+`build/frozen-lifetime-60ffa76.xml`, SHA256
+`A6FE5308BC3797880D343DF64FFBC9581AC464DB1952852EC5251FA83784221E`.
+Exec 6915 is terminal. Checkout remains clean. No live bridge, installed app,
+desktop focus, operator credentials, model call or AWS invocation was involved.
+PyInstaller warned about optional Cedar, pycparser tables and tzdata imports;
+successful startup/bundle checks do not validate every optional provider path.
+Preserve these artifacts with their source; switching source makes their stamp
+stale. Next release work is the actual desktop bundle/installer and native UX
+verification; helper preflight is NOT product or submission readiness. The later
+full Python gate also remains open after focused repairs.
+
 Clean-source repair recheck accepted at `60ffa7678aa242575943eab4ff13fc3c0c09a5a2`:
 advanced the verified-clean `pex-verify-5ee1ee7` checkout, offline frozen sync,
 all three imports inside that checkout. Seven complete files (cancellation,
