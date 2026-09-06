@@ -166,8 +166,33 @@ It is not warning-clean: pytest caught an aiosqlite worker trying to notify an
 already-closed event loop, reported during
 `test_auto_handoff_uses_target_prompt_to_exclude_other_goal_phase_context`.
 That reporting location alone does not prove which test leaked the connection.
-Terra is investigating resource ownership with strict warning handling; do not
-suppress the warning or treat it as a clean release gate.
+The reporting fixture had a confirmed ownership gap: it closed Store without
+joining Pipeline-owned tasks and did not guarantee cleanup after partial setup.
+The repair keeps concrete pipeline/store handles, wraps setup/yield in `finally`,
+joins pipeline work before closing Store, and guarantees Store closure if joining
+raises. A strengthened regression performs a real Store read while cancelling a
+presentation task, proving that read completes before the database closes.
+Root's complete affected-file gate: **60 passed in 206.47s**, with
+`-W error::pytest.PytestUnhandledThreadExceptionWarning`. Independent reviewers
+approved; final strengthened regression independently passed in 5.17s.
+The historical warning did not reproduce in the pre-fix isolated check, and the
+affected node passed ten isolated strict runs after repair. Therefore the exact
+cause of the historical warning remains unproven; call this a confirmed cleanup
+gap repair, not a proven elimination of that full-suite warning. Rerun final
+clean sources before claiming a warning-clean release gate.
+
+Two of that run's 29 skips were optional AgentCore SDK tests, not live-resource
+gates. After the full process exited, locked
+`uv sync --all-packages --extra agentcore --dev --frozen` installed
+`bedrock-agentcore==1.22.0` only in that clean verification worktree. The complete
+`tests/unit/test_agentcore_runtime.py` then passed **23 tests in 4.99s**, including
+both real-SDK local HTTP/entrypoint tests (no skips). JUnit:
+`build/pytest-agentcore-runtime-84d9bd3.xml`, SHA-256
+`52D6A3B8E19DEAEC8A2A000D92496FACD68AF1496C750D1604F65E94245FE742`.
+This proves the local SDK contract, not a deployed AgentCore invocation; no AWS
+resource or billable invocation was started. Other full-suite
+skips include explicitly gated live/provider/package checks and unavailable host
+symlink/POSIX capabilities; do not call them all live-only skips.
 
 ### Shutdown repair and test cleanup — `535ccb7` and follow-up
 

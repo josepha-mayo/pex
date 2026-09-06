@@ -14,8 +14,10 @@ entries below: they preserve historical failures, not current blanket blockers.
   the successful recorded model calls do not include every HTTP retry attempt.
 - Full offline clean `84d9bd3`: 3,691 passed / 29 skipped / zero failures or
   errors, but an aiosqlite thread attempted to notify a closed event loop.
-  Keep this cleanup warning open until resource ownership is diagnosed and
-  repaired; a zero exit code is not proof of a warning-clean run.
+  A missing handoff-fixture pipeline join/partial-setup cleanup gap was repaired
+  and independently reviewed (60 affected-file tests passed with thread warnings
+  promoted to errors). The historical warning's exact cause remains unproven;
+  require a fresh full run, not only a zero exit code or isolated regression.
 
 - Clean `4543a58` passed one real Strands shared-thread recovery and a separate
   quiet completion. This does not prove all required behavior or fair benchmarks.

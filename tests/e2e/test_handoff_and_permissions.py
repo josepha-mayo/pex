@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import json
 import sqlite3
@@ -100,6 +101,13 @@ class _TypedCodexHandoffAdapter(HarnessAdapter):
         return self.result
 
 
+async def _close_client_resources(pipeline: Pipeline, store: Store) -> None:
+    try:
+        await pipeline.close_presentations()
+    finally:
+        await store.close()
+
+
 @pytest.fixture
 async def client(tmp_path):
     settings = Settings(
@@ -115,17 +123,57 @@ async def client(tmp_path):
     state.store = store
     state.adapters = adapters
     state.bus = bus
-    state.pipeline = Pipeline(store, adapters, bus, settings)
+    pipeline = Pipeline(store, adapters, bus, settings)
+    state.pipeline = pipeline
     state.token = _OPERATOR_TOKEN
+    try:
+        await store.connect()
+        app = create_app()
+        async with _HandoffOperatorClient(
+            transport=ASGITransport(app=app),
+            base_url="http://127.0.0.1",
+            headers={"Authorization": f"Bearer {_OPERATOR_TOKEN}"},
+        ) as ac:
+            yield ac
+    finally:
+        await _close_client_resources(pipeline, store)
+
+
+@pytest.mark.asyncio
+async def test_client_cleanup_joins_pipeline_work_before_closing_store(tmp_path):
+    store = Store(tmp_path / "fixture-cleanup.sqlite")
     await store.connect()
-    app = create_app()
-    async with _HandoffOperatorClient(
-        transport=ASGITransport(app=app),
-        base_url="http://127.0.0.1",
-        headers={"Authorization": f"Bearer {_OPERATOR_TOKEN}"},
-    ) as ac:
-        yield ac
-    await store.close()
+    pipeline = Pipeline(
+        store,
+        AdapterRegistry(),
+        EventBus(),
+        Settings.for_test(home=tmp_path, require_auth=False),
+    )
+    started = asyncio.Event()
+    store_touch_finished = asyncio.Event()
+
+    async def pending_presentation() -> None:
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            # Presentation cancellation may still need to finish an already-owned
+            # Store operation before the fixture closes the SQLite worker.
+            await store.get_session("synthetic:missing")
+            store_touch_finished.set()
+            raise
+
+    task = asyncio.create_task(pending_presentation())
+    pipeline._presentation_tasks.add(task)
+    try:
+        await started.wait()
+    finally:
+        await _close_client_resources(pipeline, store)
+
+    assert task.cancelled()
+    assert store_touch_finished.is_set()
+    assert not pipeline._presentation_tasks
+    assert store._db is None
 
 
 @pytest.mark.asyncio

@@ -6,6 +6,17 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Handoff fixture resource ownership — 6 Sep
+
+Changed-path review only: `tests/e2e/test_handoff_and_permissions.py` client
+fixture and cleanup regression. Terra repaired a confirmed missing pipeline join
+and partial-setup cleanup gap. Root and independent Terra reviewer checked
+Pipeline/Store teardown ordering; the regression finishes real SQLite access
+during presentation cancellation before Store closes. Root full affected-file
+gate: 60 passed, thread warnings treated as errors; Ruff clean. The historical
+full-suite warning was not reproduced in isolation, so its exact attribution
+and elimination remain unproven pending a fresh clean-source full gate.
+
 ### Oversized selected command-output observations — 6 Sep
 
 Root full-new-file review: `adapters/codex_output.py` and
