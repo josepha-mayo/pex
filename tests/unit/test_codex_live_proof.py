@@ -12,6 +12,7 @@ from pex_protocol.enums import HarnessType, PolicyVerdict, SessionStatus
 from pex_protocol.goal import Goal
 from pex_protocol.intervention import Intervention
 from pex_protocol.session import HarnessSession
+from pex_protocol.supervisor import IndependentVerifierReceipt, SupervisorEvidenceObservation
 
 from tests.contract import codex_live_proof as proof
 
@@ -96,7 +97,14 @@ def test_process_provenance_binds_binary_command_pid_and_initialize(tmp_path):
     binary = tmp_path / "codex.exe"
     binary.write_bytes(b"codex-binary")
     transport = SimpleNamespace(
-        command=[str(binary), "app-server", "--listen", "stdio://"],
+        command=[
+            str(binary),
+            "-c",
+            'model="gpt-5.3-codex-spark"',
+            "app-server",
+            "--listen",
+            "stdio://",
+        ],
         _proc=SimpleNamespace(pid=1234, returncode=None),
         initialized=True,
         init_result={"serverInfo": {"name": "codex"}},
@@ -109,6 +117,43 @@ def test_process_provenance_binds_binary_command_pid_and_initialize(tmp_path):
     assert receipt["binary_sha256"]
     assert receipt["command"] == transport.command
     proof.assert_same_process(receipt, proof.capture_process_provenance(transport, str(binary)))
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        'gpt-5.3-codex-spark"\nother = "injected',
+        "gpt-5.3-codex-spark\nother = true",
+        "gpt 5.3 codex spark",
+        'gpt-5.3-codex-spark"',
+    ],
+)
+def test_process_provenance_rejects_toml_injected_worker_model(tmp_path, model):
+    binary = tmp_path / "codex.exe"
+    binary.write_bytes(b"codex-binary")
+    transport = SimpleNamespace(
+        command=[str(binary), "-c", f'model="{model}"', "app-server", "--listen", "stdio://"],
+        _proc=SimpleNamespace(pid=1234, returncode=None),
+        initialized=True,
+        init_result={"serverInfo": {"name": "codex"}},
+    )
+
+    with pytest.raises(AssertionError, match="model"):
+        proof.capture_process_provenance(transport, str(binary))
+
+
+def test_process_provenance_rejects_non_string_command_argument(tmp_path):
+    binary = tmp_path / "codex.exe"
+    binary.write_bytes(b"codex-binary")
+    transport = SimpleNamespace(
+        command=[str(binary), "-c", 42, "app-server", "--listen", "stdio://"],
+        _proc=SimpleNamespace(pid=1234, returncode=None),
+        initialized=True,
+        init_result={"serverInfo": {"name": "codex"}},
+    )
+
+    with pytest.raises(AssertionError, match="string argument list"):
+        proof.capture_process_provenance(transport, str(binary))
 
 
 def test_supervisor_receipt_requires_public_secret_free_provenance():
@@ -156,7 +201,7 @@ async def _persist_proof_binding(store: Store, tmp_path, goal: Goal) -> None:
     await store.upsert_session(_session(tmp_path))
 
 
-def _turn(tmp_path) -> dict:
+def _turn(tmp_path, *, requested_model: str | None = "gpt-5.3-codex-spark") -> dict:
     return {
         "thread_id": "thread-proof",
         "cwd": str(tmp_path),
@@ -166,7 +211,98 @@ def _turn(tmp_path) -> dict:
             "writableRoots": [str(tmp_path)],
             "networkAccess": False,
         },
+        "requested_model": requested_model,
     }
+
+
+def _independent_verifier(event_id: str) -> dict:
+    observation_id = "pexobs_" + "2" * 32
+    second_observation_id = "pexobs_" + "3" * 32
+    invocation_id = "pexver_fixture"
+    output = json.dumps(
+        {
+            "pex_observation_id": observation_id,
+            "status": "unsatisfied",
+            "evidence": ["report.txt is missing"],
+        },
+        separators=(",", ":"),
+    )
+    observation = SupervisorEvidenceObservation(
+        observation_id=observation_id,
+        invocation_id=invocation_id,
+        stage="verifier",
+        request_digest="d" * 64,
+        session_id="codex:thread-proof",
+        goal_id="goal-proof",
+        event_id=event_id,
+        observed_at=datetime.now(UTC),
+        tool_name="inspect_artifact",
+        arguments_json="{}",
+        output=output,
+        output_sha256=proof._sha256_bytes(output.encode("utf-8")),
+    )
+    second_output = json.dumps(
+        {
+            "pex_observation_id": second_observation_id,
+            "status": "goal_loaded",
+        },
+        separators=(",", ":"),
+    )
+    second_observation = SupervisorEvidenceObservation(
+        observation_id=second_observation_id,
+        invocation_id=invocation_id,
+        stage="verifier",
+        request_digest="d" * 64,
+        session_id="codex:thread-proof",
+        goal_id="goal-proof",
+        event_id=event_id,
+        observed_at=datetime.now(UTC),
+        tool_name="get_goal",
+        arguments_json="{}",
+        output=second_output,
+        output_sha256=proof._sha256_bytes(second_output.encode("utf-8")),
+    )
+    return IndependentVerifierReceipt(
+        approved=True,
+        status="approved",
+        rationale="A separate verifier inspected the required artifact.",
+        evidence=["report.txt is missing"],
+        evidence_tools=["inspect_artifact"],
+        invocation_id=invocation_id,
+        evidence_observations=[observation, second_observation],
+        evidence_refs=[observation_id, second_observation_id],
+        model_call_count=1,
+        input_tokens=4,
+        output_tokens=3,
+        latency_ms=2,
+    ).model_dump(mode="json")
+
+
+def _main_evidence(event_id: str) -> tuple[list[dict], list[str]]:
+    observation_id = "pexobs_" + "1" * 32
+    output = json.dumps(
+        {
+            "pex_observation_id": observation_id,
+            "status": "unsatisfied",
+            "evidence": ["report.txt is missing"],
+        },
+        separators=(",", ":"),
+    )
+    observation = SupervisorEvidenceObservation(
+        observation_id=observation_id,
+        invocation_id="pexinv_123",
+        stage="main",
+        request_digest="d" * 64,
+        session_id="codex:thread-proof",
+        goal_id="goal-proof",
+        event_id=event_id,
+        observed_at=datetime.now(UTC),
+        tool_name="inspect_artifact",
+        arguments_json="{}",
+        output=output,
+        output_sha256=proof._sha256_bytes(output.encode("utf-8")),
+    )
+    return [observation.model_dump(mode="json")], [observation_id]
 
 
 def _event(event_id: str) -> dict:
@@ -199,7 +335,14 @@ def _process_receipt(tmp_path) -> dict:
     binary = tmp_path / "codex.exe"
     binary.write_bytes(b"codex-binary")
     transport = SimpleNamespace(
-        command=[str(binary), "app-server", "--listen", "stdio://"],
+        command=[
+            str(binary),
+            "-c",
+            'model="gpt-5.3-codex-spark"',
+            "app-server",
+            "--listen",
+            "stdio://",
+        ],
         _proc=SimpleNamespace(pid=1234, returncode=None),
         initialized=True,
         init_result={
@@ -244,6 +387,7 @@ async def _valid_noop_receipt(tmp_path, monkeypatch) -> tuple[dict, Store]:
             "goal": goal.model_dump(mode="json"),
             "session": _session(tmp_path).model_dump(mode="json"),
             "turns": [_turn(tmp_path)],
+            "worker_model_requested": "gpt-5.3-codex-spark",
             "events": [_event("codex:thread-proof:turn:one")],
             "interventions": [proof.intervention_receipt(intervention)],
             "audit_receipts": audit_receipts,
@@ -292,7 +436,7 @@ async def test_reuse_gate_rejects_mutated_process_source_binding_and_durable_row
 
     mutations = {
         "old proof schema": lambda value: value.__setitem__(
-            "schema", "pex.codex.closed_loop.v2"
+            "schema", "pex.codex.closed_loop.v3"
         ),
         "run id": lambda value: value.__setitem__("run_id", "codexproof_not-a-uuid"),
         "timestamp": lambda value: value.__setitem__(
@@ -316,6 +460,12 @@ async def test_reuse_gate_rejects_mutated_process_source_binding_and_durable_row
         ),
         "network access": lambda value: value["turns"][0]["sandbox_policy"].__setitem__(
             "networkAccess", True
+        ),
+        "worker model summary": lambda value: value.__setitem__(
+            "worker_model_requested", "different-model"
+        ),
+        "worker model turn": lambda value: value["turns"][0].__setitem__(
+            "requested_model", "different-model"
         ),
         "stop event": lambda value: value["events"][0].__setitem__("event_type", "status"),
         "event harness": lambda value: value["events"][0].__setitem__("harness_type", "synthetic"),
@@ -376,6 +526,13 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
         result="continued",
     )
     initial.metadata["verification"] = {"acceptance_status": "unsatisfied"}
+    initial.metadata["independent_verifier"] = _independent_verifier(
+        "codex:thread-proof:turn:one"
+    )
+    main_observations, main_refs = _main_evidence("codex:thread-proof:turn:one")
+    initial.metadata["evidence_observations"] = main_observations
+    initial.metadata["evidence_refs"] = main_refs
+    initial.metadata["model_call_count"] = 2
     initial.metadata["worker_delivery_receipt"] = {
         "schema": "pex.worker-delivery.codex-turn.v1",
         "target_session_id": "codex:thread-proof",
@@ -408,7 +565,8 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
                 "app_server": app_server,
                 "goal": goal.model_dump(mode="json"),
                 "session": _session(tmp_path).model_dump(mode="json"),
-                "turns": [_turn(tmp_path), _turn(tmp_path)],
+                "turns": [_turn(tmp_path), _turn(tmp_path, requested_model=None)],
+                "worker_model_requested": "gpt-5.3-codex-spark",
                 "events": [
                     _event("codex:thread-proof:turn:one"),
                     _event("codex:thread-proof:turn:two"),
@@ -467,7 +625,126 @@ async def test_reuse_gate_enforces_intervention_outcome_semantics(tmp_path, monk
                 canonical["payload"]
             )
 
+        def mutate_verifier_everywhere(value, mutate):
+            """Keep all durable projections aligned to reach the semantic gate."""
+
+            mutate(value["interventions"][0]["independent_verifier"])
+            canonical = next(
+                row
+                for row in value["audit_receipts"]["sqlite_interventions"]
+                if row["intervention_id"] == "int_initial"
+            )
+            mutate(canonical["payload"]["metadata"]["independent_verifier"])
+            canonical["payload_sha256"] = proof._canonical_fingerprint(canonical["payload"])
+            for audit in value["audit_receipts"]["audit_rows"]:
+                if audit["intervention_id"] == "int_initial":
+                    mutate(audit["payload"]["independent_verifier"])
+                    audit["payload_sha256"] = proof._canonical_fingerprint(audit["payload"])
+
+        def mutate_main_everywhere(value, mutate):
+            mutate(value["interventions"][0]["supervisor"])
+            canonical = next(
+                row
+                for row in value["audit_receipts"]["sqlite_interventions"]
+                if row["intervention_id"] == "int_initial"
+            )
+            mutate(canonical["payload"]["metadata"])
+            canonical["payload_sha256"] = proof._canonical_fingerprint(canonical["payload"])
+            for audit in value["audit_receipts"]["audit_rows"]:
+                if audit["intervention_id"] == "int_initial":
+                    mutate(audit["payload"])
+                    audit["payload_sha256"] = proof._canonical_fingerprint(audit["payload"])
+
+        def remove_verifier(value):
+            value["interventions"][0]["independent_verifier"] = None
+            canonical = next(
+                row
+                for row in value["audit_receipts"]["sqlite_interventions"]
+                if row["intervention_id"] == "int_initial"
+            )
+            canonical["payload"]["metadata"]["independent_verifier"] = None
+            canonical["payload_sha256"] = proof._canonical_fingerprint(canonical["payload"])
+            for audit in value["audit_receipts"]["audit_rows"]:
+                if audit["intervention_id"] == "int_initial":
+                    audit["payload"]["independent_verifier"] = None
+                    audit["payload_sha256"] = proof._canonical_fingerprint(audit["payload"])
+
         mutations = [
+            remove_verifier,
+            lambda value: mutate_main_everywhere(
+                value, lambda main: main.__setitem__("evidence_refs", [])
+            ),
+            lambda value: mutate_main_everywhere(
+                value,
+                lambda main: main["evidence_observations"].append(
+                    copy.deepcopy(main["evidence_observations"][0])
+                ),
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value, lambda verifier: verifier.__setitem__("model_call_count", 0)
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value,
+                lambda verifier: verifier["evidence_observations"].append(
+                    copy.deepcopy(verifier["evidence_observations"][0])
+                ),
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value, lambda verifier: verifier.__setitem__("invocation_id", "pexinv_123")
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value,
+                lambda verifier: verifier["evidence_observations"][0].__setitem__(
+                    "stage", "main"
+                ),
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value,
+                lambda verifier: verifier["evidence_observations"][0].__setitem__(
+                    "session_id", "codex:wrong-thread"
+                ),
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value,
+                lambda verifier: verifier["evidence_observations"][0].__setitem__(
+                    "goal_id", "wrong-goal"
+                ),
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value,
+                lambda verifier: verifier["evidence_observations"][0].__setitem__(
+                    "event_id", "codex:thread-proof:turn:wrong"
+                ),
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value,
+                lambda verifier: verifier["evidence_observations"][0].__setitem__(
+                    "invocation_id", "pexver_other"
+                ),
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value,
+                lambda verifier: verifier["evidence_observations"][0].__setitem__(
+                    "output_sha256", "0" * 64
+                ),
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value,
+                lambda verifier: verifier.__setitem__(
+                    "evidence_refs", ["pexobs_" + "f" * 32]
+                ),
+            ),
+            lambda value: mutate_verifier_everywhere(
+                value,
+                lambda verifier: [
+                    observation.__setitem__("request_digest", "e" * 64)
+                    for observation in verifier["evidence_observations"]
+                ],
+            ),
+            lambda value: value["turns"][1].__setitem__(
+                "requested_model", "different-model"
+            ),
+            lambda value: value["turns"][1].__setitem__("requested_model", []),
             lambda value: value["interventions"][0].__setitem__("observed_event_refs", []),
             lambda value: value["interventions"][0].__setitem__(
                 "evidence", ["unrelated evidence"]

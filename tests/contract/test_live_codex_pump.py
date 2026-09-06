@@ -10,6 +10,7 @@ import pytest
 from pex_bridge.adapters.codex_bin import resolve_codex_bin
 
 from tests.contract.codex_live_proof import (
+    _require_safe_worker_model,
     assert_public_supervisor_receipt,
     assert_same_process,
     assert_source_unchanged,
@@ -33,7 +34,26 @@ _PROOF_SCRATCH = _REPO_ROOT / "benchmarks" / "results" / "_scratch"
 def _live_codex_turn_params() -> dict[str, str]:
     """Pin the intentionally modest worker used by the recovery proof."""
 
-    return {"model": os.environ.get("PEX_LIVE_CODEX_MODEL", "gpt-5.3-codex-spark")}
+    return {
+        "model": _require_safe_worker_model(
+            os.environ.get("PEX_LIVE_CODEX_MODEL", "gpt-5.3-codex-spark"),
+            label="PEX_LIVE_CODEX_MODEL",
+        )
+    }
+
+
+def _live_codex_command(binary: str, worker_model: str) -> list[str]:
+    """Pin the process default so follow-up turns cannot silently change models."""
+
+    worker_model = _require_safe_worker_model(worker_model, label="live worker model")
+    return [
+        binary,
+        "-c",
+        f'model="{worker_model}"',
+        "app-server",
+        "--listen",
+        "stdio://",
+    ]
 
 
 def _turn_receipts(transport, session) -> list[dict]:
@@ -43,6 +63,7 @@ def _turn_receipts(transport, session) -> list[dict]:
             "cwd": item.get("cwd"),
             "approval_policy": item.get("approvalPolicy"),
             "sandbox_policy": item.get("sandboxPolicy"),
+            "requested_model": item.get("model"),
         }
         for item in getattr(transport, "turns", [])
     ]
@@ -57,7 +78,12 @@ def _turn_receipts(transport, session) -> list[dict]:
                 "writableRoots": [session.cwd],
                 "networkAccess": False,
             },
+            "requested_model": receipt["requested_model"],
         }
+    assert isinstance(receipts[0]["requested_model"], str) and receipts[0]["requested_model"]
+    worker_model = receipts[0]["requested_model"]
+    for receipt in receipts[1:]:
+        assert receipt["requested_model"] in {None, worker_model}
     return receipts
 
 
@@ -208,7 +234,10 @@ async def test_live_codex_stop_inspects_with_strands(tmp_path: Path):
     # parent proof process cannot reopen. Seed the operator-owned evidence
     # target so the worker updates it and verification can inspect the result.
     (tmp_path / "ping.txt").write_text("", encoding="utf-8")
-    transport = CodexStdioTransport(binary)
+    worker_turn_params = _live_codex_turn_params()
+    transport = CodexStdioTransport(
+        _live_codex_command(binary, worker_turn_params["model"])
+    )
     adapter = CodexAdapter(transport)
     registry = AdapterRegistry()
     registry.bind("codex", adapter)
@@ -251,7 +280,7 @@ async def test_live_codex_stop_inspects_with_strands(tmp_path: Path):
             session,
             "Create a file named ping.txt containing exactly the word pong. "
             "Then stop. Do not do anything else.",
-            _live_codex_turn_params(),
+            worker_turn_params,
         )
         for _ in range(360):
             rows = await store.list_interventions(session.id)
@@ -299,6 +328,7 @@ async def test_live_codex_stop_inspects_with_strands(tmp_path: Path):
                 "goal": bindings["goal"],
                 "session": bindings["session"],
                 "turns": turns,
+                "worker_model_requested": turns[0]["requested_model"],
                 "events": event_receipts([trigger]),
                 "interventions": [intervention_receipt(last)],
                 "audit_receipts": audit_receipts,
@@ -370,7 +400,10 @@ async def test_live_codex_incomplete_stop_sends_specific_continue(tmp_path: Path
     # operator-owned artifact instead of creating a file the parent proof
     # process cannot inspect on Windows.
     (tmp_path / "report.txt").write_text("", encoding="utf-8")
-    transport = CodexStdioTransport(binary)
+    worker_turn_params = _live_codex_turn_params()
+    transport = CodexStdioTransport(
+        _live_codex_command(binary, worker_turn_params["model"])
+    )
     adapter = CodexAdapter(transport)
     registry = AdapterRegistry()
     registry.bind("codex", adapter)
@@ -414,18 +447,32 @@ async def test_live_codex_incomplete_stop_sends_specific_continue(tmp_path: Path
             session,
             "Stop immediately after one short sentence. "
             "Do not create report.txt or any other file.",
-            _live_codex_turn_params(),
+            worker_turn_params,
         )
         for _ in range(360):
             rows = await store.list_interventions(session.id)
             stops = [row for row in rows if row.trigger == "stop"]
+            if stops and initial is None:
+                initial = stops[-1]
+                if initial.action_taken == "NOOP":
+                    break
             if len(stops) >= 2:
                 final = stops[0]
                 initial = stops[-1]
                 break
             await asyncio.sleep(0.5)
         assert initial is not None, "no initial STOP intervention"
-        assert final is not None, "no final STOP intervention"
+        if final is None:
+            verifier = (initial.metadata or {}).get("independent_verifier") or {}
+            verifier_status = (
+                verifier.get("status") if isinstance(verifier, dict) else "malformed"
+            )
+            raise AssertionError(
+                "no final STOP intervention; "
+                f"first_action={initial.action_taken}; "
+                f"first_diagnosis={initial.diagnosis[:240]}; "
+                f"verifier_status={verifier_status}"
+            )
         initial_model = supervisor_receipt(initial)
         final_model = supervisor_receipt(final)
         assert_public_supervisor_receipt(initial_model)
@@ -515,6 +562,7 @@ async def test_live_codex_incomplete_stop_sends_specific_continue(tmp_path: Path
                 "goal": bindings["goal"],
                 "session": bindings["session"],
                 "turns": turns,
+                "worker_model_requested": turns[0]["requested_model"],
                 "events": event_receipts(evidence_events),
                 "interventions": [
                     intervention_receipt(initial),

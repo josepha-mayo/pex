@@ -7,6 +7,9 @@ source, exact retained package, clean-checkout failure diagnosis, native pet-clo
 settings repairs, physical-Escape UI stop, protected file, owners and next actions.
 All `current` or `final` headings below are historical wherever they conflict.
 The goal remains active and the full three-spec submission scope remains incomplete.
+Latest user cost instruction: subagents use **GPT-5.6 Terra, medium reasoning**;
+older Sol instructions below are superseded. Reboot interrupted the previous full
+suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 
 ## 2026-09-06 final package/native checkpoint — current authority
 

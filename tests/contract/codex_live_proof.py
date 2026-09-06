@@ -15,8 +15,9 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 from pex_protocol.intervention import Intervention
+from pex_protocol.supervisor import IndependentVerifierReceipt, SupervisorEvidenceObservation
 
-PROOF_SCHEMA = "pex.codex.closed_loop.v3"
+PROOF_SCHEMA = "pex.codex.closed_loop.v4"
 _MAX_SOURCE_FILES = 100_000
 _HEX_REVISION = re.compile(r"[0-9a-f]{40,64}")
 _HEX_SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -24,6 +25,10 @@ _RUN_ID = re.compile(
     r"codexproof_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 )
 _SAFE_AUTH_MODE = re.compile(r"[a-z][a-z0-9_.-]{0,63}")
+# A model identifier is interpolated into a TOML command-line assignment. Keep
+# this narrower than arbitrary display text: quotes, whitespace, newlines, and
+# TOML syntax must never become part of the child command.
+_SAFE_WORKER_MODEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}")
 _FORBIDDEN_SECRET_KEYS = {
     "api_key",
     "authorization",
@@ -157,18 +162,46 @@ def start_proof_receipt(
     }
 
 
+def _require_safe_worker_model(value: object, *, label: str) -> str:
+    if not isinstance(value, str) or _SAFE_WORKER_MODEL.fullmatch(value) is None:
+        raise AssertionError(f"{label} is not a safe Codex model identifier")
+    return value
+
+
+def _validate_codex_command(command: object, *, binary_path: Path) -> list[str]:
+    """Require the literal, injection-safe App Server process contract."""
+
+    if not isinstance(command, list) or not all(isinstance(part, str) for part in command):
+        raise AssertionError("Codex child command is not a string argument list")
+    if (
+        len(command) != 6
+        or command[1] != "-c"
+        or command[3:] != ["app-server", "--listen", "stdio://"]
+    ):
+        raise AssertionError("Codex child command does not match the selected binary")
+    try:
+        command_binary = Path(command[0]).resolve(strict=True)
+    except OSError as exc:
+        raise AssertionError("Codex child command executable is not resolvable") from exc
+    if command_binary != binary_path:
+        raise AssertionError("Codex child command does not match the selected binary")
+    model_assignment = command[2]
+    if not model_assignment.startswith('model="') or not model_assignment.endswith('"'):
+        raise AssertionError("Codex child command has no exact model assignment")
+    model = _require_safe_worker_model(model_assignment[7:-1], label="Codex process model")
+    if model_assignment != f'model="{model}"':
+        raise AssertionError("Codex child command model assignment is not canonical")
+    return list(command)
+
+
 def capture_process_provenance(transport: Any, binary: str) -> dict[str, Any]:
     """Bind the receipt to the exact live child and executable bytes."""
 
     executable = Path(binary).resolve(strict=True)
-    command = [str(part) for part in getattr(transport, "command", [])]
+    command = _validate_codex_command(
+        getattr(transport, "command", None), binary_path=executable
+    )
     process = getattr(transport, "_proc", None)
-    if (
-        len(command) != 4
-        or command[1:] != ["app-server", "--listen", "stdio://"]
-        or Path(command[0]).resolve(strict=True) != executable
-    ):
-        raise AssertionError("Codex child command does not match the selected binary")
     if process is None or not isinstance(process.pid, int) or process.pid <= 0:
         raise AssertionError("Codex App Server child has no verified process id")
     if process.returncode is not None:
@@ -224,6 +257,8 @@ def supervisor_receipt(intervention: Intervention) -> dict[str, Any]:
         "auth_mode": metadata.get("auth_mode"),
         "base_url": metadata.get("base_url"),
         "local_invocation_id": metadata.get("local_invocation_id"),
+        "evidence_refs": list(metadata.get("evidence_refs") or []),
+        "evidence_observations": list(metadata.get("evidence_observations") or []),
     }
 
 
@@ -265,6 +300,7 @@ def assert_public_supervisor_receipt(receipt: dict[str, Any]) -> None:
 def intervention_receipt(intervention: Intervention) -> dict[str, Any]:
     metadata = intervention.metadata or {}
     raw_delivery = metadata.get("worker_delivery_receipt")
+    raw_verifier = metadata.get("independent_verifier")
     return {
         "intervention_id": intervention.id,
         "session_id": intervention.session_id,
@@ -284,6 +320,9 @@ def intervention_receipt(intervention: Intervention) -> dict[str, Any]:
         "helped": intervention.helped,
         "observed_event_refs": list(metadata.get("outcome_event_ids") or []),
         "verification": metadata.get("verification") or {},
+        "independent_verifier": (
+            dict(raw_verifier) if isinstance(raw_verifier, dict) else None
+        ),
         "supervisor": supervisor_receipt(intervention),
     }
 
@@ -600,6 +639,9 @@ def _assert_latest_audit_state(
         "transport_request_id": metadata.get("transport_request_id"),
         "transport_status": metadata.get("transport_status"),
         "evidence_tools": metadata.get("evidence_tools") or [],
+        "evidence_refs": metadata.get("evidence_refs") or [],
+        "evidence_observations": metadata.get("evidence_observations") or [],
+        "independent_verifier": metadata.get("independent_verifier"),
         "traces": metadata.get("traces") or [],
         "trigger_event_id": metadata.get("trigger_event_id"),
         "observed_event_refs": metadata.get("outcome_event_ids") or [],
@@ -656,6 +698,7 @@ def _assert_proof_semantics(
             or final.get("outcome")
             or final.get("helped") is not None
             or final.get("observed_event_refs")
+            or final.get("independent_verifier") is not None
         ):
             raise AssertionError("supported NOOP proof does not prove an evidence-backed NOOP")
         _artifact_success(receipt, filename="ping.txt", content="pong")
@@ -712,6 +755,87 @@ def _assert_proof_semantics(
             )
         initial_model = canonical[str(initial["intervention_id"])]
         final_model = canonical[str(final["intervention_id"])]
+        raw_main_observations = (initial.get("supervisor") or {}).get(
+            "evidence_observations"
+        )
+        raw_main_refs = (initial.get("supervisor") or {}).get("evidence_refs")
+        if not isinstance(raw_main_observations, list):
+            raise AssertionError("initial intervention has invalid main evidence")
+        try:
+            main_observations = [
+                SupervisorEvidenceObservation.model_validate(item)
+                for item in raw_main_observations
+            ]
+        except (TypeError, ValueError) as exc:
+            raise AssertionError("initial intervention has invalid main evidence") from exc
+        if (
+            not isinstance(raw_main_refs, list)
+            or not raw_main_refs
+            or not all(isinstance(ref, str) and ref for ref in raw_main_refs)
+            or not main_observations
+        ):
+            raise AssertionError("initial intervention has no bound main evidence")
+        main_observation_ids = {item.observation_id for item in main_observations}
+        main_request_digests = {item.request_digest for item in main_observations}
+        main_invocation_id = (initial.get("supervisor") or {}).get("local_invocation_id")
+        if (
+            not isinstance(main_invocation_id, str)
+            or not main_invocation_id
+            or len(main_observation_ids) != len(main_observations)
+            or len(raw_main_refs) != len(set(raw_main_refs))
+            or not set(raw_main_refs).issubset(main_observation_ids)
+            or len(main_request_digests) != 1
+            or any(
+                observation.stage != "main"
+                or observation.session_id != initial.get("session_id")
+                or observation.goal_id != initial.get("goal_id")
+                or observation.event_id != initial.get("trigger_event_id")
+                or observation.invocation_id != main_invocation_id
+                for observation in main_observations
+            )
+        ):
+            raise AssertionError("initial intervention main evidence is not bound")
+        raw_verifier = initial.get("independent_verifier")
+        try:
+            verifier = IndependentVerifierReceipt.model_validate(raw_verifier)
+        except (TypeError, ValueError) as exc:
+            raise AssertionError("initial intervention has no valid independent verifier") from exc
+        verifier_observation_ids = {
+            observation.observation_id for observation in verifier.evidence_observations
+        }
+        verifier_request_digests = {
+            observation.request_digest for observation in verifier.evidence_observations
+        }
+        if (
+            not verifier.authorizes_intervention()
+            or not verifier.invocation_id
+            or not verifier.invocation_id.startswith("pexver_")
+            or verifier.invocation_id
+            == (initial.get("supervisor") or {}).get("local_invocation_id")
+            or len(verifier_observation_ids) != len(verifier.evidence_observations)
+            or len(verifier.evidence_refs) != len(set(verifier.evidence_refs))
+            or not set(verifier.evidence_refs).issubset(verifier_observation_ids)
+            or len(verifier_request_digests) != 1
+            or verifier_request_digests != main_request_digests
+            or any(
+                observation.stage != "verifier"
+                or observation.session_id != initial.get("session_id")
+                or observation.goal_id != initial.get("goal_id")
+                or observation.event_id != initial.get("trigger_event_id")
+                or observation.invocation_id != verifier.invocation_id
+                for observation in verifier.evidence_observations
+            )
+        ):
+            raise AssertionError("initial intervention verifier is not independently bound")
+        aggregate_calls = (initial.get("supervisor") or {}).get("model_call_count")
+        if (
+            not isinstance(aggregate_calls, int)
+            or isinstance(aggregate_calls, bool)
+            or aggregate_calls < verifier.model_call_count + 1
+        ):
+            raise AssertionError("initial intervention does not count both model invocations")
+        if final.get("independent_verifier") is not None:
+            raise AssertionError("final supported NOOP unexpectedly has a verifier receipt")
         if initial_model.created_at > final_model.created_at:
             raise AssertionError("intervention outcome chronology is reversed")
         _artifact_success(receipt, filename="report.txt", content="shipped")
@@ -767,14 +891,7 @@ def validate_proof(receipt: dict[str, Any]) -> None:
     if not isinstance(app_server, dict):
         raise AssertionError("proof Codex child provenance is malformed")
     binary_path = _absolute_path(app_server.get("binary_path"), label="Codex binary")
-    command = app_server.get("command")
-    if (
-        not isinstance(command, list)
-        or len(command) != 4
-        or command[1:] != ["app-server", "--listen", "stdio://"]
-        or _absolute_path(command[0], label="Codex command executable") != binary_path
-    ):
-        raise AssertionError("proof Codex child command is not exact")
+    command = _validate_codex_command(app_server.get("command"), binary_path=binary_path)
     if app_server.get("process_running") is not True or app_server.get("initialized") is not True:
         raise AssertionError("proof Codex child was not initialized and running")
     _require_positive_int(app_server.get("process_id"), label="Codex child process id")
@@ -832,11 +949,24 @@ def validate_proof(receipt: dict[str, Any]) -> None:
     turns = receipt.get("turns")
     if not isinstance(turns, list) or not 1 <= len(turns) <= 20:
         raise AssertionError("proof turn receipt count is invalid")
-    for turn in turns:
+    worker_model_requested = receipt.get("worker_model_requested")
+    worker_model_requested = _require_safe_worker_model(
+        worker_model_requested, label="proof worker model request"
+    )
+    if command[2] != f'model="{worker_model_requested}"':
+        raise AssertionError("proof App Server default does not bind the requested worker model")
+    for index, turn in enumerate(turns):
         sandbox_policy = turn.get("sandbox_policy") if isinstance(turn, dict) else None
         if (
             not isinstance(turn, dict)
-            or set(turn) != {"thread_id", "cwd", "approval_policy", "sandbox_policy"}
+            or set(turn)
+            != {
+                "thread_id",
+                "cwd",
+                "approval_policy",
+                "sandbox_policy",
+                "requested_model",
+            }
             or turn.get("thread_id") != vendor_thread_id
             or turn.get("cwd") != project_id
             or turn.get("approval_policy") != "never"
@@ -848,6 +978,13 @@ def validate_proof(receipt: dict[str, Any]) -> None:
             }
         ):
             raise AssertionError("proof turn is not exact workspace-write same-thread delivery")
+        requested_model = turn.get("requested_model")
+        if index == 0 and requested_model != worker_model_requested:
+            raise AssertionError("proof initial turn does not request the bound worker model")
+        if index > 0 and requested_model not in (None, worker_model_requested):
+            raise AssertionError(
+                "proof turn does not preserve the exact requested worker model"
+            )
 
     events = receipt.get("events")
     if not isinstance(events, list) or not events:

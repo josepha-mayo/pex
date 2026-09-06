@@ -5,6 +5,8 @@
 source, failed/incomplete gates, native evidence and immediate work. Older 6 September
 targets and current-source labels below are historical. The full acceptance scope is
 unchanged; none of the remaining live, benchmark or submission gates is waived.
+Latest user subagent setting: **GPT-5.6 Terra, medium reasoning**, superseding all
+older Sol assignments below. Interrupted tests after the PC shutdown are not passes.
 
 **Live setup refresh, 5 Sep ~20:01 UTC:** read-only Brave/account/runtime checks and local deployment preflight completed. No runtimes in the two checked regions; local authentication/toolchain/Docker/image prerequisites remain. Obtain region/spend approval before cloud creation or invocation, then follow the [bounded live setup queue](AGENTCORE_LIVE_PREFLIGHT_2026_09_05.md). Existing Brave browser extension works; native Computer Use remains paused. First article publication is visible, no bonus award claimed. New subagents: **Sol low**, superseding historical medium assignments.
 

@@ -89,9 +89,30 @@ one/two evidence-call approval controls and three-call exhaustion failing closed
 This supports the safety boundary; only another real run can verify model behavior.
 
 Independent review also found the reusable proof omitted the verifier receipt and
-the requested worker model. Strengthening that proof contract is in progress;
-aggregate model-call counts alone do not prove a separate verifier. Requested model
-configuration must not be mislabeled as authoritative executed-model identity.
+the requested worker model. The reviewed v4 proof now binds independent verifier
+observations and main observations to the same session, goal, trigger and request
+digest, while requiring separate invocation IDs and valid evidence hashes/references.
+Mirrored negative tests reject missing receipts, forged bindings, duplicate evidence,
+empty main references and malformed model fields. The isolated child pins Spark in
+its process configuration and records raw per-turn model requests. Null continuation
+model means documented inheritance, not proof of a model switch; requested settings
+are not authoritative executed-model identity. Old v3 receipts are historical only.
+The strict combined proof/runtime gate passed **60 tests in 8.08s**, Ruff passed.
+The new v4 live pair has not yet run.
+
+The reviewed prompt/fixture/checkpoint update is pushed as
+`ebca89ccc1880d25066d973e7bdf7e8ec9e77696`, with remote equality verified. The PC
+subsequently shut down; the user confirmed it is back on. The interrupted full-suite
+process was absent after reboot and left no completed XML report. It is **not a pass**.
+A fresh strict run completed in the clean `pex-release-final-9c` checkout at
+`ebca89c`: **3600 passed, 25 skipped in 1073.00s**, with unraisable/resource warnings
+treated as errors. Report: `build/full-suite-ebca89c-post-reboot.xml`. This source
+predates the new v4 proof tests, whose separate focused gate is recorded above.
+
+The user's latest cost preference supersedes all older Sol assignments: use
+**GPT-5.6 Terra, medium reasoning** for subagents. The interrupted proof owner was
+stopped and a bounded Terra-medium owner is finishing the three existing proof files;
+no live test may run against those files until reviewed and committed.
 
 ## Native interaction evidence
 
@@ -112,15 +133,24 @@ Observed through the native accessibility tree and screenshots:
   `.env` wording triggered the truthfulness repair above.
 
 The user pressed physical Escape during the next UI refresh. Computer Use stopped
-immediately. **Settings restoration, restart persistence, final all-eight animation
-replay and rendered validation of the new layout remain incomplete.** Resume app input
-only when the user directs it. Do not bypass the stop through another UI tool.
-The current app/process/window IDs are ephemeral; rediscover them before reuse.
+immediately. After the PC reboot, the user explicitly answered **Yes, resume PEX app
+checks**. Native interaction is authorized again; that permission does not authorize
+security/authentication UI or paid/public actions. The normal development launch is
+being rebuilt with isolated `PEX_HOME=build/native-profile-ebca-dev-01` to inspect
+current frontend changes. It is not the retained release-package receipt.
+The rebuilt native dev app reached All quiet without a bridge error. At 920x730,
+Companion settings show all eight loaded pet thumbnails in a contained 4x2 grid,
+normal-sized checkboxes and no horizontal overflow. No release-package claim follows
+from this dev observation. **Settings restoration, restart persistence and final
+all-eight animation replay remain incomplete.** The current app/process/
+window IDs are ephemeral; rediscover them before reuse.
 
 ## Remaining execution order
 
-1. Finish profiling the 65-handoff cost; fix any demonstrated production bottleneck,
-   independently review it, then complete the necessary full-suite gate.
+1. Finish the stronger live-proof contract and recapture actual Codex/Strands recovery
+   after the verifier-budget repair. Complete the clean full-suite gate in parallel.
+   Keep the measured large-fleet authority-read amplification tracked separately;
+   correcting the 65-delivery fixture did not repair production fleet scalability.
 2. Visually validate the settings repair and complete native close/restore/restart and
    all-eight-pet checks when app interaction resumes.
 3. Recapture the real Codex + Strands restraint/recovery pair on the final runtime,
@@ -131,7 +161,7 @@ The current app/process/window IDs are ephemeral; rediscover them before reuse.
 5. Record the real public demo video and finish the truthful submission artifacts.
    PexBench remains unfrozen; no leaderboard rank or measured productivity lift exists.
 
-Use bounded subagents and independent review. New subagents use GPT-5.6 Sol low.
+Use bounded subagents and independent review. New subagents use GPT-5.6 Terra medium.
 Push reviewed scoped updates, verify remote equality, and preserve the complete product
 goal rather than redefining readiness around tests or packaging.
 
