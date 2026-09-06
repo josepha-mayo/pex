@@ -157,6 +157,14 @@ Regression/evidence-tool gate:65 passed10.18s, scoped Ruff clean. Cases cover
 absent claims, later edits, targeted runs, invalid types/counts, and log spoofing.
 Protected supervisor loop remains unchanged; current live7436 runtime predates
 this summary repair. Need fresh-source verification before claiming model uptake.
+Added a real evidence-tool regression: `verify_claims` output passes through
+`run_verification` and `EvidenceObservationCollector`, preserving worker-observed
+ok/exit/pass/scope fields and the exact audited receipt while keeping status
+no_claims and omitting private raw output. Broader five-file verification,
+evidence-tool/observation, supervisor-loop and planner gate passed134 tests11.42s
+with thread warnings as errors; scoped Ruff/diff checks clean. This gate used the
+main worktree with its unchanged protected loop, not a clean-checkout/full-suite
+or live inference proof. No workers, provider calls, UI or subagents launched.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 

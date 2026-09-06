@@ -2,9 +2,41 @@ from __future__ import annotations
 
 import json
 
+from pex_protocol.enums import EventType
 from pex_supervisor.evidence_observations import EvidenceObservationCollector
 from pex_supervisor.evidence_tools import build_evidence_tools
+from pex_supervisor.verify import verify_claims
 from test_supervisor_loop import _request
+
+
+def test_worker_test_facts_reach_the_audited_tool_without_becoming_goal_acceptance():
+    request = _request(0.1)
+    event = request.event.model_copy(update={
+        "event_type": EventType.SHELL, "command": "pytest -q",
+        "process_state": {"pytest": {
+            "ok": True, "exit_code": 0, "passed": 4,
+            "output": "PRIVATE_RAW_OUTPUT_MUST_NOT_LEAK",
+        }},
+    })
+    request.scores.features["verification"] = verify_claims([], [event], request.goal, {})
+    collector = EvidenceObservationCollector(
+        request, stage="main", invocation_id="observed-pytest-facts",
+    )
+    tool = next(
+        item for item in build_evidence_tools(request, [], collector=collector)
+        if item.tool_name == "run_verification"
+    )
+    rendered = tool()
+    receipt = json.loads(rendered)
+    assert receipt["status"] == "no_claims"
+    observed = receipt["pytest_observation"]
+    assert observed["basis"] == "observed_worker_command"
+    assert observed["ok"] is True and observed["exit_code"] == 0
+    assert observed["passed"] == 4 and observed["scope"] == "full_suite"
+    assert "PRIVATE_RAW_OUTPUT_MUST_NOT_LEAK" not in rendered
+    assert len(collector.observations) == 1
+    assert collector.observations[0].output == rendered
+    assert collector.observations[0].tool_name == "run_verification"
 
 
 def test_evidence_tools_are_request_scoped_read_only_and_audited():
