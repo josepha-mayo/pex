@@ -2,6 +2,24 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+NATIVE DESKTOP BUILD IN PROGRESS: clean verification checkout remains pinned to
+`60ffa76`. `npm ci --offline --no-audit --no-fund` installed 72 cached packages;
+`npm run build` passed TypeScript/Vite (63 modules). npm noted an unapproved
+esbuild postinstall; no approval policy was bypassed, and the supplied platform
+binary built the frontend successfully. Normal `npm run tauri -- build` is now
+running in `pex-verify-5ee1ee7/apps/desktop`, exec session **46349**, with scoped
+`CARGO_BUILD_JOBS=2` and `CARGO_NET_OFFLINE=true`. Its configured beforeBuild hook
+is doing the required fresh release-sidecar rebuild. Poll the same handle;
+do not duplicate the build or change that checkout while it runs. No installer
+or desktop launch occurred; build success is not yet known.
+
+Before that rebuild replaces generated helpers, archived all three previously
+tested executables in `pex-verify-5ee1ee7/build/frozen-helpers-60ffa76-first/`.
+All three archive hashes were verified equal to the earlier hashes below.
+Their existing frozen/preflight receipts remain evidence for those archived
+bytes, not automatically for any newly rebuilt bytes. No old installer artifacts
+were overwritten. Main's protected loop remains untouched.
+
 Fresh release helpers and frozen lifetime evidence on clean `60ffa76`:
 `node apps/desktop/scripts/build-sidecar.mjs --release-build` completed in
 `C:/Users/JosephMayo/Projects/pex-verify-5ee1ee7` (exec 58402 is terminal).
