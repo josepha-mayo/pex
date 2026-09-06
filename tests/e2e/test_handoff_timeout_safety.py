@@ -51,14 +51,22 @@ async def test_timed_out_handoff_is_durably_unresolved_and_never_redelivered(
         Settings.for_test(require_auth=False, home=tmp_path, autonomy="manage"),
     )
     deliveries = []
+    adapter_started = asyncio.Event()
 
     async def accepted_then_stalled(session, bundle):
         deliveries.append((session.id, bundle.model_dump(mode="json")))
+        adapter_started.set()
         await asyncio.Event().wait()
         return True
 
-    monkeypatch.setattr(pipeline_module, "HANDOFF_ADAPTER_TIMEOUT_SECONDS", 0.01)
+    # Ten milliseconds is below a reliable Windows/full-suite scheduling
+    # quantum: the outer timeout may fire before the adapter coroutine gets its
+    # first instruction.  Explicitly prove that dispatch entered the adapter,
+    # then exercise a still-bounded timeout without turning scheduler latency
+    # into an assertion about delivery behavior.
+    monkeypatch.setattr(pipeline_module, "HANDOFF_ADAPTER_TIMEOUT_SECONDS", 0.25)
     monkeypatch.setattr(adapters.synthetic, "inject_context", accepted_then_stalled)
+    first_request: asyncio.Task | None = None
 
     try:
         await store.upsert_goal(goal)
@@ -89,11 +97,15 @@ async def test_timed_out_handoff_is_durably_unresolved_and_never_redelivered(
             target_session_id=target.id,
             token_budget=2_000,
         )
-        first = await pipeline.request_context_handoff(
-            source,
-            principal_id="test_handoff_timeout",
-            request=request,
+        first_request = asyncio.create_task(
+            pipeline.request_context_handoff(
+                source,
+                principal_id="test_handoff_timeout",
+                request=request,
+            )
         )
+        await asyncio.wait_for(adapter_started.wait(), timeout=1.0)
+        first = await first_request
 
         assert first["ok"] is False
         assert first["replayed"] is False
@@ -121,4 +133,7 @@ async def test_timed_out_handoff_is_durably_unresolved_and_never_redelivered(
         assert rows[0].id == receipt.id
         assert rows[0].metadata["handoff_delivery_status"] == "delivery_uncertain"
     finally:
+        if first_request is not None and not first_request.done():
+            first_request.cancel()
+            await asyncio.gather(first_request, return_exceptions=True)
         await store.close()
