@@ -18,7 +18,11 @@ const BRIDGE_ADDRESS: &str = "127.0.0.1:7420";
 const BRIDGE_IDENTITY_PATH: &str = "/health/identity";
 const MIN_BRIDGE_TOKEN_BYTES: usize = 32;
 const MAX_BRIDGE_TOKEN_CHARS: usize = 512;
-const BRIDGE_STARTUP_TIMEOUT: Duration = Duration::from_secs(20);
+// This includes cold one-file extraction, imports and authenticated readiness.
+// A measured Windows restart spent ~13s extracting before Python started;
+// 20s incorrectly rejected a healthy payload before it could bind. Keep a
+// bounded cold-start allowance without relaxing identity or port ownership.
+const BRIDGE_STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
 const BRIDGE_PROBE_TIMEOUT: Duration = Duration::from_millis(1_500);
 const BRIDGE_RETRY_INTERVAL: Duration = Duration::from_millis(100);
 const BRIDGE_IDENTITY_RETRY_ATTEMPTS: usize = 6;

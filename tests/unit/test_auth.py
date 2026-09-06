@@ -83,6 +83,7 @@ def test_release_cli_rejects_no_auth_flag():
 def test_release_main_scrubs_operator_token_before_worker_spawns(monkeypatch):
     import pex_bridge.adapters.cursor as cursor_module
     import pex_bridge.main as bridge_main
+    import uvicorn
     from pex_bridge.adapters.cursor import _bridge_token
 
     operator = "desktop-owned-operator-token-that-is-long-enough"
@@ -95,7 +96,7 @@ def test_release_main_scrubs_operator_token_before_worker_spawns(monkeypatch):
     def fake_run(app, *, host, port, log_level):
         launched.update(app=app, host=host, port=port, log_level=log_level)
 
-    monkeypatch.setattr(bridge_main.uvicorn, "run", fake_run)
+    monkeypatch.setattr(uvicorn, "run", fake_run)
     bridge_main.main()
 
     assert os.environ.get("PEX_TOKEN") is None

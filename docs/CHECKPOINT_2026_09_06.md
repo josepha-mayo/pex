@@ -186,16 +186,17 @@ not a native startup failure or a completed authenticated browser test.
 
 ## Remaining execution order
 
-1. Final-review and push the first-run UX repair; finish real native setup and persistence.
+1. **P0: finish native UI restart/retry verification of the reviewed repair below**, then finish real
+   native setup and persistence. First-run UX is pushed as `726a3d2` with remote equality.
    The stronger proof contract, clean full-suite and controlled live recovery pair
    now pass on their exact revisions above; they do not close pre-existing-worker proof.
    Keep the measured large-fleet authority-read amplification tracked separately;
    correcting the 65-delivery fixture did not repair production fleet scalability.
-2. Visually validate the settings repair and complete native close/restore/restart and
-   all-eight-pet checks when app interaction resumes.
+2. Complete native close/restore/restart and all-eight-pet checks. Settings layout,
+   pet hide, message dismissal and restore have native evidence; restart does not yet.
 3. Recapture the real Codex + Strands restraint/recovery pair on the final runtime,
    including independent verifier evidence where required and ten quiet tasks.
-   The retained live pair proves only source `5c49c10`; see the curated live receipt.
+   The latest retained v4 live pair proves source `6212b62`; see the curated live receipt.
 4. Complete required cross-harness behavior, honest isolated comparisons, AgentCore
    deployment under the user's no-card-charge condition, and the final audited package.
 5. Record the real public demo video and finish the truthful submission artifacts.
@@ -209,3 +210,66 @@ Protected operator-owned file: `services/supervisor/src/pex_supervisor/loop.py`.
 Do not edit, stage, restore, format or clean it. Its rechecked SHA-256 remains
 `392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`.
 No cloud deployment, paid call, public post or submission occurred in this continuation.
+
+## Native restart blocker and narrow restraint repetitions
+
+A normal `tauri dev --no-watch` restart at `726a3d2` failed with `identity_timeout`.
+Observed desktop creation was 12:47:28 WAT and Python payload creation 12:47:41:
+about 13 seconds elapsed before the payload even started. The 20-second budget
+covered extraction, imports and identity verification. Killing the owned PyInstaller
+bootloader on timeout left its payload alive, holding port 7420 while the desktop
+remained open. Closing only that isolated desktop normally subsequently removed both
+the desktop and payload; a read-only check confirmed no listener remained on 7420.
+This is a real release blocker, not an authentication-check false positive to bypass.
+
+Reviewed patch: retain/watch both desktop and distinct frozen Windows bootloader
+process handles before importing the heavy bridge app; preserve standalone
+`--verify-bundle` auditing. The bounded cold-start allowance becomes 60 seconds and
+the visible copy is tested against the native constant. Identity, nonce, token and
+untrusted-port checks are unchanged. Strict watchdog/auth gate: **34 passed, 2 skipped**;
+desktop: **190 passed**; Rust: **14 passed**; production frontend build passed.
+Independent review caught both standalone-bundle regression and remaining pre-watchdog
+dependency imports; both were fixed before acceptance. The ordinary sidecar rebuild
+passed its input-fingerprint and frozen inventory gates. An earlier concurrent-source
+build correctly refused installation and is not a successful build.
+
+Actual frozen regression: **3 passed in 47.80s** against bridge SHA-256
+`0CDC3F6D34BFD55BECDBCC7C700BE8717B8AFBEC7D80F2D51913347A23A24702`.
+Two isolated launches proved nonce/HMAC identity, then terminated only their retained
+bootloader handles. Both reached zero job-owned processes and released the listener
+**before** closing the test safety job. Standalone inventory worked without a desktop
+parent or operator token and returned the exact ordered eight pets. Raw local report:
+`build/frozen-lifetime-726-fix-02.xml`, with retained isolated profiles/logs alongside.
+The first fixture attempt failed before readiness because its sanitized Windows
+environment lacked a home directory; it was interrupted and repaired with isolated
+profile/app-data/temp roots, not the real user's profile.
+
+Negative control: retained old `4f8b567` bridge SHA-256
+`B4B1FD6DD9402CB16D906FF917B95DF2091426C338FFBBDF8FF0F438A228CAAA`
+failed the same lifetime assertion in **23.48s**, with **4 active job processes**
+after bootloader death. The test then closed only its own job for cleanup; a process
+inventory confirmed the old executable was absent afterward. Report:
+`build/frozen-lifetime-old-negative-01.xml`. This is an expected negative-control
+failure, not a passing old runtime or a failure of the new runtime.
+The standalone inventory fixture was then additionally job-contained for timeout
+cleanup and passed again in **10.40s** (`build/frozen-bundle-contained-01.xml`).
+Final default focused gate: **34 passed, 5 skipped in 21.51s**; three skips are the
+explicit opt-in frozen cases already exercised above. Scoped Ruff/whitespace passed.
+
+The user pressed physical Escape again during the rebuilt-app window lookup.
+All Computer Use stopped; no further app input is authorized until the user resumes
+it. The new desktop and its bridge stayed alive beyond startup, but **native visual
+restart/retry and pet visibility persistence remain unverified**. Frozen process
+tests do not replace those UI gates or prove a final installer. There remains a narrow
+pre-Python lifetime/PID-reuse edge; this patch does not claim atomic desktop job
+containment of a payload stalled before Python can register its parent handles.
+
+Ten consecutive real quiet repetitions completed on clean source `726a3d2`, each
+using a new isolated Codex thread and the same `ping.txt=pong` completed-artifact
+task. All ten passed. Exact requested worker: `gpt-5.3-codex-spark`; real supervisor:
+Strands + `muse-spark-1.3-contributor-free`, no paid fallback. These are ten repeats
+of one narrow case, **not ten varied coding tasks, a productivity benchmark, or
+production existing-worker attachment proof**. Unique receipts and SQLite databases
+are retained in `pex-release-final-9c/benchmarks/results/_scratch/quiet-repeat-726-01`
+through `quiet-repeat-726-10`; do not use the overwritten global scratch receipt as
+the earlier pair's original receipt. The earlier pair has its own unique retained dirs.

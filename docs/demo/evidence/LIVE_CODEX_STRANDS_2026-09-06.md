@@ -38,6 +38,19 @@ These remain controlled file tasks in isolated Codex threads, not attachment to 
 user's pre-existing worker, ten quiet cases, cross-harness benchmarks, AgentCore
 deployment or final-package evidence. The earlier v3 pair below is historical only.
 
+## Narrow repeated restraint check — source `726a3d2`
+
+Ten consecutive isolated repetitions of the same completed `ping.txt=pong` task
+passed, with a fresh worker thread and real Strands inference each time. Requested
+worker and supervisor models were unchanged from the v4 pair above. This checks
+repeatability of restraint on one narrow artifact case; it does not satisfy a suite
+of ten varied coding tasks or measure productivity. Test times in order were
+111.18, 105.33, 107.52, 108.31, 91.00, 95.45, 93.27, 85.68, 88.02 and 92.73 seconds.
+The raw receipts/databases remain separately retained locally. First and last
+receipt SHA-256 values are respectively
+`B11E6117B6C7FFE085A1BF173AB8D28F8D7A55523855EDD06BAC53A608259DC2` and
+`95B7EC59F2D7A87751061805479A106215C38B97F6FB7CEB3EEBDEAB006C708D`.
+
 ## Historical v3 pair — source `5c49c10`
 
 This is a sanitized, judge-readable summary of two strict local proof receipts. It is not

@@ -4,13 +4,10 @@ import argparse
 import hashlib
 import json
 import os
+import sys
 import threading
 import time
 from pathlib import Path
-
-import uvicorn
-
-from pex_bridge.config import normalize_loopback_host
 
 EXPECTED_BUNDLED_PET_IDS = (
     "pex",
@@ -32,6 +29,44 @@ def _process_is_alive(pid: int) -> bool:
     except (OSError, ValueError):
         return False
     return True
+
+
+def _desktop_watchdog_pids(
+    desktop_pid: int,
+    *,
+    frozen: bool | None = None,
+    runtime_parent_pid: int | None = None,
+    platform: str | None = None,
+) -> tuple[int, ...]:
+    """Return only lifetime parents of this desktop-owned sidecar.
+
+    A PyInstaller one-file payload on Windows is parented by its bootloader,
+    which waits for the payload before cleaning extraction. Retaining both the
+    desktop and that bootloader prevents a failed startup from leaving the
+    payload alive while its desktop owner is still running.
+    """
+
+    if isinstance(desktop_pid, bool) or not isinstance(desktop_pid, int) or desktop_pid <= 0:
+        raise ValueError("PEX_DESKTOP_PARENT_PID must be a positive integer")
+    frozen = bool(getattr(sys, "frozen", False)) if frozen is None else frozen
+    platform = os.name if platform is None else platform
+    if platform != "nt" or not frozen:
+        return (desktop_pid,)
+    runtime_parent_pid = os.getppid() if runtime_parent_pid is None else runtime_parent_pid
+    if (
+        isinstance(runtime_parent_pid, bool)
+        or not isinstance(runtime_parent_pid, int)
+        or runtime_parent_pid <= 0
+    ):
+        raise ValueError("could not retain the PyInstaller bootloader parent")
+    if runtime_parent_pid == desktop_pid:
+        return (desktop_pid,)
+    return (desktop_pid, runtime_parent_pid)
+
+
+def _start_desktop_parent_watchdogs(desktop_pid: int) -> None:
+    for parent_pid in _desktop_watchdog_pids(desktop_pid):
+        _start_parent_watchdog(parent_pid)
 
 
 def _start_parent_watchdog(pid: int) -> None:
@@ -126,24 +161,36 @@ def main() -> None:
         help="verify and print the exact embedded pet inventory, then exit",
     )
     args = parser.parse_args()
+    # Bundle inventory is a standalone, read-only packaging audit. It never
+    # serves a bridge, so it must not require a desktop ownership parent.
     if args.verify_bundle:
         print(json.dumps(bundled_pet_inventory(), separators=(",", ":")))
         return
-
-    from pex_bridge.app import create_app, state
-
     parent_pid = os.environ.pop("PEX_DESKTOP_PARENT_PID", "").strip()
+    if os.name == "nt" and bool(getattr(sys, "frozen", False)) and not parent_pid:
+        parser.error("PEX_DESKTOP_PARENT_PID is required for the frozen desktop bridge")
     if parent_pid:
         try:
             parsed_parent_pid = int(parent_pid)
+            if parsed_parent_pid <= 0:
+                raise ValueError
         except ValueError:
             parser.error("PEX_DESKTOP_PARENT_PID must be a positive integer")
         if os.name != "nt" and not _process_is_alive(parsed_parent_pid):
             parser.error("PEX desktop parent process is not alive")
         try:
-            _start_parent_watchdog(parsed_parent_pid)
-        except OSError as exc:
+            # Register before importing the application: PyInstaller extraction
+            # and app initialization must never outlive a lost desktop owner.
+            _start_desktop_parent_watchdogs(parsed_parent_pid)
+        except (OSError, ValueError) as exc:
             parser.error(str(exc))
+
+    # These imports initialize runtime dependencies. Keep them after parent
+    # retention so extraction/import work cannot outlive the desktop owner.
+    import uvicorn
+
+    from pex_bridge.app import create_app, state
+    from pex_bridge.config import normalize_loopback_host
 
     # The desktop passes its operator bearer only to this owned sidecar. Settings
     # has already validated and copied it into bridge-owned memory, so scrub the

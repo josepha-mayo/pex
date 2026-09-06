@@ -132,7 +132,7 @@ export function startupRecoveryCopy(status: BridgeBootstrapStatus): StartupRecov
       eyebrow: "Local supervisor",
       title: "Starting PEX",
       detail: "Opening the authenticated bridge that keeps your workspace data on this machine.",
-      guidance: "This attempt has a fixed 20-second deadline.",
+      guidance: "A cold start can take up to a minute. This attempt has a fixed 60-second deadline.",
       tone: "starting",
     };
   }

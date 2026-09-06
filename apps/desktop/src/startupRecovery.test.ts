@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { createElement, type ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -131,11 +132,14 @@ test("startup recovery CSS wraps actions and remains scrollable at high zoom", a
   assert.match(css, /overflow-wrap:\s*anywhere/u);
 });
 
-test("initial startup is explicitly pending and has a bounded-wait presentation", () => {
+test("initial startup is explicitly pending and matches the native bounded cold-start budget", async () => {
   assert.equal(initialBridgeBootstrapStatus.phase, "starting");
   const copy = startupRecoveryCopy(initialBridgeBootstrapStatus);
   assert.equal(copy.tone, "starting");
-  assert.match(copy.guidance || "", /20-second deadline/u);
+  const rust = await readFile(new URL("../src-tauri/src/main.rs", import.meta.url), "utf8");
+  const seconds = rust.match(/BRIDGE_STARTUP_TIMEOUT: Duration = Duration::from_secs\((\d+)\)/u)?.[1];
+  assert.equal(seconds, "60");
+  assert.ok(copy.guidance?.includes(`${seconds}-second deadline`));
 });
 
 test("unverified port ownership remains explicit and never suggests automatic takeover", () => {
