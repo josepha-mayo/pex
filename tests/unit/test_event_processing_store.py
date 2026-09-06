@@ -10,6 +10,7 @@ import pytest
 from pex_bridge.store import (
     ProjectIdentityBlockedError,
     Store,
+    _validate_event_observation_update,
     event_semantic_hash,
     stable_event_artifact_id,
     stable_event_effect_id,
@@ -1251,6 +1252,31 @@ async def test_observation_update_cannot_rewrite_reserved_proposal(tmp_path):
         assert (await store.list_interventions(session.id))[0] == prior
     finally:
         await store.close()
+
+
+def test_observation_causal_negative_is_narrow_and_monotonic():
+    event = _event("causal-negative")
+    prior = _planned_intervention(event).model_copy(update={"result": "sent"}, deep=True)
+    observed = prior.model_copy(deep=True)
+    observed.metadata["causal_continuation_proven"] = False
+    _validate_event_observation_update(prior, observed)
+
+    forged_true = prior.model_copy(deep=True)
+    forged_true.metadata["causal_continuation_proven"] = True
+    with pytest.raises(ValueError, match="cannot rewrite causal continuation proof"):
+        _validate_event_observation_update(prior, forged_true)
+
+    frozen_false = observed.model_copy(deep=True)
+    erased = frozen_false.model_copy(deep=True)
+    erased.metadata.pop("causal_continuation_proven")
+    with pytest.raises(ValueError, match="cannot rewrite causal continuation proof"):
+        _validate_event_observation_update(frozen_false, erased)
+
+    frozen_true = forged_true.model_copy(deep=True)
+    downgraded = frozen_true.model_copy(deep=True)
+    downgraded.metadata["causal_continuation_proven"] = False
+    with pytest.raises(ValueError, match="cannot rewrite causal continuation proof"):
+        _validate_event_observation_update(frozen_true, downgraded)
 
 
 @pytest.mark.asyncio

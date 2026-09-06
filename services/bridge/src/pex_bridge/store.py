@@ -4451,6 +4451,32 @@ def _validate_event_observation_update(
     for key in set(existing_metadata) | set(observed_metadata):
         if key in mutable_metadata:
             continue
+        if key == "causal_continuation_proven":
+            existing_has_key = key in existing_metadata
+            observed_has_key = key in observed_metadata
+            existing_value = existing_metadata.get(key)
+            observed_value = observed_metadata.get(key)
+            # An unsupported adapter may establish only the monotonic negative
+            # fact that a later generic event cannot prove causal continuation.
+            # It may never add True, erase False, or downgrade existing proof.
+            if (
+                observed_has_key
+                and observed_value is False
+                and (not existing_has_key or existing_value in {None, False})
+            ):
+                continue
+            if (
+                existing_has_key
+                and observed_has_key
+                and existing_value is True
+                and observed_value is True
+            ):
+                continue
+            if not existing_has_key and not observed_has_key:
+                continue
+            raise ValueError(
+                "event observation cannot rewrite causal continuation proof"
+            )
         if existing_metadata.get(key) != observed_metadata.get(key):
             raise ValueError(f"event observation cannot change intervention metadata {key}")
 

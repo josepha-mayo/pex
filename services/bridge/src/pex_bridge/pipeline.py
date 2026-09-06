@@ -3573,14 +3573,55 @@ class Pipeline:
         ]
         candidates: list[Intervention] = []
         for item in eligible:
+            if "delivery_uncertain" in str(item.result):
+                # Generic later activity cannot prove that an uncertain send
+                # reached the worker. Keep the original attempt unresolved and
+                # carry its durable verification receipt only to prevent retries.
+                if (
+                    verification is not None
+                    and item.proposed_action.type
+                    == InterventionType.REQUEST_VERIFICATION
+                ):
+                    prior_verification = (item.metadata or {}).get("verification")
+                    prior_receipt = (
+                        prior_verification.get("evidence_gathering")
+                        if isinstance(prior_verification, dict)
+                        else None
+                    )
+                    if isinstance(prior_receipt, dict):
+                        try:
+                            gathering = EvidenceGatheringReceipt.model_validate(
+                                prior_receipt
+                            )
+                        except (TypeError, ValueError):
+                            pass
+                        else:
+                            _merge_evidence_gathering(verification, gathering)
+                continue
             if session.harness_type not in {HarnessType.CODEX, HarnessType.OPENCODE}:
+                if item.proposed_action.type == InterventionType.REQUEST_VERIFICATION:
+                    verification_update = await self._observe_verification_request(
+                        item,
+                        session,
+                        event,
+                        verification,
+                        persist=persist,
+                    )
+                    if verification_update is not None:
+                        updates.append(verification_update)
+                    continue
                 # A later event in the same session is not a descendant receipt.
                 # Preserve the observation without converting unsupported
                 # correlation into a claimed successful/failed intervention.
                 self._record_observed_event(item, event)
-                item.outcome = "post_delivery_activity_observed_causality_unavailable"
+                item.outcome = (
+                    "worker_error_observed_after_intervention"
+                    if event.event_type == EventType.ERROR
+                    else "post_delivery_activity_observed_causality_unavailable"
+                )
                 item.helped = None
-                item.metadata["outcome_final"] = True
+                if event.event_type != EventType.ERROR:
+                    item.metadata["outcome_final"] = True
                 item.metadata["causal_continuation_proven"] = False
                 if persist:
                     await self.store.update_intervention(item)
