@@ -194,6 +194,7 @@ def test_codex_normalize_item_keeps_shell_output_out_of_claims():
             "id": "item_cmd",
             "type": "commandExecution",
             "command": {"command": "pytest -q"},
+            "cwd": "C:/proj",
             "aggregatedOutput": "All tests passed\n1 passed",
             "exitCode": 0,
             "status": "completed",
@@ -205,6 +206,77 @@ def test_codex_normalize_item_keeps_shell_output_out_of_claims():
     assert event.process_state is not None
     assert event.process_state["pytest"]["ok"] is True
     assert event.process_state["pytest"]["exit_code"] == 0
+    assert event.process_state["pytest"]["execution_cwd"] == "C:/proj"
+
+
+@pytest.mark.parametrize(
+    ("cwd", "reason"),
+    [
+        (None, "command_cwd_missing"),
+        (42, "command_cwd_missing"),
+        (" C:/proj", "command_cwd_malformed"),
+        ("relative/workspace", "command_cwd_malformed"),
+        ("C:/proj/../other", "command_cwd_malformed"),
+        ("C:/proj\x00other", "command_cwd_malformed"),
+        ("C:/other", "command_cwd_mismatch"),
+    ],
+)
+def test_codex_normalize_item_refuses_unbound_pytest_cwd(cwd, reason):
+    from pex_protocol.enums import HarnessType, SessionStatus
+    from pex_protocol.session import HarnessSession
+
+    session = HarnessSession(
+        id="codex:thr_cwd",
+        harness_type=HarnessType.CODEX,
+        vendor_session_id="thr_cwd",
+        status=SessionStatus.WORKING,
+        cwd="C:/proj",
+        project_id="C:/proj",
+    )
+    adapter = CodexAdapter()
+    adapter.sessions[session.id] = session
+    item = {
+        "id": "item_cmd",
+        "type": "commandExecution",
+        "command": "pytest -q",
+        "aggregatedOutput": "1 passed",
+        "exitCode": 0,
+        "status": "completed",
+    }
+    if cwd is not None:
+        item["cwd"] = cwd
+    event = adapter.normalize_item(session, item)
+    assert event.process_state == {"pytest_unavailable_reason": reason}
+
+
+def test_codex_normalize_item_preserves_valid_windows_execution_cwd_spelling():
+    from pex_protocol.enums import HarnessType, SessionStatus
+    from pex_protocol.session import HarnessSession
+
+    session = HarnessSession(
+        id="codex:thr_windows_cwd",
+        harness_type=HarnessType.CODEX,
+        vendor_session_id="thr_windows_cwd",
+        status=SessionStatus.WORKING,
+        cwd=r"C:\Workspace\Repo",
+        project_id=r"C:\Workspace\Repo",
+    )
+    adapter = CodexAdapter()
+    adapter.sessions[session.id] = session
+    event = adapter.normalize_item(
+        session,
+        {
+            "id": "item_windows_cmd",
+            "type": "commandExecution",
+            "command": "pytest -q",
+            "cwd": "c:/workspace/repo",
+            "aggregatedOutput": "1 passed",
+            "exitCode": 0,
+            "status": "completed",
+        },
+    )
+    assert event.process_state is not None
+    assert event.process_state["pytest"]["execution_cwd"] == "c:/workspace/repo"
 
 
 def test_codex_item_turn_identity_cannot_override_enclosing_turn():

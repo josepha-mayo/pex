@@ -9,6 +9,8 @@ from pex_protocol.project_identity import (
     ProjectIdentity,
     ProjectLocator,
     ProjectOrigin,
+    canonical_absolute_path,
+    same_absolute_path,
     same_project_locator,
 )
 
@@ -71,6 +73,28 @@ def test_windows_lexical_identity_is_explicit_and_drive_absolute():
         _windows(r"\\server\share\..\other"),
         _windows(r"\\server\share\other"),
     )
+
+
+def test_absolute_path_identity_is_lexical_and_never_resolves_aliases():
+    assert canonical_absolute_path(r"C:\Repo") == (PathPlatform.WINDOWS, "c:/repo")
+    assert same_absolute_path(r"C:\Repo", "c:/repo") is True
+    assert same_absolute_path("/workspace/Repo", "/workspace/repo") is False
+    assert same_absolute_path("/workspace/repo", "relative/repo") is False
+    assert same_absolute_path(r"C:\Repo", "/workspace/repo") is False
+    assert same_absolute_path("/workspace/repo", 42) is False
+    for malformed in (
+        " /workspace/repo",
+        "/workspace/repo ",
+        "/workspace/./repo",
+        "/workspace/link/../repo",
+        r"C:\workspace\..\repo",
+        "//host/share/repo",
+        "/workspace\x00repo",
+        "/workspace\trepo",
+    ):
+        with pytest.raises(ValueError):
+            canonical_absolute_path(malformed)
+    assert same_absolute_path("/workspace\trepo", "/workspace\trepo") is False
 
 
 def test_same_spelling_on_two_machines_is_not_the_same_project():

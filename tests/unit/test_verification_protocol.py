@@ -264,6 +264,13 @@ def test_executed_pytest_receipt_is_bound_to_probe_cwd_and_scope():
     )
     assert full_receipt.execution.source_event_id == "pytest_1"
 
+    equivalent_windows = full_execution.model_copy(update={"cwd": r"c:\workspace"})
+    assert EvidenceGatheringReceipt(
+        state=EvidenceGatheringState.EXECUTED,
+        probe=_probe(relative_targets=[]),
+        execution=equivalent_windows,
+    ).execution is not None
+
     with pytest.raises(ValidationError, match="exact typed probe"):
         EvidenceGatheringReceipt(
             state=EvidenceGatheringState.EXECUTED,

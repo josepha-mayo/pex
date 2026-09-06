@@ -56,6 +56,22 @@ includes command-level `cwd`; it is available to validate rather than infer.
 This failed attempt is retained, not counted as recovery or benchmark success.
 No foreground input was used.
 
+Reviewed CWD repair now requires an explicit observed command directory before
+Codex can create typed pytest state. Missing, malformed or mismatched directories
+remain visible as shell observations without pytest evidence. The pipeline also
+rejects missing/old or mismatched Codex directory markers and records the actual
+observed spelling in the verification receipt. New lexical comparison rejects
+control characters, surrounding whitespace, dot components and ambiguous
+slash-only UNC prefixes; it neither resolves filesystem aliases nor silently
+case-folds POSIX paths. Windows drive/UNC case and separator equivalence is tested.
+Root and Terra reviewed the implementation and corrected the shared test fixture's
+own hardcoded wrong directory. Final root five-file gate: **111 passed in 17.25s**;
+Ruff passed. This does not validate a fresh live run or the full Python suite.
+An independently decoded PEX resume response had both top-level and thread `cwd`
+matching the fixture, while the later command reported the main PEX repository.
+There is no evidence here that PEX resume reset the directory. Large-output
+handling remains unresolved; no transport cap was relaxed in this repair.
+
 ### Run-05 false-claim fixture: useful recovery, verification gate still open
 
 The existing worker ran four genuinely failing public tests and emitted the

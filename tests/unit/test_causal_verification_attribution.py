@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
 from pex_bridge.adapters.codex_subscription import _stable_record_id, shared_live_event_id
-from pex_bridge.pipeline import Pipeline
+from pex_bridge.pipeline import Pipeline, _matching_pytest_execution
 from pex_protocol.actions import InterventionType, ProposedAction
 from pex_protocol.enums import EventPhase, EventType, HarnessType, PolicyVerdict
 from pex_protocol.intervention import Intervention
@@ -142,6 +142,77 @@ def _supported_verification() -> dict:
             reason="bounded_existing_evidence_only",
         ).model_dump(mode="json"),
     }
+
+
+def test_codex_pytest_execution_requires_adapter_bound_observed_cwd(tmp_path):
+    created_at = datetime.now(UTC)
+    session = _session(HarnessType.CODEX, str(tmp_path))
+    probe = VerificationProbe(
+        id="probe-codex-cwd",
+        kind=VerificationProbeKind.PYTEST,
+        harness_type=session.harness_type,
+        session_id=session.id,
+        project_id=session.project_id,
+        goal_id=session.goal_id,
+        request_event_id="request-stop",
+        cwd=session.cwd,
+        relative_targets=(),
+    )
+    gathering = EvidenceGatheringReceipt(
+        state=EvidenceGatheringState.ATTEMPTED,
+        probe=probe,
+        sources=["harness_verification_request"],
+    )
+    action = ProposedAction(
+        type=InterventionType.REQUEST_VERIFICATION,
+        session_id=session.id,
+        goal_id=session.goal_id,
+        payload={"probe": probe.model_dump(mode="json")},
+        rationale="Need the requested full-suite result.",
+        evidence=["claim:tests-pass"],
+    )
+    prior = Intervention(
+        id="verification-codex-cwd",
+        session_id=session.id,
+        goal_id=session.goal_id,
+        trigger=EventType.STOP.value,
+        evidence=action.evidence,
+        diagnosis=action.rationale,
+        proposed_action=action,
+        confidence=action.confidence,
+        risk=action.risk.value,
+        reversible=action.reversible,
+        authority_required=action.authority_required.value,
+        action_taken=action.type.value,
+        policy_verdict=PolicyVerdict.ALLOW,
+        result="verification_requested",
+        created_at=created_at,
+        metadata={"trigger_event_id": "request-stop"},
+    )
+
+    def event(process_state: dict) -> HarnessEvent:
+        return HarnessEvent(
+            event_id="pytest-cwd-event",
+            ts=created_at + timedelta(seconds=1),
+            harness_type=HarnessType.CODEX,
+            session_id=session.id,
+            project_id=session.project_id,
+            event_type=EventType.SHELL,
+            command="pytest -q",
+            process_state=process_state,
+        )
+
+    valid = event({"pytest": {"ok": True, "exit_code": 0, "execution_cwd": session.cwd}})
+    receipt = _matching_pytest_execution(prior, session, valid, gathering)
+    assert receipt is not None
+    assert receipt.cwd == session.cwd
+
+    for state in (
+        {"pytest": {"ok": True, "exit_code": 0}},
+        {"pytest": {"ok": True, "exit_code": 0, "execution_cwd": str(tmp_path / "other")}},
+        {"pytest_unavailable_reason": "command_cwd_mismatch"},
+    ):
+        assert _matching_pytest_execution(prior, session, event(state), gathering) is None
 
 
 @pytest.mark.asyncio

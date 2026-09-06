@@ -50,7 +50,7 @@ async def test_shared_completed_powershell_pytest_keeps_exact_target_scope(tmp_p
                         "id": item_id,
                         "type": "commandExecution",
                         "command": command,
-                        "cwd": "C:/workspace",
+                        "cwd": adapter.session.cwd,
                         "aggregatedOutput": output,
                         "exitCode": exit_code,
                         "status": "completed" if exit_code == 0 else "failed",
@@ -71,6 +71,7 @@ async def test_shared_completed_powershell_pytest_keeps_exact_target_scope(tmp_p
         assert shells[1].process_state["pytest"]["ok"] is True
         assert shells[1].process_state["pytest"]["exit_code"] == 0
         assert shells[1].process_state["pytest"]["passed"] == 4
+        assert shells[1].process_state["pytest"]["execution_cwd"] == adapter.session.cwd
 
         invocation = classify_pytest_invocation(shells[1].command)
         assert invocation is not None
@@ -90,6 +91,39 @@ async def test_shared_completed_powershell_pytest_keeps_exact_target_scope(tmp_p
         full_probe = exact_probe.model_copy(update={"relative_targets": ()})
         assert exact_probe.matches_pytest_invocation(invocation) is True
         assert full_probe.matches_pytest_invocation(invocation) is False
+    finally:
+        await transport.close()
+
+
+@pytest.mark.parametrize("command_directory", ["missing", "other"])
+async def test_shared_full_suite_pass_outside_bound_cwd_is_not_pytest_evidence(
+    tmp_path, command_directory,
+):
+    coordinator, transport = await _subscribed(tmp_path)
+    adapter = CodexSharedAdapter(coordinator)
+    item = {
+        "id": "pytest-unbound", "type": "commandExecution",
+        "command": "python -m pytest -q", "aggregatedOutput": "4 passed in 0.31s",
+        "exitCode": 0, "status": "completed",
+    }
+    if command_directory == "other":
+        item["cwd"] = str(tmp_path / "different-workspace")
+    transport.notifications.extend([
+        _notification("turn/started", {"threadId": "thread-1", "turn": {"id": "turn-test"}}),
+        _notification("item/completed", {
+            "threadId": "thread-1", "turnId": "turn-test", "item": item,
+        }),
+    ])
+    try:
+        events = [adapter._event(record) for record in (await coordinator.drain_live()).records]
+        shells = [event for event in events if event and event.event_type == EventType.SHELL]
+        assert len(shells) == 1
+        assert shells[0].session_id == adapter.session.id
+        assert shells[0].command == item["command"]
+        assert "pytest" not in shells[0].process_state
+        assert shells[0].process_state["pytest_unavailable_reason"] == (
+            "command_cwd_missing" if command_directory == "missing" else "command_cwd_mismatch"
+        )
     finally:
         await transport.close()
 

@@ -25,6 +25,7 @@ from pex_protocol.capabilities import (
     PermissionResponseMode,
 )
 from pex_protocol.enums import EventPhase, EventType, HarnessType, SessionStatus
+from pex_protocol.project_identity import canonical_absolute_path, same_absolute_path
 from pex_protocol.session import HarnessEvent, HarnessSession
 
 from pex_bridge.adapters.base import (
@@ -1712,6 +1713,17 @@ class CodexAdapter(HarnessAdapter):
                 "status": item.get("status"),
             }
             process_state = parse_pytest_process_state(str(command or ""), payload)
+            if process_state is not None:
+                pytest_state = process_state.get("pytest")
+                execution_cwd, cwd_reason = _validated_execution_cwd(session, item.get("cwd"))
+                if not isinstance(pytest_state, dict):
+                    process_state = None
+                elif execution_cwd is None:
+                    # Preserve that this was a shell observation without turning
+                    # its output into typed pytest evidence for another workspace.
+                    process_state = {"pytest_unavailable_reason": cwd_reason}
+                else:
+                    pytest_state["execution_cwd"] = execution_cwd
             status = item.get("status")
             if isinstance(status, str) and status.lower() in {"failed", "error"}:
                 error = bounded_observed_text(
@@ -1971,6 +1983,32 @@ class CodexAdapter(HarnessAdapter):
 
 def _bounded_path(value: object) -> str:
     return bounded_adapter_text(value, field="path", max_chars=MAX_PATH_CHARS)
+
+
+def _validated_execution_cwd(
+    session: HarnessSession,
+    raw_cwd: object,
+) -> tuple[str | None, str]:
+    """Bind typed shell evidence to the already-selected session workspace.
+
+    This is lexical only: normalizing an App Server observation must neither
+    resolve paths on PEX's machine nor treat a symlink/drive alias as authority.
+    """
+
+    if not session.cwd:
+        return None, "session_cwd_unavailable"
+    if not isinstance(raw_cwd, str) or not raw_cwd:
+        return None, "command_cwd_missing"
+    try:
+        cwd = bounded_adapter_text(raw_cwd, field="Codex command cwd", max_chars=MAX_PATH_CHARS)
+        canonical_absolute_path(cwd)
+    except ValueError:
+        return None, "command_cwd_malformed"
+    if not same_absolute_path(session.cwd, session.cwd):
+        return None, "session_cwd_malformed"
+    if not same_absolute_path(cwd, session.cwd):
+        return None, "command_cwd_mismatch"
+    return cwd, "bound"
 
 
 def _validated_jsonrpc_id(value: object) -> int | str | None:

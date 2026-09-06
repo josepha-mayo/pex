@@ -36,6 +36,8 @@ from pex_protocol.project_identity import (
     ProjectLocator,
     ProjectLocatorKind,
     ProjectOrigin,
+    canonical_absolute_path,
+    same_absolute_path,
     same_project_locator,
 )
 from pex_protocol.session import HarnessEvent, HarnessSession
@@ -95,6 +97,8 @@ __all__ = [
     "ProjectLocator",
     "ProjectLocatorKind",
     "ProjectOrigin",
+    "canonical_absolute_path",
+    "same_absolute_path",
     "ProposedAction",
     "PytestInvocation",
     "PytestInvocationScope",

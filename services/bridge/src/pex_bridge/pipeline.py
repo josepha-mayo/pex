@@ -38,6 +38,7 @@ from pex_protocol.enums import (
 )
 from pex_protocol.goal import Decision, Goal
 from pex_protocol.intervention import Intervention
+from pex_protocol.project_identity import same_absolute_path
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorRequest, SupervisorResult
 from pex_protocol.verification import (
@@ -312,6 +313,14 @@ def _matching_pytest_execution(
     pytest_state = state.get("pytest")
     if not isinstance(pytest_state, dict):
         return None
+    if event.harness_type == HarnessType.CODEX:
+        execution_cwd = pytest_state.get("execution_cwd")
+        if (
+            not isinstance(execution_cwd, str)
+            or not same_absolute_path(execution_cwd, session.cwd)
+            or not same_absolute_path(execution_cwd, probe.cwd)
+        ):
+            return None
     ok = pytest_state.get("ok")
     exit_code = pytest_state.get("exit_code")
     if isinstance(exit_code, bool) or not isinstance(exit_code, int):
@@ -329,7 +338,7 @@ def _matching_pytest_execution(
         source_event_id=event.event_id,
         observed_at=event.ts,
         observed_command=command,
-        cwd=probe.cwd,
+        cwd=execution_cwd if event.harness_type == HarnessType.CODEX else probe.cwd,
         process_started=True,
         exit_code=exit_code,
         result=result,

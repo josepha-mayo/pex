@@ -146,6 +146,44 @@ def _canonical_windows_path(raw: str) -> str:
     return folded_canonical
 
 
+def canonical_absolute_path(raw: str) -> tuple[PathPlatform, str]:
+    """Return a conservative lexical identity for one absolute local path.
+
+    This deliberately does not touch the filesystem: an observation must not
+    acquire authority by resolving a symlink, a drive mapping, or another local
+    alias.  It is suitable only for comparing two already-bound path strings.
+    """
+
+    _validate_raw(raw, label="absolute path")
+    if raw != raw.strip():
+        raise ValueError("absolute path must not have surrounding whitespace")
+    if any(ord(char) < 0x20 or ord(char) == 0x7F for char in raw):
+        raise ValueError("absolute path must not contain control characters")
+    if any(part in {".", ".."} for part in re.split(r"[\\/]", raw)):
+        raise ValueError("absolute path must not contain dot components")
+    # A leading ``//`` is POSIX syntax too.  Do not make a Windows UNC claim
+    # from slash-only input, where doing so would silently case-fold a POSIX path.
+    if raw.startswith("//"):
+        raise ValueError("absolute path has an ambiguous slash-only UNC prefix")
+    normalized_separators = raw.replace("/", "\\")
+    if _DRIVE_ABSOLUTE.match(normalized_separators) or raw.startswith("\\\\"):
+        return PathPlatform.WINDOWS, _canonical_windows_path(raw)
+    if raw.startswith("/"):
+        return PathPlatform.POSIX, _canonical_posix_path(raw)
+    raise ValueError("absolute path must be POSIX-absolute, drive-absolute, or UNC")
+
+
+def same_absolute_path(left: str | None, right: str | None) -> bool:
+    """Compare two absolute paths without filesystem resolution or alias trust."""
+
+    if not isinstance(left, str) or not isinstance(right, str):
+        return False
+    try:
+        return canonical_absolute_path(left) == canonical_absolute_path(right)
+    except ValueError:
+        return False
+
+
 def _canonical_repository_uri(raw: str) -> tuple[str, ProjectOrigin]:
     _validate_raw(raw, label="repository URI")
     split = urlsplit(raw)

@@ -13,6 +13,7 @@ from typing import Annotated, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from pex_protocol.enums import HarnessType, PolicyVerdict
+from pex_protocol.project_identity import same_absolute_path
 
 _WINDOWS_DRIVE = re.compile(r"^[A-Za-z]:")
 _WINDOWS_ABSOLUTE = re.compile(r"^[A-Za-z]:[\\/]")
@@ -594,7 +595,7 @@ class EvidenceGatheringReceipt(BaseModel):
                 raise ValueError("executed evidence requires a probe and execution receipt")
             if self.execution.result == VerificationExecutionResult.UNAVAILABLE:
                 raise ValueError("executed evidence cannot be unavailable")
-            if self.execution.cwd != self.probe.cwd:
+            if not same_absolute_path(self.execution.cwd, self.probe.cwd):
                 raise ValueError("execution cwd must match the immutable probe cwd")
             if self.probe.kind == VerificationProbeKind.PYTEST:
                 invocation = (
