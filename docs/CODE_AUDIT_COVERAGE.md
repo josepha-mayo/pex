@@ -6,6 +6,18 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Fenced example versus persistent intent — 6 Sep
+
+Root fully read `public_task.py` and `test_public_task.py`; changed-path review
+of the HTTP goal lifecycle regression. Build spec 14.2 requires persistent intent
+extraction, not promotion of examples into actual decisions/requirements. Five
+red unit cases exposed that promotion for backtick/tilde fenced examples. The
+repair leaves objective text intact while excluding fenced content from lifted
+lists. Matching/longer closing fences and unclosed examples are handled;
+explicit supplied fields retain their existing precedence. Both complete test
+files passed: 30 tests, thread warnings as errors. This does not cover every
+Markdown construct, all intent ambiguity or semantic extraction quality.
+
 ### Trajectory candidate integrity — 6 Sep, through `f650260`
 
 Root fully read `services/supervisor/src/pex_supervisor/drift.py` and

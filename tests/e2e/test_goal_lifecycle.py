@@ -184,6 +184,27 @@ async def test_attach_validates_goal_project_and_explicit_replacement(client: As
 
 
 @pytest.mark.asyncio
+async def test_goal_create_keeps_fenced_examples_out_of_persistent_lists(client: AsyncClient):
+    objective = (
+        "Implement the real feature.\n\n```markdown\n"
+        "Acceptance criteria:\n- Example acceptance\n"
+        "Decisions:\n- Example decision\n```\n"
+        "Acceptance criteria:\n- Real acceptance\n"
+        "Decisions:\n- Real decision\n"
+    )
+    created = await client.post("/v1/goals", json={
+        "project_id": "demo", "title": "Fenced examples", "objective": objective,
+    })
+    assert created.status_code == 200, created.text
+    goal = created.json()
+    assert goal["objective"] == objective
+    assert goal["acceptance_criteria"] == ["Real acceptance"]
+    rows = await client.get(f"/v1/goals/{goal['id']}/decisions")
+    assert rows.status_code == 200, rows.text
+    assert {item["statement"] for item in rows.json()} == {"Real decision"}
+
+
+@pytest.mark.asyncio
 async def test_goal_create_persists_labeled_decision_ledger(client: AsyncClient):
     created = await client.post(
         "/v1/goals",

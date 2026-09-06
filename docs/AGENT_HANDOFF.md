@@ -2,6 +2,18 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Intent extraction repair: full read of `public_task.py` found fenced Markdown
+examples were being lifted into authoritative acceptance/decision lists. Five
+new unit cases failed before repair. Parser now skips backtick/tilde fenced
+content for structured extraction, requires a same-character closing fence at
+least as long with no trailing info, and conservatively keeps an unclosed fence
+as example content through EOF. Original objective text remains intact, and
+explicit goal lists remain authoritative. A new HTTP goal-create regression
+checks persisted acceptance and decision rows. Complete public-task and goal
+lifecycle gate: **30 passed in 26.84s**, thread warnings as errors, scoped Ruff
+and diff checks clean. This bounded fix is not a complete Markdown parser or
+semantic intent-extraction implementation. No model calls or protected loop edit.
+
 Updated clean backend gate: verified `pex-verify-5ee1ee7` had no tracked/untracked
 changes, then advanced that existing detached verification checkout to `89c6436`
 (its directory name is now historical). Offline frozen sync checked 113 packages;

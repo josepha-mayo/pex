@@ -15,6 +15,7 @@ _SECTION = re.compile(
     re.I,
 )
 _BULLET = re.compile(r"^\s*(?:[-*]|\d+[.)])\s+(?P<item>\S.*)$")
+_FENCE = re.compile(r"^ {0,3}(?P<marker>`{3,}|~{3,})(?P<info>.*)$")
 _SECTION_KEYS = {
     "acceptance criteria": "acceptance_criteria",
     "constraints": "constraints",
@@ -66,7 +67,26 @@ def parse_public_task(task_md: str) -> dict[str, str | list[str]]:
         "unresolved_questions": [],
     }
     current: str | None = None
+    fence_marker: str | None = None
     for line in text.split("\n"):
+        fence = _FENCE.match(line)
+        if fence_marker is not None:
+            if (
+                fence
+                and fence.group("marker")[0] == fence_marker[0]
+                and len(fence.group("marker")) >= len(fence_marker)
+                and not fence.group("info").strip()
+            ):
+                fence_marker = None
+            continue
+        if fence and not (
+            fence.group("marker").startswith("`") and "`" in fence.group("info")
+        ):
+            # Examples remain in the objective, never promoted into authoritative
+            # goal/ledger lists. A fresh explicit section must follow the fence.
+            fence_marker = fence.group("marker")
+            current = None
+            continue
         heading = _SECTION.match(line.strip())
         if heading:
             current = _SECTION_KEYS[heading.group("name").casefold()]

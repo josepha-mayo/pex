@@ -1,7 +1,36 @@
 from datetime import UTC, datetime
 
+import pytest
 from pex_protocol.goal import Goal
 from pex_supervisor.public_task import fill_empty_goal_lists_from_objective, parse_public_task
+
+
+@pytest.mark.parametrize("fence", ["```", "~~~", "````", "~~~~"])
+def test_public_task_does_not_promote_fenced_examples_to_goal_requirements(fence):
+    task = (
+        "Implement the actual feature.\n\n"
+        f"{fence}markdown\n"
+        "Acceptance criteria:\n- Example only, do not implement this\n"
+        "Decisions:\n- Example decision, not an adopted choice\n"
+        f"{fence}\n\n"
+        "Acceptance criteria:\n- The real feature passes its tests\n"
+    )
+    parsed = parse_public_task(task)
+    assert parsed["objective"] == task.strip()
+    assert parsed["acceptance_criteria"] == ["The real feature passes its tests"]
+    assert parsed["decisions"] == []
+    filled = fill_empty_goal_lists_from_objective(_goal(objective=task))
+    assert filled.acceptance_criteria == ["The real feature passes its tests"]
+
+
+def test_fenced_example_requires_matching_character_and_sufficient_closing_length():
+    task = (
+        "Show this example.\n````markdown\n```\n~~~\n"
+        "Constraints:\n- Still example text\n"
+        "````\nConstraints:\n- Actual constraint\n"
+    )
+    assert parse_public_task(task)["constraints"] == ["Actual constraint"]
+    assert parse_public_task("Example:\n```\nConstraints:\n- Not adopted")["constraints"] == []
 
 
 def test_parse_public_task_keeps_unlabeled_blob_as_objective_only():
