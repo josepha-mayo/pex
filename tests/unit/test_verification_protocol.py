@@ -104,6 +104,20 @@ def test_classifier_marks_subset_and_selection_modes_targeted(command):
     assert invocation.selectors
 
 
+def test_classifier_unwraps_only_one_literal_powershell_command_pytest_payload():
+    invocation = classify_pytest_invocation(
+        r'"C:\runtime\pwsh.exe" -Command '
+        "'C:/workspace/.venv/Scripts/python.exe -m pytest -q test_normalizer.py'"
+    )
+
+    assert invocation is not None
+    assert invocation.scope == PytestInvocationScope.TARGETED
+    assert invocation.relative_targets == ("test_normalizer.py",)
+    assert invocation.argv == (
+        "C:/workspace/.venv/Scripts/python.exe", "-m", "pytest", "-q", "test_normalizer.py",
+    )
+
+
 @pytest.mark.parametrize(
     "command",
     [
@@ -122,6 +136,22 @@ def test_classifier_marks_subset_and_selection_modes_targeted(command):
         "pytest -q; echo done",
         "pytest -q $(echo tests/test_parser.py)",
         'pytest -k "`echo owned`"',
+        "pwsh -Command 'pytest -q; echo done'",
+        "pwsh -Command 'pytest -q | tee pytest.log'",
+        "pwsh -Command 'pytest -q $(echo done)'",
+        "pwsh -EncodedCommand cAB5AHQAZQBzAHQA",
+        "pwsh -NoProfile -Command 'pytest -q'",
+        "pwsh -File pytest.ps1",
+        "pwsh -Command 'pytest -q' ignored",
+        "pwsh -Command 'pytest -q $args'",
+        "pwsh -Command 'pytest -q ${env:selector}'",
+        "pwsh -Command 'pytest -q @args'",
+        "pwsh -Command 'pytest -q, tests/test_parser.py'",
+        "pwsh -Command 'pytest -q # comment'",
+        "pwsh -Command 'pytest -q { test }'",
+        "pwsh -Command 'pytest -q ''test_parser.py'' '",
+        'pwsh -Command "pytest -q $env:selector"',
+        "pwsh -Command '\"C:/workspace/python.exe\" -m pytest -q'",
     ],
 )
 def test_classifier_rejects_spoofs_non_execution_modes_and_shell_control(command):

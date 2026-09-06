@@ -16,6 +16,27 @@ def test_pytest_failure_output_becomes_process_state():
     assert state["pytest"]["exit_code"] == 1
 
 
+def test_powershell_wrapped_pytest_failure_becomes_typed_process_state():
+    state = parse_pytest_process_state(
+        r'"C:\runtime\pwsh.exe" -Command '
+        "'C:/workspace/.venv/Scripts/python.exe -m pytest -q test_normalizer.py'",
+        {
+            "exit_code": 1,
+            "output": "FAILED test_normalizer.py::test_trim\n4 failed in 0.31s",
+        },
+    )
+
+    assert state == {
+        "pytest": {
+            "ok": False,
+            "output": "FAILED test_normalizer.py::test_trim\n4 failed in 0.31s",
+            "exit_code": 1,
+            "failed_count": 4,
+            "failed": "test_normalizer.py::test_trim",
+        }
+    }
+
+
 def test_non_pytest_command_is_ignored():
     assert parse_pytest_process_state("ls", {"output": "ok", "exit_code": 0}) is None
 

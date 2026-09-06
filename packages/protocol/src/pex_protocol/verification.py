@@ -17,6 +17,13 @@ from pex_protocol.enums import HarnessType, PolicyVerdict
 _WINDOWS_DRIVE = re.compile(r"^[A-Za-z]:")
 _WINDOWS_ABSOLUTE = re.compile(r"^[A-Za-z]:[\\/]")
 _PYTHON_RUNNER = re.compile(r"^(?:python(?:\d+(?:\.\d+)*)?|py)(?:\.exe)?$", re.I)
+_POWERSHELL_EXECUTABLES = {"powershell", "powershell.exe", "pwsh", "pwsh.exe"}
+_POWERSHELL_LITERAL_COMMAND = re.compile(
+    r"^\s*(?P<executable>\"[^\"\r\n]*\"|[^\s'\"]+)\s+"
+    r"-Command\s+'(?P<payload>[^'\r\n]+)'\s*$",
+    re.I,
+)
+_POWERSHELL_LITERAL_FORBIDDEN = frozenset("$@,#{}`")
 
 
 class PytestInvocationScope(StrEnum):
@@ -245,6 +252,33 @@ def _pytest_arguments(argv: Sequence[str]) -> tuple[str, ...] | None:
     return None
 
 
+def _powershell_command_payload(
+    command: str, argv: Sequence[str]
+) -> tuple[str, ...] | None:
+    """Unwrap exactly one literal PowerShell ``-Command`` into direct argv.
+
+    Shell payloads are not generally auditable. This accepts only a bounded
+    single-literal-payload wrapper, then submits that payload to the same
+    strict direct-command tokenizer and pytest classifier. Any
+    additional PowerShell option, script file, or composed payload remains
+    unclassified.
+    """
+
+    match = _POWERSHELL_LITERAL_COMMAND.fullmatch(command)
+    if (
+        match is None
+        or len(argv) != 3
+        or _executable_name(argv[0]) not in _POWERSHELL_EXECUTABLES
+        or argv[1].casefold() != "-command"
+        or argv[2] != match.group("payload")
+        or match.group("payload")[0] in {"'", '"'}
+        or any(char in _POWERSHELL_LITERAL_FORBIDDEN for char in match.group("payload"))
+        or any(char in _POWERSHELL_LITERAL_FORBIDDEN for char in match.group("executable"))
+    ):
+        return None
+    return _command_tokens(match.group("payload"))
+
+
 def classify_pytest_argv(argv: Sequence[str]) -> PytestInvocation | None:
     """Classify an argv vector without executing it or trusting its output."""
 
@@ -332,7 +366,13 @@ def classify_pytest_invocation(command: str | None) -> PytestInvocation | None:
     """Recognize one direct pytest invocation and conservatively classify scope."""
 
     tokens = _command_tokens(command or "")
-    return classify_pytest_argv(tokens) if tokens is not None else None
+    if tokens is None:
+        return None
+    direct = classify_pytest_argv(tokens)
+    if direct is not None:
+        return direct
+    wrapped = _powershell_command_payload(command or "", tokens)
+    return classify_pytest_argv(wrapped) if wrapped is not None else None
 
 
 class EvidenceGatheringState(StrEnum):
