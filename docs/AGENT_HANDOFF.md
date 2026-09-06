@@ -1,5 +1,76 @@
 # PEX agent handoff
 
+## 2026-09-06 final package/native checkpoint — current authority
+
+Overall submission remains **NO-GO**, despite a green package-integrity receipt. Final
+repository `HEAD` and `origin/main` are
+`f99fe4399720a223d96f1ad860b34ae175f5d917`. The clean package receipt SHA-256 is
+`23E1FA33736E387C22292D471375E43AC970DD37E3D27319E8D88CA204683C12`; it reports
+`release_ready: true` and `blockers: []`. Interpret that only as the post-build package
+contract passing. It does not encompass signing, live-loop recapture, visual replay,
+AgentCore, benchmark, video, or submission gates.
+
+### Exact package authority
+
+- MSI: 122,585,088 bytes, SHA-256
+  `759A9B2091804603563333C9087AD88ED4BFA60FD60A9BBBE3F89C126B2660DE`, unsigned
+  (`NotSigned`).
+- NSIS: 121,294,055 bytes, SHA-256
+  `ADD72B18AFF7792D32D5AEAA1BC07C48929E3ED0A45F0AD4CDD896833FF76A69`, unsigned
+  (`NotSigned`).
+- Canonical desktop executable: 11,538,432 bytes, SHA-256
+  `8D46B3650773D88A0FDF50405BAA6AF8359CDB686A27DC39D810C0DB79755FED`.
+- Release-input hash:
+  `66d333ea5417295de68d2e7137b930f0a057cb07a6b6976127b7d50a5ba4e2fa`.
+- Sidecar-input hash:
+  `c86435798c0ede81fa0ffb3cda860b37882272dcaf47f615ad58ad52b085aa2e`.
+- Normalized desktop bundle marker:
+  `bcf76659f3631f95b7d833d8a685db39a6c7cc8eb5a6fffd54792f50dcfc3dde`.
+- Embedded sidecars: bridge
+  `c20631fa2bb0cfacb432a042cc6e5522e785ddc958eb55c03157d1b347cfe3f4`,
+  hook `754c13dcd25fcad5201f8098c01d46b0a090a770b7376fbb3a4e23ae224b0c15`,
+  observer `f67df6c484699df210234f1207db7ff323a3a01cf1cc187196fbc85f589a5c7f`.
+
+### Native evidence and exact limit
+
+An extracted NSIS build was launched against a fresh profile. The packaged bridge reached
+**All quiet**, Settings displayed the exact eight-pet roster, and the pet window rendered
+with transparency. Escape dismissal and restoration from Settings were proven on a prior
+pass of the same packaged runtime. During the final pass, Windows Security presented a
+Node-automation prompt; this blocked the final all-eight animation replay and the final
+native Alt+F4 persistence replay. Those two replays are incomplete and must not be
+claimed as verified package evidence.
+
+### Backend/keyring and test checkpoint
+
+The post-live backend work made supervisor construction non-blocking to bridge health,
+preserved authoritative startup/reload state across slow or failed configuration, and
+made environment-credential availability reporting accurate without exposing secrets.
+Native OS-keyring references remain opaque; secrets are not stored in public config or
+these docs. Final strict backend focus: **36 passed**. The preceding broader backend gate:
+**139 passed, 3 skipped**. Desktop: **180/180 passed**. Rust: **14 passed**. Do not sum
+overlapping backend receipts. A whole-Python clean run was still in progress when this
+checkpoint was written and is intentionally not claimed.
+
+Protected boundary: do not edit, stage, restore, reformat, or clean
+`services/supervisor/src/pex_supervisor/loop.py`. Its retained SHA-256 is
+`392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`.
+
+### Remaining submission blockers
+
+- The validated live Codex + provider-live Strands restraint/recovery pair remains bound
+  only to `5c49c10eaed4ad96346ceef8d2eb257e46fcd425`; it was not recaptured on `f99fe43`.
+- Bedrock AgentCore is not deployed.
+- PexBench is not frozen and there is no retained leaderboard result.
+- The required public judge video is missing.
+- Both installers are unsigned.
+- The final all-eight native animation and Alt+F4 replay was blocked as described above.
+
+Next work should close these exact blockers without weakening the three binding specs or
+converting package integrity into a broader readiness claim. Older handoff headings below
+are chronological evidence and are superseded wherever they say the package is absent,
+the clean release-evidence closure is still being repaired, or the final repo is dirty.
+
 **Latest live progress (after `4cfec67`):** production PEX transport observed a real demo worker turn start, deltas and completion and then read two turns from the exact CLI thread. First observer timed out; second traced check succeeded without a production change, so no unsupported defect/cause claim. [Exact events, handles and next provider step](CODEX_WINDOWS_LIVE_CONNECTION.md). This is transport/worker proof, not full goal-bound bridge/Strands supervision. Existing local inference endpoints are unavailable; supervisor consumer login is unimplemented. Keep listener7657/client64982, preserve current user sessions, use Sol low and pursue no-card-charge real inference without treating AWS credit eligibility as a billing guarantee.
 
 **RESUMED — local shared-session progress:** user's no-card-charge approval permits the separate local demo; native goal ACTIVE. A real Windows listener exposed the AF_UNIX reparse-leaf bug, now narrowly repaired and independently reviewed with **150 focused tests passed**. Production PEX transport has actually initialized, read the exact demo CLI thread and subscribed on the same listener, without fake endpoint validation. [Current live handles, setup, failures and next step](CODEX_WINDOWS_LIVE_CONNECTION.md). Listener session7657 and client64982 are owned demo handles; existing sessions are untouched. No model call/full supervisor loop, verified visible panel or cloud proof yet. Older BLOCKED statements below are superseded, not a reason to stop local work.

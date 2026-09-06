@@ -1,6 +1,61 @@
 # STATUS
 
-**Current public truth — 6 Sep:** controlled real Codex + provider-live Strands restraint and same-thread recovery are validated on pushed source `5c49c10` with a curated judge-readable receipt. This does not prove the independent-verifier tier, a final clean revision, packaged Tauri, a frozen benchmark, a leaderboard result, or a release bundle. AgentCore is not deployed. Source contains exactly **8** built-in pets; surviving old demo/debug assets are stale. Clean release-evidence closure is being repaired. Release and submission remain **NO-GO**. Older rolling checkpoints below are historical where they conflict with this paragraph.
+## Current submission truth — 6 September 2026, final package-integrity checkpoint
+
+**Overall submission state remains NO-GO.** Repository `main` and `origin/main` resolve to
+`f99fe4399720a223d96f1ad860b34ae175f5d917`. A clean release build produced a validated
+`pex.package-receipt.v1` receipt with `release_ready: true` and no package-integrity
+blockers. That field means only that the two produced installers and their embedded PEX
+payloads passed the package contract; it is not a product-readiness or submission-ready
+claim. Both installers are unsigned (`NotSigned`).
+
+Exact package evidence:
+
+- package receipt SHA-256: `23E1FA33736E387C22292D471375E43AC970DD37E3D27319E8D88CA204683C12`;
+- MSI: 122,585,088 bytes, SHA-256
+  `759A9B2091804603563333C9087AD88ED4BFA60FD60A9BBBE3F89C126B2660DE`;
+- NSIS: 121,294,055 bytes, SHA-256
+  `ADD72B18AFF7792D32D5AEAA1BC07C48929E3ED0A45F0AD4CDD896833FF76A69`;
+- canonical desktop executable: 11,538,432 bytes, SHA-256
+  `8D46B3650773D88A0FDF50405BAA6AF8359CDB686A27DC39D810C0DB79755FED`;
+- release-input hash `66d333ea5417295de68d2e7137b930f0a057cb07a6b6976127b7d50a5ba4e2fa`,
+  sidecar-input hash `c86435798c0ede81fa0ffb3cda860b37882272dcaf47f615ad58ad52b085aa2e`,
+  and normalized desktop marker
+  `bcf76659f3631f95b7d833d8a685db39a6c7cc8eb5a6fffd54792f50dcfc3dde`;
+- embedded sidecars: bridge
+  `c20631fa2bb0cfacb432a042cc6e5522e785ddc958eb55c03157d1b347cfe3f4`,
+  hook `754c13dcd25fcad5201f8098c01d46b0a090a770b7376fbb3a4e23ae224b0c15`,
+  and observer `f67df6c484699df210234f1207db7ff323a3a01cf1cc187196fbc85f589a5c7f`.
+
+An extracted NSIS build was launched with a fresh profile. Its packaged bridge reached
+**All quiet**, Settings showed the exact eight-pet roster, and the pet window rendered
+with transparency. Escape dismissal plus Settings restoration had already been proven
+on the same packaged runtime. A Windows Security prompt for Node automation prevented
+the final all-eight visual replay and the final native Alt+F4 replay, so neither is
+claimed complete.
+
+The latest backend repairs keep the HTTP bridge responsive while supervisor construction
+is slow, preserve authoritative startup/reload state, and report environment credential
+availability without exposing secrets. The final strict backend focus passed **36 tests**;
+the preceding broader backend gate passed **139 with 3 skips**. Desktop passed **180/180**
+tests and Rust passed **14**. The protected operator-owned
+`services/supervisor/src/pex_supervisor/loop.py` remains outside these commits at SHA-256
+`392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`.
+
+The live Codex + provider-live Strands proof pair is still bound only to
+`5c49c10eaed4ad96346ceef8d2eb257e46fcd425`, not this final package revision. AgentCore
+is not deployed, PexBench is not frozen, there is no retained leaderboard result, and
+the required public demo video is missing. Those are submission blockers even though
+package integrity is green. Older rolling checkpoints below are historical wherever
+they conflict with this section.
+
+**Live-proof truth — 6 Sep:** controlled real Codex + provider-live Strands restraint and
+same-thread recovery are validated on pushed source `5c49c10` with a curated
+judge-readable receipt. The final source/package revision is now clean and package-
+integrity verified as described above, but the live pair has not been recaptured on it.
+This does not prove the independent-verifier tier, a frozen benchmark, a leaderboard
+result, AgentCore deployment, or a submission video. Source contains exactly **8**
+built-in pets. Release and submission remain **NO-GO**.
 
 ## Historical rolling checkpoints
 

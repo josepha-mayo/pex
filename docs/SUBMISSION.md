@@ -1,5 +1,30 @@
 # Devpost submission copy
 
+> **6 September package checkpoint — still NO-GO.** Final repository revision
+> `f99fe4399720a223d96f1ad860b34ae175f5d917` has a clean, validated MSI + NSIS
+> package-integrity receipt, but the installers are unsigned, the final native replay was
+> interrupted, the live proof pair remains tied to `5c49c10`, AgentCore is undeployed,
+> PexBench is unfrozen, and the public demo video does not exist yet. Do not submit using
+> package `release_ready: true` as a claim that the overall product is release-ready.
+
+Package receipt SHA-256:
+`23E1FA33736E387C22292D471375E43AC970DD37E3D27319E8D88CA204683C12`.
+The 122,585,088-byte MSI is
+`759A9B2091804603563333C9087AD88ED4BFA60FD60A9BBBE3F89C126B2660DE`; the
+121,294,055-byte NSIS installer is
+`ADD72B18AFF7792D32D5AEAA1BC07C48929E3ED0A45F0AD4CDD896833FF76A69`.
+The receipt has `release_ready: true`, `blockers: []`, and verifies package integrity
+only. Both artifacts report `NotSigned`.
+
+The extracted NSIS fresh-profile run reached **All quiet**, displayed all eight pet
+choices, and rendered the pet transparently. Escape dismissal and Settings restoration
+were proven on the same packaged runtime earlier. A Windows Security Node-automation
+prompt blocked the final all-eight playback and Alt+F4 replay, so the demo must not imply
+those final replays were completed. Backend startup/keyring authority repairs passed the
+final 36-test strict focus after a broader 139-pass/3-skip gate; desktop passed 180/180
+and Rust passed 14. The protected `loop.py` SHA-256 remains
+`392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`.
+
 > **Draft only — release and submission remain NO-GO.** The real Codex + Strands loop is now validated on source revision `5c49c10`; do not publish or submit until that evidence is recaptured on the final reviewed release candidate, the packaged app is visually reviewed, and the operator gives action-time authorization.
 
 **Honesty that must match README / STATUS:** Bedrock AgentCore Runtime is a deploy target, not a deployed service. The four-arm PexBench manifest stays `frozen: false`; there is no citeable impact score or retained public leaderboard rank. The September 6 Codex receipts are real live closed-loop proof, but they are not packaged-release proof. Do not cite quarantined rows in `benchmarks/results/INVALID_LEAKED_RUNS_DO_NOT_USE/`.
@@ -67,11 +92,11 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 ## Checklist before clicking Submit
 
-- [ ] Verify at action time that the public MIT repository contains the exact reviewed release candidate; the current dirty/untracked tree is not publication proof
+- [x] Public MIT repository contains final reviewed source/package revision `f99fe43`; verify exact remote equality again at submission time
 - [x] README and architecture source/PNG are current; the 6 September render was visually inspected with the verifier in the blue local-contract tier
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)
-- [ ] Recapture the validated pair on the final release revision and record it in the packaged-app demo
+- [ ] Recapture the validated pair on final revision `f99fe43` and record it in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence is contract-only, while controlled local Codex + provider-live Strands evidence now exists
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)
