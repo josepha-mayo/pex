@@ -204,26 +204,50 @@ async def framed_pipeline(tmp_path, monkeypatch, request):
     monkeypatch.setattr(continuity_fixture, "_subscribed", subscribed)
     monkeypatch.setattr(CodexSharedAdapter, "start_pipeline_pump", start_with_store_provenance)
     generator = _bound_pipeline_fixture.__wrapped__(tmp_path, monkeypatch)
-    bound = await anext(generator)
-    bound.pipeline.supervisor = OneCorrectionSupervisor()
-    channel = channel_slot[0]
-
-    async def wait_for_baseline():
-        while bound.adapter._input_baseline is None:
-            if bound.task.done():
-                raise AssertionError(f"pump stopped: {bound.adapter.last_pump_error}")
-            await asyncio.sleep(0.005)
-
-    await asyncio.wait_for(wait_for_baseline(), 3)
-    grant = await enable_grant(bound.store, bound.adapter.session.id)
-    current = await bound.store.get_session(bound.adapter.session.id)
-    bound.adapter.session = current
-    bound.adapter.sessions[current.id] = current
-    bound.adapter._normalizer.sessions[current.id] = current
     try:
+        bound = await anext(generator)
+        bound.pipeline.supervisor = OneCorrectionSupervisor()
+        channel = channel_slot[0]
+
+        async def wait_for_baseline():
+            while bound.adapter._input_baseline is None:
+                if bound.task.done():
+                    raise AssertionError(f"pump stopped: {bound.adapter.last_pump_error}")
+                await asyncio.sleep(0.005)
+
+        await asyncio.wait_for(wait_for_baseline(), 3)
+        grant = await enable_grant(bound.store, bound.adapter.session.id)
+        current = await bound.store.get_session(bound.adapter.session.id)
+        bound.adapter.session = current
+        bound.adapter.sessions[current.id] = current
+        bound.adapter._normalizer.sessions[current.id] = current
         yield SimpleNamespace(bound=bound, channel=channel, grant=grant, active=active)
     finally:
         await generator.aclose()
+
+
+@pytest.mark.asyncio
+async def test_framed_fixture_closes_inner_fixture_when_setup_after_anext_fails(
+    tmp_path, monkeypatch,
+):
+    cleanup_started = asyncio.Event()
+    original_cleanup = continuity_fixture._cleanup_bound_pipeline
+
+    async def observed_cleanup(**kwargs):
+        cleanup_started.set()
+        await original_cleanup(**kwargs)
+
+    async def fail_grant(*_args, **_kwargs):
+        raise RuntimeError("injected post-anext setup failure")
+
+    monkeypatch.setattr(continuity_fixture, "_cleanup_bound_pipeline", observed_cleanup)
+    monkeypatch.setattr(__import__(__name__), "enable_grant", fail_grant)
+    fixture = framed_pipeline.__wrapped__(
+        tmp_path, monkeypatch, SimpleNamespace(param=False)
+    )
+    with pytest.raises(RuntimeError, match="injected post-anext setup failure"):
+        await anext(fixture)
+    assert cleanup_started.is_set()
 
 
 async def emit_trigger(case) -> None:

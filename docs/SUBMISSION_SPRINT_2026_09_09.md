@@ -30,6 +30,10 @@ our build-spec target, subject to the user's no-card-charge authorization.
 - [x] Retain a separate production-path correct-completion silence case
   (clean 4543a58 run-04, independently reviewed, real Strands NOOP).
 - [ ] Complete false-claim, uncertain-evidence and varied quiet-task live cases.
+- [x] Reject wrong-directory Codex pytest evidence at normalization and receipt matching.
+- [x] Repair disconnected consumer re-block after cancellation-safe settlement.
+- [ ] Retain bounded oversized command observations without manufacturing complete test evidence.
+- [ ] Rerun the full clean-source Python gate after the directory/shutdown repairs.
 - [ ] Diagnose native post-start bridge failure; retain original failure code.
 - [ ] Repeat cold start, normal retry and restart persistence on release sources.
 

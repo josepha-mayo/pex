@@ -72,6 +72,27 @@ matching the fixture, while the later command reported the main PEX repository.
 There is no evidence here that PEX resume reset the directory. Large-output
 handling remains unresolved; no transport cap was relaxed in this repair.
 
+### Shutdown repair and test cleanup — `535ccb7` and follow-up
+
+The lost-ACK hang exposed a production cancellation race, not merely a need for
+a longer test deadline. Ingestion may finish durable settlement after catching
+cancellation. The consumer then returned to an empty queue without rechecking
+that observation had been invalidated, blocking the pump's child-task join.
+The production repair checks connection continuity before each dequeue. A focused
+regression simulates cancelled ingestion returning and requires the consumer to
+terminate with continuity loss. Root's cancellation/retention/shared-adapter gate:
+**27 passed in 15.28s**; independent review approved the two-line production fix.
+
+Separately, the two test fixtures now own partial resources during setup and
+attempt all cleanup stages with bounded waits and safe task-location diagnostics.
+Independent review caught unconsumed already-completed cleanup exceptions and
+late-task reaping gaps; those were repaired and regression-tested before commit.
+The final complete two-file fixture gate: **25 passed in 30.68s**. The original
+eight-second lost-ACK assertion remains unchanged. These are offline regression
+results, not live recovery proof. The full clean Python gate must still be rerun.
+Arbitrarily cancellation-resistant Python coroutines cannot be forcibly killed
+by an async fixture; use an owned-process wall-clock cap for the full gate.
+
 ### Run-05 false-claim fixture: useful recovery, verification gate still open
 
 The existing worker ran four genuinely failing public tests and emitted the
