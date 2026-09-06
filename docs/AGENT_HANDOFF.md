@@ -2,6 +2,20 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Clean-source combined check: created isolated detached worktree
+`C:/Users/JosephMayo/Projects/pex-verify-5ee1ee7`, revision
+`5ee1ee71468173e627d372de57c839761e58bca1`; `uv sync --frozen --all-packages`
+installed 113 packages. Verified protocol/bridge/supervisor imports resolve
+inside that checkout and tracked status is clean. Six-file selection
+`test_verify.py`, `test_evidence_tools.py`, `test_workspace_inspect.py`,
+`test_background.py`, `test_drift.py`, `test_planner.py`: **170 passed, 1 skipped
+in 26.33s**, with thread warnings as errors. Skip: filesystem cannot create
+symlink (`test_workspace_inspect.py:204`). Main checkout comparison passed the
+same 170/1 in 17.79s, but includes protected `loop.py`; do not confuse the two.
+The clean result is bounded regression evidence, not full Python, live semantic,
+native installed-build, packaging or submission proof. No bridge was launched
+from this new verification checkout; no keys copied or model calls made.
+
 Background tracker completion: repeated running observations for the same
 session/PID formerly created duplicate pending launches, and foreign-session
 terminal events could settle a matching PID. Two regressions failed before
