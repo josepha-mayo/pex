@@ -91,12 +91,30 @@ def duplicate_sibling_work(
     if not current_paths and not command:
         return None
     for session_id, harness, events in siblings:
+        if session_id == event.session_id:
+            continue
         for prior in events:
+            if (
+                prior.session_id != session_id
+                or prior.event_type not in {
+                    EventType.FILE_EDIT, EventType.SHELL, EventType.TOOL_CALL,
+                }
+                or prior.ts.utcoffset() is None
+                or event.ts.utcoffset() is None
+                or prior.ts > event.ts
+            ):
+                continue
+            provenance = {
+                "sibling_session_id": session_id,
+                "harness": harness,
+                "source_event_id": prior.event_id,
+                "current_event_id": event.event_id,
+                "basis": "observed_overlap_candidate",
+            }
             overlap = sorted(current_paths & _observed_paths(prior))
             if overlap:
                 return {
-                    "sibling_session_id": session_id,
-                    "harness": harness,
+                    **provenance,
                     "path": overlap[0],
                 }
             prior_cmd = str(prior.command or "").strip()
@@ -107,8 +125,7 @@ def duplicate_sibling_work(
                 and not _ROUTINE_TEST.search(prior_cmd)
             ):
                 return {
-                    "sibling_session_id": session_id,
-                    "harness": harness,
+                    **provenance,
                     "command": command[:200],
                 }
     return None

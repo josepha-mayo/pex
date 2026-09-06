@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
+import pytest
 from pex_protocol.enums import EventPhase, EventType, HarnessType
 from pex_protocol.session import HarnessEvent
 from pex_supervisor.drift import duplicate_sibling_work
@@ -32,6 +33,9 @@ def test_duplicate_sibling_work_matches_overlapping_path():
         "sibling_session_id": "cursor:one",
         "harness": "cursor",
         "path": "src/parser.py",
+        "source_event_id": "e1",
+        "current_event_id": "e2",
+        "basis": "observed_overlap_candidate",
     }
 
 
@@ -39,6 +43,21 @@ def test_same_basename_in_different_directories_is_not_overlap():
     prior = _event(session_id="cursor:one", file_paths=["src/parser.py"])
     current = _event(session_id="codex:two", file_paths=["lib/parser.py"])
     assert duplicate_sibling_work(current, [("cursor:one", "cursor", [prior])]) is None
+
+
+@pytest.mark.parametrize("case", ["foreign", "self", "future", "narration", "naive"])
+def test_overlap_candidate_requires_prior_sibling_action_provenance(case):
+    now = datetime.now(UTC)
+    current = _event(session_id="codex:two", ts=now, file_paths=["src/parser.py"])
+    prior = _event(
+        session_id="wrong:session" if case == "foreign" else "cursor:one",
+        ts=(now + timedelta(seconds=1) if case == "future"
+            else now.replace(tzinfo=None) if case == "naive" else now),
+        event_type=EventType.AGENT_RESPONSE if case == "narration" else EventType.FILE_EDIT,
+        file_paths=["src/parser.py"],
+    )
+    sibling = "codex:two" if case == "self" else "cursor:one"
+    assert duplicate_sibling_work(current, [(sibling, "cursor", [prior])]) is None
 
 
 def test_duplicate_sibling_work_matches_identical_non_test_command():

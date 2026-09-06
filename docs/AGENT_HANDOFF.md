@@ -2,6 +2,16 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Follow-on overlap provenance: candidates now retain source/current event IDs
+and an explicit `observed_overlap_candidate` basis. Reject mismatched sibling
+identity, self-session tuples, non-action/narration events, timestamps without
+timezone evidence and events later than the current observation. **50
+drift/planner tests passed in 7.13s**. These remain signals, not proof that work
+was duplicated or complete. Asked the user asynchronously whether a narrowly
+scoped semantic-gate edit to protected `loop.py` is permitted while preserving
+its existing changes; no answer was received during this pass. Do not interpret
+the request as permission. No new model calls or subagents were used.
+
 Trajectory audit found an unjustified automatic sibling-work correction:
 `src/parser.py` and `lib/parser.py` matched by basename, and even genuine path
 overlap was treated as proof that a sibling had completed the same work. Root
