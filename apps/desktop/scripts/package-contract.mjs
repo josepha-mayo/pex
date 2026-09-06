@@ -48,8 +48,8 @@ export function verifyDesktopBundleVariants(canonical, msi, nsis) {
   const nsisMarker = nsis.subarray(valueOffset, valueOffset + 4);
   if (!canonicalMarker.equals(Buffer.from([0x55, 0x4e, 0x4b, 0xc0]))
     || !msiMarker.equals(Buffer.from([0x4d, 0x53, 0x49, 0xc0]))
-    || !nsisMarker.equals(Buffer.from([0x4e, 0x53, 0x49, 0x53]))) {
-    throw new Error("Desktop binaries do not contain the expected UNK-c0/MSI-c0/NSIS markers");
+    || !nsisMarker.equals(Buffer.from([0x4e, 0x53, 0x53, 0xc0]))) {
+    throw new Error("Desktop binaries do not contain the expected UNK-c0/MSI-c0/NSS-c0 markers");
   }
   const width = 4;
   const normalized = [];
@@ -125,7 +125,7 @@ export function packageReceiptIsReady(receipt) {
     || receipt.desktop_bundle_marker.width !== 4
     || receipt.desktop_bundle_marker.canonical_marker_hex !== "554e4bc0"
     || receipt.desktop_bundle_marker.msi_marker_hex !== "4d5349c0"
-    || receipt.desktop_bundle_marker.nsis_marker_hex !== "4e534953"
+    || receipt.desktop_bundle_marker.nsis_marker_hex !== "4e5353c0"
     || !SHA256.test(receipt.desktop_bundle_marker.normalized_sha256)) return false;
   return receipt.release_ready === true && Array.isArray(receipt.blockers) && receipt.blockers.length === 0;
 }

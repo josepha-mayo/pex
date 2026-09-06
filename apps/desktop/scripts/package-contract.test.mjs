@@ -35,7 +35,7 @@ function receipt() {
       width: 4,
       canonical_marker_hex: "554e4bc0",
       msi_marker_hex: "4d5349c0",
-      nsis_marker_hex: "4e534953",
+      nsis_marker_hex: "4e5353c0",
       normalized_sha256: hash("a"),
     },
     msi: { status: "verified", embedded: msi, inventory_verified: true },
@@ -60,7 +60,7 @@ test("canonical, MSI, and NSIS differ only at the exact four-byte Tauri marker",
   const msi = Buffer.from(unpatched);
   Buffer.from("MSI", "ascii").copy(msi, prefix.length);
   const nsis = Buffer.from(unpatched);
-  Buffer.from("NSIS", "ascii").copy(nsis, prefix.length);
+  Buffer.from([0x4e, 0x53, 0x53, 0xc0]).copy(nsis, prefix.length);
   const canonical = Buffer.from(unpatched);
   const proof = verifyDesktopBundleVariants(canonical, msi, nsis);
   assert.equal(proof.offset, prefix.length);
@@ -77,7 +77,7 @@ test("canonical, MSI, and NSIS differ only at the exact four-byte Tauri marker",
   );
   const forged = Buffer.from(nsis);
   Buffer.from("ZIP!", "ascii").copy(forged, prefix.length);
-  assert.throws(() => verifyDesktopBundleVariants(canonical, msi, forged), /expected UNK-c0\/MSI-c0\/NSIS/u);
+  assert.throws(() => verifyDesktopBundleVariants(canonical, msi, forged), /expected UNK-c0\/MSI-c0\/NSS-c0/u);
   assert.throws(() => verifyDesktopBundleVariants(canonical, msi.subarray(1), nsis), /identical lengths/u);
 
   const msiOutside = Buffer.from(msi);
