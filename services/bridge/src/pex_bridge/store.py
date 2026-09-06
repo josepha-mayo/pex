@@ -21275,11 +21275,10 @@ class Store:
 
         _validate_store_id(owner, label="event effect owner")
         if trajectory_candidate_key is not None and (
-            semantic_dispatch_limit is None
-            or not isinstance(trajectory_candidate_key, str)
+            not isinstance(trajectory_candidate_key, str)
             or re.fullmatch(r"[a-f0-9]{64}", trajectory_candidate_key) is None
         ):
-            raise ValueError("trajectory review requires an exact candidate key and finite cap")
+            raise ValueError("trajectory review requires an exact candidate key")
         if semantic_dispatch_limit is not None and (
             type(semantic_dispatch_limit) is not int
             or not 1 <= semantic_dispatch_limit <= 100_000
@@ -21366,6 +21365,9 @@ class Store:
                     return {"granted": False, "reason": exc.code, "effect": effect}
                 now = utcnow().isoformat()
                 if trajectory_candidate_key is not None:
+                    if semantic_dispatch_limit is None:
+                        await transaction.commit()
+                        return {"granted": False, "reason": "trajectory_review_disabled"}
                     prior = await transaction.execute(
                         "SELECT 1 FROM trajectory_review_reservations "
                         "WHERE session_id = ? AND candidate_key = ?",

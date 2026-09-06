@@ -192,6 +192,67 @@ async def test_settings_read_exposes_explicit_first_run_and_committed_revisions(
 
 
 @pytest.mark.asyncio
+async def test_saved_dispatch_cap_preserves_startup_value_and_revision_authority(supervisor_client):
+    client, _secret_store, home = supervisor_client
+    state.pipeline.settings.supervisor_max_dispatches_per_session = 30
+    saved = await client.patch("/v1/supervisor", json=_custom_payload(
+        expected_revision=0, dispatch_limit_override=5,
+    ))
+    assert saved.status_code == 200
+    assert saved.json()["max_dispatches_per_session"] == 5
+    assert state.pipeline.settings.supervisor_max_dispatches_per_session == 30
+    choice = load_supervisor_choice(home / "supervisor.json")
+    assert choice.dispatch_limit_override == 5
+    # The unchanged model/credential save must not erase the chosen cap.
+    unchanged = await client.patch("/v1/supervisor", json={"expected_revision": 1})
+    assert unchanged.status_code == 200
+    assert unchanged.json()["max_dispatches_per_session"] == 5
+    stale = await client.patch("/v1/supervisor", json={
+        "expected_revision": 1, "dispatch_limit_override": 99,
+    })
+    assert stale.status_code == 409
+    assert state.pipeline.supervisor_dispatch_limit == 5
+    inherited = await client.patch("/v1/supervisor", json={
+        "expected_revision": 2, "dispatch_limit_override": None,
+    })
+    assert inherited.status_code == 200
+    assert inherited.json()["max_dispatches_per_session"] == 30
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", [0, -1, 100001, True, "5", 1.5])
+async def test_saved_dispatch_cap_rejects_noncanonical_values(supervisor_client, value):
+    client, _secret_store, _home = supervisor_client
+    response = await client.patch("/v1/supervisor", json={
+        "expected_revision": 0, "dispatch_limit_override": value,
+    })
+    assert response.status_code == 422
+    assert state.supervisor_choice is None
+
+
+@pytest.mark.asyncio
+async def test_failed_limit_save_cannot_change_effective_or_persisted_cap(
+    supervisor_client, monkeypatch,
+):
+    client, _secret_store, home = supervisor_client
+    saved = await client.patch("/v1/supervisor", json=_custom_payload(dispatch_limit_override=5))
+    assert saved.status_code == 200
+
+    def reject_save(*_args):
+        raise OSError("fixture disk failure")
+
+    monkeypatch.setattr("pex_bridge.app.save_supervisor_choice", reject_save)
+    failed = await client.patch("/v1/supervisor", json={
+        "expected_revision": 1, "dispatch_limit_override": 99,
+    })
+    assert failed.status_code == 503
+    assert state.pipeline.supervisor_dispatch_limit == 5
+    assert load_supervisor_choice(home / "supervisor.json").dispatch_limit_override == 5
+    missing_revision = await client.patch("/v1/supervisor", json={"dispatch_limit_override": 20})
+    assert missing_revision.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_settings_read_never_calls_blocking_secret_store(supervisor_client, monkeypatch):
     client, secret_store, _home = supervisor_client
     saved = await client.patch(

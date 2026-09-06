@@ -724,6 +724,7 @@ class Pipeline:
         self.adapters = adapters
         self.bus = bus
         self.settings = settings
+        self.supervisor_dispatch_limit_override: int | None = None
         self.model = model
         self.supervisor = SupervisorRouter(settings)
         self.policy = PolicyEngine(AutonomyLevel(settings.autonomy))
@@ -743,6 +744,14 @@ class Pipeline:
         # cannot strand a delivered overlay child behind a dispatching parent.
         self._overlay_reconciliation_tasks: set[asyncio.Task] = set()
         self._main_effect_settlement_tasks: set[asyncio.Task] = set()
+
+    @property
+    def supervisor_dispatch_limit(self) -> int | None:
+        return (
+            self.supervisor_dispatch_limit_override
+            if self.supervisor_dispatch_limit_override is not None
+            else self.settings.supervisor_max_dispatches_per_session
+        )
 
     async def ingest_observer_lifecycle(
         self, event: HarnessEvent, session: HarnessSession
@@ -1708,9 +1717,9 @@ class Pipeline:
 
         candidate = trajectory_review_candidate(request)
         budget_options = {}
-        if semantic and self.settings.supervisor_max_dispatches_per_session is not None:
+        if semantic and self.supervisor_dispatch_limit is not None:
             budget_options["semantic_dispatch_limit"] = (
-                self.settings.supervisor_max_dispatches_per_session
+                self.supervisor_dispatch_limit
             )
         if candidate is not None:
             budget_options["trajectory_candidate_key"] = candidate.key
@@ -1724,6 +1733,7 @@ class Pipeline:
             if dispatch.get("reason") in {
                 "supervisor_dispatch_budget_exhausted", "trajectory_review_coalesced",
                 "trajectory_review_deferred",
+                "trajectory_review_disabled",
             }:
                 reason = dispatch["reason"]
                 result = SupervisorResult(
@@ -2489,7 +2499,7 @@ class Pipeline:
             scores=scores,
             autonomy=self.settings.autonomy,
             trajectory_review_enabled=(
-                self.settings.supervisor_max_dispatches_per_session is not None
+                self.supervisor_dispatch_limit is not None
             ),
             notes=notes,
             supervisor_context=build_supervisor_context(

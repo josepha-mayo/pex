@@ -33,6 +33,11 @@ drop requirements or declare an unverified product ready.
   Distinct reviews have durable 60-second pacing. Broader material signals,
   complete model-use accounting and live proof
   remain open. See `TRAJECTORY_SEMANTIC_REVIEW.md` for source gates and limits.
+  On 7 September, Settings gained a saved per-session dispatch-limit override
+  with revision checks, startup inheritance and failed-write rollback. Source
+  gates: 196 frontend tests/build, 106 backend tests (one platform skip), then
+  ten startup/saved-cap and disabled-review interleaving cases. Native usage,
+  remaining-count display and aggregate spend accounting are still unverified/open.
   Acceptance: shared local/remote eligibility, evidence-bound decisions, quiet
   routine progress, bounded review and same-worker outcome. Mocked tests first;
   live proof is separate. The user approved narrow `loop.py` edits while

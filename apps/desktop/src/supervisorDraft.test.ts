@@ -6,6 +6,7 @@ import {
   supervisorCredentialAudience,
   supervisorRequest,
   supervisorReviewLimitCopy,
+  supervisorDispatchLimitDraft,
   supervisorSavePayload,
   supervisorSaveResponseIsCurrent,
   type SupervisorDraft,
@@ -20,6 +21,21 @@ const custom: SupervisorDraft = {
   apiKey: "fixture-key-not-a-real-credential",
   credentialAction: "keep",
 };
+
+test("saved review cap is explicit, bounded and omitted for unsupported bridges", () => {
+  const draft = { ...custom, apiKey: "" };
+  assert.equal(supervisorSavePayload(draft, 1, null).dispatch_limit_override, undefined);
+  assert.equal(supervisorSavePayload({ ...draft, dispatchLimit: "20" }, 1, null).dispatch_limit_override, 20);
+  assert.equal(supervisorSavePayload({ ...draft, dispatchLimit: "" }, 1, null).dispatch_limit_override, null);
+  for (const dispatchLimit of ["0", "-1", "1.5", "1e2", "100001", "NaN"]) {
+    assert.throws(() => supervisorSavePayload({ ...draft, dispatchLimit }, 1, null), /whole-number/u);
+  }
+  assert.equal(supervisorDispatchLimitDraft(null), "");
+  assert.equal(supervisorDispatchLimitDraft(20), "20");
+  for (const value of [undefined, "20", true, 0, 1.5, 100001]) {
+    assert.equal(supervisorDispatchLimitDraft(value), undefined);
+  }
+});
 
 test("review limit copy distinguishes unknown, uncapped and bounded dispatches", () => {
   assert.match(supervisorReviewLimitCopy(null), /No per-session dispatch cap/u);
@@ -218,8 +234,9 @@ test("source contract wires destination guards and disables every supervisor inp
   assert.match(app, /if \(supervisorSaveInFlight\.current \|\| current === next\) return/);
   const form = settings.slice(settings.indexOf('<p className="eyebrow">Supervisor inference</p>'), settings.indexOf('<p className="eyebrow">Attention</p>'));
   const controls = form.match(/<(?:input|select)\b[^>]*>/g) || [];
-  assert.equal(controls.length, 9);
-  for (const control of controls) assert.match(control, /disabled=\{!settingsAvailable \|\| savingSupervisor\}/);
+  assert.equal(controls.length, 10);
+  for (const control of controls) assert.match(control, /disabled=\{!settingsAvailable \|\| savingSupervisor(?: \|\| supervisorDispatchLimit === undefined)?\}/);
+  assert.match(app, /changeSupervisorDraft\(supervisorDispatchLimit \?\? "", value, setSupervisorDispatchLimit\)/);
   assert.match(app, /if \(supervisorSaveInFlight\.current\) return;\s+const requestSequence = \+\+settingsRequestSequence\.current/);
 });
 

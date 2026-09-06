@@ -33,6 +33,7 @@ export function SettingsPage({
   supervisorAuth,
   supervisorProtocol,
   supervisorBaseUrl,
+  supervisorDispatchLimit,
   supervisorApiKey,
   supervisorCredentialAction,
   channels,
@@ -67,6 +68,7 @@ export function SettingsPage({
   onSupervisorAuth,
   onSupervisorProtocol,
   onSupervisorBaseUrl,
+  onSupervisorDispatchLimit,
   onSupervisorApiKey,
   onSupervisorCredentialAction,
   onSaveSupervisor,
@@ -98,6 +100,7 @@ export function SettingsPage({
   supervisorAuth: SupervisorAuthMode;
   supervisorProtocol: SupervisorProtocol;
   supervisorBaseUrl: string;
+  supervisorDispatchLimit?: string;
   supervisorApiKey: string;
   supervisorCredentialAction: SupervisorCredentialAction;
   channels: ChannelHubStatus | null;
@@ -132,6 +135,7 @@ export function SettingsPage({
   onSupervisorAuth: (value: SupervisorAuthMode) => void;
   onSupervisorProtocol: (value: SupervisorProtocol) => void;
   onSupervisorBaseUrl: (value: string) => void;
+  onSupervisorDispatchLimit?: (value: string) => void;
   onSupervisorApiKey: (value: string) => void;
   onSupervisorCredentialAction: (value: SupervisorCredentialAction) => void;
   onSaveSupervisor: () => void;
@@ -353,8 +357,26 @@ export function SettingsPage({
                 ? supervisor?.max_dispatches_per_session : undefined)}
               {" "}This counts dispatches, not dollars, tokens or individual model calls.
               One review can make multiple model calls. A free model label is not a billing guarantee.
-              {" "}This limit is set when the bridge starts; saving the model does not change it.
+              {" "}A finite limit enables bounded mid-task reviews, at least 60 seconds apart.
             </p>
+            <label>
+              Saved review limit per session
+              <input
+                type="text"
+                inputMode="numeric"
+                value={supervisorDispatchLimit ?? ""}
+                maxLength={6}
+                disabled={!settingsAvailable || savingSupervisor || supervisorDispatchLimit === undefined}
+                onChange={(event) => onSupervisorDispatchLimit?.(event.target.value)}
+                placeholder={supervisorDispatchLimit === undefined ? "Reload settings to edit" : "Use startup setting"}
+                aria-describedby="supervisor-review-limit-help"
+              />
+              <span className="settings-note" id="supervisor-review-limit-help">
+                Set 1–100000 and choose Save supervisor. Blank uses the bridge’s startup setting.
+                Saving or restarting never resets used reviews; lowering the limit can stop further reviews immediately.
+                This does not cancel a review already in flight.
+              </span>
+            </label>
             <p className="settings-note">
               {supervisor
                 ? supervisorHonestyCopy(supervisor)

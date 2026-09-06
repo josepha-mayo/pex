@@ -1,5 +1,27 @@
 # PEX agent handoff
 
+## 7 September — saved review-limit editor
+
+New Settings control and authenticated supervisor PATCH support a persisted
+`dispatch_limit_override` (strict integer 1–100000, or null to inherit startup).
+Omitted PATCH fields preserve the existing override; updates require a revision.
+The pipeline's effective-cap property leaves the startup Settings unchanged.
+Startup loads the saved override before model activation. Failed persistence and
+stale revisions leave the active cap unchanged. Credentials remain audience-bound;
+budget editing does not change their destination or reset durable reservations.
+Clearing a cap before a previously frozen trajectory candidate dispatches becomes
+an audited `trajectory_review_disabled` NOOP, not an unbounded model call.
+
+Frontend: 196 tests passed; TypeScript/Vite build passed (63 modules, 3.81s).
+Earlier backend editor gate: 74 passed, one platform skip. Final four-file
+settings/config/pipeline/Store gate: 106 passed, one platform skip in 133.13s;
+exec 70322 terminal. Final startup-versus-saved cap dispatch/replay/restart parity
+and trajectory-disable interleaving gate: 10 passed in 52.38s, exec 59655 terminal.
+React checklist review preserved explicit event handlers, request/draft revision
+guards, accessible labeling, disabled-in-flight controls and unsupported-bridge
+fallback; no new polling/effect cycle or dependency. Native UI/restart proof is
+still open. No active bridge config, provider calls or native input was changed.
+
 ## Latest low-quota audit — 6 September, after Q07
 
 Pacing follow-up to `e5e4ad3`: new material trajectory reviews are at least 60

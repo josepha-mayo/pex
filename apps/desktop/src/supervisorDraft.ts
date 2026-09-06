@@ -11,6 +11,7 @@ export function supervisorReviewLimitCopy(value: unknown): string {
 }
 
 export type SupervisorDraft = {
+  dispatchLimit?: string;
   provider: string;
   modelId: string;
   authMode: SupervisorAuthMode;
@@ -19,6 +20,12 @@ export type SupervisorDraft = {
   apiKey: string;
   credentialAction: SupervisorCredentialAction;
 };
+
+export function supervisorDispatchLimitDraft(value: unknown): string | undefined {
+  if (value === null) return "";
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 100_000
+    ? String(value) : undefined;
+}
 
 export function isSupervisorRevision(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 2_147_483_647;
@@ -55,6 +62,13 @@ export function supervisorSavePayload(
     // undisplayed override from an earlier same-provider configuration.
     base_url: draft.baseUrl.trim() || null,
   };
+  if (draft.dispatchLimit !== undefined) {
+    const limit = draft.dispatchLimit.trim();
+    if (limit && (!/^[1-9][0-9]{0,5}$/u.test(limit) || Number(limit) > 100_000)) {
+      throw new Error("Use a whole-number review limit from 1 to 100000, or leave it blank to use the startup setting.");
+    }
+    payload.dispatch_limit_override = limit ? Number(limit) : null;
+  }
   if (draft.apiKey) {
     if (!provider || !["api_key", "custom"].includes(draft.authMode)) {
       throw new Error("This authentication mode does not accept a pasted API key.");

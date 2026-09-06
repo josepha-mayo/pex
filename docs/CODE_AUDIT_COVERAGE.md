@@ -6,6 +6,17 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Saved supervisor limit — 7 Sep
+
+Changed-path review of Settings/App/draft helpers, supervisor API/config, pipeline
+effective-cap lookup, Store disabled-candidate refusal and their tests. The saved
+override does not mutate startup settings, credential audiences or reservation
+counts. Revision/CAS and failed-write behavior are retained; old bridge responses
+disable the new editor rather than submitting an implicit reset. React checklist
+review added no effect/polling loop and retained disabled-in-flight inputs and
+draft/request guards. Gates: 196 frontend tests/build; 106 backend tests plus one
+platform skip; final ten dispatch/interleaving cases passed. Not native UI proof.
+
 ### Material trajectory review — 6 Sep
 
 Full new-file review: `services/supervisor/src/pex_supervisor/trajectory.py` and

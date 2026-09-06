@@ -5,6 +5,15 @@ allow at most 20 newly reserved semantic dispatches for each session in that
 bridge database. Omit the setting for existing unlimited-dispatch behavior.
 The allowed range is 1–100000. The example is not a recommended spending budget.
 
+In the current desktop source, Settings → Supervisor also has **Saved review
+limit per session**. Enter an integer and choose Save supervisor to persist an
+override in the secret-free supervisor configuration. Leave it blank to inherit
+the bridge's startup setting. This does not reset reservations, cancel in-flight
+work, or change the model's credential destination. A stale settings revision,
+invalid value or failed config write cannot commit a new override. The existing
+startup Settings object remains unchanged; the pipeline computes the effective
+cap from the saved override or startup fallback.
+
 This is a **dispatch-count guard, not a dollar, token or inner-model-call cap**.
 One dispatch can include multiple Strands/verifier calls. Provider work may
 outlive a caller timeout. A free-provider label is not a billing guarantee.
@@ -28,15 +37,19 @@ outlive a caller timeout. A free-provider label is not a billing guarantee.
   permits additional reservations; there is no automatic reset window.
 
 The authenticated supervisor GET and model-save responses expose the effective
-pipeline setting as `max_dispatches_per_session`. Settings displays a read-only
-dispatch-limit notice: null means no configured cap, while missing/invalid data
-or unavailable settings means unknown, never unlimited. It states that restarting
-does not reset reservations and that model saving does not change the cap. This
+pipeline setting as `max_dispatches_per_session`, and the saved override as
+`dispatch_limit_override`. The effective notice distinguishes null (no configured
+cap) from missing/invalid/unavailable data (unknown). Editing is disabled when
+the bridge does not expose the new override field. A model-only PATCH that omits
+the field preserves the saved override. This
 does not show remaining reservations, account spend or native-verified usage.
 
-No new mid-task inference is enabled by this setting. A user-facing budget editor,
-aggregate account limits, exact per-model accounting and semantic trajectory
-review remain separate unfinished requirements. Treat the retained planner
+A finite effective cap enables the bounded repeated-command-failure review in
+`TRAJECTORY_SEMANTIC_REVIEW.md`, including durable coalescing and 60-second pacing.
+If the cap is removed before a frozen candidate reaches dispatch, the planner
+records `trajectory_review_disabled` with no provider call. Aggregate account
+limits, remaining-count presentation, exact per-model accounting and broader
+trajectory review remain unfinished. Treat the retained planner
 receipt as the audit source. When the latest projected action is a budget-skipped
 NOOP, the desktop status says "Review skipped" and explains that PEX did not
 verify that stop. This replaces worker completion narration, but never hides

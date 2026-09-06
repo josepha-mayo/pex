@@ -227,6 +227,7 @@ export type SupervisorRow = {
 };
 
 export type SupervisorInfo = {
+  dispatch_limit_override?: number | null;
   max_dispatches_per_session?: number | null;
   version?: 1;
   revision?: number;

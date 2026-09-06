@@ -2642,9 +2642,12 @@ class SupervisorIn(_StrictRequestModel):
     api_key: SecretStr | None = Field(default=None, max_length=16_384, repr=False)
     clear_api_key: bool = False
     use_environment_credentials: bool | None = None
+    dispatch_limit_override: int | None = Field(default=None, strict=True, ge=1, le=100_000)
 
     @model_validator(mode="after")
     def _one_credential_operation(self) -> SupervisorIn:
+        if "dispatch_limit_override" in self.model_fields_set and self.expected_revision is None:
+            raise ValueError("changing the dispatch limit requires the current settings revision")
         supplied_key = self.api_key is not None
         operations = sum(
             (
@@ -3154,6 +3157,10 @@ def _supervisor_choice_from_patch(
         protocol=protocol,
         base_url=base_url,
         credential_source="none",
+        dispatch_limit_override=(
+            body.dispatch_limit_override if "dispatch_limit_override" in fields
+            else previous.dispatch_limit_override
+        ),
     )
 
     supplied_secret = body.api_key.get_secret_value() if body.api_key is not None else None
@@ -3290,8 +3297,13 @@ async def lifespan(app: FastAPI):
         await attach_from_settings(state.adapters, state.settings)
         choice_file = state.settings.data_dir / "supervisor.json"
         state.supervisor_choice = None
+        state.pipeline.supervisor_dispatch_limit_override = None
         try:
             state.supervisor_choice = load_supervisor_choice(choice_file)
+            state.pipeline.supervisor_dispatch_limit_override = (
+                state.supervisor_choice.dispatch_limit_override
+                if state.supervisor_choice is not None else None
+            )
             state.pipeline.model = None
             state.supervisor_api_key_present = False
             state.supervisor_credential_status = (
@@ -3485,8 +3497,9 @@ def create_app() -> FastAPI:
         info["catalog"] = model_catalog()
         info["model_loaded"] = state.pipeline.model is not None
         info["max_dispatches_per_session"] = (
-            state.pipeline.settings.supervisor_max_dispatches_per_session
+            state.pipeline.supervisor_dispatch_limit
         )
+        info["dispatch_limit_override"] = state.pipeline.supervisor_dispatch_limit_override
         info["note"] = (
             "Credentials stay in the selected local source. This response never "
             "includes credentials or secret references."
@@ -3610,6 +3623,7 @@ def create_app() -> FastAPI:
                 raise HTTPException(409, "supervisor model could not be constructed") from None
 
             state.supervisor_choice = desired
+            state.pipeline.supervisor_dispatch_limit_override = desired.dispatch_limit_override
             state.pipeline.model = candidate_model
             state.supervisor_api_key_present = prepared.api_key_present
             state.supervisor_credential_status = (
@@ -3658,7 +3672,7 @@ def create_app() -> FastAPI:
             info["backend"] = desired.provider
             info["model_loaded"] = candidate_model is not None
             info["max_dispatches_per_session"] = (
-                state.pipeline.settings.supervisor_max_dispatches_per_session
+                state.pipeline.supervisor_dispatch_limit
             )
             info["catalog"] = model_catalog()
             info["note"] = (

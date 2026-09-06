@@ -171,6 +171,8 @@ class SupervisorChoice(BaseModel):
     ] | None = None
     protocol: Literal["openai", "anthropic"] | None = None
     base_url: str | None = Field(default=None, max_length=2048)
+    # None inherits the bridge's startup cap; a saved integer overrides it.
+    dispatch_limit_override: int | None = Field(default=None, strict=True, ge=1, le=100_000)
     credential_source: Literal["none", "environment", "secret_store"] = "none"
     secret_ref: str | None = Field(default=None, max_length=64, repr=False)
 

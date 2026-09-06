@@ -40,6 +40,7 @@ import {
   supervisorCredentialAudience,
   supervisorRequest,
   supervisorSavePayload,
+  supervisorDispatchLimitDraft,
   supervisorSaveResponseIsCurrent,
   type SupervisorAuthMode,
   type SupervisorCredentialAction,
@@ -407,6 +408,7 @@ export function App() {
   const [supervisorAuth, setSupervisorAuth] = useState<SupervisorAuthMode>("api_key");
   const [supervisorProtocol, setSupervisorProtocol] = useState<SupervisorProtocol>("openai");
   const [supervisorBaseUrl, setSupervisorBaseUrl] = useState("");
+  const [supervisorDispatchLimit, setSupervisorDispatchLimit] = useState<string | undefined>();
   const [supervisorApiKey, setSupervisorApiKey] = useState("");
   const [supervisorCredentialAction, setSupervisorCredentialAction] =
     useState<SupervisorCredentialAction>("keep");
@@ -817,6 +819,7 @@ export function App() {
       );
       setSupervisorProtocol(data.protocol || "openai");
       setSupervisorBaseUrl(data.base_url || "");
+      setSupervisorDispatchLimit(supervisorDispatchLimitDraft(data.dispatch_limit_override));
       setSupervisorApiKey("");
       supervisorKeyAudience.current = null;
       setSupervisorCredentialAction("keep");
@@ -1884,6 +1887,7 @@ export function App() {
         baseUrl: supervisorBaseUrl,
         apiKey: supervisorApiKey,
         credentialAction: supervisorCredentialAction,
+        dispatchLimit: supervisorDispatchLimit,
       }, supervisor?.revision, supervisorKeyAudience.current);
       const data = await supervisorRequest((signal) => bridgeJson<SupervisorInfo>("/v1/supervisor", {
         method: "PATCH",
@@ -1909,6 +1913,7 @@ export function App() {
       setSupervisorAuth((data.auth_mode as SupervisorAuthMode | null) || defaultSupervisorAuth(data.backend || ""));
       setSupervisorProtocol(data.protocol || "openai");
       setSupervisorBaseUrl(data.base_url || "");
+      setSupervisorDispatchLimit(supervisorDispatchLimitDraft(data.dispatch_limit_override));
       setSupervisorApiKey("");
       supervisorKeyAudience.current = null;
       setSupervisorCredentialAction("keep");
@@ -2103,6 +2108,7 @@ export function App() {
         supervisorAuth={supervisorAuth}
         supervisorProtocol={supervisorProtocol}
         supervisorBaseUrl={supervisorBaseUrl}
+        supervisorDispatchLimit={supervisorDispatchLimit}
         supervisorApiKey={supervisorApiKey}
         supervisorCredentialAction={supervisorCredentialAction}
         channels={channels}
@@ -2142,6 +2148,7 @@ export function App() {
         onSupervisorAuth={(value) => changeSupervisorDraft(supervisorAuth, value, setSupervisorAuth, true)}
         onSupervisorProtocol={(value) => changeSupervisorDraft(supervisorProtocol, value, setSupervisorProtocol, true)}
         onSupervisorBaseUrl={(value) => changeSupervisorDraft(supervisorBaseUrl, value, setSupervisorBaseUrl, true)}
+        onSupervisorDispatchLimit={(value) => changeSupervisorDraft(supervisorDispatchLimit ?? "", value, setSupervisorDispatchLimit)}
         onSupervisorApiKey={(value) => changeSupervisorDraft(supervisorApiKey, value, (next) => {
           supervisorKeyAudience.current = next ? supervisorCredentialAudience({
             provider: supervisorProvider,

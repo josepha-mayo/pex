@@ -239,6 +239,25 @@ async def test_trajectory_review_coalesces_across_restart_without_refunding(
                     assert counted.calls == 2
                 exhausted = await store.get_event_effect(event.event_id, "planner")
                 assert exhausted["result"]["code"] == "supervisor_dispatch_budget_exhausted"
+                resolve = pipeline._resolve_durable_supervisor
+
+                async def disable_before_dispatch(
+                    request, event, *, _pipeline=pipeline, _resolve=resolve, **kwargs,
+                ):
+                    _pipeline.settings.supervisor_max_dispatches_per_session = None
+                    return await _resolve(request, event, **kwargs)
+
+                monkeypatch.setattr(
+                    pipeline, "_resolve_durable_supervisor", disable_before_dispatch,
+                )
+                pending = event.model_copy(update={
+                    "event_id": "disabled-before-dispatch", "ts": datetime.now(UTC),
+                })
+                await pipeline.ingest_event(pending, session)
+                disabled = await store.get_event_effect(pending.event_id, "planner")
+                assert disabled["result"]["code"] == "trajectory_review_disabled"
+                assert disabled["result"]["provider_started"] is False
+                assert counted.calls == 2
             assert not adapters.synthetic.inbox.get(session.id)
         finally:
             await _drain_presentations(pipeline)
@@ -248,7 +267,10 @@ async def test_trajectory_review_coalesces_across_restart_without_refunding(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("fail", [False, True])
 @pytest.mark.parametrize("mode", ["local", "agentcore"])
-async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(tmp_path, fail, mode):
+@pytest.mark.parametrize("cap_source", ["startup", "saved"])
+async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(
+    tmp_path, fail, mode, cap_source,
+):
     class CountedSupervisor(_NudgeSupervisor):
         async def decide(self, request, *, local_model):
             if fail:
@@ -267,7 +289,8 @@ async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(tmp_pat
     supervisor = CountedRemote() if mode == "agentcore" else CountedSupervisor()
     pipeline.settings.supervisor_mode = mode
     pipeline.supervisor = _AgentCoreOnlyRouter(supervisor) if mode == "agentcore" else supervisor
-    pipeline.settings.supervisor_max_dispatches_per_session = 1
+    pipeline.settings.supervisor_max_dispatches_per_session = 1 if cap_source == "startup" else 20
+    pipeline.supervisor_dispatch_limit_override = 1 if cap_source == "saved" else None
     first = _event(session, "budget-first", event_type=EventType.STOP)
     try:
         await pipeline.ingest_event(first, session)
@@ -280,7 +303,8 @@ async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(tmp_pat
     store, adapters, session, pipeline = await _pipeline(tmp_path)
     pipeline.settings.supervisor_mode = mode
     pipeline.supervisor = _AgentCoreOnlyRouter(supervisor) if mode == "agentcore" else supervisor
-    pipeline.settings.supervisor_max_dispatches_per_session = 1
+    pipeline.settings.supervisor_max_dispatches_per_session = 1 if cap_source == "startup" else 20
+    pipeline.supervisor_dispatch_limit_override = 1 if cap_source == "saved" else None
     try:
         exhausted_event = _event(session, "budget-next", event_type=EventType.STOP)
         await pipeline.ingest_event(exhausted_event, session)
