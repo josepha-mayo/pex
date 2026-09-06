@@ -598,7 +598,7 @@ def test_finished_background_job_does_not_wake_on_stop():
     assert action.type == InterventionType.NOOP
 
 
-def test_broad_unrelated_file_edits_are_redirected():
+def test_broad_file_edits_alone_do_not_prove_goal_drift():
     request = SupervisorRequest(
         session=_session(),
         goal=_goal(),
@@ -611,10 +611,10 @@ def test_broad_unrelated_file_edits_are_redirected():
         scores=TrajectoryScores(),
     )
     action = plan_deterministic(request)
-    assert action.type == InterventionType.SEND_NUDGE
-    text = str(action.payload.get("text") or "")
-    assert "style.css" in text
-    assert not text.startswith("PEX:")
+    assert action.type == InterventionType.NOOP
+    assert not action.payload.get("text")
+    assert "semantic review" in action.rationale
+    assert any("style.css" in item for item in action.evidence)
 
 
 def test_edit_of_required_artifact_is_not_refactor_drift():

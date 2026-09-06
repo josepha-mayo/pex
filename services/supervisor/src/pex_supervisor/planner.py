@@ -559,15 +559,11 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
 
     drifted = unrelated_refactor(event, goal)
     if drifted and event.event_type not in {EventType.STOP, EventType.USER_PROMPT}:
-        return _nudge(
+        return _noop(
             request,
-            "Worker started a broad refactor unrelated to the attached acceptance criteria.",
-            [f"unrelated:{drifted}"],
-            (
-                f"Recent edits ({drifted}) do not serve the attached ledger. "
-                "Return to the remaining acceptance criterion and produce the required evidence."
-            ),
-            session_status="drifting",
+            "Broad-work signal needs semantic review; filenames and narration "
+            "alone do not establish that the work is unrelated to the goal.",
+            [f"broad_work_candidate:{drifted}"],
         )
 
     if (

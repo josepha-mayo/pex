@@ -668,7 +668,9 @@ async def test_exited_background_job_is_not_treated_as_abandoned(
 
 
 @pytest.mark.asyncio
-async def test_unrelated_refactor_is_redirected(client: AsyncClient, tmp_path):
+async def test_broad_edit_signal_does_not_invent_drift_or_send_correction(
+    client: AsyncClient, tmp_path,
+):
     worker = tmp_path / "refactor-worker"
     worker.mkdir()
     adapter = state.adapters.synthetic
@@ -691,19 +693,17 @@ async def test_unrelated_refactor_is_redirected(client: AsyncClient, tmp_path):
         },
     )
     intervention = drifted.json()["intervention"]
-    assert intervention["action_taken"] == "SEND_NUDGE"
-    text = adapter.inbox[session.id][-1]
-    assert "style.css" in text
-    assert not text.startswith("PEX:")
+    assert intervention is None or intervention["action_taken"] == "NOOP"
+    assert not adapter.inbox.get(session.id)
     stored = await state.store.get_session(session.id)
     assert stored is not None
-    assert stored.status.value == "drifting"
+    assert stored.status.value != "drifting"
     pet = await client.get("/v1/pet")
     assert pet.status_code == 200
     body = pet.json()
-    assert body["drifting"] == 1
+    assert body["drifting"] == 0
     assert "corrected" not in (body["headline"] or "").casefold()
-    assert "drifting" in (body["headline"] or "").casefold()
+    assert "drifting" not in (body["headline"] or "").casefold()
 
 
 @pytest.mark.asyncio

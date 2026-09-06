@@ -39,7 +39,7 @@ def goal_path_names(goal: Goal | None) -> set[str]:
 
 
 def unrelated_refactor(event: HarnessEvent, goal: Goal | None) -> str | None:
-    """Return evidence when the current action is a broad unrelated refactor."""
+    """Return a broad-work candidate; lexical mismatch cannot establish irrelevance."""
     if goal is None:
         return None
     if event.event_type not in {

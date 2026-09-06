@@ -2,6 +2,15 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Adjacent broad-refactor repair: deterministic planning no longer equates four
+unlisted filenames or refactor narration with proof of goal irrelevance. It
+retains `broad_work_candidate` evidence as NOOP rather than issuing the old
+generic correction and setting the session/pet to drifting. **13 targeted
+drift/planner/HTTP checks passed, 54 deselected, in 17.38s**, including unchanged
+worker inbox and no invented drifting count. This removes a false-certainty
+shortcut; semantic trajectory diagnosis is still NOT complete and remains a
+submission requirement. Pending protected-loop question has not been answered.
+
 Follow-on overlap provenance: candidates now retain source/current event IDs
 and an explicit `observed_overlap_candidate` basis. Reject mismatched sibling
 identity, self-session tuples, non-action/narration events, timestamps without
