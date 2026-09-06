@@ -28,7 +28,10 @@ drop requirements or declare an unverified product ready.
 - [ ] **B. Close the semantic trajectory gap, not only stop-time checks.**
   Authority: recovery spec section 15 and `TRAJECTORY_SEMANTIC_REVIEW.md`.
   Current: P0 OPEN; durable opt-in dispatch cap exists, but material mid-task
-  semantic review, coalescing and complete model-use budget behavior do not.
+  review now has a first bounded repeated-command-failure path with durable
+  coalescing, exact evidence and local/remote independent-verifier enforcement.
+  Broader material signals, pacing, complete model-use accounting and live proof
+  remain open. See `TRAJECTORY_SEMANTIC_REVIEW.md` for source gates and limits.
   Acceptance: shared local/remote eligibility, evidence-bound decisions, quiet
   routine progress, bounded review and same-worker outcome. Mocked tests first;
   live proof is separate. The user approved narrow `loop.py` edits while
@@ -66,8 +69,9 @@ drop requirements or declare an unverified product ready.
 ### Day 3 — freeze, demonstrate, review submission
 
 - [ ] **G. Run the complete regression on final clean sources.**
-  Latest full run failed (3 failed, 1 teardown error); the clean 128-test repair
-  gate passed, but does not replace a fresh full run. Include frontend/Rust,
+  Clean `d7b3a64` full gate passed: 3,903 passed, 13 skipped, zero failures/errors;
+  exec 16849 is terminal. Receipt/hash in handoff. This excludes later Settings,
+  compact dismissal and trajectory updates, so G stays open. Include frontend/Rust,
   package integrity and installed/fresh-profile smoke after final code changes.
 - [ ] **H. Finish honest benchmark and code-audit closure.**
   Acceptance: equivalent prompts/environments, no evaluator leakage, failed

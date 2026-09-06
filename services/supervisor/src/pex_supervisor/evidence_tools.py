@@ -177,6 +177,8 @@ def _mask_local_strings(value: object, local_values: tuple[str, ...]) -> object:
 
 
 def _event_view(event: HarnessEvent) -> dict[str, Any]:
+    from pex_supervisor.trajectory import observed_command_exit_code
+
     return {
         "event_id": _clip(event.event_id, 200),
         "ts": event.ts.isoformat(),
@@ -187,6 +189,7 @@ def _event_view(event: HarnessEvent) -> dict[str, Any]:
         "tool_name": _clip(event.tool_name, 120) or None,
         "file_paths": [_clip(path, 300) for path in event.file_paths[:20]],
         "error": _clip(event.error, 500) or None,
+        "command_exit_code": observed_command_exit_code(event),
         "cost": event.cost,
     }
 
@@ -396,9 +399,17 @@ def build_evidence_tools(
         description="Return the latest normalized observable worker events, oldest to newest.",
     )
     def get_recent_events() -> str:
+        from pex_supervisor.trajectory import trajectory_review_candidate
+
+        candidate = trajectory_review_candidate(request)
+        source_ids = set(candidate.event_ids) if candidate else set()
+        selected = {event.event_id: event for event in request.recent_events[-16:]}
+        for event in [*request.recent_events, request.event]:
+            if event.event_id in source_ids:
+                selected[event.event_id] = event
         return record(
             "get_recent_events",
-            [_event_view(event) for event in request.recent_events[-16:]],
+            [_event_view(event) for event in sorted(selected.values(), key=lambda e: e.ts)],
         )
 
     @tool(

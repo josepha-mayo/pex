@@ -3,6 +3,42 @@
 Status: **P0 OPEN**, inspected 6 September 2026 on source `7d0a19c`.
 Binding authority: recovery spec section 15; core/build specs remain unchanged.
 
+## 6 September implementation follow-up — bounded repeated failures
+
+The user approved narrow integration into `loop.py` while preserving its existing
+uncommitted addition. The STOP-only gate below is now historical. New shared
+candidate logic recognizes three observed nonzero command exits with matching
+command/failure text, within ten minutes, bound to the active goal. Goal/session
+pause, ambiguous/duplicate receipts, pre-goal events, successful commands and
+intervening edits prevent stale accumulation. Ordinary progress remains quiet.
+
+The bridge enables this path only with an explicit finite per-session dispatch
+cap. Candidate reservation and cap reservation share the planner dispatch
+transaction. A durable key binds session, goal content, selected workspace,
+failure and observed progress anchor; repeated keys become audited
+`trajectory_review_coalesced` NOOP without provider dispatch, including after
+restart. New failure text can be reviewed until the cap is exhausted. Failure,
+timeout and cancellation do not refund a possibly consumed reservation.
+
+Codex normalization retains typed exit codes even when no pytest receipt exists.
+Local evidence tools and the redacted cloud request carry exact candidate event
+IDs and exit codes, not raw process output. Cloud routing retains eligibility.
+The prompt calls this a candidate, not a drift verdict; completed NOOP survives.
+Both local arbitration and the bridge's remote-result contract require independent
+verification for material trajectory corrections. Inactive request extensions
+are omitted from serialization to preserve historical evidence digests.
+
+Verification so far: 293 tests across twelve complete affected files passed;
+the additional remote missing-verifier guard passed the 96-test trajectory/client
+gate. Final workspace-incarnation/pipeline/client gate: 117 passed in 76.86s.
+No live model calls, provider settings changes or remote deployments occurred.
+
+This is one material signal, not section 15 completion. Semantic search repetition,
+dependency/constraint/context candidates, measured restraint and same-worker live
+outcomes, time-based pacing and aggregate model-call/token/cost accounting remain
+open. The existing dispatch cap is not a spending guarantee. Native UX, other
+spec requirements and final-source packaging remain separate unclosed gates.
+
 ## Current call path
 
 1. `pipeline.py` reserves and claims a durable planner effect, checks current
@@ -73,7 +109,7 @@ existing timeouts or a free-provider label as a no-charge guarantee.
 
 `loop.py` contains protected uncommitted work (SHA256
 `392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`).
-A narrow-edit permission question is pending. Preserve its existing work and do
-not stage it wholesale. No implementation, new inference, runtime restart or
-remote deployment occurred in this inspection. This contract is not a completion
+The narrow edit is now authorized; preserve the existing addition and do not
+stage it wholesale. The paragraph's hash records the pre-integration file, not
+the modified source. No runtime restart or remote deployment occurred. This is not a completion
 claim and does not replace any broader submission requirement.

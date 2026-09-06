@@ -2,6 +2,34 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Continuation update: compact status-message dismissal fixed and pushed as
+`b312dd8`; 195 frontend tests and production build passed. Static contact-sheet
+review covered all eight source pets without regeneration or native input.
+Drift jump frame 0 has a flat-cut lower body in its source pixels; D remains
+open. Exact source exports: `build/pet-source-audit-5c00433/frames/drift/jumping`.
+
+The user explicitly approved narrow `loop.py` integration while preserving its
+existing addition. The original duplicate trailing raise remains unstaged.
+First material mid-task review path implemented for repeated observed command
+failures, opt-in through a finite dispatch cap, with durable coalescing and
+local/remote verifier enforcement. Read `TRAJECTORY_SEMANTIC_REVIEW.md` for
+remaining scope and exact limits; this is not full trajectory or live proof.
+293 affected tests passed; remote-verifier follow-up 96 passed; final focused
+workspace-incarnation/pipeline/client gate passed 117 tests in 76.86s (exec 56453
+terminal). No model calls,
+native focus, runtime restarts, cloud deployments or extra agents used.
+
+Clean baseline full regression **FINISHED**: exec 16849 terminal, clean source
+`d7b3a644a813a35ff58ee76033dd0146571dc15c` in `pex-verify-d7b3a64`.
+**3,903 passed, 13 skipped, 16 deselected, 2,444.64 seconds**. XML confirms
+3,916 cases, zero failures/errors, 13 skips. SHA256 of
+`build/full-regression-d7b3a64.xml`:
+`A067BF6900979F223189A0A8C5D4A5A5A94415E1BD8CBF13342B739737BE27E2`.
+Skips include three opt-in frozen-helper checks, two absent AgentCore-runtime
+extra checks, Windows symlink/FIFO/platform limitations. No warnings reported.
+Preserve this checkout/receipt; do not poll 16849 again. It excludes later
+Settings, compact dismissal and trajectory changes. Submission remains NO-GO.
+
 Settings review-limit visibility added as an incremental product step, NOT a
 completed budget editor. Authenticated GET/PATCH supervisor responses report the
 effective pipeline `max_dispatches_per_session`. Settings distinguishes bounded,
@@ -19,7 +47,7 @@ Editable persistent budgets and remaining-use accounting remain unfinished.
 The clean integration run on d7b3a64 remains exec 16849 and does not include this
 later visibility change. Preserve its checkout and prior package receipts.
 
-FULL CLEAN INTEGRATION REGRESSION RUNNING: exec **16849**, source
+Historical launch details (run now complete above): exec **16849**, source
 `d7b3a644a813a35ff58ee76033dd0146571dc15c`, separate detached checkout
 `C:/Users/JosephMayo/Projects/pex-verify-d7b3a64`. New checkout was absent before
 creation; offline frozen sync installed 113 packages. All three package imports
@@ -28,7 +56,7 @@ verified inside it; git status clean. Command:
 with marker expression `not live_llm and not live_codex and not live_opencode and
 not live_agentcore and not live_desktop`, output
 `build/full-regression-d7b3a64.xml`. Poll the same handle; do not duplicate the run
-or change this checkout. No result is known yet. Prior failure receipt and
+or change this checkout. The terminal result is recorded above. Prior failure receipt and
 verified `60ffa76` installer checkout remain intact. This integration run is
 justified by the shared authority changes, not final-product completion.
 

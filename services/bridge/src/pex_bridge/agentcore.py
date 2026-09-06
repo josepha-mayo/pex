@@ -307,12 +307,16 @@ def _safe_event(
     project_id: str | None,
     local_values: Iterable[str],
 ) -> dict[str, Any]:
+    from pex_supervisor.trajectory import observed_command_exit_code
+
+    exit_code = observed_command_exit_code(event)
     return {
         "event_id": event.event_id,
         "ts": event.ts,
         "harness_type": event.harness_type,
         "session_id": event.session_id,
         "project_id": project_id,
+        "goal_id": event.goal_id,
         "event_type": event.event_type,
         "phase": event.phase,
         "message_delta": _safe_text(event.message_delta, 2_000, local_values) or None,
@@ -334,12 +338,20 @@ def _safe_event(
         "approval_request": None,
         "token_usage": None,
         "process_state": None,
-        "metadata": {},
+        "metadata": {"command_exit_code": exit_code} if exit_code is not None else {},
     }
 
 
 def cloud_request(request: SupervisorRequest) -> SupervisorRequest:
     """Return the minimum redacted request needed by the remote semantic judge."""
+    from pex_supervisor.trajectory import trajectory_review_candidate
+
+    candidate = trajectory_review_candidate(request)
+    source_ids = set(candidate.event_ids) if candidate else set()
+    recent = {event.event_id: event for event in request.recent_events[-12:]}
+    for event in [*request.recent_events, request.event]:
+        if event.event_id in source_ids:
+            recent[event.event_id] = event
     session = request.session
     local_values = tuple(
         value for value in (session.cwd, session.repo, session.external_url) if value
@@ -413,7 +425,7 @@ def cloud_request(request: SupervisorRequest) -> SupervisorRequest:
         ),
         "recent_events": [
             _safe_event(item, project_id=project_id, local_values=local_values)
-            for item in request.recent_events[-12:]
+            for item in sorted(recent.values(), key=lambda event: event.ts)
         ],
         "scores": {
             "drift": request.scores.drift,
@@ -424,6 +436,7 @@ def cloud_request(request: SupervisorRequest) -> SupervisorRequest:
         },
         "supervisor_context": supervisor_context,
         "autonomy": request.autonomy,
+        "trajectory_review_enabled": candidate is not None,
         "notes": _safe_text(request.notes, 1_500, local_values),
     }
     cleaned, _ = redact_mapping(data)
@@ -548,7 +561,8 @@ def _remote_verifier_contract_failure(
     request: SupervisorRequest,
     result: SupervisorResult,
 ) -> str | None:
-    """Require cited main evidence and independent verification for STOP actions."""
+    """Require independent evidence for completion and trajectory corrections."""
+    from pex_supervisor.trajectory import trajectory_review_candidate
 
     if result.action.type == InterventionType.NOOP:
         return None
@@ -556,7 +570,8 @@ def _remote_verifier_contract_failure(
         return "main_inference_not_completed"
     if not result.used_llm or result.model_call_count < 1:
         return "missing_main_inference"
-    if request.event.event_type != EventType.STOP:
+    if (request.event.event_type != EventType.STOP
+            and trajectory_review_candidate(request) is None):
         return None if result.evidence_refs else "missing_main_evidence_observation"
     receipt = result.independent_verifier
     if receipt is None:

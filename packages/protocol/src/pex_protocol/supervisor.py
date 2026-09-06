@@ -257,6 +257,10 @@ class SupervisorRequest(BaseModel):
     scores: TrajectoryScores = Field(default_factory=TrajectoryScores)
     supervisor_context: SupervisorContextEnvelope | None = None
     autonomy: Literal["observe", "assist", "nudge", "manage", "autopilot"] = "manage"
+    # Omit the inactive extension so historical request/evidence digests survive.
+    trajectory_review_enabled: bool = Field(
+        default=False, strict=True, exclude_if=lambda value: not value,
+    )
     notes: str = Field(default="", max_length=65_536)
 
     @model_validator(mode="after")

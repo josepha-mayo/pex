@@ -1704,11 +1704,16 @@ class Pipeline:
         if effect["state"] == "dispatching":
             raise RuntimeError("planner effect dispatch is still active")
         semantic = needs_semantic_inference(request)
+        from pex_supervisor.trajectory import trajectory_review_candidate
+
+        candidate = trajectory_review_candidate(request)
         budget_options = {}
         if semantic and self.settings.supervisor_max_dispatches_per_session is not None:
             budget_options["semantic_dispatch_limit"] = (
                 self.settings.supervisor_max_dispatches_per_session
             )
+        if candidate is not None:
+            budget_options["trajectory_candidate_key"] = candidate.key
         dispatch = await self.store.start_event_effect_dispatch(
             event_id=event.event_id,
             effect_key="planner",
@@ -1716,8 +1721,10 @@ class Pipeline:
             **budget_options,
         )
         if not dispatch["granted"]:
-            if dispatch.get("reason") == "supervisor_dispatch_budget_exhausted":
-                reason = "supervisor_dispatch_budget_exhausted"
+            if dispatch.get("reason") in {
+                "supervisor_dispatch_budget_exhausted", "trajectory_review_coalesced",
+            }:
+                reason = dispatch["reason"]
                 result = SupervisorResult(
                     action=_action_from_proposal(request, {
                         "type": "NOOP", "rationale": reason, "evidence": [reason],
@@ -2480,6 +2487,9 @@ class Pipeline:
             recent_events=recent,
             scores=scores,
             autonomy=self.settings.autonomy,
+            trajectory_review_enabled=(
+                self.settings.supervisor_max_dispatches_per_session is not None
+            ),
             notes=notes,
             supervisor_context=build_supervisor_context(
                 session,

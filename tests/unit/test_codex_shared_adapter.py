@@ -120,6 +120,7 @@ async def test_shared_full_suite_pass_outside_bound_cwd_is_not_pytest_evidence(
         assert len(shells) == 1
         assert shells[0].session_id == adapter.session.id
         assert shells[0].command == item["command"]
+        assert shells[0].metadata["command_exit_code"] == item["exitCode"]
         assert "pytest" not in shells[0].process_state
         assert shells[0].process_state["pytest_unavailable_reason"] == (
             "command_cwd_missing" if command_directory == "missing" else "command_cwd_mismatch"

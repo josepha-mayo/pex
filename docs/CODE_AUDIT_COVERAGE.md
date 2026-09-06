@@ -6,6 +6,17 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Material trajectory review — 6 Sep
+
+Full new-file review: `services/supervisor/src/pex_supervisor/trajectory.py` and
+`tests/unit/test_trajectory_review.py`. Changed-path review only: protocol request,
+loop routing/prompt/verifier, evidence tools, Codex normalization, AgentCore
+redaction/result verifier, planner dispatch and Store reservation transaction.
+The review caught cloud filtering that would discard eligibility/evidence and
+STOP-only remote verifier enforcement; both were repaired. 293 affected tests
+passed, then 96 trajectory/client tests passed for the remote verifier follow-up.
+No claim of whole-file Store/pipeline audit, native proof or live trajectory success.
+
 ### Context and dispatch project boundaries — 6 Sep follow-up
 
 New `tests/unit/test_bridge_project_binding.py`: full-file review; nine cases.

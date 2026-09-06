@@ -1714,11 +1714,11 @@ class CodexAdapter(HarnessAdapter):
                 "status": item.get("status"),
             }
             output_withheld = command_output_is_withheld(item)
+            message_metadata["command_status"] = payload["status"]
+            if type(payload["exit_code"]) is int:
+                message_metadata["command_exit_code"] = payload["exit_code"]
             if output_withheld:
                 message_metadata["command_output"] = item[OUTPUT_WITHHELD_KEY]
-                message_metadata["command_status"] = payload["status"]
-                if type(payload["exit_code"]) is int:
-                    message_metadata["command_exit_code"] = payload["exit_code"]
             process_state = (
                 {"pytest_unavailable_reason": "output_exceeds_bound"}
                 if output_withheld

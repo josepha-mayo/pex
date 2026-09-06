@@ -177,6 +177,63 @@ async def _drain_presentations(pipeline: Pipeline) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["local", "agentcore"])
+async def test_trajectory_review_coalesces_across_restart_without_refunding(
+    tmp_path, monkeypatch, mode,
+):
+    from pex_supervisor.loop import decide_async
+
+    counted = _RemoteNoop()
+
+    async def mock_strands(request, model=None):
+        return await counted.decide(request)
+
+    monkeypatch.setattr("pex_supervisor.loop.run_strands_async", mock_strands)
+
+    class Router:
+        agentcore = counted
+
+        async def decide(self, request, *, local_model):
+            return await decide_async(request, model=object())
+
+    for cycle in range(2):
+        store, adapters, session, pipeline = await _pipeline(tmp_path)
+        pipeline.supervisor = Router()
+        pipeline.settings.supervisor_mode = mode
+        pipeline.settings.supervisor_max_dispatches_per_session = 2
+        try:
+            for index in range(3 if cycle == 0 else 1):
+                event = _event(session, f"failure-{cycle}-{index}", event_type=EventType.SHELL)
+                event.command = "pytest -q"
+                event.error = "ImportError: missing dependency"
+                event.process_state = {"exit_code": 1}
+                await pipeline.ingest_event(event, session)
+            assert counted.calls == 1
+            effect = await store.get_event_effect(event.event_id, "planner")
+            if cycle:
+                assert effect["state"] == "skipped"
+                assert effect["result"]["code"] == "trajectory_review_coalesced"
+                assert effect["result"]["provider_started"] is False
+                # A different observed failure is not hidden by the old key.
+                for failure_kind in ("new failure", "third failure"):
+                    for index in range(3):
+                        event = _event(
+                            session, f"{failure_kind}-{index}", event_type=EventType.SHELL,
+                        )
+                        event.command = "pytest -q"
+                        event.error = failure_kind
+                        event.process_state = {"exit_code": 1}
+                        await pipeline.ingest_event(event, session)
+                    assert counted.calls == 2
+                exhausted = await store.get_event_effect(event.event_id, "planner")
+                assert exhausted["result"]["code"] == "supervisor_dispatch_budget_exhausted"
+            assert not adapters.synthetic.inbox.get(session.id)
+        finally:
+            await _drain_presentations(pipeline)
+            await store.close()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("fail", [False, True])
 @pytest.mark.parametrize("mode", ["local", "agentcore"])
 async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(tmp_path, fail, mode):

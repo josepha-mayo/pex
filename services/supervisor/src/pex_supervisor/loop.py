@@ -183,6 +183,15 @@ def _redact_payload_value(
 
 
 def _format_user(request: SupervisorRequest) -> str:
+    from pex_supervisor.trajectory import trajectory_review_candidate
+
+    candidate = trajectory_review_candidate(request)
+    trajectory_note = (
+        f"Material review candidate: {candidate.kind}; source event IDs: {candidate.event_ids}. "
+        "This is NOT a drift verdict. Use get_recent_events and inspect current evidence "
+        "against the goal; ordinary debugging may justify NOOP.\n"
+        if candidate is not None else ""
+    )
     goal = request.goal
     event_text = _clip(request.event.command or request.event.message_delta or "", 2_000)
     claims = request.scores.features.get("claims") if request.scores.features else []
@@ -194,6 +203,7 @@ def _format_user(request: SupervisorRequest) -> str:
         f"Session: {request.session.id}\n"
         f"Status: {request.session.status}\n"
         f"Event: {request.event.event_type} {event_text}\n"
+        f"{trajectory_note}"
         f"Goal: {_clip(goal.objective, 4_000) if goal else 'unattached'}\n"
         f"Acceptance: {_bounded_items(goal.acceptance_criteria) if goal else []}\n"
         f"Evidence requirements: {_bounded_items(goal.evidence_requirements) if goal else []}\n"
@@ -1064,13 +1074,15 @@ def _usage(result: object) -> tuple[int, int]:
 
 
 def needs_semantic_inference(request: SupervisorRequest, force_llm: bool = False) -> bool:
-    """Deterministic triage first. Model inspect only on STOP with a attached goal."""
+    """Shared routing gate: STOP or an explicitly enabled material candidate."""
     from pex_protocol.enums import EventType
+
+    from pex_supervisor.trajectory import trajectory_review_candidate
 
     if force_llm or os.environ.get("PEX_FORCE_LLM") == "1":
         return True
     if request.event.event_type != EventType.STOP:
-        return False
+        return trajectory_review_candidate(request) is not None
     return request.goal is not None
 
 
@@ -1128,11 +1140,14 @@ def _needs_independent_verifier(
     _deterministic: ProposedAction,
     semantic: SupervisorResult,
 ) -> bool:
-    """Every completed semantic STOP intervention needs independent evidence."""
+    """Completion and material trajectory interventions need independent evidence."""
     from pex_protocol.enums import EventType
 
+    from pex_supervisor.trajectory import trajectory_review_candidate
+
     return (
-        request.event.event_type == EventType.STOP
+        (request.event.event_type == EventType.STOP
+         or trajectory_review_candidate(request) is not None)
         and semantic.inference_status == "completed"
         and semantic.action.type != InterventionType.NOOP
     )
