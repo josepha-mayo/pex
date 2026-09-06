@@ -2,6 +2,21 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Project-binding integrity: protocol, bridge and runtime separately case-folded,
+trimmed and stripped slashes from every project identifier, conflating opaque
+IDs and case-sensitive POSIX projects. Eight new cases failed before repair.
+New shared `pex_protocol/project_binding.py` keeps non-drive identifiers exact;
+absolute Windows drive paths reuse existing conservative `canonical_absolute_path`
+normalization (ASCII case only, preserved drive root). Twelve negative cases
+also cover Unicode sharp-s/ss and absolute-drive versus drive-relative identities;
+existing Windows-spelling compatibility remains green. Runtime rejects before
+model loading, bridge before cloud request dispatch. Five-file AgentCore runtime,
+client, pipeline, supervisor-context and verification-action-binding gate:
+**175 passed in 30.61s**, thread warnings as errors, scoped Ruff/diff clean.
+`project_identity.py` is unchanged; the new comparison helper is separate from
+physical workspace authority. Protected loop hash unchanged. No live/AWS/model
+calls. This is changed-path evidence, not a complete cross-platform identity audit.
+
 Malformed JSON boundary follow-up: deep arrays/objects below the byte limit
 raised decoder recursion errors. Four red regressions showed local HTTP 500s
 and generic client `unexpected_failure`; the existing client already preserved

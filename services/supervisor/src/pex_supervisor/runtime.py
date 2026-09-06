@@ -14,6 +14,7 @@ import re
 from functools import lru_cache
 from typing import Any
 
+from pex_protocol.project_binding import project_binding_key as _project_key
 from pex_protocol.supervisor import SupervisorRequest
 from pydantic import ValidationError
 from starlette.requests import Request
@@ -76,10 +77,6 @@ def _request_data(payload: object) -> tuple[str, dict[str, Any]]:
     if not isinstance(request_data, dict):
         raise ValueError("AgentCore request must be a JSON object")
     return invocation_id, request_data
-
-
-def _project_key(value: str) -> str:
-    return value.strip().replace("\\", "/").rstrip("/").casefold()
 
 
 def _project_matches(observed: str | None, expected: str | None) -> bool:

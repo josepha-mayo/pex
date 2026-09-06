@@ -20,6 +20,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from pex_protocol.actions import InterventionType
 from pex_protocol.enums import EventType
+from pex_protocol.project_binding import project_binding_key as _project_key
 from pex_protocol.session import HarnessEvent
 from pex_protocol.supervisor import (
     INDEPENDENT_VERIFIER_EVIDENCE_TOOLS,
@@ -123,10 +124,6 @@ def _opaque(value: str | None, prefix: str) -> str | None:
         return None
     digest = hashlib.sha256(value.encode("utf-8", "replace")).hexdigest()[:20]
     return f"{prefix}_{digest}"
-
-
-def _project_key(value: str) -> str:
-    return value.strip().replace("\\", "/").rstrip("/").casefold()
 
 
 def _project_matches(observed: str | None, expected: str | None) -> bool:

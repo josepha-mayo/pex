@@ -786,6 +786,21 @@ def test_workspace_compaction_bounds_cycles_invalid_collections_and_large_number
     assert compacted["pytest"]["exit_code"] == (1 << 31) - 1
 
 
+@pytest.mark.parametrize("expected,observed", [
+    ("project_A", "project_a"), ("/work/Project", "/work/project"),
+    ("project", " project "), ("project", "project/"),
+    ("C:/work/straße", "c:/work/strasse"), ("c:/", "c:"),
+])
+def test_cloud_request_keeps_opaque_and_posix_project_identities_distinct(expected, observed):
+    request = _request()
+    request.session.project_id = expected
+    request.goal.project_id = expected
+    request.event.project_id = observed
+    request.recent_events = []
+    with pytest.raises(AgentCoreProtocolError, match="different project"):
+        request_envelope(request, max_bytes=262_144)
+
+
 def test_agentcore_request_binding_normalizes_windows_project_spelling():
     request = _request()
     request.event.project_id = "c:/users/josephmayo/projects/private-repo/"

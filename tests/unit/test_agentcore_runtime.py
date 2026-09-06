@@ -72,6 +72,23 @@ def test_runtime_schema_version_is_an_exact_integer_before_model_loading(monkeyp
         runtime.handle_payload(payload)
 
 
+@pytest.mark.parametrize("expected,observed", [
+    ("project_A", "project_a"), ("/work/Project", "/work/project"),
+    ("project", " project "), ("project", "project/"),
+    ("C:/work/straße", "c:/work/strasse"), ("c:/", "c:"),
+])
+def test_runtime_keeps_opaque_and_posix_project_identities_distinct(
+    monkeypatch, expected, observed,
+):
+    payload = _payload(_request())
+    payload["request"]["session"]["project_id"] = expected
+    payload["request"]["goal"]["project_id"] = expected
+    payload["request"]["event"]["project_id"] = observed
+    monkeypatch.setattr(runtime, "_runtime_model", lambda: pytest.fail("must not load model"))
+    with pytest.raises(ValueError, match="protocol validation|different project"):
+        runtime.handle_payload(payload)
+
+
 def test_handle_payload_passes_configured_model_and_returns_versioned_result(monkeypatch):
     request = _request()
     sentinel = object()

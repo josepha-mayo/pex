@@ -6,6 +6,17 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Project comparison boundaries — 6 Sep
+
+New file `packages/protocol/src/pex_protocol/project_binding.py`: full helper
+review. Changed-path review of supervisor protocol, AgentCore client/runtime and
+their tests. Replaces three duplicated, unconditional case-folding comparators;
+opaque/POSIX identifiers stay exact, Windows drive spelling reuses the existing
+conservative path normalizer. Eight red cases preceded repair; final five-file
+gate 175 passed with thread warnings as errors. Does not authorize aliases by
+filesystem resolution, change physical identity proofs or establish all-project
+compatibility. `project_identity.py` has no final diff.
+
 ### Fenced example versus persistent intent — 6 Sep
 
 Root fully read `public_task.py` and `test_public_task.py`; changed-path review

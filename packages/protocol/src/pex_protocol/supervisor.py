@@ -16,6 +16,7 @@ from pex_protocol.enums import (
     SourceKind,
 )
 from pex_protocol.goal import Goal
+from pex_protocol.project_binding import project_binding_key as _project_key
 from pex_protocol.session import HarnessEvent, HarnessSession
 
 INDEPENDENT_VERIFIER_EVIDENCE_TOOLS = frozenset(
@@ -603,10 +604,6 @@ class SupervisorResult(BaseModel):
             invocation_id=self.local_invocation_id,
         )
         return self
-
-
-def _project_key(value: str) -> str:
-    return value.strip().replace("\\", "/").rstrip("/").casefold()
 
 
 def _project_matches(observed: str | None, expected: str | None) -> bool:
