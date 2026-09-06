@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from pex_bridge.context.mesh import build_bundle, items_from_verification, score_item
 from pex_protocol.context import ContextItem
 from pex_protocol.enums import (
@@ -71,6 +72,29 @@ def _item(
     )
 
 
+@pytest.mark.parametrize(
+    "left,right",
+    [
+        ("/work/PEX", "/work/pex"),
+        ("project:PEX", "project:pex"),
+        ("C:/work/straße", "C:/work/strasse"),
+        ("C:/", "C:"),
+    ],
+)
+@pytest.mark.parametrize("boundary", ["goal", "target"])
+def test_context_project_boundaries_do_not_merge_distinct_ids(
+    left: str,
+    right: str,
+    boundary: str,
+) -> None:
+    now = datetime.now(UTC)
+    item = _item("foreign", "parser tests passed", now, project_id=left)
+    goal = _goal(now).model_copy(update={"project_id": right if boundary == "goal" else left})
+    target = _target().model_copy(update={"project_id": right if boundary == "target" else left})
+    assert score_item(item, goal, target, now=now) == -1.0
+    assert build_bundle(goal, target, [item], [], ["synthetic:source"]).items == []
+
+
 def test_bundle_separates_claims_from_verified_direct_evidence() -> None:
     now = datetime.now(UTC)
     goal = _goal(now)
@@ -131,9 +155,7 @@ def test_declared_target_task_excludes_goal_relevant_but_phase_irrelevant_items(
     )
     target = _target(task="frontend pet sprites atlas")
 
-    assert score_item(frontend, goal, target, now=now) > score_item(
-        backend, goal, target, now=now
-    )
+    assert score_item(frontend, goal, target, now=now) > score_item(backend, goal, target, now=now)
     bundle = build_bundle(goal, target, [backend, frontend], [], [])
     assert [item.id for item in bundle.items] == ["frontend"]
 
@@ -248,9 +270,7 @@ def test_bundle_carries_only_selected_provenance_and_redacts_again_at_boundary()
         session_id="synthetic:source",
         project_id="demo",
         event_type=EventType.AGENT_RESPONSE,
-        message_delta=(
-            "UNRELATED_TRANSCRIPT_SENTINEL password=another-secret-value"
-        ),
+        message_delta=("UNRELATED_TRANSCRIPT_SENTINEL password=another-secret-value"),
     )
 
     bundle = build_bundle(
@@ -263,9 +283,7 @@ def test_bundle_carries_only_selected_provenance_and_redacts_again_at_boundary()
     serialized = bundle.model_dump_json()
 
     assert len(bundle.items) == 1
-    assert bundle.recent_progress == [
-        "Parser artifact is ready; [REDACTED:credential_assignment]"
-    ]
+    assert bundle.recent_progress == ["Parser artifact is ready; [REDACTED:credential_assignment]"]
     assert "super-secret-value" not in serialized
     assert "another-secret-value" not in serialized
     assert "UNRELATED_TRANSCRIPT_SENTINEL" not in serialized
@@ -276,9 +294,7 @@ def test_bundle_carries_only_selected_provenance_and_redacts_again_at_boundary()
 def test_context_project_matching_normalizes_windows_path_spelling() -> None:
     now = datetime.now(UTC)
     goal = _goal(now).model_copy(update={"project_id": "C:/Work/PEX"})
-    target = _target(task="parser").model_copy(
-        update={"project_id": "c:\\work\\pex\\"}
-    )
+    target = _target(task="parser").model_copy(update={"project_id": "c:\\work\\pex\\"})
     item = _item(
         "normalized-project",
         "parser tests passed",

@@ -2,6 +2,27 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Context-selection project boundary repair: `context/mesh.py` still independently
+case-folded every project ID despite the shared comparator introduced earlier.
+Eight new regressions failed before repair (goal and target boundaries, POSIX
+case, opaque case, Unicode sharp-s collision, drive-root versus drive-relative).
+Both selection boundaries now use `project_binding_key`. Existing Windows path
+spelling compatibility remains tested. Full context unit file: 20 passed.
+Five complete context/handoff/protocol/assimilation/permission/timeout files:
+**115 passed in 361.16s**, unhandled thread warnings as errors (exec 46984 terminal).
+Scoped Ruff and whitespace checks passed. This run used main with protected
+loop dirt unchanged, not clean release or live-harness proof. Changed-path review
+only; no whole-backend signoff. Additional legacy comparators in pipeline,
+executor, supervisor_context and Store remain to audit. Store uses its key in
+persisted fingerprints and legacy identity compatibility: do not globally replace
+it without checking migration/replay implications.
+
+Clean `60ffa76` frontend suite also rerun: **194 passed, zero failures/skips**.
+Native build exec 46349 remains live, compiling/linking the desktop after all
+dependencies. One dead-code warning for test-used `bridge_port_state_at`; no
+terminal result yet. It does NOT contain the newer context-selection repair.
+After preserving this build's evidence, final packaging must include later fixes.
+
 EXECUTION PRIORITY: `SUBMISSION_SPRINT_2026_09_09.md` now starts with the active
 three-day A-I queue (pushed `bdd3b0b`). Follow that queue rather than treating
 historical green test batches as current completion. Mid-task semantic review

@@ -7,6 +7,7 @@ from typing import Any
 from pex_protocol.context import ContextBundle, ContextItem, ContextKind
 from pex_protocol.enums import DecisionStatus, EventType, Sensitivity, SourceKind
 from pex_protocol.goal import Goal
+from pex_protocol.project_binding import project_binding_key
 from pex_protocol.session import HarnessEvent, HarnessSession
 
 from pex_bridge.secrets import redact_text
@@ -80,10 +81,6 @@ def _bundle_wire_tokens(bundle: ContextBundle) -> int:
             break
         estimate = updated
     return estimate
-
-
-def _project_key(value: str) -> str:
-    return value.strip().replace("\\", "/").rstrip("/").casefold()
 
 
 def _safe_text(value: object, limit: int) -> str:
@@ -201,9 +198,14 @@ def score_item(
     now = now or datetime.now(UTC)
     if item.sensitivity in {Sensitivity.SECRET, Sensitivity.LOCAL_ONLY}:
         return -1.0
-    if _project_key(item.project_id) != _project_key(goal.project_id) or item.goal_id != goal.id:
+    if (
+        project_binding_key(item.project_id) != project_binding_key(goal.project_id)
+        or item.goal_id != goal.id
+    ):
         return -1.0
-    if target.project_id and _project_key(item.project_id) != _project_key(target.project_id):
+    if target.project_id and (
+        project_binding_key(item.project_id) != project_binding_key(target.project_id)
+    ):
         return -1.0
     if (
         item.kind == ContextKind.DECISION
