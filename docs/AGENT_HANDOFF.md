@@ -28,7 +28,7 @@ the user subsequently asked to reduce delegation because quota is burning fast.
 Keep work local by default; the broad quiet-fixture subagent audit was interrupted.
 Ten public quiet-case workspaces now exist under
 `C:/Users/JosephMayo/pex-live-demo/workspace/quiet-20260906-Q01` through `Q10`.
-No live quiet-suite worker or supervisor calls have started. Root reviewed public
+Q01 has now run once and is retained as inconclusive; Q02-Q10 have not started. Root reviewed public
 tasks/tests/goal contracts and strengthened Q05 suffix-collision coverage, Q06
 strict date formatting, and Q08 SPDX/metadata validation before any live attempt.
 Fresh baseline: Q01 4 failures; Q02 4; Q03 3 failures/1 pass; Q04 4; Q05 5;
@@ -38,6 +38,21 @@ fixtures, not PEX failures or quiet-success evidence. Private runner scripts are
 received root static review: the worker identity is now persisted before warm-up,
 and started turn identities before waiting. Root independently reran CLI help and
 Ruff successfully. This is static runner validation, not a live quiet-suite result.
+Q01 live worker `01a077be-3193-7313-9698-46df7153189f`, work turn
+`01a077bf-2bb7-7ff0-b757-3ba8f888fe43`, completed the public implementation/artifact.
+However, PEX disconnected with `CodexSubscriptionError` at observed sequence 29,
+ingested 28, before any intervention or typed pytest result was recorded. Do not
+count absent messages as a successful NOOP. Diagnose the exact transport/journal
+failure before launching Q02; do not rerun Q01 to replace this failure.
+The revoke helper refused the already disconnected target; explicit detach then
+succeeded, with worker_stopped=false. Terminal correction status is enabled=false,
+effective_enabled=false, connected=false, grant=null. Immutable hashes matched;
+root external pytest after detach passed 4 tests in 0.02s (not PEX-observed proof).
+Receipt: clean `pex-live-5ff58f6/build/quiet-live-20260906/Q01/client/`
+`capture-20260906T172539532234Z.json`, SHA256
+`E3BA8D5686D64CF90AEC7D87F3AEF6EF5533A841EF92E99C4DE7587F50CE76E1`.
+Progress: 0 quiet successes, 0 proven false positives, 1 inconclusive, 9 pending
+out of the ten declared cases. Dedicated bridge 7434 remains alive and detached.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 
