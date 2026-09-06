@@ -173,10 +173,13 @@ def _failed_node(info: dict[str, Any], event: HarnessEvent) -> str | None:
 
 
 def _later_edits(events: list[HarnessEvent], after: int) -> list[str]:
+    """Describe subsequent edits, retaining events whose path was not reported."""
     paths: list[str] = []
     for event in events[after + 1 :]:
         if event.event_type == EventType.FILE_EDIT:
-            paths.extend(event.file_paths or [])
+            # Missing path metadata is not evidence that the workspace stayed
+            # unchanged. This descriptive fallback is never used for file I/O.
+            paths.extend(event.file_paths or ["a file with an unreported path"])
     return paths
 
 

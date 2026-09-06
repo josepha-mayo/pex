@@ -1,5 +1,23 @@
 # PEX agent handoff
 
+## Latest low-quota audit — 6 September, after Q07
+
+User reports quota burning fast: no new subagents or live model benches for now.
+Q08 preparation has a retained completed warmup receipt; actual work has NOT
+started. Do not repeat prepare. Q01-Q07 outcomes below remain unchanged.
+Background local audit found that pathless FILE_EDIT events invalidated the new
+pytest observation flag but not verdict/probe selection: stale passing results
+could support claims, and stale failures could cause false corrections.
+`verify.py` now retains a descriptive unknown-path edit marker (never file I/O),
+so all existing stale-evidence gates request fresh evidence instead. Four new
+regressions (pass/fail, with/without a claim) failed before repair; focused
+`test_verify.py` + `test_evidence_tools.py`: 70 passed in 11.18s after repair.
+Protected `loop.py` SHA256 remains
+`392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`.
+This is local regression evidence, not a new live or packaged-build pass.
+Running clean d67 bridge has not been restarted or upgraded. Full goal remains
+ACTIVE / submission NO-GO; resume remaining quiet cases only with budget in mind.
+
 ## Current authority — 6 September continuation, target 9 September
 
 Start with [CHECKPOINT_2026_09_06.md](CHECKPOINT_2026_09_06.md). It records the newer

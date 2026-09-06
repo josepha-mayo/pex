@@ -219,6 +219,30 @@ def test_observed_pytest_facts_survive_absent_claim_without_promoting_completion
     }
 
 
+@pytest.mark.parametrize("ok", [True, False])
+@pytest.mark.parametrize("has_claim", [True, False])
+def test_pathless_edit_invalidates_old_pytest_verdict_and_requests_fresh_evidence(ok, has_claim):
+    claims = (
+        [{"kind": "tests_pass", "statement": "Tests pass", "polarity": "asserted"}]
+        if has_claim else []
+    )
+    events = [
+        _event(
+            event_id="pytest", event_type=EventType.SHELL, command="pytest -q",
+            process_state={"pytest": {
+                "ok": ok, "exit_code": 0 if ok else 1, "passed": 4 if ok else 0,
+            }},
+        ),
+        _event(event_id="edit", event_type=EventType.FILE_EDIT, file_paths=[]),
+    ]
+    goal = _goal(acceptance_criteria=["tests pass"])
+    result = verify_claims(claims, events, goal, {})
+    assert result["status"] == ("uncertain" if has_claim else "no_claims")
+    assert result["correction"] is None
+    assert result["pytest_observation"]["later_file_edits_observed"] is True
+    assert required_verification_probe_kind(claims, events, goal, result) == "pytest"
+
+
 def test_pytest_observation_does_not_coerce_or_copy_untrusted_fields():
     result = verify_claims([], [_event(
         event_type=EventType.SHELL, command="pytest -q tests/test_one.py",
