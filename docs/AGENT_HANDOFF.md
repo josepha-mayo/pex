@@ -2,6 +2,14 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Cost-control audit: no per-session semantic-dispatch/spend cap was found in the
+inspected bridge settings/dispatch paths. Existing token/time/evidence bounds
+and same-effect idempotency are not aggregate budget protection. Shielded model
+work may outlive caller timeout, so a failed/timed-out result must not imply a
+budget refund. Findings and implementation constraints are recorded in
+`TRAJECTORY_SEMANTIC_REVIEW.md`; do not enable high-frequency trajectory calls
+by globally forcing inference. No live billing/model experiment was performed.
+
 Clean-source combined check: created isolated detached worktree
 `C:/Users/JosephMayo/Projects/pex-verify-5ee1ee7`, revision
 `5ee1ee71468173e627d372de57c839761e58bca1`; `uv sync --frozen --all-packages`

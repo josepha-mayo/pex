@@ -44,6 +44,26 @@ events, contrary to the user's quota concern. Neither workaround was applied.
 
 ## Ownership and current limits
 
+### Budget audit follow-up — source `5ee1ee7`
+
+Inspected bridge Settings and `_invoke_supervisor` / durable planner-dispatch
+paths, plus local Agent construction and provider token settings. No dedicated
+per-session semantic-dispatch count or cumulative-spend reservation was found in
+these paths. Existing limits are different: 30-second bridge invocation wait,
+bounded local inference waits, selected provider output-token caps, bounded
+evidence payloads, and durable protection against repeating the same planner
+effect. None guarantees a total dollar or account-quota limit across new events.
+The local wait shields an inference task, so a timeout is not proof that its
+underlying provider work stopped. Treat ambiguous/failed dispatches as potentially
+consumed work when implementing a budget; do not refund them solely because no
+successful result arrived. Also include verifier/tool-loop model use, not only
+one nominal supervisor invocation. This was a source audit, not a live billing
+experiment, and does not claim that spending has occurred in these local checks.
+
+Before enabling ordinary mid-task inference, implement/test the shared budget
+reservation and expose its exhausted/unknown state honestly. Do not describe
+existing timeouts or a free-provider label as a no-charge guarantee.
+
 `loop.py` contains protected uncommitted work (SHA256
 `392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`).
 A narrow-edit permission question is pending. Preserve its existing work and do
