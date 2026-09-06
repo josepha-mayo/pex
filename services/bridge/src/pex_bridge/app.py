@@ -741,6 +741,7 @@ class AppState:
         self.pet_path = self.settings.data_dir / "pet.json"
         self.supervisor_error: str | None = None
         self.supervisor_choice: SupervisorChoice | None = None
+        self.supervisor_api_key_present = False
         self.supervisor_secret_store: SupervisorSecretStore = KeyringSupervisorSecretStore()
         self.supervisor_config_lock = asyncio.Lock()
         self.supervisor_config_generation = 0
@@ -2955,22 +2956,88 @@ async def _run_supervisor_config_operation(
         raise
 
 
-def _activate_supervisor_choice(choice: SupervisorChoice | None) -> tuple[dict[str, Any], Any]:
+def _prepare_saved_supervisor_choice(choice: SupervisorChoice) -> tuple[Any, Any, bool]:
     from pex_supervisor.providers import (
-        configure_runtime,
         load_supervisor_model,
         validate_runtime_config,
     )
 
+    api_key = _resolve_choice_secret(choice)
+    runtime = validate_runtime_config(_choice_runtime_config(choice, api_key))
+    model = load_supervisor_model(runtime)
+    return runtime, model, bool(api_key)
+
+
+def _activate_supervisor_choice(choice: SupervisorChoice | None) -> tuple[dict[str, Any], Any]:
+    from pex_supervisor.providers import configure_runtime, load_supervisor_model
+
     if choice is None:
         info = configure_runtime(None)
         return info, load_supervisor_model()
-    runtime = validate_runtime_config(
-        _choice_runtime_config(choice, _resolve_choice_secret(choice))
-    )
-    model = load_supervisor_model(runtime)
+    runtime, model, _api_key_present = _prepare_saved_supervisor_choice(choice)
     info = configure_runtime(runtime)
     return info, model
+
+
+async def _activate_saved_supervisor_choice(
+    choice: SupervisorChoice,
+    generation: int,
+) -> None:
+    """Activate persisted routing without delaying bridge readiness."""
+
+    try:
+        runtime, model, api_key_present = await asyncio.wait_for(
+            _run_daemon_call(_prepare_saved_supervisor_choice, choice),
+            timeout=_SUPERVISOR_CONFIG_TIMEOUT_SECONDS,
+        )
+    except asyncio.CancelledError:
+        raise
+    except TimeoutError:
+        async with state.supervisor_config_lock:
+            if (
+                state.supervisor_config_generation != generation
+                or state.supervisor_choice != choice
+            ):
+                return
+            state.pipeline.model = None
+            state.supervisor_api_key_present = False
+            state.supervisor_error = "SupervisorActivationTimeout"
+        logger.error(
+            "Saved supervisor configuration timed out; "
+            "deterministic supervision remains active"
+        )
+        return
+    except BaseException as exc:
+        async with state.supervisor_config_lock:
+            if (
+                state.supervisor_config_generation != generation
+                or state.supervisor_choice != choice
+            ):
+                return
+            state.pipeline.model = None
+            state.supervisor_api_key_present = False
+            if isinstance(exc, (OSError, ValueError, SupervisorSecretStoreError)):
+                state.supervisor_choice = None
+            state.supervisor_error = type(exc).__name__
+        logger.error(
+            "Saved supervisor configuration failed closed (%s); "
+            "deterministic supervision remains active",
+            type(exc).__name__,
+        )
+        return
+
+    async with state.supervisor_config_lock:
+        if (
+            state.supervisor_config_generation != generation
+            or state.supervisor_choice != choice
+        ):
+            return
+        from pex_supervisor.providers import configure_runtime
+
+        configure_runtime(runtime)
+        state.pipeline.model = model
+        state.supervisor_api_key_present = api_key_present
+        state.supervisor_error = None if model is not None else "SupervisorUnavailable"
 
 
 def _clean_patch_text(value: str | None) -> str | None:
@@ -3177,16 +3244,26 @@ async def lifespan(app: FastAPI):
         choice_file = state.settings.data_dir / "supervisor.json"
         try:
             state.supervisor_choice = load_supervisor_choice(choice_file)
-            _info, state.pipeline.model = _activate_supervisor_choice(
-                state.supervisor_choice
-            )
-            state.supervisor_error = (
-                None
-                if state.pipeline.model is not None or state.supervisor_choice is None
-                else "SupervisorUnavailable"
-            )
+            if state.supervisor_choice is None:
+                state.pipeline.model = None
+                state.supervisor_api_key_present = False
+                state.supervisor_error = None
+            else:
+                state.pipeline.model = None
+                state.supervisor_api_key_present = False
+                state.supervisor_error = "SupervisorLoading"
+                state.supervisor_config_generation += 1
+                activation = asyncio.create_task(
+                    _activate_saved_supervisor_choice(
+                        state.supervisor_choice,
+                        state.supervisor_config_generation,
+                    ),
+                    name=f"supervisor-startup:{state.supervisor_config_generation}",
+                )
+                state.track_background(activation)
         except (OSError, ValueError, SupervisorSecretStoreError) as exc:
             state.pipeline.model = None
+            state.supervisor_api_key_present = False
             state.supervisor_choice = None
             state.supervisor_error = type(exc).__name__
             logger.error(
@@ -3344,10 +3421,8 @@ def create_app() -> FastAPI:
         # from missing fields or an unavailable configuration response.
         info["revision"] = 0
         if state.supervisor_choice is not None:
-            try:
-                stored_key_present = bool(_resolve_choice_secret(state.supervisor_choice))
-            except SupervisorSecretStoreError:
-                stored_key_present = False
+            # Never query an OS credential backend from this event-loop route.
+            stored_key_present = state.supervisor_api_key_present
             info.update(
                 state.supervisor_choice.public_dict(
                     has_api_key=stored_key_present or bool(info.get("has_api_key"))
@@ -3480,6 +3555,7 @@ def create_app() -> FastAPI:
 
             state.supervisor_choice = desired
             state.pipeline.model = candidate_model
+            state.supervisor_api_key_present = prepared.api_key_present
             state.supervisor_error = (
                 None if candidate_model is not None else "SupervisorUnavailable"
             )
