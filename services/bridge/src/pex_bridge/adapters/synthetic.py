@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -68,14 +69,34 @@ class SyntheticAdapter(HarnessAdapter):
             self.sessions.get(session.id), session, harness_type=HarnessType.SYNTHETIC
         ):
             raise ValueError("synthetic event session binding mismatch")
+        event_id = uuid4().hex
+        turn_number = len(self.inbox.get(session.id, []))
+        turn_id = f"syn-turn-{turn_number:04d}" if turn_number else None
+        metadata = dict(kwargs.pop("metadata", {}) or {})
+        if turn_id is not None:
+            metadata["vendor_turn_id"] = turn_id
         return HarnessEvent(
-            event_id=uuid4().hex,
+            event_id=event_id,
             ts=datetime.now(UTC),
             harness_type=HarnessType.SYNTHETIC,
             session_id=session.id,
             project_id=session.project_id,
             event_type=event_type,
             phase=kwargs.pop("phase", EventPhase.DURING),
+            metadata=metadata,
+            raw_event_ref=(
+                json.dumps(
+                    {
+                        "schema": "pex.synthetic-event-ref.v1",
+                        "session_id": session.id,
+                        "turn_id": turn_id,
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                if turn_id is not None
+                else None
+            ),
             **kwargs,
         )
 

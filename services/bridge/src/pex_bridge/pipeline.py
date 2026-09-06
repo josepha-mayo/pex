@@ -3598,18 +3598,11 @@ class Pipeline:
                         else:
                             _merge_evidence_gathering(verification, gathering)
                 continue
-            if session.harness_type not in {HarnessType.CODEX, HarnessType.OPENCODE}:
-                if item.proposed_action.type == InterventionType.REQUEST_VERIFICATION:
-                    verification_update = await self._observe_verification_request(
-                        item,
-                        session,
-                        event,
-                        verification,
-                        persist=persist,
-                    )
-                    if verification_update is not None:
-                        updates.append(verification_update)
-                    continue
+            if session.harness_type not in {
+                HarnessType.CODEX,
+                HarnessType.OPENCODE,
+                HarnessType.SYNTHETIC,
+            }:
                 # A later event in the same session is not a descendant receipt.
                 # Preserve the observation without converting unsupported
                 # correlation into a claimed successful/failed intervention.
@@ -3629,7 +3622,8 @@ class Pipeline:
                 updates.append(item)
                 continue
             if (
-                session.harness_type in {HarnessType.CODEX, HarnessType.OPENCODE}
+                session.harness_type
+                in {HarnessType.CODEX, HarnessType.OPENCODE, HarnessType.SYNTHETIC}
                 and not isinstance(
                     (item.metadata or {}).get("worker_delivery_receipt"),
                     dict,
@@ -3668,6 +3662,34 @@ class Pipeline:
                 continue
             if matches_delivery:
                 candidates.append(item)
+            elif session.harness_type == HarnessType.SYNTHETIC:
+                if (
+                    item.proposed_action.type
+                    == InterventionType.REQUEST_VERIFICATION
+                    and event.event_type != EventType.STOP
+                    and self._synthetic_event_ref_is_adapter_minted(session, event)
+                ):
+                    verification_update = await self._observe_verification_request(
+                        item, session, event, verification, persist=persist
+                    )
+                    if verification_update is not None:
+                        updates.append(verification_update)
+                    continue
+                # Synthetic attribution is causal only with the adapter-minted
+                # event reference checked above. Manually shaped/generic events
+                # remain observable but cannot earn helped credit.
+                self._record_observed_event(item, event)
+                item.outcome = "post_delivery_activity_observed_causality_unavailable"
+                item.helped = None
+                if event.phase == EventPhase.TERMINAL:
+                    item.metadata["outcome_final"] = True
+                    item.metadata["causal_continuation_proven"] = False
+                if persist:
+                    await self.store.update_intervention(item)
+                    await self.bus.publish(
+                        "intervention", item.model_dump(mode="json")
+                    )
+                updates.append(item)
         verification_request = next(
             (
                 item
@@ -3770,6 +3792,28 @@ class Pipeline:
             return False
         if session.harness_type == HarnessType.OPENCODE:
             return event_matches_opencode_delivery(intervention, session, event)
+        if session.harness_type == HarnessType.SYNTHETIC:
+            receipt = (intervention.metadata or {}).get("worker_delivery_receipt")
+            if not isinstance(receipt, dict) or set(receipt) != {
+                "schema",
+                "target_session_id",
+                "vendor_session_id",
+                "vendor_turn_id",
+            }:
+                return False
+            if (
+                receipt.get("schema") != "pex.worker-delivery.v1"
+                or receipt.get("target_session_id") != session.id
+                or receipt.get("vendor_session_id") != session.vendor_session_id
+            ):
+                return False
+            turn_id = receipt.get("vendor_turn_id")
+            if not isinstance(turn_id, str) or not turn_id:
+                return False
+            return (
+                (event.metadata or {}).get("vendor_turn_id") == turn_id
+                and Pipeline._synthetic_event_ref_is_adapter_minted(session, event)
+            )
         if session.harness_type.value != "codex":
             # Each harness needs its own exact vendor continuation proof.
             # Generic acceptance is never sufficient for outcome attribution.
@@ -3829,6 +3873,25 @@ class Pipeline:
             and bool(item_id)
             and event.event_id == f"{session.id}:item:{item_id}"
         )
+
+    @staticmethod
+    def _synthetic_event_ref_is_adapter_minted(
+        session: HarnessSession,
+        event: HarnessEvent,
+    ) -> bool:
+        turn_id = (event.metadata or {}).get("vendor_turn_id")
+        if not isinstance(turn_id, str) or not turn_id:
+            return False
+        expected_ref = json.dumps(
+            {
+                "schema": "pex.synthetic-event-ref.v1",
+                "session_id": session.id,
+                "turn_id": turn_id,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return event.raw_event_ref == expected_ref
 
     @staticmethod
     def _record_observed_event(prior: Intervention, event: HarnessEvent) -> bool:
