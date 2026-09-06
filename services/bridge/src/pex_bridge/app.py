@@ -2965,12 +2965,15 @@ def _prepare_saved_supervisor_choice(
     choice: SupervisorChoice | None,
 ) -> tuple[Any | None, Any, bool]:
     from pex_supervisor.providers import (
+        describe_backend,
         load_supervisor_model,
         validate_runtime_config,
     )
 
     if choice is None:
-        return None, load_supervisor_model(), False
+        model = load_supervisor_model()
+        info = describe_backend()
+        return None, model, bool(info.get("has_api_key"))
     api_key = _resolve_choice_secret(choice)
     if choice.credential_source == "secret_store" and not api_key:
         raise _SavedSupervisorCredentialMissing(

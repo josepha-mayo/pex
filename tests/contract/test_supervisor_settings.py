@@ -278,7 +278,8 @@ async def test_saved_supervisor_activation_cannot_block_bridge_health(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "startup_source", ["saved_secret", "environment_auto", "environment_success"]
+    "startup_source",
+    ["saved_secret", "environment_auto", "environment_success", "environment_no_key"],
 )
 async def test_lifespan_exits_while_supervisor_activation_remains_hung(
     tmp_path, monkeypatch, startup_source
@@ -358,6 +359,14 @@ async def test_lifespan_exits_while_supervisor_activation_remains_hung(
         monkeypatch.setattr(
             "pex_supervisor.providers.load_supervisor_model", load_environment_model
         )
+        monkeypatch.setattr(
+            "pex_supervisor.providers.describe_backend",
+            lambda: {
+                "backend": "openai",
+                "credential_source": "environment",
+                "has_api_key": startup_source == "environment_success",
+            },
+        )
     monkeypatch.setattr("pex_bridge.app.load_supervisor_choice", lambda _path: choice)
     monkeypatch.setattr("pex_bridge.app._SUPERVISOR_CONFIG_TIMEOUT_SECONDS", 60.0)
     app = create_app()
@@ -365,9 +374,22 @@ async def test_lifespan_exits_while_supervisor_activation_remains_hung(
     async def enter_and_exit() -> None:
         async with app.router.lifespan_context(app):
             assert await asyncio.to_thread(entered.wait, 0.5)
-            if startup_source == "environment_success":
+            if startup_source in {"environment_success", "environment_no_key"}:
                 await _wait_until(lambda: state.pipeline.model is loaded_model)
                 assert state.supervisor_error is None
+                async with AsyncClient(
+                    transport=ASGITransport(app=app), base_url="http://127.0.0.1"
+                ) as client:
+                    supervisor = await client.get("/v1/supervisor")
+                assert supervisor.status_code == 200
+                assert supervisor.json()["has_api_key"] is (
+                    startup_source == "environment_success"
+                )
+                assert supervisor.json()["credential_status"] == (
+                    "available"
+                    if startup_source == "environment_success"
+                    else "not_required"
+                )
 
     try:
         await asyncio.wait_for(enter_and_exit(), timeout=3.0)
