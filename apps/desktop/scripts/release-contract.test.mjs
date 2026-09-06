@@ -9,6 +9,7 @@ import {
   EXPECTED_PET_PERMISSIONS,
   EXPECTED_SIDECAR_BINS,
   assertCanonicalRepoRelativePath,
+  assertPublicReleaseEvidence,
   assertFrozenBundleInventory,
   assertSchema2EvidenceClosure,
   classifyGitReleaseInputs,
@@ -21,6 +22,24 @@ import {
 } from "./release-contract.mjs";
 
 const hash = (character) => character.repeat(64);
+
+test("public release evidence rejects machine identity and credential-shaped values", () => {
+  assert.equal(assertPublicReleaseEvidence("sanitized exact-source review"), "sanitized exact-source review");
+  for (const value of [
+    "C:\\Users\\person\\artifact.json",
+    "file:///C:/private/review.html",
+    "/home/person/output.json",
+    "/var/private/output.json",
+    "\\\\server\\private\\output.json",
+    "reviewer@example.com",
+    `sk-${"a".repeat(24)}`,
+    `ghp_${"a".repeat(24)}`,
+    `AKIA${"A".repeat(16)}`,
+    "authorization: bearer hidden",
+    "api_key=hidden",
+    "password=hidden",
+  ]) assert.throws(() => assertPublicReleaseEvidence(value), /machine path or sensitive value/u);
+});
 
 function wiringFixture() {
   const packageJson = {

@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "built_in_pet_ids": [
     "pex",
     "ledger",
@@ -10,72 +10,61 @@
     "ember",
     "von"
   ],
-  "fleet_audit": {
-    "path": "_audit/release/manifest.json",
-    "bytes": 2727,
-    "sha256": "ec759c3791b2c487beb43f18a5c7b02cad86fbfb4e08d25a16dc3b6aff0c3637"
+  "structural_evidence": {
+    "path": "release-evidence/structural.json",
+    "bytes": 2960,
+    "sha256": "dba6df15e186b6898277fb3df6fd7cf1c3dc57dbeb667c30a3a508fd747ca487"
   },
-  "direct_playback": {
-    "path": "_audit/release/current-20260831/direct-playback-qa.json",
-    "bytes": 11397,
-    "sha256": "57d63ccc75290b7660b45f3aa8c227156b71d9f2d8f67be9879548603fd87a9f"
+  "visual_attestation": {
+    "path": "release-evidence/visual-attestation.json",
+    "bytes": 1628,
+    "sha256": "0a6474b84f88471679bac37b44f1b36bd9fc5dd26959d209feaa7d5292e275f6"
+  },
+  "judge_gallery": {
+    "path": "judge-gallery.html",
+    "bytes": 1543,
+    "sha256": "9fae13dd097bcc0350e6f235a31754b5160de490a2c894d7d892db91e3c482b1"
   },
   "pets": [
     {
       "id": "pex",
       "manifest_sha256": "67fa9a5248a2d2f755bb84a47964bd2c73ee4a5cd787f5f90b61737c7d6bbe9d",
-      "spritesheet_sha256": "3c251995d1641ad70354861507311cf4c0530732f979389a981d0345064fd0e5",
-      "receipt": "_audit/release/pex.json",
-      "receipt_sha256": "9f6c45102e6fa56d925da55bbedb10766d83d2cd408cbf5eb89a10884e47b853"
+      "spritesheet_sha256": "3c251995d1641ad70354861507311cf4c0530732f979389a981d0345064fd0e5"
     },
     {
       "id": "ledger",
       "manifest_sha256": "8930c31dc1090161090be13e56c80eb6df92d126e6b9a4f129299ccde7d749a3",
-      "spritesheet_sha256": "f2a2cd6ec27411169180f9705d314005529d7a717cce229e338ca4ddea0b86d2",
-      "receipt": "_audit/release/ledger.json",
-      "receipt_sha256": "91fba11dbf7345e1a429fdaf873181d5dfcc3b64f3709640e8dc8123ee7907c1"
+      "spritesheet_sha256": "f2a2cd6ec27411169180f9705d314005529d7a717cce229e338ca4ddea0b86d2"
     },
     {
       "id": "mesh",
       "manifest_sha256": "51cf1b002d400c814daf556eb9f0b2bcd21dd2b8001f139e0fc88ada557f3857",
-      "spritesheet_sha256": "93484a5430e21507de62d12ae3a1c088660b6aa3a16cb30742f4aa1d359120a6",
-      "receipt": "_audit/release/mesh.json",
-      "receipt_sha256": "930943315f20aecd45a3c77cfedd0fb46eecf701dae0595831b7ea7889e7e213"
+      "spritesheet_sha256": "93484a5430e21507de62d12ae3a1c088660b6aa3a16cb30742f4aa1d359120a6"
     },
     {
       "id": "nudge",
       "manifest_sha256": "cff1206b0655443267d6482d2647a1eae4542a151e912b6914152e0b9bb90550",
-      "spritesheet_sha256": "a61e99d6f5a1787c487bbf3a937711b6af2b7a6e67a8544ff463795e4fc03f92",
-      "receipt": "_audit/release/nudge.json",
-      "receipt_sha256": "7a97090d948e33cab2bf4d5cf3816525d69b7c79181d3459dd20b722125f25f4"
+      "spritesheet_sha256": "a61e99d6f5a1787c487bbf3a937711b6af2b7a6e67a8544ff463795e4fc03f92"
     },
     {
       "id": "drift",
       "manifest_sha256": "36cb1b0ae78bf3a9acf9e1c06bd6ecb590dabf8efd2d18308e2edd22250bb485",
-      "spritesheet_sha256": "b6526b575d094a43537cb5500a4c3bcdee9b88b53792a992a4b583bf7914d701",
-      "receipt": "_audit/release/drift.json",
-      "receipt_sha256": "8c173fb309a280af39dce4b364ec437a1f919af89f925db414f3372d902776cd"
+      "spritesheet_sha256": "b6526b575d094a43537cb5500a4c3bcdee9b88b53792a992a4b583bf7914d701"
     },
     {
       "id": "quiet",
       "manifest_sha256": "94cba8d8a0ebfc65bd44f5cb741e4ef50249e5847ccf227545d798959439898f",
-      "spritesheet_sha256": "c32646c1e374f8bc1e48722b30f13355263e08d52b3450e658153d871e8529ba",
-      "receipt": "_audit/release/quiet.json",
-      "receipt_sha256": "2ca957b70ff4ae31858df6248d9c486892887f812a554b4a58726c248050896a"
+      "spritesheet_sha256": "c32646c1e374f8bc1e48722b30f13355263e08d52b3450e658153d871e8529ba"
     },
     {
       "id": "ember",
       "manifest_sha256": "ddb0e6f74529ebd4fd7ad88b0c7c1210fb0186e5e5cc7e12213f3368b43b23aa",
-      "spritesheet_sha256": "de1cd3a83940ac5ad1bce2b8bdc3a5c28eebef0c590c69d4663afc07b6c589e7",
-      "receipt": "_audit/release/ember.json",
-      "receipt_sha256": "905de7fd9691a18e477f2ba88c00102175b67e277ba285da5542fe1e2f894d78"
+      "spritesheet_sha256": "de1cd3a83940ac5ad1bce2b8bdc3a5c28eebef0c590c69d4663afc07b6c589e7"
     },
     {
       "id": "von",
       "manifest_sha256": "53641e67d8ed3db6a724768574ea90e6335c244367a1850339987b4ec3edcc18",
-      "spritesheet_sha256": "92963736e5bb32a54e498dac9f887b04f0ebb8ef4fcc369272e08ed879b3aeee",
-      "receipt": "_audit/release/von.json",
-      "receipt_sha256": "904a1e062eb78258bd6b92cacd00494fde862086b4951ed6c52faa9a7a3e3123"
+      "spritesheet_sha256": "92963736e5bb32a54e498dac9f887b04f0ebb8ef4fcc369272e08ed879b3aeee"
     }
   ]
 }

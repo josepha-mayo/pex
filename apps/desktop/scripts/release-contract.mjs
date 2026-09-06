@@ -105,6 +105,15 @@ export function assertCanonicalRepoRelativePath(
   return relativePath;
 }
 
+export function assertPublicReleaseEvidence(text, label = "Release evidence") {
+  if (typeof text !== "string") throw new TypeError(`${label} must be text`);
+  const privatePattern = /(?:file:\/\/\/|[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|(?:^|\s)\/(?:[^\s/]+\/)+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|\b(?:api[_-]?key|authorization|bearer|password)\b|\b(?:sk-[A-Za-z0-9]{12,}|ghp_[A-Za-z0-9]{20,}|xoxb-[A-Za-z0-9-]{12,}|AKIA[A-Z0-9]{16})\b)/iu;
+  if (privatePattern.test(text)) {
+    throw new Error(`${label} contains a machine path or sensitive value`);
+  }
+  return text;
+}
+
 export function classifyGitReleaseInputs(relativeInputs, gitLsFilesVerboseZ) {
   if (!Array.isArray(relativeInputs) || typeof gitLsFilesVerboseZ !== "string") {
     throw new TypeError("Release inputs and Git index output are required");

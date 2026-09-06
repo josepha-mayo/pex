@@ -1,0 +1,16 @@
+{
+  "schema_version": 3,
+  "algorithm": "pex-codex-v2-rgba-cell-hash-v1",
+  "geometry": { "width": 1536, "height": 2288, "columns": 8, "rows": 11, "cell_width": 192, "cell_height": 208 },
+  "required_frames_by_row": [6, 8, 8, 4, 5, 8, 6, 6, 6, 8, 8],
+  "pets": [
+    { "id": "pex", "spritesheet_sha256": "3c251995d1641ad70354861507311cf4c0530732f979389a981d0345064fd0e5", "spritesheet_bytes": 2832054, "runtime_cell_hash_root": "67a4fedabf809dfb9ba064878594da7a0faec031b62e5825ac14da92ca63c7a2", "runtime_cell_count": 73, "all_runtime_cells_nonempty": true, "all_unused_cells_transparent": true },
+    { "id": "ledger", "spritesheet_sha256": "f2a2cd6ec27411169180f9705d314005529d7a717cce229e338ca4ddea0b86d2", "spritesheet_bytes": 2457950, "runtime_cell_hash_root": "37b722af053214a4d70d3f6120df5412f90b5abfa36788ae8512d2e3f8422be9", "runtime_cell_count": 73, "all_runtime_cells_nonempty": true, "all_unused_cells_transparent": true },
+    { "id": "mesh", "spritesheet_sha256": "93484a5430e21507de62d12ae3a1c088660b6aa3a16cb30742f4aa1d359120a6", "spritesheet_bytes": 2161960, "runtime_cell_hash_root": "84589ac800ad1b84f74ef98a340f638db41486390969665306b978971668deb7", "runtime_cell_count": 73, "all_runtime_cells_nonempty": true, "all_unused_cells_transparent": true },
+    { "id": "nudge", "spritesheet_sha256": "a61e99d6f5a1787c487bbf3a937711b6af2b7a6e67a8544ff463795e4fc03f92", "spritesheet_bytes": 3338364, "runtime_cell_hash_root": "c0403e4b10acd0bee68b2e8b4288c6d41a63b1590cc8c0273eabf512d8c3a618", "runtime_cell_count": 73, "all_runtime_cells_nonempty": true, "all_unused_cells_transparent": true },
+    { "id": "drift", "spritesheet_sha256": "b6526b575d094a43537cb5500a4c3bcdee9b88b53792a992a4b583bf7914d701", "spritesheet_bytes": 2035670, "runtime_cell_hash_root": "cfc298267173a8c4fdd72e9a1e8a68e74b682101b548b281fca8e681dcfb6572", "runtime_cell_count": 73, "all_runtime_cells_nonempty": true, "all_unused_cells_transparent": true },
+    { "id": "quiet", "spritesheet_sha256": "c32646c1e374f8bc1e48722b30f13355263e08d52b3450e658153d871e8529ba", "spritesheet_bytes": 2382872, "runtime_cell_hash_root": "b51bca0046312c0efb08776f7e0a967ecc3965eafb2bb7ea770041401db324e8", "runtime_cell_count": 73, "all_runtime_cells_nonempty": true, "all_unused_cells_transparent": true },
+    { "id": "ember", "spritesheet_sha256": "de1cd3a83940ac5ad1bce2b8bdc3a5c28eebef0c590c69d4663afc07b6c589e7", "spritesheet_bytes": 2384130, "runtime_cell_hash_root": "f6aa33cfb3bbeccb5956da857ecb78b50e79348b8d11a78a8a78789c834c228d", "runtime_cell_count": 73, "all_runtime_cells_nonempty": true, "all_unused_cells_transparent": true },
+    { "id": "von", "spritesheet_sha256": "92963736e5bb32a54e498dac9f887b04f0ebb8ef4fcc369272e08ed879b3aeee", "spritesheet_bytes": 2828538, "runtime_cell_hash_root": "5a2132c9e1d879281fe0cc4067454582282c2a7377223a4f7d9d4b66a05b4cb8", "runtime_cell_count": 73, "all_runtime_cells_nonempty": true, "all_unused_cells_transparent": true }
+  ]
+}

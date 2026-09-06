@@ -1166,11 +1166,11 @@ def test_starter_spritesheets_are_not_gitignored_and_match_release_manifest():
     assert ignored == []
 
 
-def test_release_manifest_seals_current_exact_eight_playback_closure():
+def test_release_manifest_seals_compact_exact_eight_evidence_closure():
     repo = Path(__file__).resolve().parents[2]
     pets_dir = repo / "apps" / "desktop" / "src" / "pets"
     release = json.loads((pets_dir / "release-manifest.json").read_text(encoding="utf-8"))
-    assert release["schema_version"] == 2
+    assert release["schema_version"] == 3
     assert release["built_in_pet_ids"] == [pet.id for pet in STARTERS]
 
     def assert_bound(binding: dict[str, object], *, base: Path = pets_dir) -> Path:
@@ -1181,58 +1181,48 @@ def test_release_manifest_seals_current_exact_eight_playback_closure():
         assert hashlib.sha256(data).hexdigest() == binding["sha256"]
         return path
 
-    audit_path = assert_bound(release["fleet_audit"])
-    playback_path = assert_bound(release["direct_playback"])
-    audit = json.loads(audit_path.read_text(encoding="utf-8"))
-    assert audit["schema_version"] == 2
-    assert audit["direct_playback"] == release["direct_playback"]
-    assert [row["id"] for row in audit["pets"]] == release["built_in_pet_ids"]
-
-    playback = json.loads(playback_path.read_text(encoding="utf-8"))
-    current = playback_path.parent
-    assert playback["verdict"] == "pass"
-    assert playback["scope"]["pet_ids"] == release["built_in_pet_ids"]
-    assert playback["scope"]["gif_count"] == 72
-    runtime_path = assert_bound(playback["bindings"]["runtime_contract"], base=current)
-    assert_bound(playback["bindings"]["prior_visual_qa"], base=current)
-    assert_bound(playback["bindings"]["local_viewer"], base=current)
-    screenshots = playback["screenshot_hashes"]
-    assert len(screenshots) == len({row["path"] for row in screenshots}) == 25
-    for screenshot in screenshots:
-        path = current / screenshot["path"]
-        assert hashlib.sha256(path.read_bytes()).hexdigest() == screenshot["sha256"]
-
-    runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
-    assert runtime["ok"] is True
-    assert runtime["repair_requested"] is False
-    assert [row["current_evidence"]["pet_id"] for row in runtime["results"]] == release[
-        "built_in_pet_ids"
+    structural_path = assert_bound(release["structural_evidence"])
+    visual_path = assert_bound(release["visual_attestation"])
+    gallery_path = assert_bound(release["judge_gallery"])
+    structural = json.loads(structural_path.read_text(encoding="utf-8"))
+    visual = json.loads(visual_path.read_text(encoding="utf-8"))
+    assert structural["schema_version"] == 3
+    assert structural["algorithm"] == "pex-codex-v2-rgba-cell-hash-v1"
+    assert [row["id"] for row in structural["pets"]] == release["built_in_pet_ids"]
+    assert all(row["runtime_cell_count"] == 73 for row in structural["pets"])
+    assert all(row["all_runtime_cells_nonempty"] is True for row in structural["pets"])
+    assert all(row["all_unused_cells_transparent"] is True for row in structural["pets"])
+    assert visual["pet_ids"] == release["built_in_pet_ids"]
+    assert visual["spritesheet_sha256"] == [row["spritesheet_sha256"] for row in release["pets"]]
+    assert visual["verdict"] == "pass"
+    assert any("not native packaged playback" in value for value in visual["limitations"])
+    reviews_path = assert_bound(visual["review_provenance"]["canonical_records"])
+    reviews = json.loads(reviews_path.read_text(encoding="utf-8"))
+    assert reviews["record_kind"] == "sanitized-independent-direction-review"
+    assert len(reviews["records"]) == 24
+    assert [row[0] for row in reviews["records"]] == [
+        pet.id for pet in STARTERS for _ in range(3)
     ]
-    preview_paths: set[str] = set()
-    frame_paths: set[str] = set()
-    for result in runtime["results"]:
-        evidence = result["current_evidence"]
-        previews = evidence["motion_previews"]
-        assert len(previews) == 9
-        for preview in previews:
-            path = repo.joinpath(*preview["path"].split("/"))
-            data = path.read_bytes()
-            assert len(data) == preview["bytes"]
-            assert hashlib.sha256(data).hexdigest() == preview["sha256"]
-            preview_paths.add(preview["path"])
-        manifest_binding = evidence["standard_frame_manifest"]
-        manifest_path = repo.joinpath(*manifest_binding["path"].split("/"))
-        manifest_data = manifest_path.read_bytes()
-        assert len(manifest_data) == manifest_binding["bytes"]
-        assert hashlib.sha256(manifest_data).hexdigest() == manifest_binding["sha256"]
-        frame_manifest = json.loads(manifest_data)
-        for row in frame_manifest["rows"]:
-            for frame in row["frames"]:
-                frame_path = repo.joinpath(*frame["path"].split("/"))
-                assert hashlib.sha256(frame_path.read_bytes()).hexdigest() == frame["png_sha256"]
-                frame_paths.add(frame["path"])
-    assert len(preview_paths) == 72
-    assert len(frame_paths) == 456
+    assert [row[1] for row in reviews["records"]] == [
+        row["spritesheet_sha256"] for row in release["pets"] for _ in range(3)
+    ]
+    gallery = gallery_path.read_text(encoding="utf-8")
+    assert all(gallery.count(f'{pet.id}/spritesheet.webp') == 1 for pet in STARTERS)
+    assert "not proof of native packaged playback" in gallery
+    assert "C:\\Users\\" not in structural_path.read_text(encoding="utf-8")
+    assert "file:///" not in gallery
+
+
+def test_compact_release_validation_creates_a_missing_temp_root_before_regeneration():
+    repo = Path(__file__).resolve().parents[2]
+    source = (repo / "apps" / "desktop" / "scripts" / "build-sidecar.mjs").read_text(
+        encoding="utf-8"
+    )
+    safe = 'assertSafeDirectory(join(repo, "build"), "Pet validation temp root")'
+    create = "mkdirSync(generatedRoot, { recursive: true })"
+    generate = 'mkdtempSync(join(generatedRoot, "pet-release-check-"))'
+    assert 0 <= source.index(safe) < source.index(create) < source.index(generate)
+    assert 'removeSafeDirectory(generated, "Pet validation temp directory")' in source
 
 
 def test_release_preflight_is_structured_and_never_claims_package_readiness():
@@ -1251,17 +1241,23 @@ def test_release_preflight_is_structured_and_never_claims_package_readiness():
     assert report["stage"] == "source"
     assert report["release_ready"] is False
     assert report["fleet"]["pet_ids"] == [pet.id for pet in STARTERS]
-    assert report["fleet"]["playback_receipt"]["gif_count"] == 72
-    assert report["fleet"]["playback_receipt"]["decoded_frame_count"] == 456
-    assert report["git"]["release_input_count"] >= 888
+    assert report["fleet"]["evidence"]["schema_version"] == 3
+    assert report["fleet"]["evidence"]["source_atlas_count"] == 8
+    assert report["fleet"]["evidence"]["runtime_cell_count"] == 584
+    assert report["fleet"]["evidence"]["native_runtime_proof"] is False
+    assert report["git"]["release_input_count"] >= 200
     assert report["git"]["release_input_count"] == (
         report["git"]["tracked_release_input_count"]
         + report["git"]["untracked_release_input_count"]
     )
-    assert report["git"]["audit_reachable_input_count"] == 672
-    assert report["git"]["audit_closure_sha256"] == (
-        "94dcebf5bfce4640bfad52be94b7437b511aa5efb10068081550aaf5c42c3470"
-    )
+    assert report["git"]["audit_reachable_input_count"] == 4
+    assert report["git"]["audit_reachable_inputs"] == [
+        "apps/desktop/src/pets/judge-gallery.html",
+        "apps/desktop/src/pets/release-evidence/independent-reviews.json",
+        "apps/desktop/src/pets/release-evidence/structural.json",
+        "apps/desktop/src/pets/release-evidence/visual-attestation.json",
+    ]
+    assert len(report["git"]["audit_closure_sha256"]) == 64
     assert "cursor_observe_sha256" in report["sidecars"]
     assert report["tauri"]["external_bin"] == [
         "binaries/pex-bridge",

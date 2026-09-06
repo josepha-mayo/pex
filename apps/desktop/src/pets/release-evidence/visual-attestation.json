@@ -1,0 +1,38 @@
+{
+  "schema_version": 3,
+  "review_kind": "independent-source-atlas-visual-review",
+  "verdict": "pass",
+  "review_provenance": {
+    "isolated_blind_reviewers_per_pet": 3,
+    "isolation_attested": true,
+    "final_postrepair_review": true,
+    "raw_working_receipts_are_not_release_inputs": true,
+    "canonical_records": {
+      "path": "release-evidence/independent-reviews.json",
+      "bytes": 4388,
+      "sha256": "6b866bceaa3a93a41564efa8d072fb058baf17786a6815599a7b7d88243ae3cb"
+    }
+  },
+  "pet_ids": ["pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von"],
+  "spritesheet_sha256": [
+    "3c251995d1641ad70354861507311cf4c0530732f979389a981d0345064fd0e5",
+    "f2a2cd6ec27411169180f9705d314005529d7a717cce229e338ca4ddea0b86d2",
+    "93484a5430e21507de62d12ae3a1c088660b6aa3a16cb30742f4aa1d359120a6",
+    "a61e99d6f5a1787c487bbf3a937711b6af2b7a6e67a8544ff463795e4fc03f92",
+    "b6526b575d094a43537cb5500a4c3bcdee9b88b53792a992a4b583bf7914d701",
+    "c32646c1e374f8bc1e48722b30f13355263e08d52b3450e658153d871e8529ba",
+    "de1cd3a83940ac5ad1bce2b8bdc3a5c28eebef0c590c69d4663afc07b6c589e7",
+    "92963736e5bb32a54e498dac9f887b04f0ebb8ef4fcc369272e08ed879b3aeee"
+  ],
+  "checks": {
+    "character_identity_across_states": "pass",
+    "directional_readability": "pass",
+    "clipping_or_cell_bleed": "none",
+    "backgrounds_inside_runtime_cells": "none",
+    "all_eight_distinguishable": "pass"
+  },
+  "limitations": [
+    "This attestation covers the exact source atlases, not native packaged playback.",
+    "Native runtime behavior and desktop integration require separate release smoke evidence."
+  ]
+}
