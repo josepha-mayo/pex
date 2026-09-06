@@ -28,6 +28,11 @@ _NEGATED_ACTION = re.compile(
     r"(?:\bdo\s+not|\bdon['’]t|\bnever|\bwithout)\s+"
     r"(?:(?:ever|intentionally|accidentally|really)\s+)?$"
 )
+_NEGATED_LIST = re.compile(
+    r"(?:\bdo\s+not|\bdon['’]t|\bnever|\bwithout)\s+"
+    r"(?P<items>[^.!?;]{0,512})(?:,\s*(?:(?:and|or|nor)\s+)?|\b(?:or|nor)\s+)$"
+)
+_AFFIRMATIVE_BOUNDARY = re.compile(r"\b(?:but|however|instead|then|yet|nevertheless)\b")
 _WORD = re.compile(r"[a-z0-9]+(?:[_.-][a-z0-9]+)*")
 _TOKEN = re.compile(r"[a-z0-9][a-z0-9_.-]{3,}")
 _LEDGER_OBJECTS = {
@@ -196,8 +201,12 @@ def _matches_forbidden_terms(text: str, terms: list[str]) -> bool:
     for occurrence in occurrences:
         if occurrence.group() != terms[0]:
             continue
-        prefix = text[max(0, occurrence.start() - 48) : occurrence.start()]
-        if not _NEGATED_ACTION.search(prefix):
+        prefix = text[max(0, occurrence.start() - 560) : occurrence.start()]
+        negated_list = _NEGATED_LIST.search(prefix)
+        list_restatement = negated_list is not None and not _AFFIRMATIVE_BOUNDARY.search(
+            negated_list.group("items")
+        )
+        if not _NEGATED_ACTION.search(prefix) and not list_restatement:
             return True
     return False
 

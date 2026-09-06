@@ -89,10 +89,11 @@ their ACLs; this PC is shared. Future unstarted fixtures need isolated sandbox-
 writable test temp/cache paths, with changes documented before the attempt.
 Two retained interventions: deterministic ASK_HUMAN
 `intervention_c0403a5cd1f4ba75ced9682cc6074d96e2eef559` spuriously classified the
-task's repeated no-install/no-network restriction as a contradiction; production
-pipeline.py around 2446 had appended standing-correction policy text to that goal
-constraint. Audit intent.py coordination/negation and keep transport policy out
-of the human intent ledger. This was not an actual approval request.
+task's repeated no-install/no-network restriction as a contradiction. Subsequent
+source inspection corrected the initial diagnosis: production pipeline.py around
+2446 appends standing-correction policy to request.notes, NOT the persisted goal.
+Planner parsing incorrectly presented that appended paragraph as constraint text.
+This was not an actual approval request.
 Real Strands/verifier SEND_NUDGE `intervention_05d9809c22e4d31617b4f73dd1e6741728e956bc`
 then requested repairing the test environment; aggregate model calls 4. It is not
 evidence of pointless nagging on a correctly completed task because pytest failed.
@@ -102,6 +103,15 @@ under clean checkout `build/quiet-live-20260906/Q02/client`, SHA256
 `5599B8AEAE662D0EAB7472824FF2E889E104C65FB575C6B4B6A02B641EF75522`.
 Next: fix/audit the false prompt contradiction and prepare sandbox-local test
 paths for unstarted cases before Q03. No UI/native input or subagents were used.
+Root repaired the bounded negative-list matcher so a continued restriction such
+as "Do not modify tests, fixtures, install dependencies, or use the network"
+does not create a conflict. Contrast words and sentence/semicolon boundaries do
+not hide later affirmative actions; added regressions cover both cases. Planner
+questions now stop constraint parsing at the first blank-line paragraph, keeping
+route policy out of quoted human intent. This is narrow lexical triage repair,
+not proof of general semantic intent understanding. Focused unit/planner/contract
+gate: 79 passed in 21.27s. No Q03 attempt or fresh live claim yet; sandbox-local
+fixture temp/cache preparation remains open. Protected supervisor loop unchanged.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 

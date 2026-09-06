@@ -107,6 +107,32 @@ def test_simple_negative_constraint_restatement_is_consistent():
     assert result.classification is PromptClass.CONSISTENT
 
 
+@pytest.mark.parametrize("prompt", [
+    ("Do not modify tests, fixtures, task/goal/case\nmetadata, "
+     "install dependencies, or use the network."),
+    "Don't modify tests or install dependencies or use the network.",
+    "Never modify fixtures, install dependencies, or use the network.",
+])
+def test_coordinated_negative_restrictions_do_not_create_a_conflict(prompt):
+    goal = _goal().model_copy(update={
+        "constraints": ["Do not install dependencies or use the network"],
+    })
+    assert lint_prompt(goal, prompt).classification is not PromptClass.CONTRADICTION
+
+
+@pytest.mark.parametrize("prompt", [
+    "Do not modify tests, but install dependencies and use the network.",
+    "Do not modify tests. Install dependencies and use the network.",
+    "Do not modify tests; install dependencies and use the network.",
+    "Do not install dependencies or use the network. Now install dependencies using the network.",
+])
+def test_later_affirmative_install_is_not_hidden_by_a_negative_list(prompt):
+    goal = _goal().model_copy(update={
+        "constraints": ["Do not install dependencies or use the network"],
+    })
+    assert lint_prompt(goal, prompt).classification is PromptClass.CONTRADICTION
+
+
 @pytest.mark.parametrize("constraint", [
     "Don't alter dataset preprocessing.",
     "Don’t alter dataset preprocessing.",

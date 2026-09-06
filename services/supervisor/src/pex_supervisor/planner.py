@@ -360,7 +360,9 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
     ):
         constraint = ""
         if ":" in request.notes:
-            constraint = request.notes.split(":", 1)[1].strip()[:200]
+            # Pipeline notes append transport policy as a separate paragraph.
+            # That policy is context, never part of the human's ledger rule.
+            constraint = request.notes.split("\n\n", 1)[0].split(":", 1)[1].strip()[:200]
         question = (
             (
                 f"This conflicts with the active constraint '{constraint}'. "
