@@ -9,7 +9,7 @@ use hmac::{Hmac, Mac};
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_shell::{process::CommandChild, process::CommandEvent, ShellExt};
 
 const BRIDGE_HOST: &str = "127.0.0.1";
@@ -23,7 +23,23 @@ const BRIDGE_PROBE_TIMEOUT: Duration = Duration::from_millis(1_500);
 const BRIDGE_RETRY_INTERVAL: Duration = Duration::from_millis(100);
 const BRIDGE_IDENTITY_RETRY_ATTEMPTS: usize = 6;
 const BRIDGE_IDENTITY_MISS_LIMIT: u8 = 10;
+const PET_NATIVE_DISMISSED_EVENT: &str = "pex-pet-native-dismissed";
 type HmacSha256 = Hmac<Sha256>;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum WindowCloseAction {
+    ExitApplication,
+    PersistAndHidePet,
+    HideAuxiliary,
+}
+
+fn window_close_action(label: &str) -> WindowCloseAction {
+    match label {
+        "main" => WindowCloseAction::ExitApplication,
+        "pet" => WindowCloseAction::PersistAndHidePet,
+        _ => WindowCloseAction::HideAuxiliary,
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -965,13 +981,21 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() != "main" {
-                    api.prevent_close();
-                    let _ = window.hide();
-                    return;
+                match window_close_action(window.label()) {
+                    WindowCloseAction::PersistAndHidePet => {
+                        api.prevent_close();
+                        let _ = window.app_handle().emit(PET_NATIVE_DISMISSED_EVENT, ());
+                        let _ = window.hide();
+                    }
+                    WindowCloseAction::HideAuxiliary => {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                    WindowCloseAction::ExitApplication => {
+                        stop_owned_bridge(window.app_handle());
+                        window.app_handle().exit(0);
+                    }
                 }
-                stop_owned_bridge(window.app_handle());
-                window.app_handle().exit(0);
             }
         })
         .build(tauri::generate_context!())
@@ -995,9 +1019,25 @@ mod tests {
         bridge_address, bridge_identity_proof, bridge_port_is_free_for_owned_launch,
         bridge_port_state_at, bridge_sidecar_args, command_event_is_terminal,
         is_pex_identity_response, normalize_bridge_token, remaining_timeout,
-        trusted_webview_navigation, BridgeAuth, BridgeBootstrapPhase, BridgePortState,
-        BridgeRuntime, BridgeSource, MAX_BRIDGE_TOKEN_CHARS,
+        trusted_webview_navigation, window_close_action, BridgeAuth, BridgeBootstrapPhase,
+        BridgePortState, BridgeRuntime, BridgeSource, WindowCloseAction, MAX_BRIDGE_TOKEN_CHARS,
     };
+
+    #[test]
+    fn pet_native_close_persists_dismissal_without_changing_main_exit() {
+        assert_eq!(
+            window_close_action("pet"),
+            WindowCloseAction::PersistAndHidePet
+        );
+        assert_eq!(
+            window_close_action("main"),
+            WindowCloseAction::ExitApplication
+        );
+        assert_eq!(
+            window_close_action("other"),
+            WindowCloseAction::HideAuxiliary
+        );
+    }
     use tauri_plugin_shell::process::CommandEvent;
 
     fn identity_response(body: &str, extra_headers: &str) -> Vec<u8> {

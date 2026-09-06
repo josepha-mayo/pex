@@ -24,7 +24,7 @@ import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { createOperatorRequest } from "./operatorRequest";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
-import { applyPetClickThrough, expandMainSurface, hidePetOverlay, nextPetExpansion, PET_VISIBILITY_EVENT, petClickThroughEnabled, petOverlayVisible, releasePetOverlay, showPetOverlay } from "./releasePet";
+import { applyPetClickThrough, expandMainSurface, hidePetOverlay, nextPetExpansion, PET_NATIVE_DISMISSED_EVENT, PET_VISIBILITY_EVENT, petClickThroughEnabled, petOverlayVisible, releasePetOverlay, setPetOverlayVisible, showPetOverlay } from "./releasePet";
 import {
   advanceBridgeBootstrapStatus,
   bridgeBootstrapAvailable,
@@ -718,6 +718,23 @@ export function App() {
       unlisten?.();
     };
   }, [shell]);
+
+  useEffect(() => {
+    if (!TAURI) return;
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    void import("@tauri-apps/api/event").then(async ({ listen }) => {
+      const dispose = await listen(PET_NATIVE_DISMISSED_EVENT, () => {
+        setPetOverlayVisible(false);
+      });
+      if (cancelled) dispose();
+      else unlisten = dispose;
+    });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("pet-shell", shell === "pet");

@@ -3,6 +3,7 @@ const TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 const CLEAR = { red: 0, green: 0, blue: 0, alpha: 0 };
 const PET_VISIBLE_KEY = "pex.pet.overlay.visible";
 export const PET_VISIBILITY_EVENT = "pex-pet-visibility";
+export const PET_NATIVE_DISMISSED_EVENT = "pex-pet-native-dismissed";
 
 export function petOverlayVisible(): boolean {
   return typeof window === "undefined" || window.localStorage.getItem(PET_VISIBLE_KEY) !== "false";

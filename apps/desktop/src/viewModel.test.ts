@@ -1197,6 +1197,19 @@ test("pet overlay click-through is off unless settings explicitly enable it", as
   assert.equal(petClickThroughEnabled(true), true);
 });
 
+test("native pet close is routed to the same durable visibility contract", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const appSource = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const rustSource = await readFile(new URL("../src-tauri/src/main.rs", import.meta.url), "utf8");
+  const releaseSource = await readFile(new URL("./releasePet.ts", import.meta.url), "utf8");
+  assert.match(releaseSource, /PET_NATIVE_DISMISSED_EVENT = "pex-pet-native-dismissed"/u);
+  assert.match(appSource, /listen\(PET_NATIVE_DISMISSED_EVENT,[\s\S]*setPetOverlayVisible\(false\)/u);
+  assert.match(rustSource, /PersistAndHidePet[\s\S]*\.emit\(PET_NATIVE_DISMISSED_EVENT/u);
+  assert.match(rustSource, /PersistAndHidePet[\s\S]*window\.hide\(\)/u);
+  assert.match(appSource, /window\.addEventListener\("storage", syncVisibility\)/u);
+  assert.match(appSource, /onPetVisible=\{\(visible\) => void changePetVisibility\(visible\)\}/u);
+});
+
 test("goal editor objective is a textarea so a full task can be pasted", async () => {
   const { readFile } = await import("node:fs/promises");
   const { dirname, join } = await import("node:path");
