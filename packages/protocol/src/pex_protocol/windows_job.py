@@ -18,14 +18,20 @@ class _ThreadEntry32(ctypes.Structure):
 
 def assign_job_and_resume(process):
     """Atomically contain a CREATE_SUSPENDED Windows child, then resume it."""
-    if os.name != "nt" or not hasattr(process, "_handle"):
+    if os.name != "nt":
         return None
-    import win32api
-    import win32job
-    import win32process
-
-    job = win32job.CreateJobObject(None, "")
+    job = None
+    close_handle = None
     try:
+        if not hasattr(process, "_handle"):
+            raise RuntimeError("Windows process handle is unavailable")
+
+        import win32api
+        import win32job
+        import win32process
+
+        close_handle = win32api.CloseHandle
+        job = win32job.CreateJobObject(None, "")
         info = win32job.QueryInformationJobObject(
             job, win32job.JobObjectExtendedLimitInformation
         )
@@ -66,17 +72,28 @@ def assign_job_and_resume(process):
             kernel.CloseHandle(snapshot)
         return job
     except BaseException:
-        win32api.CloseHandle(job)
+        if job is not None and close_handle is not None:
+            try:
+                close_handle(job)
+            except BaseException:
+                pass
         try:
             process.kill()
+        except BaseException:
+            pass
+        try:
             process.wait(timeout=2)
         except BaseException:
             pass
-        for stream in (getattr(process, "stdin", None), getattr(process, "stdout", None)):
+        for stream in (
+            getattr(process, "stdin", None),
+            getattr(process, "stdout", None),
+            getattr(process, "stderr", None),
+        ):
             if stream is not None:
                 try:
                     stream.close()
-                except (OSError, ValueError):
+                except BaseException:
                     pass
         raise
 

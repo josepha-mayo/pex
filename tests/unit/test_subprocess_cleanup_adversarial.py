@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import importlib.util
 import subprocess
 import threading
@@ -86,6 +87,7 @@ class _NonReadingProcess:
     def __init__(self):
         self.stdin = _BlockingInput()
         self.stdout = _EofPipe()
+        self.stderr = _EofPipe()
 
     def poll(self):
         return None
@@ -103,6 +105,7 @@ def test_evaluator_never_blocks_writing_maximum_input_to_a_nonreader(tmp_path, m
     evaluator = _evaluator()
     process = _NonReadingProcess()
     monkeypatch.setattr(evaluator.subprocess, "Popen", lambda *args, **kwargs: process)
+    monkeypatch.setattr(evaluator, "_assign_windows_job", lambda _process: None)
     monkeypatch.setattr(evaluator, "_terminate_process_tree", lambda _process: None)
     result: list[object] = []
 
@@ -167,6 +170,45 @@ def test_windows_job_assignment_failure_reaps_root_and_closes_pipes(monkeypatch)
     process.wait.assert_called_once_with(timeout=2)
     assert process.stdin.closed is True
     assert process.stdout.closed is True
+    assert process.stderr.closed is True
+
+
+@pytest.mark.parametrize("failure", ["missing_handle", "import", "create"])
+def test_windows_job_setup_failures_reap_root_and_close_every_pipe(
+    monkeypatch, failure
+):
+    import win32job
+    from pex_protocol import windows_job
+
+    process = _NonReadingProcess()
+    process.wait = Mock(return_value=0)
+    process.kill = Mock()
+    if failure != "missing_handle":
+        process._handle = 123
+    if failure == "import":
+        real_import = builtins.__import__
+
+        def fail_win32api(name, *args, **kwargs):
+            if name == "win32api":
+                raise ModuleNotFoundError("forced missing win32api")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", fail_win32api)
+    elif failure == "create":
+        monkeypatch.setattr(
+            win32job,
+            "CreateJobObject",
+            Mock(side_effect=OSError("forced job creation failure")),
+        )
+
+    with pytest.raises((RuntimeError, ModuleNotFoundError, OSError)):
+        windows_job.assign_job_and_resume(process)
+
+    process.kill.assert_called_once()
+    process.wait.assert_called_once_with(timeout=2)
+    assert process.stdin.closed is True
+    assert process.stdout.closed is True
+    assert process.stderr.closed is True
 
 
 def test_evaluator_failed_termination_never_falls_back_to_unbounded_wait(tmp_path, monkeypatch):
