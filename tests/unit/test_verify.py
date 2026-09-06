@@ -442,6 +442,40 @@ def test_short_eval_file_contradicts_completion(tmp_path):
     assert "30" in (result["correction"] or "")
 
 
+@pytest.mark.parametrize("count", [True, False, -1, "1", 1.0, None])
+def test_invalid_artifact_count_is_not_completion_evidence(count, tmp_path):
+    goal = _goal(acceptance_criteria=["results.jsonl has 1 rows"])
+    workspace = {
+        "workspace": str(tmp_path), "files": ["results.jsonl"],
+        "artifacts": [{
+            "path": "results.jsonl", "row_count_complete": True, "row_count": count,
+        }],
+    }
+    result = verify_claims(
+        [{"kind": "evaluation_complete", "statement": "Evaluation complete"}],
+        [], goal, workspace,
+    )
+    assert result["status"] == "uncertain"
+    assert result["acceptance_status"] == "uncertain"
+    assert result["correction"] is None
+    assert required_verification_probe_kind([], [], goal, result) == "artifact_tail"
+
+
+@pytest.mark.parametrize("count,expected", [(0, "contradicted"), (1, "supported")])
+def test_valid_artifact_count_remains_usable(count, expected, tmp_path):
+    result = verify_claims(
+        [{"kind": "evaluation_complete", "statement": "Evaluation complete"}],
+        [], _goal(acceptance_criteria=["results.jsonl has 1 rows"]),
+        {
+            "workspace": str(tmp_path), "files": ["results.jsonl"],
+            "artifacts": [{
+                "path": "results.jsonl", "row_count_complete": True, "row_count": count,
+            }],
+        },
+    )
+    assert result["status"] == expected
+
+
 def test_large_jsonl_row_count_uses_complete_file_not_preview(tmp_path):
     rows = "\n".join(f'{{"id": {i}, "payload": "{"x" * 200}"}}' for i in range(30))
     (tmp_path / "results.jsonl").write_text(rows + "\n", encoding="utf-8")

@@ -420,8 +420,11 @@ def _artifact_rows(
         path = str(item.get("path") or "").replace("\\", "/")
         if path.casefold() != wanted.casefold():
             continue
-        if item.get("row_count_complete") is True and isinstance(item.get("row_count"), int):
-            return path, int(item["row_count"])
+        count = item.get("row_count")
+        # bool is an int subclass, but neither booleans nor negative values
+        # describe an observed row count. Malformed snapshots stay uncertain.
+        if item.get("row_count_complete") is True and type(count) is int and count >= 0:
+            return path, count
         # Compatibility with externally supplied complete artifact snapshots.
         if item.get("tail_complete") is True:
             return path, _count_rows(str(item.get("tail") or ""), path)

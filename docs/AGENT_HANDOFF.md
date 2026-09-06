@@ -2,6 +2,16 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Follow-on local artifact audit: supplied artifact snapshots could treat boolean
+row counts as integers (`true` supported one row; `false` contradicted it), and
+negative counts produced false failure verdicts. `verify.py` now accepts only
+nonnegative strict integers as complete row counts; malformed counts stay
+uncertain and select artifact evidence gathering. Eight regressions cover six
+invalid values plus valid zero/one counts; three failed before repair. Combined
+verify/evidence-tools/workspace-inspection gate: **93 passed, 1 skipped in
+16.01s**, scoped Ruff and diff checks clean. This does not claim malformed counts
+occurred in the live bridge or that the packaged build includes the repair.
+
 User reports quota burning fast: no new subagents or live model benches for now.
 Q08 preparation has a retained completed warmup receipt; actual work has NOT
 started. Do not repeat prepare. Q01-Q07 outcomes below remain unchanged.
