@@ -2,8 +2,8 @@
 
 Living checklist. Do **not** put secrets, tokens, or account IDs here.
 
-Last updated: 2026-08-27  
-Browser used this turn: **yes**. Devpost is logged in (`You're registered`). My projects shows no draft yet. Start project is recaptcha-gated. builder.aws.com was signed out in the IDE browser. `aws sts` is still NoCredentials. Architecture PNG is at `docs/architecture/pex-architecture.png`. Do not Submit until YouTube/Vimeo + Builder ID exist.
+Last updated: 2026-09-06
+Release remains NO-GO. Controlled Codex + provider-live Strands proof exists at `5c49c10`; AgentCore is not deployed, the benchmark is unfrozen, and final-revision/package evidence is still open. Architecture PNG is at `docs/architecture/pex-architecture.png`. Do not Submit until the final reviewed repository, video, and required identity fields are verified at action time.
 
 ## Open pages (user said these are already logged in)
 
@@ -31,13 +31,13 @@ Browser used this turn: **yes**. Devpost is logged in (`You're registered`). My 
 
 Rules (updated 12 Aug 2026): public **builder.aws.com** posts about the AWS build journey. Put **Agents for Humans** in the title. Hashtag `#AgentsforHumans` is no longer required. Re-read rules immediately before publish.
 
-Planned posts (drafts in `docs/posts/`, **not published**):
+Planned posts (drafts in `docs/posts/`):
 
 1. Agents for Humans: Building a Cross-Harness Supervisor with Strands and AgentCore
 2. Agents for Humans: Measuring Human Attention as an Agent Benchmark
 3. Agents for Humans: Designing Safe Autonomous Approvals Across Coding Agents
 
-Status: **0 / 3 published**. Do not publish empty journey posts. Wait until we have a real Strands loop, a real adapter lesson, and a real policy lesson.
+Status: **1 / 3 user-reported published**; its rendered Published state was observed, but logged-out accessibility and bonus credit are unverified. Do not duplicate it or claim awarded points. The other two remain drafts.
 
 ## AWS / AgentCore (this machine)
 
@@ -64,4 +64,4 @@ When ready to use the console in-browser:
 
 Do not pause product work to click consoles. Browser the AWS pages when we need a credential, a deployment, a screenshot, or a published post.
 
-Current product milestone: live desktop attach (Cursor hooks + Codex App Server + Grok Bot observe) plus PexBench freeze, AgentCore deploy in eu-north-1, submit.
+Current product milestone: repair clean final-revision evidence closure, recapture the proven Codex + Strands pair in the reviewed app, visually review/package it, then submit. PexBench remains unfrozen; AgentCore deployment is optional and must not be claimed unless actually proven.

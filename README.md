@@ -175,7 +175,7 @@ flowchart LR
   codex[Codex]
   others[Claude / OpenCode / Qwen / ...]
   strands[Bounded Strands semantic judge]
-  verifier[Independent verifier Agent]
+  verifier[Independent verifier Agent · local contract only]
   runtime[AgentCore Runtime deploy target]
   memory[AgentCore Memory when configured]
   cw[CloudWatch when deployed]
@@ -213,9 +213,10 @@ STOP intervention must also pass a fresh independent verifier Agent using its
 own observations and invocation. Timeout, malformed output, missing evidence,
 or rejection becomes NOOP. Deterministic verification truth and local policy
 still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
-target, not a deployed-service claim. These behaviors have local contract
-coverage; fresh provider-live two-Agent and real Codex closed-loop receipts are
-still required for demo evidence.
+target, not a deployed-service claim. The verifier path has local contract coverage but
+is not part of the curated live receipt. Real Codex + provider-live Strands restraint and
+same-thread recovery are validated on source revision `5c49c10`; that controlled source
+receipt is not final-revision, packaged-app, benchmark, or release evidence.
 
 The cloud supervisor can propose actions. It cannot bypass local policy.
 
@@ -223,7 +224,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. Uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Overall contest state is **NO-GO**: no submission, deploy, freeze, or installer package is authorized until live closed-loop evidence exists. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md). The four-arm manifest stays `frozen: false` with no citeable impact score.
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. Uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Overall contest state is **NO-GO**: the controlled live loop exists at `5c49c10`, but clean final-revision evidence closure, packaged-app review, the unfrozen benchmark, and submission authorization remain open. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md). There is no citeable impact score or validated leaderboard rank.
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)

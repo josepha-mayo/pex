@@ -3,12 +3,22 @@ flowchart TB
   human[Human<br/>goals + irreversible decisions]
   pet[PEX Pet<br/>Inspector + Command Deck]
 
+  subgraph local[LOCAL IMPLEMENTED + TESTED]
+    direction LR
+    store[(SQLite intent ledger<br/>JSONL audit parity)]
+    adapters[Capability-negotiated adapters]
+    verifier[Independent Verifier<br/>local contract coverage]
+    cursor[Cursor]
+    others[Claude Code / OpenCode / Hermes]
+    cursor --> adapters
+    others --> adapters
+  end
+
   subgraph live[VALIDATED LIVE · CODEX PAIR]
     direction LR
     codex[Codex App Server<br/>same worker thread]
     bridge[Local Bridge<br/>evidence + policy]
     strands[Strands Supervisor<br/>real provider calls]
-    verifier[Independent Verifier<br/>semantic action check]
     out[Typed action<br/>SEND_NUDGE or NOOP]
     result[Observed outcome<br/>unsatisfied → supported]
     codex -->|STOP event| bridge
@@ -19,18 +29,6 @@ flowchart TB
     out -->|policy-gated same-thread turn| codex
     codex --> result
     result --> bridge
-  end
-
-  subgraph local[LOCAL IMPLEMENTED + TESTED]
-    direction LR
-    store[(SQLite intent ledger<br/>JSONL audit parity)]
-    adapters[Capability-negotiated adapters]
-    cursor[Cursor]
-    others[Claude Code / OpenCode / Hermes]
-    cursor --> adapters
-    others --> adapters
-    adapters --> bridge
-    bridge <--> store
   end
 
   subgraph target[DEPLOY TARGET · NOT LIVE-CLAIMED]
@@ -44,14 +42,16 @@ flowchart TB
 
   human --> pet
   pet <--> bridge
+  adapters --> bridge
+  bridge <--> store
   bridge -.->|optional remote supervisor| runtime
   runtime -.-> strands
 
   classDef validated fill:#173f35,stroke:#67deb1,color:#f4f1e8,stroke-width:2px;
   classDef implemented fill:#17252b,stroke:#72939a,color:#f4f1e8;
   classDef target fill:#29261d,stroke:#b49a50,color:#f4f1e8,stroke-dasharray:5 4;
-  class codex,bridge,strands,verifier,out,result validated;
-  class human,pet,store,adapters,cursor,others implemented;
+  class codex,bridge,strands,out,result validated;
+  class human,pet,store,adapters,cursor,others,verifier implemented;
   class runtime,memory,cw target;
   style live fill:#0d1918,stroke:#67deb1,color:#f4f1e8,stroke-width:2px
   style local fill:#101a1f,stroke:#617b82,color:#f4f1e8

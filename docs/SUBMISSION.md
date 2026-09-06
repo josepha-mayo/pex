@@ -33,7 +33,7 @@ If agents keep multiplying, humans become full-time dispatchers. PEX attacks tha
 
 - Attaches to existing harnesses. Work does not have to start inside PEX.
 - Implements a bounded Strands supervisor with six request-scoped, read-only evidence tools and requires a validated structured action. The live Codex proof demonstrates real Strands decisions and outcome verification; it does not claim every tool path was exercised on camera.
-- Routes semantic-only interventions through an independent verifier Agent; failures and evidence-free approvals become NOOP, while deterministic verification truth remains authoritative. Surface a curated verifier trace in the final video before calling that path live-demonstrated to judges.
+- Routes semantic-only interventions through an independent verifier Agent in locally tested contracts; failures and evidence-free approvals become NOOP, while deterministic verification truth remains authoritative. The curated live receipt does not independently prove this tier, so do not call it live-demonstrated unless a judge-readable trace is captured.
 - Keeps a local policy guard. Cloud can propose; it cannot bypass allow/deny/ask.
 - Surfaces attention as a desktop pet, not another chat transcript.
 
@@ -49,14 +49,17 @@ Timebox. Screen-record the pet + inspector + one live Cursor or Codex session. D
 2. **0:25–0:45 — Who / why.** Built for people who already use those tools. Goal: get the human back to intent and irreversible calls.
 3. **0:45–1:15 — Pet.** Compact PEX pet. Close it, restore it from Settings, then open the inspector. Show that the companion communicates state instead of becoming another transcript.
 4. **1:15–2:45 — Live recovery.** In one Codex thread, show the intentional stop, PEX's specific `SEND_NUDGE`, the second turn on the same thread ID, `report.txt = shipped`, `helped=true`, and the final evidence-supported `NOOP`.
-5. **2:45–3:35 — Strands and safety.** Show the two real `used_llm=true`, `runtime=strands-agents` receipts, the independent-verifier receipt, and the local deterministic-truth/policy boundary. Do not call this a Strands Graph or claim web/side-effect tools. Optional AgentCore `/ping` only if actually deployed.
+5. **2:45–3:35 — Strands and safety.** Show the real `used_llm=true`, `runtime=strands-agents` receipts and the local deterministic-truth/policy boundary. Show an independent-verifier receipt only if a separate judge-readable capture exists. Do not call this a Strands Graph or claim web/side-effect tools. Optional AgentCore `/ping` only if actually deployed.
 6. **3:35–4:15 — Restraint.** Show the separate completed-task contract: one turn, artifact `pong`, and PEX correctly choosing `NOOP`. The point is fewer pointless interruptions, not maximum agent activity.
 7. **4:15–4:40 — Honest limits.** PexBench is not frozen and there is no retained leaderboard rank. AgentCore is a deploy target unless a live deployment is proven before recording.
 8. **4:40–5:00 — Close.** You keep goals and dangerous approvals. PEX keeps the mechanical supervision quiet.
 
 ## Builder Center posts (bonus, up to +0.6)
 
-Drafts in `docs/posts/`. Publish on builder.aws.com **after** the live path is on camera. Titles must contain **Agents for Humans**.
+Status: **1 / 3 user-reported published**. Its signed-in rendered Published state was
+observed, but logged-out accessibility and bonus credit remain unverified; do not publish
+it again. The other two remain local drafts. If they are published, use builder.aws.com
+after the live path is on camera and keep **Agents for Humans** in each title.
 
 1. Building a Cross-Harness Supervisor with Strands and AgentCore
 2. Measuring Human Attention as an Agent Benchmark
@@ -65,7 +68,7 @@ Drafts in `docs/posts/`. Publish on builder.aws.com **after** the live path is o
 ## Checklist before clicking Submit
 
 - [ ] Verify at action time that the public MIT repository contains the exact reviewed release candidate; the current dirty/untracked tree is not publication proof
-- [x] README + architecture diagram (`docs/architecture/hackathon.md` and `docs/architecture/pex-architecture.png`)
+- [x] README and architecture source/PNG are current; the 6 September render was visually inspected with the verifier in the blue local-contract tier
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)

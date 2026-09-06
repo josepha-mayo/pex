@@ -2,9 +2,14 @@
 
 FAQ requires: user input, Strands loop, tools/integrations, AWS services, output. The
 diagram uses explicit evidence tiers: green is validated live in the controlled Codex
-pair, blue is locally implemented/tested, and dashed gold is a deployment target.
+pair at `5c49c10`, blue is locally implemented/tested, and dashed gold is a deployment
+target. The independent verifier is blue because the curated live receipt does not expose
+judge-readable independent-verifier evidence.
 
-Rendered image for Devpost: [`pex-architecture.png`](pex-architecture.png). Source: [`pex-architecture.mmd`](pex-architecture.mmd).
+Devpost image target: [`pex-architecture.png`](pex-architecture.png). It was regenerated
+and visually inspected on 6 September from the current source; the verifier is visibly in
+the blue local-contract tier:
+[`pex-architecture.mmd`](pex-architecture.mmd).
 
 ```mermaid
 flowchart LR
@@ -17,7 +22,7 @@ flowchart LR
   codex[Codex App Server · validated live]
   others[Claude / OpenCode / Qwen / ...]
   strands[Bounded Strands Supervisor]
-  verifier[Independent Verifier Agent]
+  verifier[Independent Verifier Agent · local contract]
   runtime[AgentCore Runtime · deploy target]
   memory[AgentCore Memory when configured]
   cw[CloudWatch when deployed]

@@ -10,6 +10,11 @@ Before submission, record a fresh native Tauri video showing both validated beha
 evidence-supported restraint and same-thread recovery. Upload the reviewed video to
 YouTube or Vimeo (maximum five minutes). Voiceover: [`docs/SUBMISSION.md`](../SUBMISSION.md).
 
+The curated receipt is tied to `5c49c10`; it does not prove the current dirty tree, a
+packaged build, AgentCore, a frozen benchmark, a leaderboard rank, or the independent-
+verifier tier. Current source has exactly eight built-in pets; older August assets remain
+stale even where they happen to depict those pets.
+
 Regenerate:
 
 ```bash
