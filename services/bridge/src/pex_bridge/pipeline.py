@@ -5561,9 +5561,16 @@ class Pipeline:
             # Record the attempt before adapter work. Even a caller-cancelled or
             # failed discovery receives a short backoff instead of hot-looping.
             self._desktop_refresh_attempted_at = time.monotonic()
-            discoveries = await asyncio.gather(
-                *(discover_one(name) for name in DESKTOP_REFRESH_ADAPTERS)
+            from pex_bridge.adapters.desktop import (
+                capture_running_image_snapshot,
+                scoped_running_image_snapshot,
             )
+
+            process_snapshot = await asyncio.to_thread(capture_running_image_snapshot)
+            with scoped_running_image_snapshot(process_snapshot):
+                discoveries = await asyncio.gather(
+                    *(discover_one(name) for name in DESKTOP_REFRESH_ADAPTERS)
+                )
             seen: dict[str, set[str]] = {}
             for name, discovered in discoveries:
                 if discovered is None:

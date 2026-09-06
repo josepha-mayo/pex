@@ -10,6 +10,11 @@ import csv
 import io
 import subprocess
 import sys
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from pex_protocol.enums import HarnessType, SessionStatus
@@ -72,6 +77,49 @@ DESKTOP_APPS = (
     },
 )
 
+_SCOPED_SNAPSHOT_MAX_AGE_SECONDS = 5.0
+
+
+@dataclass(frozen=True)
+class DesktopProcessSnapshot:
+    names: frozenset[str]
+    available: bool
+    captured_at: float
+
+
+_PROCESS_SNAPSHOT: ContextVar[DesktopProcessSnapshot | None] = ContextVar(
+    "pex_desktop_process_snapshot",
+    default=None,
+)
+
+
+def capture_running_image_snapshot() -> DesktopProcessSnapshot:
+    names = _read_running_image_names()
+    return DesktopProcessSnapshot(
+        names=frozenset(names) if names is not None else frozenset(),
+        available=names is not None,
+        captured_at=time.monotonic(),
+    )
+
+
+@contextmanager
+def scoped_running_image_snapshot(
+    snapshot: DesktopProcessSnapshot,
+) -> Iterator[None]:
+    token = _PROCESS_SNAPSHOT.set(snapshot)
+    try:
+        yield
+    finally:
+        _PROCESS_SNAPSHOT.reset(token)
+
+
+def _active_process_snapshot() -> DesktopProcessSnapshot | None:
+    snapshot = _PROCESS_SNAPSHOT.get()
+    if snapshot is None:
+        return None
+    if time.monotonic() - snapshot.captured_at > _SCOPED_SNAPSHOT_MAX_AGE_SECONDS:
+        return None
+    return snapshot
 
 def desktop_process_running(image: str, running: set[str] | None = None) -> bool:
     names = {name.lower() for name in (running if running is not None else running_image_names())}
@@ -116,6 +164,9 @@ def upsert_desktop_observe_session(
     if skip_if_other_sessions and any(key != session_id for key in sessions):
         sessions.pop(session_id, None)
         return
+    snapshot = _active_process_snapshot()
+    if snapshot is not None and not snapshot.available:
+        return
     hit = matching_desktop_image(process)
     if not hit:
         sessions.pop(session_id, None)
@@ -138,6 +189,13 @@ def upsert_desktop_observe_session(
 
 
 def running_image_names() -> set[str]:
+    snapshot = _active_process_snapshot()
+    if snapshot is not None:
+        return set(snapshot.names)
+    return _read_running_image_names() or set()
+
+
+def _read_running_image_names() -> set[str] | None:
     kwargs: dict = {}
     if sys.platform == "win32":
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -150,9 +208,9 @@ def running_image_names() -> set[str]:
             **kwargs,
         )
     except Exception:
-        return set()
+        return None
     if len(raw) > 2_097_152:
-        return set()
+        return None
     names: set[str] = set()
     for row in csv.reader(io.StringIO(raw)):
         if row:

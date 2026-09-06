@@ -40,6 +40,56 @@ def test_starter_desktop_inventory_excludes_grok_bot():
     assert found == []
 
 
+def test_scoped_process_snapshot_is_shared_and_failure_preserves_tiles(monkeypatch):
+    from pex_bridge.adapters import desktop
+    from pex_protocol.enums import HarnessType
+
+    clock = 20.0
+    monkeypatch.setattr(desktop.time, "monotonic", lambda: clock)
+    monkeypatch.setattr(
+        desktop,
+        "running_image_names",
+        lambda: set(desktop._active_process_snapshot().names),
+    )
+    present = desktop.DesktopProcessSnapshot(
+        names=frozenset({"ChatGPT.exe"}),
+        available=True,
+        captured_at=clock,
+    )
+    with desktop.scoped_running_image_snapshot(present):
+        first = desktop.running_image_names()
+        first.clear()
+        assert desktop.running_image_names() == {"ChatGPT.exe"}
+
+    sessions: dict[str, HarnessSession] = {}
+    with desktop.scoped_running_image_snapshot(present):
+        desktop.upsert_desktop_observe_session(
+            sessions,
+            harness=HarnessType.CODEX,
+            process="ChatGPT.exe",
+        )
+    assert "codex:desktop" in sessions
+
+    failed = desktop.DesktopProcessSnapshot(
+        names=frozenset(),
+        available=False,
+        captured_at=clock,
+    )
+    with desktop.scoped_running_image_snapshot(failed):
+        desktop.upsert_desktop_observe_session(
+            sessions,
+            harness=HarnessType.CODEX,
+            process="ChatGPT.exe",
+        )
+        desktop.upsert_desktop_observe_session(
+            sessions,
+            harness=HarnessType.CURSOR,
+            process="Cursor.exe",
+        )
+    assert "codex:desktop" in sessions
+    assert "cursor:desktop" not in sessions
+
+
 async def test_cursor_lists_existing_exe_without_hooks_or_send(monkeypatch):
     monkeypatch.setattr(
         "pex_bridge.adapters.desktop.running_image_names",
@@ -336,6 +386,19 @@ async def test_desktop_refresh_coalesces_pollers_and_resumes_after_backoff(
     )
     clock = [100.0]
     monkeypatch.setattr("pex_bridge.pipeline.time.monotonic", lambda: clock[0])
+    captures = 0
+
+    def capture():
+        nonlocal captures
+        captures += 1
+        from pex_bridge.adapters.desktop import DesktopProcessSnapshot
+
+        return DesktopProcessSnapshot(frozenset(), True, clock[0])
+
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.capture_running_image_snapshot",
+        capture,
+    )
     discoveries = []
     for name in ("cursor", "codex", "opencode", "hermes", "claude_code"):
         discover = AsyncMock(return_value=[])
@@ -349,6 +412,7 @@ async def test_desktop_refresh_coalesces_pollers_and_resumes_after_backoff(
     await store.close()
 
     assert all(discover.await_count == 2 for discover in discoveries)
+    assert captures == 2
 
 
 async def test_failed_desktop_refresh_is_backed_off(tmp_path, monkeypatch):

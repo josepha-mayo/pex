@@ -27,3 +27,13 @@ def _quiet_desktop_processes(request, monkeypatch):
         "pex_bridge.adapters.desktop.running_image_names",
         lambda: set(),
     )
+    from pex_bridge.adapters.desktop import DesktopProcessSnapshot
+
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.capture_running_image_snapshot",
+        lambda: DesktopProcessSnapshot(
+            names=frozenset(),
+            available=True,
+            captured_at=0.0,
+        ),
+    )
