@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+from hashlib import sha256
 from typing import Any
 
 from pex_protocol.enums import EventType
@@ -20,6 +21,16 @@ _TEST_COMMAND = re.compile(
 )
 _STILL_ACTIVE = 259
 _ERROR_ACCESS_DENIED = 5
+# Conservative portable lookup bound; unsupported identities remain unknown.
+_MAX_OBSERVED_PID = 2**31 - 1
+
+
+def _valid_pid(value: object) -> bool:
+    return type(value) is int and 0 < value <= _MAX_OBSERVED_PID
+
+
+def _command_identity(command: str) -> str:
+    return sha256(command.encode("utf-8", "surrogatepass")).hexdigest()
 
 
 def find_abandoned_background(events: list[HarnessEvent]) -> dict[str, Any] | None:
@@ -62,7 +73,7 @@ def confirm_abandoned_background(abandoned: dict[str, Any] | None) -> dict[str, 
 
 def pid_running(pid: int) -> bool | None:
     """Return whether *pid* is alive. None means the table could not be read."""
-    if not isinstance(pid, int) or pid <= 0:
+    if not _valid_pid(pid):
         return None
     if os.name == "nt":
         return _windows_pid_running(pid)
@@ -116,6 +127,7 @@ def _launch_from(event: HarnessEvent) -> dict[str, Any] | None:
     pid = _observed_pid(state)
     return {
         "command": command[:200],
+        "command_identity": _command_identity(command),
         "pid": pid,
         "event_id": event.event_id,
     }
@@ -124,10 +136,14 @@ def _launch_from(event: HarnessEvent) -> dict[str, Any] | None:
 def _observed_pid(state: dict[str, Any]) -> int | None:
     for key in ("pid", "process_id"):
         raw = state.get(key)
-        if isinstance(raw, int):
+        if _valid_pid(raw):
             return raw
-        if isinstance(raw, str) and raw.strip().isdigit():
-            return int(raw.strip())
+        if isinstance(raw, str):
+            text = raw.strip()
+            if 1 <= len(text) <= 10 and text.isascii() and text.isdecimal():
+                parsed = int(text)
+                if _valid_pid(parsed):
+                    return parsed
     return None
 
 
@@ -138,4 +154,4 @@ def _finishes(event: HarnessEvent, launch: dict[str, Any]) -> bool:
     if launch.get("pid") is not None:
         return _observed_pid(state) == launch["pid"]
     command = str(event.command or "").strip()
-    return bool(command) and command == str(launch.get("command") or "")
+    return bool(command) and _command_identity(command) == launch.get("command_identity")

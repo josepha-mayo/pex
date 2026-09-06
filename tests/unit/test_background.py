@@ -5,6 +5,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from pex_protocol.enums import EventType, HarnessType
 from pex_protocol.session import HarnessEvent
 from pex_supervisor.background import (
@@ -46,6 +47,33 @@ def test_unidentified_job_requires_matching_command_to_finish():
 
 def test_pid_running_sees_this_process():
     assert pid_running(os.getpid()) is True
+
+
+def test_long_background_command_matches_its_terminal_event_without_prefix_alias():
+    command = "python train.py --label " + "x" * 220
+    events = [_job_event(0, command=command),
+              _job_event(1, command=command + "other", running=False)]
+    assert find_abandoned_background(events) is not None
+    events.append(_job_event(2, command=command, running=False))
+    assert find_abandoned_background(events) is None
+
+
+@pytest.mark.parametrize("pid", [True, False, -1, 0, 2**80, "²", "9" * 5000],
+                         ids=["true", "false", "negative", "zero", "huge", "unicode", "long"])
+def test_invalid_observed_pid_is_unknown_not_a_process_identity(pid):
+    launch = find_abandoned_background([_job_event(0, pid=pid)])
+    assert launch is not None
+    assert launch["pid"] is None
+
+
+@pytest.mark.parametrize("pid", [True, False, -1, 0, 2**80])
+def test_invalid_pid_never_reaches_native_process_lookup(pid, monkeypatch):
+    def unexpected(*args):
+        raise AssertionError("invalid PID reached OS lookup")
+
+    monkeypatch.setattr("pex_supervisor.background._windows_pid_running", unexpected)
+    monkeypatch.setattr("pex_supervisor.background.os.kill", unexpected)
+    assert pid_running(pid) is None
 
 
 def test_pid_running_rejects_exited_process():

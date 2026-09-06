@@ -2,6 +2,17 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Background identity follow-up: PID-less commands longer than the 200-character
+display preview could never match their terminal event. A SHA-256 fingerprint
+now preserves full-command identity without enlarging displayed command text;
+different suffixes cannot alias. PID parsing now rejects booleans, nonpositive
+values, non-ASCII/nondecimal strings, excessive-length values and identities
+outside a conservative positive signed-32-bit range before native lookup.
+Unsupported PIDs stay unknown rather than being coerced/wrapped. Of 13 added
+cases, 10 failed before repair; final background unit/API selection **22 passed,
+15 deselected in 16.39s**, Ruff clean. Live process birth identity and semantic
+abandonment diagnosis remain open; this is not a live-agent benchmark.
+
 Background-job audit: root fully read `background.py` and its small unit suite.
 The tracker only settled the last launch, leaving older jobs falsely active when
 they exited out of order; `running=false` without identity could also clear an
