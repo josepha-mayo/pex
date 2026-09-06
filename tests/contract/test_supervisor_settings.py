@@ -54,7 +54,12 @@ async def supervisor_client(tmp_path):
         state.supervisor_choice,
         state.supervisor_error,
         state.supervisor_secret_store,
+        state.supervisor_config_lock,
+        state.supervisor_config_generation,
+        state.supervisor_config_task,
+        state.supervisor_config_operation,
     )
+    previous_background_tasks = set(state.background_tasks)
     settings = Settings.for_test(require_auth=False, home=tmp_path)
     store = Store(tmp_path / "pex.sqlite")
     adapters = AdapterRegistry()
@@ -67,12 +72,49 @@ async def supervisor_client(tmp_path):
     state.supervisor_choice = None
     state.supervisor_error = None
     state.supervisor_secret_store = secret_store
+    state.supervisor_config_lock = asyncio.Lock()
+    state.supervisor_config_generation = 0
+    state.supervisor_config_task = None
+    state.supervisor_config_operation = None
     await store.connect()
     app = create_app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://127.0.0.1"
     ) as client:
         yield client, secret_store, tmp_path
+    operation = state.supervisor_config_operation
+    active = state.supervisor_config_task
+    if operation is not None:
+        operation.abandoned.set()
+        if not operation.commit.done():
+            operation.commit.set_result(False)
+    if active is not None:
+        try:
+            await asyncio.wait_for(asyncio.shield(active), timeout=1.25)
+        except TimeoutError:
+            active.cancel()
+            await asyncio.gather(active, return_exceptions=True)
+        except asyncio.CancelledError:
+            await asyncio.gather(active, return_exceptions=True)
+        except Exception:
+            pass
+        async with state.supervisor_config_lock:
+            if state.supervisor_config_task is active:
+                state.supervisor_config_task = None
+                state.supervisor_config_operation = None
+    assert state.supervisor_config_task is None
+    assert state.supervisor_config_operation is None
+    fixture_background = state.background_tasks - previous_background_tasks
+    if fixture_background:
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*fixture_background, return_exceptions=True),
+                timeout=1.25,
+            )
+        except TimeoutError:
+            for task in fixture_background:
+                task.cancel()
+            await asyncio.gather(*fixture_background, return_exceptions=True)
     await store.close()
     configure_runtime(None)
     (
@@ -84,7 +126,19 @@ async def supervisor_client(tmp_path):
         state.supervisor_choice,
         state.supervisor_error,
         state.supervisor_secret_store,
+        state.supervisor_config_lock,
+        state.supervisor_config_generation,
+        state.supervisor_config_task,
+        state.supervisor_config_operation,
     ) = previous
+
+
+async def _wait_until(predicate, *, attempts: int = 100) -> None:
+    for _ in range(attempts):
+        if predicate():
+            return
+        await asyncio.sleep(0.01)
+    assert predicate()
 
 
 def _custom_payload(**updates):
@@ -271,7 +325,7 @@ async def test_model_only_patch_keeps_secret_but_endpoint_change_clears_it(
     assert cleared is not None
     assert cleared.credential_source == "none"
     assert cleared.secret_ref is None
-    assert original.secret_ref in secret_store.deleted
+    await _wait_until(lambda: original.secret_ref in secret_store.deleted)
 
 
 @pytest.mark.asyncio
@@ -347,7 +401,7 @@ async def test_secret_rotation_and_explicit_clear_retire_previous_values(supervi
     replacement = load_supervisor_choice(home / "supervisor.json")
     assert replacement is not None and replacement.secret_ref
     assert replacement.secret_ref != original.secret_ref
-    assert original.secret_ref in secret_store.deleted
+    await _wait_until(lambda: original.secret_ref in secret_store.deleted)
     assert secret_store.get(
         replacement.secret_ref,
         audience=replacement.credential_audience(),
@@ -362,7 +416,7 @@ async def test_secret_rotation_and_explicit_clear_retire_previous_values(supervi
     assert final is not None
     assert final.credential_source == "none"
     assert final.secret_ref is None
-    assert replacement.secret_ref in secret_store.deleted
+    await _wait_until(lambda: replacement.secret_ref in secret_store.deleted)
 
 
 @pytest.mark.asyncio
@@ -395,6 +449,57 @@ async def test_config_write_failure_deletes_staged_secret_and_keeps_prior_state(
 
 
 @pytest.mark.asyncio
+async def test_malformed_vault_reference_is_retired_before_patch_fails(
+    supervisor_client, monkeypatch
+):
+    client, secret_store, home = supervisor_client
+
+    def malformed_put(value: str, *, audience: str) -> str:
+        reference = "malformed-reference"
+        secret_store.values[reference] = (audience, value)
+        return reference
+
+    monkeypatch.setattr(secret_store, "put", malformed_put)
+    failed = await client.patch(
+        "/v1/supervisor",
+        json=_custom_payload(api_key="must-be-retired"),
+    )
+
+    assert failed.status_code == 400
+    assert not (home / "supervisor.json").exists()
+    assert state.supervisor_choice is None
+    assert "malformed-reference" in secret_store.deleted
+    assert secret_store.values == {}
+
+
+@pytest.mark.asyncio
+async def test_published_abandoned_ref_delete_starts_before_background_cancellation(
+    supervisor_client
+):
+    from pex_bridge.app import (
+        _abandon_supervisor_operation,
+        _SupervisorConfigOperation,
+    )
+
+    _client, secret_store, _home = supervisor_client
+    loop = asyncio.get_running_loop()
+    operation = _SupervisorConfigOperation(
+        generation=99,
+        prepared=loop.create_future(),
+        commit=loop.create_future(),
+    )
+    reference = secret_store.put("staged", audience="a" * 64)
+    assert operation.publish_staged_reference(reference) is False
+
+    observer = _abandon_supervisor_operation(operation, secret_store)
+    assert observer is not None
+    observer.cancel()
+    await asyncio.gather(observer, return_exceptions=True)
+    await _wait_until(lambda: reference in secret_store.deleted)
+    assert reference not in secret_store.values
+
+
+@pytest.mark.asyncio
 async def test_model_constructor_failure_rolls_back_and_never_logs_secret(
     supervisor_client, monkeypatch, caplog
 ):
@@ -420,7 +525,321 @@ async def test_model_constructor_failure_rolls_back_and_never_logs_secret(
     assert state.supervisor_choice is not None
     assert state.supervisor_choice.revision == 1
     assert secret_store.values == {}
+    # Construction now happens before vault staging, so this failure has no
+    # uncommitted credential to retire.
+    assert secret_store.deleted == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "hostile_error", [SystemExit, KeyboardInterrupt, asyncio.CancelledError]
+)
+async def test_hostile_constructor_base_exception_is_sanitized_and_rolled_back(
+    supervisor_client, monkeypatch, caplog, hostile_error
+):
+    from pex_supervisor.providers import current_runtime_config
+
+    client, secret_store, home = supervisor_client
+    first = await client.patch("/v1/supervisor", json=_custom_payload())
+    assert first.status_code == 200
+    before_file = (home / "supervisor.json").read_bytes()
+    before_choice = state.supervisor_choice
+    before_model = state.pipeline.model
+    before_runtime = current_runtime_config()
+
+    def fail_model(_config):
+        raise hostile_error("hostile worker exit")
+
+    monkeypatch.setattr("pex_supervisor.providers.load_supervisor_model", fail_model)
+    failed = await client.patch(
+        "/v1/supervisor",
+        json={"expected_revision": 1, "api_key": "must-not-leak"},
+    )
+
+    assert failed.status_code == 409
+    assert (await client.get("/health")).status_code == 200
+    assert (home / "supervisor.json").read_bytes() == before_file
+    assert state.supervisor_choice == before_choice
+    assert state.pipeline.model is before_model
+    assert current_runtime_config() == before_runtime
+    assert secret_store.values == {}
+    assert "Task exception was never retrieved" not in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "hostile_error", [SystemExit, KeyboardInterrupt, asyncio.CancelledError]
+)
+async def test_hostile_vault_base_exception_is_sanitized_and_rolled_back(
+    supervisor_client, monkeypatch, caplog, hostile_error
+):
+    from pex_supervisor.providers import current_runtime_config
+
+    client, secret_store, home = supervisor_client
+    first = await client.patch("/v1/supervisor", json=_custom_payload())
+    assert first.status_code == 200
+    before_file = (home / "supervisor.json").read_bytes()
+    before_choice = state.supervisor_choice
+    before_model = state.pipeline.model
+    before_runtime = current_runtime_config()
+
+    def fail_put(_value: str, *, audience: str) -> str:
+        assert audience
+        raise hostile_error("hostile vault exit")
+
+    monkeypatch.setattr(secret_store, "put", fail_put)
+    failed = await client.patch(
+        "/v1/supervisor",
+        json={"expected_revision": 1, "api_key": "must-not-leak"},
+    )
+
+    assert failed.status_code == 409
+    assert (await client.get("/health")).status_code == 200
+    assert (home / "supervisor.json").read_bytes() == before_file
+    assert state.supervisor_choice == before_choice
+    assert state.pipeline.model is before_model
+    assert current_runtime_config() == before_runtime
+    assert secret_store.values == {}
+    assert "Task exception was never retrieved" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_model_constructor_timeout_quarantines_until_worker_finishes(
+    supervisor_client, monkeypatch
+):
+    client, secret_store, home = supervisor_client
+    first = await client.patch("/v1/supervisor", json=_custom_payload())
+    assert first.status_code == 200
+    before = (home / "supervisor.json").read_bytes()
+    entered = __import__("threading").Event()
+    release = __import__("threading").Event()
+
+    def block_model(_config):
+        entered.set()
+        release.wait(1)
+        return object()
+
+    monkeypatch.setattr("pex_supervisor.providers.load_supervisor_model", block_model)
+    monkeypatch.setattr("pex_bridge.app._SUPERVISOR_CONFIG_TIMEOUT_SECONDS", 0.02)
+    timed_out = await client.patch(
+        "/v1/supervisor",
+        json={"expected_revision": 1, "api_key": "timeout-secret"},
+    )
+    assert entered.is_set()
+    assert timed_out.status_code == 504
+    assert (await asyncio.wait_for(client.get("/health"), 0.25)).status_code == 200
+    refused = await client.patch(
+        "/v1/supervisor",
+        json={"expected_revision": 1, "model_id": "must-not-overlap"},
+    )
+    assert refused.status_code == 503
+    assert (home / "supervisor.json").read_bytes() == before
+    assert secret_store.values == {}
+
+    release.set()
+    for _ in range(100):
+        if state.supervisor_config_task is None:
+            break
+        await asyncio.sleep(0.01)
+    assert state.supervisor_config_task is None
+
+
+@pytest.mark.asyncio
+async def test_cancelled_model_construction_never_commits_or_stages_secret(
+    supervisor_client, monkeypatch
+):
+    client, secret_store, home = supervisor_client
+    first = await client.patch("/v1/supervisor", json=_custom_payload())
+    assert first.status_code == 200
+    before = (home / "supervisor.json").read_bytes()
+    entered = __import__("threading").Event()
+    release = __import__("threading").Event()
+
+    def block_model(_config):
+        entered.set()
+        release.wait(1)
+        return object()
+
+    monkeypatch.setattr("pex_supervisor.providers.load_supervisor_model", block_model)
+    request = asyncio.create_task(client.patch(
+        "/v1/supervisor",
+        json={"expected_revision": 1, "api_key": "cancelled-secret"},
+    ))
+    assert await asyncio.to_thread(entered.wait, 0.25)
+    request.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await request
+    refused = await client.patch(
+        "/v1/supervisor",
+        json={"expected_revision": 1, "model_id": "must-not-overlap"},
+    )
+    assert refused.status_code == 503
+    assert (home / "supervisor.json").read_bytes() == before
+    assert secret_store.values == {}
+
+    release.set()
+    for _ in range(100):
+        if state.supervisor_config_task is None:
+            break
+        await asyncio.sleep(0.01)
+    assert state.supervisor_config_task is None
+
+
+@pytest.mark.asyncio
+async def test_cancelled_vault_write_is_cleaned_before_quarantine_releases(
+    supervisor_client, monkeypatch
+):
+    client, secret_store, home = supervisor_client
+    first = await client.patch("/v1/supervisor", json=_custom_payload())
+    assert first.status_code == 200
+    before = (home / "supervisor.json").read_bytes()
+    entered = __import__("threading").Event()
+    release = __import__("threading").Event()
+    original_put = secret_store.put
+
+    def block_put(value: str, *, audience: str) -> str:
+        entered.set()
+        release.wait(1)
+        return original_put(value, audience=audience)
+
+    monkeypatch.setattr(secret_store, "put", block_put)
+    request = asyncio.create_task(client.patch(
+        "/v1/supervisor",
+        json={"expected_revision": 1, "api_key": "cancelled-vault-secret"},
+    ))
+    assert await asyncio.to_thread(entered.wait, 0.25)
+    request.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await request
+    assert (await client.patch(
+        "/v1/supervisor",
+        json={"expected_revision": 1, "model_id": "must-not-overlap"},
+    )).status_code == 503
+
+    release.set()
+    for _ in range(100):
+        if state.supervisor_config_task is None:
+            break
+        await asyncio.sleep(0.01)
+    assert state.supervisor_config_task is None
+    assert (home / "supervisor.json").read_bytes() == before
+    assert secret_store.values == {}
     assert secret_store.deleted
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("blocking_phase", ["constructor", "vault"])
+async def test_lifespan_shutdown_abandons_active_supervisor_transaction(
+    tmp_path, monkeypatch, blocking_phase
+):
+    from pex_supervisor.providers import configure_runtime
+
+    previous = (
+        state.settings,
+        state.store,
+        state.adapters,
+        state.bus,
+        state.pipeline,
+        state.supervisor_choice,
+        state.supervisor_error,
+        state.supervisor_secret_store,
+        state.supervisor_config_lock,
+        state.supervisor_config_generation,
+        state.supervisor_config_task,
+        state.supervisor_config_operation,
+    )
+    settings = Settings.for_test(require_auth=False, home=tmp_path)
+    store = Store(tmp_path / "pex.sqlite")
+    adapters = AdapterRegistry()
+    bus = EventBus()
+    secret_store = FakeSecretStore()
+    state.settings = settings
+    state.store = store
+    state.adapters = adapters
+    state.bus = bus
+    state.pipeline = Pipeline(store, adapters, bus, settings)
+    state.supervisor_choice = None
+    state.supervisor_error = None
+    state.supervisor_secret_store = secret_store
+    state.supervisor_config_lock = asyncio.Lock()
+    state.supervisor_config_generation = 0
+    state.supervisor_config_task = None
+    state.supervisor_config_operation = None
+    configure_runtime(None)
+    home = tmp_path
+    entered = __import__("threading").Event()
+    release = __import__("threading").Event()
+    monkeypatch.setattr("pex_bridge.app.TRANSPORT_CLOSE_TIMEOUT_SECONDS", 0.05)
+
+    if blocking_phase == "constructor":
+
+        def block_model(_config):
+            entered.set()
+            release.wait()
+            return object()
+
+        monkeypatch.setattr("pex_supervisor.providers.load_supervisor_model", block_model)
+    else:
+        original_put = secret_store.put
+
+        def block_put(value: str, *, audience: str) -> str:
+            entered.set()
+            release.wait()
+            return original_put(value, audience=audience)
+
+        monkeypatch.setattr(secret_store, "put", block_put)
+
+    app = create_app()
+    try:
+        async with app.router.lifespan_context(app):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://127.0.0.1"
+            ) as client:
+                before_file = (
+                    (home / "supervisor.json").read_bytes()
+                    if (home / "supervisor.json").exists()
+                    else None
+                )
+                before_choice = state.supervisor_choice
+                request = asyncio.create_task(
+                    client.patch(
+                        "/v1/supervisor",
+                        json=_custom_payload(api_key="shutdown-secret"),
+                    )
+                )
+                assert await asyncio.to_thread(entered.wait, 0.5)
+        release.set()
+        response = await request
+        assert response.status_code in {409, 503, 504}
+        after_file = (
+            (home / "supervisor.json").read_bytes()
+            if (home / "supervisor.json").exists()
+            else None
+        )
+        assert after_file == before_file
+        assert state.supervisor_choice == before_choice
+        assert secret_store.values == {}
+        if blocking_phase == "vault":
+            assert secret_store.deleted
+        assert state.supervisor_config_task is None
+        assert state.supervisor_config_operation is None
+    finally:
+        release.set()
+        configure_runtime(None)
+        (
+            state.settings,
+            state.store,
+            state.adapters,
+            state.bus,
+            state.pipeline,
+            state.supervisor_choice,
+            state.supervisor_error,
+            state.supervisor_secret_store,
+            state.supervisor_config_lock,
+            state.supervisor_config_generation,
+            state.supervisor_config_task,
+            state.supervisor_config_operation,
+        ) = previous
 
 
 @pytest.mark.asyncio

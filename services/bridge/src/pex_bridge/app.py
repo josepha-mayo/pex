@@ -13,7 +13,7 @@ import secrets
 import stat
 import threading
 from contextlib import AsyncExitStack, asynccontextmanager, nullcontext
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
@@ -110,6 +110,7 @@ from pex_bridge.supervisor_config import (
 )
 
 logger = logging.getLogger(__name__)
+_SUPERVISOR_CONFIG_TIMEOUT_SECONDS = 10.0
 _PRE_PERMISSION_HOOKS = {
     "preToolUse",
     "beforeShellExecution",
@@ -742,6 +743,9 @@ class AppState:
         self.supervisor_choice: SupervisorChoice | None = None
         self.supervisor_secret_store: SupervisorSecretStore = KeyringSupervisorSecretStore()
         self.supervisor_config_lock = asyncio.Lock()
+        self.supervisor_config_generation = 0
+        self.supervisor_config_task: asyncio.Task[Any] | None = None
+        self.supervisor_config_operation: _SupervisorConfigOperation | None = None
         from pex_bridge.codex_shared_attach import SharedCodexAttachments
 
         self.codex_shared_attachments = SharedCodexAttachments()
@@ -1106,6 +1110,33 @@ async def _stop_runtime_loop(
 
 async def _shutdown_runtime_resources() -> None:
     """Cancel runtime work and close adapter-owned transports before Store shutdown."""
+
+    # These references and the commit decision are changed without an await so
+    # shutdown can revoke ownership even while the request owns the CAS lock.
+    supervisor_operation = state.supervisor_config_operation
+    supervisor_task = state.supervisor_config_task
+    if supervisor_operation is not None:
+        _abandon_supervisor_operation(
+            supervisor_operation,
+            state.supervisor_secret_store,
+        )
+        if not supervisor_operation.commit.done():
+            supervisor_operation.commit.set_result(False)
+    if supervisor_task is not None and not supervisor_task.done():
+        try:
+            await asyncio.wait_for(
+                asyncio.shield(supervisor_task),
+                timeout=TRANSPORT_CLOSE_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            logger.warning(
+                "Supervisor configuration did not stop before the shutdown deadline"
+            )
+        except Exception as exc:
+            logger.warning(
+                "Supervisor configuration shutdown failed (%s)",
+                type(exc).__name__,
+            )
 
     await state.codex_shared_attachments.close_pending()
     await state.pipeline.close_presentations()
@@ -2678,6 +2709,252 @@ def _resolve_choice_secret(choice: SupervisorChoice) -> str | None:
     )
 
 
+@dataclass
+class _SupervisorConfigOperation:
+    generation: int
+    prepared: asyncio.Future[_PreparedSupervisorConfig]
+    commit: asyncio.Future[bool]
+    abandoned: threading.Event = field(default_factory=threading.Event)
+    staged_reference: str | None = None
+    staged_reference_lock: threading.Lock = field(default_factory=threading.Lock)
+    staged_cleanup_claimed: bool = False
+
+    def abandon(self) -> str | None:
+        """Revoke commit authority and claim any already-published raw reference."""
+
+        self.abandoned.set()
+        with self.staged_reference_lock:
+            if self.staged_reference is None or self.staged_cleanup_claimed:
+                return None
+            self.staged_cleanup_claimed = True
+            return self.staged_reference
+
+    def publish_staged_reference(self, reference: str) -> bool:
+        """Publish before returning to asyncio; report whether thread cleanup owns it."""
+
+        with self.staged_reference_lock:
+            self.staged_reference = reference
+            if not self.abandoned.is_set() or self.staged_cleanup_claimed:
+                return False
+            self.staged_cleanup_claimed = True
+            return True
+
+
+@dataclass(frozen=True)
+class _PreparedSupervisorConfig:
+    desired: SupervisorChoice
+    candidate_runtime: Any
+    candidate_model: Any
+    api_key_present: bool
+    retire_previous: bool
+    staged_secret: str | None
+
+
+def _start_daemon_call(function: Any, /, *args: Any, **kwargs: Any) -> asyncio.Future[Any]:
+    """Start one blocking primitive now, independently of task scheduling."""
+    loop = asyncio.get_running_loop()
+    completed: asyncio.Future[Any] = loop.create_future()
+
+    def settle_result(result: Any) -> None:
+        if not completed.done():
+            completed.set_result(result)
+
+    def settle_error(error: BaseException) -> None:
+        if not completed.done():
+            completed.set_exception(error)
+
+    def consume_result(future: asyncio.Future[Any]) -> None:
+        if future.cancelled():
+            return
+        try:
+            future.exception()
+        except Exception:
+            pass
+
+    def invoke() -> None:
+        try:
+            result = function(*args, **kwargs)
+        except BaseException as exc:
+            error: BaseException
+            if isinstance(exc, Exception):
+                error = exc
+            else:
+                error = RuntimeError("supervisor configuration worker failed")
+            try:
+                loop.call_soon_threadsafe(settle_error, error)
+            except RuntimeError:
+                pass
+        else:
+            try:
+                loop.call_soon_threadsafe(settle_result, result)
+            except RuntimeError:
+                pass
+
+    completed.add_done_callback(consume_result)
+    threading.Thread(
+        target=invoke,
+        name="pex-supervisor-config",
+        daemon=True,
+    ).start()
+    return completed
+
+
+async def _run_daemon_call(function: Any, /, *args: Any, **kwargs: Any) -> Any:
+    """Run one potentially blocking primitive without creating an exit-joining pool."""
+
+    return await asyncio.shield(_start_daemon_call(function, *args, **kwargs))
+
+
+async def _retire_supervisor_secret(
+    secret_store: SupervisorSecretStore,
+    reference: str,
+    *,
+    started: asyncio.Future[Any] | None = None,
+) -> None:
+    try:
+        if started is None:
+            started = _start_daemon_call(secret_store.delete, reference)
+        await asyncio.shield(started)
+    except Exception as exc:
+        logger.error(
+            "Could not retire a supervisor credential (%s)",
+            type(exc).__name__,
+        )
+
+
+def _stage_supervisor_secret(
+    operation: _SupervisorConfigOperation,
+    secret_store: SupervisorSecretStore,
+    value: str,
+    audience: str,
+) -> str:
+    """Stage and publish the raw ref before the daemon can lose loop access."""
+
+    reference = secret_store.put(value, audience=audience)
+    if operation.publish_staged_reference(reference):
+        try:
+            secret_store.delete(reference)
+        except BaseException as exc:
+            logger.error(
+                "Could not retire an abandoned supervisor credential (%s)",
+                type(exc).__name__,
+            )
+    return reference
+
+
+def _abandon_supervisor_operation(
+    operation: _SupervisorConfigOperation,
+    secret_store: SupervisorSecretStore,
+) -> asyncio.Task[None] | None:
+    reference = operation.abandon()
+    if reference is None:
+        return None
+    started = _start_daemon_call(secret_store.delete, reference)
+    retirement = asyncio.create_task(
+        _retire_supervisor_secret(secret_store, reference, started=started),
+        name=f"supervisor-abandoned-secret:{operation.generation}",
+    )
+    state.track_background(retirement)
+    return retirement
+
+
+def _prepare_supervisor_config(
+    body: SupervisorIn,
+    current: SupervisorChoice | None,
+    secret_store: SupervisorSecretStore,
+) -> _PreparedSupervisorConfig:
+    """Perform provider/keyring reads and model construction without committing state."""
+
+    from pex_supervisor.providers import load_supervisor_model, validate_runtime_config
+
+    desired, staged_secret, retire_previous = _supervisor_choice_from_patch(body, current)
+    if staged_secret is not None:
+        api_key = staged_secret
+    elif desired.credential_source == "secret_store" and desired.secret_ref:
+        api_key = secret_store.get(
+            desired.secret_ref,
+            audience=desired.credential_audience(),
+        )
+    else:
+        api_key = None
+    if desired.auth_mode == "api_key" and not api_key:
+        if desired.credential_source != "environment":
+            raise ValueError("api_key auth requires a credential source")
+    candidate_runtime = _choice_runtime_config(desired, api_key)
+    if staged_secret is not None:
+        candidate_runtime = replace(candidate_runtime, credential_source="secret_store")
+    candidate_runtime = validate_runtime_config(candidate_runtime)
+    candidate_model = load_supervisor_model(candidate_runtime)
+    if desired.auth_mode == "api_key" and candidate_model is None:
+        raise ValueError("the selected credential or provider is unavailable")
+    return _PreparedSupervisorConfig(
+        desired=desired,
+        candidate_runtime=candidate_runtime,
+        candidate_model=candidate_model,
+        api_key_present=bool(api_key),
+        retire_previous=retire_previous,
+        staged_secret=staged_secret,
+    )
+
+
+async def _run_supervisor_config_operation(
+    operation: _SupervisorConfigOperation,
+    body: SupervisorIn,
+    current: SupervisorChoice | None,
+    secret_store: SupervisorSecretStore,
+) -> _PreparedSupervisorConfig | None:
+    """Own blocking preparation and ensure abandoned credentials are retired."""
+
+    staged_reference: str | None = None
+    try:
+        prepared = await _run_daemon_call(
+            _prepare_supervisor_config,
+            body,
+            current,
+            secret_store,
+        )
+        if operation.commit.done() and operation.commit.result() is False:
+            return None
+        if prepared.staged_secret is not None:
+            staged_reference = await _run_daemon_call(
+                _stage_supervisor_secret,
+                operation,
+                secret_store,
+                prepared.staged_secret,
+                prepared.desired.credential_audience(),
+            )
+            desired = SupervisorChoice.model_validate(
+                {
+                    **prepared.desired.model_dump(exclude={"secret_ref"}),
+                    "credential_source": "secret_store",
+                    "secret_ref": staged_reference,
+                }
+            )
+            prepared = _PreparedSupervisorConfig(
+                desired=desired,
+                candidate_runtime=prepared.candidate_runtime,
+                candidate_model=prepared.candidate_model,
+                api_key_present=prepared.api_key_present,
+                retire_previous=prepared.retire_previous,
+                staged_secret=None,
+            )
+        if not operation.prepared.done():
+            operation.prepared.set_result(prepared)
+        commit = await operation.commit
+        if commit:
+            return prepared
+        _abandon_supervisor_operation(operation, secret_store)
+        return None
+    except BaseException as exc:
+        _abandon_supervisor_operation(operation, secret_store)
+        if not operation.prepared.done():
+            if operation.commit.done() and operation.commit.result() is False:
+                operation.prepared.cancel()
+            else:
+                operation.prepared.set_exception(exc)
+        raise
+
+
 def _activate_supervisor_choice(choice: SupervisorChoice | None) -> tuple[dict[str, Any], Any]:
     from pex_supervisor.providers import (
         configure_runtime,
@@ -3092,11 +3369,12 @@ def create_app() -> FastAPI:
             configure_runtime,
             current_runtime_config,
             describe_backend,
-            load_supervisor_model,
-            validate_runtime_config,
         )
 
         async with state.supervisor_config_lock:
+            active = state.supervisor_config_task
+            if active is not None and not active.done():
+                raise HTTPException(503, "a prior supervisor configuration is still stopping")
             current = state.supervisor_choice
             current_revision = current.revision if current is not None else 0
             if (
@@ -3106,47 +3384,78 @@ def create_app() -> FastAPI:
                 raise HTTPException(409, "supervisor configuration revision changed")
             old_model = state.pipeline.model
             old_runtime = current_runtime_config()
-            staged_ref: str | None = None
-            retire_previous = False
+            loop = asyncio.get_running_loop()
+            state.supervisor_config_generation += 1
+            operation = _SupervisorConfigOperation(
+                generation=state.supervisor_config_generation,
+                prepared=loop.create_future(),
+                commit=loop.create_future(),
+            )
+            task = asyncio.create_task(
+                _run_supervisor_config_operation(
+                    operation,
+                    body,
+                    current,
+                    state.supervisor_secret_store,
+                ),
+                name=f"supervisor-config:{operation.generation}",
+            )
+            state.supervisor_config_task = task
+            state.supervisor_config_operation = operation
+
+            def finish_config(finished: asyncio.Task[Any]) -> None:
+                if state.supervisor_config_task is finished:
+                    state.supervisor_config_task = None
+                    state.supervisor_config_operation = None
+                if not finished.cancelled():
+                    finished.exception()
+
+            task.add_done_callback(finish_config)
             try:
-                desired, staged_secret, retire_previous = _supervisor_choice_from_patch(
-                    body, current
+                prepared = await asyncio.wait_for(
+                    asyncio.shield(operation.prepared),
+                    timeout=_SUPERVISOR_CONFIG_TIMEOUT_SECONDS,
                 )
-                if staged_secret is not None:
-                    staged_ref = state.supervisor_secret_store.put(
-                        staged_secret,
-                        audience=desired.credential_audience(),
-                    )
-                    desired = SupervisorChoice.model_validate(
-                        {
-                            **desired.model_dump(exclude={"secret_ref"}),
-                            "credential_source": "secret_store",
-                            "secret_ref": staged_ref,
-                        }
-                    )
-                api_key = _resolve_choice_secret(desired)
-                if desired.auth_mode == "api_key" and not api_key:
-                    if desired.credential_source != "environment":
-                        raise ValueError("api_key auth requires a credential source")
-                candidate_runtime = validate_runtime_config(
-                    _choice_runtime_config(desired, api_key)
-                )
-                candidate_model = load_supervisor_model(candidate_runtime)
-                if desired.auth_mode == "api_key" and candidate_model is None:
-                    raise ValueError("the selected credential or provider is unavailable")
+                if (
+                    state.supervisor_config_task is not task
+                    or task.done()
+                    or operation.commit.done()
+                ):
+                    raise RuntimeError("supervisor configuration ownership was lost")
+                desired = prepared.desired
+                candidate_runtime = prepared.candidate_runtime
+                candidate_model = prepared.candidate_model
+                configure_runtime(candidate_runtime)
                 save_supervisor_choice(
                     state.settings.data_dir / "supervisor.json",
                     desired,
                 )
-                configure_runtime(candidate_runtime)
+                operation.commit.set_result(True)
+                if state.supervisor_config_task is task:
+                    state.supervisor_config_task = None
+                    state.supervisor_config_operation = None
+            except TimeoutError:
+                _abandon_supervisor_operation(operation, state.supervisor_secret_store)
+                if not operation.commit.done():
+                    operation.commit.set_result(False)
+                raise HTTPException(504, "supervisor configuration timed out") from None
+            except asyncio.CancelledError:
+                _abandon_supervisor_operation(operation, state.supervisor_secret_store)
+                if not operation.commit.done():
+                    operation.commit.set_result(False)
+                raise
             except (OSError, ValueError, SupervisorSecretStoreError) as exc:
+                _abandon_supervisor_operation(operation, state.supervisor_secret_store)
+                if not operation.commit.done():
+                    operation.commit.set_result(False)
+                try:
+                    await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    pass
                 configure_runtime(old_runtime)
                 state.pipeline.model = old_model
-                if staged_ref is not None:
-                    try:
-                        state.supervisor_secret_store.delete(staged_ref)
-                    except SupervisorSecretStoreError:
-                        logger.error("Could not retire an uncommitted supervisor credential")
                 if isinstance(exc, SupervisorSecretStoreError):
                     raise HTTPException(503, "supervisor secret store unavailable") from None
                 if isinstance(exc, OSError):
@@ -3155,13 +3464,17 @@ def create_app() -> FastAPI:
                     ) from None
                 raise HTTPException(400, "invalid supervisor configuration") from None
             except Exception as exc:
+                _abandon_supervisor_operation(operation, state.supervisor_secret_store)
+                if not operation.commit.done():
+                    operation.commit.set_result(False)
+                try:
+                    await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    pass
                 configure_runtime(old_runtime)
                 state.pipeline.model = old_model
-                if staged_ref is not None:
-                    try:
-                        state.supervisor_secret_store.delete(staged_ref)
-                    except SupervisorSecretStoreError:
-                        logger.error("Could not retire an uncommitted supervisor credential")
                 logger.error("Supervisor configuration was not committed (%s)", type(exc).__name__)
                 raise HTTPException(409, "supervisor model could not be constructed") from None
 
@@ -3171,20 +3484,29 @@ def create_app() -> FastAPI:
                 None if candidate_model is not None else "SupervisorUnavailable"
             )
             if (
-                retire_previous
+                prepared.retire_previous
                 and current is not None
                 and current.secret_ref
                 and current.secret_ref != desired.secret_ref
             ):
-                try:
-                    state.supervisor_secret_store.delete(current.secret_ref)
-                except SupervisorSecretStoreError:
-                    logger.error("Could not retire the previous supervisor credential")
+                retirement_started = _start_daemon_call(
+                    state.supervisor_secret_store.delete,
+                    current.secret_ref,
+                )
+                retirement = asyncio.create_task(
+                    _retire_supervisor_secret(
+                        state.supervisor_secret_store,
+                        current.secret_ref,
+                        started=retirement_started,
+                    ),
+                    name=f"supervisor-secret-retirement:{operation.generation}",
+                )
+                state.track_background(retirement)
 
             info = describe_backend()
             info.update(
                 desired.public_dict(
-                    has_api_key=bool(api_key) or bool(info.get("has_api_key"))
+                    has_api_key=prepared.api_key_present or bool(info.get("has_api_key"))
                 )
             )
             info["backend"] = desired.provider
