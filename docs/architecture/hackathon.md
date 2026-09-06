@@ -1,6 +1,8 @@
 # Hackathon architecture diagram
 
-FAQ requires: user input, Strands loop, tools/integrations, AWS services, output.
+FAQ requires: user input, Strands loop, tools/integrations, AWS services, output. The
+diagram uses explicit evidence tiers: green is validated live in the controlled Codex
+pair, blue is locally implemented/tested, and dashed gold is a deployment target.
 
 Rendered image for Devpost: [`pex-architecture.png`](pex-architecture.png). Source: [`pex-architecture.mmd`](pex-architecture.mmd).
 
@@ -11,12 +13,12 @@ flowchart LR
   bridge[Local Bridge + Policy Guard]
   store[(SQLite intent ledger)]
   adapters[Adapter layer]
-  cursor[Cursor]
-  codex[Codex]
+  cursor[Cursor · implemented]
+  codex[Codex App Server · validated live]
   others[Claude / OpenCode / Qwen / ...]
   strands[Bounded Strands Supervisor]
   verifier[Independent Verifier Agent]
-  runtime[AgentCore Runtime deploy target]
+  runtime[AgentCore Runtime · deploy target]
   memory[AgentCore Memory when configured]
   cw[CloudWatch when deployed]
   out[Typed interventions]

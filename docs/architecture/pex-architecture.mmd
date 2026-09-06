@@ -1,35 +1,58 @@
-flowchart LR
-  human[Human: goals and decisions]
-  pet[PEX Pet / Command Deck]
-  bridge[Local Bridge + Policy Guard]
-  store[(SQLite intent ledger)]
-  adapters[Adapter layer]
-  cursor[Cursor]
-  codex[Codex]
-  others[Claude / OpenCode / Qwen / ...]
-  strands[Bounded Strands Supervisor]
-  verifier[Independent Verifier Agent]
-  runtime[AgentCore Runtime target]
-  memory[AgentCore Memory when configured]
-  cw[CloudWatch when deployed]
-  out[Typed interventions]
+%%{init: {"theme":"base","themeVariables":{"background":"#081014","primaryTextColor":"#f4f1e8","lineColor":"#789097","clusterBkg":"#101a1f","clusterBorder":"#486067","edgeLabelBackground":"#101a1f"}}}%%
+flowchart TB
+  human[Human<br/>goals + irreversible decisions]
+  pet[PEX Pet<br/>Inspector + Command Deck]
+
+  subgraph live[VALIDATED LIVE · CODEX PAIR]
+    direction LR
+    codex[Codex App Server<br/>same worker thread]
+    bridge[Local Bridge<br/>evidence + policy]
+    strands[Strands Supervisor<br/>real provider calls]
+    verifier[Independent Verifier<br/>semantic action check]
+    out[Typed action<br/>SEND_NUDGE or NOOP]
+    result[Observed outcome<br/>unsatisfied → supported]
+    codex -->|STOP event| bridge
+    bridge -->|bounded evidence tools| strands
+    strands -->|structured proposal| verifier
+    bridge -->|deterministic truth| verifier
+    verifier --> out
+    out -->|policy-gated same-thread turn| codex
+    codex --> result
+    result --> bridge
+  end
+
+  subgraph local[LOCAL IMPLEMENTED + TESTED]
+    direction LR
+    store[(SQLite intent ledger<br/>JSONL audit parity)]
+    adapters[Capability-negotiated adapters]
+    cursor[Cursor]
+    others[Claude Code / OpenCode / Hermes]
+    cursor --> adapters
+    others --> adapters
+    adapters --> bridge
+    bridge <--> store
+  end
+
+  subgraph target[DEPLOY TARGET · NOT LIVE-CLAIMED]
+    direction LR
+    runtime[Bedrock AgentCore Runtime]
+    memory[AgentCore Memory]
+    cw[CloudWatch]
+    runtime -.-> memory
+    runtime -.-> cw
+  end
 
   human --> pet
   pet <--> bridge
-  cursor --> adapters
-  codex --> adapters
-  others --> adapters
-  adapters --> bridge
-  bridge --> store
-  bridge -->|redacted evidence + read-only tools| strands
-  strands -->|semantic-only action| verifier
-  bridge -->|same bounded evidence| verifier
-  bridge -.->|remote mode| runtime
-  runtime -->|hosts both Agents| strands
-  runtime --> verifier
-  runtime -.-> memory
-  runtime -.-> cw
-  verifier --> out
-  bridge -->|deterministic action| out
-  out --> bridge
-  bridge -->|policy-gated| adapters
+  bridge -.->|optional remote supervisor| runtime
+  runtime -.-> strands
+
+  classDef validated fill:#173f35,stroke:#67deb1,color:#f4f1e8,stroke-width:2px;
+  classDef implemented fill:#17252b,stroke:#72939a,color:#f4f1e8;
+  classDef target fill:#29261d,stroke:#b49a50,color:#f4f1e8,stroke-dasharray:5 4;
+  class codex,bridge,strands,verifier,out,result validated;
+  class human,pet,store,adapters,cursor,others implemented;
+  class runtime,memory,cw target;
+  style live fill:#0d1918,stroke:#67deb1,color:#f4f1e8,stroke-width:2px
+  style local fill:#101a1f,stroke:#617b82,color:#f4f1e8
+  style target fill:#1e1b13,stroke:#b49a50,color:#f4f1e8,stroke-dasharray:5 4

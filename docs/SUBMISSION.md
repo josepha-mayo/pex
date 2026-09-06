@@ -1,15 +1,13 @@
 # Devpost submission copy
 
-> **Draft only — release and submission remain NO-GO.** Do not publish or submit without fresh current-source local gates, real live-loop evidence, package review, and action-time authorization.
+> **Draft only — release and submission remain NO-GO.** The real Codex + Strands loop is now validated on source revision `5c49c10`; do not publish or submit until that evidence is recaptured on the final reviewed release candidate, the packaged app is visually reviewed, and the operator gives action-time authorization.
 
-**Honesty that must match README / STATUS:** Bedrock AgentCore Runtime is a deploy target, not a deployed service. The four-arm PexBench manifest stays `frozen: false`; there is no citeable impact score or retained public leaderboard rank. Local pytest/ruff/desktop gates are not live Codex closed-loop proof. Do not cite quarantined rows in `benchmarks/results/INVALID_LEAKED_RUNS_DO_NOT_USE/`.
+**Honesty that must match README / STATUS:** Bedrock AgentCore Runtime is a deploy target, not a deployed service. The four-arm PexBench manifest stays `frozen: false`; there is no citeable impact score or retained public leaderboard rank. The September 6 Codex receipts are real live closed-loop proof, but they are not packaged-release proof. Do not cite quarantined rows in `benchmarks/results/INVALID_LEAKED_RUNS_DO_NOT_USE/`.
 
 Track: **Professional Agents**  
 Deadline: 14 Sep 2026, 17:00 PDT  
 License: MIT  
 Public repo: https://github.com/josepha-mayo/pex (MIT).
-
-Do not cite quarantined benchmark rows in `benchmarks/results/INVALID_LEAKED_RUNS_DO_NOT_USE/`.
 
 ## Title
 
@@ -34,12 +32,14 @@ If agents keep multiplying, humans become full-time dispatchers. PEX attacks tha
 ## What PEX does
 
 - Attaches to existing harnesses. Work does not have to start inside PEX.
-- Runs a bounded Strands supervisor with six request-scoped, read-only evidence tools and requires a validated structured action.
-- Sends every semantic-only intervention through a fresh independent verifier Agent; failures and evidence-free approvals become NOOP, while deterministic verification truth remains authoritative.
+- Implements a bounded Strands supervisor with six request-scoped, read-only evidence tools and requires a validated structured action. The live Codex proof demonstrates real Strands decisions and outcome verification; it does not claim every tool path was exercised on camera.
+- Routes semantic-only interventions through an independent verifier Agent; failures and evidence-free approvals become NOOP, while deterministic verification truth remains authoritative. Surface a curated verifier trace in the final video before calling that path live-demonstrated to judges.
 - Keeps a local policy guard. Cloud can propose; it cannot bypass allow/deny/ask.
 - Surfaces attention as a desktop pet, not another chat transcript.
 
-Current proof is local deterministic/provider-contract evidence; a fresh provider-live capture remains required. Current source contains exactly eight built-in pets. A one-call hatch result is only an unverified base candidate, not a playable pet.
+On September 6, PEX completed both prepared live contracts with an isolated Codex worker and a real Strands supervisor: it stayed quiet after evidence-supported completion, then in a separate case detected incomplete work, sent a specific nudge to the same Codex thread, observed the resulting artifact, marked the intervention helped, and ended with a verified NOOP. The supervisor was Zen's free `muse-spark-1.3-contributor-free`; the intentionally modest worker was pinned to `gpt-5.3-codex-spark`. Recapture these contracts on the final release revision before submission.
+
+Current source contains exactly eight built-in pets. A one-call hatch result is only an unverified base candidate, not a playable pet.
 
 ## Demo video voiceover (≤5 minutes)
 
@@ -47,11 +47,12 @@ Timebox. Screen-record the pet + inspector + one live Cursor or Codex session. D
 
 1. **0:00–0:25 — Problem.** Several coding agents running. You are the babysitter: continue, approve pytest, catch drift, copy context.
 2. **0:25–0:45 — Who / why.** Built for people who already use those tools. Goal: get the human back to intent and irreversible calls.
-3. **0:45–1:30 — Pet.** Compact PEX pet. Status bubble. Open inspector. Show “what PEX did” and Ask without interrupting the worker.
-4. **1:30–2:30 — Live attach.** Cursor hooks or Codex App Server actually attached. A nudge, continue, or permission decision with an audit line.
-5. **2:30–3:30 — Strands.** Show an actual evidence-tool call, validated supervisor decision, independent-verifier receipt, and the local deterministic-truth/policy boundary. Do not call this a Strands Graph or claim web/side-effect tools. Optional AgentCore `/ping` only if actually deployed.
-6. **3:30–4:20 — Honesty.** Four-arm PexBench exists, but the manifest is `frozen: false`. There is no validated lift or retained public leaderboard rank. Paired arms share one TASK.md. Isolated supervisor process.
-7. **4:20–5:00 — Close.** You keep goals and dangerous approvals. PEX keeps the rest quiet.
+3. **0:45–1:15 — Pet.** Compact PEX pet. Close it, restore it from Settings, then open the inspector. Show that the companion communicates state instead of becoming another transcript.
+4. **1:15–2:45 — Live recovery.** In one Codex thread, show the intentional stop, PEX's specific `SEND_NUDGE`, the second turn on the same thread ID, `report.txt = shipped`, `helped=true`, and the final evidence-supported `NOOP`.
+5. **2:45–3:35 — Strands and safety.** Show the two real `used_llm=true`, `runtime=strands-agents` receipts, the independent-verifier receipt, and the local deterministic-truth/policy boundary. Do not call this a Strands Graph or claim web/side-effect tools. Optional AgentCore `/ping` only if actually deployed.
+6. **3:35–4:15 — Restraint.** Show the separate completed-task contract: one turn, artifact `pong`, and PEX correctly choosing `NOOP`. The point is fewer pointless interruptions, not maximum agent activity.
+7. **4:15–4:40 — Honest limits.** PexBench is not frozen and there is no retained leaderboard rank. AgentCore is a deploy target unless a live deployment is proven before recording.
+8. **4:40–5:00 — Close.** You keep goals and dangerous approvals. PEX keeps the mechanical supervision quiet.
 
 ## Builder Center posts (bonus, up to +0.6)
 
@@ -67,6 +68,7 @@ Drafts in `docs/posts/`. Publish on builder.aws.com **after** the live path is o
 - [x] README + architecture diagram (`docs/architecture/hackathon.md` and `docs/architecture/pex-architecture.png`)
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
-- [ ] Capture a fresh authenticated demo from reviewed current source, including real same-thread intervention/NOOP and outcome receipts; source-level startup contracts alone are insufficient
-- [x] Honest disclosure: AgentCore is optional and not deployed; only local HTTP-contract evidence exists
+- [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)
+- [ ] Recapture the validated pair on the final release revision and record it in the packaged-app demo
+- [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence is contract-only, while controlled local Codex + provider-live Strands evidence now exists
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)
