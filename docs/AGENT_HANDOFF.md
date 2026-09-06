@@ -75,6 +75,33 @@ chunk-106 lifecycle envelopes proved old 5ff58f6 filter=false and repaired
 filter=true. No frame was replayed into a live worker, bridge, or supervisor.
 No bridge has been started from this new checkout yet. Next action remains a
 fresh repaired-source bridge/profile and Q02, preserving the Q01 failure receipt.
+Q02 has now run once on clean 6f929ea: dedicated bridge 7435, PID 18952,
+session 42593, private profile `pex-live-6f929ea/build/quiet-home-6f`.
+Ignored runners are `build/run_quiet_bridge_6f.py`, `quiet_owner_6f.py`, and
+`quiet_case_6f.py`. New origin is independently confirmed in that profile; later
+cases reuse its exact receipt read-only. Worker `01a077cb-0b44-7a10-8820-a29437a8b8e7`
+completed initial turn `01a077cc-3748-73c1-a430-9af3152fb62c` and a PEX-induced turn
+`01a077cd-74d7-77b3-8a81-b9e6916ffa4f`; all three turns including warmup are idle/completed.
+Observation survived through the actual full-suite result. That result was exit 1:
+3 passed and 1 tmp_path setup PermissionError on the shared system pytest temp
+directory, plus cache permission warnings. Do not fix shared temp directories or
+their ACLs; this PC is shared. Future unstarted fixtures need isolated sandbox-
+writable test temp/cache paths, with changes documented before the attempt.
+Two retained interventions: deterministic ASK_HUMAN
+`intervention_c0403a5cd1f4ba75ced9682cc6074d96e2eef559` spuriously classified the
+task's repeated no-install/no-network restriction as a contradiction; production
+pipeline.py around 2446 had appended standing-correction policy text to that goal
+constraint. Audit intent.py coordination/negation and keep transport policy out
+of the human intent ledger. This was not an actual approval request.
+Real Strands/verifier SEND_NUDGE `intervention_05d9809c22e4d31617b4f73dd1e6741728e956bc`
+then requested repairing the test environment; aggregate model calls 4. It is not
+evidence of pointless nagging on a correctly completed task because pytest failed.
+Q02 is inconclusive, not quiet success; Q03-Q10 pending. Revoke and detach both
+succeeded. Retain terminal client capture `capture-20260906T173942247149Z.json`
+under clean checkout `build/quiet-live-20260906/Q02/client`, SHA256
+`5599B8AEAE662D0EAB7472824FF2E889E104C65FB575C6B4B6A02B641EF75522`.
+Next: fix/audit the false prompt contradiction and prepare sandbox-local test
+paths for unstarted cases before Q03. No UI/native input or subagents were used.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 
