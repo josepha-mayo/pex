@@ -313,6 +313,26 @@ def test_rejected_ledger_decision_is_a_prompt_contradiction():
     assert classify_prompt(
         goal, "Please rewrite the evaluator as a new service."
     ) == PromptClass.CONSISTENT
+    assert classify_prompt(
+        goal, "Do not rewrite the evaluator as a new service.", decisions=[rejected],
+    ) == PromptClass.CONSISTENT
+
+    adopted = rejected.model_copy(update={
+        "statement": "Keep the existing evaluator service",
+        "metadata": {"kind": "decision"},
+        "alternatives_rejected": [
+            "Rewrite the evaluator as a new service",
+            "Replace validation with placeholder output",
+        ],
+    })
+    assert classify_prompt(
+        goal, "Keep the existing evaluator service.", decisions=[adopted],
+    ) == PromptClass.CONSISTENT
+    for prompt in (
+        "Please rewrite the evaluator as a new service.",
+        "Replace validation with placeholder output.",
+    ):
+        assert classify_prompt(goal, prompt, decisions=[adopted]) == PromptClass.CONTRADICTION
 
 
 def test_explicit_override_is_not_a_bare_actually():

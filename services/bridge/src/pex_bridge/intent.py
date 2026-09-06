@@ -155,11 +155,21 @@ def _matching_decisions(
         kind = str(decision.metadata.get("kind") or "decision")
         if kind == "unresolved_question":
             continue
-        haystack = " ".join([decision.statement, *decision.alternatives_rejected])
-        if kind == "rejected_approach" or decision.alternatives_rejected:
-            tokens = [token for token in _WORD.findall(haystack.lower()) if len(token) > 3]
-            if _matches_forbidden_terms(text, tokens[:4]):
-                matched.append(decision.statement)
+        rejected = (
+            [decision.statement, *decision.alternatives_rejected]
+            if kind == "rejected_approach" else decision.alternatives_rejected
+        )
+        # Each rejected choice is independently meaningful. Concatenation can
+        # require a duplicated verb or mistake the accepted choice for a ban.
+        if any(
+            _matches_forbidden_terms(
+                text, [token for token in _WORD.findall(choice.lower()) if len(token) > 3][:4],
+            )
+            for choice in rejected
+        ):
+            matched.append(decision.statement)
+            continue
+        if kind == "rejected_approach":
             continue
         fake = Goal(
             id="lint",

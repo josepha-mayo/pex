@@ -2,15 +2,40 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
-FULL CLEAN REGRESSION IN PROGRESS: `pex-verify-5ee1ee7` was confirmed clean,
-advanced detached to `a0f07c4`, synced offline/frozen, and all three package import
-paths verified inside that checkout. Running exec session **30815** owns
-`python -m pytest -q -rs -W error::pytest.PytestUnhandledThreadExceptionWarning`
-with `not live_llm and not live_codex and not live_opencode and not live_agentcore
-and not live_desktop`. JUnit target: `build/full-regression-a0f07c4.xml` in that
-checkout. This is IN PROGRESS, not a pass. Poll the same session; do not start a
-duplicate or switch/delete that worktree while it runs. Main's protected loop
-is excluded by clean-source isolation. No live bridge restart or provider call.
+FULL CLEAN REGRESSION FINISHED / FAILED on `a0f07c4`: **3 failed, 3873 passed,
+13 skipped, 16 deselected, 1 teardown error in 2391.23s (39m51s)**. Exec session
+30815 is terminal; do not poll/restart it. Detached `pex-verify-5ee1ee7` remains
+clean. All three package imports were verified inside it; frozen offline sync.
+Command: `python -m pytest -q -rs -W error::pytest.PytestUnhandledThreadExceptionWarning`
+with marker expression `not live_llm and not live_codex and not live_opencode
+and not live_agentcore and not live_desktop`. Retained JUnit:
+`C:/Users/JosephMayo/Projects/pex-verify-5ee1ee7/build/full-regression-a0f07c4.xml`,
+SHA256 `0C4A27A411BAB25726478C68A5EBD61A655C1E4D7F1AEF79F9B2F4F10D983B5A`.
+Do not overwrite that failure receipt with a later run.
+
+Failures: `test_codex_main_settlement_cancellation.py` first two tests timed out
+waiting 3 seconds for their held post-executor/settlement boundaries. The second
+also failed teardown with `presentations=TimeoutError (close_presentations:3563)`.
+`test_policy_scoring.py::test_rejected_ledger_decision_is_a_prompt_contradiction`
+returned consistent instead of contradiction. Focused clean rerun of both files:
+**2 failed, 22 passed in 22.31s** (first cancellation test and policy case;
+second cancellation/teardown did not reproduce). Cancellation tests lack finally
+release/reap around their held events: inspect this without assuming all failures
+are only flaky deadlines or weakening delivery assertions. This remains NEXT.
+
+Policy cause confirmed and repaired on main: decision statement and all rejected
+alternatives were concatenated before ordered token matching. Duplicate wording
+required a second verb occurrence; accepted wording could also be treated as a
+ban. Each rejected choice is now checked independently, with accepted constraints
+handled separately. Added positive accepted-choice, negative restatement and
+multiple-alternative checks. Five-file policy/intent/authority gate: **113 passed
+in 33.85s**, thread warnings as errors, scoped Ruff/diff clean. The full clean
+gate has NOT been rerun after this repair. No model/native calls; protected loop
+unchanged. Submission NO-GO.
+
+Skip breakdown: 3 frozen-bridge opt-in tests, 2 missing AgentCore SDK tests,
+7 symlink/platform-specific tests, and 1 POSIX FIFO test. Sixteen explicitly
+excluded live tests are not passes or proof of a deployed integration.
 
 Project-binding integrity: protocol, bridge and runtime separately case-folded,
 trimmed and stripped slashes from every project identifier, conflating opaque
