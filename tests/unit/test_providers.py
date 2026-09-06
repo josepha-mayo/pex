@@ -100,6 +100,9 @@ def test_explicit_provider_and_disable(monkeypatch):
     assert info["backend"] == "openrouter"
     assert info["base_url"] == "https://openrouter.ai/api/v1"
     assert info["has_api_key"] is True
+    assert "configured local source" in info["login_note"]
+    assert "OS credential vault or environment" in info["login_note"]
+    assert ".env" not in info["login_note"]
     assert "zen" in PROVIDERS
     assert "openai" in PROVIDERS
     assert "github_models" in PROVIDERS

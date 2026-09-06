@@ -485,7 +485,7 @@ export function supervisorHonestyCopy(info: {
   login_implemented?: boolean;
 } | null): string {
   const loaded = info?.model_loaded
-    ? "Semantic model is loaded."
+    ? "Supervisor model client is configured; configuration does not verify connection or inference."
     : "PEX stays deterministic until a configured model is available.";
   const mode = info?.auth_mode || "unconfigured";
   const login = info?.login_implemented

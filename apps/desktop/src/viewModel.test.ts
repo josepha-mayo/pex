@@ -737,10 +737,13 @@ test("companion headline names the harness and does not invent token savings", (
     supervisorHonestyCopy({ model_loaded: false, auth_mode: "api_key", login_implemented: false }),
     /not implemented/i,
   );
-  assert.doesNotMatch(
-    supervisorHonestyCopy({ model_loaded: true, auth_mode: "api_key" }),
-    /saved \d+k/i,
-  );
+  const configuredModelCopy = supervisorHonestyCopy({
+    model_loaded: true,
+    auth_mode: "api_key",
+  });
+  assert.match(configuredModelCopy, /model client is configured/i);
+  assert.match(configuredModelCopy, /does not verify connection or inference/i);
+  assert.doesNotMatch(configuredModelCopy, /semantic model is loaded|ready|successful inference|saved \d+k/i);
 });
 
 test("compact companion is the one-line pet, not a worker catalog", async () => {

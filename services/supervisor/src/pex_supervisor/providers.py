@@ -889,7 +889,8 @@ def describe_backend() -> dict[str, Any]:
     elif not login_note:
         login_note = (
             "This is PEX’s supervisor model, not a worker harness. "
-            "Consumer chat login is not implemented. Keys stay in .env."
+            "Consumer chat login is not implemented. Credentials, when used, "
+            "stay in the configured local source (OS credential vault or environment)."
         )
     return {
         "backend": pid,
