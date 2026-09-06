@@ -1210,6 +1210,62 @@ test("native pet close is routed to the same durable visibility contract", async
   assert.match(appSource, /onPetVisible=\{\(visible\) => void changePetVisibility\(visible\)\}/u);
 });
 
+test("pet status bubble stays dismissed across stable polls and reopens for a changed decision", async () => {
+  const {
+    statusBubbleMaterialKey,
+    statusBubbleShouldReopen,
+  } = await import("./petBubble.ts");
+  const decision = {
+    tone: "need" as const,
+    label: "Codex needs you",
+    detail: "Choose the migration strategy",
+  };
+  const dismissedKey = statusBubbleMaterialKey(decision);
+  assert.ok(dismissedKey);
+  assert.equal(statusBubbleShouldReopen(false, dismissedKey, decision), false);
+  assert.equal(statusBubbleShouldReopen(false, dismissedKey, { ...decision }), false);
+  assert.equal(statusBubbleShouldReopen(false, dismissedKey, {
+    ...decision,
+    detail: "Approve the irreversible migration",
+  }), true);
+  assert.equal(statusBubbleShouldReopen(false, dismissedKey, {
+    tone: "work",
+    label: "Codex working",
+    detail: "Tests are running",
+  }), false);
+});
+
+test("pet renders separate keyboard buttons for status dismissal, activation, and pet hiding", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createServer } = await import("vite");
+  const vite = await createServer({
+    root: process.cwd(),
+    server: { middlewareMode: true, hmr: false },
+    appType: "custom",
+  });
+  try {
+    const { PetStage } = await vite.ssrLoadModule("/src/components/PetStage.tsx");
+    const html = renderToStaticMarkup(createElement(PetStage, {
+      name: "Pex",
+      sheet: "",
+      mood: "decision",
+      scale: 1,
+      reducedMotion: true,
+      overlay: true,
+      status: { tone: "need", label: "Decision needed", detail: "Choose one option" },
+      onActivate: () => undefined,
+      onDismiss: () => undefined,
+    }));
+    assert.match(html, /aria-label="Pex\. Decision needed\. Choose one option\. Open PEX inspector, then command deck\."/u);
+    assert.match(html, /<button[^>]+class="pet-status-dismiss"[^>]+aria-label="Dismiss PEX status message"/u);
+    assert.match(html, /<button[^>]+class="pet-overlay-close"[^>]+aria-label="Hide PEX pet"/u);
+    assert.equal((html.match(/type="button"/gu) || []).length, 4);
+  } finally {
+    await vite.close();
+  }
+});
+
 test("goal editor objective is a textarea so a full task can be pasted", async () => {
   const { readFile } = await import("node:fs/promises");
   const { dirname, join } = await import("node:path");

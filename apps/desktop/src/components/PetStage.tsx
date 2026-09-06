@@ -1,6 +1,7 @@
 import { type MouseEvent, type PointerEvent, useEffect, useRef, useState } from "react";
 
 import { CodexSprite, lookIndex, type PetMood } from "../pets/atlas";
+import { statusBubbleMaterialKey, statusBubbleShouldReopen } from "../petBubble";
 import { startPetDrag } from "../releasePet";
 import type { StatusCopy } from "../types";
 
@@ -29,6 +30,8 @@ export function PetStage({
   onDismiss?: () => void;
 }) {
   const [hop, setHop] = useState(false);
+  const [bubbleVisible, setBubbleVisible] = useState(true);
+  const [dismissedMaterialKey, setDismissedMaterialKey] = useState<string | null>(null);
   const [dragDir, setDragDir] = useState<-1 | 0 | 1>(0);
   const [look, setLook] = useState<number | null>(null);
   const actor = useRef<HTMLButtonElement>(null);
@@ -48,6 +51,12 @@ export function PetStage({
   }
 
   useEffect(() => clearTimers, []);
+
+  useEffect(() => {
+    if (!bubbleVisible && statusBubbleShouldReopen(false, dismissedMaterialKey, status)) {
+      setBubbleVisible(true);
+    }
+  }, [bubbleVisible, dismissedMaterialKey, status]);
 
   useEffect(() => {
     if (!overlay || !onDismiss) return;
@@ -114,13 +123,18 @@ export function PetStage({
     if (event.detail === 0) onActivate();
   }
 
+  function dismissStatusBubble() {
+    setDismissedMaterialKey(statusBubbleMaterialKey(status));
+    setBubbleVisible(false);
+  }
+
   return (
     <div className={`pet-stage ${overlay ? "pet-stage-overlay" : ""}`}>
       <button
         ref={actor}
         type="button"
         className={`pet-actor mood-${mood}`}
-        aria-label={`${name}. ${status ? `${status.label}. ${status.detail}` : ""} ${overlay ? "Open PEX inspector, then command deck" : "Inspect current work"}.`.replaceAll(/\s+/g, " ").trim()}
+        aria-label={`${name}. ${status ? `${status.label}. ${status.detail}.` : ""} ${overlay ? "Open PEX inspector, then command deck" : "Inspect current work"}.`.replaceAll(/\s+/g, " ").trim()}
         onPointerEnter={onPointerEnter}
         onPointerLeave={resetPointer}
         onPointerCancel={resetPointer}
@@ -144,7 +158,7 @@ export function PetStage({
         )}
         <span className="pet-name">{name}</span>
       </button>
-      {status ? (
+      {status && bubbleVisible ? (
         <div className="activity-bubble" aria-live="polite">
           <button type="button" className="bubble-content" onClick={onActivate}>
             <span className="status-dot" aria-hidden="true" />
@@ -154,10 +168,19 @@ export function PetStage({
             </span>
             <span className="bubble-action">Open</span>
           </button>
-          {overlay && onDismiss ? (
-            <button type="button" className="pet-overlay-close" aria-label="Hide PEX pet" title="Hide pet (Esc)" onClick={onDismiss}>×</button>
+          {overlay ? (
+            <button
+              type="button"
+              className="pet-status-dismiss"
+              aria-label="Dismiss PEX status message"
+              title="Dismiss status message"
+              onClick={dismissStatusBubble}
+            >−</button>
           ) : null}
         </div>
+      ) : null}
+      {overlay && onDismiss ? (
+        <button type="button" className="pet-overlay-close" aria-label="Hide PEX pet" title="Hide pet (Esc)" onClick={onDismiss}>×</button>
       ) : null}
     </div>
   );

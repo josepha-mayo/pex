@@ -2291,6 +2291,32 @@ html.pet-shell #root {
   -webkit-app-region: no-drag;
 }
 
+.pet-stage-overlay > .pet-overlay-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+}
+
+.pet-status-dismiss {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(236, 244, 239, 0.18);
+  border-radius: 999px;
+  color: rgba(236, 244, 239, 0.72);
+  background: transparent;
+  font: 600 16px/1 system-ui, sans-serif;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.pet-status-dismiss:hover,
+.pet-status-dismiss:focus-visible {
+  border-color: rgba(90, 225, 184, 0.72);
+  color: #ffffff;
+}
+
 .pet-overlay-close:hover,
 .pet-overlay-close:focus-visible {
   opacity: 1;
