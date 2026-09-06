@@ -7,6 +7,15 @@ sent. It is not counted as a successful quiet task. See
 [the failure and repair record](../../VERIFICATION_REFERENCE_REVIEW.md).
 The validated recovery cases below keep their original source-specific scope.
 
+Fresh repair proof on clean `5ff58f6`: independently reviewed run-09 observed a
+worker that implemented its change but honestly had not run tests. PEX gathered
+available evidence, selected the offered probe through Strands plus verifier,
+sent one scoped REQUEST_VERIFICATION, observed the same worker's full-suite exit 0
+with four passed tests and exact cwd, then returned real Strands NOOP. Tests were
+unchanged; root's separate pytest also passed four. Grant revoke/detach succeeded.
+This is a controlled worker-mediated evidence case, not independent sandbox
+execution or a benchmark score. Exact audit/usage/receipts are in the repair record.
+
 Status: **production shared-worker recovery/quiet pair independently reviewed on
 clean `4543a58`, plus fresh false-claim recovery independently reviewed on clean
 `ee459f8`**. Each result remains bound to its own source revision.

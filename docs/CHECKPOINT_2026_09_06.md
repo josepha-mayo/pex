@@ -39,7 +39,12 @@ ID/kind, but dispatch required its full object and replaced the request with
 fail-closed NOOP. No verification message was sent. Original durable planner
 effect, safe detach, worker state and local repair are documented in
 [VERIFICATION_REFERENCE_REVIEW.md](VERIFICATION_REFERENCE_REVIEW.md).
-Fresh clean-source/live replay is required; this is not successful restraint.
+Fresh clean `5ff58f6` passed 231 affected tests and new run-09 passed independent
+live audit: one scoped REQUEST_VERIFICATION reached the same worker, actual full
+pytest passed all four with exact observed cwd, outcome supported, then Strands
+NOOP. Revoke/detach succeeded; worker idle, three completed turns. New bridge
+session83942/PID11200/port7434 remains running detached in `pex-live-5ff58f6`,
+home-09. Exact receipts/hashes/usage are in the linked review. Run-08 remains failed.
 PEX still lacks an independent sandbox test runner: its REQUEST_VERIFICATION
 asks the existing worker for scoped evidence and must observe actual execution.
 

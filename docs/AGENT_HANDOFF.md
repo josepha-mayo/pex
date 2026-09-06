@@ -5,8 +5,8 @@
 Start with [CHECKPOINT_2026_09_06.md](CHECKPOINT_2026_09_06.md). It records the newer
 source, exact retained package, clean-checkout failure diagnosis, native pet-close proof,
 settings repairs, native-control boundaries, protected file, owners and next
-actions. Native checks resumed with permission, but a newer physical Escape
-stopped them again: do not send native input until permission is renewed. The
+actions. Earlier native checks were stopped with Escape. The current shared-PC
+boundary keeps native input paused: ask before the next foreground PEX check. The
 user is actively using this PC with other agents; keep background work separate
 from shared mouse, keyboard and foreground focus, even when targeting only PEX.
 Fresh shared-worker recovery and separate quiet proofs passed on clean `4543a58`;
@@ -15,7 +15,11 @@ Full clean `84d9bd3` testing completed with 3,691 passes, 29 skips and one clean
 warning. The new full strict run on fixture repair `f529644` passed: 3,718 passed,
 27 skipped, zero failures/errors or thread warnings. Run-08 exposed a genuine
 verification-probe binding failure; its exact original decision and terminal
-receipts are retained. Consult the checkpoint before continuing the repair/live replay.
+receipts are retained. Repair `5ff58f6` passed 231 clean affected tests and an
+independent live run-09 audit: gather evidence, same-worker verification request,
+actual four-test pass, then NOOP. Consult the checkpoint/review for exact receipts.
+Next: ten varied quiet cases and deeper required flows, not another run of the
+already completed failure fixture.
 Final installed-build gates remain open.
 All `current` or `final` headings below are historical wherever they conflict.
 The goal remains active and the full three-spec submission scope remains incomplete.

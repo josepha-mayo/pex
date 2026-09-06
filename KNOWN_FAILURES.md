@@ -9,7 +9,10 @@ The model-facing/parser-redacted full object also fails the old exact comparison
 Original planner effect proves the reference match; final NOOP payload is not the
 original proposal. No verification message was sent. Scoped local reference
 binding repair passed targeted tests and independent review; fresh clean-source
-and live evidence are still required.
+and live evidence were then retained on `5ff58f6`: 231 clean affected tests passed;
+independently reviewed run-09 completed one scoped verification request, observed
+the worker's actual four-test pass, then NOOP. Run-08 remains failed. See the review
+for precise evidence scope and the remaining independent-executor gap.
 See `docs/VERIFICATION_REFERENCE_REVIEW.md` for exact receipts and cleanup.
 
 Strict full clean `f529644`: 3,718 passed / 27 skipped, no thread warning, zero

@@ -29,7 +29,11 @@ This predates the latest verification-reference repair. Controlled run-08 expose
 a real failure: Strands selected the correct offered probe by ID/kind, but bridge
 dispatch required the full probe object and safely rejected it. Failed evidence
 is retained; source repair and fresh live replay must pass before claiming this
-behavior works. No independent sandbox test-execution capability is claimed.
+behavior works. That fresh replay is now complete on `5ff58f6`: 231 clean-source
+affected tests passed; independently reviewed live run-09 sent one scoped
+verification request, observed the same worker's full four-test pytest pass,
+then returned Strands NOOP. Grant revoked, observer detached, worker idle.
+No independent sandbox test-execution capability is claimed. Run-08 remains failed.
 
 The user is sharing the PC with other agents. Native mouse/keyboard and focus
 changes are paused, including PEX-targeted clicks. Continue background work only

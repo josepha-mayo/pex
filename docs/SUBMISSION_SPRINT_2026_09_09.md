@@ -31,7 +31,9 @@ our build-spec target, subject to the user's no-card-charge authorization.
   (clean 4543a58 run-04, independently reviewed, real Strands NOOP).
 - [x] Retain fresh false-claim recovery through exact observed test evidence
   (clean `ee459f8` run-07; independent receipt audit passed).
-- [ ] Complete uncertain-evidence and ten varied quiet-task live cases.
+- [x] Complete worker-mediated uncertain-evidence live case (clean `5ff58f6`,
+  independently reviewed run-09: gather, scoped request, actual passing tests, NOOP).
+- [ ] Complete ten varied quiet-task live cases and measure false-positive rate.
 - [x] Reject wrong-directory Codex pytest evidence at normalization and receipt matching.
 - [x] Repair disconnected consumer re-block after cancellation-safe settlement.
 - [x] Retain bounded oversized shared command observations without manufacturing
@@ -40,8 +42,8 @@ our build-spec target, subject to the user's no-card-charge authorization.
   3,691 passed / 29 skipped / one warning, not warning-clean release proof.
 - [x] Repair fixture ownership and complete a strict full clean gate (`f529644`:
   3,718 passed, 27 skipped, zero failures/errors or thread-warning recurrence).
-- [ ] Verify latest probe-reference repair on clean sources and repeat the
-  uncertain-evidence live case (run-08 failed safely before message delivery).
+- [x] Verify probe-reference repair on clean sources (231 affected tests) and a
+  new live uncertain case (run-09); preserve run-08's failed evidence.
 - [ ] Diagnose native post-start bridge failure; retain original failure code.
 - [ ] Repeat cold start, normal retry and restart persistence on release sources.
 
