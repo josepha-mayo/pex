@@ -275,6 +275,18 @@ def test_local_http_bounds_body_and_does_not_echo_invalid_input(monkeypatch):
         assert rejected.json() == {"detail": "invalid JSON"}
 
 
+@pytest.mark.parametrize("opening,closing", [(b"[", b"]"), (b'{"x":', b"}")])
+def test_local_http_rejects_excessive_json_nesting_without_inference(monkeypatch, opening, closing):
+    monkeypatch.setattr(runtime, "handle_payload", lambda *a, **k: pytest.fail("no inference"))
+    with TestClient(runtime._fastapi_app(model=object()), raise_server_exceptions=False) as client:
+        response = client.post(
+            "/invocations", content=opening * 10_000 + b"0" + closing * 10_000,
+            headers={"content-type": "application/json"},
+        )
+    assert response.status_code == 400
+    assert response.json() == {"detail": "invalid JSON"}
+
+
 def test_runtime_rejects_oversized_model_response(monkeypatch):
     request = _request()
     result = _result(request)

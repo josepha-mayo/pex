@@ -859,6 +859,22 @@ async def test_agentcore_response_schema_version_is_an_exact_integer(tmp_path, v
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("opening,closing", [(b"[", b"]"), (b'{"x":', b"}")])
+async def test_agentcore_excessive_json_nesting_is_a_protocol_uncertain_result(
+    tmp_path, opening, closing,
+):
+    request = _request()
+    response = _aws_response(request, _result(request))
+    response["response"] = io.BytesIO(opening * 10_000 + b"0" + closing * 10_000)
+    aws = FakeAwsClient(response)
+    client = AgentCoreSupervisorClient(_settings(tmp_path), client=aws)
+    with pytest.raises(AgentCoreDeliveryUncertainError) as caught:
+        await client.decide(request)
+    assert caught.value.reason_code == "response_protocol_failure"
+    assert len(aws.calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_agentcore_client_rejects_stale_same_session_response(tmp_path):
     request = _request()
     response = _aws_response(request, _result(request))

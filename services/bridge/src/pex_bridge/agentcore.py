@@ -811,7 +811,7 @@ class AgentCoreSupervisorClient:
                 parse_constant=_reject_nonfinite_json_constant,
                 object_pairs_hook=_unique_json_object,
             )
-        except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
             raise AgentCoreDeliveryUncertainError(
                 transport_invocation_id=invocation_id,
                 reason_code="response_protocol_failure",

@@ -2,6 +2,17 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Malformed JSON boundary follow-up: deep arrays/objects below the byte limit
+raised decoder recursion errors. Four red regressions showed local HTTP 500s
+and generic client `unexpected_failure`; the existing client already preserved
+uncertain delivery, so this was NOT evidence of an unsafe retry. Runtime now
+returns fixed HTTP 400 `invalid JSON` before inference, and client returns typed
+`response_protocol_failure` with one stub dispatch. Both catch decoder recursion
+alongside existing JSON errors. Full runtime/client/pipeline gate: **123 passed
+in 28.15s**, thread warnings as errors, scoped Ruff/diff clean. No provider/AWS
+invocation, live restart or protected-loop change. This is not a proof of all
+resource-exhaustion defenses or deployed AgentCore behavior.
+
 AgentCore envelope boundary repair: Python equality let JSON `true` and `1.0`
 pass as schema version `1` in both runtime requests and bridge responses. Four
 new cases failed before the fix. Both boundaries now require exact integer type

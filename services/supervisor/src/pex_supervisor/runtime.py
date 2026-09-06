@@ -233,7 +233,7 @@ def _fastapi_app(*, model: object = _UNSET):
                     parse_constant=_reject_json_constant,
                     object_pairs_hook=_unique_json_object,
                 )
-            except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+            except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError) as exc:
                 raise HTTPException(status_code=400, detail="invalid JSON") from exc
             # ``handle_payload`` is the synchronous AgentCore entry point and
             # ultimately calls ``asyncio.run``.  FastAPI is already executing
