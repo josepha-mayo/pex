@@ -67,6 +67,14 @@ use a fresh clean repaired-source bridge/profile for Q02 and retain Q01 unchange
 Private read-only diagnosis helper: `build/audit_quiet_q01.py`; it parses only the
 retained inspection's journal frames and prints bounded envelope metadata, not
 raw prompts, message text, credentials, or execution payloads.
+Fresh clean checkout `C:/Users/JosephMayo/Projects/pex-live-6f929ea` now exists at
+`6f929ea50ce7d909269ac26f260001ddd21f587b`; locked uv sync installed 113 packages.
+Root repeated the same strict three-file gate there: 160 passed in 6.62s,
+tracked checkout clean. Read-only offline classification of both exact retained
+chunk-106 lifecycle envelopes proved old 5ff58f6 filter=false and repaired
+filter=true. No frame was replayed into a live worker, bridge, or supervisor.
+No bridge has been started from this new checkout yet. Next action remains a
+fresh repaired-source bridge/profile and Q02, preserving the Q01 failure receipt.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 
