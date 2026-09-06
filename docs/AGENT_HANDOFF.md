@@ -2,6 +2,22 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Dispatch project-boundary follow-up: pipeline and executor now import the shared
+`project_binding_key` under their existing internal alias, replacing unconditional
+case-fold/strip normalization. Eight red regressions proved false sibling-project
+matches and foreign START_AGENT requests reaching the adapter capability probe.
+The repaired tests prove rejection before any adapter probe; ordinary Windows
+absolute-path spelling remains compatible. New file:
+`tests/unit/test_bridge_project_binding.py` (9 cases). Six complete files covering
+these cases, lifecycle actions, session merge, pipeline serialization and workspace
+executor/pipeline continuity: **112 passed in 106.44s**, thread warnings as errors
+(exec 56652 terminal). Scoped Ruff and whitespace passed; root reviewed changed
+call paths and full new test file, not every line of pipeline/executor. No live
+worker/model call, persistent format change or protected-loop edit occurred.
+Store's remaining legacy comparator participates in persisted fingerprints and
+v2 alias compatibility; its migration/replay audit is still open. Earlier native
+`60ffa76` artifacts do not contain this or the two context-boundary repairs.
+
 NATIVE BUILD AND PACKAGE VERIFICATION COMPLETE on clean `60ffa76`.
 Exec 46349 terminated successfully: release Rust compile 19m43s, both MSI/NSIS
 generated. One nonfatal dead-code warning for test-used `bridge_port_state_at`.

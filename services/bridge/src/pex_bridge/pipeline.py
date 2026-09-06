@@ -38,6 +38,7 @@ from pex_protocol.enums import (
 )
 from pex_protocol.goal import Decision, Goal
 from pex_protocol.intervention import Intervention
+from pex_protocol.project_binding import project_binding_key as _project_key
 from pex_protocol.project_identity import same_absolute_path
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorRequest, SupervisorResult
@@ -542,10 +543,6 @@ def _redact_event(event: HarnessEvent) -> None:
         cleaned, _ = redact_mapping(getattr(event, field))
         setattr(event, field, cleaned)
     event.file_paths = [redact_text(path)[0] or "" for path in event.file_paths]
-
-
-def _project_key(value: str) -> str:
-    return value.strip().replace("\\", "/").rstrip("/").casefold()
 
 
 def _same_project(left: str | None, right: str | None) -> bool:

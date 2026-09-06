@@ -20,6 +20,7 @@ from pex_protocol.capabilities import PermissionResponseMode
 from pex_protocol.context import ContextBundle
 from pex_protocol.enums import HarnessType, PolicyVerdict, SessionStatus
 from pex_protocol.overlay import Overlay, locally_proven_session_overlay
+from pex_protocol.project_binding import project_binding_key as _project_key
 from pex_protocol.session import HarnessSession
 from pydantic import ValidationError
 
@@ -2439,7 +2440,3 @@ def _json_bytes(value: object) -> int:
     except (TypeError, ValueError):
         return MAX_CONTEXT_BUNDLE_BYTES + 1
     return len(rendered.encode("utf-8"))
-
-
-def _project_key(value: str) -> str:
-    return value.strip().replace("\\", "/").rstrip("/").casefold()

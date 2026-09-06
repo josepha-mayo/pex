@@ -6,6 +6,21 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Context and dispatch project boundaries — 6 Sep follow-up
+
+New `tests/unit/test_bridge_project_binding.py`: full-file review; nine cases.
+Changed-path review of mesh, supervisor-context, pipeline and executor project
+comparison gates. Each formerly normalized opaque/POSIX identifiers as Windows
+paths. Shared conservative comparator now gates context eligibility before
+supersession, sibling matching and lifecycle/handoff project checks. Regression
+evidence: eight mesh red cases; four supervisor-envelope red cases; eight
+pipeline/start-action red cases. Passing gates: 115 context/handoff cases,
+34 supervisor/autonomous-context/mesh cases, then 112 dispatch/lifecycle/workspace
+cases (overlapping counts, not additive). Thread warnings treated as errors.
+This does not close live cross-harness proof or full-file pipeline/executor audit.
+Store's legacy comparator remains pending: it also affects persisted request
+fingerprints and legacy/v2 aliases, so a global replacement is not yet justified.
+
 ### Project comparison boundaries — 6 Sep
 
 New file `packages/protocol/src/pex_protocol/project_binding.py`: full helper
