@@ -224,6 +224,23 @@ prompt pairs now classify likely_refinement with no matched conflicts; no fixtur
 text was rewritten to produce this result. Final focused gate88passed24.63s,
 Ruff/scoped diff clean. No new worker/model/network/UI/subagent activity for this
 audit. Live matrix unchanged; fresh repaired-source Q07 remains next.
+Q07 live now passed behaviorally quiet on clean
+`d67e78f24a22092b2b2e4f56682e384f4a0d0e6f` at `pex-live-d67e78f` (locked sync113,
+clean focused88passed35.94s). Dedicated bridge7438/PID7712/session34047, private
+`build/quiet-home-d67`; ignored scripts `run_quiet_bridge_d67.py`,
+`quiet_owner_d67.py`, `quiet_case_d67.py`. Reuse this origin/profile for Q08.
+Worker `01a077f6-418b-7490-8a2f-e5ae36d13e92`, task
+`01a077f7-92c9-7213-ac5a-a04c9bd9e095`, completed with only warmup+task turns.
+Immutable files unchanged; root inspected rule-driven implementation and report:
+T1..T5 ordered, category counts critical1/high2/medium1/low1. Full-suite5passed,
+exit0, exactQ07cwd, no later edits, event
+`codex-shared:0d28206f0d9ac46d32578857ca7f35c93f11029bc5a7140ca8f38f4579b61321`.
+Exactly one Strands NOOP `intervention_cb9024157167117b26c196620b056890aa5a4097`,
+2aggregatecalls14788ms; no prompt conflict. Rationale recognizes test pass but
+does not claim independent validation of report category counts. Do not overstate
+that semantic evidence scope. Revoke/detach succeeded; terminal Q07/client
+`capture-20260906T182723969025Z.json` retained under clean build/quiet-live-20260906.
+Matrix now4quiet,2inconclusive,1early false escalation,3pending(Q08-Q10).
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 
