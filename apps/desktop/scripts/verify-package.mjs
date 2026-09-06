@@ -168,7 +168,7 @@ const receipt = {
     release_input_sha256: preflight.git.release_input_sha256,
     sidecar_input_sha256: preflight.sidecars.input_sha256,
     preflight_sha256: hashJson(preflight),
-    postbuild_desktop_sha256: sha256Buffer(canonicalDesktop),
+    canonical_desktop_sha256: sha256Buffer(canonicalDesktop),
   },
   installers: installerHashes,
   desktop_bundle_marker: desktopBundleMarker,
