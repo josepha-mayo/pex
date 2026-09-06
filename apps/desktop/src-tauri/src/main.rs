@@ -1146,6 +1146,55 @@ mod tests {
     }
 
     #[test]
+    fn live_identity_probe_accepts_fragmented_proof_without_waiting_for_eof() {
+        let token = "local-test-token-that-is-at-least-32";
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let (release, released) = std::sync::mpsc::channel();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            stream
+                .set_write_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            let mut request = Vec::new();
+            while !request.ends_with(b"\r\n\r\n") {
+                assert!(request.len() < 4096);
+                let mut byte = [0_u8; 1];
+                stream.read_exact(&mut byte).unwrap();
+                request.push(byte[0]);
+            }
+            let request = String::from_utf8(request).unwrap();
+            assert!(!request.contains(token));
+            let challenge = request
+                .split("challenge=")
+                .nth(1)
+                .unwrap()
+                .split_whitespace()
+                .next()
+                .unwrap();
+            let proof = bridge_identity_proof(token, challenge).unwrap();
+            let body = format!(
+                "{{\"ok\":true,\"service\":\"pex-bridge\",\"challenge\":\"{challenge}\",\"proof\":\"{proof}\"}}"
+            );
+            let response = identity_response(&body, "");
+            let split = response.len() - 1;
+            stream.write_all(&response[..split]).unwrap();
+            thread::sleep(Duration::from_millis(20));
+            stream.write_all(&response[split..]).unwrap();
+            // Keep the connection alive until the caller has returned. The
+            // authenticated Content-Length body, not EOF, must establish ready.
+            let _ = released.recv_timeout(Duration::from_secs(3));
+        });
+        let healthy = super::bridge_is_healthy_at(&address, token);
+        let _ = release.send(());
+        server.join().unwrap();
+        assert!(healthy);
+    }
+
+    #[test]
     fn bridge_tokens_are_bounded_and_single_line() {
         let valid = "v".repeat(32);
         assert_eq!(

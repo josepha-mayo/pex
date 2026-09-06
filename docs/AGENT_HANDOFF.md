@@ -2,6 +2,15 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Native bridge bounded audit: existing Rust suite passed 15 tests. Added an actual
+ephemeral loopback identity exchange covering fragmented authenticated response
+delivery with the server kept open until the client returns. It uses only a test
+token, checks that the token is absent from the request, and never binds port
+7420 or touches a live PEX bridge. `cargo test --locked --offline`: **16 passed**;
+Rust formatting applied. Current implementation passes this case; no production
+identity policy was weakened or rewritten. This narrows a regression gap, but
+does not reproduce or diagnose the user's old installed bridge failure.
+
 Startup-recovery copy audit: non-retryable accepted error states hid the Retry
 button but several code-specific guidance strings (and copied diagnostics) still
 instructed users to choose Retry. A regression failed on `bridge_identity_lost`.
