@@ -41,10 +41,57 @@ The fresh `43690b8` checkout is
 interrupted after **225 passed, 16 skipped**, while the 65-handoff capacity case appeared
 stalled. Independent evidence subsequently showed continued durable handoff progress
 and an isolated **PASS in 266.58 seconds**. Therefore a deadlock is not established.
-The expensive path is being profiled before changing fixtures or production code.
+The isolated capacity case passed again under `cProfile` in **281.67 seconds**.
+Profiling found roughly **16,046 SQLite connections**: its helper created 65 attached
+source siblings, so each new event exercised expanding sibling and automatic-handoff
+scans before the intended indexed delivery. The capacity fixture is now narrowed to
+one attached source and 65 real, distinct REST handoffs so it still proves the exact
+beyond-64 contract without accidentally benchmarking an expanding sibling-scan topology.
+The corrected case passed in **116.50 seconds**; two adjacent index/ownership cases
+passed in **10.27 seconds**. Independent review approved the unchanged beyond-64
+authority, oldest-delivery acknowledgement and artifact-evidence assertions. This is
+a fixture-runtime improvement, not a measured production speedup.
+This does **not** dismiss the separate production scalability concern: large attached
+fleets still cause repeated authority-bound session, recent-event and intervention
+reads, and that all-pairs path needs its own bounded performance work and evidence.
 A diagnostic run with `faulthandler_timeout=45` emitted a Windows access violation;
 do not report that diagnostic as a passing run or silently attribute it to PEX code.
 There is still **no completed green full-suite receipt for the latest source**.
+
+## Fresh live supervisor result and current repair
+
+The clean checkout `C:\Users\JosephMayo\Projects\pex-live-final-f53`, source
+`f53c13b187421448b3fc26e3b82c2ef0571f34ea`, ran real Codex and Strands with the exact
+Zen model `muse-spark-1.3-contributor-free`. Its restraint case passed in **139.97s**:
+one worker turn, one real supervisor call, artifact-supported acceptance and `NOOP`.
+Raw restraint receipt SHA-256:
+`283334E846A7F01273DF5AE3DAE00D0C823F4D4A4EC715F0855DB12A7A002D9E`.
+
+The fresh recovery case **FAILED in 219.53s**. It produced one initial STOP decision,
+not zero: the main model proposed a correction, but the independent verifier spent
+all three model calls on evidence reads and returned no typed verdict. Its status
+was `missing_structured_output`; PEX correctly failed closed to `NOOP`, and no second
+worker turn occurred. The test's old `no initial STOP intervention` assertion was
+misleading because it assigned the first decision only after seeing two. Do not
+describe this source as a freshly validated live pair. The earlier `5c49c10` pair
+remains historical evidence only. The failed case's temporary SQLite was inspected
+before pytest's normal retention removed it; future live runs must use a unique
+explicit `--basetemp` under ignored scratch so failures remain inspectable.
+
+A bounded free-provider diagnostic confirmed Muse rejects `tool_choice=required`
+with HTTP 400 and explicitly supports only `auto`. Do not change the adapter to
+required or claim its compatibility mapping caused this failed run. The reviewed
+repair instead gives the verifier generic budget guidance: gather sufficient
+independent evidence efficiently, reserve a call for its typed verdict, and reject
+when evidence is insufficient. Runtime limits and evidence/permission gates are
+unchanged. The strict Strands-runtime unit gate passed **47 tests**, including
+one/two evidence-call approval controls and three-call exhaustion failing closed.
+This supports the safety boundary; only another real run can verify model behavior.
+
+Independent review also found the reusable proof omitted the verifier receipt and
+the requested worker model. Strengthening that proof contract is in progress;
+aggregate model-call counts alone do not prove a separate verifier. Requested model
+configuration must not be mislabeled as authoritative executed-model identity.
 
 ## Native interaction evidence
 

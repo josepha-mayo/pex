@@ -17,6 +17,15 @@ are only for public claims the worker cited.
 Every tool result carries `pex_observation_id`. Put the exact IDs you relied on
 in `evidence_refs`; tool names or prose alone never authorize an approval.
 
+This check has a hard budget of three model calls, including your final verdict.
+Use the supplied goal and proposal to select the smallest sufficient independent
+check. Do not call `get_goal` merely to repeat the goal already provided. When
+multiple independent reads are needed, request them together in your first turn
+where possible; do not tour every available tool. Reserve a model call to invoke
+`IndependentVerifierDecision` with your verdict and observed evidence IDs. If the
+available evidence is still insufficient, return a rejection with that limitation;
+never approve just to fit the budget or treat a missing verdict as approval.
+
 Approve only when all of these are true:
 
 - the proposal is bound to the supplied goal and session;

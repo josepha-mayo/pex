@@ -764,6 +764,31 @@ async def test_uncertain_verification_receipt_alone_cannot_authorize_interventio
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("evidence_calls", [1, 2, 3])
+async def test_verifier_budget_reserves_a_verdict_or_fails_closed(evidence_calls):
+    model = FakeStructuredModel(
+        "SEND_NUDGE",
+        verifier_evidence_tool_calls=evidence_calls,
+        verifier_evidence_tool_name="get_recent_events",
+    )
+
+    result = await decide_async(_request(0.1), model=model)
+
+    verifier = result.independent_verifier
+    assert verifier is not None
+    assert verifier.model_call_count == min(evidence_calls + 1, 3)
+    if evidence_calls < 3:
+        assert verifier.authorizes_intervention()
+        assert result.action.type.value == "SEND_NUDGE"
+    else:
+        # Real Strands stops at its turn budget even if all turns gathered facts.
+        # Evidence without a typed verdict must never become permission to act.
+        assert verifier.status == "missing_structured_output"
+        assert not verifier.authorizes_intervention()
+        assert result.action.type.value == "NOOP"
+
+
+@pytest.mark.asyncio
 async def test_ten_verified_completions_measure_zero_false_positive_interventions():
     false_positives = 0
     inspected = 10

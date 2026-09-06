@@ -267,20 +267,23 @@ async def _deliver_synthetic_artifact_handoff(
     index: int,
     artifact_path: str,
     key_prefix: str,
+    source_session_id: str | None = None,
 ) -> dict[str, object]:
-    source = state.adapters.synthetic.seed_session(
-        vendor_id=f"{key_prefix}-source-{index:03d}"
-    )
-    await state.store.upsert_session(source)
-    attached = await client.post(
-        f"/v1/sessions/{source.id}/attach",
-        json={"goal_id": goal_id},
-    )
-    assert attached.status_code == 200, attached.text
+    if source_session_id is None:
+        source = state.adapters.synthetic.seed_session(
+            vendor_id=f"{key_prefix}-source-{index:03d}"
+        )
+        await state.store.upsert_session(source)
+        source_session_id = source.id
+        attached = await client.post(
+            f"/v1/sessions/{source_session_id}/attach",
+            json={"goal_id": goal_id},
+        )
+        assert attached.status_code == 200, attached.text
     discovered = await client.post(
         "/v1/synthetic/events",
         json={
-            "session_id": source.id,
+            "session_id": source_session_id,
             "event_type": EventType.FILE_READ.value,
             "message": (
                 f"Validated artifact contract {index:03d} is at {artifact_path}; "
@@ -291,7 +294,7 @@ async def _deliver_synthetic_artifact_handoff(
     )
     assert discovered.status_code == 200, discovered.text
     handoff = await client.post(
-        f"/v1/sessions/{source.id}/handoff",
+        f"/v1/sessions/{source_session_id}/handoff",
         json={
             "idempotency_key": f"{key_prefix}-handoff-{index:04d}",
             "target_session_id": target_session_id,
@@ -1067,6 +1070,14 @@ async def test_indexed_handoff_routing_has_no_newest_64_blind_spot(client: Async
     )
     assert attached.status_code == 200, attached.text
 
+    source = state.adapters.synthetic.seed_session(vendor_id="indexed-capacity-source")
+    await state.store.upsert_session(source)
+    source_attached = await client.post(
+        f"/v1/sessions/{source.id}/attach",
+        json={"goal_id": goal["id"]},
+    )
+    assert source_attached.status_code == 200, source_attached.text
+
     first_body: dict[str, object] | None = None
     first_context_id = ""
     for index in range(65):
@@ -1078,6 +1089,7 @@ async def test_indexed_handoff_routing_has_no_newest_64_blind_spot(client: Async
             index=index,
             artifact_path=artifact_path,
             key_prefix="indexed-capacity",
+            source_session_id=source.id,
         )
         if index == 0:
             first_body = body
