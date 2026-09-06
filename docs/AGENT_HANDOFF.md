@@ -2,6 +2,14 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Semantic-gate follow-up inspected the existing force option across pipeline,
+local/AgentCore routing and remote runtime. It is not a safe one-line bypass:
+the pipeline semantic flag also affects ambiguous-dispatch accounting, and each
+backend has its own eligibility call. See `TRAJECTORY_SEMANTIC_REVIEW.md` for the
+verified call path, budget/authority invariants and exact required mocked/live
+gates. No global force setting or runtime was changed. The protected-file
+permission question is still pending; this P0 is explicitly unfinished.
+
 Background identity follow-up: PID-less commands longer than the 200-character
 display preview could never match their terminal event. A SHA-256 fingerprint
 now preserves full-command identity without enlarging displayed command text;
