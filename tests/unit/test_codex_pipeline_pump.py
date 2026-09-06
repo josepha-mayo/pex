@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 
+import pytest
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.codex import CodexAdapter, CodexAppServerTransport
 from pex_bridge.bus import EventBus
@@ -79,7 +80,12 @@ async def test_codex_pump_ingests_stop_permission_and_agent_message():
     assert session.cwd == "C:/proj"
 
 
-async def test_codex_pump_uses_official_items_once_and_preserves_pytest_failure():
+@pytest.mark.parametrize("command", [
+    "pytest -q",
+    r'"C:\runtime\pwsh.exe" -Command '
+    "'C:/workspace/.venv/Scripts/python.exe -m pytest -q tests/test_parser.py'",
+])
+async def test_codex_pump_uses_official_items_once_and_preserves_pytest_failure(command):
     transport = CodexAppServerTransport()
     transport.threads = [{"id": "thr_pytest", "preview": "pytest thread", "cwd": "C:/proj"}]
     adapter = CodexAdapter(transport)
@@ -91,7 +97,7 @@ async def test_codex_pump_uses_official_items_once_and_preserves_pytest_failure(
     command_item = {
         "id": "item_cmd",
         "type": "commandExecution",
-        "command": "pytest -q",
+        "command": command,
         "cwd": "C:/proj",
         "commandActions": [],
         "aggregatedOutput": "FAILED tests/test_parser.py::test_nested_array\n1 failed",
@@ -152,7 +158,7 @@ async def test_codex_pump_uses_official_items_once_and_preserves_pytest_failure(
     shells = [event for event, _ in ingested if event.event_type == EventType.SHELL]
     assert len(shells) == 1
     assert shells[0].message_delta is None
-    assert shells[0].command == "pytest -q"
+    assert shells[0].command == command
     assert shells[0].process_state is not None
     assert shells[0].process_state["pytest"]["ok"] is False
     assert shells[0].process_state["pytest"]["failed"] == "tests/test_parser.py::test_nested_array"
@@ -218,7 +224,12 @@ def test_codex_item_turn_identity_cannot_override_enclosing_turn():
     )
 
 
-async def test_official_codex_failure_flows_through_pipeline_to_exact_nudge(tmp_path):
+@pytest.mark.parametrize("command", [
+    "pytest -q",
+    r'"C:\runtime\pwsh.exe" -Command '
+    "'C:/workspace/.venv/Scripts/python.exe -m pytest -q tests/test_parser.py'",
+])
+async def test_official_codex_failure_flows_through_pipeline_to_exact_nudge(tmp_path, command):
     worker = tmp_path / "worker"
     worker.mkdir()
     transport = CodexAppServerTransport()
@@ -250,7 +261,7 @@ async def test_official_codex_failure_flows_through_pipeline_to_exact_nudge(tmp_
     failed = {
         "id": "item_failed_pytest",
         "type": "commandExecution",
-        "command": "pytest -q",
+        "command": command,
         "cwd": str(worker),
         "commandActions": [],
         "aggregatedOutput": "FAILED tests/test_parser.py::test_nested_array\n1 failed",
