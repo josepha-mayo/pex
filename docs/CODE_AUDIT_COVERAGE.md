@@ -6,6 +6,32 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Low-quota evidence and pet interaction repairs — 6 Sep
+
+Root changed-path review, not a full-file or whole-codebase signoff:
+
+- `verify.py`, `test_verify.py`: pathless edits invalidated observation summaries
+  but not stale-result verdict/probe gates. Four red regressions before
+  `366eb07`; focused verifier/evidence-tools gate 70 passed. `bc39de5` rejects
+  boolean/negative artifact counts; eight count cases, three red before repair.
+- `workspace.py`, `test_workspace_inspect.py`: `46fc12a` enforces actual bounded
+  artifact reads instead of trusting an earlier stat. Two stale-size cases red
+  before repair; exact-limit JSON/JSONL compatibility retained. Combined
+  workspace/verifier/evidence-tools gate 97 passed, one skipped. No atomic
+  snapshot guarantee or whole-backend signoff follows.
+- New `apps/desktop/src/petInteraction.ts`: full helper review. Changed-path
+  review of `PetStage.tsx` and `viewModel.test.ts` for primary-button activation,
+  cancelled/no-start gestures, and two-axis drag distance in `4dd121f`.
+  Nine focused pet tests passed. Fresh `npm test` on `4dd121f`: **193 passed**;
+  `npm run build`: successful TypeScript + Vite production frontend build
+  (63 modules). Some tests inspect source contracts or server-rendered markup;
+  they do not exercise native pointer routing, window dragging or installed UX.
+
+No subagents, model calls, native input or runtime restarts in these passes.
+`services/supervisor/src/pex_supervisor/loop.py` remains protected/uncommitted
+and outside these repairs. New installed-build smoke, all-eight-pet visual
+checks and remaining end-to-end specification gates are still open.
+
 ### Verification reference binding — 6 Sep
 
 New source/test paths: `services/bridge/src/pex_bridge/verification_actions.py`

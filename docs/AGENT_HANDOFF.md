@@ -2,6 +2,13 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Integration check on source `4dd121f`: full desktop `npm test` **193 passed**;
+`npm run build` succeeded (TypeScript + Vite, 63 modules). No PEX window was
+launched/focused and no native installer was produced. Audit coverage now records
+the recent evidence-reader and pet-interaction repairs with their red/green
+regressions and explicit limits; do not equate source-contract/render tests with
+native interaction verification. Remaining full specification gates stay open.
+
 Pet interaction audit: existing overlay hide and status-dismiss controls remain
 present. Root found horizontal-only drag detection and unconditional pointer-up
 activation: vertical movement could open the inspector rather than start drag,
