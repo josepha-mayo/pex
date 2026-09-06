@@ -2,6 +2,17 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Current frontend integration gate at `38cba80`: normal `npm test` covers all
+seven tracked desktop TypeScript test files plus both release/package contract
+suites, including pet gesture/dismissal regressions inside `viewModel.test.ts`.
+**194 passed, zero skipped in 2.65s**. `npm run build` passed TypeScript and Vite
+(63 modules, 3.91s bundling). Read the current gesture and bubble implementations;
+no new confirmed defect from that bounded inspection. This is compiled frontend
+and test evidence, NOT native close/drag, installed bridge, BYOK, sprite visual
+quality or a rebuilt installer. No desktop focus/input, running-bridge restart,
+subagent or live-model call. Existing protected supervisor dirt remains outside
+this gate. Continue the unresolved acceptance work, not repeated green-only runs.
+
 Desktop budget-skip honesty: a red regression showed a skipped review presented
 as quiet alongside a worker completion claim. `statusCopy` now renders "Review
 skipped" from the latest audited NOOP diagnosis, explicitly states that PEX did
