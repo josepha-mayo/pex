@@ -20,8 +20,8 @@ STATUS, shipping checklist and submission draft.
   reproducing both in the native app at its normal 920-by-730 window size. The roster
   wraps within its grid area; narrow windows use one settings column. The production
   frontend build and **184 desktop tests** pass. The test run emitted an HMR-port
-  warning (`24678` in use), despite all assertions passing. Rendered verification of
-  the changed layout is still required.
+  warning (`24678` in use), despite all assertions passing. Native rendered checks
+  now confirm the corrected normal-window layout; see the native evidence below.
 - The latest retained package receipt is for **`4f8b567`**, not current source.
   Local receipt: `C:\Users\JosephMayo\Projects\pex-release-final-8b\build\pex-package-receipt.json`.
   It reports `release_ready: true`, `blockers: []` for package integrity only.
@@ -56,7 +56,8 @@ fleets still cause repeated authority-bound session, recent-event and interventi
 reads, and that all-pairs path needs its own bounded performance work and evidence.
 A diagnostic run with `faulthandler_timeout=45` emitted a Windows access violation;
 do not report that diagnostic as a passing run or silently attribute it to PEX code.
-There is still **no completed green full-suite receipt for the latest source**.
+The completed strict `ebca89c` full-suite receipt is recorded below; later proof-only
+changes have their own focused gate. Do not conflate source revisions.
 
 ## Fresh live supervisor result and current repair
 
@@ -98,7 +99,16 @@ its process configuration and records raw per-turn model requests. Null continua
 model means documented inheritance, not proof of a model switch; requested settings
 are not authoritative executed-model identity. Old v3 receipts are historical only.
 The strict combined proof/runtime gate passed **60 tests in 8.08s**, Ruff passed.
-The new v4 live pair has not yet run.
+This reviewed update is pushed as `6212b625f01232405d8708cc134d1e515853387e`;
+remote main equality was verified. Clean `pex-release-final-9c` now points to that
+revision. Its v4 restraint case passed **98.44s** and recovery passed **135.52s**.
+Recovery used two worker turns in one thread: SEND_NUDGE -> artifact-supported NOOP,
+helped=true. Initial aggregate calls 4 include two independent-verifier calls;
+the final NOOP used one call. The verifier approved with three independently bound
+observations. Curated receipt: `docs/demo/evidence/LIVE_CODEX_STRANDS_2026-09-06.md`.
+Both raw receipts and SQLite databases remain under that checkout's ignored scratch.
+A setup-only attempt first failed because the scratch parent did not
+exist, before any worker/model call; the parent was created before the actual run.
 
 The reviewed prompt/fixture/checkpoint update is pushed as
 `ebca89ccc1880d25066d973e7bdf7e8ec9e77696`, with remote equality verified. The PC
@@ -110,9 +120,9 @@ treated as errors. Report: `build/full-suite-ebca89c-post-reboot.xml`. This sour
 predates the new v4 proof tests, whose separate focused gate is recorded above.
 
 The user's latest cost preference supersedes all older Sol assignments: use
-**GPT-5.6 Terra, medium reasoning** for subagents. The interrupted proof owner was
-stopped and a bounded Terra-medium owner is finishing the three existing proof files;
-no live test may run against those files until reviewed and committed.
+**GPT-5.6 Terra, medium reasoning** for subagents. The proof owner completed its
+bounded review and read-only large-fleet audit. It then audited first-run UX and
+implemented the small pure first-run view-model helper/tests; root owns integration.
 
 ## Native interaction evidence
 
@@ -141,14 +151,44 @@ current frontend changes. It is not the retained release-package receipt.
 The rebuilt native dev app reached All quiet without a bridge error. At 920x730,
 Companion settings show all eight loaded pet thumbnails in a contained 4x2 grid,
 normal-sized checkboxes and no horizontal overflow. No release-package claim follows
-from this dev observation. **Settings restoration, restart persistence and final
-all-eight animation replay remain incomplete.** The current app/process/
+from this dev observation. Enabling Show desktop pet produced the separate pet
+window. Its minus button removed the message while retaining the pet; its X button
+removed the pet window while the main PEX window remained. User input/minimization
+interleaved with the check, so further mouse actions paused to avoid interference.
+Settings reflected the hidden state, and enabling visibility again restored the
+separate pet window. **Restart persistence and final all-eight animation replay
+remain incomplete.** The current app/process/
 window IDs are ephemeral; rediscover them before reuse.
+
+## Current first-run UX repair
+
+Native observation found that no connected worker/goal could still be presented as
+All quiet with only a generic inspect action. The new Home setup guidance distinguishes
+no observable worker, an unbound worker, a current attached goal and unavailable state.
+Navigation to goal setup preserves the existing form/draft and guarded submit path;
+it does not create or attach anything. A direct Connections destination now survives
+supervisor-settings loading. Native Home -> Connections navigation was observed.
+Supervisor configuration availability is visible on Home and Inspector, explicitly
+not a connection/inference receipt. The view fetches settings read-only outside Settings
+too, but does not introduce form polling. Paused and urgent states retain precedence
+over setup copy. Independent review caught the quiet-tone paused edge case; it is
+covered in the pure helper used by App. The Home card now stacks metrics beneath the
+pet rather than squeezing them into a narrow right column; the OPEN label contrast
+was increased. Final desktop gate: **190 passed, zero skipped**, production frontend
+build passed. Terra-medium independently reviewed the integrated flow; the paused
+precedence defect it identified was fixed and tested before acceptance. The previous
+189-case run predates the added pure status regression; do not sum overlapping runs.
+
+The existing Brave preview was reused through its connected extension (no browser
+restart/new profile). It renders current source without a build-error overlay, but
+shows Bridge offline because it lacks native desktop bridge authentication. This is
+not a native startup failure or a completed authenticated browser test.
 
 ## Remaining execution order
 
-1. Finish the stronger live-proof contract and recapture actual Codex/Strands recovery
-   after the verifier-budget repair. Complete the clean full-suite gate in parallel.
+1. Final-review and push the first-run UX repair; finish real native setup and persistence.
+   The stronger proof contract, clean full-suite and controlled live recovery pair
+   now pass on their exact revisions above; they do not close pre-existing-worker proof.
    Keep the measured large-fleet authority-read amplification tracked separately;
    correcting the 65-delivery fixture did not repair production fleet scalability.
 2. Visually validate the settings repair and complete native close/restore/restart and

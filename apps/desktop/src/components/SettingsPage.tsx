@@ -16,9 +16,10 @@ import {
 } from "../viewModel";
 
 type HookHarness = "cursor" | "claude_code" | "qwen" | "hermes" | "opencode";
-type SettingsSection = "companion" | "supervisor" | "connections" | "goals";
+export type SettingsSection = "companion" | "supervisor" | "connections" | "goals";
 
 export function SettingsPage({
+  initialSection,
   goals,
   note,
   nickname,
@@ -89,6 +90,7 @@ export function SettingsPage({
   scale: number;
   clickThrough: boolean;
   petVisible: boolean;
+  initialSection?: SettingsSection;
   supervisor: SupervisorInfo | null;
   supervisorProvider: string;
   supervisorModel: string;
@@ -149,11 +151,11 @@ export function SettingsPage({
 }) {
   const sections: SettingsSection[] = ["companion", "supervisor", "connections", "goals"];
   const [section, setSection] = useState<SettingsSection>(
-    settingsAvailable && !settingsIssue && supervisor?.model_loaded ? "companion" : "supervisor",
+    initialSection ?? (settingsAvailable && !settingsIssue && supervisor?.model_loaded ? "companion" : "supervisor"),
   );
   useEffect(() => {
-    if (settingsIssue || !settingsAvailable) setSection("supervisor");
-  }, [settingsAvailable, settingsIssue]);
+    if (!initialSection && (settingsIssue || !settingsAvailable)) setSection("supervisor");
+  }, [initialSection, settingsAvailable, settingsIssue]);
   const providers = Array.from(
     new Set([
       ...(supervisor?.providers || []),

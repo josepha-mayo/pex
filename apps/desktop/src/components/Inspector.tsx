@@ -1,4 +1,4 @@
-import type { FormEvent, RefObject } from "react";
+import type { FormEvent, ReactNode, RefObject } from "react";
 
 import type { GoalDraft } from "./GoalEditor";
 import { GoalEditor } from "./GoalEditor";
@@ -32,6 +32,7 @@ export function Inspector({
   goals,
   action,
   status,
+  supervisorNotice,
   evidenceOpen,
   question,
   answer,
@@ -69,6 +70,7 @@ export function Inspector({
   goals: Goal[];
   action?: LastAction | null;
   status: StatusCopy;
+  supervisorNotice?: ReactNode;
   evidenceOpen: boolean;
   question: string;
   answer: string;
@@ -132,6 +134,7 @@ export function Inspector({
           Open command deck
         </button>
       </header>
+      {supervisorNotice}
       {canonicalStateIssue ? (
         <p className="canonical-state-warning" role="status" aria-live="polite">
           {canonicalStateIssue} Revision-dependent controls stay disabled until refresh succeeds.
@@ -248,7 +251,7 @@ export function Inspector({
         </section>
       </div>
 
-      <section className="goal-card">
+      <section className="goal-card" data-goal-setup="true" tabIndex={-1} aria-label="Persistent goal setup">
         <div className="card-heading">
           <span>
             <small>Persistent goal</small>

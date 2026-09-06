@@ -475,7 +475,7 @@ p {
 .compact-companion {
   width: min(620px, 100%);
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) 130px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 16px 20px;
   margin: 0 auto;
@@ -487,13 +487,12 @@ p {
 }
 
 .compact-companion .pet-stage {
-  grid-row: 1 / span 3;
   flex-direction: row;
   align-items: center;
 }
 
 .compact-companion .activity-bubble {
-  width: min(250px, 28vw);
+  width: min(310px, 100%);
   margin-bottom: 12px;
 }
 
@@ -610,7 +609,7 @@ p {
 
 .bubble-action {
   align-self: center;
-  color: #1f6650;
+  color: var(--mint);
   font-size: 10px;
   font-weight: 760;
   text-transform: uppercase;
@@ -620,6 +619,8 @@ p {
   display: flex;
   align-items: center;
   gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
   color: var(--muted);
   font-size: 11px;
 }
@@ -636,10 +637,18 @@ p {
 }
 
 .compact-goal {
-  min-width: 220px;
+  min-width: 0;
   margin: 0;
-  text-align: right;
+  text-align: center;
 }
+
+.compact-setup { min-width: 0; border-top: 1px solid var(--line); padding-top: 18px; }
+.compact-setup h1 { margin: 5px 0 8px; font-size: clamp(20px, 3vw, 26px); }
+.compact-setup p:not(.eyebrow) { color: var(--muted); line-height: 1.6; margin: 0 0 16px; }
+.supervisor-notice { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.supervisor-notice > span { flex: 1 1 220px; }
+.supervisor-notice > button { flex: none; }
+.compact-companion .supervisor-notice { border-top: 1px solid var(--line); padding-bottom: 0; }
 
 .compact-last-action {
   margin: 0;

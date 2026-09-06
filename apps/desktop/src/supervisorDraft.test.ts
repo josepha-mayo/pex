@@ -197,5 +197,24 @@ test("settings sections expose an accessible keyboard-operated tab contract", ()
   assert.match(settings, /role="tabpanel"/);
   assert.match(settings, /aria-labelledby=\{`settings-tab-\$\{section\}`\}/);
   assert.match(settings, /settingsAvailable && !settingsIssue && supervisor\?\.model_loaded \? "companion" : "supervisor"/);
-  assert.match(settings, /if \(settingsIssue \|\| !settingsAvailable\) setSection\("supervisor"\)/);
+  // An explicit Home setup destination must survive background settings loading.
+  assert.match(settings, /initialSection \?\? \(settingsAvailable/);
+  assert.match(settings, /if \(!initialSection && \(settingsIssue \|\| !settingsAvailable\)\) setSection\("supervisor"\)/);
+});
+
+test("Home setup routes reuse guarded connection and goal flows without writing on navigation", () => {
+  // Source wiring only; native route observations are recorded separately.
+  const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+  const inspector = readFileSync(new URL("./components/Inspector.tsx", import.meta.url), "utf8");
+  assert.match(app, /firstRunGuidance\(\{[\s\S]*?sessionFresh: sessionStateFresh,[\s\S]*?goalFresh: goalStateFresh/);
+  assert.match(app, /if \(setup\.cta\?\.intent === "goal"\) openGoalSetup\(\)/);
+  assert.match(app, /else openSettings\("connections"\)/);
+  assert.match(app, /initialSection=\{settingsDestination\}/);
+  assert.match(app, /supervisorNotice=\{supervisorNotice\}/);
+  assert.match(app, /supervisorAvailability\(\{ supervisor, supervisorFresh: settingsAvailable \}\)/);
+  const route = app.slice(app.indexOf("function openGoalSetup()"), app.indexOf('if (shell === "pet")', app.indexOf("function openGoalSetup()")));
+  assert.match(route, /openInspector\(\)/);
+  assert.doesNotMatch(route, /bridgeJson|POST|PATCH|setGoalDraft|setEditingGoalId/);
+  assert.match(inspector, /data-goal-setup="true" tabIndex=\{-1\}/);
+  assert.match(app, /statusWithFirstRunGuidance\(status, setup, Boolean\(pet\?\.paused\)\)/);
 });

@@ -19,9 +19,10 @@ import {
 } from "./decisionContract";
 import { Inspector } from "./components/Inspector";
 import { PetStage } from "./components/PetStage";
-import { SettingsPage } from "./components/SettingsPage";
+import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
 import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { createOperatorRequest } from "./operatorRequest";
+import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
 import { applyPetClickThrough, expandMainSurface, hidePetOverlay, nextPetExpansion, PET_NATIVE_DISMISSED_EVENT, PET_VISIBILITY_EVENT, petClickThroughEnabled, petOverlayVisible, releasePetOverlay, setPetOverlayVisible, showPetOverlay } from "./releasePet";
@@ -331,6 +332,8 @@ export function App() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalDraft, setGoalDraft] = useState<GoalDraft>(EMPTY_GOAL);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [settingsDestination, setSettingsDestination] = useState<SettingsSection | undefined>();
+  const [goalFocusRequest, setGoalFocusRequest] = useState(0);
   const [ledgerDecisions, setLedgerDecisions] = useState<LedgerDecision[]>([]);
   const [goalCompletion, setGoalCompletion] = useState<GoalCompletion | null>(null);
   const [savingGoal, setSavingGoal] = useState(false);
@@ -690,6 +693,16 @@ export function App() {
   }, [shell, surface]);
 
   useEffect(() => {
+    if (!goalFocusRequest || shell !== "main" || surface !== "inspector") return;
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>('[data-goal-setup="true"]');
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [goalFocusRequest, shell, surface]);
+
+  useEffect(() => {
     if (!TAURI || shell === "pet") return;
     let unlisten: (() => void) | undefined;
     let cancelled = false;
@@ -796,7 +809,7 @@ export function App() {
   }, [markCanonical]);
 
   useEffect(() => {
-    if (!bridgeAvailable || shell !== "settings") return;
+    if (!bridgeAvailable || shell === "pet") return;
     void loadSettings();
     return () => {
       settingsRequestSequence.current += 1;
@@ -1152,6 +1165,14 @@ export function App() {
     () => statusCopy(pet, bridgeError, petState.status),
     [bridgeError, pet, petState.status],
   );
+  const setup = firstRunGuidance({
+    current,
+    attachedGoal,
+    sessionFresh: sessionStateFresh,
+    goalFresh: goalStateFresh,
+  });
+  const semanticSupervisor = supervisorAvailability({ supervisor, supervisorFresh: settingsAvailable });
+  const homeStatus = statusWithFirstRunGuidance(status, setup, Boolean(pet?.paused));
   const mood = moodForState(pet, bridgeError);
   const sheet = useBridgeAsset(
     pet?.appearance?.atlas_ready === true ? pet.appearance.spritesheet_url : undefined,
@@ -2002,6 +2023,16 @@ export function App() {
     window.location.hash = next;
   }
 
+  function openSettings(section?: SettingsSection) {
+    setSettingsDestination(section);
+    window.location.hash = "settings";
+  }
+
+  function openGoalSetup() {
+    openInspector();
+    setGoalFocusRequest((request) => request + 1);
+  }
+
   if (shell === "pet") {
     return (
       <main className={`pet-desktop tone-${status.tone}`}>
@@ -2035,6 +2066,7 @@ export function App() {
   if (shell === "settings") {
     return (
       <SettingsPage
+        initialSection={settingsDestination}
         goals={availableGoals}
         note={note}
         nickname={nickname}
@@ -2158,12 +2190,21 @@ export function App() {
     );
   }
 
+  const supervisorNotice = (
+    <div className="supervisor-notice" role="status">
+      <span>{semanticSupervisor.copy}</span>
+      <button type="button" className="ghost" onClick={() => openSettings("supervisor")}>
+        Supervisor settings
+      </button>
+    </div>
+  );
+
   return (
     <main className={`main-shell tone-${status.tone}`}>
       <header className="topbar">
         <span className="wordmark">PEX</span>
         <span className="topbar-state" role="status" aria-live="polite">
-          <span className="status-dot" aria-hidden="true" />{status.label}
+          <span className="status-dot" aria-hidden="true" />{surface === "compact" ? homeStatus.label : status.label}
         </span>
         <nav className="surface-switch" aria-label="Progressive PEX surfaces">
           {(["compact", "inspector", "deck"] as Surface[]).map((item) => (
@@ -2178,7 +2219,7 @@ export function App() {
             </button>
           ))}
         </nav>
-        <button type="button" className="ghost topbar-settings" onClick={() => { window.location.hash = "settings"; }}>Settings</button>
+        <button type="button" className="ghost topbar-settings" onClick={() => openSettings()}>Settings</button>
       </header>
 
       {surface === "compact" ? (
@@ -2195,7 +2236,7 @@ export function App() {
               mood={mood}
               scale={Math.max(scale, 1.08)}
               reducedMotion={reducedMotion}
-              status={status}
+              status={homeStatus}
               onActivate={() => openInspector()}
             />
             <div
@@ -2212,9 +2253,27 @@ export function App() {
               <strong>{attachedGoal.title}</strong>
             </p>
           ) : null}
-            <button type="button" className="solid compact-open" onClick={() => openInspector()}>
-              Inspect what PEX knows
-            </button>
+            {setup ? (
+              <div className="compact-setup">
+                <p className="eyebrow">Your next step</p>
+                <h1>{setup.title}</h1>
+                <p>{setup.detail}</p>
+                <div className="button-row">
+                  {setup.cta ? (
+                    <button type="button" className="solid" onClick={() => {
+                      if (setup.cta?.intent === "goal") openGoalSetup();
+                      else openSettings("connections");
+                    }}>{setup.cta.label}</button>
+                  ) : null}
+                  <button type="button" className="ghost" onClick={() => openInspector()}>Inspect current state</button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" className="solid compact-open" onClick={() => openInspector()}>
+                Inspect what PEX knows
+              </button>
+            )}
+            {supervisorNotice}
           </div>
           {compactGoalIssue ? (
             <p className="canonical-state-warning compact-state-warning" role="status" aria-live="polite">
@@ -2241,6 +2300,7 @@ export function App() {
           goals={availableGoals}
           action={action}
           status={status}
+          supervisorNotice={supervisorNotice}
           evidenceOpen={evidenceOpen}
           question={question}
           answer={answer}

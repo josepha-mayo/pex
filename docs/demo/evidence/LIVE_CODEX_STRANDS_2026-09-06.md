@@ -1,6 +1,44 @@
 # Controlled live Codex + Strands proof
 
-Status: **validated on source revision `5c49c10eaed4ad96346ceef8d2eb257e46fcd425`**.
+Status: **fresh v4 pair validated on source revision
+`6212b625f01232405d8708cc134d1e515853387e`**.
+
+## Fresh independently bound pair
+
+Both cases ran from one clean source fingerprint with the requested worker model
+`gpt-5.3-codex-spark`, pinned in the isolated App Server process configuration.
+This records requested configuration, not authoritative executed-model identity.
+The real supervisor used Strands Agents 1.53.0 and Zen's exact
+`muse-spark-1.3-contributor-free` model with no paid fallback.
+
+| Case | Observed outcome | Real supervisor calls | Test time |
+| --- | --- | --- | --- |
+| Correct completion | `ping.txt=pong`, one worker turn, evidence-supported `NOOP` | 1 | 98.44s |
+| Premature stop | Empty `report.txt` -> `SEND_NUDGE` -> same-thread second turn -> `report.txt=shipped` -> supported `NOOP`, `helped=true` | 4 initial, including 2 independent-verifier calls; 1 final | 135.52s |
+
+The independent verifier returned `approved` with three typed observations, distinct
+from the main invocation and bound to the same goal, session, trigger and request
+digest. The v4 validator checks evidence hashes/references and canonical SQLite/audit
+agreement, not just an aggregate model-call counter. The initial call count already
+includes the verifier; do not add it again. Durations include worker/setup/inspection,
+not isolated supervisor inference latency.
+
+Raw receipt SHA-256 values:
+
+- Restraint: `13222498A44212F9A25FFD5BEBFCF76A6084DC0DF3999957F40CC09310A6179E`
+- Recovery: `8D3C92581CC0895ECB7A5A4E89C5C0F1B680D4DB084ED39691E3B6B5C142E8A1`
+
+Earlier `f53c13b` recovery failed closed after verifier budget exhaustion; the prompt
+was repaired without weakening the evidence/permission gates. These are the first
+post-repair v4 attempts. A setup-only restraint attempt failed before worker/model
+calls because the scratch parent directory was absent; that directory was created.
+Retained unique scratch directories preserve both live databases for inspection.
+
+These remain controlled file tasks in isolated Codex threads, not attachment to the
+user's pre-existing worker, ten quiet cases, cross-harness benchmarks, AgentCore
+deployment or final-package evidence. The earlier v3 pair below is historical only.
+
+## Historical v3 pair — source `5c49c10`
 
 This is a sanitized, judge-readable summary of two strict local proof receipts. It is not
 packaged-release proof, a benchmark score, or evidence of a deployed AgentCore service.
