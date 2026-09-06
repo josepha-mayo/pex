@@ -171,15 +171,13 @@ export function PetStage({
             </span>
             <span className="bubble-action">Open</span>
           </button>
-          {overlay ? (
-            <button
-              type="button"
-              className="pet-status-dismiss"
-              aria-label="Dismiss PEX status message"
-              title="Dismiss status message"
-              onClick={dismissStatusBubble}
-            >−</button>
-          ) : null}
+          <button
+            type="button"
+            className="pet-status-dismiss"
+            aria-label="Dismiss PEX status message"
+            title="Dismiss status message"
+            onClick={dismissStatusBubble}
+          >−</button>
         </div>
       ) : null}
       {overlay && onDismiss ? (

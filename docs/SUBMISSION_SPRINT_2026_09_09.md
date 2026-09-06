@@ -31,7 +31,8 @@ drop requirements or declare an unverified product ready.
   semantic review, coalescing and complete model-use budget behavior do not.
   Acceptance: shared local/remote eligibility, evidence-bound decisions, quiet
   routine progress, bounded review and same-worker outcome. Mocked tests first;
-  live proof is separate. Protected `loop.py` edit permission remains pending.
+  live proof is separate. The user approved narrow `loop.py` edits while
+  preserving its existing change on 6 September; integration is now actionable.
   Do not enable global force-LLM or bypass the protected file through another path.
 - [ ] **C. Reproduce and repair the actual native startup/retry failure.**
   Acceptance: release cold start, retained failure diagnostics, normal Retry,
@@ -42,6 +43,11 @@ drop requirements or declare an unverified product ready.
 ### Day 2 — complete human-facing flows
 
 - [ ] **D. Finish actual-UI onboarding and all eight pets.**
+  Current follow-up: compact status message dismissal repaired (195 frontend
+  tests and production build passed). Source-only eight-pet contact sheets
+  inspected; Drift jumping frame 0 has a visually flat-cut lower body despite
+  transparent cell margins. Retain `build/pet-source-audit-5c00433`, including
+  exact exported Drift frames. No sprite edits or native playback approval.
   Acceptance: goal, connection, BYOK and supervisor setup are understandable;
   each pet animates without an opaque background; dismissing a message and
   hiding/restoring the pet are distinct and persist correctly after restart.

@@ -559,7 +559,7 @@ p {
   min-height: 86px;
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 24px;
   align-items: start;
   gap: 10px;
   margin-bottom: 20px;

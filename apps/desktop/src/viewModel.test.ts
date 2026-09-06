@@ -1309,6 +1309,15 @@ test("pet renders separate keyboard buttons for status dismissal, activation, an
     assert.match(html, /<button[^>]+class="pet-status-dismiss"[^>]+aria-label="Dismiss PEX status message"/u);
     assert.match(html, /<button[^>]+class="pet-overlay-close"[^>]+aria-label="Hide PEX pet"/u);
     assert.equal((html.match(/type="button"/gu) || []).length, 4);
+    const compact = renderToStaticMarkup(createElement(PetStage, {
+      name: "Pex", sheet: "", mood: "decision", scale: 1,
+      reducedMotion: true, overlay: false,
+      status: { tone: "need", label: "Decision needed", detail: "Choose one option" },
+      onActivate: () => undefined,
+    }));
+    assert.match(compact, /aria-label="Dismiss PEX status message"/u);
+    assert.doesNotMatch(compact, /aria-label="Hide PEX pet"/u);
+    assert.equal((compact.match(/type="button"/gu) || []).length, 3);
   } finally {
     await vite.close();
   }
