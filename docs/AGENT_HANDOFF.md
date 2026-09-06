@@ -24,6 +24,20 @@ Final installed-build gates remain open.
 All `current` or `final` headings below are historical wherever they conflict.
 The goal remains active and the full three-spec submission scope remains incomplete.
 Latest user cost instruction: subagents use **GPT-5.6 Terra, medium reasoning**;
+the user subsequently asked to reduce delegation because quota is burning fast.
+Keep work local by default; the broad quiet-fixture subagent audit was interrupted.
+Ten public quiet-case workspaces now exist under
+`C:/Users/JosephMayo/pex-live-demo/workspace/quiet-20260906-Q01` through `Q10`.
+No live quiet-suite worker or supervisor calls have started. Root reviewed public
+tasks/tests/goal contracts and strengthened Q05 suffix-collision coverage, Q06
+strict date formatting, and Q08 SPDX/metadata validation before any live attempt.
+Fresh baseline: Q01 4 failures; Q02 4; Q03 3 failures/1 pass; Q04 4; Q05 5;
+Q06 5; Q07 5; Q08 7; Q09 5; Q10 5. These are intentional unfinished worker
+fixtures, not PEX failures or quiet-success evidence. Private runner scripts are
+`build/quiet_owner_operator.py` and `build/quiet_case.py`; their recovery guards
+received root static review: the worker identity is now persisted before warm-up,
+and started turn identities before waiting. Root independently reran CLI help and
+Ruff successfully. This is static runner validation, not a live quiet-suite result.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 
