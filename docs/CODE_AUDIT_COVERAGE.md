@@ -6,6 +6,31 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Literal PowerShell evidence and unrelated lifecycle isolation — 6 Sep
+
+Changed-path review, not whole-file approval:
+
+- `packages/protocol/src/pex_protocol/verification.py`: exact literal wrapper
+  recognition, direct-command parser reuse, preserved targeted/full-suite scope;
+  expansion, composition, quoted-executable and shell ambiguity rejected.
+- `services/bridge/src/pex_bridge/adapters/codex_shared.py`: schema-minimal foreign
+  lifecycle filtering after durable receive/freshness accounting, without feeding
+  foreign events into selected-worker context or ignoring selected closure.
+- Associated changed tests in `test_verification_protocol.py`, `test_shell_state.py`,
+  `test_codex_shared_adapter.py`, `test_codex_pipeline_pump.py` and
+  `test_codex_shared_transport.py`: root and Terra reviewers examined the new cases.
+
+Independent review caught and repaired whitespace normalization in the foreign-ID
+filter. A broader test run exposed an existing timeout fixture that timed out in
+initialization rather than its intended written request; initialization now occurs
+before applying the short request timeout, without relaxing production behavior.
+Evidence: parser neighborhood 85 passed; official pump 23 passed; shared adapter 8
+passed; final six-file transport/lifecycle/dispatch attribution gate 169 passed.
+Production repairs: `7a41a24`, `5502539`; expanded regressions: `56be964`, `4d6dd60`.
+Full clean-source Python gate and fresh live recapture are separate pending gates.
+The protected operator-owned supervisor `loop.py` was not changed or included.
+See [checkpoint](CHECKPOINT_2026_09_06.md) for exact failures and evidence limits.
+
 ### Fresh control snapshots and final effect validation — `e64270c`
 
 Full new-test review: `test_codex_shared_read_snapshot.py`, `test_codex_control_snapshot.py`, `test_main_effect_live_revalidation.py`. Changed-path review: shared transport parser-boundary/read/routing/dispatch checks, coordinator control-only snapshot and Store main-effect check factoring/final validator. `attachment_review` independently approved transport and authored framed regressions; `transport_review` authored Store, then independently reproduced and approved the coordinator unknown/empty-type fix; main reviewed/integrated all owned paths. Final main 483 passed/18 complete files, no skips; six scoped Python paths Ruff/staged-whitespace clean. Source pushed with exact remote equality. [`Full evidence and limitations`](CONTROL_SNAPSHOT_REVIEW.md). No blanket full-file/whole-repository audit or shared-control activation follows.
