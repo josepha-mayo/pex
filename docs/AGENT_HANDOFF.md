@@ -2,6 +2,32 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+EXECUTION PRIORITY: `SUBMISSION_SPRINT_2026_09_09.md` now starts with the active
+three-day A-I queue (pushed `bdd3b0b`). Follow that queue rather than treating
+historical green test batches as current completion. Mid-task semantic review
+remains an explicit P0, alongside native startup/UX and final evidence gates.
+No new subagents/live-model calls in this low-quota cycle.
+
+Fresh Tauri beforeBuild helpers finished; frontend TypeScript/Vite passed again
+(63 modules, 3.81s). Exec **46349** is still live, now compiling native Rust with
+two Cargo jobs. Do not restart it. The rebuilt bridge has now separately passed
+all three frozen lifetime tests: **3 passed in 78.82s**, thread warnings as errors,
+exec 58352 terminal. Receipt in the clean `pex-verify-5ee1ee7` checkout:
+`build/frozen-lifetime-60ffa76-tauri.xml`, SHA256
+`025CD7B0EBFEC9DA73E077BC6AB18ABC94B00137E2464F07070CE4F6F1907D09`.
+New helper SHA256 values (not the earlier archived set):
+
+- bridge: `50AEFD5989B1E37C1DFB61D063DD25F84E244D69A360971FC82237E1D5BCEE17`
+- Cursor hook: `BAC8FBA556150DBC2ABDF02F8BF38ED85BA92B3B24360478B47E291415DC829B`
+- Cursor observe: `454423B94165C7C889588880E4AFD6ADC736F2371056DD58E1E6385FB2F49E1E`
+
+Clean source remains `60ffa76`. Package verification must use these rebuilt bytes
+and a new receipt path. Full `verify-package.mjs` has been read: it performs
+administrative MSI extraction and deterministic NSIS extraction into an owned
+temporary directory, compares desktop/helper bytes and runs frozen inventory;
+it does not establish native UX readiness. Check extractor availability before
+running it. No installer/native app launch or operator-input control occurred.
+
 NATIVE DESKTOP BUILD IN PROGRESS: clean verification checkout remains pinned to
 `60ffa76`. `npm ci --offline --no-audit --no-fund` installed 72 cached packages;
 `npm run build` passed TypeScript/Vite (63 modules). npm noted an unapproved
