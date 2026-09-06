@@ -3,10 +3,78 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 
 import pytest
 
 pytest_plugins = ("test_codex_correction_pipeline",)
+
+
+async def _wait_for_boundary(task: asyncio.Task, entered: asyncio.Event) -> None:
+    """Wait for ordering, not a three-second integration performance target."""
+    waiter = asyncio.create_task(entered.wait())
+    try:
+        done, _ = await asyncio.wait(
+            {task, waiter}, timeout=15, return_when=asyncio.FIRST_COMPLETED,
+        )
+        if entered.is_set():
+            return
+        if task in done:
+            task.result()  # Surface the actual ingestion error before any timeout.
+            raise AssertionError("ingestion completed without reaching the held boundary")
+        raise TimeoutError("ingestion did not reach the held boundary within 15 seconds")
+    finally:
+        waiter.cancel()
+        await asyncio.gather(waiter, return_exceptions=True)
+
+
+async def test_boundary_wait_reports_early_ingestion_error():
+    async def fail():
+        raise ValueError("original ingestion error")
+
+    task = asyncio.create_task(fail())
+    with pytest.raises(ValueError, match="original ingestion error"):
+        await _wait_for_boundary(task, asyncio.Event())
+    assert task.done()
+
+
+@asynccontextmanager
+async def _owned_ingestion(coroutine, release: asyncio.Event):
+    task = asyncio.create_task(coroutine)
+    try:
+        yield task
+    finally:
+        # A failed boundary wait must not leave the test's artificial barrier
+        # blocking the production settlement task during fixture teardown.
+        release.set()
+        if not task.done():
+            task.cancel()
+        done, _ = await asyncio.wait({task}, timeout=10)
+        assert done, "test-owned ingestion did not settle after releasing its barrier"
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+
+
+async def test_owned_ingestion_releases_barrier_on_early_test_failure():
+    release = asyncio.Event()
+    entered = asyncio.Event()
+    settled = asyncio.Event()
+
+    async def ingest():
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            await release.wait()
+            settled.set()
+
+    with pytest.raises(TimeoutError, match="fixture boundary timeout"):
+        async with _owned_ingestion(ingest(), release) as task:
+            await entered.wait()
+            raise TimeoutError("fixture boundary timeout")
+    assert release.is_set() and settled.is_set() and task.done()
 
 
 async def _assert_cancelled_after_release(task: asyncio.Task, release: asyncio.Event) -> None:
@@ -59,10 +127,10 @@ async def test_cancel_during_post_executor_refresh_still_seals_acknowledged_effe
 
     monkeypatch.setattr(case.pipeline.executor, "execute", execute_spy)
     monkeypatch.setattr(case.store, "get_event_effect", get_effect_spy)
-    ingest = asyncio.create_task(case.ingest_observed())
-    await asyncio.wait_for(refresh_entered.wait(), 3)
-    await _assert_cancelled_after_release(ingest, release_refresh)
-    await _assert_durable_delivery(case)
+    async with _owned_ingestion(case.ingest_observed(), release_refresh) as ingest:
+        await _wait_for_boundary(ingest, refresh_entered)
+        await _assert_cancelled_after_release(ingest, release_refresh)
+        await _assert_durable_delivery(case)
 
 
 async def test_repeated_cancel_while_final_seal_is_held_still_finishes_settlement(
@@ -93,10 +161,10 @@ async def test_repeated_cancel_while_final_seal_is_held_still_finishes_settlemen
 
     monkeypatch.setattr(case.pipeline.executor, "execute", execute_spy)
     monkeypatch.setattr(case.pipeline, "_seal_main_event_effect", seal_spy)
-    ingest = asyncio.create_task(case.ingest_observed())
-    await asyncio.wait_for(seal_entered.wait(), 3)
-    await _assert_cancelled_after_release(ingest, release_seal)
-    await _assert_durable_delivery(case)
+    async with _owned_ingestion(case.ingest_observed(), release_seal) as ingest:
+        await _wait_for_boundary(ingest, seal_entered)
+        await _assert_cancelled_after_release(ingest, release_seal)
+        await _assert_durable_delivery(case)
 
 
 async def test_executor_error_and_repeated_cancel_still_seal_delivery_uncertain(
@@ -123,9 +191,9 @@ async def test_executor_error_and_repeated_cancel_still_seal_delivery_uncertain(
         return await seal(**kwargs)
 
     monkeypatch.setattr(case.pipeline, "_seal_main_event_effect", seal_spy)
-    ingest = asyncio.create_task(case.ingest_observed())
-    await asyncio.wait_for(seal_entered.wait(), 3)
-    await _assert_cancelled_after_release(ingest, release_seal)
+    async with _owned_ingestion(case.ingest_observed(), release_seal) as ingest:
+        await _wait_for_boundary(ingest, seal_entered)
+        await _assert_cancelled_after_release(ingest, release_seal)
     event = case.current_event[0]
     processing = await case.store.get_event_processing(event.event_id)
     effect = await case.store.get_event_effect(event.event_id, "main")

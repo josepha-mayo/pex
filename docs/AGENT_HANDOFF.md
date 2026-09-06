@@ -2,6 +2,24 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Cancellation-test follow-up: repaired ownership of test-created ingestion tasks
+and artificial barriers in `test_codex_main_settlement_cancellation.py`. All
+three scenarios release their barrier in finally, cancel/join their owned task,
+and retrieve its result before fixture teardown. A new forced early-failure test
+proves that cleanup, and another proves early ingestion exceptions surface.
+With cleanup alone and the original 3-second waits, **1 failed, 3 passed in
+32.41s**, with no teardown error; the remaining final-seal wait still timed out.
+Passing neighboring cancellation call was 3.12s. The boundary wait now races
+ingestion completion against the entered signal, with a bounded **15-second
+setup allowance**; the exact repeated-cancellation, durable delivery, uncertainty
+and one-dispatch assertions are unchanged. This is not a production performance
+fix or relaxed delivery guarantee. Two full files (cancellation + correction
+pipeline): **15 passed in 57.09s**, thread warnings as errors, Ruff clean.
+Final-seal cancellation case took 3.25s overall; correction cases up to 3.99s.
+Run was on main with protected loop dirt unchanged, not a new full clean-source
+gate. The full failure receipt below remains authoritative historical evidence;
+clean-source targeted recheck and a later complete gate remain required.
+
 FULL CLEAN REGRESSION FINISHED / FAILED on `a0f07c4`: **3 failed, 3873 passed,
 13 skipped, 16 deselected, 1 teardown error in 2391.23s (39m51s)**. Exec session
 30815 is terminal; do not poll/restart it. Detached `pex-verify-5ee1ee7` remains
