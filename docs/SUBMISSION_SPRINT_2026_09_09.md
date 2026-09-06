@@ -3,8 +3,76 @@
 The full goal remains active. This is the user's three-day internal target, not
 a claim about the organizer's current deadline. Submission status: **NO-GO**.
 Read all three binding specs and `CHECKPOINT_2026_09_06.md` before each work cycle.
-Use Terra / medium for bounded independent reviews. Preserve the protected
-supervisor `loop.py` change. Push only reviewed, scoped updates.
+Conserve quota: no new subagents or live-model runs in the current work cycle.
+If independent review is later needed, use the user's Terra / medium preference.
+Preserve the protected supervisor `loop.py` change. Push only reviewed, scoped updates.
+
+## Active execution queue — refreshed 6 September
+
+This queue drives work; the historical evidence below does not close newer gates.
+The target remains 9 September WAT. Timeboxes set priority, not permission to
+drop requirements or declare an unverified product ready.
+
+### Day 1 — usable runtime and real supervision
+
+- [ ] **A. Finish the native release build and verify packaged bytes.**
+  Current: clean source `60ffa76`, checkout `pex-verify-5ee1ee7`, live exec
+  `46349`, two Cargo jobs, offline dependencies. Fresh helper rebuild completed;
+  desktop/bundle success is still unproven. Poll this build, do not duplicate it.
+  Acceptance: MSI/NSIS contain the expected desktop and three helpers; retain
+  source/hash-bound package receipt and rerun frozen lifetime checks for new bytes.
+- [ ] **B. Close the semantic trajectory gap, not only stop-time checks.**
+  Authority: recovery spec section 15 and `TRAJECTORY_SEMANTIC_REVIEW.md`.
+  Current: P0 OPEN; durable opt-in dispatch cap exists, but material mid-task
+  semantic review, coalescing and complete model-use budget behavior do not.
+  Acceptance: shared local/remote eligibility, evidence-bound decisions, quiet
+  routine progress, bounded review and same-worker outcome. Mocked tests first;
+  live proof is separate. Protected `loop.py` edit permission remains pending.
+  Do not enable global force-LLM or bypass the protected file through another path.
+- [ ] **C. Reproduce and repair the actual native startup/retry failure.**
+  Acceptance: release cold start, retained failure diagnostics, normal Retry,
+  close/reopen and persisted setup work without orphan bridge processes.
+  Frozen helper tests are supporting evidence, not native-window proof.
+  Native interaction currently requires renewed permission; do not steal PC focus.
+
+### Day 2 — complete human-facing flows
+
+- [ ] **D. Finish actual-UI onboarding and all eight pets.**
+  Acceptance: goal, connection, BYOK and supervisor setup are understandable;
+  each pet animates without an opaque background; dismissing a message and
+  hiding/restoring the pet are distinct and persist correctly after restart.
+  Include empty, disconnected, working, needs-human and exhausted-review states.
+- [ ] **E. Verify supported harness and permission flows.**
+  Acceptance: real Codex/Cursor/OpenCode support matches labels; correction,
+  approvals, escalation and overlay reversal preserve the existing worker.
+  Retain exact receipts without changing unrelated user sessions.
+- [ ] **F. Complete restraint/recovery and integration evidence.**
+  Quiet denominator remains ten: four quiet successes, two inconclusive,
+  one early false escalation, three pending. Preserve failures; do not restart
+  prepared Q08. Resume model runs only after resolving the current quota pause.
+  AgentCore remains a spec target under the no-card-charge boundary, not an
+  excuse to deploy without verified coverage. No mock is live integration proof.
+
+### Day 3 — freeze, demonstrate, review submission
+
+- [ ] **G. Run the complete regression on final clean sources.**
+  Latest full run failed (3 failed, 1 teardown error); the clean 128-test repair
+  gate passed, but does not replace a fresh full run. Include frontend/Rust,
+  package integrity and installed/fresh-profile smoke after final code changes.
+- [ ] **H. Finish honest benchmark and code-audit closure.**
+  Acceptance: equivalent prompts/environments, no evaluator leakage, failed
+  runs and PEX overhead retained; full spec/audit coverage checked, not inferred
+  from counts. No fixture-derived productivity headline or invented ranking.
+- [ ] **I. Produce the judge-facing demo and exact submission package.**
+  Acceptance: reproducible setup, truthful support matrix, architecture and
+  curated real recovery trace; <=5-minute video; rules/bonus evidence rechecked.
+  Show exact final artifacts to the user and obtain attempt-specific submission
+  confirmation. The demo cannot claim unverified behavior.
+
+Execution rule: finish a critical-path item or expose its concrete missing
+dependency, then move to the next safe item. Avoid repeated documentation-only
+cycles, duplicate builds, or broad test reruns before relevant product repairs.
+Keep the full goal active; NO-GO until all required gates have direct evidence.
 
 Official read-only recheck on 6 September: the
 [rules](https://agentsforhumans.devpost.com/rules) list 14 September, 5 PM PDT as
