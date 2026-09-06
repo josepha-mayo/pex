@@ -1,15 +1,57 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createElement, type ComponentType } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createServer } from "vite";
 
 import {
+  KNOWN_BRIDGE_FAILURE_CODES,
   advanceBridgeBootstrapStatus,
   bridgeBootstrapAvailable,
   initialBridgeBootstrapStatus,
   normalizeBridgeBootstrapStatus,
   shouldPollBridgeBootstrap,
   startupRecoveryCopy,
+  startupDiagnosticText,
   unavailableBridgeBootstrapStatus,
 } from "./startupRecovery.ts";
+
+test("every known startup error renders an actionable safe non-retryable state", async () => {
+  const vite = await createServer({ root: process.cwd(), server: { middlewareMode: true }, appType: "custom" });
+  try {
+    const loaded = await vite.ssrLoadModule("/src/components/StartupRecovery.tsx") as {
+      StartupRecovery: ComponentType<{
+        status: ReturnType<typeof normalizeBridgeBootstrapStatus>;
+        retrying: boolean;
+        onRetry: () => void;
+      }>;
+    };
+    for (const code of KNOWN_BRIDGE_FAILURE_CODES) {
+      const status = normalizeBridgeBootstrapStatus({
+        phase: "failed",
+        code,
+        message: "private native message must not be copied",
+        retryable: false,
+        source: code === "port_occupied_untrusted" ? "unverified_port_owner" : "not_ready",
+        attempt: 1,
+      });
+      const html = renderToStaticMarkup(createElement(loaded.StartupRecovery, {
+        status,
+        retrying: false,
+        onRetry: () => undefined,
+      }));
+      assert.match(html, /Copy safe error details/u, code);
+      assert.doesNotMatch(html, /disabled/u, code);
+      assert.doesNotMatch(html, /Retry bridge/u, code);
+      assert.match(html, new RegExp(`<code>${code}</code>`, "u"), code);
+      const diagnostic = startupDiagnosticText(status);
+      assert.ok(diagnostic?.startsWith(`PEX startup error: ${code}.`), code);
+      assert.doesNotMatch(diagnostic, /private native message/u, code);
+    }
+  } finally {
+    await vite.close();
+  }
+});
 
 test("initial startup is explicitly pending and has a bounded-wait presentation", () => {
   assert.equal(initialBridgeBootstrapStatus.phase, "starting");

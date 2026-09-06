@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { startupRecoveryCopy } from "../startupRecovery";
+import { startupDiagnosticText, startupRecoveryCopy } from "../startupRecovery";
 import type { BridgeBootstrapStatus } from "../types";
 
 export function StartupRecovery({
@@ -13,7 +13,20 @@ export function StartupRecovery({
   onRetry: () => void;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const [copyFeedback, setCopyFeedback] = useState("");
   const copy = startupRecoveryCopy(status);
+
+  async function copyDiagnostic() {
+    const diagnostic = startupDiagnosticText(status);
+    if (!diagnostic) return;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
+      await navigator.clipboard.writeText(diagnostic);
+      setCopyFeedback("Safe startup details copied.");
+    } catch {
+      setCopyFeedback(`Copy unavailable. Error code: ${status.code}.`);
+    }
+  }
 
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
@@ -34,15 +47,17 @@ export function StartupRecovery({
         {copy.guidance ? <p className="startup-recovery-guidance">{copy.guidance}</p> : null}
         {status.phase === "failed" ? (
           <div className="startup-recovery-actions">
-            <button
-              type="button"
-              className="solid"
-              onClick={onRetry}
-              disabled={!status.retryable || retrying}
-            >
-              {retrying ? "Retrying…" : "Retry bridge"}
-            </button>
+            {status.retryable ? (
+              <button type="button" className="solid" onClick={onRetry} disabled={retrying}>
+                {retrying ? "Retrying…" : "Retry bridge"}
+              </button>
+            ) : (
+              <button type="button" className="solid" onClick={() => void copyDiagnostic()}>
+                Copy safe error details
+              </button>
+            )}
             <code>{status.code}</code>
+            {copyFeedback ? <span role="status" aria-live="polite">{copyFeedback}</span> : null}
           </div>
         ) : (
           <div className="startup-recovery-progress" aria-hidden="true"><span /></div>

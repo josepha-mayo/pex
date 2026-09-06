@@ -1,6 +1,6 @@
 import type { BridgeBootstrapStatus } from "./types";
 
-const KNOWN_FAILURE_CODES = new Set([
+export const KNOWN_BRIDGE_FAILURE_CODES = [
   "bridge_address_invalid",
   "bridge_identity_lost",
   "bridge_process_stopped",
@@ -14,7 +14,8 @@ const KNOWN_FAILURE_CODES = new Set([
   "sidecar_missing",
   "sidecar_spawn_failed",
   "token_generation_failed",
-]);
+] as const;
+const KNOWN_FAILURE_CODES = new Set<string>(KNOWN_BRIDGE_FAILURE_CODES);
 
 export const initialBridgeBootstrapStatus: BridgeBootstrapStatus = {
   phase: "starting",
@@ -159,4 +160,10 @@ export function startupRecoveryCopy(status: BridgeBootstrapStatus): StartupRecov
     default:
       return base;
   }
+}
+
+export function startupDiagnosticText(status: BridgeBootstrapStatus): string | null {
+  if (status.phase !== "failed" || !status.code || !KNOWN_FAILURE_CODES.has(status.code)) return null;
+  const copy = startupRecoveryCopy(status);
+  return `PEX startup error: ${status.code}. ${copy.detail} ${copy.guidance || ""}`.trim();
 }
