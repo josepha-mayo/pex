@@ -201,6 +201,24 @@ def _matches_forbidden_terms(text: str, terms: list[str]) -> bool:
     for occurrence in occurrences:
         if occurrence.group() != terms[0]:
             continue
+        # The verb and object must occur in the same local clause. A request to
+        # create a report is not evidence of creating a git commit mentioned in
+        # a later prohibition. Keep sentence and contrast boundaries intact.
+        clause = re.split(
+            r"[.!?;](?:\s|$)|\b(?:but|however|instead|nevertheless)\b",
+            text[occurrence.start() : occurrence.start() + 560], maxsplit=1,
+        )[0]
+        clause_words = _WORD.findall(clause)
+        cursor = 0
+        for term in terms:
+            try:
+                cursor = clause_words.index(term, cursor) + 1
+            except ValueError:
+                break
+        else:
+            cursor = -1
+        if cursor != -1:
+            continue
         prefix = text[max(0, occurrence.start() - 560) : occurrence.start()]
         negated_list = _NEGATED_LIST.search(prefix)
         list_restatement = negated_list is not None and not _AFFIRMATIVE_BOUNDARY.search(

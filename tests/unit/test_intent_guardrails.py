@@ -161,6 +161,25 @@ def test_later_affirmative_conflict_is_not_hidden_by_an_earlier_negation():
     assert result.matched_constraints == ("Do not alter dataset preprocessing.",)
 
 
+@pytest.mark.parametrize("prompt", [
+    "Create report.json. Do not create a git commit.",
+    "Create report.json; do not create a git commit.",
+    "Create report.json, but do not create a git commit.",
+    "Do not create a git commit. Only pytest may create or clean its scratch directory.",
+])
+def test_verb_in_another_clause_cannot_borrow_a_forbidden_object(prompt):
+    goal = _goal().model_copy(update={"constraints": ["Do not create a git commit"]})
+    assert lint_prompt(goal, prompt).classification is not PromptClass.CONTRADICTION
+
+
+def test_same_clause_affirmative_git_commit_remains_a_conflict():
+    goal = _goal().model_copy(update={"constraints": ["Do not create a git commit"]})
+    assert (
+        lint_prompt(goal, "Create a git commit for the report.").classification
+        is PromptClass.CONTRADICTION
+    )
+
+
 @pytest.mark.parametrize(
     "prompt",
     [
