@@ -54,6 +54,9 @@ from pex_protocol.session import HarnessEvent, HarnessSession
 
 from pex_bridge import codex_correction
 from pex_bridge.adapters.base import (
+    WORKER_DELIVERY_SCHEMA_CODEX,
+    bounded_adapter_binding,
+    bounded_adapter_id,
     validate_cursor_hook_preparation_receipt,
     validate_worker_delivery_receipt_binding,
 )
@@ -4406,6 +4409,7 @@ def _validate_event_delivery_update(
         "verification",
         "worker_delivery_receipt",
         "hook_preparation_receipt",
+        "shared_delivery_scope",
     }
     reserved_metadata = reserved.metadata or {}
     finalized_metadata = finalized.metadata or {}
@@ -4414,6 +4418,90 @@ def _validate_event_delivery_update(
             continue
         if reserved_metadata.get(key) != finalized_metadata.get(key):
             raise ValueError(f"event delivery cannot change intervention metadata {key}")
+    _validate_shared_delivery_scope_update(reserved, finalized)
+
+
+_SHARED_DELIVERY_SCOPE_SCHEMA = "pex.shared-codex-delivery-scope.v1"
+_SHARED_DELIVERY_SCOPE_KEYS = frozenset(
+    {
+        "schema",
+        "authorization_id",
+        "endpoint_identity",
+        "connection_generation",
+        "target_session_id",
+        "vendor_session_id",
+        "project_id",
+        "cwd",
+    }
+)
+
+
+def _validate_shared_delivery_scope_update(
+    reserved: Intervention, finalized: Intervention
+) -> None:
+    """Permit one validated shared delivery scope to be sealed with its receipt."""
+
+    before = (reserved.metadata or {}).get("shared_delivery_scope")
+    after = (finalized.metadata or {}).get("shared_delivery_scope")
+    if before is not None:
+        if after != before:
+            raise ValueError("event delivery cannot change its shared delivery scope")
+        return
+    if after is None:
+        return
+    if not isinstance(after, dict) or set(after) != _SHARED_DELIVERY_SCOPE_KEYS:
+        raise ValueError("shared delivery scope is corrupt")
+    receipt = (finalized.metadata or {}).get("worker_delivery_receipt")
+    if (
+        not isinstance(receipt, dict)
+        or receipt.get("schema") != WORKER_DELIVERY_SCHEMA_CODEX
+        or (finalized.metadata or {}).get("effect_state") != "delivered"
+        or after.get("schema") != _SHARED_DELIVERY_SCOPE_SCHEMA
+        or after.get("target_session_id") != finalized.session_id
+        or after.get("target_session_id") != receipt.get("target_session_id")
+        or after.get("vendor_session_id") != receipt.get("vendor_session_id")
+        or type(after.get("connection_generation")) is not int
+        or after["connection_generation"] < 1
+    ):
+        raise ValueError("shared delivery scope is corrupt")
+    for field in (
+        "authorization_id",
+        "endpoint_identity",
+        "target_session_id",
+        "vendor_session_id",
+    ):
+        try:
+            value = bounded_adapter_id(after[field], field=f"shared delivery {field}")
+            if value != after[field]:
+                raise ValueError("shared delivery scope is corrupt")
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("shared delivery scope is corrupt") from exc
+    for field in ("project_id", "cwd"):
+        try:
+            value = bounded_adapter_binding(
+                after[field], field=f"shared delivery {field}"
+            )
+            if value != after[field]:
+                raise ValueError("shared delivery scope is corrupt")
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("shared delivery scope is corrupt") from exc
+
+
+def _validate_shared_delivery_scope_result_binding(
+    intervention: Intervention, effect_result: dict[str, Any] | None
+) -> None:
+    """Require durable effect, intervention, and audit inputs to carry one scope."""
+
+    intervention_scope = (intervention.metadata or {}).get("shared_delivery_scope")
+    effect_scope = (
+        effect_result.get("shared_delivery_scope")
+        if isinstance(effect_result, dict)
+        else None
+    )
+    if intervention_scope is None and effect_scope is None:
+        return
+    if intervention_scope != effect_scope:
+        raise ValueError("shared delivery scope effect binding is corrupt")
 
 
 def _validate_event_observation_update(
@@ -23154,6 +23242,9 @@ class Store:
                     reserved_intervention,
                     intervention,
                 )
+                _validate_shared_delivery_scope_result_binding(
+                    intervention, effect_result
+                )
                 if reserved_intervention != intervention:
                     await _update_bound_intervention(transaction, intervention)
                     audit_json = _canonical_json(
@@ -24769,6 +24860,7 @@ class Store:
             "trigger_event_id": metadata.get("trigger_event_id"),
             "observed_event_refs": metadata.get("outcome_event_ids") or [],
             "worker_delivery_receipt": metadata.get("worker_delivery_receipt"),
+            "shared_delivery_scope": metadata.get("shared_delivery_scope"),
             "hook_preparation_receipt": metadata.get("hook_preparation_receipt"),
             "cursor_hook_delivery": metadata.get("cursor_hook_delivery"),
             "permission_request_id": metadata.get("permission_request_id"),

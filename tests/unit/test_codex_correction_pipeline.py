@@ -14,13 +14,17 @@ from unittest.mock import AsyncMock
 
 import pytest
 import test_workspace_continuity_pipeline as continuity_fixture
-from pex_bridge.adapters.base import AdapterMessageResult
+from pex_bridge.adapters.base import WORKER_DELIVERY_SCHEMA_GENERIC, AdapterMessageResult
 from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
 from pex_bridge.adapters.codex_subscription import CodexExistingThreadSubscription
 from pex_bridge.codex_correction import CORRECTION_SCHEMA, canonical
 from pex_bridge.codex_input_baseline import CodexInputBaseline
 from pex_bridge.codex_input_provenance import CodexInputProvenance
-from pex_bridge.store import stable_event_effect_id
+from pex_bridge.store import (
+    _validate_event_delivery_update,
+    _validate_shared_delivery_scope_result_binding,
+    stable_event_effect_id,
+)
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.enums import Authority
 from pex_protocol.session import HarnessEvent
@@ -292,6 +296,28 @@ async def test_actual_pipeline_commits_exact_correction_before_executor(
         "vendor_session_id": case.session.vendor_session_id,
         "vendor_turn_id": "fixture-correction-turn",
     }
+    scope = effect["result"]["shared_delivery_scope"]
+    assert scope == result.metadata["shared_delivery_scope"]
+    assert scope == {
+        "schema": "pex.shared-codex-delivery-scope.v1",
+        "authorization_id": case.session.metadata["subscription_receipt"]["authorization_id"],
+        "endpoint_identity": case.session.metadata["subscription_receipt"]["endpoint_identity"],
+        "connection_generation": case.session.metadata["subscription_receipt"][
+            "connection_generation"
+        ],
+        "target_session_id": case.session.id,
+        "vendor_session_id": case.session.vendor_session_id,
+        "project_id": case.session.project_id,
+        "cwd": case.session.cwd,
+    }
+    audit = await case.store.db.execute(
+        "SELECT json FROM intervention_audit WHERE intervention_id = ? "
+        "AND record_type = 'delivery_delivered'",
+        (result.id,),
+    )
+    audit_row = await audit.fetchone()
+    assert audit_row is not None
+    assert json.loads(audit_row["json"])["shared_delivery_scope"] == scope
     attributions = await case.store.list_codex_correction_attributions(case.session)
     assert len(attributions) == 1
     assert json.loads(attributions[0])["correction"] == correction
@@ -300,6 +326,47 @@ async def test_actual_pipeline_commits_exact_correction_before_executor(
     assert case.sequence == ["prepare", "commit", "adapter"]
     assert case.pipeline.supervisor.calls == 1
     assert await case.store.get_event_effect(case.event.event_id, "main") == effect
+
+
+async def test_shared_delivery_scope_store_seal_rejects_corruption(correction_pipeline):
+    case = correction_pipeline
+    case.event = await case.ingest_observed()
+    finalized = (await case.store.list_interventions(case.session.id))[-1]
+    reserved = finalized.model_copy(deep=True)
+    for key in (
+        "delivery",
+        "delivery_code",
+        "effect_id",
+        "effect_state",
+        "worker_delivery_receipt",
+        "shared_delivery_scope",
+    ):
+        reserved.metadata.pop(key, None)
+
+    generic_receipt = finalized.model_copy(deep=True)
+    generic_receipt.metadata["worker_delivery_receipt"]["schema"] = (
+        WORKER_DELIVERY_SCHEMA_GENERIC
+    )
+    with pytest.raises(ValueError, match="shared delivery scope is corrupt"):
+        _validate_event_delivery_update(reserved, generic_receipt)
+
+    malformed_scope = finalized.model_copy(deep=True)
+    malformed_scope.metadata["shared_delivery_scope"].pop("cwd")
+    with pytest.raises(ValueError, match="shared delivery scope is corrupt"):
+        _validate_event_delivery_update(reserved, malformed_scope)
+
+    changed_scope = finalized.model_copy(deep=True)
+    changed_scope.metadata["shared_delivery_scope"]["endpoint_identity"] = "other-endpoint"
+    with pytest.raises(ValueError, match="cannot change its shared delivery scope"):
+        _validate_event_delivery_update(finalized, changed_scope)
+
+    effect = await case.store.get_event_effect(case.event.event_id, "main")
+    mismatched_effect = dict(effect["result"])
+    mismatched_effect["shared_delivery_scope"] = dict(
+        mismatched_effect["shared_delivery_scope"], endpoint_identity="other-endpoint"
+    )
+    with pytest.raises(ValueError, match="scope effect binding is corrupt"):
+        _validate_shared_delivery_scope_result_binding(finalized, mismatched_effect)
 
 
 @pytest.mark.parametrize("failure", ["prepare", "insert"])

@@ -115,11 +115,39 @@ async def test_private_route_revalidates_in_independent_loop_and_returns_exact_r
         "schema": "pex.worker-delivery.codex-turn.v1", "target_session_id": case.session.id,
         "vendor_session_id": case.session.vendor_session_id, "vendor_turn_id": "fixture-turn",
     }
+    subscription = case.session.metadata["subscription_receipt"]
+    assert result.shared_delivery_scope == {
+        "schema": "pex.shared-codex-delivery-scope.v1",
+        "authorization_id": subscription["authorization_id"],
+        "endpoint_identity": subscription["endpoint_identity"],
+        "connection_generation": subscription["connection_generation"],
+        "target_session_id": case.session.id,
+        "vendor_session_id": case.session.vendor_session_id,
+        "project_id": case.session.project_id,
+        "cwd": case.session.cwd,
+    }
     assert len(case.writes) == 1
     assert case.validator.await_count == 2
     assert case.validation_threads[0] == threading.get_ident()
     assert case.validation_threads[1] != threading.get_ident()
     assert len(case.checks) == 3
+    case.generic_send.assert_not_awaited()
+
+
+@pytest.mark.parametrize("change", ["missing", "changed"])
+async def test_acknowledged_shared_dispatch_with_changed_receipt_is_uncertain(case, change):
+    async def dispatch(**kwargs):
+        result = await case.dispatch(**kwargs)
+        receipt = case.bound.adapter.session.metadata["subscription_receipt"]
+        if change == "missing":
+            case.bound.adapter.session.metadata["subscription_receipt"] = {}
+        else:
+            receipt["endpoint_identity"] = "changed-endpoint"
+        return result
+
+    case.sender.side_effect = dispatch
+    assert await execute(case) == "codex_delivery_uncertain"
+    assert len(case.writes) == 1
     case.generic_send.assert_not_awaited()
 
 

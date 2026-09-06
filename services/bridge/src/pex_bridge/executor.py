@@ -27,6 +27,8 @@ from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.base import (
     AdapterMessageResult,
     CursorHookPreparation,
+    bounded_adapter_binding,
+    bounded_adapter_id,
     resolve_adapter_message_result,
 )
 from pex_bridge.local_workspace import require_same_local_directory
@@ -60,6 +62,7 @@ class ActionExecutionResult:
     outcome: str
     worker_delivery_receipt: dict[str, str] | None = None
     hook_preparation_receipt: dict[str, str] | None = None
+    shared_delivery_scope: dict[str, str | int] | None = None
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,55 @@ class ClaimedMainEffect:
 
 class _WorkspaceDispatchRefused(Exception):
     """Only raised before an adapter operation is entered, never after it."""
+
+
+_SHARED_DELIVERY_SCOPE_SCHEMA = "pex.shared-codex-delivery-scope.v1"
+
+
+def _shared_codex_delivery_scope(adapter, session: HarnessSession) -> dict[str, str | int]:
+    """Freeze the exact subscription generation that accepted a correction."""
+    receipt = adapter.session.metadata.get("subscription_receipt")
+    if (
+        not isinstance(receipt, dict)
+        or adapter.session.id != session.id
+        or adapter.session.vendor_session_id != session.vendor_session_id
+        or adapter.session.project_id != session.project_id
+        or adapter.session.cwd != session.cwd
+        or receipt.get("pex_session_id") != session.id
+        or receipt.get("thread_id") != session.vendor_session_id
+        or receipt.get("project_id") != session.project_id
+        or receipt.get("cwd") != session.cwd
+        or receipt.get("authorization_id") != adapter._subscription_id
+        or receipt.get("endpoint_identity") != adapter._token[0]
+        or receipt.get("connection_generation") != adapter._token[1]
+    ):
+        raise ValueError("shared Codex delivery scope changed after acknowledgement")
+    try:
+        authorization_id = bounded_adapter_id(
+            receipt["authorization_id"], field="shared delivery authorization id"
+        )
+        endpoint_identity = bounded_adapter_id(
+            receipt["endpoint_identity"], field="shared delivery endpoint identity"
+        )
+        project_id = bounded_adapter_binding(
+            receipt["project_id"], field="shared delivery project id"
+        )
+        cwd = bounded_adapter_binding(receipt["cwd"], field="shared delivery cwd")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("shared Codex delivery scope is malformed") from exc
+    generation = receipt["connection_generation"]
+    if type(generation) is not int or generation < 1:
+        raise ValueError("shared Codex delivery generation is malformed")
+    return {
+        "schema": _SHARED_DELIVERY_SCOPE_SCHEMA,
+        "authorization_id": authorization_id,
+        "endpoint_identity": endpoint_identity,
+        "connection_generation": generation,
+        "target_session_id": session.id,
+        "vendor_session_id": session.vendor_session_id,
+        "project_id": project_id,
+        "cwd": cwd,
+    }
 
 
 def _message_execution_result(
@@ -616,9 +668,22 @@ class ActionExecutor:
             InterventionType.REQUEST_VERIFICATION: "verification_requested",
             InterventionType.CONTINUE_SESSION: "continued",
         }[action.type]
-        return _message_execution_result(
+        execution = _message_execution_result(
             result, session=session, accepted_outcome=accepted_outcome,
             rejected_outcome="codex_dispatch_failed",
+        )
+        if not isinstance(execution, ActionExecutionResult):
+            return execution
+        if execution.worker_delivery_receipt is None:
+            return execution
+        try:
+            scope = _shared_codex_delivery_scope(adapter, session)
+        except ValueError:
+            return "codex_delivery_uncertain"
+        return ActionExecutionResult(
+            outcome=execution.outcome,
+            worker_delivery_receipt=execution.worker_delivery_receipt,
+            shared_delivery_scope=scope,
         )
 
     async def _validated_lifecycle_dispatch_session(

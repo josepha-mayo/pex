@@ -70,11 +70,13 @@ from pex_supervisor.workspace import snapshot
 
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.base import (
+    bounded_adapter_binding,
     bounded_adapter_id,
     resolve_adapter_message_result,
     validate_cursor_hook_preparation_receipt,
     validate_worker_delivery_receipt_binding,
 )
+from pex_bridge.adapters.codex_subscription import _stable_record_id, shared_live_event_id
 from pex_bridge.adapters.desktop import is_desktop_observe_session
 from pex_bridge.adapters.opencode_outcomes import event_matches_opencode_delivery
 from pex_bridge.agentcore import (
@@ -138,6 +140,18 @@ from pex_bridge.store import (
 from pex_bridge.supervisor_context import build_supervisor_context
 from pex_bridge.workspace_access import workspace_read_check
 from pex_bridge.workspace_binding import WorkspaceAuthorityError, require_workspace_sample
+
+_SHARED_DELIVERY_SCOPE_SCHEMA = "pex.shared-codex-delivery-scope.v1"
+_SHARED_DELIVERY_SCOPE_KEYS = {
+    "schema",
+    "authorization_id",
+    "endpoint_identity",
+    "connection_generation",
+    "target_session_id",
+    "vendor_session_id",
+    "project_id",
+    "cwd",
+}
 
 
 class _WorkspacePlannerNotStarted(WorkspaceAuthorityError):
@@ -2923,6 +2937,11 @@ class Pipeline:
             if isinstance(effect_result, dict)
             else None
         )
+        shared_delivery_scope = (
+            effect_result.get("shared_delivery_scope")
+            if isinstance(effect_result, dict)
+            else None
+        )
         if hook_preparation_receipt is not None:
             if (
                 session is None
@@ -2967,6 +2986,13 @@ class Pipeline:
             ):
                 raise RuntimeError("worker delivery receipt is corrupt")
             final.metadata["worker_delivery_receipt"] = dict(worker_delivery_receipt)
+            if session.metadata.get("connection_kind") == "codex_shared":
+                normalized_scope = Pipeline._validate_shared_delivery_scope(
+                    shared_delivery_scope, session
+                )
+                final.metadata["shared_delivery_scope"] = normalized_scope
+            elif shared_delivery_scope is not None:
+                raise RuntimeError("non-shared delivery cannot carry a shared scope")
         if effect_state == "delivery_uncertain":
             final.outcome = "worker_delivery_uncertain"
             final.helped = None
@@ -3226,6 +3252,7 @@ class Pipeline:
         outcome: str, effect_state: str, code: str, publish: bool,
         worker_delivery_receipt: dict | None = None,
         hook_preparation_receipt: dict | None = None,
+        shared_delivery_scope: dict | None = None,
     ) -> None:
         """Own the entire post-executor refresh/seal through observer cancellation."""
 
@@ -3234,7 +3261,11 @@ class Pipeline:
             if handled:
                 return
             effect_result = None
-            if worker_delivery_receipt is not None or hook_preparation_receipt is not None:
+            if (
+                worker_delivery_receipt is not None
+                or hook_preparation_receipt is not None
+                or shared_delivery_scope is not None
+            ):
                 effect_result = {
                     "status": effect_state, "outcome": outcome,
                     "code": code, "effect_id": effect["effect_id"],
@@ -3243,6 +3274,8 @@ class Pipeline:
                     effect_result["worker_delivery_receipt"] = worker_delivery_receipt
                 if hook_preparation_receipt is not None:
                     effect_result["hook_preparation_receipt"] = hook_preparation_receipt
+                if shared_delivery_scope is not None:
+                    effect_result["shared_delivery_scope"] = shared_delivery_scope
             await self._seal_main_event_effect(
                 processing=processing, effect=effect, reserved=reserved, session=session,
                 outcome=outcome, effect_state=effect_state, code=code, publish=publish,
@@ -3379,6 +3412,7 @@ class Pipeline:
         verdict = reserved.policy_verdict
         worker_delivery_receipt = None
         hook_preparation_receipt = None
+        shared_delivery_scope = None
         try:
             if action.type in {
                 InterventionType.APPLY_OVERLAY,
@@ -3415,6 +3449,7 @@ class Pipeline:
                     outcome = execution.outcome
                     worker_delivery_receipt = execution.worker_delivery_receipt
                     hook_preparation_receipt = execution.hook_preparation_receipt
+                    shared_delivery_scope = execution.shared_delivery_scope
                 else:
                     outcome = execution
         except asyncio.CancelledError:
@@ -3437,6 +3472,7 @@ class Pipeline:
             code=outcome, publish=True,
             worker_delivery_receipt=worker_delivery_receipt,
             hook_preparation_receipt=hook_preparation_receipt,
+            shared_delivery_scope=shared_delivery_scope,
         )
 
     async def recover_unfinished_events(self) -> list[str]:
@@ -3851,16 +3887,127 @@ class Pipeline:
         ):
             return False
         if event.event_type == EventType.STOP:
-            return (
-                set(raw_ref) == {"schema", "thread_id", "turn_id"}
-                and event.event_id == f"{session.id}:turn:{receipt_turn_id}"
+            if set(raw_ref) != {"schema", "thread_id", "turn_id"}:
+                return False
+            canonical_event_id = f"{session.id}:turn:{receipt_turn_id}"
+            if (
+                session.metadata.get("connection_kind") != "codex_shared"
+                and event.event_id == canonical_event_id
+            ):
+                return True
+            return Pipeline._shared_codex_event_matches(
+                intervention, event, session, receipt_turn_id, item_id=None
             )
         item_id = raw_ref.get("item_id")
-        return (
-            isinstance(item_id, str)
-            and bool(item_id)
-            and event.event_id == f"{session.id}:item:{item_id}"
+        if not isinstance(item_id, str) or not item_id:
+            return False
+        canonical_event_id = f"{session.id}:item:{item_id}"
+        if (
+            session.metadata.get("connection_kind") != "codex_shared"
+            and event.event_id == canonical_event_id
+        ):
+            return True
+        return Pipeline._shared_codex_event_matches(
+            intervention, event, session, receipt_turn_id, item_id=item_id
         )
+
+    @staticmethod
+    def _shared_codex_event_matches(
+        intervention: Intervention,
+        event: HarnessEvent,
+        session: HarnessSession,
+        receipt_turn_id: str,
+        *,
+        item_id: str | None,
+    ) -> bool:
+        """Validate the adapter-minted durable ID for one shared Codex record."""
+        metadata = event.metadata or {}
+        receipt = session.metadata.get("subscription_receipt")
+        try:
+            delivery_scope = Pipeline._validate_shared_delivery_scope(
+                (intervention.metadata or {}).get("shared_delivery_scope"), session
+            )
+        except RuntimeError:
+            return False
+        method = "turn/completed" if item_id is None else "item/completed"
+        vendor_item_id = metadata.get("vendor_item_id")
+        if (
+            metadata.get("source") != "codex_shared_live_notification"
+            or metadata.get("raw_method") != method
+            or metadata.get("vendor_turn_id") != receipt_turn_id
+            or not isinstance(receipt, dict)
+            or receipt.get("authorization_id") != metadata.get("subscription_id")
+            or receipt.get("endpoint_identity") != metadata.get("endpoint_identity")
+            or receipt.get("connection_generation") != metadata.get("connection_generation")
+            or receipt.get("pex_session_id") != session.id
+            or receipt.get("thread_id") != session.vendor_session_id
+            or receipt.get("project_id") != session.project_id
+            or receipt.get("cwd") != session.cwd
+            or delivery_scope["authorization_id"] != receipt.get("authorization_id")
+            or delivery_scope["endpoint_identity"] != receipt.get("endpoint_identity")
+            or delivery_scope["connection_generation"] != receipt.get("connection_generation")
+            or delivery_scope["project_id"] != receipt.get("project_id")
+            or delivery_scope["cwd"] != receipt.get("cwd")
+            or type(metadata.get("connection_generation")) is not int
+            or (item_id is None and vendor_item_id is not None)
+            or (item_id is not None and not isinstance(vendor_item_id, str))
+        ):
+            return False
+        stable_id = _stable_record_id(
+            "live_notification", method, receipt_turn_id, vendor_item_id
+        )
+        if item_id is not None and item_id != stable_id:
+            return False
+        return event.event_id == shared_live_event_id(
+            subscription_id=delivery_scope["authorization_id"],
+            endpoint_identity=delivery_scope["endpoint_identity"],
+            connection_generation=delivery_scope["connection_generation"],
+            stable_id=stable_id,
+        )
+
+    @staticmethod
+    def _validate_shared_delivery_scope(
+        scope: object, session: HarnessSession
+    ) -> dict[str, str | int]:
+        """Validate immutable shared subscription scope captured at delivery."""
+        if not isinstance(scope, dict) or set(scope) != _SHARED_DELIVERY_SCOPE_KEYS:
+            raise RuntimeError("shared delivery scope is corrupt")
+        if (
+            scope.get("schema") != _SHARED_DELIVERY_SCOPE_SCHEMA
+            or scope.get("target_session_id") != session.id
+            or scope.get("vendor_session_id") != session.vendor_session_id
+            or scope.get("project_id") != session.project_id
+            or scope.get("cwd") != session.cwd
+            or type(scope.get("connection_generation")) is not int
+            or scope["connection_generation"] < 1
+        ):
+            raise RuntimeError("shared delivery scope is corrupt")
+        normalized: dict[str, str | int] = {
+            "schema": _SHARED_DELIVERY_SCOPE_SCHEMA,
+            "connection_generation": scope["connection_generation"],
+        }
+        for name in (
+            "authorization_id",
+            "endpoint_identity",
+            "target_session_id",
+            "vendor_session_id",
+        ):
+            try:
+                value = bounded_adapter_id(scope[name], field=f"shared delivery {name}")
+            except (KeyError, TypeError, ValueError) as exc:
+                raise RuntimeError("shared delivery scope is corrupt") from exc
+            if value != scope[name]:
+                raise RuntimeError("shared delivery scope is corrupt")
+            normalized[name] = value
+        for name in ("project_id", "cwd"):
+            try:
+                value = bounded_adapter_binding(scope[name], field=f"shared delivery {name}")
+            except (KeyError, TypeError, ValueError) as exc:
+                raise RuntimeError("shared delivery scope is corrupt") from exc
+            if value != scope[name]:
+                raise RuntimeError("shared delivery scope is corrupt")
+            normalized[name] = value
+        return normalized
 
     @staticmethod
     def _synthetic_event_ref_is_adapter_minted(

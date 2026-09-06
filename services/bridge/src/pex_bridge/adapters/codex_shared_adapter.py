@@ -30,6 +30,7 @@ from pex_bridge.adapters.codex_subscription import (
     CodexObservationInterrupted,
     CodexObservedRecord,
     CodexSubscriptionError,
+    shared_live_event_id,
 )
 from pex_bridge.codex_correction import (
     CORRECTION_SCHEMA,
@@ -430,6 +431,8 @@ class CodexSharedAdapter(HarnessAdapter):
             "sequence_scope": "retained_lifecycle_records_not_raw_frames",
             "delivery_proven": False,
         }
+        if record.item_id is not None:
+            metadata["vendor_item_id"] = record.item_id
         event_type = EventType.STATUS
         phase = EventPhase.DURING
         error = None
@@ -544,23 +547,31 @@ class CodexSharedAdapter(HarnessAdapter):
         elif method != "thread/started":
             return None
         metadata["human_input_revision"] = self.input_revision
-        event_identity = hashlib.sha256(
-            f"{self._subscription_id}:{self._token[0]}:{self._token[1]}:{record.stable_id}".encode()
-        ).hexdigest()
+        shared_event_id = shared_live_event_id(
+            subscription_id=self._subscription_id,
+            endpoint_identity=self._token[0],
+            connection_generation=self._token[1],
+            stable_id=record.stable_id,
+        )
         if event is None:
             event = HarnessEvent(
-                event_id=f"codex-shared:{event_identity}",
+                event_id=shared_event_id,
                 ts=observed_at,
                 harness_type=HarnessType.CODEX,
                 session_id=self.session.id,
                 project_id=self.session.project_id,
                 event_type=event_type,
                 phase=phase,
+                raw_event_ref=(
+                    CodexAdapter._raw_event_ref(self.session, turn_id=record.turn_id)
+                    if method == "turn/completed"
+                    else None
+                ),
                 error=error,
             )
         else:
-            event.event_id = f"codex-shared:{event_identity}"
             event.ts = observed_at
+        event.event_id = shared_event_id
         event.metadata = {**event.metadata, **metadata}
         if self._input_baseline is not None:
             self._input_baselines[event.event_id] = self._input_baseline.snapshot()

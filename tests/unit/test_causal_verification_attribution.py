@@ -5,6 +5,8 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
+from pex_bridge.adapters.codex_shared_adapter import CodexSharedAdapter
+from pex_bridge.adapters.codex_subscription import _stable_record_id, shared_live_event_id
 from pex_bridge.pipeline import Pipeline
 from pex_protocol.actions import InterventionType, ProposedAction
 from pex_protocol.enums import EventPhase, EventType, HarnessType, PolicyVerdict
@@ -19,6 +21,7 @@ from pex_protocol.verification import (
     VerificationProbe,
     VerificationProbeKind,
 )
+from test_codex_subscription import _notification, _subscribed
 
 
 def _pipeline_with(prior: Intervention) -> Pipeline:
@@ -230,3 +233,132 @@ async def test_exact_codex_turn_receipt_remains_eligible_for_outcome_attribution
     assert updates[0].outcome == "goal_evidence_supported"
     assert updates[0].helped is True
     assert updates[0].metadata["outcome_final"] is True
+
+
+@pytest.mark.asyncio
+async def test_shared_codex_normalized_delivery_events_require_exact_durable_binding(tmp_path):
+    coordinator, transport = await _subscribed(tmp_path)
+    adapter = CodexSharedAdapter(coordinator)
+    session = adapter.session
+    session.goal_id = "goal-shared-causal-proof"
+    turn_id = "turn-shared-causal-proof"
+    created_at = datetime.now(UTC) - timedelta(seconds=1)
+    subscription = session.metadata["subscription_receipt"]
+    delivery_scope = {
+        "schema": "pex.shared-codex-delivery-scope.v1",
+        "authorization_id": subscription["authorization_id"],
+        "endpoint_identity": subscription["endpoint_identity"],
+        "connection_generation": subscription["connection_generation"],
+        "target_session_id": session.id,
+        "vendor_session_id": session.vendor_session_id,
+        "project_id": session.project_id,
+        "cwd": session.cwd,
+    }
+    action = ProposedAction(
+        type=InterventionType.SEND_NUDGE,
+        session_id=session.id,
+        goal_id=session.goal_id,
+        payload={"text": "Complete the requested work."},
+        rationale="The observed artifact is incomplete.",
+        evidence=["artifact:missing"],
+    )
+    prior = Intervention(
+        id="shared-codex-exact-turn",
+        session_id=session.id,
+        goal_id=session.goal_id,
+        trigger=EventType.STOP.value,
+        evidence=action.evidence,
+        diagnosis=action.rationale,
+        proposed_action=action,
+        confidence=action.confidence,
+        risk=action.risk.value,
+        reversible=action.reversible,
+        authority_required=action.authority_required.value,
+        action_taken=action.type.value,
+        policy_verdict=PolicyVerdict.ALLOW,
+        result="sent",
+        created_at=created_at,
+        metadata={
+            "worker_delivery_receipt": {
+                "schema": "pex.worker-delivery.codex-turn.v1",
+                "target_session_id": session.id,
+                "vendor_session_id": session.vendor_session_id,
+                "vendor_turn_id": turn_id,
+            },
+            "shared_delivery_scope": delivery_scope,
+        },
+    )
+    transport.notifications.extend(
+        [
+            _notification("turn/started", {"threadId": "thread-1", "turn": {"id": turn_id}}),
+            _notification(
+                "item/completed",
+                {
+                    "threadId": "thread-1",
+                    "turnId": turn_id,
+                    "item": {
+                        "id": "shared-agent-response",
+                        "type": "agentMessage",
+                        "text": "The requested report is now complete.",
+                    },
+                },
+            ),
+            _notification(
+                "turn/completed",
+                {
+                    "threadId": "thread-1",
+                    "turn": {"id": turn_id, "status": "completed"},
+                },
+            ),
+        ]
+    )
+    try:
+        events = [adapter._event(record) for record in (await coordinator.drain_live()).records]
+        response = next(event for event in events if event.event_type == EventType.AGENT_RESPONSE)
+        stop = next(event for event in events if event.event_type == EventType.STOP)
+        assert response.raw_event_ref is not None
+        assert stop.raw_event_ref is not None
+
+        pipeline = _pipeline_with(prior)
+        updates = await pipeline._observe_prior_intervention(
+            session, response, None, persist=False
+        )
+        assert updates == [prior]
+        assert prior.outcome == "worker_responded"
+        assert prior.worker_response
+        updates = await pipeline._observe_prior_intervention(
+            session,
+            stop,
+            {"status": "supported", "acceptance_status": "supported"},
+            persist=False,
+        )
+        assert updates == [prior]
+        assert prior.outcome == "goal_evidence_supported"
+        assert prior.helped is True
+
+        for forged in (
+            stop.model_copy(
+                update={"raw_event_ref": stop.raw_event_ref.replace(turn_id, "other-turn")}
+            ),
+            stop.model_copy(update={"event_id": "codex-shared:" + "0" * 64}),
+            stop.model_copy(update={"raw_event_ref": None}),
+        ):
+            assert Pipeline._event_matches_worker_delivery(prior, session, forged) is False
+        rebinding = session.model_copy(deep=True)
+        rebinding.metadata["subscription_receipt"]["authorization_id"] = "other-subscription"
+        assert Pipeline._event_matches_worker_delivery(prior, rebinding, stop) is False
+        reconnect = session.model_copy(deep=True)
+        reconnect.metadata["subscription_receipt"]["connection_generation"] += 1
+        reconnect.metadata["subscription_receipt"]["endpoint_identity"] = "other-endpoint"
+        reconnected = stop.model_copy(deep=True)
+        reconnected.metadata["connection_generation"] += 1
+        reconnected.metadata["endpoint_identity"] = "other-endpoint"
+        reconnected.event_id = shared_live_event_id(
+            subscription_id=subscription["authorization_id"],
+            endpoint_identity="other-endpoint",
+            connection_generation=subscription["connection_generation"] + 1,
+            stable_id=_stable_record_id("live_notification", "turn/completed", turn_id, None),
+        )
+        assert Pipeline._event_matches_worker_delivery(prior, reconnect, reconnected) is False
+    finally:
+        await transport.close()

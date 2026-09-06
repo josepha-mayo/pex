@@ -17,6 +17,7 @@ from pex_protocol.session import HarnessEvent, HarnessSession
 
 MAX_ADAPTER_MESSAGE_CHARS = 262_144
 MAX_ADAPTER_ID_CHARS = 512
+MAX_ADAPTER_BINDING_CHARS = 4_096
 MAX_OBSERVED_MAPPING_ITEMS = 128
 MAX_OBSERVED_MAPPING_NODES = 4_096
 MAX_OBSERVED_MAPPING_DEPTH = 8
@@ -83,6 +84,15 @@ def bounded_adapter_text(
 
 def bounded_adapter_id(value: object, *, field: str = "identifier") -> str:
     text = bounded_adapter_text(value, field=field, max_chars=MAX_ADAPTER_ID_CHARS).strip()
+    if any(ord(char) < 0x20 or ord(char) == 0x7F for char in text):
+        raise ValueError(f"{field} contains control characters")
+    return text
+
+
+def bounded_adapter_binding(value: object, *, field: str = "binding") -> str:
+    """Validate an exact project or workspace binding without trimming it."""
+
+    text = bounded_adapter_text(value, field=field, max_chars=MAX_ADAPTER_BINDING_CHARS)
     if any(ord(char) < 0x20 or ord(char) == 0x7F for char in text):
         raise ValueError(f"{field} contains control characters")
     return text

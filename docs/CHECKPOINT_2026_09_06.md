@@ -15,13 +15,21 @@ Root reproduced the failure in cancellation settlement (126 passed, 2 failed);
 the reviewer reproduced it in correction/framed flows (21 passed, 5 failed).
 The current repair captures immutable subscription scope at acknowledged dispatch,
 validates its Store/effect/audit binding and rejects a later subscription generation
-even if the same vendor turn ID reappears. Final independent gate is pending.
+even if the same vendor turn ID reappears. Final independent review approved:
+correction pipeline 10/10, framed 3/3, causal/claimed 14/14. Root independently
+passed the seven-file strict shared/causal/cancellation/correction gate: **140
+passed in 51.30 seconds**, plus the framed file: **3 passed in 17.55 seconds**.
+Earlier concurrent test runs showed a lost-ack failure followed by stalled
+teardown; those owned test processes were stopped. Serial stable reruns passed
+without changing any deadlines. Do not describe the interrupted runs as passing.
 
 A separate native responsiveness repair offloads bounded atlas reads/full Pillow
 validation to the framework thread pool. Four pet API tests passed, including a
 blocked-reader case that completes the real HMAC identity endpoint while artwork
 requests remain pending. This establishes event-loop responsiveness for that case,
 not the root cause of the earlier native exit. Identity limits remain unchanged.
+This repair and the pet goal-refresh wiring were pushed as `c393ff5` and verified
+against remote main.
 
 The floating-pet shell now refreshes canonical goals with a lightweight 30-second
 poll and stale-response fencing, without loading the heavy Settings catalog.

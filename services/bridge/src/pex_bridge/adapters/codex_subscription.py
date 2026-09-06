@@ -265,6 +265,20 @@ def _stable_record_id(
     return f"codex:{hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
 
 
+def shared_live_event_id(
+    *,
+    subscription_id: str,
+    endpoint_identity: str,
+    connection_generation: int,
+    stable_id: str,
+) -> str:
+    """Return the durable event identity for one accepted shared live record."""
+    material = (
+        f"{subscription_id}:{endpoint_identity}:{connection_generation}:{stable_id}"
+    )
+    return f"codex-shared:{hashlib.sha256(material.encode()).hexdigest()}"
+
+
 def _history_content_digest(records: tuple[CodexObservedRecord, ...]) -> str:
     encoded = strict_json_dumps(
         [
