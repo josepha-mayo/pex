@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -6,9 +7,11 @@ import {
   findUniquePackagedFiles,
   packageReceiptIsReady,
   validateEmbeddedFiles,
+  verifyDesktopBundleVariants,
 } from "./package-contract.mjs";
 
 const hash = (character) => character.repeat(64);
+const hashBuffer = (value) => createHash("sha256").update(value).digest("hex");
 const embedded = () => Object.fromEntries(PACKAGE_BINARIES.map(
   (name, index) => [name, { bytes: index + 1, sha256: hash(String(index + 1)) }],
 ));
@@ -24,8 +27,17 @@ function receipt() {
       release_input_sha256: hash("b"),
       sidecar_input_sha256: hash("c"),
       preflight_sha256: hash("d"),
+      canonical_desktop_sha256: hash("a"),
     },
     installers: { msi_sha256: hash("e"), nsis_sha256: hash("f") },
+    desktop_bundle_marker: {
+      offset: 100,
+      width: 4,
+      canonical_marker: "UNK",
+      msi_marker: "MSI",
+      nsis_marker: "NSIS",
+      normalized_sha256: hash("a"),
+    },
     msi: { status: "verified", embedded: msi, inventory_verified: true },
     nsis: { status: "verified", embedded: nsis, inventory_verified: true },
     release_ready: true,
@@ -39,6 +51,31 @@ test("package inventory requires each named executable exactly once", () => {
   assert.throws(() => findUniquePackagedFiles(paths.slice(1)), /exactly one pex-desktop/u);
   assert.throws(() => findUniquePackagedFiles([...paths, `other/${PACKAGE_BINARIES[1]}`]), /found 2/u);
   assert.throws(() => findUniquePackagedFiles([42]), /must be text/u);
+});
+
+test("desktop variants may differ only at the exact fixed-width Tauri marker", () => {
+  const prefix = Buffer.from("header__TAURI_BUNDLE_TYPE_VAR_", "ascii");
+  const suffix = Buffer.from([0xc0, 0, 0x74, 0x65, 0x78, 0x74]);
+  const canonical = Buffer.concat([prefix, Buffer.from("UNK", "ascii"), suffix]);
+  const msi = Buffer.from(canonical);
+  Buffer.from("MSI", "ascii").copy(msi, prefix.length);
+  const nsis = Buffer.from(canonical);
+  Buffer.from("NSIS", "ascii").copy(nsis, prefix.length);
+  const proof = verifyDesktopBundleVariants(canonical, msi, nsis);
+  assert.equal(proof.offset, prefix.length);
+  assert.equal(proof.width, 4);
+  assert.equal(proof.normalized_sha256, hashBuffer(canonical));
+
+  const outside = Buffer.from(nsis);
+  outside[0] ^= 1;
+  assert.throws(
+    () => verifyDesktopBundleVariants(canonical, msi, outside),
+    /outside the exact Tauri bundle marker/u,
+  );
+  const forged = Buffer.from(nsis);
+  Buffer.from("ZIP!", "ascii").copy(forged, prefix.length);
+  assert.throws(() => verifyDesktopBundleVariants(canonical, msi, forged), /expected UNK\/MSI\/NSIS/u);
+  assert.throws(() => verifyDesktopBundleVariants(canonical, msi.subarray(1), nsis), /identical lengths/u);
 });
 
 test("embedded receipts reject missing, extra, empty, and malformed artifacts", () => {
@@ -62,7 +99,8 @@ test("package readiness fails closed on unsupported NSIS, mismatches, or schema 
     (value) => { value.nsis.status = "unsupported"; value.release_ready = false; },
     (value) => { value.msi.inventory_verified = false; value.release_ready = false; },
     (value) => { value.nsis.embedded[PACKAGE_BINARIES[1]].sha256 = hash("9"); },
-    (value) => { value.nsis.embedded[PACKAGE_BINARIES[0]].sha256 = hash("9"); },
+    (value) => { value.desktop_bundle_marker.normalized_sha256 = "bad"; },
+    (value) => { value.source.canonical_desktop_sha256 = hash("9"); },
     (value) => { value.blockers.push({ code: "x", detail: "x" }); value.release_ready = false; },
     (value) => { value.source.commit = "short"; },
     (value) => { value.unexpected = true; },

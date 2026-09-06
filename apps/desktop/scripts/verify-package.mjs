@@ -6,7 +6,11 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseFrozenBundleInventory } from "./release-contract.mjs";
-import { findUniquePackagedFiles, packageReceiptIsReady } from "./package-contract.mjs";
+import {
+  findUniquePackagedFiles,
+  packageReceiptIsReady,
+  verifyDesktopBundleVariants,
+} from "./package-contract.mjs";
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = resolve(desktop, "..", "..");
@@ -89,6 +93,12 @@ const installerHashes = { msi_sha256: sha256File(msiPath), nsis_sha256: sha256Fi
 const work = mkdtempSync(join(tmpdir(), "pex-package-verify-"));
 let msi = { status: "failed", embedded: null, inventory_verified: false };
 let nsis = { status: "unsupported", embedded: null, inventory_verified: false };
+let msiDesktop = null;
+let nsisDesktop = null;
+let desktopBundleMarker = null;
+const canonicalDesktopPath = join(desktop, "src-tauri", "target", "release", "pex-desktop.exe");
+if (!existsSync(canonicalDesktopPath)) throw new Error("Canonical release desktop executable is missing");
+const canonicalDesktop = readFileSync(canonicalDesktopPath);
 try {
   if (process.platform !== "win32") throw new Error("MSI administrative extraction requires Windows");
   const msiRoot = join(work, "msi");
@@ -97,6 +107,8 @@ try {
   });
   if (extraction.error || extraction.status !== 0) throw new Error(`MSI extraction failed with status ${extraction.status}`);
   msi = { status: "verified", embedded: extractedReceipt(msiRoot), inventory_verified: verifyInventory(msiRoot) };
+  const mapped = findUniquePackagedFiles(listFiles(msiRoot).map((path) => relative(msiRoot, path)));
+  msiDesktop = readFileSync(join(msiRoot, mapped["pex-desktop.exe"]));
 } catch (error) {
   blockers.push({ code: "msi_verification_failed", detail: error.message });
 }
@@ -114,12 +126,21 @@ try {
       nsis = { status: "failed", embedded: null, inventory_verified: false };
     } else {
       nsis = { status: "verified", embedded: extractedReceipt(nsisRoot), inventory_verified: verifyInventory(nsisRoot) };
+      const mapped = findUniquePackagedFiles(listFiles(nsisRoot).map((path) => relative(nsisRoot, path)));
+      nsisDesktop = readFileSync(join(nsisRoot, mapped["pex-desktop.exe"]));
     }
   }
 } catch (error) {
   blockers.push({ code: "nsis_verification_failed", detail: error.message });
   nsis = { status: "failed", embedded: null, inventory_verified: false };
 } finally {
+  if (msiDesktop && nsisDesktop) {
+    try {
+      desktopBundleMarker = verifyDesktopBundleVariants(canonicalDesktop, msiDesktop, nsisDesktop);
+    } catch (error) {
+      blockers.push({ code: "desktop_bundle_mismatch", detail: error.message });
+    }
+  }
   rmSync(work, { recursive: true, force: true });
 }
 
@@ -144,8 +165,10 @@ const receipt = {
     release_input_sha256: preflight.git.release_input_sha256,
     sidecar_input_sha256: preflight.sidecars.input_sha256,
     preflight_sha256: hashJson(preflight),
+    canonical_desktop_sha256: sha256Buffer(canonicalDesktop),
   },
   installers: installerHashes,
+  desktop_bundle_marker: desktopBundleMarker,
   msi,
   nsis,
   release_ready: false,
