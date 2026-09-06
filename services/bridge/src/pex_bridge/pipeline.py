@@ -6040,6 +6040,15 @@ def collapse_promptable_agents(
             continue
         ts = session.last_activity
         if ts is None:
+            # A newly confirmed shared Codex subscription deliberately has no
+            # invented activity timestamp. It must still be selectable so the
+            # operator can attach the persistent goal before the first event.
+            # Detached/unknown historical rows remain excluded by status and
+            # connection-kind checks.
+            if (session.metadata or {}).get("connection_kind") != "codex_shared":
+                continue
+            extras.append(session)
+            seen.add(key)
             continue
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=UTC)

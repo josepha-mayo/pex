@@ -465,6 +465,32 @@ def test_collapse_live_agents_skips_stale_and_unknown():
     assert [row.id for row in promptable] == ["codex:idle"]
 
 
+def test_confirmed_shared_codex_is_promptable_before_first_observed_event():
+    session = HarnessSession(
+        id="codex:shared-thread",
+        harness_type=HarnessType.CODEX,
+        vendor_session_id="shared-thread",
+        cwd=r"C:\Users\JosephMayo\Projects\pex",
+        status=SessionStatus.IDLE,
+        last_activity=None,
+        metadata={"connection_kind": "codex_shared"},
+    )
+
+    assert collapse_promptable_agents([session]) == [session]
+
+
+def test_unconfirmed_idle_codex_without_activity_remains_hidden():
+    session = HarnessSession(
+        id="codex:historical-thread",
+        harness_type=HarnessType.CODEX,
+        vendor_session_id="historical-thread",
+        status=SessionStatus.IDLE,
+        last_activity=None,
+    )
+
+    assert collapse_promptable_agents([session]) == []
+
+
 @pytest.mark.asyncio
 async def test_pet_snapshot_includes_idle_harness_for_prompts(tmp_path):
     store = Store(tmp_path / "pex.sqlite")

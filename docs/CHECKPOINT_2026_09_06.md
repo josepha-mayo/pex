@@ -7,6 +7,25 @@ STATUS, shipping checklist and submission draft.
 
 ## Source and package boundaries
 
+### New live continuation: existing-worker setup and native recovery
+
+The operator approved resuming native checks. On source `065cb22`, the native
+Home rendered correctly, but opening Companion settings was followed by a real
+`bridge_process_stopped` failure. This is not a passing stability result. Normal
+Retry recovered the bridge and all eight roster thumbnails rendered. The root
+cause of the first exit remains unproven; independent review found that a later
+shutdown can overwrite the original failure code, which is being repaired.
+
+Separately, a clean-source bridge on isolated port 7431 successfully inspected and
+confirmed a pre-existing operator-owned Codex shared thread, without starting a
+worker turn. Goal setup exposed a production bug: an explicitly connected idle
+shared session with no activity timestamp was excluded from the canonical pet
+snapshot. The projection now keeps that session selectable before its first live
+event; ordinary historical idle rows remain excluded. Focused root verification:
+**25 passed, 1 skipped** (pet snapshot and HTTP helper tests). Goal attachment and
+real correction through this shared-worker production path are still pending;
+the observer connection alone is not closed-loop proof.
+
 - `43690b8e728f8c69d3b4cdad7939f724ee7adb3f` was pushed and verified against remote
   main. It pins all five frozen public benchmark prompts to LF through `.gitattributes`.
   A new Windows checkout confirmed `i/lf w/lf attr/text eol=lf` for all five prompts.
