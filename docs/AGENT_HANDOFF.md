@@ -165,6 +165,36 @@ evidence-tool/observation, supervisor-loop and planner gate passed134 tests11.42
 with thread warnings as errors; scoped Ruff/diff checks clean. This gate used the
 main worktree with its unchanged protected loop, not a clean-checkout/full-suite
 or live inference proof. No workers, provider calls, UI or subagents launched.
+New live authority: clean `pex-live-d8d38ab` at
+`d8d38ab12fa0d01202927f6a73aa94a1e619f71e`, locked sync113 and clean five-file
+strict gate134passed18.70s. Dedicated bridge7437/PID14384/session16444, private
+`build/quiet-home-d8`, scripts `run_quiet_bridge_d8.py`, `quiet_owner_d8.py`,
+`quiet_case_d8.py`. Q04 confirmed this profile's origin once; later cases reuse it.
+Q04 is a quiet success: worker `01a077e3-adcc-7352-9649-d0cbdc4f3303`, work turn
+`01a077e4-fa40-76a3-9595-655732014d38`, correctly generated the three-heading JSON;
+immutable hashes match, observed full suite4passed/exit0 after final edit.
+Pytest source `codex-shared:1f07130851671aecbbd80808ee356f12d6ec7e7b245047b443930502bad065a3`.
+One real Strands NOOP `intervention_c6235d1d31a816b95b228d4e28157f0609e18ecd`,
+2aggregatecalls20430ms; the actual audited run_verification receipt contains the
+new pytest_observation fields and rationale accurately cites four passes/no later
+edits. This demonstrates live uptake, not just offline serialization. Revoke and
+detach succeeded. Terminal Q04/client `capture-20260906T180659233358Z.json` SHA256
+`26FEF38C57C70CDF808F8E4A73F6C65252332EDBD1CC9A85AB863F35310A7449` under
+clean source `build/quiet-live-20260906`. Q05 has started on this same build;
+retain its exact receipts and do not retrigger its single task.
+Q05 then completed as a quiet success on the same clean d8d38ab runtime. Worker
+`01a077e7-59e4-7d30-ad7b-e7cc2814969b`, task turn
+`01a077e8-aba0-7bc0-b9eb-90717ffadaee`: immutable files unchanged, correct generated
+manifest, accent transliteration and numeric-suffix collision handling inspected.
+Observed full suite5passed/exit0/exactQ05cwd/no later edits; pytest event
+`codex-shared:08b08778fc28099298c893ff1175142c2410fac01aee6d6059b557c7650b49e4`.
+Exactly one Strands NOOP/noop `intervention_e4ff282e660d040e8f4afd5a5cfbe1ff5bd7a2b1`,
+1aggregatecall6683ms; rationale correctly cites5passes/exit0/no later edits.
+Revoke/detach succeeded; terminal Q05/client receipt
+`capture-20260906T181110697936Z.json`. Tally:3 behavioral quiet successes (Q03-Q05),
+2 retained inconclusive (Q01-Q02),5 unstarted (Q06-Q10). No accuracy/benchmark
+claim. Reuse detached7437 and exact origin for Q06; do not start another bridge
+unless source/config actually needs changing. No UI or subagents used this pass.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 
