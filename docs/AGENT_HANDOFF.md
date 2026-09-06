@@ -2,6 +2,13 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Dispatch-cap review expanded the restart/failure/replay test to both local and
+direct AgentCore routing, and explicitly replays the exhausted event. **4
+mocked matrix cases passed, 15 deselected in 20.09s**, scoped Ruff clean.
+All cases retain one attempted provider dispatch after restart and keep the
+exhausted worker inbox empty. This validates bridge routing and durable cap
+behavior with stubs; no real AWS/model invocation or billing proof is implied.
+
 Implemented opt-in `PEX_SUPERVISOR_MAX_DISPATCHES_PER_SESSION` (1–100000;
 unset preserves existing behavior). New durable per-session reservations are
 created atomically with planner dispatch after ownership/order/workspace checks;

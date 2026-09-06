@@ -178,7 +178,8 @@ async def _drain_presentations(pipeline: Pipeline) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("fail", [False, True])
-async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(tmp_path, fail):
+@pytest.mark.parametrize("mode", ["local", "agentcore"])
+async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(tmp_path, fail, mode):
     class CountedSupervisor(_NudgeSupervisor):
         async def decide(self, request, *, local_model):
             if fail:
@@ -186,9 +187,17 @@ async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(tmp_pat
                 raise ConnectionError("mock provider failure")
             return await super().decide(request, local_model=local_model)
 
+    class CountedRemote(_RemoteNoop):
+        async def decide(self, request):
+            if fail:
+                self.calls += 1
+                raise ConnectionError("mock remote failure")
+            return await super().decide(request)
+
     store, adapters, session, pipeline = await _pipeline(tmp_path)
-    supervisor = CountedSupervisor()
-    pipeline.supervisor = supervisor
+    supervisor = CountedRemote() if mode == "agentcore" else CountedSupervisor()
+    pipeline.settings.supervisor_mode = mode
+    pipeline.supervisor = _AgentCoreOnlyRouter(supervisor) if mode == "agentcore" else supervisor
     pipeline.settings.supervisor_max_dispatches_per_session = 1
     first = _event(session, "budget-first", event_type=EventType.STOP)
     try:
@@ -200,12 +209,13 @@ async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(tmp_pat
         await store.close()
 
     store, adapters, session, pipeline = await _pipeline(tmp_path)
-    pipeline.supervisor = supervisor
+    pipeline.settings.supervisor_mode = mode
+    pipeline.supervisor = _AgentCoreOnlyRouter(supervisor) if mode == "agentcore" else supervisor
     pipeline.settings.supervisor_max_dispatches_per_session = 1
     try:
-        await pipeline.ingest_event(
-            _event(session, "budget-next", event_type=EventType.STOP), session,
-        )
+        exhausted_event = _event(session, "budget-next", event_type=EventType.STOP)
+        await pipeline.ingest_event(exhausted_event, session)
+        await pipeline.ingest_event(exhausted_event, session)
         assert supervisor.calls == 1
         effect = await store.get_event_effect("budget-next", "planner")
         assert effect["state"] == "skipped"
