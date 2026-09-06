@@ -30,29 +30,32 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-export function verifyDesktopBundleVariants(canonical, msi, nsis) {
-  if (![canonical, msi, nsis].every(Buffer.isBuffer)) {
+export function verifyDesktopBundleVariants(postbuild, msi, nsis) {
+  if (![postbuild, msi, nsis].every(Buffer.isBuffer)) {
     throw new TypeError("Desktop bundle variants must be Buffers");
   }
-  if (canonical.length !== msi.length || canonical.length !== nsis.length) {
+  if (postbuild.length !== msi.length || postbuild.length !== nsis.length) {
     throw new Error("Desktop bundle variants must have identical lengths");
   }
-  const markerOffset = uniqueMarkerOffset(canonical, "Canonical desktop");
+  if (!postbuild.equals(nsis)) {
+    throw new Error("Post-build desktop must be byte-identical to the extracted NSIS desktop");
+  }
+  const markerOffset = uniqueMarkerOffset(postbuild, "Post-build desktop");
   if (uniqueMarkerOffset(msi, "MSI desktop") !== markerOffset
     || uniqueMarkerOffset(nsis, "NSIS desktop") !== markerOffset) {
     throw new Error("Desktop bundle markers must have the same offset");
   }
   const valueOffset = markerOffset + BUNDLE_MARKER_PREFIX.length;
-  if (canonical.subarray(valueOffset, valueOffset + 3).toString("ascii") !== "UNK"
+  if (postbuild.subarray(valueOffset, valueOffset + 4).toString("ascii") !== "NSIS"
     || msi.subarray(valueOffset, valueOffset + 3).toString("ascii") !== "MSI"
     || nsis.subarray(valueOffset, valueOffset + 4).toString("ascii") !== "NSIS") {
-    throw new Error("Desktop binaries do not contain the expected UNK/MSI/NSIS bundle markers");
+    throw new Error("Desktop binaries do not contain the expected MSI/NSIS bundle markers");
   }
   const width = 4;
   const normalized = [];
-  for (const value of [canonical, msi, nsis]) {
+  for (const value of [msi, nsis]) {
     const copy = Buffer.from(value);
-    canonical.copy(copy, valueOffset, valueOffset, valueOffset + width);
+    Buffer.from("NONE", "ascii").copy(copy, valueOffset);
     normalized.push(sha256(copy));
   }
   if (new Set(normalized).size !== 1) {
@@ -61,7 +64,7 @@ export function verifyDesktopBundleVariants(canonical, msi, nsis) {
   return {
     offset: valueOffset,
     width,
-    canonical_marker: "UNK",
+    postbuild_marker: "NSIS",
     msi_marker: "MSI",
     nsis_marker: "NSIS",
     normalized_sha256: normalized[0],
@@ -90,13 +93,13 @@ export function packageReceiptIsReady(receipt) {
   ])) return false;
   if (receipt.schema !== "pex.package-receipt.v1" || receipt.stage !== "package") return false;
   if (!exactKeys(receipt.source, [
-    "commit", "release_input_sha256", "sidecar_input_sha256", "preflight_sha256", "canonical_desktop_sha256",
+    "commit", "release_input_sha256", "sidecar_input_sha256", "preflight_sha256", "postbuild_desktop_sha256",
   ])) return false;
   if (!COMMIT.test(receipt.source.commit)
     || !SHA256.test(receipt.source.release_input_sha256)
     || !SHA256.test(receipt.source.sidecar_input_sha256)
     || !SHA256.test(receipt.source.preflight_sha256)
-    || !SHA256.test(receipt.source.canonical_desktop_sha256)) return false;
+    || !SHA256.test(receipt.source.postbuild_desktop_sha256)) return false;
   if (!exactKeys(receipt.installers, ["msi_sha256", "nsis_sha256"])
     || !SHA256.test(receipt.installers.msi_sha256)
     || !SHA256.test(receipt.installers.nsis_sha256)) return false;
@@ -108,6 +111,9 @@ export function packageReceiptIsReady(receipt) {
   }
   if (receipt.msi.status !== "verified" || receipt.nsis.status !== "verified") return false;
   if (receipt.msi.inventory_verified !== true || receipt.nsis.inventory_verified !== true) return false;
+  if (receipt.source.postbuild_desktop_sha256 !== receipt.nsis.embedded["pex-desktop.exe"].sha256) {
+    return false;
+  }
   const sidecars = PACKAGE_BINARIES.filter((name) => name !== "pex-desktop.exe");
   if (sidecars.some(
     (name) => receipt.msi.embedded[name].sha256 !== receipt.nsis.embedded[name].sha256,
@@ -115,16 +121,15 @@ export function packageReceiptIsReady(receipt) {
     return false;
   }
   if (!exactKeys(receipt.desktop_bundle_marker, [
-    "offset", "width", "canonical_marker", "msi_marker", "nsis_marker", "normalized_sha256",
+    "offset", "width", "postbuild_marker", "msi_marker", "nsis_marker", "normalized_sha256",
   ])
     || !Number.isSafeInteger(receipt.desktop_bundle_marker.offset)
     || receipt.desktop_bundle_marker.offset < 0
     || receipt.desktop_bundle_marker.width !== 4
-    || receipt.desktop_bundle_marker.canonical_marker !== "UNK"
+    || receipt.desktop_bundle_marker.postbuild_marker !== "NSIS"
     || receipt.desktop_bundle_marker.msi_marker !== "MSI"
     || receipt.desktop_bundle_marker.nsis_marker !== "NSIS"
-    || !SHA256.test(receipt.desktop_bundle_marker.normalized_sha256)
-    || receipt.desktop_bundle_marker.normalized_sha256 !== receipt.source.canonical_desktop_sha256) return false;
+    || !SHA256.test(receipt.desktop_bundle_marker.normalized_sha256)) return false;
   return receipt.release_ready === true && Array.isArray(receipt.blockers) && receipt.blockers.length === 0;
 }
 

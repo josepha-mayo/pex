@@ -113,7 +113,10 @@ try {
   blockers.push({ code: "msi_verification_failed", detail: error.message });
 }
 try {
-  const extractor = ["7zz", "7z"].find(commandExists);
+  const portable7zip = join(repo, "build", "tools", "7zip-portable", "Files", "7-Zip", "7z.exe");
+  const extractor = [portable7zip, "7zz", "7z"].find(
+    (candidate) => (candidate === portable7zip ? existsSync(candidate) : commandExists(candidate)),
+  );
   if (!extractor) {
     blockers.push({ code: "nsis_extractor_unavailable", detail: "No deterministic 7-Zip extractor is available" });
   } else {
@@ -165,7 +168,7 @@ const receipt = {
     release_input_sha256: preflight.git.release_input_sha256,
     sidecar_input_sha256: preflight.sidecars.input_sha256,
     preflight_sha256: hashJson(preflight),
-    canonical_desktop_sha256: sha256Buffer(canonicalDesktop),
+    postbuild_desktop_sha256: sha256Buffer(canonicalDesktop),
   },
   installers: installerHashes,
   desktop_bundle_marker: desktopBundleMarker,
