@@ -177,6 +177,48 @@ async def _drain_presentations(pipeline: Pipeline) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("fail", [False, True])
+async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(tmp_path, fail):
+    class CountedSupervisor(_NudgeSupervisor):
+        async def decide(self, request, *, local_model):
+            if fail:
+                self.calls += 1
+                raise ConnectionError("mock provider failure")
+            return await super().decide(request, local_model=local_model)
+
+    store, adapters, session, pipeline = await _pipeline(tmp_path)
+    supervisor = CountedSupervisor()
+    pipeline.supervisor = supervisor
+    pipeline.settings.supervisor_max_dispatches_per_session = 1
+    first = _event(session, "budget-first", event_type=EventType.STOP)
+    try:
+        await pipeline.ingest_event(first, session)
+        await pipeline.ingest_event(first, session)
+        assert supervisor.calls == 1
+        await _drain_presentations(pipeline)
+    finally:
+        await store.close()
+
+    store, adapters, session, pipeline = await _pipeline(tmp_path)
+    pipeline.supervisor = supervisor
+    pipeline.settings.supervisor_max_dispatches_per_session = 1
+    try:
+        await pipeline.ingest_event(
+            _event(session, "budget-next", event_type=EventType.STOP), session,
+        )
+        assert supervisor.calls == 1
+        effect = await store.get_event_effect("budget-next", "planner")
+        assert effect["state"] == "skipped"
+        assert effect["result"]["code"] == "supervisor_dispatch_budget_exhausted"
+        assert effect["result"]["provider_started"] is False
+        assert effect["result"]["supervisor_result"]["action"]["type"] == "NOOP"
+        assert not adapters.synthetic.inbox.get(session.id)
+        await _drain_presentations(pipeline)
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_supervisor_gets_durable_context_and_replay_keeps_first_packet(tmp_path):
     import hashlib
     import json

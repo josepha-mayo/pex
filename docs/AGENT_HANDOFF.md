@@ -2,6 +2,20 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Implemented opt-in `PEX_SUPERVISOR_MAX_DISPATCHES_PER_SESSION` (1–100000;
+unset preserves existing behavior). New durable per-session reservations are
+created atomically with planner dispatch after ownership/order/workspace checks;
+failed/ambiguous attempts are never refunded. Budget exhaustion seals a skipped
+planner receipt with NOOP and `provider_started=false`, not a generic correction.
+Mocked pipeline tests cover success/failure, exact replay and bridge restart;
+concurrent Store claims consume exactly one reservation. Complete two-file
+dispatch/store gate: **48 passed in 56.41s**, thread warnings as errors, scoped
+Ruff/diff checks clean. Protected loop hash unchanged. Read
+`SUPERVISOR_DISPATCH_LIMIT.md` for scope: this is NOT a token/dollar/inner-model-call
+cap, NOT retroactive accounting, and NOT a live billing guarantee. No cap was
+configured on a running bridge; no new model or native calls were made. Settings
+UI, total-account budget and mid-task semantic review remain open.
+
 Cost-control audit: no per-session semantic-dispatch/spend cap was found in the
 inspected bridge settings/dispatch paths. Existing token/time/evidence bounds
 and same-effect idempotency are not aggregate budget protection. Shielded model

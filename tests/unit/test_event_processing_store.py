@@ -424,14 +424,20 @@ async def test_two_store_instances_claim_once_and_stale_dispatch_is_uncertain(tm
                 event_id=event.event_id,
                 effect_key="planner",
                 owner=owner,
+                semantic_dispatch_limit=1,
             ),
             second.start_event_effect_dispatch(
                 event_id=event.event_id,
                 effect_key="planner",
                 owner=owner,
+                semantic_dispatch_limit=1,
             ),
         )
         assert sum(item["granted"] for item in grants) == 1
+        with sqlite3.connect(path) as inspection:
+            assert inspection.execute(
+                "SELECT COUNT(*) FROM supervisor_dispatch_reservations"
+            ).fetchone()[0] == 1
 
         recovery = Store(path, process_boot_id="boot-recovery")
         await recovery.connect()

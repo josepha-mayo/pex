@@ -203,6 +203,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_codex_correction_correlation
 ON event_effects(json_extract(payload_json, '$.codex_correction.client_message_id'))
 WHERE CASE WHEN json_valid(payload_json)
   THEN json_type(payload_json, '$.codex_correction') IS NOT NULL ELSE 0 END;
+CREATE TABLE IF NOT EXISTS supervisor_dispatch_reservations (
+  effect_id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  reserved_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_supervisor_dispatch_session
+ON supervisor_dispatch_reservations(session_id);
 CREATE TRIGGER IF NOT EXISTS trg_codex_correction_authority_immutable
 BEFORE UPDATE ON event_effects
 WHEN (
@@ -21247,10 +21254,16 @@ class Store:
         event_id: str,
         effect_key: str,
         owner: str,
+        semantic_dispatch_limit: int | None = None,
     ) -> dict[str, Any]:
         """Grant exactly one reserved-to-dispatching transition."""
 
         _validate_store_id(owner, label="event effect owner")
+        if semantic_dispatch_limit is not None and (
+            type(semantic_dispatch_limit) is not int
+            or not 1 <= semantic_dispatch_limit <= 100_000
+        ):
+            raise ValueError("semantic dispatch limit must be an integer from 1 to 100000")
         if effect_key != "planner":
             raise ValueError("generic dispatch is restricted to the planner effect")
         async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
@@ -21331,6 +21344,21 @@ class Store:
                     await transaction.commit()
                     return {"granted": False, "reason": exc.code, "effect": effect}
                 now = utcnow().isoformat()
+                if semantic_dispatch_limit is not None:
+                    count_cursor = await transaction.execute(
+                        "SELECT COUNT(*) FROM supervisor_dispatch_reservations "
+                        "WHERE session_id = ?", (processing["session_id"],),
+                    )
+                    count_row = await count_cursor.fetchone()
+                    if int(count_row[0]) >= semantic_dispatch_limit:
+                        await transaction.commit()
+                        return {"granted": False, "reason": "supervisor_dispatch_budget_exhausted"}
+                    # Same transaction as the dispatch CAS. Never refund failure,
+                    # timeout or cancellation, which can conceal provider work.
+                    await transaction.execute(
+                        "INSERT INTO supervisor_dispatch_reservations VALUES (?, ?, ?)",
+                        (effect["effect_id"], processing["session_id"], now),
+                    )
                 updated = await transaction.execute(
                     "UPDATE event_effects SET state = 'dispatching', "
                     "dispatcher_boot_id = ?, dispatch_started_at = ?, "

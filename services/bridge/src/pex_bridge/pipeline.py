@@ -1706,12 +1706,33 @@ class Pipeline:
             )
         if effect["state"] == "dispatching":
             raise RuntimeError("planner effect dispatch is still active")
+        semantic = needs_semantic_inference(request)
+        budget_options = {}
+        if semantic and self.settings.supervisor_max_dispatches_per_session is not None:
+            budget_options["semantic_dispatch_limit"] = (
+                self.settings.supervisor_max_dispatches_per_session
+            )
         dispatch = await self.store.start_event_effect_dispatch(
             event_id=event.event_id,
             effect_key="planner",
             owner=owner,
+            **budget_options,
         )
         if not dispatch["granted"]:
+            if dispatch.get("reason") == "supervisor_dispatch_budget_exhausted":
+                reason = "supervisor_dispatch_budget_exhausted"
+                result = SupervisorResult(
+                    action=_action_from_proposal(request, {
+                        "type": "NOOP", "rationale": reason, "evidence": [reason],
+                    }),
+                    diagnosis=reason, traces=[reason], inference_status="not_attempted",
+                )
+                effect = await self.store.finalize_event_effect(
+                    event_id=event.event_id, effect_key="planner", state="skipped",
+                    result={"code": reason, "provider_started": False,
+                            "supervisor_result": result.model_dump(mode="json")},
+                )
+                return result, effect, planning_snapshot
             if dispatch.get("reason") == WorkspaceAuthorityError.code:
                 raise WorkspaceAuthorityError("workspace changed before planner dispatch")
             raise RuntimeError(str(dispatch.get("reason") or "planner dispatch refused"))
@@ -1732,7 +1753,6 @@ class Pipeline:
             )
             raise
         try:
-            semantic = needs_semantic_inference(request)
             result = await self._invoke_supervisor(request, semantic=semantic, witness=witness)
             ambiguous = (
                 result.inference_status in {"timeout"}

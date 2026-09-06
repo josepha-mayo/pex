@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     token: str | None = Field(default=None, max_length=512, repr=False, exclude=True)
     db_path: Path | None = None
     supervisor_mode: Literal["local", "agentcore", "hybrid"] = "local"
+    # Counts durable semantic dispatch attempts, not dollars or inner model calls.
+    supervisor_max_dispatches_per_session: int | None = Field(default=None, ge=1, le=100_000)
     agentcore_runtime_arn: str | None = Field(default=None, max_length=2048)
     agentcore_region: str | None = Field(default=None, max_length=64)
     agentcore_qualifier: str = "DEFAULT"

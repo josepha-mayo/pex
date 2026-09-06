@@ -46,6 +46,13 @@ events, contrary to the user's quota concern. Neither workaround was applied.
 
 ### Budget audit follow-up — source `5ee1ee7`
 
+Subsequent implementation adds an opt-in durable per-session **dispatch** cap;
+see `SUPERVISOR_DISPATCH_LIMIT.md`. It counts attempts conservatively and returns
+NOOP on exhaustion. This is one guard, not completion of the aggregate monetary,
+inner-model-call, UI and trajectory-budget requirements below. The following
+paragraph records the pre-repair audit and must not be read as current absence
+of the newly added dispatch cap.
+
 Inspected bridge Settings and `_invoke_supervisor` / durable planner-dispatch
 paths, plus local Agent construction and provider token settings. No dedicated
 per-session semantic-dispatch count or cumulative-spend reservation was found in
