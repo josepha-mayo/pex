@@ -30,7 +30,8 @@ _NEGATED_ACTION = re.compile(
 )
 _NEGATED_LIST = re.compile(
     r"(?:\bdo\s+not|\bdon['’]t|\bnever|\bwithout)\s+"
-    r"(?P<items>[^.!?;]{0,512})(?:,\s*(?:(?:and|or|nor)\s+)?|\b(?:or|nor)\s+)$"
+    r"(?P<items>(?:(?![.!?](?:\s|$))[\s\S]){0,512})"
+    r"(?:,\s*(?:(?:and|or|nor)\s+)?|\b(?:or|nor)\s+)$"
 )
 _AFFIRMATIVE_BOUNDARY = re.compile(r"\b(?:but|however|instead|then|yet|nevertheless)\b")
 _WORD = re.compile(r"[a-z0-9]+(?:[_.-][a-z0-9]+)*")

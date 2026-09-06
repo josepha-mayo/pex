@@ -213,6 +213,17 @@ objects from later prohibitions. Added regressions retain genuine git-commit
 conflicts. Focused unit/planner/contract84passed24.27s. This remains bounded lexical
 triage, not general semantic intent understanding. New repair is not loaded in
 7437. Matrix:3quiet,2inconclusive,1early false escalation,4pending(Q07-Q10).
+Before spending on more workers, root replayed all ten actual public TASK/goal
+pairs through local lint only (`build/audit_quiet_prompt_lint.py`). This exposed
+remaining false flags in Q07-Q10: semicolon-coordinated prohibitions ending in
+"or create a git commit", with dotted filenames inside the same negative list.
+Repair recognizes explicit or/nor coordination across semicolons and treats only
+sentence punctuation (not filename dots) as the boundary. Bare semicolon or
+contrast followed by an affirmative commit remains a conflict. All ten actual
+prompt pairs now classify likely_refinement with no matched conflicts; no fixture
+text was rewritten to produce this result. Final focused gate88passed24.63s,
+Ruff/scoped diff clean. No new worker/model/network/UI/subagent activity for this
+audit. Live matrix unchanged; fresh repaired-source Q07 remains next.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 

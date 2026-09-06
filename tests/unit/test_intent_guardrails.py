@@ -180,6 +180,23 @@ def test_same_clause_affirmative_git_commit_remains_a_conflict():
     )
 
 
+@pytest.mark.parametrize("ending", ["or create a git commit", "nor create a git commit"])
+def test_explicit_negative_coordination_across_semicolons_stays_negative(ending):
+    goal = _goal().model_copy(update={"constraints": ["Do not create a git commit"]})
+    prompt = (
+        "Do not modify fixtures, `TASK.md`, `goal.json`, or `case.json`; "
+        "install packages; use the network; " + ending + "."
+    )
+    assert lint_prompt(goal, prompt).classification is not PromptClass.CONTRADICTION
+
+
+@pytest.mark.parametrize("ending", ["create a git commit", "but create a git commit"])
+def test_semicolon_without_negative_coordination_does_not_hide_a_conflict(ending):
+    goal = _goal().model_copy(update={"constraints": ["Do not create a git commit"]})
+    prompt = "Do not modify fixtures; " + ending + "."
+    assert lint_prompt(goal, prompt).classification is PromptClass.CONTRADICTION
+
+
 @pytest.mark.parametrize(
     "prompt",
     [
