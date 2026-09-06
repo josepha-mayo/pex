@@ -55,6 +55,8 @@ test("every known startup error renders an actionable safe non-retryable state",
       assert.notEqual(copy.title, "PEX could not start its bridge", code);
       assert.ok(copy.detail.length > 20, code);
       assert.ok((copy.guidance || "").length > 20, code);
+      assert.doesNotMatch(copy.guidance || "", /\bretry\b/iu, code);
+      assert.doesNotMatch(diagnostic, /\bretry\b/iu, code);
     }
   } finally {
     await vite.close();

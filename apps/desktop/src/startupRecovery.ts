@@ -126,7 +126,7 @@ export function startupRecoverySourceCopy(source: BridgeBootstrapStatus["source"
   }
 }
 
-export function startupRecoveryCopy(status: BridgeBootstrapStatus): StartupRecoveryCopy {
+function startupRecoveryCodeCopy(status: BridgeBootstrapStatus): StartupRecoveryCopy {
   if (status.phase === "starting") {
     return {
       eyebrow: "Local supervisor",
@@ -232,6 +232,17 @@ export function startupRecoveryCopy(status: BridgeBootstrapStatus): StartupRecov
     default:
       return base;
   }
+}
+
+export function startupRecoveryCopy(status: BridgeBootstrapStatus): StartupRecoveryCopy {
+  const copy = startupRecoveryCodeCopy(status);
+  if (status.phase === "failed" && !status.retryable && /\bretry\b/iu.test(copy.guidance || "")) {
+    return {
+      ...copy,
+      guidance: "Copy the safe details, then close and reopen PEX. Repair or reinstall if this continues. PEX will not stop or reuse an unknown process.",
+    };
+  }
+  return copy;
 }
 
 export function startupDiagnosticText(status: BridgeBootstrapStatus): string | null {

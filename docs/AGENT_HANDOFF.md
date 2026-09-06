@@ -2,6 +2,15 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Startup-recovery copy audit: non-retryable accepted error states hid the Retry
+button but several code-specific guidance strings (and copied diagnostics) still
+instructed users to choose Retry. A regression failed on `bridge_identity_lost`.
+Copy now preserves the specific failure diagnosis but supplies close/reopen and
+repair guidance when Retry is unavailable; unknown-process takeover is never
+suggested. Startup recovery tests **10 passed**, TypeScript check passed. This
+is a recovery-message fix, not evidence that the native startup failures from
+the screenshots have been reproduced or resolved on the current installed app.
+
 Integration check on source `4dd121f`: full desktop `npm test` **193 passed**;
 `npm run build` succeeded (TypeScript + Vite, 63 modules). No PEX window was
 launched/focused and no native installer was produced. Audit coverage now records
