@@ -22,9 +22,11 @@ class FakeSecretStore:
     def __init__(self) -> None:
         self.values: dict[str, tuple[str, str]] = {}
         self.deleted: list[str] = []
+        self.next_reference = 1
 
     def put(self, value: str, *, audience: str) -> str:
-        reference = f"sec_{len(self.values) + 1:032x}"
+        reference = f"sec_{self.next_reference:032x}"
+        self.next_reference += 1
         self.values[reference] = (audience, value)
         return reference
 
@@ -55,6 +57,7 @@ async def supervisor_client(tmp_path):
         state.supervisor_choice,
         state.supervisor_error,
         state.supervisor_api_key_present,
+        state.supervisor_credential_status,
         state.supervisor_secret_store,
         state.supervisor_config_lock,
         state.supervisor_config_generation,
@@ -74,6 +77,7 @@ async def supervisor_client(tmp_path):
     state.supervisor_choice = None
     state.supervisor_error = None
     state.supervisor_api_key_present = False
+    state.supervisor_credential_status = "not_configured"
     state.supervisor_secret_store = secret_store
     state.supervisor_config_lock = asyncio.Lock()
     state.supervisor_config_generation = 0
@@ -129,6 +133,7 @@ async def supervisor_client(tmp_path):
         state.supervisor_choice,
         state.supervisor_error,
         state.supervisor_api_key_present,
+        state.supervisor_credential_status,
         state.supervisor_secret_store,
         state.supervisor_config_lock,
         state.supervisor_config_generation,
@@ -192,6 +197,7 @@ async def test_settings_read_never_calls_blocking_secret_store(supervisor_client
 
     assert current.status_code == health.status_code == 200
     assert current.json()["has_api_key"] is True
+    assert current.json()["credential_status"] == "available"
 
 
 @pytest.mark.asyncio
@@ -233,6 +239,9 @@ async def test_saved_supervisor_activation_cannot_block_bridge_health(
     state.supervisor_choice = choice
     state.pipeline.model = None
     state.supervisor_error = "SupervisorLoading"
+    state.supervisor_credential_status = (
+        "configured_unverified" if failure_phase == "hung_vault" else "not_configured"
+    )
     state.supervisor_config_generation += 1
     generation = state.supervisor_config_generation
     activation = asyncio.create_task(
@@ -246,6 +255,14 @@ async def test_saved_supervisor_activation_cannot_block_bridge_health(
         settings = await asyncio.wait_for(client.get("/v1/supervisor"), timeout=0.2)
         assert health.status_code == settings.status_code == 200
         assert settings.json()["has_api_key"] is False
+        assert settings.json()["credential_configured"] is (
+            failure_phase == "hung_vault"
+        )
+        assert settings.json()["credential_status"] == (
+            "configured_unverified"
+            if failure_phase == "hung_vault"
+            else "not_configured"
+        )
         await asyncio.wait_for(activation, timeout=0.2)
         if failure_phase == "constructor_error":
             assert state.supervisor_error == "RuntimeError"
@@ -260,8 +277,11 @@ async def test_saved_supervisor_activation_cannot_block_bridge_health(
 
 
 @pytest.mark.asyncio
-async def test_lifespan_exits_while_saved_secret_backend_remains_hung(
-    tmp_path, monkeypatch
+@pytest.mark.parametrize(
+    "startup_source", ["saved_secret", "environment_auto", "environment_success"]
+)
+async def test_lifespan_exits_while_supervisor_activation_remains_hung(
+    tmp_path, monkeypatch, startup_source
 ):
     from pex_supervisor.providers import configure_runtime
 
@@ -274,6 +294,7 @@ async def test_lifespan_exits_while_saved_secret_backend_remains_hung(
         state.supervisor_choice,
         state.supervisor_error,
         state.supervisor_api_key_present,
+        state.supervisor_credential_status,
         state.supervisor_secret_store,
         state.supervisor_config_lock,
         state.supervisor_config_generation,
@@ -293,30 +314,50 @@ async def test_lifespan_exits_while_saved_secret_backend_remains_hung(
     state.supervisor_choice = None
     state.supervisor_error = None
     state.supervisor_api_key_present = False
+    state.supervisor_credential_status = "not_configured"
     state.supervisor_secret_store = secret_store
     state.supervisor_config_lock = asyncio.Lock()
     state.supervisor_config_generation = 0
     state.supervisor_config_task = None
     state.supervisor_config_operation = None
     configure_runtime(None)
-    choice = SupervisorChoice(
-        provider="custom",
-        model_id="startup-model",
-        auth_mode="api_key",
-        protocol="openai",
-        base_url="https://models.example.invalid/v1",
-        credential_source="secret_store",
-        secret_ref="sec_" + "2" * 32,
+    choice = (
+        SupervisorChoice(
+            provider="custom",
+            model_id="startup-model",
+            auth_mode="api_key",
+            protocol="openai",
+            base_url="https://models.example.invalid/v1",
+            credential_source="secret_store",
+            secret_ref="sec_" + "2" * 32,
+        )
+        if startup_source == "saved_secret"
+        else None
     )
     entered = __import__("threading").Event()
     release = __import__("threading").Event()
+    loaded_model = object()
 
     def blocking_get(*_args, **_kwargs):
         entered.set()
         release.wait()
         return "startup-secret"
 
-    monkeypatch.setattr(secret_store, "get", blocking_get)
+    if startup_source == "saved_secret":
+        monkeypatch.setattr(secret_store, "get", blocking_get)
+    elif startup_source == "environment_auto":
+        monkeypatch.setattr(
+            "pex_supervisor.providers.load_supervisor_model", lambda: blocking_get()
+        )
+    else:
+
+        def load_environment_model():
+            entered.set()
+            return loaded_model
+
+        monkeypatch.setattr(
+            "pex_supervisor.providers.load_supervisor_model", load_environment_model
+        )
     monkeypatch.setattr("pex_bridge.app.load_supervisor_choice", lambda _path: choice)
     monkeypatch.setattr("pex_bridge.app._SUPERVISOR_CONFIG_TIMEOUT_SECONDS", 60.0)
     app = create_app()
@@ -324,6 +365,9 @@ async def test_lifespan_exits_while_saved_secret_backend_remains_hung(
     async def enter_and_exit() -> None:
         async with app.router.lifespan_context(app):
             assert await asyncio.to_thread(entered.wait, 0.5)
+            if startup_source == "environment_success":
+                await _wait_until(lambda: state.pipeline.model is loaded_model)
+                assert state.supervisor_error is None
 
     try:
         await asyncio.wait_for(enter_and_exit(), timeout=3.0)
@@ -340,6 +384,7 @@ async def test_lifespan_exits_while_saved_secret_backend_remains_hung(
             state.supervisor_choice,
             state.supervisor_error,
             state.supervisor_api_key_present,
+            state.supervisor_credential_status,
             state.supervisor_secret_store,
             state.supervisor_config_lock,
             state.supervisor_config_generation,
@@ -922,6 +967,7 @@ async def test_lifespan_shutdown_abandons_active_supervisor_transaction(
         state.supervisor_choice,
         state.supervisor_error,
         state.supervisor_api_key_present,
+        state.supervisor_credential_status,
         state.supervisor_secret_store,
         state.supervisor_config_lock,
         state.supervisor_config_generation,
@@ -941,6 +987,7 @@ async def test_lifespan_shutdown_abandons_active_supervisor_transaction(
     state.supervisor_choice = None
     state.supervisor_error = None
     state.supervisor_api_key_present = False
+    state.supervisor_credential_status = "not_configured"
     state.supervisor_secret_store = secret_store
     state.supervisor_config_lock = asyncio.Lock()
     state.supervisor_config_generation = 0
@@ -1016,6 +1063,7 @@ async def test_lifespan_shutdown_abandons_active_supervisor_transaction(
             state.supervisor_choice,
             state.supervisor_error,
             state.supervisor_api_key_present,
+            state.supervisor_credential_status,
             state.supervisor_secret_store,
             state.supervisor_config_lock,
             state.supervisor_config_generation,
@@ -1042,6 +1090,66 @@ async def test_missing_restart_secret_fails_closed_without_ambient_fallback(
 
     with pytest.raises(ValueError, match="did not resolve"):
         _activate_supervisor_choice(persisted)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("activation_failure", ["missing_secret", "constructor_value_error"])
+async def test_missing_saved_secret_preserves_revision_and_rotates_exact_reference(
+    supervisor_client, monkeypatch, activation_failure
+):
+    from pex_bridge.app import _activate_saved_supervisor_choice
+
+    client, secret_store, home = supervisor_client
+    created = await client.patch(
+        "/v1/supervisor", json=_custom_payload(api_key="old-secret")
+    )
+    assert created.status_code == 200
+    persisted = load_supervisor_choice(home / "supervisor.json")
+    assert persisted is not None and persisted.secret_ref
+    old_reference = persisted.secret_ref
+    if activation_failure == "missing_secret":
+        secret_store.values.pop(old_reference)
+    else:
+        monkeypatch.setattr(
+            "pex_supervisor.providers.load_supervisor_model",
+            lambda _config: (_ for _ in ()).throw(ValueError("invalid constructor args")),
+        )
+
+    state.supervisor_choice = persisted
+    state.supervisor_api_key_present = False
+    state.supervisor_credential_status = "configured_unverified"
+    state.supervisor_error = "SupervisorLoading"
+    state.supervisor_config_generation += 1
+    await _activate_saved_supervisor_choice(
+        persisted, state.supervisor_config_generation
+    )
+
+    unavailable = await client.get("/v1/supervisor")
+    assert unavailable.status_code == 200
+    assert unavailable.json()["revision"] == persisted.revision
+    assert unavailable.json()["credential_configured"] is True
+    assert unavailable.json()["credential_status"] == (
+        "missing"
+        if activation_failure == "missing_secret"
+        else "configured_unverified"
+    )
+    assert unavailable.json()["has_api_key"] is False
+    assert state.supervisor_choice == persisted
+
+    monkeypatch.undo()
+    rotated = await client.patch(
+        "/v1/supervisor",
+        json={
+            **_custom_payload(api_key="replacement-secret"),
+            "expected_revision": persisted.revision,
+        },
+    )
+    assert rotated.status_code == 200
+    assert rotated.json()["revision"] == persisted.revision + 1
+    await _wait_until(lambda: old_reference in secret_store.deleted)
+    replacement = load_supervisor_choice(home / "supervisor.json")
+    assert replacement is not None
+    assert replacement.secret_ref != old_reference
 
 
 @pytest.mark.asyncio

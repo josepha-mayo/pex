@@ -742,6 +742,7 @@ class AppState:
         self.supervisor_error: str | None = None
         self.supervisor_choice: SupervisorChoice | None = None
         self.supervisor_api_key_present = False
+        self.supervisor_credential_status = "not_configured"
         self.supervisor_secret_store: SupervisorSecretStore = KeyringSupervisorSecretStore()
         self.supervisor_config_lock = asyncio.Lock()
         self.supervisor_config_generation = 0
@@ -2956,13 +2957,25 @@ async def _run_supervisor_config_operation(
         raise
 
 
-def _prepare_saved_supervisor_choice(choice: SupervisorChoice) -> tuple[Any, Any, bool]:
+class _SavedSupervisorCredentialMissing(ValueError):
+    """The durable secret reference resolved to no credential."""
+
+
+def _prepare_saved_supervisor_choice(
+    choice: SupervisorChoice | None,
+) -> tuple[Any | None, Any, bool]:
     from pex_supervisor.providers import (
         load_supervisor_model,
         validate_runtime_config,
     )
 
+    if choice is None:
+        return None, load_supervisor_model(), False
     api_key = _resolve_choice_secret(choice)
+    if choice.credential_source == "secret_store" and not api_key:
+        raise _SavedSupervisorCredentialMissing(
+            "saved supervisor credential did not resolve"
+        )
     runtime = validate_runtime_config(_choice_runtime_config(choice, api_key))
     model = load_supervisor_model(runtime)
     return runtime, model, bool(api_key)
@@ -2980,7 +2993,7 @@ def _activate_supervisor_choice(choice: SupervisorChoice | None) -> tuple[dict[s
 
 
 async def _activate_saved_supervisor_choice(
-    choice: SupervisorChoice,
+    choice: SupervisorChoice | None,
     generation: int,
 ) -> None:
     """Activate persisted routing without delaying bridge readiness."""
@@ -3001,6 +3014,11 @@ async def _activate_saved_supervisor_choice(
                 return
             state.pipeline.model = None
             state.supervisor_api_key_present = False
+            state.supervisor_credential_status = (
+                "configured_unverified"
+                if choice is not None and choice.credential_source == "secret_store"
+                else "not_configured"
+            )
             state.supervisor_error = "SupervisorActivationTimeout"
         logger.error(
             "Saved supervisor configuration timed out; "
@@ -3016,8 +3034,18 @@ async def _activate_saved_supervisor_choice(
                 return
             state.pipeline.model = None
             state.supervisor_api_key_present = False
-            if isinstance(exc, (OSError, ValueError, SupervisorSecretStoreError)):
-                state.supervisor_choice = None
+            state.supervisor_credential_status = (
+                "missing"
+                if isinstance(exc, _SavedSupervisorCredentialMissing)
+                and choice is not None
+                and choice.credential_source == "secret_store"
+                else (
+                    "configured_unverified"
+                    if choice is not None
+                    and choice.credential_source == "secret_store"
+                    else "not_configured"
+                )
+            )
             state.supervisor_error = type(exc).__name__
         logger.error(
             "Saved supervisor configuration failed closed (%s); "
@@ -3037,6 +3065,21 @@ async def _activate_saved_supervisor_choice(
         configure_runtime(runtime)
         state.pipeline.model = model
         state.supervisor_api_key_present = api_key_present
+        state.supervisor_credential_status = (
+            "available"
+            if api_key_present
+            or (
+                model is not None
+                and choice is not None
+                and choice.credential_source == "environment"
+            )
+            else (
+                "not_required"
+                if model is not None
+                and (choice is None or choice.credential_source == "none")
+                else "not_configured"
+            )
+        )
         state.supervisor_error = None if model is not None else "SupervisorUnavailable"
 
 
@@ -3242,29 +3285,34 @@ async def lifespan(app: FastAPI):
 
         await attach_from_settings(state.adapters, state.settings)
         choice_file = state.settings.data_dir / "supervisor.json"
+        state.supervisor_choice = None
         try:
             state.supervisor_choice = load_supervisor_choice(choice_file)
-            if state.supervisor_choice is None:
-                state.pipeline.model = None
-                state.supervisor_api_key_present = False
-                state.supervisor_error = None
-            else:
-                state.pipeline.model = None
-                state.supervisor_api_key_present = False
-                state.supervisor_error = "SupervisorLoading"
-                state.supervisor_config_generation += 1
-                activation = asyncio.create_task(
-                    _activate_saved_supervisor_choice(
-                        state.supervisor_choice,
-                        state.supervisor_config_generation,
-                    ),
-                    name=f"supervisor-startup:{state.supervisor_config_generation}",
-                )
-                state.track_background(activation)
+            state.pipeline.model = None
+            state.supervisor_api_key_present = False
+            state.supervisor_credential_status = (
+                "configured_unverified"
+                if state.supervisor_choice is not None
+                and state.supervisor_choice.credential_source == "secret_store"
+                else "not_configured"
+            )
+            state.supervisor_error = "SupervisorLoading"
+            from pex_supervisor.providers import configure_runtime
+
+            configure_runtime(None)
+            state.supervisor_config_generation += 1
+            activation = asyncio.create_task(
+                _activate_saved_supervisor_choice(
+                    state.supervisor_choice,
+                    state.supervisor_config_generation,
+                ),
+                name=f"supervisor-startup:{state.supervisor_config_generation}",
+            )
+            state.track_background(activation)
         except (OSError, ValueError, SupervisorSecretStoreError) as exc:
             state.pipeline.model = None
             state.supervisor_api_key_present = False
-            state.supervisor_choice = None
+            state.supervisor_credential_status = "unavailable"
             state.supervisor_error = type(exc).__name__
             logger.error(
                 "Saved supervisor configuration failed closed (%s)", type(exc).__name__
@@ -3420,6 +3468,7 @@ def create_app() -> FastAPI:
         # First-run authority is an explicit revision, not a client-side guess
         # from missing fields or an unavailable configuration response.
         info["revision"] = 0
+        info["credential_status"] = state.supervisor_credential_status
         if state.supervisor_choice is not None:
             # Never query an OS credential backend from this event-loop route.
             stored_key_present = state.supervisor_api_key_present
@@ -3556,6 +3605,20 @@ def create_app() -> FastAPI:
             state.supervisor_choice = desired
             state.pipeline.model = candidate_model
             state.supervisor_api_key_present = prepared.api_key_present
+            state.supervisor_credential_status = (
+                "available"
+                if prepared.api_key_present
+                or (
+                    candidate_model is not None
+                    and desired.credential_source == "environment"
+                )
+                else (
+                    "not_required"
+                    if candidate_model is not None
+                    and desired.credential_source == "none"
+                    else "not_configured"
+                )
+            )
             state.supervisor_error = (
                 None if candidate_model is not None else "SupervisorUnavailable"
             )
