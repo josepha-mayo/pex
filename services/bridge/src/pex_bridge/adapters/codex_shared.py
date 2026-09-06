@@ -28,7 +28,8 @@ from websockets.frames import Frame, Opcode
 from websockets.protocol import State
 from websockets.uri import parse_uri
 
-from pex_bridge.adapters.base import bounded_adapter_id, bounded_observed_mapping
+from pex_bridge.adapters.base import bounded_adapter_id
+from pex_bridge.adapters.codex_output import bounded_shared_command_params
 from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
 from pex_bridge.codex_received_journal import CodexReceivedJournal, CodexReceivedJournalError
 
@@ -801,7 +802,9 @@ class CodexSharedAppServerTransport:
                         message = self._accept_frame(event)
                         if message is not None:
                             self._received_envelope_revision += 1
-                            self._route_message(message)
+                            self._route_message(
+                                message, received_bytes_journaled=self._receive_journal is not None,
+                            )
             async with asyncio.timeout(self.request_timeout_s):
                 await self._flush(websocket, channel)
             return events
@@ -862,7 +865,7 @@ class CodexSharedAppServerTransport:
             return result
         raise SharedCodexProtocolError("binary WebSocket messages are unsupported")
 
-    def _route_message(self, encoded: bytes) -> None:
+    def _route_message(self, encoded: bytes, *, received_bytes_journaled: bool = False) -> None:
         if len(encoded) > MAX_MESSAGE_BYTES:
             raise SharedCodexProtocolError("shared Codex message exceeds the safety bound")
         try:
@@ -922,7 +925,9 @@ class CodexSharedAppServerTransport:
         if raw_method is None:
             raise SharedCodexProtocolError("shared Codex message has no route")
         method = bounded_adapter_id(raw_method, field="shared Codex event method")
-        params = bounded_observed_mapping(message.get("params"))
+        params = bounded_shared_command_params(
+            message, thread_id=self.thread_id, received_bytes_journaled=received_bytes_journaled,
+        )
         if params is None:
             raise SharedCodexProtocolError("shared Codex event has malformed params")
         if self._is_ignorable_foreign_lifecycle_notification(message, method, params):

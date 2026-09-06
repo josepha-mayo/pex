@@ -41,6 +41,7 @@ from pex_bridge.adapters.base import (
     session_binding_matches,
 )
 from pex_bridge.adapters.codex_bin import app_server_command
+from pex_bridge.adapters.codex_output import OUTPUT_WITHHELD_KEY, command_output_is_withheld
 from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
 from pex_bridge.shell_state import parse_pytest_process_state
 
@@ -1712,8 +1713,18 @@ class CodexAdapter(HarnessAdapter):
                 ),
                 "status": item.get("status"),
             }
-            process_state = parse_pytest_process_state(str(command or ""), payload)
-            if process_state is not None:
+            output_withheld = command_output_is_withheld(item)
+            if output_withheld:
+                message_metadata["command_output"] = item[OUTPUT_WITHHELD_KEY]
+                message_metadata["command_status"] = payload["status"]
+                if type(payload["exit_code"]) is int:
+                    message_metadata["command_exit_code"] = payload["exit_code"]
+            process_state = (
+                {"pytest_unavailable_reason": "output_exceeds_bound"}
+                if output_withheld
+                else parse_pytest_process_state(str(command or ""), payload)
+            )
+            if process_state is not None and "pytest" in process_state:
                 pytest_state = process_state.get("pytest")
                 execution_cwd, cwd_reason = _validated_execution_cwd(session, item.get("cwd"))
                 if not isinstance(pytest_state, dict):

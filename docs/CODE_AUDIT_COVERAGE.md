@@ -6,6 +6,18 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Oversized selected command-output observations — 6 Sep
+
+Root full-new-file review: `adapters/codex_output.py` and
+`tests/unit/test_codex_output_withholding.py`. Root and Terra changed-path review:
+`adapters/codex_shared.py` journal-before-route handoff and `adapters/codex.py`
+unavailable-output normalization. Terra caught the nested alternate item identity
+gap; fixed and tested. Framed bytes, bounded metadata, no inferred test success,
+negative identities/envelopes, absent journal, duplicate ordering and subsequent
+STOP are covered. Final combined five-file gate 204 passed, scoped
+Ruff clean. These are not full-file approvals of existing adapters or a live proof.
+See the checkpoint for the distinct pending clean-source/full/live gates.
+
 ### Literal PowerShell evidence and unrelated lifecycle isolation — 6 Sep
 
 Changed-path review, not whole-file approval:

@@ -69,8 +69,41 @@ own hardcoded wrong directory. Final root five-file gate: **111 passed in 17.25s
 Ruff passed. This does not validate a fresh live run or the full Python suite.
 An independently decoded PEX resume response had both top-level and thread `cwd`
 matching the fixture, while the later command reported the main PEX repository.
-There is no evidence here that PEX resume reset the directory. Large-output
-handling remains unresolved; no transport cap was relaxed in this repair.
+There is no evidence here that PEX resume reset the directory. No transport cap
+was relaxed in the directory repair; the separate output repair follows below.
+
+### Bounded command-output retention — reviewed offline repair
+
+The selected shared transport now handles oversized `commandExecution` output
+only after the actual received bytes have been committed to its private journal.
+It replaces only `aggregatedOutput` with a fixed unavailable-evidence notice and
+retains the original character count and SHA-256 digest. The 1 MiB frame/message
+cap and ordinary bounds on all other fields remain unchanged. No prefix/suffix is
+interpreted as a complete test result. Missing journal proof, requests, foreign or
+conflicting identities, injected annotations and other oversized fields fail closed.
+Independent Terra review caught a nested `item.itemId` identity conflict; it is
+now rejected and regression-covered.
+
+The normalizer retains the shell observation but emits only
+`pytest_unavailable_reason=output_exceeds_bound`, never typed pytest pass/fail.
+This permits the later STOP to remain observable for evidence gathering. Framed
+tests verify committed bytes before the notice, continued STOP delivery and no
+worker mutation. Coordinator tests verify deterministic duplicate coalescing and
+the STOP watermark. Root gates: **117 passed in 22.36s** across output/journal/
+shared transport/pump; then **109 passed in 2.89s** across expanded output and
+subscription cases. These overlap and must not be added as unique coverage.
+Scoped Ruff passes. Independent initial withholding gate: **22 passed in 1.28s**.
+Final combined five-file root gate: **204 passed in 25.10s**. Independent final
+two added regressions passed and Terra approved the scoped repair for commit.
+The separate owned/stdio Codex transport has not gained this withholding path.
+No fresh live run, provider call, foreground input or success claim follows.
+
+The full offline gate on clean detached source `84d9bd3` is running separately
+under `pex-verify-84d9bd3`, with a 30-minute owned-process wall cap and private
+stdout/stderr/JUnit destinations under `build`. Dependency sync passed. Its
+source predates this output repair; no full-suite pass has yet been established.
+The independent monitor observed it past the previous failure/hang neighborhood
+at 25% with no reported failures/errors; this is progress, not a terminal result.
 
 ### Shutdown repair and test cleanup — `535ccb7` and follow-up
 
