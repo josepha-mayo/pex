@@ -1,5 +1,28 @@
 # Known failures
 
+## Current authority — 6 September shared-worker recovery and release
+
+Read [the current checkpoint](docs/CHECKPOINT_2026_09_06.md) before using older
+entries below: they preserve historical failures, not current blanket blockers.
+
+- Clean `4543a58` passed one real Strands shared-thread recovery and a separate
+  quiet completion. This does not prove all required behavior or fair benchmarks.
+- Run-05's controlled false test claim was corrected in the same worker; root
+  verified four passing, unchanged public tests. Old live source missed nested
+  PowerShell pytest evidence. Parser repair `7a41a24` requires a fresh live replay;
+  the old uncertain outcome remains uncertain.
+- The run-05 observer disconnected before explicit detach. Lifecycle reason alone
+  was only `CodexSubscriptionError`; receive-journal inspection subsequently found
+  a foreign-thread `thread/status/changed` (`notLoaded`) and `thread/closed` pair.
+  The transport rejected their thread ID and closed its observer. Selected-worker
+  closure was not observed. Safe lifecycle routing is under review. Post-detach
+  effective correction authority is false; explicit revoke did not succeed.
+- Clean `da6d1b8` package integrity passed after reusing the retained extractor;
+  the initial missing-extractor failure receipt remains retained. These unsigned
+  packages predate the parser repair and do not prove current installed behavior.
+- Native input is paused while the user works. Cold restart, all-eight animation
+  replay and remaining live UI flows remain open; no unrelated app may be disturbed.
+
 ## Claimed-correction integration review — 5 Sep, current verification
 
 Standing correction consent and the private claimed-effect dispatch path are reviewed and pushed as `fe34a3a`; older statements that all callers/provenance are absent are historical. Review found and repaired old fixtures that lacked the new grant, a permission-context prefix that interfered with existing safety triage, and interrupted post-Executor receipt settlement. The latter has two independently reproduced red tests; main 969-pass combined and final 6-case focused evidence are in [`docs/CODEX_CLAIMED_DISPATCH_REVIEW.md`](docs/CODEX_CLAIMED_DISPATCH_REVIEW.md). An exploratory interrupted teardown stall was not reproduced in later repeated gates; no blanket deadlock-cause claim. Do not promote these repairs to live-product proof.

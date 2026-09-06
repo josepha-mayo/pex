@@ -39,8 +39,22 @@ detach succeeded with `worker_stopped=false`. Lifecycle cursor 72 records
 Read-only post-detach public grant status returned enabled/effective_enabled/
 connected all false, reason `autonomous_correction_scope_unavailable`.
 This confirms no effective correction authority, not a successful explicit
-revocation or deletion of the historical grant row. Diagnose the disconnect
-before the fresh live replay; never invent the missing cause.
+revocation or deletion of the historical grant row.
+
+Subsequent read-only journal audit recovered the missing cause: final receive
+chunk 170 at 14:06:14.910 UTC contains complete `thread/status/changed` (`notLoaded`)
+and `thread/closed` notifications for a different thread. The transport rejects
+the mismatched ID, invalidates its connection, and the adapter later records only
+the generic subscription exception. This is not selected-worker closure.
+The [official App Server documentation](https://learn.chatgpt.com/docs/app-server)
+describes that lifecycle pair on idle unload, but does not explicitly establish
+recipient broadcast policy. A narrowly validated foreign-lifecycle routing fix
+is under review; no arbitrary foreign events should enter selected-worker state.
+
+Regression expansion after parser repair: shared accepted records preserve both
+failed and passed pytest state and exact targeted scope (8 tests passed); the
+official pump/pipeline direct and wrapped failure cases pass (23 tests). These
+are deterministic regressions, not a fresh live-model proof.
 
 ### Fresh clean release build: package integrity passed on da6d1b8
 
@@ -66,7 +80,8 @@ not submission readiness or an installed-app smoke test.
 
 ### Earlier native-control and build sequence
 
-The user pressed physical Escape again during window discovery after the live
+Historical sequence, before the successful build above: the user pressed physical
+Escape again during window discovery after the live
 proofs. Native mouse/keyboard checks are paused until new permission. No close
 action was sent; the old dev PEX window was not closed. Continue safe backend,
 release build and evidence work without native input. The clean release worktree
