@@ -35,6 +35,31 @@ def _digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
+def test_public_prompts_have_one_cross_platform_byte_representation(tmp_path):
+    repo = Path(__file__).resolve().parents[2]
+    evaluator = _evaluator()
+    boundary = _four_arm().boundary
+
+    attributes = (repo / ".gitattributes").read_text(encoding="utf-8")
+    assert "benchmarks/tasks/*/prompt.md text eol=lf" in attributes.splitlines()
+    for task_id in evaluator.task_ids():
+        source = repo / "benchmarks" / "tasks" / task_id / "prompt.md"
+        source_bytes = source.read_bytes()
+        assert b"\r" not in source_bytes
+        prompt = evaluator.prompt_text(task_id)
+        assert prompt.encode("utf-8") == source_bytes
+        assert boundary.public_prompt(task_id) == prompt
+        expected_hash = hashlib.sha256(source_bytes).hexdigest()
+        assert boundary.sha256_text(prompt) == expected_hash
+        assert boundary.sha256_file(source) == expected_hash
+
+        workspace = tmp_path / task_id
+        evaluator.seed_workspace(task_id, workspace)
+        seeded_prompt = workspace / "TASK.md"
+        assert seeded_prompt.read_bytes() == source_bytes
+        assert boundary.sha256_file(seeded_prompt) == expected_hash
+
+
 def test_result_lock_retries_transient_windows_unlink_denial(tmp_path, monkeypatch):
     runner = _runner()
     result = tmp_path / "run.jsonl"
