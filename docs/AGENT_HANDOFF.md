@@ -2,6 +2,16 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Post-trajectory integration check on `f650260`: complete
+`tests/e2e/test_recovery_stop_loop.py` passed **17 tests in 94.42s**, with
+PytestUnhandledThreadExceptionWarning treated as an error. Scope includes
+completion/continuation, goal attribution, local no-nag fixtures, missing data,
+cleanup escalation, background jobs, compaction/overlay and quiet trajectory
+candidates. These use synthetic adapters/local ASGI, with model inference
+disabled by the test fixture; they do not replace the unfinished ten live quiet
+cases or prove semantic trajectory review. No new inference or desktop input.
+Audit coverage now records the full drift-module read and remaining P0 gate.
+
 Adjacent broad-refactor repair: deterministic planning no longer equates four
 unlisted filenames or refactor narration with proof of goal irrelevance. It
 retains `broad_work_candidate` evidence as NOOP rather than issuing the old

@@ -6,6 +6,25 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Trajectory candidate integrity — 6 Sep, through `f650260`
+
+Root fully read `services/supervisor/src/pex_supervisor/drift.py` and
+`tests/unit/test_drift.py`; changed-path review covers planner, planner tests
+and the two synthetic HTTP trajectory cases. Observed defects: basename-only
+overlap conflated different files; matching files/commands and broad-edit lexical
+signals were promoted to unverified corrective messages. Repairs preserve exact
+normalized paths and event provenance, reject invalid sibling/action/time scope,
+and retain candidates without deterministic drift accusations. Focused gates:
+50 unit tests, plus 13 selected unit/API checks. These are not semantic decision
+or live worker evidence.
+
+Remaining P0: ordinary mid-task events do not normally enter semantic inference
+(`loop.py` currently gates it to STOP unless forced). Root read that gate but
+has not modified the protected dirty file; user permission was requested.
+Do not mark trajectory supervision complete merely because incorrect automatic
+messages have been removed. It requires goal-aware evidence gathering, budgeted
+semantic review, justified intervention, observed continuation and outcome proof.
+
 ### Low-quota evidence and pet interaction repairs — 6 Sep
 
 Root changed-path review, not a full-file or whole-codebase signoff:
