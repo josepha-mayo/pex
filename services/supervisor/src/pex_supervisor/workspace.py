@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
 import subprocess
+import threading
 from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FutureTimeoutError
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,36 @@ ARTIFACT_TAILS = (
     "pytest.xml",
     "test-results.xml",
 )
+
+
+def _terminate_process_tree(process: subprocess.Popen[bytes]) -> None:
+    if os.name == "nt":
+        system_root = os.environ.get("SYSTEMROOT") or os.environ.get("WINDIR")
+        taskkill = Path(system_root or "C:/Windows") / "System32" / "taskkill.exe"
+        try:
+            subprocess.run(
+                [str(taskkill), "/PID", str(process.pid), "/T", "/F"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+                check=False,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except (OSError, subprocess.SubprocessError):
+            pass
+    else:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except (OSError, ProcessLookupError):
+            pass
+    if process.poll() is None:
+        try:
+            process.kill()
+        except OSError:
+            pass
+
+
 MAX_INVENTORY_FILES = 400
 MAX_VISIBLE_READ_BYTES = 1_000_000
 MAX_ARTIFACT_TAIL_BYTES = 64_000
@@ -201,6 +232,7 @@ def git_snapshot(root: Path) -> dict[str, Any]:
             *args,
         ]
         creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         process: subprocess.Popen[bytes] | None = None
         try:
             process = subprocess.Popen(
@@ -210,6 +242,8 @@ def git_snapshot(root: Path) -> dict[str, Any]:
                 stderr=subprocess.STDOUT,
                 env=git_env,
                 creationflags=creation_flags,
+                start_new_session=os.name != "nt",
+                bufsize=0,
             )
             if process.stdout is None:
                 raise OSError("git output pipe unavailable")
@@ -225,26 +259,40 @@ def git_snapshot(root: Path) -> dict[str, Any]:
                     output.extend(chunk)
                 return bytes(output)
 
-            with ThreadPoolExecutor(max_workers=1, thread_name_prefix="pex-git-output") as reader:
-                future = reader.submit(_read_output)
-                try:
-                    raw = future.result(timeout=4)
-                except FutureTimeoutError:
-                    process.kill()
-                    raw = future.result(timeout=2)
+            captured: list[bytes] = []
+            reader = threading.Thread(
+                target=lambda: captured.append(_read_output()),
+                name="pex-git-output",
+                daemon=True,
+            )
+            reader.start()
+            reader.join(timeout=4)
+            if reader.is_alive():
+                _terminate_process_tree(process)
+                process.stdout.close()
+                reader.join(timeout=2)
+                return ""
+            raw = captured[0] if captured else b""
             if len(raw) > MAX_GIT_OUTPUT_BYTES and process.poll() is None:
-                process.kill()
+                _terminate_process_tree(process)
             try:
                 process.wait(timeout=1)
             except subprocess.TimeoutExpired:
-                process.kill()
+                _terminate_process_tree(process)
                 process.wait(timeout=1)
             return raw[:MAX_GIT_OUTPUT_BYTES].decode("utf-8", "replace")
-        except (OSError, subprocess.SubprocessError, FutureTimeoutError):
+        except (OSError, subprocess.SubprocessError):
             return ""
         finally:
-            if process is not None and process.poll() is None:
-                process.kill()
+            if process is not None:
+                if process.poll() is None:
+                    _terminate_process_tree(process)
+                    try:
+                        process.wait(timeout=1)
+                    except (OSError, subprocess.SubprocessError):
+                        pass
+                if process.stdout is not None:
+                    process.stdout.close()
 
     def _visible_lines(raw: str) -> str:
         for marker in HIDDEN:

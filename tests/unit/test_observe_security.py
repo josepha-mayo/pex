@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 import pytest
 from pex_bridge.observe import snapshot
@@ -33,6 +34,25 @@ def test_public_pytest_receives_no_parent_secret_and_redacts_output(tmp_path, mo
 
     assert observed["pytest"]["ok"] is True
     assert "sk-" not in json.dumps(observed)
+
+
+def test_public_pytest_timeout_kills_stdout_inheriting_descendants(tmp_path, monkeypatch):
+    import pex_bridge.observe as observe
+
+    monkeypatch.setattr(observe, "_PYTEST_TIMEOUT_SECONDS", 0.25)
+    (tmp_path / "test_descendant.py").write_text(
+        "import subprocess, sys, time\n\n"
+        "def test_stall():\n"
+        "    subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])\n"
+        "    time.sleep(30)\n",
+        encoding="utf-8",
+    )
+
+    started = time.monotonic()
+    observed = snapshot(tmp_path, run_pytest=True)
+
+    assert time.monotonic() - started < 6
+    assert observed["pytest"]["timed_out"] is True
 
 
 def test_manifest_skips_common_local_credential_files(tmp_path):

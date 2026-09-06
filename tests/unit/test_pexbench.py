@@ -5,11 +5,21 @@ import json
 import os
 import subprocess
 import sys
+import time
 from collections import Counter
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
+
+_MANIFEST_TEMP_DIRS: list[TemporaryDirectory] = []
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_manifest_temp_dirs():
+    yield
+    while _MANIFEST_TEMP_DIRS:
+        _MANIFEST_TEMP_DIRS.pop().cleanup()
 
 
 def _runner():
@@ -464,6 +474,29 @@ def _evaluator():
     return module
 
 
+def test_bounded_evaluator_kills_stdout_inheriting_descendants(tmp_path):
+    evaluator = _evaluator()
+    command = [
+        sys.executable,
+        "-c",
+        (
+            "import subprocess,sys,time; "
+            "subprocess.Popen([sys.executable,'-c','import time;time.sleep(30)']); "
+            "time.sleep(30)"
+        ),
+    ]
+
+    started = time.monotonic()
+    _, _, timed_out, _ = evaluator._run_bounded(
+        command,
+        cwd=tmp_path,
+        timeout=0.25,
+    )
+
+    assert time.monotonic() - started < 6
+    assert timed_out is True
+
+
 def _supervisor_process():
     path = Path(__file__).resolve().parents[2] / "benchmarks" / "pex_supervisor_process.py"
     spec = importlib.util.spec_from_file_location("pexbench_supervisor_process", path)
@@ -471,6 +504,7 @@ def _supervisor_process():
     assert spec.loader
     spec.loader.exec_module(module)
     manifest_dir = TemporaryDirectory(prefix="pexbench-test-manifest-")
+    _MANIFEST_TEMP_DIRS.append(manifest_dir)
     manifest = Path(manifest_dir.name) / "manifest.yaml"
     manifest.write_bytes(path.with_name("manifest.yaml").read_bytes())
     module.MANIFEST = manifest

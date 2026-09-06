@@ -1,9 +1,46 @@
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
 from pex_supervisor.workspace import artifact_tails, git_snapshot, read_visible, snapshot
+
+
+def test_workspace_process_tree_termination_is_bounded_with_inherited_stdout():
+    import os
+
+    import pex_supervisor.workspace as workspace_module
+
+    creation_flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import subprocess,sys,time; "
+                "subprocess.Popen([sys.executable,'-c','import time;time.sleep(30)']); "
+                "print('ready', flush=True); "
+                "time.sleep(30)"
+            ),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        creationflags=creation_flags,
+        start_new_session=os.name != "nt",
+        bufsize=0,
+    )
+    assert process.stdout is not None
+    assert process.stdout.readline().strip() == b"ready"
+    started = time.monotonic()
+    try:
+        workspace_module._terminate_process_tree(process)
+        process.wait(timeout=3)
+    finally:
+        if process.stdout is not None:
+            process.stdout.close()
+
+    assert time.monotonic() - started < 6
 
 
 def test_snapshot_lists_visible_files_and_skips_hidden(tmp_path: Path):

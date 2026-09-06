@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import sys
 import threading
@@ -16,6 +17,35 @@ from pathlib import Path
 from typing import Any
 
 from pex_protocol.redaction import redact_text
+
+
+def _terminate_process_tree(proc: subprocess.Popen[bytes]) -> None:
+    """Best-effort bounded termination for worker-owned descendants."""
+    if os.name == "nt":
+        system_root = os.environ.get("SYSTEMROOT") or os.environ.get("WINDIR")
+        taskkill = Path(system_root or "C:/Windows") / "System32" / "taskkill.exe"
+        try:
+            subprocess.run(
+                [str(taskkill), "/PID", str(proc.pid), "/T", "/F"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+                check=False,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except (OSError, subprocess.SubprocessError):
+            pass
+    else:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (OSError, ProcessLookupError):
+            pass
+    if proc.poll() is None:
+        try:
+            proc.kill()
+        except OSError:
+            pass
 
 HIDDEN_NAME_MARKERS = (
     "evaluator.py",
@@ -159,6 +189,8 @@ def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
     env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     proc = subprocess.Popen(
         [
             sys.executable,
@@ -180,6 +212,9 @@ def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         env=env,
+        creationflags=creation_flags,
+        start_new_session=os.name != "nt",
+        bufsize=0,
     )
     if proc.stdout is None:  # pragma: no cover - PIPE guarantees this
         raise RuntimeError("public pytest output pipe was not created")
@@ -198,28 +233,37 @@ def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
     reader.start()
     timed_out = False
     try:
-        exit_code = proc.wait(timeout=_PYTEST_TIMEOUT_SECONDS)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        proc.kill()
-        exit_code = proc.wait(timeout=5)
-    reader.join(timeout=2)
-    if reader.is_alive():
+        try:
+            exit_code = proc.wait(timeout=_PYTEST_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            _terminate_process_tree(proc)
+            exit_code = proc.wait(timeout=5)
+        reader.join(timeout=2)
+        output = bytes(tail).decode("utf-8", errors="replace")[-_MAX_PYTEST_OUTPUT:]
+        output, _ = redact_text(output)
+        output = output or ""
+        if any(marker.lower() in output.lower() for marker in HIDDEN_NAME_MARKERS):
+            output = "[public pytest output withheld: hidden benchmark marker detected]"
+        if timed_out:
+            output = f"[public pytest timed out after {_PYTEST_TIMEOUT_SECONDS}s]\n{output}".strip()
+        return {
+            "ok": not timed_out and exit_code == 0,
+            "exit_code": exit_code,
+            "output": output,
+            "timed_out": timed_out,
+        }
+    finally:
+        if proc.poll() is None:
+            _terminate_process_tree(proc)
+            try:
+                proc.wait(timeout=5)
+            except subprocess.SubprocessError:
+                pass
+        # Popen does not close caller-owned PIPE handles after wait(). Closing
+        # also releases a blocked reader if an exceptional path interrupted us.
         proc.stdout.close()
         reader.join(timeout=1)
-    output = bytes(tail).decode("utf-8", errors="replace")[-_MAX_PYTEST_OUTPUT:]
-    output, _ = redact_text(output)
-    output = output or ""
-    if any(marker.lower() in output.lower() for marker in HIDDEN_NAME_MARKERS):
-        output = "[public pytest output withheld: hidden benchmark marker detected]"
-    if timed_out:
-        output = f"[public pytest timed out after {_PYTEST_TIMEOUT_SECONDS}s]\n{output}".strip()
-    return {
-        "ok": not timed_out and exit_code == 0,
-        "exit_code": exit_code,
-        "output": output,
-        "timed_out": timed_out,
-    }
 
 
 def snapshot(workspace: Path, *, run_pytest: bool = False) -> dict[str, Any]:

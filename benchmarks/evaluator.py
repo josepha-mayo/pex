@@ -12,6 +12,7 @@ import json
 import os
 import pprint
 import re
+import signal
 import subprocess
 import sys
 import threading
@@ -27,6 +28,35 @@ from yaml.resolver import BaseResolver
 ROOT = Path(__file__).resolve().parent
 TASKS = ROOT / "tasks"
 MANIFEST = ROOT / "manifest.yaml"
+
+
+def _terminate_process_tree(proc: subprocess.Popen[bytes]) -> None:
+    if os.name == "nt":
+        system_root = os.environ.get("SYSTEMROOT") or os.environ.get("WINDIR")
+        taskkill = Path(system_root or "C:/Windows") / "System32" / "taskkill.exe"
+        try:
+            subprocess.run(
+                [str(taskkill), "/PID", str(proc.pid), "/T", "/F"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+                check=False,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except (OSError, subprocess.SubprocessError):
+            pass
+    else:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (OSError, ProcessLookupError):
+            pass
+    if proc.poll() is None:
+        try:
+            proc.kill()
+        except OSError:
+            pass
+
 
 PRESENTATION_ARMS = ("cursor", "cursor_pex", "codex", "codex_pex")
 RECOVERY_TASK_IDS = (
@@ -658,6 +688,8 @@ def _run_bounded(
     encoded_input = input_text.encode("utf-8") if input_text is not None else b""
     if len(encoded_input) > _MAX_SUBPROCESS_INPUT:
         raise ValueError("evaluator subprocess input exceeds the safety limit")
+    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     proc = subprocess.Popen(
         command,
         cwd=cwd,
@@ -665,6 +697,9 @@ def _run_bounded(
         stdin=subprocess.PIPE if input_text is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        creationflags=creation_flags,
+        start_new_session=os.name != "nt",
+        bufsize=0,
     )
     captured = bytearray()
     output_exceeded = threading.Event()
@@ -677,37 +712,50 @@ def _run_bounded(
                 captured.extend(chunk[:remaining])
             if len(chunk) > remaining:
                 output_exceeded.set()
-                proc.kill()
+                _terminate_process_tree(proc)
                 return
 
     reader = threading.Thread(target=drain_output, name="pexbench-output", daemon=True)
     reader.start()
-    if proc.stdin is not None:
-        try:
-            proc.stdin.write(encoded_input)
-            proc.stdin.flush()
-        except BrokenPipeError:
-            pass
-        finally:
-            proc.stdin.close()
     timed_out = False
     try:
-        returncode = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        proc.kill()
-        returncode = proc.wait()
-    reader.join(timeout=2)
-    if reader.is_alive():
-        proc.kill()
-        output_exceeded.set()
+        if proc.stdin is not None:
+            try:
+                proc.stdin.write(encoded_input)
+                proc.stdin.flush()
+            except BrokenPipeError:
+                pass
+            finally:
+                proc.stdin.close()
+        try:
+            returncode = proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            _terminate_process_tree(proc)
+            returncode = proc.wait()
         reader.join(timeout=2)
-    return (
-        returncode,
-        captured.decode("utf-8", errors="replace"),
-        timed_out,
-        output_exceeded.is_set(),
-    )
+        if reader.is_alive():
+            _terminate_process_tree(proc)
+            output_exceeded.set()
+            reader.join(timeout=2)
+        return (
+            returncode,
+            captured.decode("utf-8", errors="replace"),
+            timed_out,
+            output_exceeded.is_set(),
+        )
+    finally:
+        if proc.poll() is None:
+            _terminate_process_tree(proc)
+            try:
+                proc.wait(timeout=2)
+            except subprocess.SubprocessError:
+                pass
+        if proc.stdin is not None and not proc.stdin.closed:
+            proc.stdin.close()
+        if proc.stdout is not None:
+            proc.stdout.close()
+        reader.join(timeout=1)
 
 
 def _subprocess_env() -> dict[str, str]:
