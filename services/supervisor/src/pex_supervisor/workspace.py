@@ -12,6 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
+from pex_protocol.windows_job import CREATE_SUSPENDED, assign_job_and_resume, close_job
+
 HIDDEN = (
     "evaluator.py",
     "metadata.yaml",
@@ -29,28 +31,21 @@ ARTIFACT_TAILS = (
 )
 
 
+def _assign_windows_job(process: subprocess.Popen[bytes]):
+    return assign_job_and_resume(process)
+
+
 def _terminate_process_tree(process: subprocess.Popen[bytes]) -> None:
-    if os.name == "nt":
-        system_root = os.environ.get("SYSTEMROOT") or os.environ.get("WINDIR")
-        taskkill = Path(system_root or "C:/Windows") / "System32" / "taskkill.exe"
-        try:
-            subprocess.run(
-                [str(taskkill), "/PID", str(process.pid), "/T", "/F"],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=2,
-                check=False,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-        except (OSError, subprocess.SubprocessError):
-            pass
-    else:
+    job = getattr(process, "_pex_job", None)
+    if job is not None:
+        close_job(job)
+        process._pex_job = None
+    elif os.name != "nt" and process.poll() is None:
         try:
             os.killpg(process.pid, signal.SIGKILL)
-        except (OSError, ProcessLookupError):
+        except OSError:
             pass
-    if process.poll() is None:
+    elif process.poll() is None:
         try:
             process.kill()
         except OSError:
@@ -233,7 +228,10 @@ def git_snapshot(root: Path) -> dict[str, Any]:
         ]
         creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        if os.name == "nt":
+            creation_flags |= CREATE_SUSPENDED
         process: subprocess.Popen[bytes] | None = None
+        job = None
         try:
             process = subprocess.Popen(
                 command,
@@ -245,6 +243,8 @@ def git_snapshot(root: Path) -> dict[str, Any]:
                 start_new_session=os.name != "nt",
                 bufsize=0,
             )
+            job = _assign_windows_job(process)
+            process._pex_job = job
             if process.stdout is None:
                 raise OSError("git output pipe unavailable")
 
@@ -269,16 +269,19 @@ def git_snapshot(root: Path) -> dict[str, Any]:
             reader.join(timeout=4)
             if reader.is_alive():
                 _terminate_process_tree(process)
+                job = None
                 process.stdout.close()
                 reader.join(timeout=2)
                 return ""
             raw = captured[0] if captured else b""
             if len(raw) > MAX_GIT_OUTPUT_BYTES and process.poll() is None:
                 _terminate_process_tree(process)
+                job = None
             try:
                 process.wait(timeout=1)
             except subprocess.TimeoutExpired:
                 _terminate_process_tree(process)
+                job = None
                 process.wait(timeout=1)
             return raw[:MAX_GIT_OUTPUT_BYTES].decode("utf-8", "replace")
         except (OSError, subprocess.SubprocessError):
@@ -287,12 +290,15 @@ def git_snapshot(root: Path) -> dict[str, Any]:
             if process is not None:
                 if process.poll() is None:
                     _terminate_process_tree(process)
+                    job = None
                     try:
                         process.wait(timeout=1)
                     except (OSError, subprocess.SubprocessError):
                         pass
                 if process.stdout is not None:
                     process.stdout.close()
+                if job is not None:
+                    _terminate_process_tree(process)
 
     def _visible_lines(raw: str) -> str:
         for marker in HIDDEN:

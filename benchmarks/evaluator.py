@@ -16,12 +16,14 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from collections import Counter
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
 import yaml
+from pex_protocol.windows_job import CREATE_SUSPENDED, assign_job_and_resume, close_job
 from yaml.constructor import ConstructorError
 from yaml.resolver import BaseResolver
 
@@ -30,28 +32,22 @@ TASKS = ROOT / "tasks"
 MANIFEST = ROOT / "manifest.yaml"
 
 
+def _assign_windows_job(proc: subprocess.Popen[bytes]):
+    return assign_job_and_resume(proc)
+
+
 def _terminate_process_tree(proc: subprocess.Popen[bytes]) -> None:
-    if os.name == "nt":
-        system_root = os.environ.get("SYSTEMROOT") or os.environ.get("WINDIR")
-        taskkill = Path(system_root or "C:/Windows") / "System32" / "taskkill.exe"
-        try:
-            subprocess.run(
-                [str(taskkill), "/PID", str(proc.pid), "/T", "/F"],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=2,
-                check=False,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-        except (OSError, subprocess.SubprocessError):
-            pass
-    else:
+    job = getattr(proc, "_pex_job", None)
+    if job is not None:
+        close_job(job)
+        proc._pex_job = None
+        return
+    if os.name != "nt" and proc.poll() is None:
         try:
             os.killpg(proc.pid, signal.SIGKILL)
-        except (OSError, ProcessLookupError):
+        except OSError:
             pass
-    if proc.poll() is None:
+    elif proc.poll() is None:
         try:
             proc.kill()
         except OSError:
@@ -690,6 +686,8 @@ def _run_bounded(
         raise ValueError("evaluator subprocess input exceeds the safety limit")
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    if os.name == "nt":
+        creation_flags |= CREATE_SUSPENDED
     proc = subprocess.Popen(
         command,
         cwd=cwd,
@@ -701,6 +699,8 @@ def _run_bounded(
         start_new_session=os.name != "nt",
         bufsize=0,
     )
+    job = _assign_windows_job(proc)
+    proc._pex_job = job
     captured = bytearray()
     output_exceeded = threading.Event()
 
@@ -712,30 +712,66 @@ def _run_bounded(
                 captured.extend(chunk[:remaining])
             if len(chunk) > remaining:
                 output_exceeded.set()
-                _terminate_process_tree(proc)
+                try:
+                    proc.kill()
+                except OSError:
+                    pass
                 return
 
     reader = threading.Thread(target=drain_output, name="pexbench-output", daemon=True)
     reader.start()
+    deadline = time.monotonic() + timeout
     timed_out = False
-    try:
-        if proc.stdin is not None:
-            try:
-                proc.stdin.write(encoded_input)
-                proc.stdin.flush()
-            except BrokenPipeError:
-                pass
-            finally:
-                proc.stdin.close()
+    if proc.stdin is not None:
         try:
-            returncode = proc.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
+            descriptor = proc.stdin.fileno()
+            os.set_blocking(descriptor, False)
+            pending = memoryview(encoded_input)
+            while pending:
+                if time.monotonic() >= deadline:
+                    timed_out = True
+                    _terminate_process_tree(proc)
+                    job = None
+                    break
+                try:
+                    written = os.write(descriptor, pending[:64 * 1024])
+                except BlockingIOError:
+                    time.sleep(0.005)
+                    continue
+                except (BrokenPipeError, OSError):
+                    break
+                pending = pending[written:]
+        except (AttributeError, OSError, ValueError):
             timed_out = True
             _terminate_process_tree(proc)
-            returncode = proc.wait()
+            job = None
+        finally:
+            try:
+                proc.stdin.close()
+            except (OSError, ValueError):
+                pass
+    try:
+        remaining = max(0.0, deadline - time.monotonic())
+        if not timed_out:
+            try:
+                returncode = proc.wait(timeout=remaining)
+            except subprocess.TimeoutExpired:
+                timed_out = True
+                _terminate_process_tree(proc)
+                job = None
+                try:
+                    returncode = proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    returncode = -1
+        else:
+            try:
+                returncode = proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                returncode = -1
         reader.join(timeout=2)
         if reader.is_alive():
             _terminate_process_tree(proc)
+            job = None
             output_exceeded.set()
             reader.join(timeout=2)
         return (
@@ -747,15 +783,21 @@ def _run_bounded(
     finally:
         if proc.poll() is None:
             _terminate_process_tree(proc)
+            job = None
             try:
                 proc.wait(timeout=2)
             except subprocess.SubprocessError:
                 pass
         if proc.stdin is not None and not proc.stdin.closed:
-            proc.stdin.close()
+            try:
+                proc.stdin.close()
+            except (OSError, ValueError):
+                pass
         if proc.stdout is not None:
             proc.stdout.close()
         reader.join(timeout=1)
+        if job is not None:
+            _terminate_process_tree(proc)
 
 
 def _subprocess_env() -> dict[str, str]:

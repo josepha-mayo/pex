@@ -17,31 +17,24 @@ from pathlib import Path
 from typing import Any
 
 from pex_protocol.redaction import redact_text
+from pex_protocol.windows_job import CREATE_SUSPENDED, assign_job_and_resume, close_job
+
+
+def _assign_windows_job(proc: subprocess.Popen[bytes]):
+    return assign_job_and_resume(proc)
 
 
 def _terminate_process_tree(proc: subprocess.Popen[bytes]) -> None:
-    """Best-effort bounded termination for worker-owned descendants."""
-    if os.name == "nt":
-        system_root = os.environ.get("SYSTEMROOT") or os.environ.get("WINDIR")
-        taskkill = Path(system_root or "C:/Windows") / "System32" / "taskkill.exe"
-        try:
-            subprocess.run(
-                [str(taskkill), "/PID", str(proc.pid), "/T", "/F"],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=2,
-                check=False,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-        except (OSError, subprocess.SubprocessError):
-            pass
-    else:
+    job = getattr(proc, "_pex_job", None)
+    if job is not None:
+        close_job(job)
+        proc._pex_job = None
+    elif os.name != "nt" and proc.poll() is None:
         try:
             os.killpg(proc.pid, signal.SIGKILL)
-        except (OSError, ProcessLookupError):
+        except OSError:
             pass
-    if proc.poll() is None:
+    elif proc.poll() is None:
         try:
             proc.kill()
         except OSError:
@@ -191,6 +184,8 @@ def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
     env["PYTHONIOENCODING"] = "utf-8"
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    if os.name == "nt":
+        creation_flags |= CREATE_SUSPENDED
     proc = subprocess.Popen(
         [
             sys.executable,
@@ -216,6 +211,8 @@ def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
         start_new_session=os.name != "nt",
         bufsize=0,
     )
+    job = _assign_windows_job(proc)
+    proc._pex_job = job
     if proc.stdout is None:  # pragma: no cover - PIPE guarantees this
         raise RuntimeError("public pytest output pipe was not created")
     tail = bytearray()
@@ -238,6 +235,7 @@ def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
         except subprocess.TimeoutExpired:
             timed_out = True
             _terminate_process_tree(proc)
+            job = None
             exit_code = proc.wait(timeout=5)
         reader.join(timeout=2)
         output = bytes(tail).decode("utf-8", errors="replace")[-_MAX_PYTEST_OUTPUT:]
@@ -256,6 +254,7 @@ def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
     finally:
         if proc.poll() is None:
             _terminate_process_tree(proc)
+            job = None
             try:
                 proc.wait(timeout=5)
             except subprocess.SubprocessError:
@@ -264,6 +263,8 @@ def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
         # also releases a blocked reader if an exceptional path interrupted us.
         proc.stdout.close()
         reader.join(timeout=1)
+        if job is not None:
+            _terminate_process_tree(proc)
 
 
 def snapshot(workspace: Path, *, run_pytest: bool = False) -> dict[str, Any]:

@@ -146,6 +146,29 @@ class _FailedTerminationProcess:
         return None
 
 
+def test_windows_job_assignment_failure_reaps_root_and_closes_pipes(monkeypatch):
+    import win32job
+    from pex_protocol.windows_job import assign_job_and_resume
+
+    process = _NonReadingProcess()
+    process._handle = 123
+    process.wait = Mock(return_value=0)
+    process.kill = Mock()
+    monkeypatch.setattr(
+        win32job,
+        "AssignProcessToJobObject",
+        Mock(side_effect=OSError("forced assignment failure")),
+    )
+
+    with pytest.raises(OSError, match="forced assignment failure"):
+        assign_job_and_resume(process)
+
+    process.kill.assert_called_once()
+    process.wait.assert_called_once_with(timeout=2)
+    assert process.stdin.closed is True
+    assert process.stdout.closed is True
+
+
 def test_evaluator_failed_termination_never_falls_back_to_unbounded_wait(tmp_path, monkeypatch):
     evaluator = _evaluator()
     process = _FailedTerminationProcess()

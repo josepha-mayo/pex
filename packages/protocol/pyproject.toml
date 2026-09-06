@@ -5,6 +5,7 @@ description = "Typed shared schemas for the PEX control plane."
 requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.10",
+  "pywin32>=311; sys_platform == 'win32'",
 ]
 
 [build-system]
