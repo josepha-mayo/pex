@@ -49,12 +49,18 @@ for (const [field, value] of [
 }
 
 test("floating pet uses canonical first-run status instead of raw quiet copy", () => {
-  const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
-  const start = app.indexOf('if (shell === "pet") {\n    return (');
-  const petRoute = app.slice(start, app.indexOf("if (!bridgeAvailable)", start));
+  const source = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+  for (const newline of ["\n", "\r\n"]) {
+    const app = source.replace(/\r?\n/gu, newline);
+    const start = app.search(/if \(shell === "pet"\) \{\s+return \(/u);
+    assert.ok(start >= 0, "floating pet route must exist");
+    const end = app.indexOf("if (!bridgeAvailable)", start);
+    assert.ok(end > start, "floating pet route boundary must exist");
+    const petRoute = app.slice(start, end);
 
-  assert.match(petRoute, /<PetStage[\s\S]*?status=\{homeStatus\}/u);
-  assert.doesNotMatch(petRoute, /<PetStage[\s\S]*?status=\{status\}/u);
+    assert.match(petRoute, /<PetStage[\s\S]*?status=\{homeStatus\}/u);
+    assert.doesNotMatch(petRoute, /<PetStage[\s\S]*?status=\{status\}/u);
+  }
 });
 
 test("floating pet refreshes canonical goals without loading heavy settings state", () => {

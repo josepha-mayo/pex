@@ -25,7 +25,8 @@ our build-spec target, subject to the user's no-card-charge authorization.
 - [x] Subsequent Strands decision was NOOP, not another warning.
 - [x] Grant revoked and observer detached; worker remains readable, idle, three
   total turns (one baseline warm-up, one controlled stop, one PEX correction).
-- [ ] Repair and recapture missing causal outcome/worker-response audit fields.
+- [x] Repair and recapture missing causal outcome/worker-response audit fields
+  (clean 4543a58 run-03, independently reviewed, terminal helped=true).
 - [ ] Retain a separate production-path correct-completion silence case.
 - [ ] Complete false-claim, uncertain-evidence and varied quiet-task live cases.
 - [ ] Diagnose native post-start bridge failure; retain original failure code.

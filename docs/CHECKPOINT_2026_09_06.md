@@ -7,6 +7,38 @@ STATUS, shipping checklist and submission draft.
 
 ## Source and package boundaries
 
+### Fresh real shared recovery: passed on clean source 4543a58
+
+Run-03 closes the prior outcome-audit gap. Existing operator-owned thread
+`01a076df-926d-7701-adb4-ff8c78838e9d` received exactly one PEX correction turn
+`01a076ee-1204-7141-80d6-9e9657b19f80`. Real Strands used the explicitly configured
+free Muse supervisor; main and independent verifier each gathered three bound
+observations. Independent review recomputed all six output hashes and verified
+session, goal, trigger, request digest and separate invocation bindings.
+
+Intervention `intervention_1643f158e4b499f125b7f9bdb0e8303cc638ef3c` finished
+`sent`, `goal_evidence_supported`, `helped=true`, with the actual worker response
+and matching delivery scope in durable audit. A subsequent real Strands decision
+was NOOP (`intervention_ccb115da034b556d42875b75680eef2ff1242a73`). Exact external
+artifact: eight bytes `736869707065640a`, SHA-256
+`cfa43394289d895d668f05b6cc2566b2b404bf643d6c7632dbc88383aaab16b3`.
+Grant revocation and detach succeeded; independent post-detach read shows the
+worker idle with three completed turns and no error. Worker was not stopped.
+
+Private receipts: `pex-shared-live-065/build/shared-demo-client-receipts-03`,
+baseline `capture-20260906T133443108957Z.json`, terminal
+`capture-20260906T133551035188Z.json`, plus revoke/detach receipts. This is a
+controlled premature-stop recovery case, not an organic-failure benchmark,
+general performance claim, remote-provider attestation or final submission gate.
+
+Fresh release checkout `pex-release-4543a58` stopped before packaging because a
+frontend source-contract test assumed LF while Git materialized CRLF. Dependency
+sync/install passed (npm reported zero vulnerabilities); frontend result was
+191 passed, 1 failed. The test now checks both LF and CRLF, explicitly verifies
+route boundaries, and passes all 27 supervisor-draft tests. Independent review
+approved the repair. Resume release gates on its new committed revision; never
+reuse the failed test run as release evidence.
+
 ### Latest review cycle: shared outcome persistence and responsive pet assets
 
 The initial shared outcome patch was rejected by independent review: adding
