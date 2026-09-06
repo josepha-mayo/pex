@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { SupervisorAuthMode, SupervisorProtocol, SupervisorCredentialAction } from "../supervisorDraft";
+import { supervisorReviewLimitCopy } from "../supervisorDraft";
 import type {
   Goal,
   HatchCap,
@@ -347,6 +348,13 @@ export function SettingsPage({
           <section className="settings-card settings-wide">
             <p className="eyebrow">Supervisor inference</p>
             <h2>PEX model</h2>
+            <p className="settings-note" aria-label="Supervisor review limit">
+              {supervisorReviewLimitCopy(settingsAvailable && !settingsIssue
+                ? supervisor?.max_dispatches_per_session : undefined)}
+              {" "}This counts dispatches, not dollars, tokens or individual model calls.
+              One review can make multiple model calls. A free model label is not a billing guarantee.
+              {" "}This limit is set when the bridge starts; saving the model does not change it.
+            </p>
             <p className="settings-note">
               {supervisor
                 ? supervisorHonestyCopy(supervisor)

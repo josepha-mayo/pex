@@ -5,6 +5,7 @@ import {
   isSupervisorRevision,
   supervisorCredentialAudience,
   supervisorRequest,
+  supervisorReviewLimitCopy,
   supervisorSavePayload,
   supervisorSaveResponseIsCurrent,
   type SupervisorDraft,
@@ -19,6 +20,15 @@ const custom: SupervisorDraft = {
   apiKey: "fixture-key-not-a-real-credential",
   credentialAction: "keep",
 };
+
+test("review limit copy distinguishes unknown, uncapped and bounded dispatches", () => {
+  assert.match(supervisorReviewLimitCopy(null), /No per-session dispatch cap/u);
+  assert.match(supervisorReviewLimitCopy(20), /20 semantic dispatches per session/u);
+  for (const value of [undefined, true, "20", 0, -1, 1.5, 100001, NaN]) {
+    assert.match(supervisorReviewLimitCopy(value), /unavailable/u);
+    assert.doesNotMatch(supervisorReviewLimitCopy(value), /No per-session/u);
+  }
+});
 
 test("a pasted key is sent only with its exact selected destination and current revision", () => {
   assert.deepEqual(supervisorSavePayload(custom, 7, supervisorCredentialAudience(custom)), {

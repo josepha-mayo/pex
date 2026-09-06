@@ -227,6 +227,7 @@ export type SupervisorRow = {
 };
 
 export type SupervisorInfo = {
+  max_dispatches_per_session?: number | null;
   version?: 1;
   revision?: number;
   backend?: string | null;

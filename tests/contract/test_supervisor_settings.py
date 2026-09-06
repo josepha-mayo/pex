@@ -142,6 +142,16 @@ async def supervisor_client(tmp_path):
     ) = previous
 
 
+@pytest.mark.parametrize("limit", [None, 1, 20, 100_000])
+@pytest.mark.asyncio
+async def test_supervisor_reports_actual_pipeline_dispatch_limit(supervisor_client, limit):
+    client, *_ = supervisor_client
+    state.pipeline.settings.supervisor_max_dispatches_per_session = limit
+    response = await client.get("/v1/supervisor")
+    assert response.status_code == 200
+    assert response.json()["max_dispatches_per_session"] == limit
+
+
 async def _wait_until(predicate, *, attempts: int = 100) -> None:
     for _ in range(attempts):
         if predicate():
@@ -166,6 +176,7 @@ def _custom_payload(**updates):
 @pytest.mark.asyncio
 async def test_settings_read_exposes_explicit_first_run_and_committed_revisions(supervisor_client):
     client, _secret_store, _home = supervisor_client
+    state.pipeline.settings.supervisor_max_dispatches_per_session = 20
     initial = await client.get("/v1/supervisor")
     assert initial.status_code == 200
     assert initial.json()["revision"] == 0
@@ -173,9 +184,11 @@ async def test_settings_read_exposes_explicit_first_run_and_committed_revisions(
 
     saved = await client.patch("/v1/supervisor", json=_custom_payload())
     assert saved.status_code == 200
+    assert saved.json()["max_dispatches_per_session"] == 20
     current = await client.get("/v1/supervisor")
     assert current.status_code == 200
     assert current.json()["revision"] == saved.json()["revision"] == 1
+    assert current.json()["max_dispatches_per_session"] == 20
 
 
 @pytest.mark.asyncio

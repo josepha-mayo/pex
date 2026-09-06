@@ -2,6 +2,23 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Settings review-limit visibility added as an incremental product step, NOT a
+completed budget editor. Authenticated GET/PATCH supervisor responses report the
+effective pipeline `max_dispatches_per_session`. Settings distinguishes bounded,
+explicitly uncapped and unavailable states; stale/unavailable settings never
+advertise no cap. Copy explains dispatch versus dollar/token/model-call limits,
+no restart reset, no free-label billing guarantee, and read-only startup scope.
+Saving model configuration leaves the cap unchanged. No persisted config/schema,
+model calls, active bridge settings or actual account limits were changed.
+Evidence: desktop **195 passed**, TypeScript/Vite production build passed (63
+modules); full supervisor-settings contract **40 passed in 54.59s**; final GET/save
+response follow-up **5 passed in 14.33s**. Scoped Ruff/whitespace passed. These
+are source/helper/API checks, NOT fresh native visual proof. The final explanatory
+copy line is plain JSX text added after the successful build; native UX remains open.
+Editable persistent budgets and remaining-use accounting remain unfinished.
+The clean integration run on d7b3a64 remains exec 16849 and does not include this
+later visibility change. Preserve its checkout and prior package receipts.
+
 FULL CLEAN INTEGRATION REGRESSION RUNNING: exec **16849**, source
 `d7b3a644a813a35ff58ee76033dd0146571dc15c`, separate detached checkout
 `C:/Users/JosephMayo/Projects/pex-verify-d7b3a64`. New checkout was absent before

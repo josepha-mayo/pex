@@ -2,6 +2,14 @@ export type SupervisorAuthMode = "api_key" | "login" | "local" | "custom" | "bed
 export type SupervisorProtocol = "openai" | "anthropic";
 export type SupervisorCredentialAction = "keep" | "environment" | "clear";
 
+export function supervisorReviewLimitCopy(value: unknown): string {
+  if (value === null) return "No per-session dispatch cap is configured.";
+  if (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 100_000) {
+    return `Limit: ${value} semantic dispatches per session. Previous reservations count toward this limit; restarting does not reset it.`;
+  }
+  return "Review-limit configuration is unavailable. Reload settings to check it.";
+}
+
 export type SupervisorDraft = {
   provider: string;
   modelId: string;

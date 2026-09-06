@@ -3484,6 +3484,9 @@ def create_app() -> FastAPI:
             info["backend"] = state.supervisor_choice.provider
         info["catalog"] = model_catalog()
         info["model_loaded"] = state.pipeline.model is not None
+        info["max_dispatches_per_session"] = (
+            state.pipeline.settings.supervisor_max_dispatches_per_session
+        )
         info["note"] = (
             "Credentials stay in the selected local source. This response never "
             "includes credentials or secret references."
@@ -3654,6 +3657,9 @@ def create_app() -> FastAPI:
             )
             info["backend"] = desired.provider
             info["model_loaded"] = candidate_model is not None
+            info["max_dispatches_per_session"] = (
+                state.pipeline.settings.supervisor_max_dispatches_per_session
+            )
             info["catalog"] = model_catalog()
             info["note"] = (
                 "Credentials stay in the selected local source. This response never "

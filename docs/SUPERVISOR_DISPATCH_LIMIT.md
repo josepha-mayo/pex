@@ -27,6 +27,13 @@ outlive a caller timeout. A free-provider label is not a billing guarantee.
   historical calls made before configuration. Increasing the configured limit
   permits additional reservations; there is no automatic reset window.
 
+The authenticated supervisor GET and model-save responses expose the effective
+pipeline setting as `max_dispatches_per_session`. Settings displays a read-only
+dispatch-limit notice: null means no configured cap, while missing/invalid data
+or unavailable settings means unknown, never unlimited. It states that restarting
+does not reset reservations and that model saving does not change the cap. This
+does not show remaining reservations, account spend or native-verified usage.
+
 No new mid-task inference is enabled by this setting. A user-facing budget editor,
 aggregate account limits, exact per-model accounting and semantic trajectory
 review remain separate unfinished requirements. Treat the retained planner
