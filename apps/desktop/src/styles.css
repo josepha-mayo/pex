@@ -1222,8 +1222,11 @@ label {
 
 .checkbox-label input[type="checkbox"] {
   width: 16px;
+  height: 16px;
   min-height: 16px;
-  margin: 0;
+  padding: 0;
+  margin: 1px 0 0;
+  accent-color: var(--mint);
   flex: none;
 }
 
@@ -2263,6 +2266,33 @@ textarea::placeholder {
   margin-top: 20px;
 }
 
+.settings-grid > * {
+  min-width: 0;
+}
+
+.settings-grid > .pet-roster {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 16px;
+}
+
+.settings-grid .pet-roster > header {
+  display: block;
+}
+
+.settings-grid .pet-roster > header > p {
+  margin-top: 8px;
+  max-width: none;
+  text-align: left;
+}
+
+.settings-grid .pet-roster-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+  overflow: visible;
+}
+
 .settings-card {
   display: grid;
   align-content: start;
@@ -2280,7 +2310,7 @@ textarea::placeholder {
 }
 
 .settings-wide {
-  grid-column: span 2;
+  grid-column: 1 / -1;
 }
 
 .settings-note {
@@ -2462,6 +2492,7 @@ html.pet-shell #root {
   .surface-switch { margin-left: auto; }
   .inspector-shell,
   .settings-page { padding-inline: 20px; }
+  .settings-grid { grid-template-columns: minmax(0, 1fr); }
   .audit-row { grid-template-columns: 70px minmax(150px, 1.5fr) minmax(110px, 1fr); }
   .audit-result { grid-column: 2 / -1; }
   .permission-decision-card { grid-template-columns: 34px minmax(0, 1fr); }
@@ -2473,6 +2504,12 @@ html.pet-shell #root {
     grid-template-columns: repeat(2, minmax(90px, 1fr));
   }
   .requested-decision-card .decision-freeform { grid-column: 1 / -1; }
+}
+
+@media (max-width: 560px) {
+  .settings-page { padding-inline: 14px; }
+  .settings-page .two-column { grid-template-columns: minmax(0, 1fr); }
+  .settings-sections { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

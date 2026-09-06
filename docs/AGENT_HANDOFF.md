@@ -1,5 +1,13 @@
 # PEX agent handoff
 
+## Current authority — 6 September continuation, target 9 September
+
+Start with [CHECKPOINT_2026_09_06.md](CHECKPOINT_2026_09_06.md). It records the newer
+source, exact retained package, clean-checkout failure diagnosis, native pet-close proof,
+settings repairs, physical-Escape UI stop, protected file, owners and next actions.
+All `current` or `final` headings below are historical wherever they conflict.
+The goal remains active and the full three-spec submission scope remains incomplete.
+
 ## 2026-09-06 final package/native checkpoint — current authority
 
 Overall submission remains **NO-GO**, despite a green package-integrity receipt. Final

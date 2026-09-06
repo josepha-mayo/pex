@@ -1,5 +1,11 @@
 # Demo assets
 
+**Current evidence:** [6 September continuation checkpoint](../CHECKPOINT_2026_09_06.md).
+The retained package is `4f8b567`, superseding the old package block below. Native status
+bubble dismissal and Alt+F4 pet close were observed; restore/restart and all-eight replay
+remain unfinished after the user stopped Computer Use. Latest settings source changes
+still need rendered verification and a new final package. No submission video exists.
+
 ## 6 September native-package checkpoint
 
 The final repository revision is

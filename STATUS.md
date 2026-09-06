@@ -1,5 +1,14 @@
 # STATUS
 
+## Current continuation — 6 September, internal ship target 9 September
+
+**Goal active; submission NO-GO.** The [current checkpoint](docs/CHECKPOINT_2026_09_06.md)
+supersedes all historical source/package dates below. Benchmark LF checkout repair is
+pushed; supervisor readiness copy and Companion layout are repaired. Desktop: 184 tests
+and production frontend build pass. Full Python gate and final rendered layout remain
+open. Native message dismissal and Alt+F4 pet close were observed on package `4f8b567`;
+the user then stopped Computer Use with Escape. Restore/restart replay is unfinished.
+
 ## Current submission truth — 6 September 2026, final package-integrity checkpoint
 
 **Overall submission state remains NO-GO.** Repository `main` and `origin/main` resolve to

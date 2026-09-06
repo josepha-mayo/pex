@@ -252,7 +252,7 @@ export function SettingsPage({
                 onChange={(event) => onScale(Number(event.target.value))}
               />
             </label>
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 checked={petVisible}
@@ -260,7 +260,7 @@ export function SettingsPage({
               />
               Show desktop pet
             </label>
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 checked={clickThrough}
