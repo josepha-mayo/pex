@@ -2,6 +2,19 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Clean-source repair recheck accepted at `60ffa7678aa242575943eab4ff13fc3c0c09a5a2`:
+advanced the verified-clean `pex-verify-5ee1ee7` checkout, offline frozen sync,
+all three imports inside that checkout. Seven complete files (cancellation,
+correction pipeline, policy scoring, unit/contract intent guardrails, goal intent
+semantics and authority): **128 passed in 81.95s**, unhandled thread warnings as
+errors. This includes all three tests that failed in the complete gate and the
+fixture whose teardown errored. Checkout remains clean. JUnit receipt:
+`C:/Users/JosephMayo/Projects/pex-verify-5ee1ee7/build/repair-regression-60ffa76.xml`,
+SHA256 `BDB9898F93F07C82B11B9A4E29D6FB783709F5C2856E6BA82B907CB80FA36D7D`.
+Original full-failure XML hash below rechecked unchanged. This closes the focused
+clean-source repair recheck, NOT the later full-regression or installed/native
+gates. No native focus, model/provider calls or protected-loop changes.
+
 Cancellation-test follow-up: repaired ownership of test-created ingestion tasks
 and artificial barriers in `test_codex_main_settlement_cancellation.py`. All
 three scenarios release their barrier in finally, cancel/join their owned task,
