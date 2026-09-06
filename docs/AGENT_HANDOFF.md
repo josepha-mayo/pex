@@ -2,6 +2,18 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Pet interaction audit: existing overlay hide and status-dismiss controls remain
+present. Root found horizontal-only drag detection and unconditional pointer-up
+activation: vertical movement could open the inspector rather than start drag,
+and secondary/middle releases could activate without a primary pointer-down.
+`PetStage.tsx` now uses two-axis distance and requires a tracked primary gesture
+without drag before activation. Pure interaction helpers have boundary, vertical,
+diagonal, cancellation/no-start and non-primary-button tests. Focused command
+`node --test --test-name-pattern="pet" src/viewModel.test.ts` passed **9 tests**;
+`npx tsc --noEmit` passed. Source diff reviewed. This is not a native mouse test:
+shared-PC input remains paused, and drag/close/Escape must still be checked in
+the latest packaged application before submission readiness is claimed.
+
 Next local audit repaired `workspace.artifact_row_count`: the old stat-size
 check preceded an unbounded JSON read / JSONL iteration, so concurrent growth
 could bypass the 4 MB budget. Both formats now read at most the clamped limit

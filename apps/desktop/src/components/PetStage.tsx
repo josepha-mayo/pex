@@ -2,6 +2,7 @@ import { type MouseEvent, type PointerEvent, useEffect, useRef, useState } from 
 
 import { CodexSprite, lookIndex, type PetMood } from "../pets/atlas";
 import { statusBubbleMaterialKey, statusBubbleShouldReopen } from "../petBubble";
+import { petDragThresholdReached, petPointerShouldActivate } from "../petInteraction";
 import { startPetDrag } from "../releasePet";
 import type { StatusCopy } from "../types";
 
@@ -102,19 +103,21 @@ export function PetStage({
     const start = dragStart.current;
     if (!start || event.buttons !== 1) return;
     const dx = event.clientX - start.x;
-    if (Math.abs(dx) <= 6) return;
+    if (!petDragThresholdReached(start, { x: event.clientX, y: event.clientY })) return;
     const startingDrag = !dragged.current;
     dragged.current = true;
-    setDragDir(dx > 0 ? 1 : -1);
+    setDragDir(dx === 0 ? 0 : dx > 0 ? 1 : -1);
     if (overlay && startingDrag) void startPetDrag();
   }
 
-  function onPointerUp() {
-    const wasDrag = dragged.current;
+  function onPointerUp(event: PointerEvent<HTMLButtonElement>) {
+    const activate = petPointerShouldActivate(
+      event.button, dragStart.current !== null, dragged.current,
+    );
     dragStart.current = null;
     dragged.current = false;
     setDragDir(0);
-    if (!wasDrag) onActivate();
+    if (activate) onActivate();
   }
 
   function onClick(event: MouseEvent<HTMLButtonElement>) {

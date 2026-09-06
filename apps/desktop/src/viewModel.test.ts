@@ -1213,6 +1213,20 @@ test("native pet close is routed to the same durable visibility contract", async
   assert.match(appSource, /onPetVisible=\{\(visible\) => void changePetVisibility\(visible\)\}/u);
 });
 
+test("pet dragging recognizes vertical and diagonal movement without accidental activation", async () => {
+  const { petDragThresholdReached, petPointerShouldActivate } = await import("./petInteraction.ts");
+  const start = { x: 20, y: 20 };
+  assert.equal(petDragThresholdReached(start, { x: 20, y: 27 }), true);
+  assert.equal(petDragThresholdReached(start, { x: 25, y: 25 }), true);
+  assert.equal(petDragThresholdReached(start, { x: 14, y: 20 }), false);
+  assert.equal(petDragThresholdReached(start, { x: 13, y: 20 }), true);
+  assert.equal(petPointerShouldActivate(0, true, false), true);
+  assert.equal(petPointerShouldActivate(0, true, true), false);
+  assert.equal(petPointerShouldActivate(0, false, false), false);
+  assert.equal(petPointerShouldActivate(1, true, false), false);
+  assert.equal(petPointerShouldActivate(2, true, false), false);
+});
+
 test("pet status bubble stays dismissed across stable polls and reopens for a changed decision", async () => {
   const {
     statusBubbleMaterialKey,
