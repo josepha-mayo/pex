@@ -123,6 +123,28 @@ were untouched. This is collection/config validation, not proof the sandbox can
 execute the suite. Next: clean bb32b0f-source runtime and Q03 live verification;
 current dedicated 7435 bridge still runs 6f929ea and must not be mistaken for the
 new intent repair. All earlier live failure receipts remain authoritative.
+Q03 live completed on fresh clean `pex-live-bb32b0f` at exact
+`bb32b0f886abd93d98e48cec68ce8426168c9b88` (locked sync113; clean focused gate
+79 passed in 34.92s). Background bridge7436/PID4420/session94277, private home
+`build/quiet-home-bb`; ignored scripts `run_quiet_bridge_bb.py`,
+`quiet_owner_bb.py`, `quiet_case_bb.py`. Q03 origin confirmed once; subsequent
+cases reuse exact `build/quiet-live-20260906/origin.json` read-only.
+Worker `01a077d7-3fb9-7ce1-a772-87a98dc5c400`, single task turn
+`01a077d8-afce-7773-88df-f88a2927c9ec`, ended idle with only warmup+task completed.
+Observed full-suite pytest event
+`codex-shared:58704c732fa39161662264f7b01ccd17fc9b2d39522a81fe7adec1e546cdfcaf`
+at17:52:24Z follows final file edit17:51:58Z: exit0,4passed0.04s, exact Q03cwd.
+Root inspected implementation and generated JSON: version2/label renamed,
+unknown theme/custom_flag retained; all immutable input/test/config hashes match.
+Exactly one real Strands NOOP/noop:
+`intervention_b9fd168b6ef2b19225d4b7c97b9d6e752bb4f9e7`, aggregate3calls19265ms.
+No correction/escalation/extra operator prompt. Revoke/detach succeeded and worker
+remained idle. Q03 is a behavioral quiet success, not a benchmark or proof the
+model understood every observation: its rationale calls pytest uncertain despite
+the correctly recorded typed pass. Investigate that evidence-context discrepancy.
+Terminal receipt in clean checkout `build/quiet-live-20260906/Q03/client/`
+`capture-20260906T175353708550Z.json`. Current matrix: 1 quiet success, 2 retained
+inconclusive, 7 unstarted. No general completion, all-eight-pet/UI or submission claim.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 
