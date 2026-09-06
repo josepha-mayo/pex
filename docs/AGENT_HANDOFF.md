@@ -6327,3 +6327,120 @@ node apps/desktop/scripts/build-sidecar.mjs --preflight-release
 The preflight is expected to return nonzero while printing truthful JSON because release
 is NO-GO. Do not "fix" that by building, staging, committing, deleting evidence, or
 rewriting the sidecar stamp without authorization.
+
+## 2026-09-06 live submission-sprint checkpoint
+
+The operator set a hard three-day runway on September 6. Prioritize the judge-visible
+same-session recovery loop, release stability, and a coherent native demo over broad new
+features. The objective remains winning the hackathon, but do not turn that objective
+into unsupported completion claims.
+
+### Pushed checkpoints
+
+- `286e1696a231adb006f34a2c8f845d29964435d5` — rebuilt the pet/compact UX and hardened
+  the desktop-owned bridge lifecycle. The native pet is closable, Escape-aware, durably
+  restorable from Settings, transparent, and shown before bridge recovery so a bridge
+  failure cannot trap the overlay. All eight built-in pets were validated as Codex v2
+  transparent RGBA atlases; the visual background defect was CSS/fallback presentation,
+  not baked asset backgrounds.
+- `111045ea9e085b31be5f527fb94eab69d7a0d01c` — split Settings into Companion,
+  Supervisor, Connections, and Goals tabs; added keyboard/ARIA tab behavior and routed
+  current settings failures to the Supervisor retry surface; retained `--clean` for
+  release PyInstaller builds while allowing fingerprint-checked cache reuse in dev.
+- `658d0d7fac131ffdadcb1df5b87d34ecd4d44eb5` — pinned the intentionally modest live
+  Codex proof worker to `gpt-5.3-codex-spark` through the supported turn parameter.
+- `5c49c10eaed4ad96346ceef8d2eb257e46fcd425` — seeded the Windows proof target so the
+  parent verifier can read operator-owned evidence after a sandboxed worker updates it.
+
+Each commit above was pushed and local `HEAD` was verified equal to its upstream after
+the push. At this checkpoint both resolve to `5c49c10eaed4ad96346ceef8d2eb257e46fcd425`.
+
+### Live native and BYOK evidence
+
+- Native Tauri Settings loaded successfully through the attached WebView. The four
+  section controls rendered as real tabs and ArrowLeft/ArrowRight activation was tested.
+- The UI saved provider `zen`, model `muse-spark-1.3-contributor-free`, auth mode
+  `api_key`, and `https://opencode.ai/zen/v1` as supervisor revision 1. The credential is
+  represented only by an opaque OS-secret-store reference in `~/.pex/supervisor.json`;
+  no secret was printed or committed.
+- A separately authorized free live probe passed: `tests/contract/test_live_supervisor.py`
+  reported `1 passed in 14.26s`. Its assertions require a real completed Strands call,
+  `used_llm=true`, `runtime=strands-agents`, exact Zen/Muse provider identity, and at
+  least one model call.
+- No Ollama model was present (`0` model files). The unused Ollama server process was
+  stopped. Do not reinstall or redownload a local model unless the operator changes the
+  chosen architecture.
+
+### Validated real Codex + Strands proof pair
+
+The binding Recovery Spec proof pair is now green on current source. The two tests were
+run in separate pytest processes because each deliberately cancels all remaining asyncio
+tasks during cleanup.
+
+1. `test_live_codex_stop_inspects_with_strands`
+   - result: `1 passed in 83.62s`;
+   - proof: `benchmarks/results/_scratch/codex_inspect_proof.json`;
+   - schema status/kind: `validated` / `evidence_supported_noop`;
+   - exact worker thread: `01a073ff-c2bb-76b1-8c4c-89fc48a039ac`;
+   - one Codex turn, one intervention, action `NOOP`, artifact content `pong`;
+   - real supervisor receipt: `used_llm=true`, `runtime=strands-agents`, provider `zen`,
+     model `muse-spark-1.3-contributor-free`.
+2. `test_live_codex_incomplete_stop_sends_specific_continue`
+   - result: `1 passed in 137.53s`;
+   - proof: `benchmarks/results/_scratch/codex_incomplete_proof.json`;
+   - schema status/kind: `validated` / `same_thread_intervention_outcome`;
+   - exact worker thread: `01a07401-5767-7c93-8664-eeaf0dc944a2`;
+   - two Codex turns on that same thread, two interventions, actions
+     `SEND_NUDGE,NOOP`, artifact content `shipped`;
+   - both supervisor receipts contain `used_llm=true`, `runtime=strands-agents`, provider
+     `zen`, and model `muse-spark-1.3-contributor-free`;
+   - the test additionally proves exact delivery binding, final STOP correlation,
+     acceptance transition from unsatisfied to supported, durable SQLite/JSONL parity,
+     `helped=true`, unchanged App Server process identity, and unchanged source fingerprint.
+
+The first attempt at the restraint case correctly failed because a sandbox-created
+Windows file existed but was unreadable to the parent verifier, yielding
+`acceptance_status=uncertain`. Production verification was left fail-closed. The fixture
+now pre-creates an empty operator-owned `ping.txt`, matching the already-correct recovery
+case's `report.txt` boundary. Never weaken unreadable evidence into supported evidence.
+
+The validated receipts are deliberately under gitignored `_scratch`; inspect and copy
+only sanitized evidence into submission materials. They bind to source revision
+`5c49c10eaed4ad96346ceef8d2eb257e46fcd425` and to the exact dirty-worktree fingerprint.
+The dirty bit is expected because the protected operator-owned file below is retained.
+
+### Protected boundary and remaining risks
+
+- Do not edit, stage, restore, reformat, or clean
+  `services/supervisor/src/pex_supervisor/loop.py`. Its retained SHA-256 is
+  `392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`.
+- After the proof pair, `git status --short` contained only that protected file. No owned
+  proof Codex child remained; the only App Server process was the pre-existing desktop
+  process started at 2026-09-05 20:56:55.
+- Desktop gate after the Settings rebuild: `172/172` tests passed and TypeScript + Vite
+  production build passed (60 modules).
+- The bridge's prior discovery storm was reduced, and `/health/live` answered 200 in
+  roughly 0.2 seconds, but the live bridge still consumed about 1.58 CPU seconds during
+  a five-second sample. Treat residual CPU usage as an open performance defect.
+- `PATCH /v1/supervisor` still constructs the provider/model synchronously while holding
+  an async configuration lock. A naive `wait_for(to_thread(...))` was reviewed and
+  rejected because cancellation can leak a staged credential and allow overlapping
+  hanging constructor threads. Fix this only with independently owned transaction/finalizer
+  semantics or a safely bounded worker process.
+- Release/package preflight remains NO-GO until a fresh clean release build, packaged
+  native visual pass, evidence curation, and submission checklist are complete. The live
+  proof pair closes the central same-session requirement; it does not by itself declare
+  the full app submission-ready.
+
+### Immediate next work
+
+1. Preserve and sanitize the two validated proof receipts into judge-facing evidence
+   without including secrets, machine-only credentials, or temp paths.
+2. Profile the residual native bridge CPU and stop any remaining redundant polling or
+   desktop discovery work without weakening freshness.
+3. Repair the supervisor configuration transaction hang safely, with hostile tests for
+   timeout, cancellation, credential retirement, and concurrent PATCH attempts.
+4. Run the full Python/Rust/frontend gates, then the truthful release preflight; resolve
+   only owned blockers and preserve the protected loop file.
+5. Build/package Tauri, visually QA the packaged app and every critical demo surface,
+   and rehearse the exact restraint + recovery narrative before preparing Devpost assets.
