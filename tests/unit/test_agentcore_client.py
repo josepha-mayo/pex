@@ -843,6 +843,22 @@ async def test_agentcore_client_rejects_runtime_session_mismatch(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("version", [True, 1.0, "1", None, False, 2])
+async def test_agentcore_response_schema_version_is_an_exact_integer(tmp_path, version):
+    request = _request()
+    response = _aws_response(request, _result(request))
+    envelope = json.loads(response["response"].read())
+    envelope["schema_version"] = version
+    response["response"] = io.BytesIO(json.dumps(envelope).encode())
+    aws = FakeAwsClient(response)
+    client = AgentCoreSupervisorClient(_settings(tmp_path), client=aws)
+    with pytest.raises(AgentCoreDeliveryUncertainError) as caught:
+        await client.decide(request)
+    assert caught.value.reason_code == "response_protocol_failure"
+    assert len(aws.calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_agentcore_client_rejects_stale_same_session_response(tmp_path):
     request = _request()
     response = _aws_response(request, _result(request))

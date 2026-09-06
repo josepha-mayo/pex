@@ -816,7 +816,11 @@ class AgentCoreSupervisorClient:
                 transport_invocation_id=invocation_id,
                 reason_code="response_protocol_failure",
             ) from None
-        if not isinstance(envelope, dict) or envelope.get("schema_version") != PROTOCOL_VERSION:
+        if (
+            not isinstance(envelope, dict)
+            or type(envelope.get("schema_version")) is not int
+            or envelope["schema_version"] != PROTOCOL_VERSION
+        ):
             raise AgentCoreDeliveryUncertainError(
                 transport_invocation_id=invocation_id,
                 reason_code="response_protocol_failure",

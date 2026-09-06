@@ -67,7 +67,7 @@ def _request_data(payload: object) -> tuple[str, dict[str, Any]]:
     )
     body = payload.get("input") if isinstance(payload.get("input"), dict) else payload
     version = body.get("schema_version")
-    if version != PROTOCOL_VERSION:
+    if type(version) is not int or version != PROTOCOL_VERSION:
         raise ValueError("unsupported PEX AgentCore schema version")
     invocation_id = body.get("invocation_id")
     if not isinstance(invocation_id, str) or not _INVOCATION_ID.fullmatch(invocation_id):

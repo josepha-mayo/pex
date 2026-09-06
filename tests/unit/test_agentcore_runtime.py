@@ -63,6 +63,15 @@ def _payload(request: SupervisorRequest) -> dict:
     }
 
 
+@pytest.mark.parametrize("version", [True, 1.0, "1", None, False, 2])
+def test_runtime_schema_version_is_an_exact_integer_before_model_loading(monkeypatch, version):
+    payload = _payload(_request())
+    payload["schema_version"] = version
+    monkeypatch.setattr(runtime, "_runtime_model", lambda: pytest.fail("must not load model"))
+    with pytest.raises(ValueError, match="schema version"):
+        runtime.handle_payload(payload)
+
+
 def test_handle_payload_passes_configured_model_and_returns_versioned_result(monkeypatch):
     request = _request()
     sentinel = object()

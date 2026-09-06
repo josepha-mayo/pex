@@ -2,6 +2,16 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+AgentCore envelope boundary repair: Python equality let JSON `true` and `1.0`
+pass as schema version `1` in both runtime requests and bridge responses. Four
+new cases failed before the fix. Both boundaries now require exact integer type
+and supported value. Runtime rejects before model loading; a malformed response
+remains `response_protocol_failure`/delivery uncertain after exactly one stub
+dispatch, not a safe-to-retry receipt. Twelve version matrix cases plus complete
+runtime/client/pipeline files: **119 passed in 28.82s**, thread warnings as errors.
+Scoped Ruff and diff checks clean. Changed-path audit only; no real AgentCore,
+AWS/model calls, protected loop changes or deployment occurred.
+
 Markdown goal usability: recognized hash headings (`#` through `######`, optional
 colon/closing hashes, up to three spaces indentation) now lift exact known
 section names into structured lists. Previously ordinary `## Acceptance criteria`
