@@ -36,8 +36,12 @@ def find_abandoned_background(events: list[HarnessEvent]) -> dict[str, Any] | No
             continue
         if not launches:
             continue
-        if _finishes(event, launches[-1]):
-            launches.pop()
+        # Jobs need not finish in reverse launch order. Remove only the latest
+        # matching launch; an unrelated terminal event cannot settle a job.
+        for index in range(len(launches) - 1, -1, -1):
+            if _finishes(event, launches[index]):
+                launches.pop(index)
+                break
     return launches[-1] if launches else None
 
 
@@ -129,11 +133,7 @@ def _observed_pid(state: dict[str, Any]) -> int | None:
 
 def _finishes(event: HarnessEvent, launch: dict[str, Any]) -> bool:
     state = event.process_state if isinstance(event.process_state, dict) else {}
-    if state.get("running") is False:
-        if launch.get("pid") is None:
-            return True
-        return _observed_pid(state) in {None, launch["pid"]}
-    if state.get("exit_code") is None:
+    if state.get("running") is not False and state.get("exit_code") is None:
         return False
     if launch.get("pid") is not None:
         return _observed_pid(state) == launch["pid"]

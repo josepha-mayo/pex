@@ -2,6 +2,17 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Background-job audit: root fully read `background.py` and its small unit suite.
+The tracker only settled the last launch, leaving older jobs falsely active when
+they exited out of order; `running=false` without identity could also clear an
+unrelated job. Three new regressions failed before repair. Settlement now finds
+the most recent matching launch, requires exact observed PID for PID-bound jobs,
+and a matching command for PID-less jobs. **9 targeted unit/API tests passed,
+15 deselected in 15.95s**; scoped Ruff clean. This does not prove process birth
+identity/PID-reuse protection, remote process visibility or abandonment intent.
+Existing command truncation and lexical launch detection remain audit limitations.
+No user process was stopped; unit tests own their short-lived subprocesses.
+
 Post-trajectory integration check on `f650260`: complete
 `tests/e2e/test_recovery_stop_loop.py` passed **17 tests in 94.42s**, with
 PytestUnhandledThreadExceptionWarning treated as an error. Scope includes
