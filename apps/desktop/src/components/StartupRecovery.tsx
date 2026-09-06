@@ -46,10 +46,10 @@ export function StartupRecovery({
       >
         <header className="startup-recovery-header">
           <span className="startup-recovery-mark" aria-hidden="true">PEX</span>
-          <span>
+          <div>
             <p className="eyebrow">{copy.eyebrow}</p>
             <h1 ref={heading} tabIndex={-1}>{copy.title}</h1>
-          </span>
+          </div>
         </header>
         <p className="startup-recovery-detail">{copy.detail}</p>
         {copy.guidance ? <p className="startup-recovery-guidance">{copy.guidance}</p> : null}

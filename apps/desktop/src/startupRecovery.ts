@@ -6,7 +6,6 @@ export const KNOWN_BRIDGE_FAILURE_CODES = [
   "bridge_process_stopped",
   "desktop_control_unavailable",
   "desktop_state_unavailable",
-  "desktop_state_unavailable",
   "identity_timeout",
   "not_started",
   "port_check_failed",

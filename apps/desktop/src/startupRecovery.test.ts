@@ -60,7 +60,23 @@ test("every known startup error renders an actionable safe non-retryable state",
   }
 });
 
-test("retryable startup errors keep Retry and always expose safe copy", async () => {
+test("startup actions match the exact native retryability matrix", async () => {
+  const retryability: Record<(typeof KNOWN_BRIDGE_FAILURE_CODES)[number], boolean> = {
+    bridge_address_invalid: false,
+    bridge_identity_lost: true,
+    bridge_process_stopped: true,
+    desktop_control_unavailable: false,
+    desktop_state_unavailable: false,
+    identity_timeout: true,
+    not_started: true,
+    port_check_failed: true,
+    port_occupied_untrusted: true,
+    sidecar_exited_early: true,
+    sidecar_missing: false,
+    sidecar_spawn_failed: true,
+    token_generation_failed: true,
+  };
+  assert.deepEqual(Object.keys(retryability).sort(), [...KNOWN_BRIDGE_FAILURE_CODES].sort());
   const vite = await createServer({ root: process.cwd(), server: { middlewareMode: true }, appType: "custom" });
   try {
     const loaded = await vite.ssrLoadModule("/src/components/StartupRecovery.tsx") as {
@@ -75,7 +91,7 @@ test("retryable startup errors keep Retry and always expose safe copy", async ()
         phase: "failed",
         code,
         message: "private native message",
-        retryable: true,
+        retryable: retryability[code],
         source: code === "port_occupied_untrusted" ? "unverified_port_owner" : "not_ready",
         attempt: 999999,
       });
@@ -84,9 +100,22 @@ test("retryable startup errors keep Retry and always expose safe copy", async ()
         retrying: false,
         onRetry: () => undefined,
       }));
-      assert.match(html, /Retry bridge/u, code);
       assert.match(html, /Copy safe details/u, code);
       assert.doesNotMatch(html, /private native message/u, code);
+      if (retryability[code]) assert.match(html, />Retry bridge<\/button>/u, code);
+      else assert.doesNotMatch(html, /Retry bridge/u, code);
+
+      const retryingHtml = renderToStaticMarkup(createElement(loaded.StartupRecovery, {
+        status,
+        retrying: true,
+        onRetry: () => undefined,
+      }));
+      if (retryability[code]) {
+        assert.match(retryingHtml, /<button[^>]+disabled=""[^>]*>Retrying…<\/button>/u, code);
+        assert.doesNotMatch(retryingHtml, />Retry bridge<\/button>/u, code);
+      } else {
+        assert.doesNotMatch(retryingHtml, /Retrying…|Retry bridge/u, code);
+      }
     }
   } finally {
     await vite.close();
