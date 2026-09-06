@@ -4,6 +4,7 @@ import pytest
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.executor import ActionExecutor
 from pex_bridge.pipeline import _same_session_project
+from pex_bridge.store import Store, _same_live_project_binding
 from pex_protocol.actions import InterventionType, ProposedAction
 from pex_protocol.enums import HarnessType
 from pex_protocol.session import HarnessSession
@@ -57,3 +58,19 @@ async def test_start_rejects_foreign_project_before_any_adapter_probe(
 
 def test_pipeline_preserves_windows_absolute_path_spelling_compatibility() -> None:
     assert _same_session_project(_session("C:/Work/PEX"), _session("c:\\work\\pex\\"))
+
+
+@pytest.mark.parametrize("left,right", DISTINCT_PROJECTS)
+@pytest.mark.asyncio
+async def test_store_without_registered_aliases_rejects_distinct_projects(
+    left: str,
+    right: str,
+    tmp_path,
+) -> None:
+    store = Store(tmp_path / "binding.sqlite")
+    await store.connect()
+    try:
+        assert not await _same_live_project_binding(store.db, left, right)
+        assert await _same_live_project_binding(store.db, left, left)
+    finally:
+        await store.close()

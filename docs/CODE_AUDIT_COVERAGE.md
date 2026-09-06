@@ -21,6 +21,14 @@ This does not close live cross-harness proof or full-file pipeline/executor audi
 Store's legacy comparator remains pending: it also affects persisted request
 fingerprints and legacy/v2 aliases, so a global replacement is not yet justified.
 
+Store follow-up: live `_same_project` now uses conservative comparison, while
+legacy fingerprint/display spelling and lookalike quarantine remain byte-for-byte
+behaviorally preserved. Four red database-backed cases before repair; six full
+identity/fingerprint/MCP/operator files passed (45 tests). Explicit active v2
+matching branch and database schema unchanged. This closes the bounded fallback
+comparison defect, not the entire Store audit, display-query normalization or
+all replay/migration scenarios. Full integration regression remains open.
+
 ### Project comparison boundaries — 6 Sep
 
 New file `packages/protocol/src/pex_protocol/project_binding.py`: full helper

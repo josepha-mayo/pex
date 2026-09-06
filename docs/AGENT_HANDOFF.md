@@ -2,6 +2,21 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Store authority comparison repair: four database-backed red cases demonstrated
+`_same_live_project_binding` accepted distinct opaque/POSIX/Unicode/drive-relative
+projects when neither had a v2 registration. `_same_project` now uses the shared
+conservative comparator. Legacy `_project_key` bytes remain unchanged for existing
+request fingerprints and display filtering. The unregistered-lookalike quarantine
+explicitly retains the legacy comparator, so this does not loosen that guard.
+Explicit active v2 identity alias matching is unchanged. No schema migration,
+operator database mutation or receipt rewrite was performed.
+Six complete files (bridge boundaries, project identity Store, fingerprints,
+MCP integrity/claim verification, project identity operator API): **45 passed in
+33.06s**, thread warnings as errors, scoped Ruff and whitespace clean (exec 75198
+terminal). Changed-path review only. Legacy display SQL still uses old spelling;
+do not confuse its filtered listing with an authority proof. Full integration
+regression after the combined boundary changes remains required.
+
 Dispatch project-boundary follow-up: pipeline and executor now import the shared
 `project_binding_key` under their existing internal alias, replacing unconditional
 case-fold/strip normalization. Eight red regressions proved false sibling-project

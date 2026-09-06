@@ -44,6 +44,7 @@ from pex_protocol.enums import (
 from pex_protocol.goal import Decision, Goal
 from pex_protocol.intervention import Intervention
 from pex_protocol.overlay import Overlay
+from pex_protocol.project_binding import project_binding_key
 from pex_protocol.project_identity import (
     ProjectIdentity,
     ProjectLocator,
@@ -3741,11 +3742,13 @@ def _time_key(value: datetime | None) -> datetime:
 
 
 def _project_key(value: str) -> str:
+    # Legacy fingerprint/display spelling, not live authority equality. Keep
+    # stable until persisted request fingerprints have an explicit migration.
     return value.strip().replace("\\", "/").rstrip("/").casefold()
 
 
 def _same_project(left: str, right: str) -> bool:
-    return _project_key(left) == _project_key(right)
+    return project_binding_key(left) == project_binding_key(right)
 
 
 def _legacy_artifact_project_binding(project_id: str) -> str:
@@ -5104,7 +5107,8 @@ async def _reject_quarantined_project_binding(
     if len(aliases) > 10_000:
         raise RuntimeError("project identity alias scan is bounded")
     if any(
-        candidate != project_id and _same_project(candidate, project_id) for candidate in aliases
+        candidate != project_id and _project_key(candidate) == _project_key(project_id)
+        for candidate in aliases
     ):
         raise ProjectIdentityBlockedError(
             "project identity alias requires explicit registration",
@@ -5120,8 +5124,9 @@ async def _same_live_project_binding(
     """Compare project keys without letting partial v2 adoption create aliases.
 
     Exact legacy keys remain valid. Two explicitly registered keys match only
-    when both active bindings select the same stable identity. The old lexical
-    compatibility rule is retained solely while neither key has a v2 binding.
+    when both active bindings select the same stable identity. Without registered
+    bindings, only conservative project spelling compatibility is allowed;
+    opaque/POSIX identifiers must not inherit Windows case-folding semantics.
     """
 
     if left == right:
