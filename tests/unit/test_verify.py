@@ -202,6 +202,42 @@ def test_log_spoof_and_unrelated_process_state_are_not_pytest_evidence():
     assert result["pytest_scope"] is None
 
 
+@pytest.mark.parametrize("later_edit", [False, True])
+def test_observed_pytest_facts_survive_absent_claim_without_promoting_completion(later_edit):
+    events = [_event(
+        event_id="observed-test", event_type=EventType.SHELL, command="pytest -q",
+        process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 4}},
+    )]
+    if later_edit:
+        events.append(_event(event_id="edit", event_type=EventType.FILE_EDIT, file_paths=[]))
+    result = verify_claims([], events, _goal(), {})
+    assert result["status"] == "no_claims"
+    assert result["pytest_observation"] == {
+        "event_id": "observed-test", "scope": "full_suite",
+        "basis": "observed_worker_command", "later_file_edits_observed": later_edit,
+        "ok": True, "exit_code": 0, "passed": 4,
+    }
+
+
+def test_pytest_observation_does_not_coerce_or_copy_untrusted_fields():
+    result = verify_claims([], [_event(
+        event_type=EventType.SHELL, command="pytest -q tests/test_one.py",
+        process_state={"pytest": {
+            "ok": "true", "exit_code": False, "passed": True, "failed_count": -1,
+            "collected": 2**53, "output": "untrusted command prose", "unknown": "extra",
+        }},
+    )], _goal(), {})
+    observation = result["pytest_observation"]
+    assert observation["scope"] == "targeted"
+    assert observation["ok"] is None and observation["exit_code"] is None
+    assert not {"passed", "failed_count", "collected", "output", "unknown"} & observation.keys()
+    spoof = verify_claims([], [_event(
+        event_type=EventType.SHELL, command="cat pytest.log",
+        process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 99}},
+    )], _goal(), {})
+    assert spoof["pytest_observation"] is None
+
+
 def test_generic_done_without_same_event_verified_claim_stays_uncertain():
     result = verify_claims(
         [

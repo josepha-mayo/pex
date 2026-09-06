@@ -145,6 +145,18 @@ the correctly recorded typed pass. Investigate that evidence-context discrepancy
 Terminal receipt in clean checkout `build/quiet-live-20260906/Q03/client/`
 `capture-20260906T175353708550Z.json`. Current matrix: 1 quiet success, 2 retained
 inconclusive, 7 unstarted. No general completion, all-eight-pet/UI or submission claim.
+Root traced Q03's explanation mismatch to a lossy verification summary: absent a
+recognized tests_pass claim, verdicts can remain empty/uncertain even while the
+typed full-suite pass is present. Previous `latest_pytest` exposed only ID/scope.
+Repair adds separate `pytest_observation` facts: event ID, scope, explicitly
+worker-observed basis, strict boolean ok/integer exit, bounded nonnegative counts,
+and a conservative later-file-edit flag (including pathless edits). Raw command
+output is not copied. Overall claim/acceptance status is deliberately unchanged;
+these observations do not claim independent execution or complete human intent.
+Regression/evidence-tool gate:65 passed10.18s, scoped Ruff clean. Cases cover
+absent claims, later edits, targeted runs, invalid types/counts, and log spoofing.
+Protected supervisor loop remains unchanged; current live7436 runtime predates
+this summary repair. Need fresh-source verification before claiming model uptake.
 older Sol instructions below are superseded. Reboot interrupted the previous full
 suite; consult the checkpoint for the restarted run and failed live recovery evidence.
 

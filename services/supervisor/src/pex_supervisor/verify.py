@@ -1238,6 +1238,29 @@ def verify_claims(
             "scope": latest_pytest[3].scope.value,
         }
     )
+    # Observed command facts remain useful even when claim extraction yields no
+    # tests_pass claim. Do not conflate these facts with goal acceptance or an
+    # independently executed check, and never include arbitrary output text.
+    pytest_observation = None
+    if latest_pytest is not None:
+        pytest_event, pytest_info, pytest_index, invocation = latest_pytest
+        pytest_observation = {
+            "event_id": pytest_event.event_id,
+            "scope": invocation.scope.value,
+            "basis": "observed_worker_command",
+            "later_file_edits_observed": any(
+                item.event_type == EventType.FILE_EDIT for item in events[pytest_index + 1 :]
+            ),
+            "ok": pytest_info.get("ok") if type(pytest_info.get("ok")) is bool else None,
+            "exit_code": (
+                pytest_info.get("exit_code")
+                if type(pytest_info.get("exit_code")) is int else None
+            ),
+        }
+        for metric in ("passed", "failed_count", "skipped", "errors", "collected"):
+            value = pytest_info.get(metric)
+            if type(value) is int and 0 <= value <= 2**53 - 1:
+                pytest_observation[metric] = value
     return {
         "status": status,
         "acceptance_status": acceptance_status,
@@ -1247,6 +1270,7 @@ def verify_claims(
         "pytest_event_id": None if latest_pytest is None else latest_pytest[0].event_id,
         "pytest_scope": None if latest_pytest is None else latest_pytest[3].scope.value,
         "latest_pytest": pytest_provenance,
+        "pytest_observation": pytest_observation,
         "missing_files": [
             item[8:]
             for item in (chosen.get("evidence") or [] if chosen else [])
