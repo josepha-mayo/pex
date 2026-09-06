@@ -2,6 +2,16 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+FULL CLEAN REGRESSION IN PROGRESS: `pex-verify-5ee1ee7` was confirmed clean,
+advanced detached to `a0f07c4`, synced offline/frozen, and all three package import
+paths verified inside that checkout. Running exec session **30815** owns
+`python -m pytest -q -rs -W error::pytest.PytestUnhandledThreadExceptionWarning`
+with `not live_llm and not live_codex and not live_opencode and not live_agentcore
+and not live_desktop`. JUnit target: `build/full-regression-a0f07c4.xml` in that
+checkout. This is IN PROGRESS, not a pass. Poll the same session; do not start a
+duplicate or switch/delete that worktree while it runs. Main's protected loop
+is excluded by clean-source isolation. No live bridge restart or provider call.
+
 Project-binding integrity: protocol, bridge and runtime separately case-folded,
 trimmed and stripped slashes from every project identifier, conflating opaque
 IDs and case-sensitive POSIX projects. Eight new cases failed before repair.
