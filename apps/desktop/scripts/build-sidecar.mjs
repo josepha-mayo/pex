@@ -26,12 +26,14 @@ import {
   classifyGitReleaseInputs,
   parseFrozenBundleInventory,
   preflightSnapshotIsStable,
+  sidecarBuildPolicy,
   sidecarStampMatches,
   tauriReleaseWiringMatches,
   toolchainsMatch,
 } from "./release-contract.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
+const buildPolicy = sidecarBuildPolicy(process.argv.slice(2));
 const repo = resolve(scriptDir, "../../..");
 const repoReal = realpathSync.native(repo);
 const desktop = resolve(scriptDir, "..");
@@ -1350,7 +1352,10 @@ if (process.argv.includes("--validate-pets-only")) {
   process.exit(0);
 }
 const inputFingerprint = sourceFingerprint();
-if (helpersAreCurrent(inputFingerprint)) {
+// Development may reuse an exactly fingerprinted helper. Packaging must always
+// rebuild from a clean PyInstaller analysis so stale module graphs cannot enter
+// an installer merely because the previous sidecar stamp still matches.
+if (buildPolicy.allowCachedHelpers && helpersAreCurrent(inputFingerprint)) {
   verifyFrozenPetBundle(bridgeTarget, petSources);
   if (sourceFingerprint() !== inputFingerprint) {
     throw new Error("Sidecar inputs changed during cached frozen verification");
@@ -1388,7 +1393,7 @@ mkdirSync(binaries, { recursive: true });
 const dist = join(repo, "build", "pyinstaller", "dist");
 const work = join(repo, "build", "pyinstaller", "work");
 const specs = join(repo, "build", "pyinstaller", "spec");
-const pyinstallerCleanArgs = process.argv.includes("--preflight-release") ? ["--clean"] : [];
+const pyinstallerCleanArgs = buildPolicy.pyinstallerCleanArgs;
 for (const path of [dist, work, specs]) assertSafeDirectory(path, "PyInstaller build path");
 rmSync(dist, { recursive: true, force: true });
 const dataSeparator = process.platform === "win32" ? ";" : ":";

@@ -136,10 +136,11 @@ export function tauriReleaseWiringMatches({
 }) {
   const windows = tauri?.app?.windows ?? [];
   return packageJson?.scripts?.["prepare:sidecar"] === "node scripts/build-sidecar.mjs"
+    && packageJson?.scripts?.["prepare:sidecar:release"] === "node scripts/build-sidecar.mjs --release-build"
     && packageJson?.scripts?.["preflight:release"] === "node scripts/build-sidecar.mjs --preflight-release"
     && packageJson?.scripts?.build === "tsc && vite build"
     && packageJson?.scripts?.tauri === "tauri"
-    && tauri?.build?.beforeBuildCommand === "npm run prepare:sidecar && npm run build"
+    && tauri?.build?.beforeBuildCommand === "npm run prepare:sidecar:release && npm run build"
     && tauri?.build?.frontendDist === "../dist"
     && tauri?.bundle?.active === true
     && tauri?.bundle?.targets === "all"
@@ -160,6 +161,25 @@ export function tauriReleaseWiringMatches({
     && bridgeRecoveryPermission.trim().replaceAll("\r\n", "\n") === EXPECTED_BRIDGE_RECOVERY_PERMISSION
     && cargoVersion === packageJson?.version
     && tauri?.version === packageJson?.version;
+}
+
+export function sidecarBuildPolicy(args) {
+  if (!Array.isArray(args) || args.some((arg) => typeof arg !== "string")) {
+    throw new TypeError("Sidecar build arguments must be text");
+  }
+  const releaseBuild = args.includes("--release-build");
+  const preflightRelease = args.includes("--preflight-release");
+  const validatePetsOnly = args.includes("--validate-pets-only");
+  if ([releaseBuild, preflightRelease, validatePetsOnly].filter(Boolean).length > 1) {
+    throw new Error("Sidecar build modes are mutually exclusive");
+  }
+  return {
+    releaseBuild,
+    preflightRelease,
+    validatePetsOnly,
+    allowCachedHelpers: !releaseBuild,
+    pyinstallerCleanArgs: releaseBuild ? ["--clean"] : [],
+  };
 }
 
 export function toolchainsMatch({ pins, active, uvLock }) {

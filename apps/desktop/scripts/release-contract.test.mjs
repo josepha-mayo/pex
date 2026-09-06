@@ -14,6 +14,7 @@ import {
   classifyGitReleaseInputs,
   parseFrozenBundleInventory,
   preflightSnapshotIsStable,
+  sidecarBuildPolicy,
   sidecarStampMatches,
   tauriReleaseWiringMatches,
   toolchainsMatch,
@@ -26,6 +27,7 @@ function wiringFixture() {
     version: "0.1.0",
     scripts: {
       "prepare:sidecar": "node scripts/build-sidecar.mjs",
+      "prepare:sidecar:release": "node scripts/build-sidecar.mjs --release-build",
       "preflight:release": "node scripts/build-sidecar.mjs --preflight-release",
       build: "tsc && vite build",
       tauri: "tauri",
@@ -36,7 +38,7 @@ function wiringFixture() {
     tauri: {
       version: packageJson.version,
       build: {
-        beforeBuildCommand: "npm run prepare:sidecar && npm run build",
+        beforeBuildCommand: "npm run prepare:sidecar:release && npm run build",
         frontendDist: "../dist",
       },
       app: {
@@ -231,6 +233,37 @@ test("Tauri release wiring rejects capability widening and window-scope widening
   const widenedRecovery = structuredClone(fixture);
   widenedRecovery.bridgeRecoveryPermission += '\ncommands.allow = ["bridge_token"]';
   assert.equal(tauriReleaseWiringMatches(widenedRecovery), false);
+
+  const cachedPackageBuild = structuredClone(fixture);
+  cachedPackageBuild.tauri.build.beforeBuildCommand = "npm run prepare:sidecar && npm run build";
+  assert.equal(tauriReleaseWiringMatches(cachedPackageBuild), false);
+
+  const nonCleanReleaseCommand = structuredClone(fixture);
+  nonCleanReleaseCommand.packageJson.scripts["prepare:sidecar:release"] =
+    "node scripts/build-sidecar.mjs";
+  assert.equal(tauriReleaseWiringMatches(nonCleanReleaseCommand), false);
+});
+
+test("release sidecar mode always bypasses cache and cleans PyInstaller", () => {
+  assert.deepEqual(sidecarBuildPolicy([]), {
+    releaseBuild: false,
+    preflightRelease: false,
+    validatePetsOnly: false,
+    allowCachedHelpers: true,
+    pyinstallerCleanArgs: [],
+  });
+  assert.deepEqual(sidecarBuildPolicy(["--release-build"]), {
+    releaseBuild: true,
+    preflightRelease: false,
+    validatePetsOnly: false,
+    allowCachedHelpers: false,
+    pyinstallerCleanArgs: ["--clean"],
+  });
+  assert.throws(
+    () => sidecarBuildPolicy(["--release-build", "--preflight-release"]),
+    /mutually exclusive/u,
+  );
+  assert.throws(() => sidecarBuildPolicy([42]), /must be text/u);
 });
 
 test("sidecar stamp is exact and rejects stale, forged, malformed, and extended records", () => {
