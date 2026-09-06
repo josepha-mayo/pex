@@ -9,8 +9,12 @@ actions. Native checks resumed with permission, but a newer physical Escape
 stopped them again: do not send native input until permission is renewed. The
 user is actively using this PC with other agents; keep background work separate
 from shared mouse, keyboard and foreground focus, even when targeting only PEX.
-Fresh shared-worker recovery and separate quiet
-proofs now pass on clean `4543a58`; final installed-build gates remain open.
+Fresh shared-worker recovery and separate quiet proofs passed on clean `4543a58`;
+the false-test-claim recovery now passed independent review on clean `ee459f8`.
+Full clean `84d9bd3` testing completed with 3,691 passes, 29 skips and one cleanup
+warning. A fixture ownership repair is pushed as `f529644`; the new full strict
+run is active on that revision. Consult the checkpoint for exact handles/receipts.
+Final installed-build gates remain open.
 All `current` or `final` headings below are historical wherever they conflict.
 The goal remains active and the full three-spec submission scope remains incomplete.
 Latest user cost instruction: subagents use **GPT-5.6 Terra, medium reasoning**;

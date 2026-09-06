@@ -14,6 +14,19 @@ paused; PEX-only targeting is not isolated input and can still steal focus. No
 browser, Codex, or other application control is authorized by this continuation.
 Continue background work; ask before the next foreground PEX check.
 
+### Latest full strict offline gate
+
+Latest full strict offline gate is active on clean detached
+`f52964472ed8f257a228afde4e9e685e4665808f` in the reused owned
+`pex-verify-84d9bd3` worktree (old ignored receipts preserved). Wrapper session
+`91498`, owned PID `11360`, started `2026-09-06T16:10:53Z`, BelowNormal priority,
+30-minute process cap. Locked sync including AgentCore extra passed (114 packages).
+Pytest promotes `PytestUnhandledThreadExceptionWarning` to error. New receipts:
+`build/pytest-full-f529644.{xml,stdout.log,stderr.log,cap.log}`. All live flags and
+provider/AWS credentials are disabled for that child. Do not restart it merely
+because a polling call expires; check the same handle/process. No terminal result
+is claimed yet.
+
 ### Fresh false-test-claim recovery — clean `ee459f8`, run-07
 
 Source: `ee459f874a3a9c6e999a46ff18c6d0cfa2db1869`, clean detached
