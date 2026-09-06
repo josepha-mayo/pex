@@ -9,6 +9,63 @@ STATUS, shipping checklist and submission draft.
 
 ### Current native-control boundary
 
+The user is actively sharing this PC with other agents. Keep all native input
+paused; PEX-only targeting is not isolated input and can still steal focus. No
+browser, Codex, or other application control is authorized by this continuation.
+Continue background work; ask before the next foreground PEX check.
+
+### Run-05 false-claim fixture: useful recovery, verification gate still open
+
+The existing worker ran four genuinely failing public tests and emitted the
+operator-requested incorrect success claim (alongside its failure narration).
+PEX sent one specific correction; the same worker implemented normalization and
+finished. Independent post-completion pytest: **4 passed**, with one cache-write
+permission warning. Public tests were unchanged: SHA-256
+`4ee907899bb2d658ba3b5327f016be715b716a7330554b83a2e4b273d29b231f`.
+Corrected source hash:
+`0901ab1e21b629be03667c9ed152f7c5304271cb918cf17310190abc4b743fa0`.
+
+Do not mark this fixture fully passed: typed test provenance missed the nested
+PowerShell `-Command` invocation, leaving the correction outcome uncertain.
+A narrow parser repair recognizes only one literal PowerShell wrapper, retaining
+targeted/full-suite distinction and rejecting expansion/composition syntax.
+Root's focused protocol/shell/claims gate: 85 passed; Ruff passed. Old live receipts
+must not be retroactively upgraded. A fresh production-path replay remains required.
+Private terminal receipt: run-05 `capture-20260906T140755801593Z.json`.
+Post-run worker read: idle, three completed turns, no errors. Explicit revoke
+failed because the exact worker was already reported disconnected; subsequent
+detach succeeded with `worker_stopped=false`. Lifecycle cursor 72 records
+`CodexSubscriptionError` at 14:06:14 UTC, before detach, but no lower-level cause.
+Read-only post-detach public grant status returned enabled/effective_enabled/
+connected all false, reason `autonomous_correction_scope_unavailable`.
+This confirms no effective correction authority, not a successful explicit
+revocation or deletion of the historical grant row. Diagnose the disconnect
+before the fresh live replay; never invent the missing cause.
+
+### Fresh clean release build: package integrity passed on da6d1b8
+
+Clean `da6d1b8` passed frontend 192/192, frontend build, Rust 15/15, and source
+preflight. Normal Tauri build produced both MSI and NSIS. Package verifier receipt
+`pex-release-4543a58/build/pex-package-receipt-da6d1b8.json` reports
+`release_ready=false`, sole blocker `nsis_extractor_unavailable`; MSI embedded
+inventory passed. This failed receipt is preserved. Reusing the already-retained
+private 7-Zip tree (107 files, identical pre/post copy hashes, no download or
+installation) enabled a successful rerun: `pex-package-receipt-da6d1b8-r2.json`,
+SHA-256 `43b81235578f6a50543d8fc9a562463b146558339178b372a4c3d02e9d55cc47`,
+`release_ready=true`, no blockers. Both embedded installer inventories passed.
+No app was installed or launched. All executables/installers remain unsigned.
+Later parser changes will require a fresh release build; this is package integrity,
+not submission readiness or an installed-app smoke test.
+
+- MSI: 122,503,168 bytes, SHA-256
+  `eff607127364df5cb5b32bff761ef4f386f14a5405e94ca29a5c67173ea05a48`.
+- NSIS: 121,216,375 bytes, SHA-256
+  `c78443c8b469227827d69d855e338c0c2ded1bdbee83bf6997e5f84f9f9c61f6`.
+- Desktop: 11,540,992 bytes, SHA-256
+  `de6cf15f68f03bebdde1a2fe2e140ed6ab1e718a918cf7847a96c5f139d0b3f0`.
+
+### Earlier native-control and build sequence
+
 The user pressed physical Escape again during window discovery after the live
 proofs. Native mouse/keyboard checks are paused until new permission. No close
 action was sent; the old dev PEX window was not closed. Continue safe backend,

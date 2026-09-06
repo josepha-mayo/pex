@@ -6,7 +6,9 @@ Start with [CHECKPOINT_2026_09_06.md](CHECKPOINT_2026_09_06.md). It records the 
 source, exact retained package, clean-checkout failure diagnosis, native pet-close proof,
 settings repairs, native-control boundaries, protected file, owners and next
 actions. Native checks resumed with permission, but a newer physical Escape
-stopped them again: do not send native input until permission is renewed.
+stopped them again: do not send native input until permission is renewed. The
+user is actively using this PC with other agents; keep background work separate
+from shared mouse, keyboard and foreground focus, even when targeting only PEX.
 Fresh shared-worker recovery and separate quiet
 proofs now pass on clean `4543a58`; final installed-build gates remain open.
 All `current` or `final` headings below are historical wherever they conflict.
