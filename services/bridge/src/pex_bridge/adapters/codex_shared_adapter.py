@@ -635,6 +635,8 @@ class CodexSharedAdapter(HarnessAdapter):
 
     async def _consume(self, ingest) -> None:
         while True:
+            if not self._connected():
+                raise CodexSubscriptionError("shared connection lost before event dequeue")
             event, session = await self._pending.get()
             self._ingesting = True
             self._ingesting_observation = (event, session)
