@@ -3032,7 +3032,7 @@ async def test_later_pytest_supersedes_old_receipt_without_mixing_event_ids(
 
 
 @pytest.mark.asyncio
-async def test_newer_nudge_cannot_steal_pending_verification_result(
+async def test_newer_nudge_turn_cannot_mutate_pending_verification_result(
     client: AsyncClient, tmp_path
 ):
     worker = tmp_path / "verification-and-nudge-worker"
@@ -3077,7 +3077,7 @@ async def test_newer_nudge_cannot_steal_pending_verification_result(
     assert nudged.json()["intervention"]["action_taken"] == "SEND_NUDGE"
     required.write_text("ready\n", encoding="utf-8")
 
-    executed = await client.post(
+    wrong_turn_execution = await client.post(
         "/v1/synthetic/events",
         json={
             "session_id": session.id,
@@ -3088,14 +3088,18 @@ async def test_newer_nudge_cannot_steal_pending_verification_result(
             },
         },
     )
-    execution_event_id = executed.json()["event"]["event_id"]
+    wrong_turn_event_id = wrong_turn_execution.json()["event"]["event_id"]
     stored = (await client.get(
         "/v1/interventions", params={"session_id": session.id}
     )).json()
     original = next(item for item in stored if item["id"] == request["id"])
     receipt = original["metadata"]["verification"]["evidence_gathering"]
-    assert receipt["state"] == "executed"
-    assert receipt["execution"]["source_event_id"] == execution_event_id
+    assert receipt["state"] == "attempted"
+    assert receipt["execution"] is None
+    assert original["helped"] is None
+    assert original["outcome"] == "post_delivery_activity_observed_causality_unavailable"
+    assert wrong_turn_event_id in original["metadata"]["outcome_event_ids"]
+    assert original["metadata"].get("causal_continuation_proven") is not True
 
 
 @pytest.mark.asyncio

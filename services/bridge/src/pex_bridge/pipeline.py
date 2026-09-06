@@ -3663,18 +3663,6 @@ class Pipeline:
             if matches_delivery:
                 candidates.append(item)
             elif session.harness_type == HarnessType.SYNTHETIC:
-                if (
-                    item.proposed_action.type
-                    == InterventionType.REQUEST_VERIFICATION
-                    and event.event_type != EventType.STOP
-                    and self._synthetic_event_ref_is_adapter_minted(session, event)
-                ):
-                    verification_update = await self._observe_verification_request(
-                        item, session, event, verification, persist=persist
-                    )
-                    if verification_update is not None:
-                        updates.append(verification_update)
-                    continue
                 # Synthetic attribution is causal only with the adapter-minted
                 # event reference checked above. Manually shaped/generic events
                 # remain observable but cannot earn helped credit.
