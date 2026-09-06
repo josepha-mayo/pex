@@ -2,6 +2,16 @@
 
 ## Latest low-quota audit — 6 September, after Q07
 
+Next local audit repaired `workspace.artifact_row_count`: the old stat-size
+check preceded an unbounded JSON read / JSONL iteration, so concurrent growth
+could bypass the 4 MB budget. Both formats now read at most the clamped limit
+plus one overflow byte and reject oversized payloads before parsing. Two stale
+stat regressions failed before repair; exact-limit JSON/JSONL counts remain
+valid. Focused workspace/verify/evidence-tools gate: **97 passed, 1 skipped in
+16.69s**. This bounds input reads; it does not provide atomic snapshots or prove
+that concurrently rewritten same-size artifacts are stable. No runtime restart,
+new model call, or native interaction occurred.
+
 Follow-on local artifact audit: supplied artifact snapshots could treat boolean
 row counts as integers (`true` supported one row; `false` contradicted it), and
 negative counts produced false failure verdicts. `verify.py` now accepts only

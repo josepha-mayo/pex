@@ -4,7 +4,13 @@ import time
 from pathlib import Path
 
 import pytest
-from pex_supervisor.workspace import artifact_tails, git_snapshot, read_visible, snapshot
+from pex_supervisor.workspace import (
+    artifact_row_count,
+    artifact_tails,
+    git_snapshot,
+    read_visible,
+    snapshot,
+)
 
 
 def test_workspace_process_tree_termination_is_bounded_with_inherited_stdout():
@@ -129,6 +135,37 @@ def test_malformed_jsonl_does_not_produce_a_complete_row_receipt(tmp_path: Path)
 
     assert artifact["row_count"] is None
     assert artifact["row_count_complete"] is False
+
+
+@pytest.mark.parametrize("suffix,payload", [
+    (".json", b"[" + b"0," * 100 + b"0]"),
+    (".jsonl", b"{}\n" * 100),
+])
+def test_artifact_count_bounds_read_when_size_observation_is_stale(
+    tmp_path, monkeypatch, suffix, payload,
+):
+    from types import SimpleNamespace
+
+    path = tmp_path / ("results" + suffix)
+    path.write_bytes(payload)
+    original_stat = Path.stat
+
+    def stale_stat(target, *args, **kwargs):
+        if target == path:
+            return SimpleNamespace(st_size=1)
+        return original_stat(target, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", stale_stat)
+    assert artifact_row_count(path, json_limit=32) == (None, False)
+
+
+@pytest.mark.parametrize("suffix,payload", [
+    (".json", b"[{},{}]"), (".jsonl", b"{}\n{}\n"),
+])
+def test_artifact_count_accepts_exact_byte_limit(tmp_path, suffix, payload):
+    path = tmp_path / ("results" + suffix)
+    path.write_bytes(payload)
+    assert artifact_row_count(path, json_limit=len(payload)) == (2, True)
 
 
 def test_nonfinite_jsonl_does_not_produce_a_complete_row_receipt(tmp_path: Path):

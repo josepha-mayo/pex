@@ -418,31 +418,33 @@ def artifact_row_count(
 ) -> tuple[int | None, bool]:
     """Count a complete artifact without mistaking a truncated preview for the file.
 
-    JSONL can be counted as a stream. JSON is parsed only under a bounded size;
-    larger or malformed documents remain unknown instead of producing a false
-    acceptance verdict.
+    Read at most the capped byte limit plus one overflow byte, even if a worker
+    grows the file after stat. Larger or malformed documents remain unknown
+    instead of producing a false acceptance verdict.
     """
     try:
-        size = path.stat().st_size
-        if size > json_limit:
+        bounded_limit = _bounded_limit(json_limit, MAX_ARTIFACT_COUNT_BYTES)
+        suffix = path.suffix.casefold()
+        if suffix not in {".json", ".jsonl"} or path.stat().st_size > bounded_limit:
             return None, False
-        if path.suffix.casefold() == ".jsonl":
+        with path.open("rb") as handle:
+            payload = handle.read(bounded_limit + 1)
+        if len(payload) > bounded_limit:
+            return None, False
+        if suffix == ".jsonl":
             count = 0
-            with path.open("rb") as handle:
-                for line in handle:
-                    if not line.strip():
-                        continue
-                    json.loads(
-                        line,
-                        parse_constant=_reject_nonfinite_json_constant,
-                        object_pairs_hook=_unique_json_object,
-                    )
-                    count += 1
+            for line in payload.split(b"\n"):
+                if not line.strip():
+                    continue
+                json.loads(
+                    line,
+                    parse_constant=_reject_nonfinite_json_constant,
+                    object_pairs_hook=_unique_json_object,
+                )
+                count += 1
             return count, True
-        if path.suffix.casefold() != ".json":
-            return None, False
         data = json.loads(
-            path.read_text(encoding="utf-8"),
+            payload.decode("utf-8"),
             parse_constant=_reject_nonfinite_json_constant,
             object_pairs_hook=_unique_json_object,
         )
