@@ -1,5 +1,52 @@
 # PEX agent handoff
 
+### 7 September — exact native cold start green; Q14 exposed cancellation-drain provenance loss
+
+The exact clean `4c8503c991ee147dde5065125a4cdc82505f8f52` release candidate was
+started from an isolated profile with supervisor inference and automatic worker
+attachment disabled. The desktop spawned only its exact packaged bridge tree, port
+7420 returned `{"ok":true,"service":"pex-bridge"}`, and the fresh profile created
+valid `pex.sqlite`/WAL plus `pet.json` with built-in `pex`, scale 1, click-through
+off and quiet mode on. This proves cold native startup and bridge liveness, not visual
+acceptance. The PEX window remained minimized while the operator was using the PC;
+the automation surface refused activation and once returned another foreground app's
+pixels. No click occurred. Native Retry, close/restore, restart persistence and all-eight
+pet playback remain open.
+
+Q12 and Q13 are immutable **pre-worker infrastructure aborts**. Each reserved only
+`create.intent` before rejecting, respectively, a missing private socket and a socket
+directory whose inherited ACL was not owner-only. Neither created a worker or consumed
+a model turn; never reuse or count either case. Q14 used a unique socket inside the
+previously verified owner-only Q11 listener directory and passed the endpoint validator.
+
+Q14 worker thread `01a07cd0-7080-7b13-bb91-803afab8e941` had one READY warm-up and
+one work turn. It implemented the frozen inventory task, reported and independently
+reproduced 3/3 passing `unittest` cases, created the exact ordered artifact
+`bolts=7, washers=4, nuts=1`, and every immutable input hash matched its pre-run receipt.
+The exact `4c8503c` bridge used free Zen/Muse, observe-only attachment, a persistent
+goal, one revocable correction grant and a one-dispatch cap. Muse returned HTTP 200,
+then its tool continuation received HTTP 429. The bridge failed closed to NOOP and sent
+nothing to the correctly completed worker, but its durable planner effect became
+`planner_failed_after_dispatch_marker`; the projected intervention therefore had null
+model/request provenance. Q14 is a failed diagnostic, not a quiet pass. Capture:
+`C:/Users/JosephMayo/Projects/pex-live-d67e78f/build/quiet-live-20260906/Q14/client/capture-20260907T170425400099Z.json`,
+SHA256 `A7B94EDB943CB6D968C30D0DF413E05DA5F14454AFF880C3CD33BF05FB28290E`.
+Grant revoked, observer detached, Q14 bridge/listener stopped and port 7438 freed.
+
+Root cause: after the 60-second inner Strands wall expired, cancellation waited without
+a bound for provider cleanup; the 70-second Pipeline boundary then won and could retain
+only an exception class, losing the already-created local invocation/model provenance.
+Current uncommitted repair bounds cancellation draining to 250 ms for main and verifier,
+consumes late task results safely, and returns the inner timeout receipt with its
+provenance before the outer boundary. A cancellation-resistant regression was added.
+Final focused runtime: 48 passed; broader supervisor/Pipeline/AgentCore gate: 100 passed
+in 90.64s, JUnit SHA256
+`F3DF38CF241369A0ADFBC9178CE40670CCA90DF42B42001D45A9FD690F9DE097`;
+Ruff passed. The operator-owned unreachable 25-line tail in `loop.py` remains present,
+unreviewed and must remain unstaged. Next: stage only the repair hunks/test/docs, review
+and push, rebuild/reverify exact release, then obtain a fresh correct-completion semantic
+NOOP only after the free-provider rate window recovers. Submission remains NO-GO.
+
 ### 7 September — first current whole-pipeline recovery proof (Q11 diagnostic)
 
 Exact pushed source `4c8503c` rebuilt normally. Package verifier reports both

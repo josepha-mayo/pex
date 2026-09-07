@@ -13,6 +13,7 @@ from pex_supervisor.evidence_observations import EvidenceObservationCollector
 from pex_supervisor.loop import (
     _action_from_proposal,
     _bounded_wall_timeout,
+    _cancel_invocation,
     _format_user,
     decide_async,
     run_strands_async,
@@ -307,6 +308,30 @@ async def test_strands_timeout_cancels_live_invocation():
     assert result.diagnosis == "strands_timeout"
     assert result.action.type.value == "NOOP"
     assert model.cancelled is True
+
+
+@pytest.mark.asyncio
+async def test_provider_cleanup_cannot_defeat_the_wall_clock():
+    entered = asyncio.Event()
+
+    async def slow_cleanup() -> None:
+        entered.set()
+        try:
+            await asyncio.sleep(60)
+        except asyncio.CancelledError:
+            await asyncio.sleep(0.1)
+
+    invocation = asyncio.create_task(slow_cleanup())
+    await entered.wait()
+    finished = await _cancel_invocation(
+        SimpleNamespace(cancel=lambda: None),
+        invocation,
+        drain_timeout=0.01,
+    )
+
+    assert finished is False
+    assert invocation.done() is False
+    await invocation
 
 
 @pytest.mark.asyncio

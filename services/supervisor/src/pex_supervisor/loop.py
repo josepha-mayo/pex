@@ -116,6 +116,33 @@ def _bounded_wall_timeout(
     return min(maximum, max(1.0, parsed))
 
 
+def _consume_invocation_result(task: asyncio.Task[Any]) -> None:
+    """Drain a late provider task without surfacing secrets or loop warnings."""
+
+    with suppress(asyncio.CancelledError, Exception):
+        task.result()
+
+
+async def _cancel_invocation(
+    agent: object,
+    invocation: asyncio.Task[Any],
+    *,
+    drain_timeout: float = 0.25,
+) -> bool:
+    """Request cancellation without letting provider cleanup defeat the wall clock."""
+
+    with suppress(Exception):
+        cancel = agent.cancel  # type: ignore[attr-defined]
+        cancel()
+    invocation.cancel()
+    done, _ = await asyncio.wait({invocation}, timeout=max(0.0, drain_timeout))
+    if invocation in done:
+        _consume_invocation_result(invocation)
+        return True
+    invocation.add_done_callback(_consume_invocation_result)
+    return False
+
+
 def _configure_stdio() -> None:
     import sys
 
@@ -734,11 +761,7 @@ async def run_strands_async(
     try:
         result = await asyncio.wait_for(asyncio.shield(invocation), timeout=wall_timeout)
     except TimeoutError:
-        with suppress(Exception):
-            agent.cancel()
-        invocation.cancel()
-        with suppress(asyncio.CancelledError, Exception):
-            await invocation
+        cleanup_finished = await _cancel_invocation(agent, invocation)
         metrics = getattr(agent, "event_loop_metrics", None)
         meta = _result_metadata(
             request=request,
@@ -761,16 +784,17 @@ async def run_strands_async(
             ),
             used_llm=True,
             diagnosis="strands_timeout",
-            traces=["strands_timeout"],
+            traces=[
+                "strands_timeout",
+                "invocation_cleanup_finished"
+                if cleanup_finished
+                else "invocation_cleanup_pending",
+            ],
             latency_ms=int((time.perf_counter() - started) * 1000),
             **meta,
         )
     except asyncio.CancelledError:
-        with suppress(Exception):
-            agent.cancel()
-        invocation.cancel()
-        with suppress(asyncio.CancelledError, Exception):
-            await invocation
+        await _cancel_invocation(agent, invocation)
         raise
     except Exception as exc:
         metrics = getattr(agent, "event_loop_metrics", None)
@@ -907,11 +931,7 @@ async def run_independent_verifier_async(
     try:
         result = await asyncio.wait_for(asyncio.shield(invocation), timeout=wall_timeout)
     except TimeoutError:
-        with suppress(Exception):
-            agent.cancel()
-        invocation.cancel()
-        with suppress(asyncio.CancelledError, Exception):
-            await invocation
+        await _cancel_invocation(agent, invocation)
         metrics = getattr(agent, "event_loop_metrics", None)
         return {
             "approved": False,
@@ -928,11 +948,7 @@ async def run_independent_verifier_async(
             "latency_ms": int((time.perf_counter() - started) * 1000),
         }
     except asyncio.CancelledError:
-        with suppress(Exception):
-            agent.cancel()
-        invocation.cancel()
-        with suppress(asyncio.CancelledError, Exception):
-            await invocation
+        await _cancel_invocation(agent, invocation)
         raise
     except Exception as exc:
         metrics = getattr(agent, "event_loop_metrics", None)

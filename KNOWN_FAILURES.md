@@ -1,5 +1,20 @@
 # Known failures
 
+## 7 September 2026 — Q14 provider rate-limit and cancellation-drain failure
+
+- Q14 is not a quiet pass. A correct Codex Spark completion was observed, but free Muse
+  returned HTTP 200 then HTTP 429 on its tool continuation. PEX failed closed and sent
+  no worker message.
+- The 60-second Strands timeout then waited without a bound for cancellation cleanup,
+  allowing Pipeline's 70-second timeout to finalize an ambiguous planner failure with
+  null model/request provenance. Local bounded-cleanup repair is tested but not yet live
+  verified or packaged.
+- Q12 and Q13 contain only pre-worker `create.intent` reservations from private-socket
+  preflight failures. Never retry, overwrite or count them.
+- Native PEX visual checks remain incomplete: the exact candidate is minimized and the
+  automation surface briefly captured another foreground app. No cross-app action was
+  taken.
+
 ## 6 September current: verification-reference binding
 
 Run-08 on clean `ee459f8` gathered real evidence and minted a valid PYTEST probe.

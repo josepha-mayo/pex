@@ -1,5 +1,22 @@
 # PEX code audit coverage — 5 September 2026
 
+## 7 September — cancellation cleanup could erase real inference provenance
+
+Live Q14 showed a correct worker completion followed by Muse HTTP 200 and a tool-turn
+HTTP 429. `run_strands_async` reached its inner wall but synchronously awaited the
+cancelled provider task without a cleanup bound. Pipeline's later 70-second boundary
+therefore finalized `planner_failed_after_dispatch_marker`, and the public intervention
+projection lost `model_name`, `local_invocation_id`, call count and `used_llm=true` even
+though inference had started. This violates Core/Build inference provenance and Recovery
+auditability requirements. The repair introduces bounded cancellation draining for both
+main and independent-verifier invocations, consumes a late task result without logging
+provider content, and annotates whether cleanup finished or remains pending. A deliberately
+cancellation-resistant task proves the caller returns before provider cleanup. Focused
+runtime: 48 passed. Broader Strands/supervisor/Pipeline/AgentCore: 100 passed in 90.64s,
+JUnit SHA256 `F3DF38CF241369A0ADFBC9178CE40670CCA90DF42B42001D45A9FD690F9DE097`.
+Live semantic re-verification is pending; severity P1 because action stayed fail-closed
+NOOP but the audit trail was incomplete.
+
 Snapshot: 341 unique tracked or untracked source/configuration paths from the current checkout. Includes tests and fixtures. Excludes generated dependency lockfiles and node_modules/target/dist/results/_audit trees; release dependencies, raw evidence, assets and prose docs need separate targeted checks. This is an inventory, **not evidence that every file has been reviewed**.
 
 All entries start `PENDING` for the fresh independent audit. Replace status only with specific coverage evidence from the reviewer; reading a diff, searching a symbol or passing a test does not equal full-file review. Record unresolved findings in SHIP_CHECKLIST.md or a linked findings log. New source files must be added and changed files re-reviewed.

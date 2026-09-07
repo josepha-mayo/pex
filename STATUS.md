@@ -1,5 +1,18 @@
 # STATUS
 
+## 7 September 2026 — native cold start passed; inference cleanup repair under review
+
+- Exact clean `4c8503c` desktop cold-started in an isolated profile with supervisor and
+  automatic attachments disabled; its exact packaged bridge answered `/health/live` on
+  7420. Native visual/restart/pet interaction gates remain open.
+- Q12/Q13 aborted before worker creation on private-socket preflight and are excluded.
+- Q14 worker completed correctly: independent 3/3 unittest, exact ordered JSON artifact,
+  immutable hashes unchanged. PEX sent no message, but a Muse 200 followed by 429 caused
+  the outer planner boundary to record an ambiguous failure without model provenance.
+- Uncommitted root-cause repair bounds Strands/verifier cancellation cleanup. 48 focused
+  and 100 broader tests pass; Ruff passes. Exact live semantic NOOP is still unproven.
+- Overall submission remains **NO-GO**.
+
 ## Current continuation — 6 September, internal ship target 9 September
 
 **Goal active; submission NO-GO.** The [current checkpoint](docs/CHECKPOINT_2026_09_06.md)

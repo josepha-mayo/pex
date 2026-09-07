@@ -1,5 +1,17 @@
 # PEX shipping checklist — 5 September 2026
 
+**7 September current gate:** exact `4c8503c` cold native startup and public bridge
+liveness passed in an isolated inference/attachment-disabled profile. Visual native
+acceptance remains open because the verified PEX window was minimized while the operator
+used the PC; no cross-app click was attempted. Q12/Q13 aborted before worker creation at
+private-socket preflight and are permanently excluded. Q14's worker completed correctly
+(3/3 independent tests, exact artifact, immutable hashes) and PEX remained silent, but
+Muse's second tool turn hit HTTP 429. The resulting outer timeout exposed unbounded inner
+cancellation cleanup and lost inference provenance, so Q14 is not a quiet pass. The
+bounded cleanup repair passes 48 focused and 100 broader tests; it is not yet pushed or
+live-reverified. Formal correct-completion NOOP, native close/restore/eight-pet playback,
+benchmark, AgentCore and submission gates remain open.
+
 **6 September update:** the user extended the internal ship target to **9 September
 2026 WAT**. Follow [the current checkpoint](CHECKPOINT_2026_09_06.md) for accepted
 source, failed/incomplete gates, native evidence and immediate work. Older 6 September
