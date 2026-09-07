@@ -486,27 +486,33 @@ async def test_lifespan_exits_while_supervisor_activation_remains_hung(
     app = create_app()
 
     async def enter_and_exit() -> None:
-        async with app.router.lifespan_context(app):
-            assert await asyncio.to_thread(entered.wait, 0.5)
-            if startup_source in {"environment_success", "environment_no_key"}:
-                await _wait_until(lambda: state.pipeline.model is loaded_model)
-                assert state.supervisor_error is None
-                async with AsyncClient(
-                    transport=ASGITransport(app=app), base_url="http://127.0.0.1"
-                ) as client:
-                    supervisor = await client.get("/v1/supervisor")
-                assert supervisor.status_code == 200
-                assert supervisor.json()["has_api_key"] is (
-                    startup_source == "environment_success"
-                )
-                assert supervisor.json()["credential_status"] == (
-                    "available"
-                    if startup_source == "environment_success"
-                    else "not_required"
-                )
+        # Database migrations and cold pet decoding are real startup work, not
+        # evidence that a hung model constructor prevents bounded shutdown.
+        # Keep entry below the mocked 60s activation timeout, then measure the
+        # original 3s exit contract independently, in the same lifespan task.
+        async with asyncio.timeout(30.0) as deadline:
+            async with app.router.lifespan_context(app):
+                assert await asyncio.to_thread(entered.wait, 0.5)
+                if startup_source in {"environment_success", "environment_no_key"}:
+                    await _wait_until(lambda: state.pipeline.model is loaded_model)
+                    assert state.supervisor_error is None
+                    async with AsyncClient(
+                        transport=ASGITransport(app=app), base_url="http://127.0.0.1"
+                    ) as client:
+                        supervisor = await client.get("/v1/supervisor")
+                    assert supervisor.status_code == 200
+                    assert supervisor.json()["has_api_key"] is (
+                        startup_source == "environment_success"
+                    )
+                    assert supervisor.json()["credential_status"] == (
+                        "available"
+                        if startup_source == "environment_success"
+                        else "not_required"
+                    )
+                deadline.reschedule(asyncio.get_running_loop().time() + 3.0)
 
     try:
-        await asyncio.wait_for(enter_and_exit(), timeout=3.0)
+        await enter_and_exit()
         assert not release.is_set()
     finally:
         release.set()

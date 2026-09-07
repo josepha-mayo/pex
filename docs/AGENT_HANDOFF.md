@@ -1,5 +1,28 @@
 # PEX agent handoff
 
+### Current running gates after 8023a73
+
+Clean release build runs as exec85512 in `pex-release-startup-20260907` (source
+8023a73); frozen/offline Python sync and npm ci passed. Do not duplicate or alter
+the checkout during this build. Clean full gate85618 is terminal:147passed,
+3skips,16deselections, one failure in the hung-activation lifespan test. Its fixed
+3-second timer included database initialization, and expired before teardown.
+The fixture now permits bounded30-second startup (below its mocked60-second hung
+activation) and retains the original3-second shutdown deadline in the SAME task.
+All49Settings cases passed125.84s; `build/settings-startup-exit-budget-20260907.xml`.
+Restart full clean gate after this fixture-only commit. Previous concurrent503
+failure is still not diagnosed; do not erase that receipt.
+
+Read-only provider preflight: main .env selects zen / muse-spark-1.3-contributor-free
+with API-key auth; credential presence confirmed without printing its value.
+Official https://opencode.ai/docs/zen checked7September: exact model is Free for
+input/output/cache-read and uses Responses endpoint. Contributor terms allow
+training on prompts/completions. Use only non-sensitive isolated fixture work,
+never paid fallback. This is no model call or account-credit/billing mutation.
+Cold SDK import measured18.543s locally; no-network construction probe26964 is
+checking whether that exceeds the existing10-second Settings setup budget.
+No live provider/worker calls have occurred; user's after-clean-gate condition holds.
+
 ## 7 September — actual startup failure reproduced; SDK import repair
 
 The user approved bounded free-Muse/Codex-Spark live checks AFTER clean build/tests
