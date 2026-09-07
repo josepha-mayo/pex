@@ -440,6 +440,8 @@ p {
 .settings-sections {
   display: flex;
   gap: 6px;
+  width: min(1040px, 100%);
+  margin-inline: auto;
   padding: 4px;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -453,7 +455,7 @@ p {
   border-radius: 8px;
   background: transparent;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
 }
 
@@ -2268,6 +2270,13 @@ textarea::placeholder {
   scrollbar-color: var(--line-strong) transparent;
 }
 
+.settings-page > .surface-heading,
+.settings-page > .settings-grid,
+.settings-page > .settings-page-note {
+  width: min(1040px, 100%);
+  margin-inline: auto;
+}
+
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2283,7 +2292,10 @@ textarea::placeholder {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--panel-soft);
 }
 
 .settings-grid .pet-roster > header {
@@ -2305,8 +2317,8 @@ textarea::placeholder {
 .settings-card {
   display: grid;
   align-content: start;
-  gap: 10px;
-  padding: 16px;
+  gap: 12px;
+  padding: 20px;
 }
 
 .settings-card h2 {
@@ -2318,6 +2330,11 @@ textarea::placeholder {
   margin: 0;
 }
 
+.settings-page label {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .settings-wide {
   grid-column: 1 / -1;
 }
@@ -2325,8 +2342,8 @@ textarea::placeholder {
 .settings-note {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .settings-list {

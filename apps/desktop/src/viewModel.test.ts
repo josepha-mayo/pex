@@ -1331,6 +1331,14 @@ test("native pet close is routed to the same durable visibility contract", async
   assert.match(appSource, /onPetVisible=\{\(visible\) => void changePetVisibility\(visible\)\}/u);
 });
 
+test("cold companion renders the bundled Pex atlas before bridge pet state arrives", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const appSource = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.match(appSource, /import bundledPexSheet from "\.\/pets\/pex\/spritesheet\.webp"/u);
+  assert.match(appSource, /const bridgeSheet = useBridgeAsset\(/u);
+  assert.match(appSource, /const sheet = bridgeSheet \|\| bundledPexSheet/u);
+});
+
 test("pet dragging recognizes vertical and diagonal movement without accidental activation", async () => {
   const { petDragThresholdReached, petPointerShouldActivate } = await import("./petInteraction.ts");
   const start = { x: 20, y: 20 };

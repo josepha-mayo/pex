@@ -25,6 +25,7 @@ import { createOperatorRequest } from "./operatorRequest";
 import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
+import bundledPexSheet from "./pets/pex/spritesheet.webp";
 import { applyPetClickThrough, expandMainSurface, hidePetOverlay, nextPetExpansion, PET_NATIVE_DISMISSED_EVENT, PET_VISIBILITY_EVENT, petClickThroughEnabled, petOverlayVisible, releasePetOverlay, setPetOverlayVisible, showPetOverlay } from "./releasePet";
 import {
   advanceBridgeBootstrapStatus,
@@ -1202,9 +1203,10 @@ export function App() {
   const semanticSupervisor = supervisorAvailability({ supervisor, supervisorFresh: settingsAvailable });
   const homeStatus = statusWithFirstRunGuidance(status, setup, Boolean(pet?.paused));
   const mood = moodForState(pet, bridgeError);
-  const sheet = useBridgeAsset(
+  const bridgeSheet = useBridgeAsset(
     pet?.appearance?.atlas_ready === true ? pet.appearance.spritesheet_url : undefined,
   );
+  const sheet = bridgeSheet || bundledPexSheet;
   const petName = pet?.settings?.custom_name?.trim() || pet?.appearance?.display_name || "Pex";
   const reducedMotion = useReducedMotion();
   const displayedInterventions = useMemo(
