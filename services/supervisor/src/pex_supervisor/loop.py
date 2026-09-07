@@ -101,14 +101,19 @@ def _strict_verifier_int(value: object, *, maximum: int = 1_000_000_000_000) -> 
     return _bounded_nonnegative_int(value, maximum=maximum)
 
 
-def _bounded_wall_timeout(value: object, *, default: float) -> float:
+def _bounded_wall_timeout(
+    value: object,
+    *,
+    default: float,
+    maximum: float = 25.0,
+) -> float:
     try:
         parsed = float(value)
     except (TypeError, ValueError, OverflowError):
         parsed = default
     if not math.isfinite(parsed):
         parsed = default
-    return min(25.0, max(1.0, parsed))
+    return min(maximum, max(1.0, parsed))
 
 
 def _configure_stdio() -> None:
@@ -718,10 +723,14 @@ async def run_strands_async(
     )
     if wall_timeout is None:
         try:
-            wall_timeout = float(os.environ.get("PEX_SUPERVISOR_WALL_TIMEOUT", "25"))
+            wall_timeout = float(os.environ.get("PEX_SUPERVISOR_WALL_TIMEOUT", "60"))
         except ValueError:
-            wall_timeout = 25.0
-    wall_timeout = _bounded_wall_timeout(wall_timeout, default=25.0)
+            wall_timeout = 60.0
+    wall_timeout = _bounded_wall_timeout(
+        wall_timeout,
+        default=60.0,
+        maximum=60.0,
+    )
     try:
         result = await asyncio.wait_for(asyncio.shield(invocation), timeout=wall_timeout)
     except TimeoutError:

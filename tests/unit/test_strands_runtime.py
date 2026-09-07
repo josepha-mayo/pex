@@ -402,6 +402,7 @@ def test_wall_timeouts_are_finite_and_bounded():
     assert _bounded_wall_timeout("invalid", default=15.0) == 15.0
     assert _bounded_wall_timeout(-100, default=15.0) == 1.0
     assert _bounded_wall_timeout(100, default=15.0) == 25.0
+    assert _bounded_wall_timeout(100, default=60.0, maximum=60.0) == 60.0
 
 
 def test_supervisor_prompt_bounds_untrusted_goal_and_event_fields():

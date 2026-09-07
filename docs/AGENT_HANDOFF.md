@@ -1,5 +1,50 @@
 # PEX agent handoff
 
+### 7 September — exact release green; Q09 exposed main-agent timeout
+
+Exact pushed source `fcd696c` passed the clean final non-live gate: 3942 passed,
+13 explicit platform/optional skips, 16 live cases deselected, zero failures in
+1615.66s. JUnit `C:/Users/JosephMayo/Projects/pex-verify-14bc53d/build/full-regression-fcd696c.xml`
+has SHA256 `1CF1D3AF81185FBB229A5CF8364470516EBE11DDB7F97919474786487F191F44`.
+Normal Tauri release build produced both MSI and NSIS. Package verifier executed
+the extracted frozen bridge, confirmed the exact ordered eight-pet inventory and
+all four executables in both installers, and recorded `release_ready=true` with no
+blockers. Receipt `C:/Users/JosephMayo/Projects/pex-release-b1d1223/build/pex-package-receipt-fcd696c.json`
+has SHA256 `30A1BC3C0E2212450082CBA75C7421BEA7A14520A81FF1B98B977E825E1DF7CA`.
+Exact packaged bridge lifetime: 3 passed in86.67s; JUnit SHA256
+`61D2817E5B3114173578BFF90C8817C40065FA69D37382D24803C38F4494F14C`.
+Rust desktop:16passed. This is clean source/package evidence; native UX remains open.
+
+Fresh bounded Q09 used retained Codex Spark thread
+`01a07c78-f437-7f01-8b76-165c1ce19521`, exactly one READY warm-up and one work turn.
+The exact `fcd696c` bridge ran isolated on7438 with Zen
+`muse-spark-1.3-contributor-free`, Responses, a one-dispatch/session cap and no
+automatic attachment. Origin, observe-only attachment, persistent goal and correction
+grant all succeeded. The worker produced the exact three-row CSV; independent parent
+pytest passed5/5 and every immutable input hash remained unchanged. PEX's request
+cleared the repaired Zen session gate but timed out at25071ms. It failed closed to
+`semantic_dispatch_result_ambiguous` NOOP, sent no correction, and recorded no
+acceptance claim. Therefore **Q09 is failed quiet evidence and must never be counted
+or rerun**. Capture
+`C:/Users/JosephMayo/Projects/pex-live-d67e78f/build/quiet-live-20260906/Q09/client/capture-20260907T153159270234Z.json`
+has SHA256 `159732AC17B6DF772C0C9BC34F60359CE7DD46953E69F7733C7FC1AF4E9CB93C`.
+Grant was revoked, observer detached, and the exact owned bridge/App Server stopped;
+7438 is free.
+
+Root cause: provider I/O already permits45seconds, but the whole main Strands agent
+was capped at25seconds. Current local repair gives only the main agent a bounded
+60-second default/maximum while retaining the independent verifier's existing
+25-second default ceiling. The operator-owned25-line tail diff in `loop.py` remains
+present and must not be staged.126 provider/import/Strands tests passed; Ruff passed;
+JUnit SHA256 `0E75F1D9447E0ACEDBCF51748707C5127A0F2E48B7F8D6E75A6180656D5F66B2`.
+One fresh real free-Muse Strands contract completed in17.47s with exact
+provider/model/Responses provenance; JUnit SHA256
+`79182244EAF594508F041F412D56D5D14A07F42647DE4A2D56EF312EB374DF6A`.
+Next: review and push only the timeout hunks/test/docs, run proportional clean proof,
+then use a new case (never Q08/Q09) for an evidence-supported NOOP. Native cold
+startup/Retry/pet-close/restore/eight-pet playback and honest benchmark work remain
+open. Submission remains NO-GO.
+
 ### 7 September — live Q08 exposed and repaired Zen session enforcement
 
 The clean `b1d1223` release is fully green as a historical exact artifact: normal

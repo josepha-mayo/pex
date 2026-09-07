@@ -20,6 +20,17 @@ then run honest paired demonstrations/benchmarks, re-review the three-spec gaps 
 prepare the video/submission. Submission remains **NO-GO** until those receipts exist.
 The protected 25-line `loop.py` change is operator-owned, unstaged and excluded.
 
+**New authoritative release/live checkpoint:** exact pushed `fcd696c` is clean-gate
+and package green:3942 non-live tests passed, MSI/NSIS verification reports no
+blockers and exact eight-pet/four-executable inventories, frozen bridge lifetime
+3passed, Rust16passed. Q09 is a preserved failed quiet case: the correct worker
+artifact independently passed5tests, but PEX's real Muse inference hit the old
+25-second main-agent ceiling and failed closed to ambiguous NOOP. Local repair raises
+only the main-agent bounded budget to60seconds;126 affected tests, Ruff and one real
+free-Muse Strands contract pass. Push that reviewed slice, then prove a fresh case.
+Do not count or rerun Q08/Q09. Native app/pet acceptance, ten quiet cases, paired
+benchmarks, AgentCore deployment proof and final submission remain OPEN/NO-GO.
+
 **Newer live-provider finding:** Q08 is a failed quiet case, not progress toward the
 ten-case count. OpenCode began requiring `x-opencode-session` on6September; Muse's
 real call failed400 and PEX correctly fell back to uncertain NOOP. The repaired Zen

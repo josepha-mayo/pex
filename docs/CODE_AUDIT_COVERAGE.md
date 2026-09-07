@@ -6,6 +6,18 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Main Strands wall budget — 7 Sep
+
+Changed-path review of `loop.py` timeout selection and its bounded-timeout unit
+contract. Fresh Q09 proved the Zen session repair worked but the full main Agent
+timed out at25071ms despite provider I/O allowing45seconds. The main invocation now
+has a60-second default and hard maximum; the independent verifier still uses the
+existing25-second default ceiling. Timeout cancellation and fail-closed NOOP behavior
+are unchanged.126 provider/import/Strands tests and Ruff passed, followed by one
+real free-Muse Strands contract in17.47s. Q09 remains a failed quiet case; a synthetic
+provider contract does not relabel it. The protected operator tail in `loop.py` is
+outside this review and must remain unstaged.
+
 ### Zen free Responses session enforcement — 7 Sep
 
 Changed-path review of provider construction plus live failure evidence. Q08's real
