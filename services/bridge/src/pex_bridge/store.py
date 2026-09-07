@@ -21270,10 +21270,13 @@ class Store:
         owner: str,
         semantic_dispatch_limit: int | None = None,
         trajectory_candidate_key: str | None = None,
+        semantic_dispatch_available: bool = True,
     ) -> dict[str, Any]:
         """Grant exactly one reserved-to-dispatching transition."""
 
         _validate_store_id(owner, label="event effect owner")
+        if type(semantic_dispatch_available) is not bool:
+            raise ValueError("semantic dispatch availability must be a boolean")
         if trajectory_candidate_key is not None and (
             not isinstance(trajectory_candidate_key, str)
             or re.fullmatch(r"[a-f0-9]{64}", trajectory_candidate_key) is None
@@ -21364,6 +21367,9 @@ class Store:
                     await transaction.commit()
                     return {"granted": False, "reason": exc.code, "effect": effect}
                 now = utcnow().isoformat()
+                if not semantic_dispatch_available:
+                    await transaction.commit()
+                    return {"granted": False, "reason": "supervisor_unavailable"}
                 if trajectory_candidate_key is not None:
                     if semantic_dispatch_limit is None:
                         await transaction.commit()

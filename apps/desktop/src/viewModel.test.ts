@@ -723,6 +723,13 @@ test("a skipped budget-limited review is not presented as verified completion", 
   assert.notEqual(statusCopy({ ...pet, last_action: {
     ...pet.last_action, diagnosis: "Completion supported by current evidence.",
   } }, null).label, "Review skipped");
+  const unavailable = { ...pet, last_action: {
+    ...pet.last_action, diagnosis: "supervisor_unavailable",
+  } };
+  assert.equal(statusCopy(unavailable, null).label, "Review unavailable");
+  assert.match(statusCopy(unavailable, null).detail, /not a verified completion/u);
+  assert.equal(statusCopy({ ...unavailable, working: 2 }, null).label, "2 working · review unavailable");
+  assert.equal(statusCopy(unavailable, "offline").label, "Bridge offline");
 });
 
 test("blocked state is never presented as quiet", () => {

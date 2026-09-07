@@ -38,6 +38,10 @@ drop requirements or declare an unverified product ready.
   gates: 196 frontend tests/build, 106 backend tests (one platform skip), then
   ten startup/saved-cap and disabled-review interleaving cases. Native usage,
   remaining-count display and aggregate spend accounting are still unverified/open.
+  Missing-supervisor repair: no dispatch or trajectory reservation is consumed
+  when routing is known unavailable; later evidence after setup can be reviewed.
+  UI labels this as unavailable, not verified completion. Scoped four-file gate:
+  155 passed, zero errors/skips; receipt in the handoff. B remains open.
   Acceptance: shared local/remote eligibility, evidence-bound decisions, quiet
   routine progress, bounded review and same-worker outcome. Mocked tests first;
   live proof is separate. The user approved narrow `loop.py` edits while

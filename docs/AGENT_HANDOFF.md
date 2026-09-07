@@ -1,5 +1,26 @@
 # PEX agent handoff
 
+## 7 September — unavailable supervisor reservation repair
+
+Known unavailable semantic routing now becomes an audited skipped planner effect
+before consuming either the dispatch cap or trajectory coalescing key. This
+prevents an event seen before model setup from suppressing a later real review
+of the same failure. Unknown/custom routers remain conservatively counted;
+explicit force-model mode remains a possible dispatch. The decision is carried
+into the Store transaction, so late model activation cannot turn the skipped
+attempt into an unreserved call. The UI says "Review unavailable" instead of
+echoing worker completion as verification. No provider work was performed.
+
+Focused regression proved zero reservations before model availability, then one
+mocked review on later evidence after configuration; frontend 196 tests passed,
+production build passed (63 modules, 1.72s). The previous broad test handle 76631
+was missing and no matching process remained; its outcome was not claimed.
+Replacement gate completed: durable XML records 155 tests, zero failures,
+errors or skips in 61.574s. Receipt `build/unavailable-supervisor-20260907.xml`,
+SHA256 `EA8FEAD1DD2711E16575733234AD389F3CC9878D64CE41A20DFAF69DB06DDA73`.
+Exec 12939 is no longer available; do not poll or rerun it. This is a scoped
+source regression gate, not live supervision or final-package approval.
+
 ## 7 September — saved review-limit editor
 
 New Settings control and authenticated supervisor PATCH support a persisted

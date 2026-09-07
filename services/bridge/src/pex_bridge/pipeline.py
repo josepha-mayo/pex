@@ -1717,6 +1717,9 @@ class Pipeline:
 
         candidate = trajectory_review_candidate(request)
         budget_options = {}
+        availability = getattr(self.supervisor, "can_attempt_semantic", None)
+        if semantic and callable(availability) and availability(self.model) is False:
+            budget_options["semantic_dispatch_available"] = False
         if semantic and self.supervisor_dispatch_limit is not None:
             budget_options["semantic_dispatch_limit"] = (
                 self.supervisor_dispatch_limit
@@ -1734,6 +1737,7 @@ class Pipeline:
                 "supervisor_dispatch_budget_exhausted", "trajectory_review_coalesced",
                 "trajectory_review_deferred",
                 "trajectory_review_disabled",
+                "supervisor_unavailable",
             }:
                 reason = dispatch["reason"]
                 result = SupervisorResult(

@@ -25,6 +25,10 @@ outlive a caller timeout. A free-provider label is not a billing guarantee.
 - Reservation and the planner's transition to dispatching occur in one SQLite
   transaction, after claim, ordering and workspace-authority checks.
 - Failed, timed-out, cancelled or ambiguous attempts are not refunded.
+- A router that definitively has no local model or configured remote client is
+  skipped before reservation (`supervisor_unavailable`). This spends neither
+  the cap nor trajectory coalescing key. Later material evidence can be reviewed
+  after configuration succeeds; no old event is automatically replayed.
 - Replaying the same durable event does not obtain another reservation.
 - Reservations persist across bridge restart. They are retained separately from
   event rows so deleting an event cannot silently replenish the allowance.
@@ -57,3 +61,6 @@ offline/stale state, human decisions, blocked workers or drift. Concurrent
 working counts remain visible. The notice describes the last review; it is not
 an inventory of all exhausted sessions or proof that a limit is still configured.
 A later projected action replaces it. There is no automatic spending escalation.
+The corresponding unavailable-supervisor status says "Review unavailable",
+not verified completion, and preserves concurrent working counts and higher
+priority offline/human-decision states.

@@ -638,6 +638,13 @@ export function statusCopy(
         "The last review hit its session review limit. PEX did not verify that stop. Other sessions may still be supervised.",
     };
   }
+  if (pet?.last_action?.action === "NOOP" && pet.last_action.diagnosis === "supervisor_unavailable") {
+    return {
+      tone: "watch",
+      label: pet.working ? `${pet.working} working · review unavailable` : "Review unavailable",
+      detail: "No supervisor was available for the last review. Check model or AgentCore settings; this is not a verified completion.",
+    };
+  }
   if (pet?.working) {
     return {
       tone: "work",

@@ -265,6 +265,45 @@ async def test_trajectory_review_coalesces_across_restart_without_refunding(
 
 
 @pytest.mark.asyncio
+async def test_unavailable_model_does_not_spend_or_coalesce_a_future_review(tmp_path, monkeypatch):
+    import sqlite3
+
+    monkeypatch.delenv("PEX_FORCE_LLM", raising=False)
+    store, adapters, session, pipeline = await _pipeline(tmp_path)
+    pipeline.settings.supervisor_max_dispatches_per_session = 2
+    counted = _RemoteNoop()
+
+    async def mock_strands(request, model=None):
+        return await counted.decide(request)
+
+    monkeypatch.setattr("pex_supervisor.loop.run_strands_async", mock_strands)
+    try:
+        for index in range(3):
+            event = _event(session, f"unavailable-{index}", event_type=EventType.SHELL)
+            event.command = "pytest -q"
+            event.error = "missing dependency"
+            event.process_state = {"exit_code": 1}
+            await pipeline.ingest_event(event, session)
+        assert counted.calls == 0
+        unavailable = await store.get_event_effect(event.event_id, "planner")
+        assert unavailable["result"]["code"] == "supervisor_unavailable"
+        assert unavailable["result"]["provider_started"] is False
+        with sqlite3.connect(store.path) as inspection:
+            for table in ("supervisor_dispatch_reservations", "trajectory_review_reservations"):
+                assert inspection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
+        pipeline.model = object()
+        later = event.model_copy(update={
+            "event_id": "model-now-available", "ts": datetime.now(UTC),
+        })
+        await pipeline.ingest_event(later, session)
+        assert counted.calls == 1
+        assert not adapters.synthetic.inbox.get(session.id)
+    finally:
+        await _drain_presentations(pipeline)
+        await store.close()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("fail", [False, True])
 @pytest.mark.parametrize("mode", ["local", "agentcore"])
 @pytest.mark.parametrize("cap_source", ["startup", "saved"])

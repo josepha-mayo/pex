@@ -10,6 +10,7 @@ import asyncio
 import hashlib
 import io
 import json
+import os
 import re
 import time
 from collections.abc import Iterable, Mapping
@@ -995,6 +996,17 @@ class SupervisorRouter:
                 # Preserve only the failure class. Configuration text is not
                 # needed for routing and may contain operator-controlled input.
                 self._configuration_failed = True
+
+    @staticmethod
+    def _local_model_may_start(local_model: object | None) -> bool:
+        return local_model is not None or os.environ.get("PEX_FORCE_LLM") == "1"
+
+    def can_attempt_semantic(self, local_model: object | None) -> bool:
+        if self.mode == "agentcore":
+            return self.agentcore is not None
+        if self.mode == "hybrid" and self.agentcore is not None:
+            return True
+        return self._local_model_may_start(local_model)
 
     @staticmethod
     def _deterministic(request: SupervisorRequest, mode: str) -> SupervisorResult:
