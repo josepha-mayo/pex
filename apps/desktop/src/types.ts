@@ -253,6 +253,7 @@ export type SupervisorInfo = {
   providers?: string[];
   note?: string;
   model_loaded?: boolean;
+  activation_status?: "loading" | "timed_out" | "failed" | "unavailable" | "disabled" | "configured";
   error?: string;
 };
 

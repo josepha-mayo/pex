@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+**P0: reported whole-PC freeze while PEX was idle; root cause unknown.** The app is
+no longer running and the assistant stopped the clean full-test workload. No native
+relaunch/large gates without fresh bounded-run confirmation. Offline repairs now
+bound polling, GET/asset reads and cold atlas decode concurrency; 112 focused desktop
+and 15 targeted backend tests pass. This is not native stability verification.
+
 See [the detailed checkpoint](docs/CHECKPOINT_2026_09_08.md). Exact de83153 installers
 are verified. Native testing paused on Escape, with PEX left open. Q18 completed
 real Muse reasoning and stayed quiet on independently tested output, but artifact

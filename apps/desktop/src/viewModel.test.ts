@@ -757,7 +757,7 @@ test("offline state immediately suppresses stale agent prompts", async () => {
   const inspector = await readFile(new URL("./components/Inspector.tsx", import.meta.url), "utf8");
   const deck = await readFile(new URL("./components/CommandDeck.tsx", import.meta.url), "utf8");
 
-  assert.match(app, /currentSocket\.onclose = \(\) => \{[\s\S]*?void refreshPet\(\)/);
+  assert.match(app, /currentSocket\.onclose = \(\) => \{[\s\S]*?void refreshBackgroundPet\(\)/);
   assert.match(app, /canonicalStateAvailable=\{inspectorCanonicalStateAvailable\}/);
   assert.match(app, /attentionMetrics\?\.current_pending\.items \|\| deck\.interventions \|\| \[\]/);
   assert.match(inspector, /canonicalStateAvailable \? askPexQuestions\(sessions, action\) : \[\]/);

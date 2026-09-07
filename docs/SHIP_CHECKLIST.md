@@ -4,11 +4,17 @@
 [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md); older current/latest labels are
 historical. Overall submission remains NO-GO and the full steps below remain required.
 
+- [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
+  Read the incident checkpoint. Do not treat offline fixes as native stability proof.
+- [x] Reproduce polling/decode resource-control gaps and test bounded repairs offline.
+- [ ] Confirm a bounded native resource capture before reopening the app or large gates.
+
 - [x] Build and verify exact de83153 MSI/NSIS inventories.
 - [x] Capture real Q18 completed Muse NOOP, oracle and cleanup; retain uncertainty.
 - [x] Repair named-artifact inspection and descriptor-bound reads; 189 tests/5 skips.
 - [ ] Push and run clean full regression for that source slice.
-- [ ] Finish saved-model startup failure/recovery UX and fresh quiet/recovery proof.
+- [x] Add canonical saved-model loading/failure/retry guidance; scoped tests pass.
+- [ ] Verify startup recovery natively and finish fresh quiet/recovery proof after stability.
 - [ ] Renew native-check permission after Escape; canvas/eight-pet playback still open.
 - [ ] Complete source audit, human workflow, fair comparisons, AgentCore proof,
   filming and authorized submission. Internal target: 9 September WAT.

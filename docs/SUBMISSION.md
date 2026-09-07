@@ -1,5 +1,10 @@
 # Devpost submission copy
 
+> **P0 override: user-reported whole-PC freeze while PEX was idle.** Root cause is
+> unknown. Native PEX and the assistant's large test workload are stopped. Offline
+> resource repairs do not prove stability. Submission remains NO-GO; follow the
+> incident at the top of [the current checkpoint](CHECKPOINT_2026_09_08.md).
+
 > **Current, 8 September WAT: still NO-GO.** Follow
 > [the detailed checkpoint](CHECKPOINT_2026_09_08.md). Exact de83153 installers passed
 > integrity checks. Real Q18 completed inference and stayed quiet with acceptance

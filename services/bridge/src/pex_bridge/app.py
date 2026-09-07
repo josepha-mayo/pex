@@ -3091,6 +3091,21 @@ async def _activate_saved_supervisor_choice(
         state.supervisor_error = None if model is not None else "SupervisorUnavailable"
 
 
+def _supervisor_activation_status(*, model_loaded: bool, disabled: bool) -> str:
+    """Public lifecycle state only; never expose a provider exception or secret."""
+    if model_loaded:
+        return "configured"
+    if disabled:
+        return "disabled"
+    if state.supervisor_error == "SupervisorLoading":
+        return "loading"
+    if state.supervisor_error == "SupervisorActivationTimeout":
+        return "timed_out"
+    if state.supervisor_error not in {None, "SupervisorUnavailable"}:
+        return "failed"
+    return "unavailable"
+
+
 def _clean_patch_text(value: str | None) -> str | None:
     if value is None:
         return None
@@ -3497,6 +3512,9 @@ def create_app() -> FastAPI:
             info["backend"] = state.supervisor_choice.provider
         info["catalog"] = model_catalog()
         info["model_loaded"] = state.pipeline.model is not None
+        info["activation_status"] = _supervisor_activation_status(
+            model_loaded=info["model_loaded"], disabled=info.get("disabled") is True,
+        )
         info["max_dispatches_per_session"] = (
             state.pipeline.supervisor_dispatch_limit
         )
@@ -3672,6 +3690,9 @@ def create_app() -> FastAPI:
             )
             info["backend"] = desired.provider
             info["model_loaded"] = candidate_model is not None
+            info["activation_status"] = _supervisor_activation_status(
+                model_loaded=info["model_loaded"], disabled=info.get("disabled") is True,
+            )
             info["max_dispatches_per_session"] = (
                 state.pipeline.supervisor_dispatch_limit
             )

@@ -15,6 +15,7 @@ import type {
   ProjectIdentityStatusView,
   SessionRow,
   StatusCopy,
+  SupervisorInfo,
 } from "./types";
 import type { PetMood } from "./pets/atlas";
 
@@ -510,15 +511,34 @@ export function companionHeadline(pet: PetSnapshot | null): string {
   return raw.replace(/^[a-z][a-z0-9_]*(?:_[a-z0-9_]+)*/, (word) => titleCase(word));
 }
 
+export function supervisorActivationCopy(
+  info: Pick<SupervisorInfo, "model_loaded" | "activation_status"> | null,
+): string | null {
+  if (info?.model_loaded) return null;
+  switch (info?.activation_status) {
+    case "loading":
+      return "Loading the saved supervisor. Semantic supervision is not active yet; worker tasks are unaffected.";
+    case "timed_out":
+      return "Saved supervisor setup timed out. In Settings, choose Save supervisor to retry this configuration. This does not restart worker tasks.";
+    case "failed":
+      return "The saved supervisor could not be loaded. Check the credential source and endpoint in Settings, then choose Save supervisor to retry.";
+    case "disabled":
+      return "Model supervision is disabled by this PEX launch configuration. Saving a provider will not enable it.";
+    default:
+      return null;
+  }
+}
+
 export function supervisorHonestyCopy(info: {
   model_loaded?: boolean;
+  activation_status?: SupervisorInfo["activation_status"];
   has_api_key?: boolean;
   auth_mode?: string | null;
   login_implemented?: boolean;
 } | null): string {
-  const loaded = info?.model_loaded
+  const loaded = supervisorActivationCopy(info) ?? (info?.model_loaded
     ? "Supervisor model client is configured; configuration does not verify connection or inference."
-    : "PEX stays deterministic until a configured model is available.";
+    : "PEX stays deterministic until a configured model is available.");
   const mode = info?.auth_mode || "unconfigured";
   const login = info?.login_implemented
     ? "Vendor login is available for this provider."

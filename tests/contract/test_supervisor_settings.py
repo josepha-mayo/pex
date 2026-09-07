@@ -152,6 +152,41 @@ async def test_supervisor_reports_actual_pipeline_dispatch_limit(supervisor_clie
     assert response.json()["max_dispatches_per_session"] == limit
 
 
+@pytest.mark.parametrize("error,loaded,disabled,expected", [
+    ("SupervisorLoading", False, False, "loading"),
+    ("SupervisorActivationTimeout", False, False, "timed_out"),
+    ("PRIVATE_ERROR_DETAIL", False, False, "failed"),
+    ("SupervisorUnavailable", False, False, "unavailable"),
+    (None, False, False, "unavailable"),
+    (None, False, True, "disabled"),
+    (None, True, False, "configured"),
+])
+async def test_settings_exposes_bounded_activation_state_without_raw_failure(
+    supervisor_client, monkeypatch, error, loaded, disabled, expected,
+):
+    client, *_ = supervisor_client
+    state.supervisor_error = error
+    state.pipeline.model = object() if loaded else None
+    monkeypatch.setattr("pex_supervisor.providers.describe_backend", lambda: {"disabled": disabled})
+    response = await client.get("/v1/supervisor")
+    assert response.status_code == 200
+    assert response.json()["activation_status"] == expected
+    assert "PRIVATE_ERROR_DETAIL" not in response.text
+
+
+async def test_successful_save_and_read_agree_on_activation_state(supervisor_client, monkeypatch):
+    client, *_ = supervisor_client
+    monkeypatch.setattr("pex_supervisor.providers.load_supervisor_model", lambda _config: object())
+    monkeypatch.setattr("pex_supervisor.providers.describe_backend", lambda: {"disabled": False})
+    state.supervisor_error = "SupervisorActivationTimeout"
+    saved = await client.patch("/v1/supervisor", json=_custom_payload())
+    assert saved.status_code == 200
+    assert saved.json()["activation_status"] == "configured"
+    current = await client.get("/v1/supervisor")
+    assert current.json()["activation_status"] == "configured"
+    assert state.supervisor_error is None
+
+
 async def _wait_until(predicate, *, attempts: int = 100) -> None:
     for _ in range(attempts):
         if predicate():

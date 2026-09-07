@@ -1,9 +1,70 @@
 # PEX checkpoint — 8 September 2026 WAT
 
-Current as of 7 September 23:20 UTC / 8 September 00:20 WAT. The internal filming
+Updated after the 8 September WAT idle-freeze report. The internal filming
 target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
+
+## P0: reported whole-PC freeze while PEX was idle
+
+The user reported that PEX froze the whole PC, and answered "nothing rly" when
+asked what they were doing beforehand. Treat idle/background behavior as the
+current critical path. **The cause has not been reproduced or established.** Do
+not relaunch PEX, run live benchmarks, or resume the large regression/build workload
+without a fresh bounded resource plan and operator confirmation. The earlier
+Computer Use resume question is superseded by this incident. No app input occurred
+after Escape.
+
+The assistant stopped its exact clean full-regression Python child PID 23980 after
+checking the owned launcher/command identity. Session 32515 ended -1 around 8%; this
+is INTERRUPTED, never a pass. Retain `build/full-regression-1854eaf.log` in the clean
+worktree. At incident inspection PEX PID 36124 and all pex-desktop/pex-bridge processes
+were already absent; do not claim the assistant closed a live app that was not there.
+Other apps and model servers were left untouched. Follow-up checks still found no
+PEX process. No recent matching PEX application crash/hang or display-driver reset
+was returned by the bounded Windows event-log queries. That is not proof no hang
+occurred. Post-incident free RAM was about 31.5 GiB and C: had 85.6 GiB free; these
+snapshots do not describe peak use during the freeze. The host reports Intel UHD 630.
+
+Offline source review identified two resource-control gaps, not a proven freeze cause:
+
+1. App background polls used intervals without awaiting slow reads. Most JSON reads
+   and sprite-body downloads had no deadline. WebSocket intervention bursts could
+   launch additional pet reads. The repair serializes each background poll, shares
+   a pending background pet read across a burst, and applies a 15-second budget to
+   the complete GET/authentication/body operation. Caller cancellation is preserved;
+   superseded asset requests abort and release blob URLs. Explicit post-mutation
+   reads remain independent, and mutation retry/unknown-outcome rules are unchanged.
+2. Python lru_cache permitted duplicate concurrent cold atlas decodes. The first
+   repair used a broad lock; independent Terra review correctly found it could
+   block unrelated cached reads. A negative test reproduced that flaw. The final
+   keyed implementation serves completed hits without waiting on image I/O, shares
+   duplicate misses, allows at most two cold decodes, bounds follower waits to one
+   second, and does not cache busy/timeouts as invalid. Completed cache size remains
+   bounded to 128 and metadata changes invalidate the key. This is resource control,
+   not a waiver of atlas validation or a change to the eight images.
+
+Lightweight verification only: 112 focused desktop tests passed serially and
+TypeScript no-emit passed. Fifteen targeted backend tests passed / 48 deselected;
+JUnit in main: `build/freeze-bounded-backend.xml`, SHA256
+`03DD8DEC3C9D98BED815164D912C2B66F816151F295D09B3B2296C5EDF951704`.
+That selection includes new concurrency/deadline and saved-model activation-state
+contracts; it is not the full suite or native resource proof. Ruff passed changed
+Python paths. Two original cold-concurrency negatives failed before repair, and
+the broad-lock cached-read negative failed before the keyed correction.
+
+The same slice exposes bounded supervisor activation states to Home and Settings:
+loading, timed_out, failed, unavailable, disabled and configured. Timed-out/failed
+setup explains the existing Save supervisor retry path. It does not retry
+automatically, change provider/billing settings, weaken timeouts or claim successful
+inference from client configuration. Eight backend state negatives and one frontend
+guidance negative failed before the presentation repair; scoped positives pass.
+
+Next: finish changed-path review and push; prepare an opt-in, time/resource-bounded
+native idle capture with exact app identity and cleanup. No kernel/driver freeze can
+be guaranteed recoverable by a userspace watchdog, so obtain confirmation before
+reproduction and keep the user's other PC work untouched. Broader release gates and
+all submission work remain open until stability is actually demonstrated.
 
 ## Verified package and paused native check
 
@@ -108,10 +169,11 @@ production storage retry or weaker configuration authority was added.
 
 ## Immediate ordered work
 
-1. Push this reviewed slice; verify exact clean source, full non-live backend and
-   affected desktop gates. Keep package de separate from newer source evidence.
-2. Expose truthful saved-supervisor loading/failure/recovery state to the UI; retain
-   timeout, credential and generation guards. No automatic paid requests or restarts.
+1. Address the P0 idle-freeze report above; do not restart full gates or native PEX
+   while the operator is using the PC without renewed bounded-run confirmation.
+2. Push reviewed resource/activation-state repairs and finish safe offline checks.
+   Keep tested package de separate from newer source evidence. Full clean regression
+   for pushed `1854eaf65f4f391758085da6ebfb1f471db4c195` was interrupted, not green.
 3. Complete a fresh provider-complete quiet/recovery pair after clean gates. Preserve
    all failures/aborts and distinguish demos from the frozen benchmark. Do not seed
    a desired PEX decision or substitute a manually sent recovery message.

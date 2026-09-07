@@ -1,5 +1,5 @@
 import type { Goal, SessionRow, StatusCopy, SupervisorInfo } from "./types.ts";
-import { canAttachPersistentGoal, titleCase } from "./viewModel.ts";
+import { canAttachPersistentGoal, supervisorActivationCopy, titleCase } from "./viewModel.ts";
 
 export type FirstRunCtaIntent = "connect" | "goal";
 
@@ -138,7 +138,8 @@ export function supervisorAvailability({
   if (!supervisor.model_loaded) {
     return {
       state: "deterministic_only",
-      copy: "Semantic supervisor unavailable. PEX can still use deterministic observation, but no model inference is established.",
+      copy: supervisorActivationCopy(supervisor)
+        ?? "Semantic supervisor unavailable. PEX can still use deterministic observation, but no model inference is established.",
     };
   }
   return {

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun.ts";
 import type { Goal, SessionRow, StatusCopy, SupervisorInfo } from "./types.ts";
+import { supervisorHonestyCopy } from "./viewModel.ts";
 
 const worker: SessionRow = {
   id: "codex:thread-1",
@@ -76,6 +77,34 @@ test("supervisor availability never treats configuration as an inference receipt
   const unverified = supervisorAvailability({ supervisor: configured, supervisorFresh: true });
   assert.equal(unverified.state, "configured_unverified");
   assert.match(unverified.copy, /does not prove connection or inference/i);
+});
+
+test("supervisor startup guidance distinguishes loading, timeout, failure and disabled", () => {
+  for (const [activation_status, expected] of [
+    ["loading", /loading.*saved supervisor/i],
+    ["timed_out", /timed out.*Save supervisor.*retry/i],
+    ["failed", /could not.*loaded.*Save supervisor/i],
+    ["disabled", /disabled.*launch configuration/i],
+  ] as const) {
+    const supervisor: SupervisorInfo = { model_loaded: false, activation_status };
+    const availability = supervisorAvailability({ supervisor, supervisorFresh: true });
+    assert.equal(availability.state, "deterministic_only");
+    assert.match(availability.copy, expected);
+    assert.match(supervisorHonestyCopy(supervisor), expected);
+    assert.doesNotMatch(availability.copy, /will automatically retry|connected successfully/i);
+    assert.doesNotMatch(
+      supervisorAvailability({ supervisor, supervisorFresh: false }).copy, expected,
+    );
+  }
+});
+
+test("successful configuration clears stale startup recovery copy without claiming inference", () => {
+  const supervisor: SupervisorInfo = { model_loaded: true, activation_status: "timed_out" };
+  const availability = supervisorAvailability({ supervisor, supervisorFresh: true });
+  assert.equal(availability.state, "configured_unverified");
+  assert.doesNotMatch(availability.copy, /timed out|retry/i);
+  assert.doesNotMatch(supervisorHonestyCopy(supervisor), /timed out|retry/i);
+  assert.match(supervisorHonestyCopy(supervisor), /does not verify connection or inference/i);
 });
 
 test("first-run wording only replaces a genuinely quiet unpaused status", () => {

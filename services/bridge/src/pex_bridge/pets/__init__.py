@@ -16,7 +16,9 @@ from __future__ import annotations
 import json
 import re
 import sys
-from functools import lru_cache
+import threading
+from collections import OrderedDict
+from concurrent.futures import Future
 from pathlib import Path
 from typing import Any
 
@@ -146,9 +148,55 @@ def validate_codex_v2_atlas(image: Image.Image, *, subject: str = "spritesheet")
                 )
 
 
-@lru_cache(maxsize=128)
+_SheetKey = tuple[str, int, int]
+_SHEET_CACHE: OrderedDict[_SheetKey, bool] = OrderedDict()
+_SHEET_IN_FLIGHT: dict[_SheetKey, Future[bool]] = {}
+_SHEET_CACHE_LOCK = threading.Lock()
+MAX_CONCURRENT_SHEET_VALIDATIONS = 2
+SHEET_VALIDATION_WAIT_SECONDS = 1.0
+
+
 def _valid_v2_sheet(path_value: str, size: int, modified_ns: int) -> bool:
-    del modified_ns
+    # Completed hits never wait behind image I/O. Duplicate misses share one
+    # result; at most two unrelated decodes run. Busy/slow reads are temporarily
+    # unavailable, not cached as invalid, so a later refresh can retry them.
+    key = (path_value, size, modified_ns)
+    with _SHEET_CACHE_LOCK:
+        if key in _SHEET_CACHE:
+            _SHEET_CACHE.move_to_end(key)
+            return _SHEET_CACHE[key]
+        pending = _SHEET_IN_FLIGHT.get(key)
+        owner = pending is None
+        if owner:
+            if len(_SHEET_IN_FLIGHT) >= MAX_CONCURRENT_SHEET_VALIDATIONS:
+                return False
+            pending = Future()
+            _SHEET_IN_FLIGHT[key] = pending
+    assert pending is not None
+    if not owner:
+        try:
+            return pending.result(timeout=SHEET_VALIDATION_WAIT_SECONDS)
+        except TimeoutError:
+            return False
+    try:
+        valid = _decode_valid_v2_sheet(path_value, size)
+    except BaseException as exc:
+        pending.set_exception(exc)
+        raise
+    else:
+        with _SHEET_CACHE_LOCK:
+            _SHEET_CACHE[key] = valid
+            _SHEET_CACHE.move_to_end(key)
+            while len(_SHEET_CACHE) > 128:
+                _SHEET_CACHE.popitem(last=False)
+        pending.set_result(valid)
+        return valid
+    finally:
+        with _SHEET_CACHE_LOCK:
+            _SHEET_IN_FLIGHT.pop(key, None)
+
+
+def _decode_valid_v2_sheet(path_value: str, size: int) -> bool:
     if size < 1 or size > MAX_PET_SPRITESHEET_BYTES:
         return False
     path = Path(path_value)

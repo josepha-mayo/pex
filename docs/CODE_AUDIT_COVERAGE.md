@@ -1,5 +1,17 @@
 # PEX code audit coverage — 5 September 2026
 
+## 8 September — idle-freeze report and bounded resource review
+
+Parent reviewed App.tsx polling/read/asset lifecycle, new readBudget.ts, canonical
+activation-state projection/copy, and pet validation concurrency. Independent Terra
+review caught the first global-lock approach delaying completed cache hits; it is
+replaced by keyed shared work, a two-decode cap and bounded follower wait. Negative
+reproductions and 112 desktop / 15 backend scoped positives are recorded in the
+current checkpoint. Root cause of the reported whole-PC freeze remains UNKNOWN;
+full clean regression was interrupted. Native/resource proof and whole-file audit
+coverage are not granted by these diffs. No native relaunch or large gates without
+renewed bounded-run confirmation.
+
 ## 8 September — named-artifact and descriptor-bound read slice
 
 See [the current checkpoint](CHECKPOINT_2026_09_08.md) for Q18 causal evidence,

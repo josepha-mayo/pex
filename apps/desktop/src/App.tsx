@@ -22,6 +22,7 @@ import { PetStage } from "./components/PetStage";
 import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
 import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { createOperatorRequest } from "./operatorRequest";
+import { boundedRead, coalesceBackgroundRead, startSerialPolling } from "./readBudget";
 import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
@@ -262,6 +263,15 @@ async function bridgeFetch(path: string, init?: RequestInit): Promise<Response> 
 const sharedConnectionRequest = createOperatorRequest({ baseUrl: BRIDGE, readToken: bridgeToken });
 
 async function bridgeJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  if (method === "GET") {
+    return boundedRead((signal) => readBridgeJson<T>(path, { ...init, signal }), init?.signal);
+  }
+  // Do not change mutation retry/unknown-outcome semantics with a polling budget.
+  return readBridgeJson<T>(path, init);
+}
+
+async function readBridgeJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await bridgeFetch(path, init);
   if (!response.ok) {
     let payload: unknown = null;
@@ -470,11 +480,10 @@ export function App() {
       setBridgeControlAvailable(next !== null);
       if (next) acceptBridgeStartupStatus(next);
     };
-    void refresh();
-    const poll = window.setInterval(() => void refresh(), 750);
+    const stopPolling = startSerialPolling(refresh, 750);
     return () => {
       cancelled = true;
-      window.clearInterval(poll);
+      stopPolling();
     };
   }, [acceptBridgeStartupStatus, shell]);
 
@@ -574,10 +583,12 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable) return;
     let cancelled = false;
-    void refreshPet();
-    const poll = window.setInterval(() => {
-      if (!cancelled) void refreshPet();
-    }, 4000);
+    // Event bursts share the pending background read; explicit post-mutation
+    // refreshes outside this effect still request their own fresh state.
+    const refreshBackgroundPet = coalesceBackgroundRead<unknown>(() =>
+      cancelled ? Promise.resolve() : refreshPet(),
+    );
+    const stopPolling = startSerialPolling(refreshBackgroundPet, 4000);
     let socket: WebSocket | null = null;
     let retryTimer: number | null = null;
     let retryAttempt = 0;
@@ -627,7 +638,7 @@ export function App() {
               setPet(message.payload as PetSnapshot);
               setBridgeError(null);
             } else if (message.topic === "intervention" && !cancelled) {
-              void refreshPet();
+              void refreshBackgroundPet();
             } else if (
               message.topic === "event_page" &&
               !cancelled &&
@@ -650,7 +661,7 @@ export function App() {
         currentSocket.onclose = () => {
           if (socket === currentSocket) socket = null;
           bridgeTokenRequest = null;
-          if (!cancelled) void refreshPet();
+          if (!cancelled) void refreshBackgroundPet();
           scheduleReconnect();
         };
       } catch {
@@ -663,7 +674,7 @@ export function App() {
     return () => {
       cancelled = true;
       petRequestSequence.current += 1;
-      window.clearInterval(poll);
+      stopPolling();
       if (retryTimer != null) window.clearTimeout(retryTimer);
       socket?.close();
     };
@@ -672,24 +683,27 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable || shell === "pet") return;
     const includeHatch = shell === "settings";
-    void loadBaseState(includeHatch, includeHatch);
-    const poll = window.setInterval(
-      () => void loadBaseState(includeHatch, false),
+    let firstRefresh = true;
+    const stopPolling = startSerialPolling(
+      () => {
+        const includeCapability = firstRefresh && includeHatch;
+        firstRefresh = false;
+        return loadBaseState(includeHatch, includeCapability);
+      },
       includeHatch ? 8000 : 30000,
     );
     return () => {
       baseRequestSequence.current += 1;
-      window.clearInterval(poll);
+      stopPolling();
     };
   }, [bridgeAvailable, loadBaseState, shell]);
 
   useEffect(() => {
     if (!bridgeAvailable || shell !== "pet") return;
-    void refreshPetGoals();
-    const poll = window.setInterval(() => void refreshPetGoals(), 30000);
+    const stopPolling = startSerialPolling(() => refreshPetGoals(), 30000);
     return () => {
       baseRequestSequence.current += 1;
-      window.clearInterval(poll);
+      stopPolling();
     };
   }, [bridgeAvailable, refreshPetGoals, shell]);
 
@@ -1105,41 +1119,45 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable || surface === "compact" || shell !== "main") return;
     setBench((state) => ({ ...state, loading: state.runs.length === 0 && !state.message }));
-    void loadDetails(true, true);
     let ticks = 0;
-    const poll = window.setInterval(() => {
+    const stopPolling = startSerialPolling(() => {
+      const pending = loadDetails(ticks % 4 === 0, ticks === 0);
       ticks += 1;
-      void loadDetails(ticks % 4 === 0);
+      return pending;
     }, 8000);
     return () => {
       detailRequestSequence.current += 1;
-      window.clearInterval(poll);
+      stopPolling();
     };
   }, [bridgeAvailable, loadDetails, shell, surface, pet?.last_action?.id]);
 
   useEffect(() => {
     if (!bridgeAvailable || surface === "compact" || shell !== "main") return;
-    void loadProjectIdentityConflicts({ showLoading: true });
-    const poll = window.setInterval(() => {
-      void loadProjectIdentityConflicts();
+    let firstRefresh = true;
+    const stopPolling = startSerialPolling(() => {
+      const pending = loadProjectIdentityConflicts({ showLoading: firstRefresh });
+      firstRefresh = false;
+      return pending;
     }, 8000);
     return () => {
       identityConflictRequestSequence.current += 1;
       setIdentityConflictLoading(false);
-      window.clearInterval(poll);
+      stopPolling();
     };
   }, [bridgeAvailable, loadProjectIdentityConflicts, shell, surface]);
 
   useEffect(() => {
     if (!bridgeAvailable || surface !== "deck" || shell !== "main" || activeView !== "decisions") return;
-    void loadProjectIdentityStatus({ showLoading: true });
-    const poll = window.setInterval(() => {
-      void loadProjectIdentityStatus();
+    let firstRefresh = true;
+    const stopPolling = startSerialPolling(() => {
+      const pending = loadProjectIdentityStatus({ showLoading: firstRefresh });
+      firstRefresh = false;
+      return pending;
     }, 8000);
     return () => {
       identityStatusRequestSequence.current += 1;
       setIdentityStatusLoading(false);
-      window.clearInterval(poll);
+      stopPolling();
     };
   }, [activeView, bridgeAvailable, loadProjectIdentityStatus, shell, surface]);
 
@@ -2461,11 +2479,12 @@ function useBridgeAsset(path?: string): string {
     let objectUrl: string | null = null;
     setSource("");
     if (!path) return;
-    void bridgeFetch(path)
-      .then((response) => {
+    const controller = new AbortController();
+    void boundedRead(async (signal) => {
+        const response = await bridgeFetch(path, { signal });
         if (!response.ok) throw new Error(`Asset request failed (${response.status}).`);
         return response.blob();
-      })
+      }, controller.signal)
       .then((blob) => {
         objectUrl = URL.createObjectURL(blob);
         if (cancelled) URL.revokeObjectURL(objectUrl);
@@ -2476,6 +2495,7 @@ function useBridgeAsset(path?: string): string {
       });
     return () => {
       cancelled = true;
+      controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [path]);

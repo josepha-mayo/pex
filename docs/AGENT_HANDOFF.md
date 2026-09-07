@@ -2,13 +2,20 @@
 
 ### Current checkpoint — 8 September WAT
 
+**P0 override: the user reports a whole-PC freeze while PEX was idle.** PEX is now
+absent and the assistant's large test workload was stopped. Do not relaunch native
+PEX, resume Computer Use/live benchmarks, or run large gates until a fresh bounded
+resource plan is confirmed. Root cause remains unknown. Read the incident section
+at the top of CHECKPOINT_2026_09_08.md; polling/decode resource repairs have only
+lightweight offline verification, not proof the reported freeze is fixed.
+
 Read [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md), all three specs and
 SHIP_CHECKLIST before continuing. It supersedes historical current/latest labels
 below. Exact de83153 Windows installers are verified; native input was stopped by
 Escape, so rebuilt transparency is still open. Real Q18 completed two Muse calls
 and stayed quiet, with acceptance uncertainty exposing a named-artifact inspection
-gap. The reviewed repair passes 189 backend tests/5 skips; clean-source full gates
-and startup recovery UX are next. Full submission remains NO-GO, goal active, with
+gap. The reviewed repair passes 189 backend tests/5 skips; its later clean full gate
+was interrupted after the freeze report. Full submission remains NO-GO, goal active, with
 9 September WAT filming target. The detailed checkpoint preserves failures, receipts,
 cleanup, the untouched operator loop change and the full ordered remaining scope.
 

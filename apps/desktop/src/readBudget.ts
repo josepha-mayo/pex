@@ -1,0 +1,73 @@
+/** Bound the complete read, including authentication and response-body parsing. */
+export async function boundedRead<T>(
+  read: (signal: AbortSignal) => Promise<T>,
+  parentSignal?: AbortSignal | null,
+  timeoutMs = 15_000,
+): Promise<T> {
+  if (parentSignal?.aborted) throw new Error("Local state read cancelled.");
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let cancel: () => void = () => {};
+  const deadline = new Promise<never>((_resolve, reject) => {
+    cancel = () => {
+      reject(new Error("Local state read cancelled."));
+      controller.abort();
+    };
+    timer = setTimeout(() => {
+      reject(new Error("Local state read timed out. The bridge may be busy or unavailable."));
+      controller.abort();
+    }, timeoutMs);
+    parentSignal?.addEventListener("abort", cancel, { once: true });
+  });
+  try {
+    return await Promise.race([read(controller.signal), deadline]);
+  } finally {
+    clearTimeout(timer);
+    parentSignal?.removeEventListener("abort", cancel);
+  }
+}
+
+type Schedule = (callback: () => void, delayMs: number) => () => void;
+const scheduleTimer: Schedule = (callback, delayMs) => {
+  const timer = setTimeout(callback, delayMs);
+  return () => clearTimeout(timer);
+};
+
+/** Share a pending background read, without caching a completed observation. */
+export function coalesceBackgroundRead<T>(read: () => Promise<T>): () => Promise<T> {
+  let active: Promise<T> | null = null;
+  return () => {
+    if (!active) {
+      const pending = Promise.resolve().then(read).finally(() => {
+        if (active === pending) active = null;
+      });
+      active = pending;
+    }
+    return active;
+  };
+}
+
+/** A slow refresh never accumulates interval-triggered copies of itself. */
+export function startSerialPolling(
+  refresh: () => Promise<unknown>,
+  intervalMs: number,
+  schedule: Schedule = scheduleTimer,
+): () => void {
+  let stopped = false;
+  let cancelTimer: (() => void) | undefined;
+  const run = async () => {
+    if (stopped) return;
+    try {
+      await refresh();
+    } catch {
+      // Refresh owns its canonical failure state; polling must survive failure.
+    } finally {
+      if (!stopped) cancelTimer = schedule(() => void run(), intervalMs);
+    }
+  };
+  void run();
+  return () => {
+    stopped = true;
+    cancelTimer?.();
+  };
+}
