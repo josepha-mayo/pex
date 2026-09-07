@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from PIL import Image
+from verify_pet_neutral_lineage import verify_lineage
 
 PET_IDS = ("pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von")
 COUNTS = (6, 8, 8, 4, 5, 8, 6, 6, 6, 8, 8)
@@ -57,17 +58,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, default=Path.cwd())
     parser.add_argument(
-        "--repair-report",
-        type=Path,
-        help=(
-            "full repair receipt; defaults to the tracked compact neutral-repair record "
-            "for idempotent regeneration"
-        ),
+        "--source-commit",
+        help="full Git commit containing the original atlases; later runs use the tracked receipt",
     )
     parser.add_argument(
-        "--attest-operator-review",
-        action="store_true",
-        help="attest that the exact repaired source atlases received final visual review",
+        "--archive-source",
+        type=Path,
+        help="original audit release directory; import review bytes without attesting new reviews",
     )
     args = parser.parse_args()
 
@@ -80,38 +77,16 @@ def main() -> None:
     visual_path = evidence_root / "visual-attestation.json"
     repair_path = evidence_root / "neutral-repair.json"
     gallery_path = pets_root / "judge-gallery.html"
+    archive_path = evidence_root / "review-archive.json"
 
     old_release = json.loads(release_path.read_text(encoding="utf-8"))
     old_reviews = json.loads(reviews_path.read_text(encoding="utf-8"))
-    old_visual = json.loads(visual_path.read_text(encoding="utf-8"))
-    report_path = (
-        args.repair_report.resolve(strict=True)
-        if args.repair_report is not None
-        else repair_path.resolve(strict=True)
-    )
-    report = json.loads(report_path.read_text(encoding="utf-8"))
-    if report.get("ok") is True and report.get("repair_requested") is True:
-        report_by_id = {Path(row["path"]).parent.name: row for row in report.get("results", [])}
-    elif (
-        report.get("method") == "decoded-rgba-copy-with-lossless-webp-reencode"
-        and report.get("animation_cells_preserved") is True
-    ):
-        report_by_id = {
-            row["id"]: {
-                **row,
-                "animation_pixels_sha256_after": row["animation_pixels_sha256"],
-                "neutral_frame_repaired": True,
-                "remaining_occupied_unused_cells": [],
-                "errors": [],
-            }
-            for row in report.get("pets", [])
-        }
-    else:
-        raise SystemExit("neutral repair report is not a successful repair receipt")
+    old_repair = json.loads(repair_path.read_text(encoding="utf-8"))
+    report = verify_lineage(repo, args.source_commit or old_repair.get("source_commit"))
+    report_by_id = {row["id"]: row for row in report["pets"]}
     old_release_by_id = {row["id"]: row for row in old_release.get("pets", [])}
 
     structural_pets: list[dict[str, Any]] = []
-    repair_pets: list[dict[str, Any]] = []
     release_pets: list[dict[str, Any]] = []
     direction_roots: dict[str, str] = {}
     sheet_hashes: list[str] = []
@@ -130,9 +105,6 @@ def main() -> None:
             not in {receipt.get("before_sha256"), receipt.get("after_sha256")}
             or receipt.get("after_sha256") != current_sha
             or receipt.get("animation_pixels_unchanged") is not True
-            or receipt.get("neutral_frame_repaired") is not True
-            or receipt.get("remaining_occupied_unused_cells") != []
-            or receipt.get("errors") != []
         ):
             raise SystemExit(f"repair lineage is incomplete for {pet_id}")
 
@@ -188,16 +160,6 @@ def main() -> None:
                 "all_unused_cells_transparent": all(unused),
             }
         )
-        repair_pets.append(
-            {
-                "id": pet_id,
-                "before_sha256": receipt["before_sha256"],
-                "after_sha256": current_sha,
-                "animation_pixels_sha256": receipt["animation_pixels_sha256_after"],
-                "animation_pixels_unchanged": True,
-                "neutral_matches_idle_zero": True,
-            }
-        )
         release_pets.append(
             {
                 "id": pet_id,
@@ -222,18 +184,57 @@ def main() -> None:
             raise SystemExit(f"prior direction record lineage mismatch at index {index}")
         migrated_records.append([pet_id, direction_roots[pet_id], *row[2:]])
 
-    prior_exact_operator_review = (
-        old_visual.get("schema_version") == 4
-        and old_visual.get("spritesheet_sha256") == sheet_hashes
-        and old_visual.get("review_provenance", {}).get("final_operator_source_atlas_review")
-        is True
-    )
-    if not args.attest_operator_review and not prior_exact_operator_review:
-        raise SystemExit("exact repaired atlases require --attest-operator-review after visual QA")
+    if args.archive_source:
+
+        def archived_file(path: Path, expected_sha: str | None = None) -> dict:
+            data = path.read_bytes()
+            sha = sha256_bytes(data)
+            if expected_sha is not None and sha != expected_sha:
+                raise ValueError(f"original review hash mismatch: {path.name}")
+            return {"sha256": sha, "bytes": len(data), "content": data.decode("utf-8")}
+
+        archived_pets = []
+        for index, pet_id in enumerate(PET_IDS):
+            original_binding = archived_file(args.archive_source / f"{pet_id}.json")
+            original = json.loads(original_binding["content"])
+            if original["shipped_sha256"] != report_by_id[pet_id]["before_sha256"]:
+                raise ValueError(f"original source binding mismatch for {pet_id}")
+            blind = []
+            for worker in range(3):
+                reference = original["blind_review"]["reviewers"][worker]
+                record = migrated_records[index * 3 + worker]
+                if reference["verdict_sha256"] != record[4]:
+                    raise ValueError(f"original blind binding mismatch for {pet_id}")
+                blind.append(
+                    archived_file(
+                        args.archive_source / "evidence" / f"{pet_id}-blind-{worker + 1}.json",
+                        record[4],
+                    )
+                )
+            validation = original["blind_review"]["validation"]
+            final = original["final_visual"]["evidence"]
+            archived_pets.append(
+                {
+                    "id": pet_id,
+                    "source_binding": original_binding,
+                    "blind_reviews": blind,
+                    "blind_validation": archived_file(
+                        args.archive_source / "evidence" / Path(validation["path"]).name,
+                        validation["sha256"],
+                    ),
+                    "visual_review": archived_file(
+                        args.archive_source / "evidence" / Path(final["path"]).name,
+                        final["sha256"],
+                    ),
+                }
+            )
+        compact_write(archive_path, {"schema_version": 1, "pets": archived_pets})
+    if not archive_path.is_file():
+        raise SystemExit("inspectable original review archive is required")
 
     reviews = {
         "schema_version": 2,
-        "record_kind": "sanitized-independent-direction-review",
+        "record_kind": "archived-independent-direction-review-lineage",
         "reviewed_cell_scope": {
             "rows": [9, 10],
             "cell_count": 16,
@@ -245,15 +246,7 @@ def main() -> None:
     }
     compact_write(reviews_path, reviews)
 
-    neutral_repair = {
-        "schema_version": 1,
-        "method": "decoded-rgba-copy-with-lossless-webp-reencode",
-        "source_frame": {"row": 0, "column": 0},
-        "target_frame": {"row": 0, "column": 6},
-        "animation_cells_preserved": True,
-        "pets": repair_pets,
-    }
-    compact_write(repair_path, neutral_repair)
+    compact_write(repair_path, report)
 
     structural = {
         "schema_version": 4,
@@ -274,34 +267,25 @@ def main() -> None:
 
     visual = {
         "schema_version": 4,
-        "review_kind": "independent-direction-review-plus-deterministic-neutral-repair",
-        "verdict": "pass",
+        "review_kind": "historical-source-review-with-verified-neutral-copy",
         "review_provenance": {
-            "isolated_blind_direction_reviewers_per_pet": 3,
-            "direction_review_scope_only": True,
-            "final_operator_source_atlas_review": True,
             "canonical_records": binding(
                 reviews_path, relative="release-evidence/independent-reviews.json"
             ),
             "neutral_repair": binding(repair_path, relative="release-evidence/neutral-repair.json"),
+            "review_archive": binding(
+                archive_path, relative="release-evidence/review-archive.json"
+            ),
         },
         "pet_ids": list(PET_IDS),
         "spritesheet_sha256": sheet_hashes,
         "contract_cell_hash_roots": contract_roots,
-        "checks": {
-            "character_identity_across_states": "pass",
-            "directional_readability": "pass",
-            "neutral_frame_identity": "pass",
-            "clipping_or_cell_bleed": "none",
-            "backgrounds_inside_contract_cells": "none",
-            "all_eight_distinguishable": "pass",
-        },
         "limitations": [
-            "This attestation covers the exact source atlases, not native packaged playback.",
-            (
-                "Native runtime behavior and desktop integration require separate release "
-                "smoke evidence."
-            ),
+            "Historical reviews cover original static atlas frames, not current native playback.",
+            "The old blank-neutral check is superseded by the independently verified neutral copy.",
+            "No new human or independent visual approval is asserted by this generated record.",
+            "Native runtime behavior and desktop integration require separate release "
+            "smoke evidence.",
         ],
     }
     compact_write(visual_path, visual)

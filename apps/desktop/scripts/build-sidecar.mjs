@@ -18,6 +18,7 @@ import {
 } from "node:fs";
 import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validatePetReviewArchive } from "./pet-review-contract.mjs";
 
 import {
   assertCanonicalRepoRelativePath,
@@ -96,6 +97,8 @@ const sourceRoots = [
 const sourceFiles = [
   fileURLToPath(import.meta.url),
   join(scriptDir, "release-contract.mjs"),
+  join(scriptDir, "pet-review-contract.mjs"),
+  join(repo, "scripts", "verify_pet_neutral_lineage.py"),
   join(repo, ".node-version"),
   join(repo, ".python-version"),
   join(repo, "pyproject.toml"),
@@ -340,6 +343,8 @@ for pet_id, value in zip(ids, sys.argv[3:]):
             1 for red, green, blue, alpha in pixels
             if alpha == 0 and (red != 0 or green != 0 or blue != 0)
         )
+        if not all(occupied) or not all(unused) or neutral != idle_zero or transparent_rgb_residue:
+            raise SystemExit(f"source atlas cell contract failed for {pet_id}")
     data = path.read_bytes()
     out.append({
         "id": pet_id,
@@ -381,35 +386,22 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
   if (
     visual?.schema_version !== 4
     || !hasExactKeys(visual, [
-      "schema_version", "review_kind", "verdict", "review_provenance", "pet_ids",
-      "spritesheet_sha256", "contract_cell_hash_roots", "checks", "limitations",
+      "schema_version", "review_kind", "review_provenance", "pet_ids",
+      "spritesheet_sha256", "contract_cell_hash_roots", "limitations",
     ])
-    || visual?.review_kind !== "independent-direction-review-plus-deterministic-neutral-repair"
-    || visual?.verdict !== "pass"
+    || visual?.review_kind !== "historical-source-review-with-verified-neutral-copy"
     || !hasExactKeys(visual?.review_provenance, [
-      "isolated_blind_direction_reviewers_per_pet", "direction_review_scope_only",
-      "final_operator_source_atlas_review", "canonical_records", "neutral_repair",
-    ])
-    || visual?.review_provenance?.isolated_blind_direction_reviewers_per_pet !== 3
-    || visual?.review_provenance?.direction_review_scope_only !== true
-    || visual?.review_provenance?.final_operator_source_atlas_review !== true
-    || !hasExactKeys(visual?.checks, [
-      "character_identity_across_states", "directional_readability", "clipping_or_cell_bleed",
-      "neutral_frame_identity", "backgrounds_inside_contract_cells", "all_eight_distinguishable",
+      "canonical_records", "neutral_repair", "review_archive",
     ])
     || JSON.stringify(visual?.pet_ids) !== JSON.stringify(builtInPets)
     || JSON.stringify(visual?.spritesheet_sha256) !== JSON.stringify(sheetHashes)
     || JSON.stringify(visual?.contract_cell_hash_roots)
       !== JSON.stringify(structural.pets.map((pet) => pet.contract_cell_hash_root))
-    || visual?.checks?.character_identity_across_states !== "pass"
-    || visual?.checks?.directional_readability !== "pass"
-    || visual?.checks?.clipping_or_cell_bleed !== "none"
-    || visual?.checks?.neutral_frame_identity !== "pass"
-    || visual?.checks?.backgrounds_inside_contract_cells !== "none"
-    || visual?.checks?.all_eight_distinguishable !== "pass"
     || !Array.isArray(visual?.limitations)
     || JSON.stringify(visual.limitations) !== JSON.stringify([
-      "This attestation covers the exact source atlases, not native packaged playback.",
+      "Historical reviews cover original static atlas frames, not current native playback.",
+      "The old blank-neutral check is superseded by the independently verified neutral copy.",
+      "No new human or independent visual approval is asserted by this generated record.",
       "Native runtime behavior and desktop integration require separate release smoke evidence.",
     ])
   ) throw new Error("Visual attestation is incomplete, stale, or overclaims runtime proof");
@@ -448,11 +440,12 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
   }
   if (
     !hasExactKeys(neutralRepair, [
-      "schema_version", "method", "source_frame", "target_frame",
+      "schema_version", "source_commit", "method", "source_frame", "target_frame",
       "animation_cells_preserved", "pets",
     ])
-    || neutralRepair.schema_version !== 1
-    || neutralRepair.method !== "decoded-rgba-copy-with-lossless-webp-reencode"
+    || neutralRepair.schema_version !== 2
+    || !/^[0-9a-f]{40}$/u.test(neutralRepair.source_commit)
+    || neutralRepair.method !== "git-blob-decoded-rgba-neutral-copy-v1"
     || canonicalJson(neutralRepair.source_frame) !== canonicalJson({ row: 0, column: 0 })
     || canonicalJson(neutralRepair.target_frame) !== canonicalJson({ row: 0, column: 6 })
     || neutralRepair.animation_cells_preserved !== true
@@ -460,18 +453,26 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
     || neutralRepair.pets.length !== builtInPets.length
     || neutralRepair.pets.some((pet, index) =>
       !hasExactKeys(pet, [
-        "id", "before_sha256", "after_sha256", "animation_pixels_sha256",
+        "id", "before_sha256", "after_sha256", "animation_pixels_sha256_before",
+        "animation_pixels_sha256_after",
         "animation_pixels_unchanged", "neutral_matches_idle_zero",
       ])
       || pet.id !== builtInPets[index]
       || typeof pet.before_sha256 !== "string"
       || !/^[0-9a-f]{64}$/u.test(pet.before_sha256)
       || pet.after_sha256 !== sheetHashes[index]
-      || typeof pet.animation_pixels_sha256 !== "string"
-      || !/^[0-9a-f]{64}$/u.test(pet.animation_pixels_sha256)
+      || typeof pet.animation_pixels_sha256_before !== "string"
+      || !/^[0-9a-f]{64}$/u.test(pet.animation_pixels_sha256_before)
+      || pet.animation_pixels_sha256_before !== pet.animation_pixels_sha256_after
       || pet.animation_pixels_unchanged !== true
       || pet.neutral_matches_idle_zero !== true)
   ) throw new Error("Canonical neutral repair record is incomplete or stale");
+  // Recompute from immutable pre-repair Git blobs and current decoded RGBA.
+  // Equal self-authored hashes alone are not evidence of preserved animation.
+  execFileSync(venvPython, [
+    join(repo, "scripts", "verify_pet_neutral_lineage.py"),
+    "--repo", repo, "--verify", neutralRepairPath,
+  ], { cwd: repo, stdio: ["ignore", "pipe", "pipe"] });
   const criteria = [
     "seven_blinded_horizontal_pairs_classified",
     "seven_blinded_vertical_pairs_classified",
@@ -484,7 +485,7 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
       "verdict_meaning", "records",
     ])
     || reviews.schema_version !== 2
-    || reviews.record_kind !== "sanitized-independent-direction-review"
+    || reviews.record_kind !== "archived-independent-direction-review-lineage"
     || canonicalJson(reviews.reviewed_cell_scope) !== canonicalJson({
       rows: [9, 10], cell_count: 16, binding: "decoded-rgba-cell-hash-root-v1",
     })
@@ -506,6 +507,18 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
       || row[5] < 1
       || row[5] > 128 * 1024)
   ) throw new Error("Canonical independent review records are incomplete or not source-bound");
+
+  if (!hasExactKeys(visual.review_provenance.review_archive, ["path", "bytes", "sha256"])) {
+    throw new Error("Original review archive binding is incomplete");
+  }
+  const archivePath = validateHashedArtifact(
+    visual.review_provenance.review_archive, "release-evidence/review-archive.json",
+    "Original review archive", 256 * 1024,
+  );
+  const archiveText = readFileSync(archivePath, "utf8");
+  assertPublicReleaseEvidence(archiveText, "Original review archive");
+  rememberReleaseEvidence(archivePath, "Original review archive");
+  validatePetReviewArchive(JSON.parse(archiveText), reviews.records, neutralRepair.pets, builtInPets);
 
   const gallery = readFileSync(bound.get("judge-gallery.html"), "utf8");
   const figures = builtInPets.map((id) =>

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import math
 import shutil
 from pathlib import Path
@@ -93,7 +94,9 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
         or not 0 < float(timeout) <= 5.0
     ):
         raise ValueError("discovery timeout must be between zero and five seconds")
-    items: list[dict] = list(list_desktop_apps())
+    # Process enumeration can take seconds on Windows. It must never prevent
+    # the bridge from answering its desktop owner's identity challenge.
+    items: list[dict] = list(await asyncio.to_thread(list_desktop_apps))
     async with httpx.AsyncClient(timeout=timeout) as client:
         for name, url, contract in PROBES:
             if _has(items, name, "http"):
@@ -118,7 +121,7 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                         "base_url": _origin(url),
                     }
                 )
-    binary = resolve_codex_bin()
+    binary = await asyncio.to_thread(resolve_codex_bin)
     if binary:
         items.append(
             {
@@ -134,7 +137,7 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
             }
         )
     if not _has(items, "grok_build", "cli") and not _has(items, "grok_build", "acp"):
-        grok_bin = resolve_grok_build()
+        grok_bin = await asyncio.to_thread(resolve_grok_build)
         if grok_bin:
             items.append(
                 {
@@ -149,7 +152,7 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                 }
             )
     if not _has(items, "hermes", "acp"):
-        hermes_bin = resolve_hermes()
+        hermes_bin = await asyncio.to_thread(resolve_hermes)
         if hermes_bin:
             items.append(
                 {
@@ -164,7 +167,7 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                 }
             )
     if not _has(items, "opencode", "cli"):
-        opencode_bin = _resolved_cli("opencode")
+        opencode_bin = await asyncio.to_thread(_resolved_cli, "opencode")
         if opencode_bin:
             items.append(
                 {
@@ -179,7 +182,7 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                 }
             )
     if not _has(items, "omp", "acp"):
-        omp_bin = _resolved_cli("omp")
+        omp_bin = await asyncio.to_thread(_resolved_cli, "omp")
         if omp_bin:
             items.append(
                 {
@@ -191,7 +194,7 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                 }
             )
     if not _has(items, "kimi", "acp"):
-        kimi_bin = _resolved_cli("kimi")
+        kimi_bin = await asyncio.to_thread(_resolved_cli, "kimi")
         if kimi_bin:
             items.append(
                 {
@@ -203,7 +206,7 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
                 }
             )
     if not _has(items, "qwen", "cli"):
-        qwen_bin = _resolved_cli("qwen")
+        qwen_bin = await asyncio.to_thread(_resolved_cli, "qwen")
         if qwen_bin:
             items.append(
                 {

@@ -1,5 +1,18 @@
 # STATUS
 
+## 7 September evening — native failure reproduced; release still NO-GO
+
+`9329a67` is pushed and both normal Windows installers built successfully. A fresh
+isolated native run reproduced `bridge_identity_lost`; Retry recovered. Message
+dismissal, eight-pet roster, persisted Von selection and native pet X-hide were
+observed. Restore/restart/full playback remain unverified. Four tests prove blocking
+catalog/discovery work can starve identity checks; their repair passes those tests.
+The pet release evidence now retains inspectable historical reviews and verifies the
+exact neutral-only pixel transformation against immutable Git source, without
+claiming fresh visual approval. Final scoped gates, push and clean native rebuild
+are next. See the top of `docs/AGENT_HANDOFF.md` and `docs/SHIP_CHECKLIST.md` for the
+current evidence and full unchanged goal. Older "current" labels below are historical.
+
 ## 7 September 2026 — current exact source 5f0f7b2; package green, submission NO-GO
 
 - PEX now honors explicit safe `python -m unittest` evidence instead of hard-coding

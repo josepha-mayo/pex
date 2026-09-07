@@ -838,7 +838,7 @@ class AppState:
             # process-local wake/broadcast is never an event delivery receipt.
             return
         if topic == "pet":
-            payload = self.decorate_pet(payload)
+            payload = await run_in_threadpool(self.decorate_pet, payload)
         sockets = self.event_socket_snapshot()
         queued_dead: list[WebSocket] = []
         direct_sockets: list[WebSocket] = []
@@ -882,17 +882,18 @@ class AppState:
             self.detach_event_socket(ws)
 
     def decorate_pet(self, snap: dict[str, Any]) -> dict[str, Any]:
-        chosen = catalog_by_id(self.pet_settings).get(self.pet_settings.selected_id, STARTERS[0])
+        settings = self.pet_settings
+        chosen = catalog_by_id(settings).get(settings.selected_id, STARTERS[0])
         appearance = _public_pet_definition(chosen)
-        if self.pet_settings.custom_name:
-            appearance["display_name"] = self.pet_settings.custom_name
+        if settings.custom_name:
+            appearance["display_name"] = settings.custom_name
         if chosen.atlas_ready:
             appearance["spritesheet_url"] = f"/v1/pets/{chosen.id}/spritesheet"
-        appearance["hue_shift"] = self.pet_settings.hue_shift
-        appearance["scale"] = self.pet_settings.scale
+        appearance["hue_shift"] = settings.hue_shift
+        appearance["scale"] = settings.scale
         appearance["atlas_ready"] = bool(chosen.atlas_ready)
         snap["appearance"] = appearance
-        snap["settings"] = _public_pet_settings(self.pet_settings)
+        snap["settings"] = _public_pet_settings(settings)
         last = snap.get("last_action") or {}
         transition_mood = snap.get("mood")
         if snap.get("needs_you"):
@@ -921,7 +922,7 @@ class AppState:
             )
         except TimeoutError:
             logger.warning("Desktop session refresh timed out; returning durable state")
-        snapshot = self.decorate_pet(await self.pipeline.pet_snapshot())
+        snapshot = await run_in_threadpool(self.decorate_pet, await self.pipeline.pet_snapshot())
         for session in snapshot.get("sessions") or []:
             if not isinstance(session, dict) or not isinstance(session.get("id"), str):
                 continue
@@ -4137,14 +4138,15 @@ def create_app() -> FastAPI:
 
     @app.get("/v1/pets")
     async def list_pets(_: None = Depends(_require_token)):
-        resolved_catalog = catalog(state.pet_settings)
+        settings = state.pet_settings
+        resolved_catalog = await run_in_threadpool(catalog, settings)
         starter_ids = set(starters_by_id())
         return {
             "starters": [
                 _public_pet_definition(p) for p in resolved_catalog if p.id in starter_ids
             ],
             "catalog": [_public_pet_definition(p) for p in resolved_catalog],
-            "settings": _public_pet_settings(state.pet_settings),
+            "settings": _public_pet_settings(settings),
             "hatch": describe_hatch_backend(),
             "codex_contract": {
                 "spriteVersionNumber": 2,
@@ -4168,7 +4170,8 @@ def create_app() -> FastAPI:
 
     @app.get("/v1/pets/{pet_id}/spritesheet")
     async def pet_spritesheet(pet_id: str, _: None = Depends(_require_token)):
-        chosen = catalog_by_id(state.pet_settings).get(pet_id)
+        settings = state.pet_settings
+        chosen = (await run_in_threadpool(catalog_by_id, settings)).get(pet_id)
         if chosen is None:
             raise HTTPException(404, "unknown pet")
         from pathlib import Path
@@ -4177,7 +4180,7 @@ def create_app() -> FastAPI:
             sheet = Path(chosen.spritesheet)
             if chosen.source == "imported":
                 imported = next(
-                    (item for item in state.pet_settings.imports if item.id == chosen.id),
+                    (item for item in settings.imports if item.id == chosen.id),
                     None,
                 )
                 if imported is None:
@@ -4207,8 +4210,8 @@ def create_app() -> FastAPI:
         selected = data.get("selected_id")
         if (
             selected
-            and selected not in catalog_by_id(state.pet_settings)
             and selected not in starters_by_id()
+            and not any(item.id == selected for item in state.pet_settings.imports)
         ):
             raise HTTPException(400, "unknown pet")
         updated = PetSettings.model_validate(data)

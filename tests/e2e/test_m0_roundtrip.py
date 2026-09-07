@@ -530,6 +530,72 @@ async def test_pet_atlas_loading_keeps_authenticated_identity_responsive(client,
     assert all(response.headers["content-type"] == "image/webp" for response in responses)
 
 
+@pytest.mark.parametrize("path", ["/v1/pets", "/v1/pet", "/v1/pets/pex/spritesheet"])
+async def test_cold_pet_catalog_does_not_starve_identity(client, monkeypatch, path):
+    import pex_bridge.app as app_module
+
+    release = threading.Event()
+    completed = threading.Event()
+    entered = asyncio.Event()
+    loop = asyncio.get_running_loop()
+
+    def slow_catalog(settings):
+        loop.call_soon_threadsafe(entered.set)
+        release.wait(2)
+        completed.set()
+        return app_module.STARTERS
+
+    monkeypatch.setattr(app_module, "catalog", slow_catalog)
+    monkeypatch.setattr(app_module, "catalog_by_id", lambda settings: {
+        item.id: item for item in slow_catalog(settings)
+    })
+    monkeypatch.setattr(state.pipeline, "refresh_desktop_sessions", AsyncMock())
+    monkeypatch.setattr(state, "token", "catalog-liveness-test-token")
+    monkeypatch.setattr(state.settings, "require_auth", True)
+    request = asyncio.create_task(client.get(path, headers={
+        "Authorization": "Bearer catalog-liveness-test-token",
+    }))
+    try:
+        await asyncio.wait_for(entered.wait(), 3)
+        identity = await client.get("/health/identity", params={"challenge": "c" * 64})
+        assert identity.status_code == 200
+        assert not completed.is_set(), "catalog work blocked identity until it completed"
+    finally:
+        release.set()
+        await request
+
+
+async def test_desktop_inventory_does_not_starve_identity(client, monkeypatch):
+    import pex_bridge.adapters.discover as discovery
+
+    release = threading.Event()
+    completed = threading.Event()
+    entered = asyncio.Event()
+    loop = asyncio.get_running_loop()
+
+    def slow_inventory():
+        loop.call_soon_threadsafe(entered.set)
+        release.wait(2)
+        completed.set()
+        return []
+
+    monkeypatch.setattr(discovery, "list_desktop_apps", slow_inventory)
+    monkeypatch.setattr(discovery, "PROBES", ())
+    monkeypatch.setattr(state, "token", "discovery-liveness-test-token")
+    monkeypatch.setattr(state.settings, "require_auth", True)
+    request = asyncio.create_task(client.get("/v1/discover", headers={
+        "Authorization": "Bearer discovery-liveness-test-token",
+    }))
+    try:
+        await asyncio.wait_for(entered.wait(), 3)
+        identity = await client.get("/health/identity", params={"challenge": "d" * 64})
+        assert identity.status_code == 200
+        assert not completed.is_set(), "desktop enumeration blocked the identity endpoint"
+    finally:
+        release.set()
+        await request
+
+
 @pytest.mark.asyncio
 async def test_pet_spritesheet_route_fails_closed_for_missing_or_invalid_atlas(
     client: AsyncClient,

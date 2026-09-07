@@ -1,5 +1,42 @@
 # PEX agent handoff
 
+### 7 September evening — native cold-start failure reproduced; liveness repair under verification
+
+This is the current checkpoint; older "current" headings below are historical.
+The full three-spec goal and 9 September WAT filming target remain unchanged.
+Source `9329a67` is pushed and its normal clean MSI/NSIS build completed successfully
+in `pex-release-9329a67`. This is NOT native acceptance or submission readiness.
+Its new isolated model/attachment-disabled desktop first reached
+`bridge_identity_lost`. Native Retry recovered, Home's message dismissal worked,
+the roster displayed all eight pets, selecting Von persisted to the isolated
+`pet.json`, and the pet's own X hid its window. The first accessibility-index close
+attempt failed with out-of-bounds geometry; a fresh screenshot-coordinate action
+succeeded. Restore was not verified (computer-use geometry unavailable).
+
+Four new endpoint tests reproduce synchronous event-loop starvation in pet catalog
+loading (`/v1/pets`, `/v1/pet`, spritesheet lookup) and desktop discovery. The repair
+offloads this blocking work, snapshots settings across awaits, and keeps settings
+mutation free of new asynchronous read-modify-write races. All four failed before
+the fix and passed after it. This is a proven liveness defect, not yet proof that
+every native cold-start failure has the same cause. Rebuild and repeat cold native
+startup before claiming that failure fixed. Never weaken token identity checks.
+
+One Terra-medium independent reviewer also found provenance defects in the neutral
+pet repair's generated attestation. The repair now checks every decoded pixel
+against immutable `638542c522e01adfa9705b4704701975dfe0237d` Git blobs, preserves both
+animation digests, and archives the actual original 24 reviewer results, eight
+blind-validation results and source/static-review records. Majority/cardinal checks
+are recomputed; generated fresh-approval/pass claims were removed. Historical
+static review plus a verified pixel transformation is not native playback proof.
+
+Protected `services/supervisor/src/pex_supervisor/loop.py` remains operator-owned,
+unstaged and excluded. No paid calls, AWS deployments, duplicate posts or submission
+actions occurred. Q17 remains an inconclusive 200-then-429/timeout diagnostic, not a
+quiet pass. Next: finish scoped gates and push, clean rebuild/native retest, then the
+remaining semantic quiet/recovery, cross-harness, fair benchmark and submission
+requirements in `SHIP_CHECKLIST.md`. Do not spend the next cycle regenerating already
+preserved pet imagery or presenting package success as product completion.
+
 ### 7 September — task-specified unittest repair pushed; exact package green; Q17 retained as provider-timeout diagnostic
 
 The Q16 failure was audited from the worker transcript through protocol parsing,

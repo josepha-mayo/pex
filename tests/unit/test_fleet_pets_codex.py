@@ -1197,11 +1197,13 @@ def test_release_manifest_seals_compact_exact_eight_evidence_closure():
     assert all(row["all_unused_cells_transparent"] is True for row in structural["pets"])
     assert visual["pet_ids"] == release["built_in_pet_ids"]
     assert visual["spritesheet_sha256"] == [row["spritesheet_sha256"] for row in release["pets"]]
-    assert visual["verdict"] == "pass"
-    assert any("not native packaged playback" in value for value in visual["limitations"])
+    assert "verdict" not in visual
+    assert "final_operator_source_atlas_review" not in visual["review_provenance"]
+    assert any("not current native playback" in value for value in visual["limitations"])
+    assert_bound(visual["review_provenance"]["review_archive"])
     reviews_path = assert_bound(visual["review_provenance"]["canonical_records"])
     reviews = json.loads(reviews_path.read_text(encoding="utf-8"))
-    assert reviews["record_kind"] == "sanitized-independent-direction-review"
+    assert reviews["record_kind"] == "archived-independent-direction-review-lineage"
     assert reviews["reviewed_cell_scope"] == {
         "rows": [9, 10],
         "cell_count": 16,
@@ -1237,6 +1239,8 @@ def test_byte_hashed_release_text_is_materialized_as_lf_on_every_checkout():
         "apps/desktop/src/pets/release-manifest.json",
         *[f"apps/desktop/src/pets/{pet.id}/pet.json" for pet in STARTERS],
         "apps/desktop/src/pets/release-evidence/independent-reviews.json",
+        "apps/desktop/src/pets/release-evidence/neutral-repair.json",
+        "apps/desktop/src/pets/release-evidence/review-archive.json",
         "apps/desktop/src/pets/release-evidence/structural.json",
         "apps/desktop/src/pets/release-evidence/visual-attestation.json",
         "apps/desktop/src/pets/judge-gallery.html",
@@ -1281,11 +1285,12 @@ def test_release_preflight_is_structured_and_never_claims_package_readiness():
         report["git"]["tracked_release_input_count"]
         + report["git"]["untracked_release_input_count"]
     )
-    assert report["git"]["audit_reachable_input_count"] == 5
+    assert report["git"]["audit_reachable_input_count"] == 6
     assert report["git"]["audit_reachable_inputs"] == [
         "apps/desktop/src/pets/judge-gallery.html",
         "apps/desktop/src/pets/release-evidence/independent-reviews.json",
         "apps/desktop/src/pets/release-evidence/neutral-repair.json",
+        "apps/desktop/src/pets/release-evidence/review-archive.json",
         "apps/desktop/src/pets/release-evidence/structural.json",
         "apps/desktop/src/pets/release-evidence/visual-attestation.json",
     ]

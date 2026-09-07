@@ -1,5 +1,25 @@
 # PEX shipping checklist — 5 September 2026
 
+**Current 7 September evening checkpoint (supersedes historical labels below):**
+`9329a67` normal clean Windows build completed, but fresh native cold startup failed
+with `bridge_identity_lost`; Retry recovered. Native message dismissal, all-eight
+roster, persisted Von selection and pet X-hide worked. Restore/restart/full playback
+remain open. Four endpoint starvation reproductions failed on old code and pass with
+the in-progress off-event-loop catalog/discovery repair. Pet provenance is also being
+strengthened with immutable before/after pixel verification and inspectable original
+reviews. Rebuild and native retest are required. Full submission remains **NO-GO**.
+
+Immediate execution order:
+
+- [x] Reproduce the reported bridge loss in the actual packaged desktop.
+- [x] Prove catalog/discovery event-loop blocking with negative regression tests.
+- [x] Implement off-loop work and re-run the four targeted regressions.
+- [x] Recover original pet-review records and remove generated fresh-review claims.
+- [ ] Complete the final scoped regression/review and push this repair slice.
+- [ ] Clean rebuild; prove fresh cold startup, Retry, hide/restore and persistence.
+- [ ] Resume the remaining full-scope steps 2–7 below, especially provider-complete
+  quiet/recovery evidence, visible fair comparisons and submission preparation.
+
 **Latest exact source/package gate:** pushed source `5f0f7b2` repairs PEX's
 task-specified unittest evidence path and is clean-package green. Broad backend
 regression passed 3,732 with 8 skips; clean focused backend 224, desktop 205, Rust 16,
