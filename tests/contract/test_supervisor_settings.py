@@ -1305,7 +1305,10 @@ async def test_concurrent_compare_and_swap_allows_exactly_one_writer(supervisor_
         ),
     )
 
-    assert sorted((left.status_code, right.status_code)) == [200, 409]
+    assert sorted((left.status_code, right.status_code)) == [200, 409], (
+        (left.status_code, left.json().get("detail")),
+        (right.status_code, right.json().get("detail")),
+    )
     persisted = load_supervisor_choice(home / "supervisor.json")
     assert persisted is not None
     assert persisted.revision == 2
