@@ -1,5 +1,19 @@
 # PEX shipping checklist — 5 September 2026
 
+**Latest exact source/package gate:** pushed source `5f0f7b2` repairs PEX's
+task-specified unittest evidence path and is clean-package green. Broad backend
+regression passed 3,732 with 8 skips; clean focused backend 224, desktop 205, Rust 16,
+normal MSI+NSIS build, frozen lifetime 3 and both-installer extraction/inventory all
+passed. Package receipt SHA256
+`05D639C8FE1598A301F085C1465AFB1596C73550622959B066F2D4CEE20659E5`
+reports `release_ready:true`, zero blockers, exact four executables and ordered eight
+pets in both installers. Q17 live-confirmed the exact required unittest target/exit and
+no later edits, but free Muse returned 200 then 429 and timed out before a complete
+semantic decision. Its safe NOOP had no delivery and is retained as inconclusive, not
+counted as quiet success. Current-source native visual/persistence/all-eight playback,
+provider-complete quiet proof, fair Cursor/Codex comparisons, AgentCore, video and
+submission remain open. Overall submission is **NO-GO**.
+
 **Latest exact release gate:** pushed source `797d06b` is clean-package green.
 Desktop 205/205, TypeScript/Vite build, Rust 16/16, normal MSI+NSIS release build,
 both-installer extraction/inventory verification and exact bridge lifetime 3/3 all

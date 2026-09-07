@@ -1,5 +1,25 @@
 # STATUS
 
+## 7 September 2026 — current exact source 5f0f7b2; package green, submission NO-GO
+
+- PEX now honors explicit safe `python -m unittest` evidence instead of hard-coding
+  pytest. Exact targets, CWD, exit and count are typed; wrong targets and shell
+  composition fail closed. The repair is pushed as `5f0f7b2`; local/upstream matched.
+- Regression evidence: 177 focused; 3,732 passed/8 skipped broad backend; clean 224
+  focused; desktop 205; Rust 16; frozen bridge lifetime 3.
+- Normal clean MSI+NSIS build and both-installer verification passed. Receipt SHA256
+  `05D639C8FE1598A301F085C1465AFB1596C73550622959B066F2D4CEE20659E5`
+  reports `release_ready:true`, blockers empty, exact four executables and eight pets.
+- Q17 live-observed the required targeted unittest exit 0 and independently passed all
+  four tests with the exact artifact. Free Muse then returned HTTP 200/429 and timed
+  out; PEX safely emitted NOOP with no delivery. Q17 is inconclusive, not a quiet pass.
+- Grant/observer/owned processes were cleaned up and port 7439 is free. The protected
+  main `loop.py` change remains the only tracked dirty path and was excluded.
+- Native visual/persistence/all-eight playback, provider-complete quiet proof,
+  Cursor/Codex comparisons, AgentCore, video and submission remain open.
+
+Overall submission remains **NO-GO**; internal target remains 9 September WAT.
+
 ## 7 September 2026 — exact 797d06b package integrity green
 
 - Bounded Strands cancellation cleanup is pushed as `797d06b`; local/upstream matched.

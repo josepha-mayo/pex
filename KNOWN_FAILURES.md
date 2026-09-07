@@ -1,5 +1,19 @@
 # Known failures
 
+## 7 September 2026 — Q17 provider timeout; unittest source defect is repaired
+
+- Q16 proved PEX misclassified an exact passing task-required unittest run and asked
+  for pytest. Source `5f0f7b2` repairs that defect with typed unittest recognition,
+  verification and action binding; broad backend, clean release and package gates pass.
+- Q17 live-confirmed the repair: exact `test_timeline.py`, targeted scope, exit 0 and no
+  later edits were retained. The independent four-test run and artifact also pass.
+- Q17 is still not a semantic quiet pass. Free Muse returned HTTP 200, then HTTP 429 on
+  continuation; bounded inference timed out and recorded
+  `ambiguous_semantic_result:prior_planner_dispatch_uncertain`. Safe NOOP caused no
+  worker delivery. Never rerun, overwrite or relabel Q17.
+- Current package integrity is green, but current-source native visual/persistence/
+  all-eight playback and provider-complete quiet acceptance remain unverified.
+
 ## 7 September 2026 — Q14 source defect repaired; live semantic proof still open
 
 - The cancellation-drain provenance defect exposed by Q14 is repaired, pushed and

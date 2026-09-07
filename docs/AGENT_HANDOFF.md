@@ -1,5 +1,76 @@
 # PEX agent handoff
 
+### 7 September — task-specified unittest repair pushed; exact package green; Q17 retained as provider-timeout diagnostic
+
+The Q16 failure was audited from the worker transcript through protocol parsing,
+verification, action binding and supervisor planning. The worker had actually run the
+required `python -m unittest -v test_timeline.py` in the exact attached workspace,
+passed all four tests and produced the required artifact. PEX nevertheless hard-coded
+pytest evidence and asked for an irrelevant pytest run. That was a production semantic
+defect, not a worker failure.
+
+The repair is committed and pushed as exact source
+`5f0f7b2c3f70948ace282a2d8797c902d14cce8d`; local `main` and `origin/main` matched.
+It adds a typed, fail-closed `PYTHON_UNITTEST` verification path: direct
+`python -m unittest` and the narrow literal PowerShell form emitted by Codex are
+recognized, target/CWD/exit/count evidence is preserved, shell composition and
+redirection are rejected, exact goal-required targets are enforced, matching observed
+success closes the claim, and a bridge-owned unittest probe is minted only when the
+required evidence is missing or invalid. Codex/Cursor parsing, planner requests,
+background/drift/scoring projections and final action binding now use the same typed
+contract. A wrong target cannot satisfy the goal. Focused gates reached 177 passed;
+the final broad backend gate passed **3,732 with 8 skips** in 1,146.36 seconds. The
+main checkout still contains only the operator-owned unstaged `loop.py` tail; it was
+not staged or included in this release.
+
+Detached clean release
+`C:/Users/JosephMayo/Projects/pex-release-5f0f7b2` passed 224 focused backend tests,
+desktop **205/205**, TypeScript/Vite production build, Rust **16/16**, the normal
+Tauri MSI+NSIS build and frozen bridge lifetime **3/3 in 73.33s**. Package verifier
+v2 extracted both installers, found exactly four executables and the ordered eight
+pets in each, linked the sidecars/source inputs, accepted only Tauri's exact four-byte
+desktop marker and reported `release_ready:true`, blockers empty. Evidence:
+
+- package receipt `build/pex-package-receipt-5f0f7b2-v2.json`, SHA256
+  `05D639C8FE1598A301F085C1465AFB1596C73550622959B066F2D4CEE20659E5`;
+- frozen lifetime JUnit `build/frozen-lifetime-5f0f7b2.xml`, SHA256
+  `761D6472B29ECEAF65F7927879C26D6AC5A5B2DEE8231135FF4658E626BEAD06`;
+- MSI SHA256 `E08CA6E0F62CA7B36275D4791147512ABFD912628CB9D64F7F63052982B1CF6B`;
+- NSIS SHA256 `0608328E6A76FF121B6A3D819AEED07E022B7B8A01AECF9F92367C0259072F3F`;
+- embedded bridge SHA256
+  `76BDD3FE3A1BCA45A727D34C77A8D426596DDAB8AA449920DD8422620310CA7E`.
+
+The first verifier attempt is retained honestly at
+`build/pex-package-receipt-5f0f7b2.json`: MSI verification passed, while NSIS
+extraction failed because only `7z.exe`, without its required `7z.dll`, had been
+copied into the ignored tool directory. Copying the already-retained 13-file portable
+7-Zip directory with every source/destination hash equal allowed the v2 verifier to
+test the unchanged installers. This was harness setup failure, not an installer defect.
+
+Fresh Q17 then used this exact source, a new workspace/thread/socket/bridge home,
+Codex `gpt-5.3-codex-spark`, observe-only attachment, a persistent goal, revocable
+correction authority, free Zen `muse-spark-1.3-contributor-free`, and a one-dispatch
+cap. The worker completed one task turn. PEX live-observed the exact unittest target,
+exit 0, targeted scope and no later file edits; the old unnecessary-pytest defect did
+not recur. Independent operator execution also passed all four immutable tests and
+confirmed the exact `timeline.md`; immutable hashes remained stable. Muse returned
+HTTP 200, its continuation received HTTP 429, and the bounded 60-second inference
+ended `timeout`. PEX safely recorded `NOOP`/`noop`, `transport_status=not_attempted`
+and sent zero correction, but diagnosis was
+`ambiguous_semantic_result:prior_planner_dispatch_uncertain`; therefore Q17 is an
+**inconclusive provider diagnostic, not a semantic quiet pass**. Capture:
+`C:/Users/JosephMayo/Projects/pex-live-d67e78f/build/quiet-live-20260906/Q17/client/capture-20260907T195945994057Z.json`,
+SHA256 `7B30A8713049C11BA244F5EDEF108856785C193B7033B04B9B240CFCA7953003`.
+Grant revoke and observer detach succeeded; the exact bridge/listener stopped, the
+generated Q17 socket was removed, and port 7439 is free. Never rerun or relabel Q17.
+
+Submission remains **NO-GO**. The exact current package is structurally green and
+the unittest evidence defect is live-closed, but current-source native visual
+interaction/persistence/all-eight playback, a provider-complete semantic quiet proof,
+fair Cursor/Codex comparisons, AgentCore proof, video and final submission remain
+open. Do not burn the same Muse rate window with a replacement case; proceed with
+offline/native/spec evidence and use a new case only after independent rate recovery.
+
 ### 7 September — cancellation repair pushed; exact 797d06b package closure green
 
 The bounded Strands cancellation-drain repair and its regression were reviewed,
