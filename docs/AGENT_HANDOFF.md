@@ -1,5 +1,45 @@
 # PEX agent handoff
 
+### 7 September 22:30 UTC — exact 7a package and native bridge pass; canvas fix next
+
+This is the current checkpoint; older current/latest labels are historical. Read
+all three specs and SHIP_CHECKLIST before work. The full goal is unchanged; internal
+filming target is 9 September WAT. Never equate package integrity with submission.
+
+Pushed `7a1a5b5a2b00b6dc92bf803337ff5b673b7a910b` contains the off-event-loop
+catalog/discovery fix and independently checked pet evidence lineage. Clean worktree
+`C:\Users\JosephMayo\Projects\pex-release-9329a67` (directory name is historical)
+passed 114 affected backend tests/2 skips, desktop 214, normal Tauri MSI+NSIS build,
+newly frozen bridge lifetime 3, and both-installer extraction/inventory. Package
+receipt `build/package-7a1a5b5.json` SHA256:
+`573238903E786C84ADFDB5496C559500367AA0841C33AF21023DF5FBF970AD24`.
+
+Actual isolated native profile `build/native-smoke-7a1a5b5`, model and auto-attachment
+disabled: fresh startup AND normal close/reopen reached No worker connected without
+Retry or identity loss. All eight roster thumbnails loaded. Von selection persisted
+across restart; desktop bubble-minus dismissed only the bubble; X hid the pet and
+unchecked Settings visibility; Show desktop pet restored it with bubble still
+dismissed. App was closed normally after testing, without touching other apps.
+Native canvas remained dark: pet.html's `html` light color-scheme rule lost to shared
+`:root` dark styling. A one-selector specificity repair and negative regression
+test are now implemented; 215 desktop tests and TS/Vite pass. New native replay is
+required before claiming transparency. Full eight-pet animation QA remains open.
+
+One bounded synthetic Muse diagnostic on exact 7a completed a two-call Strands NOOP
+in 16.687s; both HTTP200. Receipt `build/muse-retry-diagnostic-7a.json`. It disabled
+SDK retries for diagnosis only, capped requests at three, attached no worker, and is
+NOT quiet/recovery/benchmark evidence. Q17's 200/429 timeout remains inconclusive.
+Read-only Terra review found SDK default retries can conceal a 429 under PEX's
+shorter wall deadline; no provider failure cause or cancellation bug was proven.
+No production provider retry behavior was changed; next is a fresh real-worker case.
+
+Protected loop.py remains unstaged, untouched, SHA256
+`DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`.
+No paid inference, AWS deployment, duplicate post or final submission. Continue the
+remaining semantic quiet/recovery, full source audit, cross-harness workflow/fair
+comparisons, AgentCore requirements under no-bill authority, video and submission.
+One Terra-medium subagent performed bounded reviews; keep delegation economical.
+
 ### 7 September evening — native cold-start failure reproduced; liveness repair under verification
 
 This is the current checkpoint; older "current" headings below are historical.

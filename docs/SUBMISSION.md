@@ -1,10 +1,12 @@
 # Devpost submission copy
 
-> **Current source/package evidence:** use [the 6 September continuation checkpoint](CHECKPOINT_2026_09_06.md).
-> The retained package is `4f8b567`, with newer source repairs pending a final build.
-> The older `f99fe43` package block below is historical. Submission remains NO-GO;
-> the user now targets 9 September internally. Native bubble dismissal and Alt+F4 close
-> were observed; restoration and final visual replay were stopped by physical Escape.
+> **Current evidence, 7 September 22:30 UTC:** use the top of
+> [the handoff](AGENT_HANDOFF.md) and [shipping checklist](SHIP_CHECKLIST.md).
+> Exact `7a1a5b5` is clean-package green. Native fresh startup/restart, bubble dismissal,
+> pet hide/restore, all-eight roster and Von selection persistence were observed.
+> A remaining canvas CSS repair needs rebuilt native verification; eight-pet full
+> playback and final-source real-worker semantic proof remain open. Overall NO-GO;
+> the user targets 9 September WAT for filming. Older package blocks are historical.
 
 > **6 September package checkpoint — still NO-GO.** Final repository revision
 > `f99fe4399720a223d96f1ad860b34ae175f5d917` has a clean, validated MSI + NSIS

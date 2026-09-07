@@ -23,6 +23,19 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### 7 September 22:30 UTC — bounded liveness, pet provenance and canvas review
+
+`7a1a5b5` repairs four directly reproduced async event-loop starvation paths in
+bridge app/discovery; old-code negatives and clean114/2skip regression retained.
+Independent review of pet lineage led to immutable full-pixel verification, actual
+archived review bytes and recomputed majority/cardinal gates, without invented fresh
+visual approval. The parent reviewed those diffs and eight node tamper tests.
+Native restart/hide/restore passed, then exposed a separate pet.html `html` versus
+styles.css `:root` specificity conflict. A pet-only stronger selector is regression
+tested (failed before, passes after); desktop215 and TS/Vite pass. Native rebuilt
+transparency is pending. These are bounded changed-path audits, not full-file closure
+for all 341 inventoried paths and not full submission approval.
+
 ### Current whole-pipeline diagnostic — 7 Sep
 
 Q11 is not source-audit closure or a formal benchmark row. It proved the repaired

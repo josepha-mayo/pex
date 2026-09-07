@@ -1,5 +1,17 @@
 # STATUS
 
+## 7 September 22:30 UTC — native startup and pet controls verified; submission NO-GO
+
+Exact pushed `7a1a5b5` passed clean affected backend114/2 skips, desktop214, frozen
+bridge lifetime3, normal MSI+NSIS build and both-installer extraction/inventory.
+Fresh native startup and normal restart succeeded without Retry. All eight roster
+images loaded; Von stayed selected after restart; bubble dismiss, pet hide and
+Settings restore worked. A remaining dark canvas is traced to a CSS specificity
+conflict; the narrow repair passes desktop215 and TS/Vite, awaiting native replay.
+Synthetic Muse completed two HTTP200 calls, but real-worker quiet/recovery proof,
+full audit/benchmarks, AgentCore and video/submission are still open. See current
+AGENT_HANDOFF and SHIP_CHECKLIST; older current labels below are historical.
+
 ## 7 September evening — native failure reproduced; release still NO-GO
 
 `9329a67` is pushed and both normal Windows installers built successfully. A fresh

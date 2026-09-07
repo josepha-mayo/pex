@@ -1,6 +1,27 @@
 # PEX shipping checklist — 5 September 2026
 
-**Current 7 September evening checkpoint (supersedes historical labels below):**
+**Current 7 September 22:30 UTC checkpoint:** exact `7a1a5b5` is clean-package green:
+114 affected backend/2 skips, desktop214, frozen lifetime3, normal MSI+NSIS and both
+installer inventories pass. Native fresh startup and normal close/reopen both reached
+connected local state without Retry. Eight thumbnails, Von selection persistence,
+bubble dismissal, pet X-hide and Settings restore are observed. A remaining native
+dark canvas exposed a CSS specificity defect; its narrow fix passes desktop215 and
+TS/Vite but still needs rebuilt native confirmation. Full submission remains NO-GO.
+
+- [x] Push the liveness and inspectable pet-provenance repair (`7a1a5b5`).
+- [x] Verify exact clean installers and frozen process lifetime.
+- [x] Observe fresh native startup, normal restart, pet hide/restore and selection persistence.
+- [x] Isolate and repair the pet canvas CSS cascade; negative regression then 215 passing tests.
+- [ ] Rebuild and visually confirm transparent canvas and eight-pet full playback.
+- [ ] Fresh provider-complete real-worker quiet/recovery pair and ten quiet cases.
+- [ ] Finish full-scope steps 2–7 below; source audit, fair comparisons, AgentCore,
+  human workflow, filming and authorized submission remain open.
+
+Synthetic provider diagnostic `build/muse-retry-diagnostic-7a.json` completed two
+HTTP200 calls in16.687s with retries disabled diagnostically. No worker attached;
+not a benchmark/quiet pass. Q17 stays inconclusive. Follow the current handoff.
+
+**Historical 7 September evening checkpoint:**
 `9329a67` normal clean Windows build completed, but fresh native cold startup failed
 with `bridge_identity_lost`; Retry recovered. Native message dismissal, all-eight
 roster, persisted Von selection and pet X-hide worked. Restore/restart/full playback

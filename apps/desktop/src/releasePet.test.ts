@@ -1,5 +1,16 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+
+test("pet overlay keeps a light native scheme against the shared dark root", async () => {
+  const [petHtml, sharedStyles] = await Promise.all([
+    readFile(new URL("../pet.html", import.meta.url), "utf8"),
+    readFile(new URL("./styles.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(sharedStyles, /^:root\s*\{\s*color-scheme:\s*dark;/mu);
+  assert.match(petHtml, /html\.pet-shell\s*\{\s*color-scheme:\s*only light;\s*\}/u);
+});
 
 for (const [newIntent, delayedCommand] of [
   ["hide", "plugin:window|set_position"],
