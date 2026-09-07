@@ -1,5 +1,32 @@
 const SHA256 = /^[0-9a-f]{64}$/u;
 
+// A secondary Windows file-lock failure must not replace the verification error.
+export function withSynchronousCleanup(operation, cleanup) {
+  let result;
+  let failed = false;
+  let primaryError;
+  try {
+    result = operation();
+  } catch (error) {
+    failed = true;
+    primaryError = error;
+  }
+  try {
+    cleanup();
+  } catch (cleanupError) {
+    if (failed) {
+      throw new AggregateError(
+        [primaryError, cleanupError],
+        "Verification and cleanup both failed",
+        { cause: primaryError },
+      );
+    }
+    throw cleanupError;
+  }
+  if (failed) throw primaryError;
+  return result;
+}
+
 export const EXPECTED_SIDECAR_BINS = [
   "binaries/pex-bridge",
   "binaries/pex-cursor-hook",

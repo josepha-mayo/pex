@@ -31,6 +31,7 @@ import {
   sidecarStampMatches,
   tauriReleaseWiringMatches,
   toolchainsMatch,
+  withSynchronousCleanup,
 } from "./release-contract.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -482,7 +483,7 @@ function removeSafeRegularFile(path, label) {
 function removeSafeDirectory(path, label) {
   const resolvedPath = assertSafeDirectory(path, label);
   if (!existsSync(resolvedPath)) return;
-  rmSync(resolvedPath, { recursive: true, force: true });
+  rmSync(resolvedPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }
 
 function collectSourceFiles(path, collected) {
@@ -1269,7 +1270,7 @@ function verifyFrozenPetBundle(executable, petSources) {
   mkdirSync(smokeParent, { recursive: true });
   const smokeRoot = mkdtempSync(join(smokeParent, "sidecar-smoke-"));
   assertSafeDirectory(smokeRoot, "Sidecar smoke directory");
-  try {
+  withSynchronousCleanup(() => {
     const isolatedHome = join(smokeRoot, "home");
     mkdirSync(isolatedHome, { recursive: true });
     const stdout = execFileSync(executable, ["--verify-bundle"], {
@@ -1301,9 +1302,9 @@ function verifyFrozenPetBundle(executable, petSources) {
       }),
     };
     assertFrozenBundleInventory(actual, expected);
-  } finally {
+  }, () => {
     removeSafeDirectory(smokeRoot, "Sidecar smoke directory");
-  }
+  });
 }
 
 function usableHelper(path) {

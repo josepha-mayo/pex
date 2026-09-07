@@ -1,5 +1,29 @@
 # PEX agent handoff
 
+### 7 September — frozen startup gate passed; full regression fixture repaired
+
+Correct staged8023a73 lifetime gate88170 TERMINAL SUCCESS:3passed123.53s,
+`pex-verify-14bc53d/build/frozen-staged-lifetime-8023a73.xml`. This proves the two
+authenticated startup/bootloader-death cases and standalone bundle inventory,
+not a finished native installer or UI acceptance. Release build85512 remains failed.
+
+Full clean4a3f2f1 run32367 TERMINAL FAILED:836passed,7skipped,16deselected,
+onefailure1480.20s; `pex-verify-14bc53d/build/full-regression-4a3f2f1.xml`.
+Cleanup concurrent-call test still observed exactly ONE move, but both calls
+returned the completed receipt; test incorrectly assumed asyncio.gather always
+overlaps the dispatching state. It now holds the actual Store grant until the
+second call returns, retains the exact in-progress assertion, then verifies a
+completed replay cannot move again. All9cleanup-ledger tests passed8.22s,
+`build/cleanup-ledger-overlap-20260907.xml`. No production cleanup authority changed.
+
+Build diagnostic now preserves both verification and cleanup exceptions instead
+of a finally cleanup error masking the primary failure. Validated-directory removal
+has bounded5retries/200ms for transient Windows locks; still fails if cleanup fails,
+and neither path safety nor frozen60-second verification budget is relaxed.
+All11release-contract tests and build-script syntax check pass. Pet fix1a836f1 is
+pushed. Next: clean full gate, fresh clean release build, isolated PEX-only native
+acceptance, then bounded authorized live checks. No live calls/AWS spending yet.
+
 ### 7 September — pet visibility race repaired; clean gates still open
 
 Reproduced an older asynchronous Show reopening a pet after newer Hide. Added

@@ -19,9 +19,31 @@ import {
   sidecarStampMatches,
   tauriReleaseWiringMatches,
   toolchainsMatch,
+  withSynchronousCleanup,
 } from "./release-contract.mjs";
 
 const hash = (character) => character.repeat(64);
+
+test("verification cleanup preserves success and each failure without masking", () => {
+  let cleaned = 0;
+  const cleanup = () => { cleaned += 1; };
+  const primary = new Error("frozen verification timed out");
+  const secondary = new Error("EPERM cleanup");
+  assert.equal(withSynchronousCleanup(() => 42, cleanup), 42);
+  assert.throws(() => withSynchronousCleanup(() => { throw primary; }, cleanup),
+    (error) => error === primary);
+  assert.equal(cleaned, 2);
+  assert.throws(() => withSynchronousCleanup(() => 42, () => { throw secondary; }),
+    (error) => error === secondary);
+  assert.throws(() => withSynchronousCleanup(
+    () => { throw primary; }, () => { throw secondary; },
+  ), (error) => {
+    assert.ok(error instanceof AggregateError);
+    assert.equal(error.cause, primary);
+    assert.deepEqual(error.errors, [primary, secondary]);
+    return true;
+  });
+});
 
 test("public release evidence rejects machine identity and credential-shaped values", () => {
   assert.equal(assertPublicReleaseEvidence("sanitized exact-source review"), "sanitized exact-source review");

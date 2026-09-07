@@ -252,6 +252,16 @@ async def test_cleanup_two_calls_grant_at_most_one_move_path(
         resolution_id = await _dispatch_resolution(store, action)
         real_move = executor._move_cleanup_entry
         moves = 0
+        granted = asyncio.Event()
+        release = asyncio.Event()
+        real_start = store.start_cleanup_operation
+
+        async def hold_granted_start(operation_id: str):
+            result = await real_start(operation_id)
+            if result["granted"]:
+                granted.set()
+                await release.wait()
+            return result
 
         def counted_move(entry):
             nonlocal moves
@@ -259,15 +269,26 @@ async def test_cleanup_two_calls_grant_at_most_one_move_path(
             real_move(entry)
 
         monkeypatch.setattr(executor, "_move_cleanup_entry", counted_move)
-        results = await asyncio.gather(
-            _execute(executor, action, resolution_id),
-            _execute(executor, action, resolution_id),
-        )
+        monkeypatch.setattr(store, "start_cleanup_operation", hold_granted_start)
+        first = asyncio.create_task(_execute(executor, action, resolution_id))
+        try:
+            await asyncio.wait_for(granted.wait(), timeout=10)
+            # Hold the real Store grant open so this call observes dispatching,
+            # not a valid completed-result replay after a fast first move.
+            second = await asyncio.wait_for(
+                _execute(executor, action, resolution_id), timeout=10,
+            )
+        finally:
+            release.set()
+            first_result = await first
+        results = [first_result, second]
         assert moves == 1
         assert sorted(results) == [
             "cleanup_dispatch_in_progress",
             "cleanup_quarantined:1",
         ]
+        assert await _execute(executor, action, resolution_id) == "cleanup_quarantined:1"
+        assert moves == 1  # Completed replay must not move anything again.
     finally:
         await store.close()
 
