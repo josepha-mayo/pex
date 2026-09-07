@@ -1615,7 +1615,10 @@ class Pipeline:
             restored_updates,
         )
 
-    async def _invoke_supervisor(self, request: SupervisorRequest, *, semantic: bool, witness):
+    async def _invoke_supervisor(
+        self, request: SupervisorRequest, *, semantic: bool, witness,
+        deterministic_only: bool = False,
+    ):
         async def invoke():
             # wait_for schedules a new task. Recheck in that task, not merely
             # before it was queued, then enter the provider without another
@@ -1628,6 +1631,16 @@ class Pipeline:
                     require_workspace_sample(*witness, cwd=request.session.cwd)
             except WorkspaceAuthorityError as exc:
                 raise _WorkspacePlannerNotStarted(str(exc)) from exc
+            if deterministic_only:
+                # Frozen before dispatch: later model configuration cannot turn
+                # this evidence-only route into an unreserved provider call.
+                return SupervisorResult(
+                    action=plan_deterministic(request),
+                    used_llm=False,
+                    diagnosis="deterministic_triage_no_supervisor_model",
+                    execution_mode="local_deterministic",
+                    traces=["semantic_unavailable:local_deterministic_only"],
+                )
             if (
                 semantic
                 and self.settings.supervisor_mode in {"agentcore", "hybrid"}
@@ -1732,9 +1745,16 @@ class Pipeline:
         candidate = trajectory_review_candidate(request)
         budget_options = {}
         availability = getattr(self.supervisor, "can_attempt_semantic", None)
-        if semantic and callable(availability) and availability(self.model) is False:
+        unavailable = semantic and callable(availability) and availability(self.model) is False
+        deterministic_only = (
+            unavailable
+            and isinstance(self.supervisor, SupervisorRouter)
+            and self.supervisor.mode == "local"
+            and request.event.event_type == EventType.STOP
+        )
+        if unavailable and not deterministic_only:
             budget_options["semantic_dispatch_available"] = False
-        if semantic and self.supervisor_dispatch_limit is not None:
+        if semantic and not deterministic_only and self.supervisor_dispatch_limit is not None:
             budget_options["semantic_dispatch_limit"] = (
                 self.supervisor_dispatch_limit
             )
@@ -1786,7 +1806,12 @@ class Pipeline:
             )
             raise
         try:
-            result = await self._invoke_supervisor(request, semantic=semantic, witness=witness)
+            if deterministic_only:
+                result = await self._invoke_supervisor(
+                    request, semantic=False, witness=witness, deterministic_only=True,
+                )
+            else:
+                result = await self._invoke_supervisor(request, semantic=semantic, witness=witness)
             ambiguous = (
                 result.inference_status in {"timeout"}
                 or result.execution_mode == "hybrid_local_fallback"
@@ -3850,12 +3875,12 @@ class Pipeline:
         elif event.event_type == EventType.STOP:
             status = str((verification or {}).get("status") or "")
             acceptance_status = str((verification or {}).get("acceptance_status") or "")
-            if status == "supported" or acceptance_status == "supported":
-                prior.outcome = "goal_evidence_supported"
-                prior.helped = True
-            elif status in {"contradicted", "acceptance_gap"}:
+            if status in {"contradicted", "acceptance_gap"}:
                 prior.outcome = "acceptance_still_unsatisfied"
                 prior.helped = False
+            elif status == "supported" or acceptance_status == "supported":
+                prior.outcome = "goal_evidence_supported"
+                prior.helped = True
             else:
                 prior.outcome = "worker_stopped_outcome_uncertain"
             prior.metadata["outcome_final"] = True
@@ -4214,16 +4239,16 @@ class Pipeline:
                 prior.metadata["outcome_final"] = True
                 prior.helped = None
         elif merged and gathering.state == EvidenceGatheringState.EXECUTED:
-            if status == "supported" or acceptance_status == "supported":
-                prior.outcome = "goal_evidence_supported"
-                prior.helped = True
-                prior.metadata["goal_satisfied"] = True
-                prior.metadata["outcome_final"] = True
-            elif status in {"contradicted", "acceptance_gap"}:
+            if status in {"contradicted", "acceptance_gap"}:
                 prior.outcome = "verification_revealed_unsatisfied_goal"
                 # The evidence request succeeded even though the task did not.
                 prior.helped = True
                 prior.metadata["goal_satisfied"] = False
+                prior.metadata["outcome_final"] = True
+            elif status == "supported" or acceptance_status == "supported":
+                prior.outcome = "goal_evidence_supported"
+                prior.helped = True
+                prior.metadata["goal_satisfied"] = True
                 prior.metadata["outcome_final"] = True
             else:
                 prior.outcome = "worker_stopped_outcome_uncertain"

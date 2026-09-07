@@ -427,8 +427,16 @@ def test_completed_assistant_message_is_exact_terminal_for_its_parent() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "expected_outcome", "helped"),
+    [
+        ("supported", "goal_evidence_supported", True),
+        ("contradicted", "acceptance_still_unsatisfied", False),
+        ("acceptance_gap", "acceptance_still_unsatisfied", False),
+    ],
+)
 async def test_pipeline_attributes_verified_terminal_only_through_exact_parent(
-    tmp_path,
+    tmp_path, status, expected_outcome, helped,
 ) -> None:
     now = datetime.now(UTC)
     project = str(tmp_path)
@@ -466,12 +474,12 @@ async def test_pipeline_attributes_verified_terminal_only_through_exact_parent(
         updates = await pipeline._observe_prior_intervention(
             session,
             terminal,
-            {"status": "supported", "acceptance_status": "supported"},
+            {"status": status, "acceptance_status": "supported"},
         )
 
         assert len(updates) == 1
-        assert updates[0].outcome == "goal_evidence_supported"
-        assert updates[0].helped is True
+        assert updates[0].outcome == expected_outcome
+        assert updates[0].helped is helped
         assert updates[0].metadata["outcome_event_ids"] == [terminal.event_id]
     finally:
         await store.close()

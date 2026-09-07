@@ -1595,6 +1595,7 @@ async def test_supervisor_catalog_is_selectable_without_exposing_keys(
         "base_url": "https://example.invalid/v1",
         "credential_source": "none",
         "secret_ref": None,
+        "dispatch_limit_override": None,
     }
     bad = await client.patch("/v1/supervisor", json={"provider": "not-a-vendor"})
     assert bad.status_code == 400

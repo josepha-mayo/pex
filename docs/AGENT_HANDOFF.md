@@ -1,5 +1,46 @@
 # PEX agent handoff
 
+## 7 September — release-blocking regressions repaired
+
+The clean full run on `14bc53d` exposed a regression introduced by `043976a`:
+known model unavailability suppressed local deterministic STOP triage, including
+exact missing-artifact corrections. Reproduced red in the clean checkout's chaos
+test. Repaired by freezing a local, no-provider STOP route before dispatch;
+it still rechecks workspace authority inside the scheduled invocation and never
+consumes the semantic cap. A model configured during the dispatch await cannot
+turn this attempt into an unreserved call. Remote unavailable and material
+trajectory skips remain quiet. Four chaos variants prove capped/uncapped and
+mid-dispatch configuration behavior; router invocation is asserted absent.
+The Cursor exact persisted-config test now explicitly includes the intentionally
+added nullable `dispatch_limit_override`; the equality check is not weakened.
+
+Outcome audit independently found supported artifact acceptance could mask a
+contradicted claim. Red regressions reproduced both correction and completed
+verification-request paths. Contradicted/acceptance-gap status now takes priority:
+correction remains unsatisfied; useful evidence collection can be helped=true
+but records goal_satisfied=false. Existing parent/session causal fences remain.
+
+Scoped gates: 129 chaos/pipeline/AgentCore tests passed (45.09s), 48 Cursor hook
+tests passed (19.32s), 125 workspace-authority/outcome tests passed (22.31s),
+141 causal/OpenCode/Codex outcome tests passed (64.17s). These overlapping gates
+are NOT additive full-suite coverage. Receipts are respectively
+`build/deterministic-triage-regression-20260907.xml`,
+`build/cursor-hooks-triage-repair-20260907.xml`,
+`build/triage-authority-outcomes-20260907.xml`, and
+`build/outcome-contradiction-precedence-20260907.xml`.
+
+Clean worktree `C:/Users/JosephMayo/Projects/pex-verify-14bc53d` was created at
+14bc53d and synced offline/frozen (113 packages); all three imports were verified
+inside it. Full test exec 6084 showed failures and was deliberately interrupted
+to diagnose/fix, not because observation timed out. It is terminal (exit 1),
+no full XML was produced, and no matching pytest process remains. Do not claim
+a completed full gate or poll 6084. Earlier full d7b3a64 and package 60ffa76
+receipts remain historical. Full current-source regression must be rerun.
+Read-only native check: no pex.exe/pex-bridge.exe process found and port 7420
+health unavailable. No app launch, native input or live model call was performed.
+Keep the 9 September target and full A–I queue; prioritize core proof and native
+filmable flow over more secondary controls. Product remains NO-GO.
+
 ## 7 September — session review allowance visibility
 
 Inspector now displays remaining review dispatches from retained reservation

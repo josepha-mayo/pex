@@ -29,6 +29,10 @@ outlive a caller timeout. A free-provider label is not a billing guarantee.
   skipped before reservation (`supervisor_unavailable`). This spends neither
   the cap nor trajectory coalescing key. Later material evidence can be reviewed
   after configuration succeeds; no old event is automatically replayed.
+- Exception for local STOP triage: deterministic evidence checks still run without
+  a model and can produce exact evidence-backed corrections. That route is frozen
+  before dispatch and cannot invoke a provider configured during an await. It
+  consumes no semantic reservation. This is not proof of semantic supervision.
 - Replaying the same durable event does not obtain another reservation.
 - Reservations persist across bridge restart. They are retained separately from
   event rows so deleting an event cannot silently replenish the allowance.

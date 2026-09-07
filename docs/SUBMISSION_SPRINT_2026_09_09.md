@@ -83,6 +83,11 @@ drop requirements or declare an unverified product ready.
 ### Day 3 — freeze, demonstrate, review submission
 
 - [ ] **G. Run the complete regression on final clean sources.**
+  Latest attempt: clean 14bc53d full suite exposed a real no-model triage
+  regression; run 6084 was deliberately interrupted and is terminal, with no
+  completed XML. Local STOP triage and contradictory-outcome precedence are
+  repaired with red/green tests (see latest handoff). Rerun the full suite on
+  the repaired clean source; do not treat narrow gates as final approval.
   Clean `d7b3a64` full gate passed: 3,903 passed, 13 skipped, zero failures/errors;
   exec 16849 is terminal. Receipt/hash in handoff. This excludes later Settings,
   compact dismissal and trajectory updates, so G stays open. Include frontend/Rust,

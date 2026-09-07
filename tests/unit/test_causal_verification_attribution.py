@@ -144,6 +144,23 @@ def _supported_verification() -> dict:
     }
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["contradicted", "acceptance_gap"])
+async def test_collected_evidence_does_not_erase_an_unsatisfied_goal(tmp_path, status):
+    created_at = datetime.now(UTC)
+    session = _session(HarnessType.CODEX, str(tmp_path))
+    prior = _completed_verification_request(session, created_at)
+    pipeline = _pipeline_with(prior)
+    verification = {**_supported_verification(), "status": status}
+    result = await pipeline._observe_verification_request(
+        prior, session, _later_stop(session, created_at), verification, persist=False,
+    )
+    assert result.outcome == "verification_revealed_unsatisfied_goal"
+    assert result.helped is True  # Gathering evidence helped; the goal is not satisfied.
+    assert result.metadata["goal_satisfied"] is False
+    assert result.metadata["evidence_collection_succeeded"] is True
+
+
 def test_codex_pytest_execution_requires_adapter_bound_observed_cwd(tmp_path):
     created_at = datetime.now(UTC)
     session = _session(HarnessType.CODEX, str(tmp_path))

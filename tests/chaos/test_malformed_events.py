@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from pex_bridge.adapters import AdapterRegistry
@@ -34,9 +36,13 @@ async def test_malformed_cursor_hook_does_not_crash_bridge(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("limit", [None, 1])
+@pytest.mark.parametrize("configure_during_dispatch", [False, True])
 async def test_malformed_adapter_event_does_not_stop_sibling_supervision(
-    client: AsyncClient, tmp_path
+    client: AsyncClient, tmp_path, monkeypatch, limit, configure_during_dispatch,
 ):
+    monkeypatch.delenv("PEX_FORCE_LLM", raising=False)
+    state.pipeline.settings.supervisor_max_dispatches_per_session = limit
     worker = tmp_path / "healthy-worker"
     worker.mkdir()
     adapter = state.adapters.synthetic
@@ -64,6 +70,17 @@ async def test_malformed_adapter_event_does_not_stop_sibling_supervision(
         json={"unexpected": True, "nested": {"x": 1}},
     )
     assert malformed.status_code == 422
+    provider_route = AsyncMock(side_effect=AssertionError("unreserved provider route"))
+    monkeypatch.setattr(state.pipeline.supervisor, "decide", provider_route)
+    if configure_during_dispatch:
+        original_dispatch = state.store.start_event_effect_dispatch
+
+        async def dispatch_then_configure(**kwargs):
+            result = await original_dispatch(**kwargs)
+            state.pipeline.model = object()
+            return result
+
+        monkeypatch.setattr(state.store, "start_event_effect_dispatch", dispatch_then_configure)
     stopped = await client.post(
         "/v1/synthetic/events",
         json={
@@ -77,5 +94,8 @@ async def test_malformed_adapter_event_does_not_stop_sibling_supervision(
     text = adapter.inbox[session.id][-1]
     assert "report.txt" in text
     assert not text.startswith("PEX:")
+    provider_route.assert_not_awaited()
+    assert intervention["metadata"]["used_llm"] is False
+    assert await state.store.supervisor_dispatch_counts([session.id]) == {session.id: 0}
     health = await client.get("/health")
     assert health.json()["ok"] is True
