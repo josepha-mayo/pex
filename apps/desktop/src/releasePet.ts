@@ -39,7 +39,11 @@ export async function releasePetOverlay() {
   } catch {
     /* keep last pet position */
   }
+  // Lookup/positioning can finish after the user has dismissed the pet.
+  // Check both before and after the asynchronous native show operation.
+  if (!petOverlayVisible()) return;
   await pet.show();
+  if (!petOverlayVisible()) await pet.hide();
 }
 
 export async function hidePetOverlay() {
@@ -49,7 +53,9 @@ export async function hidePetOverlay() {
     if (!TAURI) return;
     const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
     const pet = await WebviewWindow.getByLabel("pet");
+    if (petOverlayVisible()) return;
     await pet?.hide();
+    if (petOverlayVisible()) await pet?.show();
   } catch (error) {
     setPetOverlayVisible(previous);
     throw error;

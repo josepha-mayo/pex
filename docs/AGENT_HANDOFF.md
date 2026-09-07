@@ -1,6 +1,33 @@
 # PEX agent handoff
 
-### Current running gates after 8023a73
+### 7 September — pet visibility race repaired; clean gates still open
+
+Reproduced an older asynchronous Show reopening a pet after newer Hide. Added
+visibility checks before and after native show/hide completion. Four mocked-native
+regressions cover delayed position, show, window lookup and hide; all pass.
+Full desktop suite:204passed69.289s, no skips/failures;
+`build/pet-race-frontend-20260907.log`. Production TypeScript/Vite build passed.
+These are source tests, not native close/restore proof. The protected loop.py diff
+remains exactly25added lines and is excluded from this checkpoint.
+
+Release8023a73 build85512 is TERMINAL FAILED: frozen bundle verification's finally
+cleanup raised EPERM for its isolated sidecar-smoke-HOI6Ub directory, potentially
+masking the primary verification error. Sidecars were staged, NOT installed into
+src-tauri/binaries; do not claim a completed installer. First lifetime attempt13654
+incorrectly targeted that absent installed binary:3precondition failures,10.578s,
+`pex-verify-14bc53d/build/frozen-lifetime-8023a73.xml`. Correct staged executable is
+`pex-release-startup-20260907/build/pyinstaller/pex-bridge-x86_64-pc-windows-msvc.stage.exe`;
+new isolated lifetime gate88170 uses it, receipt frozen-staged-lifetime-8023a73.xml.
+Clean full backend gate32367 on4a3f2f1 is still running, last observed beyond18percent.
+No native or live-inference success is inferred from any running gate.
+
+No-network SDK configuration probe42883 passed: actual PATCH returned200 and
+configuration committed,12.582s total including app creation. Original26964 failed
+because a diagnostic socket audit was installed before Windows asyncio socketpair
+initialization; retry installs it afterward and denies outgoing socket connections.
+No production settings or credentials changed. No timeout widening was justified.
+
+### Earlier gate checkpoint after 8023a73 (superseded above)
 
 Clean release build runs as exec85512 in `pex-release-startup-20260907` (source
 8023a73); frozen/offline Python sync and npm ci passed. Do not duplicate or alter
