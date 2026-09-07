@@ -43,17 +43,11 @@ def test_standard_frame_export_is_pixel_exact_and_hash_bound(tmp_path: Path) -> 
     for row, required_count in enumerate(contract.REQUIRED_FRAMES[:9]):
         for column in range(required_count):
             exported_path = (
-                evidence_root
-                / "frames"
-                / "pex"
-                / contract.ROW_NAMES[row]
-                / f"{column:02d}.png"
+                evidence_root / "frames" / "pex" / contract.ROW_NAMES[row] / f"{column:02d}.png"
             )
             with Image.open(exported_path) as opened:
                 exported = opened.convert("RGBA")
-            assert exported.tobytes() == decoded.crop(
-                contract._cell_bounds(row, column)
-            ).tobytes()
+            assert exported.tobytes() == decoded.crop(contract._cell_bounds(row, column)).tobytes()
 
     for state in contract.STANDARD_ROW_NAMES:
         preview = evidence_root / "previews" / "pex" / f"{state}.gif"
@@ -79,4 +73,32 @@ def test_standard_frame_export_is_pixel_exact_and_hash_bound(tmp_path: Path) -> 
     assert seal["source_atlas"]["sha256"] == contract._sha256(atlas_path)
     assert [preview["state"] for preview in seal["motion_previews"]] == list(
         contract.STANDARD_ROW_NAMES
+    )
+
+
+def test_repair_populates_neutral_without_changing_animation_pixels(tmp_path: Path) -> None:
+    contract = _load_runtime_contract_module()
+    atlas_path = tmp_path / "spritesheet.webp"
+    atlas = Image.new("RGBA", contract.ATLAS_SIZE, (0, 0, 0, 0))
+    for row, required_count in enumerate(contract.REQUIRED_FRAMES):
+        for column in range(required_count):
+            atlas.paste(
+                ((row * 17) % 256, (column * 29) % 256, 101, 255),
+                contract._cell_bounds(row, column),
+            )
+    atlas.save(atlas_path, "WEBP", lossless=True, exact=True)
+
+    before = contract.audit_or_repair(atlas_path, repair=False)
+    assert before["ok"] is False
+    assert "required frame row 0 column 6 is empty" in before["errors"]
+
+    repaired = contract.audit_or_repair(atlas_path, repair=True)
+    assert repaired["ok"] is True
+    assert repaired["neutral_frame_repaired"] is True
+    assert repaired["animation_pixels_unchanged"] is True
+    with Image.open(atlas_path) as opened:
+        decoded = opened.convert("RGBA")
+    assert (
+        decoded.crop(contract._cell_bounds(0, 6)).tobytes()
+        == decoded.crop(contract._cell_bounds(0, 0)).tobytes()
     )

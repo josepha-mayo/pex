@@ -20,6 +20,7 @@ from pex_bridge.pets import (
     CODEX_CELL_H,
     CODEX_CELL_W,
     CODEX_COLS,
+    CODEX_NEUTRAL_LOOK_FRAME,
     CODEX_REQUIRED_FRAMES,
     CODEX_ROWS,
     CODEX_ROWS_V2,
@@ -210,6 +211,14 @@ def render_atlas(pet: PetDefinition, hue_shift: int = 0) -> Image.Image:
         for col in range(CODEX_REQUIRED_FRAMES[row]):
             look = looks[col] if looks else None
             _draw_cell(atlas, pet, col, row, name if looks is None else "idle", look, hue_shift)
+    neutral_row, neutral_column = CODEX_NEUTRAL_LOOK_FRAME
+    neutral = atlas.crop(
+        (0, 0, CODEX_CELL_W, CODEX_CELL_H)
+    )
+    atlas.paste(
+        neutral,
+        (neutral_column * CODEX_CELL_W, neutral_row * CODEX_CELL_H),
+    )
     return atlas
 
 

@@ -1170,7 +1170,7 @@ def test_release_manifest_seals_compact_exact_eight_evidence_closure():
     repo = Path(__file__).resolve().parents[2]
     pets_dir = repo / "apps" / "desktop" / "src" / "pets"
     release = json.loads((pets_dir / "release-manifest.json").read_text(encoding="utf-8"))
-    assert release["schema_version"] == 3
+    assert release["schema_version"] == 4
     assert release["built_in_pet_ids"] == [pet.id for pet in STARTERS]
 
     def assert_bound(binding: dict[str, object], *, base: Path = pets_dir) -> Path:
@@ -1186,11 +1186,14 @@ def test_release_manifest_seals_compact_exact_eight_evidence_closure():
     gallery_path = assert_bound(release["judge_gallery"])
     structural = json.loads(structural_path.read_text(encoding="utf-8"))
     visual = json.loads(visual_path.read_text(encoding="utf-8"))
-    assert structural["schema_version"] == 3
-    assert structural["algorithm"] == "pex-codex-v2-rgba-cell-hash-v1"
+    assert structural["schema_version"] == 4
+    assert structural["algorithm"] == "pex-codex-v2-rgba-cell-hash-v2"
+    assert structural["neutral_look_frame"] == {"row": 0, "column": 6}
     assert [row["id"] for row in structural["pets"]] == release["built_in_pet_ids"]
-    assert all(row["runtime_cell_count"] == 73 for row in structural["pets"])
-    assert all(row["all_runtime_cells_nonempty"] is True for row in structural["pets"])
+    assert all(row["contract_cell_count"] == 74 for row in structural["pets"])
+    assert all(row["neutral_matches_idle_zero"] is True for row in structural["pets"])
+    assert all(row["transparent_rgb_residue_pixels"] == 0 for row in structural["pets"])
+    assert all(row["all_contract_cells_nonempty"] is True for row in structural["pets"])
     assert all(row["all_unused_cells_transparent"] is True for row in structural["pets"])
     assert visual["pet_ids"] == release["built_in_pet_ids"]
     assert visual["spritesheet_sha256"] == [row["spritesheet_sha256"] for row in release["pets"]]
@@ -1199,15 +1202,18 @@ def test_release_manifest_seals_compact_exact_eight_evidence_closure():
     reviews_path = assert_bound(visual["review_provenance"]["canonical_records"])
     reviews = json.loads(reviews_path.read_text(encoding="utf-8"))
     assert reviews["record_kind"] == "sanitized-independent-direction-review"
+    assert reviews["reviewed_cell_scope"] == {
+        "rows": [9, 10],
+        "cell_count": 16,
+        "binding": "decoded-rgba-cell-hash-root-v1",
+    }
     assert len(reviews["records"]) == 24
-    assert [row[0] for row in reviews["records"]] == [
-        pet.id for pet in STARTERS for _ in range(3)
-    ]
+    assert [row[0] for row in reviews["records"]] == [pet.id for pet in STARTERS for _ in range(3)]
     assert [row[1] for row in reviews["records"]] == [
-        row["spritesheet_sha256"] for row in release["pets"] for _ in range(3)
+        row["direction_cell_hash_root"] for row in structural["pets"] for _ in range(3)
     ]
     gallery = gallery_path.read_text(encoding="utf-8")
-    assert all(gallery.count(f'{pet.id}/spritesheet.webp') == 1 for pet in STARTERS)
+    assert all(gallery.count(f"{pet.id}/spritesheet.webp") == 1 for pet in STARTERS)
     assert "not proof of native packaged playback" in gallery
     assert "C:\\Users\\" not in structural_path.read_text(encoding="utf-8")
     assert "file:///" not in gallery
@@ -1266,19 +1272,20 @@ def test_release_preflight_is_structured_and_never_claims_package_readiness():
     assert report["stage"] == "source"
     assert report["release_ready"] is False
     assert report["fleet"]["pet_ids"] == [pet.id for pet in STARTERS]
-    assert report["fleet"]["evidence"]["schema_version"] == 3
+    assert report["fleet"]["evidence"]["schema_version"] == 4
     assert report["fleet"]["evidence"]["source_atlas_count"] == 8
-    assert report["fleet"]["evidence"]["runtime_cell_count"] == 584
+    assert report["fleet"]["evidence"]["runtime_cell_count"] == 592
     assert report["fleet"]["evidence"]["native_runtime_proof"] is False
     assert report["git"]["release_input_count"] >= 200
     assert report["git"]["release_input_count"] == (
         report["git"]["tracked_release_input_count"]
         + report["git"]["untracked_release_input_count"]
     )
-    assert report["git"]["audit_reachable_input_count"] == 4
+    assert report["git"]["audit_reachable_input_count"] == 5
     assert report["git"]["audit_reachable_inputs"] == [
         "apps/desktop/src/pets/judge-gallery.html",
         "apps/desktop/src/pets/release-evidence/independent-reviews.json",
+        "apps/desktop/src/pets/release-evidence/neutral-repair.json",
         "apps/desktop/src/pets/release-evidence/structural.json",
         "apps/desktop/src/pets/release-evidence/visual-attestation.json",
     ]
@@ -1344,6 +1351,21 @@ def test_import_codex_pet_rejects_transparent_or_empty_required_frames(tmp_path:
         import_codex_pet(tmp_path)
 
 
+def test_import_codex_pet_requires_neutral_look_frame(tmp_path: Path):
+    manifest = tmp_path / "pet.json"
+    manifest.write_text(
+        json.dumps({"id": "occupied-unused", "spriteVersionNumber": 2}),
+        encoding="utf-8",
+    )
+    sheet = tmp_path / "spritesheet.webp"
+    atlas = render_atlas(STARTERS[0])
+    atlas.paste((0, 0, 0, 0), (6 * CODEX_CELL_W, 0, 7 * CODEX_CELL_W, CODEX_CELL_H))
+    atlas.save(sheet, "WEBP", lossless=True)
+
+    with pytest.raises(ValueError, match=r"required frame idle\[6\]"):
+        import_codex_pet(tmp_path)
+
+
 def test_import_codex_pet_rejects_pixels_in_runtime_unused_cells(tmp_path: Path):
     manifest = tmp_path / "pet.json"
     manifest.write_text(
@@ -1352,18 +1374,10 @@ def test_import_codex_pet_rejects_pixels_in_runtime_unused_cells(tmp_path: Path)
     )
     sheet = tmp_path / "spritesheet.webp"
     atlas = render_atlas(STARTERS[0])
-    atlas.paste(
-        (255, 0, 0, 255),
-        (
-            6 * CODEX_CELL_W,
-            0,
-            7 * CODEX_CELL_W,
-            CODEX_CELL_H,
-        ),
-    )
+    atlas.paste((255, 0, 0, 255), (7 * CODEX_CELL_W, 0, 8 * CODEX_CELL_W, CODEX_CELL_H))
     atlas.save(sheet, "WEBP", lossless=True)
 
-    with pytest.raises(ValueError, match=r"unused frame idle\[6\]"):
+    with pytest.raises(ValueError, match=r"unused frame idle\[7\]"):
         import_codex_pet(tmp_path)
 
 

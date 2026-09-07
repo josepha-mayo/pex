@@ -29,11 +29,11 @@ CODEX_COLS = 8
 CODEX_ROWS_V2 = 11
 CODEX_ATLAS_W = CODEX_CELL_W * CODEX_COLS
 CODEX_ATLAS_H = CODEX_CELL_H * CODEX_ROWS_V2
-# Canonical Codex-v2 frames actually addressed by the desktop runtime. Every
-# addressed frame must contain visible pixels and every unaddressed tail cell
-# must be transparent. In particular, idle is six frames: pointer dead-zone
-# rendering falls back to that loop and does not address row 0, column 6.
+# Canonical Codex-v2 animation-frame counts. Extended 8x11 atlases also reserve
+# idle[6] as a visible neutral/default look frame; it is not part of the
+# six-frame idle animation, but it is part of the v2 media contract.
 CODEX_REQUIRED_FRAMES = (6, 8, 8, 4, 5, 8, 6, 6, 6, 8, 8)
+CODEX_NEUTRAL_LOOK_FRAME = (0, 6)
 MAX_PET_MANIFEST_BYTES = 65_536
 MAX_PET_SPRITESHEET_BYTES = 16 * 1024 * 1024
 _PET_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -133,12 +133,13 @@ def validate_codex_v2_atlas(image: Image.Image, *, subject: str = "spritesheet")
                 (row + 1) * CODEX_CELL_H,
             )
             visible = alpha.crop(bounds).getbbox() is not None
-            if column < required_count and not visible:
+            required = column < required_count or (row, column) == CODEX_NEUTRAL_LOOK_FRAME
+            if required and not visible:
                 raise ValueError(
                     f"{subject} required frame {CODEX_ROWS[row]}[{column}] "
                     "must contain visible pixels"
                 )
-            if column >= required_count and visible:
+            if not required and visible:
                 raise ValueError(
                     f"{subject} unused frame {CODEX_ROWS[row]}[{column}] "
                     "must be fully transparent"

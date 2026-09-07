@@ -225,7 +225,7 @@ function validateCompactPetReleaseEvidence(petSources) {
     throw new Error(`Pet release manifest is invalid: ${error.message}`);
   }
   if (
-    release?.schema_version !== 3
+    release?.schema_version !== 4
     || !hasExactKeys(release, [
       "schema_version", "built_in_pet_ids", "structural_evidence", "visual_attestation",
       "judge_gallery", "pets",
@@ -283,20 +283,24 @@ function validateCompactPetReleaseEvidence(petSources) {
   }
   const requiredFrames = [6, 8, 8, 4, 5, 8, 6, 6, 6, 8, 8];
   if (
-    structural?.schema_version !== 3
+    structural?.schema_version !== 4
     || !hasExactKeys(structural, [
-      "schema_version", "algorithm", "geometry", "required_frames_by_row", "pets",
+      "schema_version", "algorithm", "geometry", "required_frames_by_row",
+      "neutral_look_frame", "pets",
     ])
-    || structural?.algorithm !== "pex-codex-v2-rgba-cell-hash-v1"
+    || structural?.algorithm !== "pex-codex-v2-rgba-cell-hash-v2"
     || JSON.stringify(structural?.required_frames_by_row) !== JSON.stringify(requiredFrames)
-    || JSON.stringify(structural?.geometry) !== JSON.stringify({
+    || canonicalJson(structural?.neutral_look_frame) !== canonicalJson({ row: 0, column: 6 })
+    || canonicalJson(structural?.geometry) !== canonicalJson({
       width: 1536, height: 2288, columns: 8, rows: 11, cell_width: 192, cell_height: 208,
     })
     || !Array.isArray(structural?.pets)
     || structural.pets.length !== builtInPets.length
     || structural.pets.some((pet) => !hasExactKeys(pet, [
-      "id", "spritesheet_sha256", "spritesheet_bytes", "runtime_cell_hash_root",
-      "runtime_cell_count", "all_runtime_cells_nonempty", "all_unused_cells_transparent",
+      "id", "spritesheet_sha256", "spritesheet_bytes", "contract_cell_hash_root",
+      "direction_cell_hash_root", "contract_cell_count", "neutral_matches_idle_zero",
+      "transparent_rgb_residue_pixels", "all_contract_cells_nonempty",
+      "all_unused_cells_transparent",
     ]))
   ) throw new Error("Compact structural evidence has an unsupported contract");
 
@@ -317,30 +321,44 @@ for pet_id, value in zip(ids, sys.argv[3:]):
     with Image.open(path) as image:
         if image.format != "WEBP" or image.size != (1536, 2288) or image.mode != "RGBA":
             raise SystemExit(f"invalid source atlas media contract for {pet_id}")
-        runtime_hashes, occupied, unused = [], [], []
+        contract_hashes, direction_hashes, occupied, unused = [], [], [], []
         for row, count in enumerate(counts):
             for column in range(8):
                 raw = image.crop((column * 192, row * 208, (column + 1) * 192, (row + 1) * 208)).tobytes()
-                if column < count:
-                    runtime_hashes.append(hashlib.sha256(raw).hexdigest())
+                required = column < count or (row, column) == (0, 6)
+                if required:
+                    contract_hashes.append(hashlib.sha256(raw).hexdigest())
                     occupied.append(max(raw[3::4]) > 0)
                 else:
                     unused.append(max(raw[3::4]) == 0)
+                if row in (9, 10):
+                    direction_hashes.append(hashlib.sha256(raw).hexdigest())
+        neutral = image.crop((6 * 192, 0, 7 * 192, 208)).tobytes()
+        idle_zero = image.crop((0, 0, 192, 208)).tobytes()
+        pixels = image.get_flattened_data() if hasattr(image, "get_flattened_data") else image.getdata()
+        transparent_rgb_residue = sum(
+            1 for red, green, blue, alpha in pixels
+            if alpha == 0 and (red != 0 or green != 0 or blue != 0)
+        )
     data = path.read_bytes()
     out.append({
         "id": pet_id,
         "spritesheet_sha256": hashlib.sha256(data).hexdigest(),
         "spritesheet_bytes": len(data),
-        "runtime_cell_hash_root": hashlib.sha256(b"".join(bytes.fromhex(v) for v in runtime_hashes)).hexdigest(),
-        "runtime_cell_count": len(runtime_hashes),
-        "all_runtime_cells_nonempty": all(occupied),
+        "contract_cell_hash_root": hashlib.sha256(b"".join(bytes.fromhex(v) for v in contract_hashes)).hexdigest(),
+        "direction_cell_hash_root": hashlib.sha256(b"".join(bytes.fromhex(v) for v in direction_hashes)).hexdigest(),
+        "contract_cell_count": len(contract_hashes),
+        "neutral_matches_idle_zero": neutral == idle_zero,
+        "transparent_rgb_residue_pixels": transparent_rgb_residue,
+        "all_contract_cells_nonempty": all(occupied),
         "all_unused_cells_transparent": all(unused),
     })
 document = {
-    "schema_version": 3,
-    "algorithm": "pex-codex-v2-rgba-cell-hash-v1",
+    "schema_version": 4,
+    "algorithm": "pex-codex-v2-rgba-cell-hash-v2",
     "geometry": {"width": 1536, "height": 2288, "columns": 8, "rows": 11, "cell_width": 192, "cell_height": 208},
     "required_frames_by_row": counts,
+    "neutral_look_frame": {"row": 0, "column": 6},
     "pets": out,
 }
 Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
@@ -361,31 +379,33 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
   }
 
   if (
-    visual?.schema_version !== 3
+    visual?.schema_version !== 4
     || !hasExactKeys(visual, [
       "schema_version", "review_kind", "verdict", "review_provenance", "pet_ids",
-      "spritesheet_sha256", "checks", "limitations",
+      "spritesheet_sha256", "contract_cell_hash_roots", "checks", "limitations",
     ])
-    || visual?.review_kind !== "independent-source-atlas-visual-review"
+    || visual?.review_kind !== "independent-direction-review-plus-deterministic-neutral-repair"
     || visual?.verdict !== "pass"
     || !hasExactKeys(visual?.review_provenance, [
-      "isolated_blind_reviewers_per_pet", "isolation_attested", "final_postrepair_review",
-      "raw_working_receipts_are_not_release_inputs", "canonical_records",
+      "isolated_blind_direction_reviewers_per_pet", "direction_review_scope_only",
+      "final_operator_source_atlas_review", "canonical_records", "neutral_repair",
     ])
-    || visual?.review_provenance?.isolated_blind_reviewers_per_pet !== 3
-    || visual?.review_provenance?.isolation_attested !== true
-    || visual?.review_provenance?.final_postrepair_review !== true
-    || visual?.review_provenance?.raw_working_receipts_are_not_release_inputs !== true
+    || visual?.review_provenance?.isolated_blind_direction_reviewers_per_pet !== 3
+    || visual?.review_provenance?.direction_review_scope_only !== true
+    || visual?.review_provenance?.final_operator_source_atlas_review !== true
     || !hasExactKeys(visual?.checks, [
       "character_identity_across_states", "directional_readability", "clipping_or_cell_bleed",
-      "backgrounds_inside_runtime_cells", "all_eight_distinguishable",
+      "neutral_frame_identity", "backgrounds_inside_contract_cells", "all_eight_distinguishable",
     ])
     || JSON.stringify(visual?.pet_ids) !== JSON.stringify(builtInPets)
     || JSON.stringify(visual?.spritesheet_sha256) !== JSON.stringify(sheetHashes)
+    || JSON.stringify(visual?.contract_cell_hash_roots)
+      !== JSON.stringify(structural.pets.map((pet) => pet.contract_cell_hash_root))
     || visual?.checks?.character_identity_across_states !== "pass"
     || visual?.checks?.directional_readability !== "pass"
     || visual?.checks?.clipping_or_cell_bleed !== "none"
-    || visual?.checks?.backgrounds_inside_runtime_cells !== "none"
+    || visual?.checks?.neutral_frame_identity !== "pass"
+    || visual?.checks?.backgrounds_inside_contract_cells !== "none"
     || visual?.checks?.all_eight_distinguishable !== "pass"
     || !Array.isArray(visual?.limitations)
     || JSON.stringify(visual.limitations) !== JSON.stringify([
@@ -406,12 +426,52 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
   const reviewsText = readFileSync(reviewsPath, "utf8");
   assertPublicReleaseEvidence(reviewsText, "Canonical independent review records");
   rememberReleaseEvidence(reviewsPath, "Canonical independent review records");
+  if (!hasExactKeys(visual.review_provenance.neutral_repair, ["path", "bytes", "sha256"])) {
+    throw new Error("Neutral repair binding has unexpected or missing fields");
+  }
+  const neutralRepairPath = validateHashedArtifact(
+    visual.review_provenance.neutral_repair,
+    "release-evidence/neutral-repair.json",
+    "Canonical neutral repair record",
+    128 * 1024,
+  );
+  const neutralRepairText = readFileSync(neutralRepairPath, "utf8");
+  assertPublicReleaseEvidence(neutralRepairText, "Canonical neutral repair record");
+  rememberReleaseEvidence(neutralRepairPath, "Canonical neutral repair record");
   let reviews;
+  let neutralRepair;
   try {
     reviews = JSON.parse(reviewsText);
+    neutralRepair = JSON.parse(neutralRepairText);
   } catch (error) {
-    throw new Error(`Canonical independent review records are invalid JSON: ${error.message}`);
+    throw new Error(`Compact pet review evidence is invalid JSON: ${error.message}`);
   }
+  if (
+    !hasExactKeys(neutralRepair, [
+      "schema_version", "method", "source_frame", "target_frame",
+      "animation_cells_preserved", "pets",
+    ])
+    || neutralRepair.schema_version !== 1
+    || neutralRepair.method !== "decoded-rgba-copy-with-lossless-webp-reencode"
+    || canonicalJson(neutralRepair.source_frame) !== canonicalJson({ row: 0, column: 0 })
+    || canonicalJson(neutralRepair.target_frame) !== canonicalJson({ row: 0, column: 6 })
+    || neutralRepair.animation_cells_preserved !== true
+    || !Array.isArray(neutralRepair.pets)
+    || neutralRepair.pets.length !== builtInPets.length
+    || neutralRepair.pets.some((pet, index) =>
+      !hasExactKeys(pet, [
+        "id", "before_sha256", "after_sha256", "animation_pixels_sha256",
+        "animation_pixels_unchanged", "neutral_matches_idle_zero",
+      ])
+      || pet.id !== builtInPets[index]
+      || typeof pet.before_sha256 !== "string"
+      || !/^[0-9a-f]{64}$/u.test(pet.before_sha256)
+      || pet.after_sha256 !== sheetHashes[index]
+      || typeof pet.animation_pixels_sha256 !== "string"
+      || !/^[0-9a-f]{64}$/u.test(pet.animation_pixels_sha256)
+      || pet.animation_pixels_unchanged !== true
+      || pet.neutral_matches_idle_zero !== true)
+  ) throw new Error("Canonical neutral repair record is incomplete or stale");
   const criteria = [
     "seven_blinded_horizontal_pairs_classified",
     "seven_blinded_vertical_pairs_classified",
@@ -419,9 +479,15 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
     "review_performed_in_isolation",
   ];
   if (
-    !hasExactKeys(reviews, ["schema_version", "record_kind", "criteria", "verdict_meaning", "records"])
-    || reviews.schema_version !== 1
+    !hasExactKeys(reviews, [
+      "schema_version", "record_kind", "reviewed_cell_scope", "criteria",
+      "verdict_meaning", "records",
+    ])
+    || reviews.schema_version !== 2
     || reviews.record_kind !== "sanitized-independent-direction-review"
+    || canonicalJson(reviews.reviewed_cell_scope) !== canonicalJson({
+      rows: [9, 10], cell_count: 16, binding: "decoded-rgba-cell-hash-root-v1",
+    })
     || JSON.stringify(reviews.criteria) !== JSON.stringify(criteria)
     || reviews.verdict_meaning
       !== "pass means the original review supplied all fourteen allowed directional classifications"
@@ -431,7 +497,7 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
       !Array.isArray(row)
       || row.length !== 6
       || row[0] !== builtInPets[Math.floor(index / 3)]
-      || row[1] !== sheetHashes[Math.floor(index / 3)]
+      || row[1] !== structural.pets[Math.floor(index / 3)].direction_cell_hash_root
       || row[2] !== (index % 3) + 1
       || row[3] !== "pass"
       || typeof row[4] !== "string"
@@ -1527,12 +1593,12 @@ function runReleasePreflight(petSources) {
         sha256: sha256File(petReleaseManifest),
       },
       evidence: {
-        schema_version: 3,
+        schema_version: 4,
         structural_path: "apps/desktop/src/pets/release-evidence/structural.json",
         visual_attestation_path: "apps/desktop/src/pets/release-evidence/visual-attestation.json",
         judge_gallery_path: "apps/desktop/src/pets/judge-gallery.html",
         source_atlas_count: builtInPets.length,
-        runtime_cell_count: 73 * builtInPets.length,
+        runtime_cell_count: 74 * builtInPets.length,
         native_runtime_proof: false,
       },
     },

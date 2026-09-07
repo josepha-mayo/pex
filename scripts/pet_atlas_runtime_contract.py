@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Audit or repair Codex-v2 atlases against the frames the runtime addresses.
+"""Audit or repair Codex-v2 atlases against the canonical media contract.
 
 The current Codex and PEX renderers animate the standard-row frame counts
-declared below and use all sixteen cells in rows 9-10 for pointer look. Cells
-outside that contract must be transparent. Repair mode clears only those
-unaddressed cells and proves that every runtime-addressed decoded pixel remains
-identical before replacing the lossless WebP.
+declared below and use all sixteen cells in rows 9-10 for pointer look. Extended
+atlases also reserve idle[6] as the neutral/default look frame. Cells outside
+that contract must be transparent. Repair mode copies the already-approved
+idle[0] pixels into a missing neutral slot, clears only truly unaddressed cells,
+and proves that every animation-addressed decoded pixel remains identical.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ CELL_WIDTH = 192
 CELL_HEIGHT = 208
 ATLAS_SIZE = (COLUMNS * CELL_WIDTH, ROWS * CELL_HEIGHT)
 REQUIRED_FRAMES = (6, 8, 8, 4, 5, 8, 6, 6, 6, 8, 8)
+NEUTRAL_LOOK_FRAME = (0, 6)
 ROW_NAMES = (
     "idle",
     "running-right",
@@ -61,12 +63,25 @@ def _cell_bounds(row: int, column: int) -> tuple[int, int, int, int]:
     )
 
 
-def _runtime_pixels_sha256(image: Image.Image) -> str:
+def _animation_pixels_sha256(image: Image.Image) -> str:
     digest = hashlib.sha256()
     for row, required_count in enumerate(REQUIRED_FRAMES):
         for column in range(required_count):
             digest.update(image.crop(_cell_bounds(row, column)).tobytes())
     return digest.hexdigest()
+
+
+def _contract_pixels_sha256(image: Image.Image) -> str:
+    digest = hashlib.sha256()
+    for row, required_count in enumerate(REQUIRED_FRAMES):
+        for column in range(COLUMNS):
+            if column < required_count or (row, column) == NEUTRAL_LOOK_FRAME:
+                digest.update(image.crop(_cell_bounds(row, column)).tobytes())
+    return digest.hexdigest()
+
+
+def _required_cell(row: int, column: int, required_count: int) -> bool:
+    return column < required_count or (row, column) == NEUTRAL_LOOK_FRAME
 
 
 def _checker(size: tuple[int, int], square: int = 12) -> Image.Image:
@@ -110,7 +125,11 @@ def write_runtime_contact_sheet(atlas_path: Path, output: Path, *, scale: float 
             background.paste(cell, (0, 0), cell)
             x = column * cell_width
             sheet.paste(background, (x, y + label_height))
-            used = column < required_count
+            used = _required_cell(row, column, required_count)
+            if (row, column) == NEUTRAL_LOOK_FRAME:
+                cell_label = f"{column} neutral"
+            else:
+                cell_label = f"{column}{'' if used else ' unused'}"
             draw.rectangle(
                 (
                     x,
@@ -123,7 +142,7 @@ def write_runtime_contact_sheet(atlas_path: Path, output: Path, *, scale: float 
             )
             draw.text(
                 (x + 4, y + label_height + 4),
-                f"{column}{'' if used else ' unused'}",
+                cell_label,
                 fill="#111111",
                 font=font,
             )
@@ -226,9 +245,7 @@ def seal_current_evidence(
         "contact_sheet": _sealed_artifact(
             evidence_root / "contact-sheets" / f"{pet_id}-runtime-contract.png"
         ),
-        "direction_sheet": _sealed_artifact(
-            evidence_root / "direction-sheets" / f"{pet_id}.png"
-        ),
+        "direction_sheet": _sealed_artifact(evidence_root / "direction-sheets" / f"{pet_id}.png"),
         "continuity": _sealed_artifact(evidence_root / "continuity" / f"{pet_id}.json"),
         "independent_visual_qa": _sealed_artifact(evidence_root / "visual-qa.md"),
         "motion_previews": previews,
@@ -243,9 +260,10 @@ def _inspect(image: Image.Image) -> tuple[list[dict[str, int]], list[str]]:
         for column in range(COLUMNS):
             cell = alpha.crop(_cell_bounds(row, column))
             visible_pixels = sum(cell.histogram()[1:])
-            if column < required_count and visible_pixels == 0:
+            required = _required_cell(row, column, required_count)
+            if required and visible_pixels == 0:
                 errors.append(f"required frame row {row} column {column} is empty")
-            elif column >= required_count and visible_pixels:
+            elif not required and visible_pixels:
                 occupied_unused.append(
                     {
                         "row": row,
@@ -283,32 +301,40 @@ def audit_or_repair(path: Path, *, repair: bool) -> dict[str, Any]:
         }
 
     occupied_unused, contract_errors = _inspect(image)
-    runtime_pixels_before = _runtime_pixels_sha256(image)
-    if contract_errors:
+    animation_pixels_before = _animation_pixels_sha256(image)
+    contract_pixels_before = _contract_pixels_sha256(image)
+    neutral_bounds = _cell_bounds(*NEUTRAL_LOOK_FRAME)
+    neutral_missing = image.getchannel("A").crop(neutral_bounds).getbbox() is None
+    repairable_neutral_error = "required frame row 0 column 6 is empty"
+    nonrepairable_errors = [error for error in contract_errors if error != repairable_neutral_error]
+    if nonrepairable_errors or (contract_errors and not repair):
         return {
             "path": _display_path(path),
             "ok": False,
             "repaired": False,
             "before_sha256": before_sha256,
-            "runtime_pixels_sha256": runtime_pixels_before,
+            "animation_pixels_sha256": animation_pixels_before,
+            "contract_pixels_sha256": contract_pixels_before,
             "occupied_unused_cells": occupied_unused,
             "errors": contract_errors,
         }
 
-    repaired = bool(repair and occupied_unused)
+    repaired = bool(repair and (occupied_unused or neutral_missing))
     if repaired:
         clear = Image.new("RGBA", (CELL_WIDTH, CELL_HEIGHT), (0, 0, 0, 0))
         for cell in occupied_unused:
             image.paste(clear, _cell_bounds(cell["row"], cell["column"]))
+        if neutral_missing:
+            image.paste(image.crop(_cell_bounds(0, 0)), neutral_bounds)
         temporary = path.with_name(f".{path.name}.runtime-contract.tmp")
         try:
             image.save(temporary, "WEBP", lossless=True, method=6, exact=True)
             with Image.open(temporary) as reopened:
                 repaired_image = reopened.convert("RGBA")
-            runtime_pixels_after = _runtime_pixels_sha256(repaired_image)
+            animation_pixels_after = _animation_pixels_sha256(repaired_image)
             remaining_unused, repaired_errors = _inspect(repaired_image)
-            if runtime_pixels_after != runtime_pixels_before:
-                raise RuntimeError("repair changed runtime-addressed decoded pixels")
+            if animation_pixels_after != animation_pixels_before:
+                raise RuntimeError("repair changed animation-addressed decoded pixels")
             if repaired_errors or remaining_unused:
                 raise RuntimeError(
                     "repair did not produce the exact required/transparent cell contract"
@@ -321,16 +347,20 @@ def audit_or_repair(path: Path, *, repair: bool) -> dict[str, Any]:
     with Image.open(path) as final_opened:
         final_image = final_opened.convert("RGBA")
     remaining_unused, final_errors = _inspect(final_image)
-    runtime_pixels_after = _runtime_pixels_sha256(final_image)
+    animation_pixels_after = _animation_pixels_sha256(final_image)
+    contract_pixels_after = _contract_pixels_sha256(final_image)
     return {
         "path": _display_path(path),
         "ok": not final_errors and not remaining_unused,
         "repaired": repaired,
         "before_sha256": before_sha256,
         "after_sha256": after_sha256,
-        "runtime_pixels_sha256_before": runtime_pixels_before,
-        "runtime_pixels_sha256_after": runtime_pixels_after,
-        "runtime_pixels_unchanged": runtime_pixels_before == runtime_pixels_after,
+        "animation_pixels_sha256_before": animation_pixels_before,
+        "animation_pixels_sha256_after": animation_pixels_after,
+        "animation_pixels_unchanged": animation_pixels_before == animation_pixels_after,
+        "contract_pixels_sha256_before": contract_pixels_before,
+        "contract_pixels_sha256_after": contract_pixels_after,
+        "neutral_frame_repaired": bool(repaired and neutral_missing),
         "cleared_unused_cells": occupied_unused if repaired else [],
         "remaining_occupied_unused_cells": remaining_unused,
         "errors": final_errors,
@@ -382,6 +412,7 @@ def main() -> None:
             "cell_width": CELL_WIDTH,
             "cell_height": CELL_HEIGHT,
             "required_frames_by_row": list(REQUIRED_FRAMES),
+            "neutral_look_frame": {"row": 0, "column": 6},
             "unused_cells_fully_transparent": True,
         },
         "repair_requested": args.repair_unused,
