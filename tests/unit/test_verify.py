@@ -101,6 +101,83 @@ def test_verified_tests_pass_is_not_blocked_by_same_event_generic_done():
     assert result["pytest_scope"] == "full_suite"
 
 
+def test_goal_required_unittest_pass_is_supported_without_pytest_nag():
+    claims = [
+        {
+            "statement": "The requested unit tests passed",
+            "kind": "tests_pass",
+            "polarity": "asserted",
+            "confidence": 0.9,
+            "source_event_id": "stop",
+        }
+    ]
+    command = (
+        r'"C:\runtime\pwsh.exe" -Command '
+        "'python -m unittest -v test_timeline.py'"
+    )
+    events = [
+        _event(
+            event_id="unittest",
+            event_type=EventType.SHELL,
+            command=command,
+            process_state={"unittest": {"ok": True, "exit_code": 0, "passed": 4}},
+        ),
+        _event(event_id="stop", event_type=EventType.STOP),
+    ]
+    goal = _goal(
+        acceptance_criteria=["The immutable unit tests pass."],
+        evidence_requirements=["A completed python -m unittest -v test_timeline.py run."],
+    )
+
+    result = verify_claims(claims, events, goal, {})
+
+    assert result["status"] == "supported"
+    assert result["unittest_observation"] == {
+        "event_id": "unittest",
+        "scope": "targeted",
+        "targets": ["test_timeline.py"],
+        "basis": "observed_worker_command",
+        "later_file_edits_observed": False,
+        "ok": True,
+        "exit_code": 0,
+    }
+    assert required_verification_probe_kind(claims, events, goal, result) is None
+
+
+def test_goal_required_unittest_without_result_mints_exact_typed_probe():
+    goal = _goal(evidence_requirements=["A completed python -m unittest -v test_timeline.py run."])
+    result = verify_claims([], [], goal, {})
+
+    kind = required_verification_probe_kind([], [], goal, result)
+    assert kind == "python_unittest"
+    assert verification_probe_targets(kind, goal) == ("test_timeline.py",)
+
+
+def test_goal_required_unittest_pass_needs_no_probe_when_claim_extraction_is_empty():
+    goal = _goal(
+        acceptance_criteria=["The immutable unit tests pass."],
+        evidence_requirements=["A completed python -m unittest -v test_timeline.py run."],
+    )
+    events = [
+        _event(
+            event_id="unittest",
+            event_type=EventType.SHELL,
+            command=(
+                r'"C:\runtime\pwsh.exe" -Command '
+                "'python -m unittest -v test_timeline.py'"
+            ),
+            process_state={"unittest": {"ok": True, "exit_code": 0}},
+        ),
+        _event(event_id="stop", event_type=EventType.STOP),
+    ]
+
+    result = verify_claims([], events, goal, {})
+
+    assert result["status"] == "no_claims"
+    assert result["unittest_observation"]["ok"] is True
+    assert required_verification_probe_kind([], events, goal, result) is None
+
+
 def test_targeted_pytest_pass_cannot_support_an_all_tests_pass_claim():
     claims = [
         {
@@ -131,10 +208,7 @@ def test_targeted_pytest_pass_cannot_support_an_all_tests_pass_claim():
     assert result["pytest_event_id"] == "targeted"
     assert result["pytest_scope"] == "targeted"
     assert "pytest_scope=targeted" in result["verdicts"][0]["evidence"]
-    assert (
-        required_verification_probe_kind(claims, events, goal, result)
-        == "pytest"
-    )
+    assert required_verification_probe_kind(claims, events, goal, result) == "pytest"
 
 
 def test_targeted_pytest_failure_can_still_contradict_all_tests_pass():
@@ -204,18 +278,26 @@ def test_log_spoof_and_unrelated_process_state_are_not_pytest_evidence():
 
 @pytest.mark.parametrize("later_edit", [False, True])
 def test_observed_pytest_facts_survive_absent_claim_without_promoting_completion(later_edit):
-    events = [_event(
-        event_id="observed-test", event_type=EventType.SHELL, command="pytest -q",
-        process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 4}},
-    )]
+    events = [
+        _event(
+            event_id="observed-test",
+            event_type=EventType.SHELL,
+            command="pytest -q",
+            process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 4}},
+        )
+    ]
     if later_edit:
         events.append(_event(event_id="edit", event_type=EventType.FILE_EDIT, file_paths=[]))
     result = verify_claims([], events, _goal(), {})
     assert result["status"] == "no_claims"
     assert result["pytest_observation"] == {
-        "event_id": "observed-test", "scope": "full_suite",
-        "basis": "observed_worker_command", "later_file_edits_observed": later_edit,
-        "ok": True, "exit_code": 0, "passed": 4,
+        "event_id": "observed-test",
+        "scope": "full_suite",
+        "basis": "observed_worker_command",
+        "later_file_edits_observed": later_edit,
+        "ok": True,
+        "exit_code": 0,
+        "passed": 4,
     }
 
 
@@ -224,14 +306,21 @@ def test_observed_pytest_facts_survive_absent_claim_without_promoting_completion
 def test_pathless_edit_invalidates_old_pytest_verdict_and_requests_fresh_evidence(ok, has_claim):
     claims = (
         [{"kind": "tests_pass", "statement": "Tests pass", "polarity": "asserted"}]
-        if has_claim else []
+        if has_claim
+        else []
     )
     events = [
         _event(
-            event_id="pytest", event_type=EventType.SHELL, command="pytest -q",
-            process_state={"pytest": {
-                "ok": ok, "exit_code": 0 if ok else 1, "passed": 4 if ok else 0,
-            }},
+            event_id="pytest",
+            event_type=EventType.SHELL,
+            command="pytest -q",
+            process_state={
+                "pytest": {
+                    "ok": ok,
+                    "exit_code": 0 if ok else 1,
+                    "passed": 4 if ok else 0,
+                }
+            },
         ),
         _event(event_id="edit", event_type=EventType.FILE_EDIT, file_paths=[]),
     ]
@@ -244,21 +333,44 @@ def test_pathless_edit_invalidates_old_pytest_verdict_and_requests_fresh_evidenc
 
 
 def test_pytest_observation_does_not_coerce_or_copy_untrusted_fields():
-    result = verify_claims([], [_event(
-        event_type=EventType.SHELL, command="pytest -q tests/test_one.py",
-        process_state={"pytest": {
-            "ok": "true", "exit_code": False, "passed": True, "failed_count": -1,
-            "collected": 2**53, "output": "untrusted command prose", "unknown": "extra",
-        }},
-    )], _goal(), {})
+    result = verify_claims(
+        [],
+        [
+            _event(
+                event_type=EventType.SHELL,
+                command="pytest -q tests/test_one.py",
+                process_state={
+                    "pytest": {
+                        "ok": "true",
+                        "exit_code": False,
+                        "passed": True,
+                        "failed_count": -1,
+                        "collected": 2**53,
+                        "output": "untrusted command prose",
+                        "unknown": "extra",
+                    }
+                },
+            )
+        ],
+        _goal(),
+        {},
+    )
     observation = result["pytest_observation"]
     assert observation["scope"] == "targeted"
     assert observation["ok"] is None and observation["exit_code"] is None
     assert not {"passed", "failed_count", "collected", "output", "unknown"} & observation.keys()
-    spoof = verify_claims([], [_event(
-        event_type=EventType.SHELL, command="cat pytest.log",
-        process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 99}},
-    )], _goal(), {})
+    spoof = verify_claims(
+        [],
+        [
+            _event(
+                event_type=EventType.SHELL,
+                command="cat pytest.log",
+                process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 99}},
+            )
+        ],
+        _goal(),
+        {},
+    )
     assert spoof["pytest_observation"] is None
 
 
@@ -446,14 +558,21 @@ def test_short_eval_file_contradicts_completion(tmp_path):
 def test_invalid_artifact_count_is_not_completion_evidence(count, tmp_path):
     goal = _goal(acceptance_criteria=["results.jsonl has 1 rows"])
     workspace = {
-        "workspace": str(tmp_path), "files": ["results.jsonl"],
-        "artifacts": [{
-            "path": "results.jsonl", "row_count_complete": True, "row_count": count,
-        }],
+        "workspace": str(tmp_path),
+        "files": ["results.jsonl"],
+        "artifacts": [
+            {
+                "path": "results.jsonl",
+                "row_count_complete": True,
+                "row_count": count,
+            }
+        ],
     }
     result = verify_claims(
         [{"kind": "evaluation_complete", "statement": "Evaluation complete"}],
-        [], goal, workspace,
+        [],
+        goal,
+        workspace,
     )
     assert result["status"] == "uncertain"
     assert result["acceptance_status"] == "uncertain"
@@ -465,12 +584,18 @@ def test_invalid_artifact_count_is_not_completion_evidence(count, tmp_path):
 def test_valid_artifact_count_remains_usable(count, expected, tmp_path):
     result = verify_claims(
         [{"kind": "evaluation_complete", "statement": "Evaluation complete"}],
-        [], _goal(acceptance_criteria=["results.jsonl has 1 rows"]),
+        [],
+        _goal(acceptance_criteria=["results.jsonl has 1 rows"]),
         {
-            "workspace": str(tmp_path), "files": ["results.jsonl"],
-            "artifacts": [{
-                "path": "results.jsonl", "row_count_complete": True, "row_count": count,
-            }],
+            "workspace": str(tmp_path),
+            "files": ["results.jsonl"],
+            "artifacts": [
+                {
+                    "path": "results.jsonl",
+                    "row_count_complete": True,
+                    "row_count": count,
+                }
+            ],
         },
     )
     assert result["status"] == expected
@@ -1089,9 +1214,7 @@ def test_minimum_pytest_count_violation_is_an_acceptance_gap_without_a_worker_cl
         _event(event_id="stop", event_type=EventType.STOP),
     ]
 
-    result = verify_claims(
-        [], events, _goal(acceptance_criteria=["at least 4 tests pass"]), {}
-    )
+    result = verify_claims([], events, _goal(acceptance_criteria=["at least 4 tests pass"]), {})
 
     assert result["status"] == "acceptance_gap"
     assert any(
@@ -1223,9 +1346,7 @@ def test_deselected_tests_block_generic_all_tests_support():
         _event(event_id="stop", event_type=EventType.STOP),
     ]
 
-    result = verify_claims(
-        claims, events, _goal(acceptance_criteria=["tests pass"]), {}
-    )
+    result = verify_claims(claims, events, _goal(acceptance_criteria=["tests pass"]), {})
 
     assert result["status"] == "uncertain"
     assert "pytest_evidence_inconsistent" in result["verdicts"][0]["evidence"]

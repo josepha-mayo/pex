@@ -109,23 +109,15 @@ def _safe_item(item: ContextItem) -> ContextItem:
     for key in ("files", "evidence"):
         raw = item.metadata.get(key)
         if isinstance(raw, (list, tuple)):
-            metadata[key] = [
-                text
-                for value in raw[:16]
-                if (text := _safe_text(value, 512))
-            ]
+            metadata[key] = [text for value in raw[:16] if (text := _safe_text(value, 512))]
     return item.model_copy(
         update={
             "content": _safe_text(item.content, _MAX_HANDOFF_ITEM_CHARS),
             "source_refs": [
-                text
-                for value in item.source_refs[:24]
-                if (text := _safe_text(value, 512))
+                text for value in item.source_refs[:24] if (text := _safe_text(value, 512))
             ],
             "relevance_tags": [
-                text
-                for value in item.relevance_tags[:24]
-                if (text := _safe_text(value, 256))
+                text for value in item.relevance_tags[:24] if (text := _safe_text(value, 256))
             ],
             "metadata": metadata,
         }
@@ -209,8 +201,7 @@ def score_item(
         return -1.0
     if (
         item.kind == ContextKind.DECISION
-        and str(item.metadata.get("status") or "").casefold()
-        == DecisionStatus.SUPERSEDED.value
+        and str(item.metadata.get("status") or "").casefold() == DecisionStatus.SUPERSEDED.value
     ):
         return -1.0
     if item.stale_after is not None and _as_utc(item.stale_after) <= now:
@@ -275,14 +266,11 @@ def build_bundle(
         or not _MIN_HANDOFF_TOKENS <= token_budget <= _MAX_HANDOFF_TOKENS
     ):
         raise ValueError(
-            f"token_budget must be between {_MIN_HANDOFF_TOKENS} "
-            f"and {_MAX_HANDOFF_TOKENS}"
+            f"token_budget must be between {_MIN_HANDOFF_TOKENS} and {_MAX_HANDOFF_TOKENS}"
         )
     now = datetime.now(UTC)
     bounded_source_session_ids = [
-        text
-        for value in source_session_ids[:64]
-        if (text := _safe_text(value, 512))
+        text for value in source_session_ids[:64] if (text := _safe_text(value, 512))
     ]
     source_session_set = set(bounded_source_session_ids)
 
@@ -334,9 +322,7 @@ def build_bundle(
 
     goal_summary = _safe_text(goal.objective, 4_000)
     acceptance_criteria = [
-        text
-        for value in goal.acceptance_criteria[:32]
-        if (text := _safe_text(value, 1_000))
+        text for value in goal.acceptance_criteria[:32] if (text := _safe_text(value, 1_000))
     ]
 
     def _next_objective(chosen: list[ContextItem]) -> str:
@@ -353,10 +339,7 @@ def build_bundle(
             item.content
             for item in chosen
             if item.kind == ContextKind.RESULT
-            and (
-                item.provenance in _STRONG_PROVENANCE
-                or bool(item.metadata.get("verified"))
-            )
+            and (item.provenance in _STRONG_PROVENANCE or bool(item.metadata.get("verified")))
         ).casefold()
         for criterion in goal.acceptance_criteria:
             cleaned = _safe_text(criterion, 1_000)
@@ -365,9 +348,7 @@ def build_bundle(
                 continue
             if cleaned:
                 return cleaned
-        return _safe_text(goal.title, 200) or _safe_text(
-            goal.objective.split("\n", 1)[0], 1_000
-        )
+        return _safe_text(goal.title, 200) or _safe_text(goal.objective.split("\n", 1)[0], 1_000)
 
     def _do_not_redo(selected: list[ContextItem]) -> list[str]:
         rows: list[str] = []
@@ -408,11 +389,7 @@ def build_bundle(
     ) -> ContextBundle:
         selected = [_safe_item(item) for item in chosen_raw]
         critical = [
-            (
-                f"Constraint: {item.content}"
-                if item.kind == ContextKind.CONSTRAINT
-                else item.content
-            )
+            (f"Constraint: {item.content}" if item.kind == ContextKind.CONSTRAINT else item.content)
             for item in selected
             if item.kind in {ContextKind.DECISION, ContextKind.CONSTRAINT}
         ][:8]
@@ -420,10 +397,7 @@ def build_bundle(
             item.content
             for item in selected
             if item.kind == ContextKind.RESULT
-            and (
-                item.provenance in _STRONG_PROVENANCE
-                or bool(item.metadata.get("verified"))
-            )
+            and (item.provenance in _STRONG_PROVENANCE or bool(item.metadata.get("verified")))
         ][:8]
         bundle = ContextBundle(
             goal_id=goal.id,
@@ -453,10 +427,7 @@ def build_bundle(
 
     selected_raw: list[ContextItem] = []
     for item in ranked:
-        if any(
-            _near_duplicate(item, prior)
-            for prior in [*previously_delivered, *selected_raw]
-        ):
+        if any(_near_duplicate(item, prior) for prior in [*previously_delivered, *selected_raw]):
             continue
         safe_item = _safe_item(item)
         if not safe_item.content or not safe_item.source_refs:
@@ -469,9 +440,7 @@ def build_bundle(
 
     seen_progress: set[str] = set()
     source_ids = set(bounded_source_session_ids)
-    selected_source_refs = {
-        ref for item in selected_raw for ref in item.source_refs if ref
-    }
+    selected_source_refs = {ref for item in selected_raw for ref in item.source_refs if ref}
     newest_progress: list[str] = []
     for event in reversed(recent[-12:]):
         if source_ids and event.session_id not in source_ids:
@@ -510,7 +479,9 @@ def items_from_verification(
             candidate.event_id
             for candidate in reversed(recent)
             if isinstance((candidate.process_state or {}).get("pytest"), dict)
+            or isinstance((candidate.process_state or {}).get("unittest"), dict)
             or "pytest" in (candidate.command or "").casefold()
+            or "-m unittest" in (candidate.command or "").casefold()
         ),
         None,
     )
@@ -522,7 +493,9 @@ def items_from_verification(
         statement = str(claim.get("statement") or "").strip()
         if not statement or not evidence:
             continue
-        is_test = any("pytest" in value.casefold() for value in evidence)
+        is_test = any(
+            "pytest" in value.casefold() or "unittest" in value.casefold() for value in evidence
+        )
         provenance = SourceKind.TEST if is_test else SourceKind.WORKSPACE
         source_refs = [str(claim.get("source_event_id") or event.event_id)]
         if is_test and latest_pytest_ref:

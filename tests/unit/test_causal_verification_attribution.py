@@ -153,7 +153,11 @@ async def test_collected_evidence_does_not_erase_an_unsatisfied_goal(tmp_path, s
     pipeline = _pipeline_with(prior)
     verification = {**_supported_verification(), "status": status}
     result = await pipeline._observe_verification_request(
-        prior, session, _later_stop(session, created_at), verification, persist=False,
+        prior,
+        session,
+        _later_stop(session, created_at),
+        verification,
+        persist=False,
     )
     assert result.outcome == "verification_revealed_unsatisfied_goal"
     assert result.helped is True  # Gathering evidence helped; the goal is not satisfied.
@@ -230,6 +234,77 @@ def test_codex_pytest_execution_requires_adapter_bound_observed_cwd(tmp_path):
         {"pytest_unavailable_reason": "command_cwd_mismatch"},
     ):
         assert _matching_pytest_execution(prior, session, event(state), gathering) is None
+
+
+def test_codex_unittest_execution_requires_exact_probe_and_bound_cwd(tmp_path):
+    created_at = datetime.now(UTC)
+    session = _session(HarnessType.CODEX, str(tmp_path))
+    probe = VerificationProbe(
+        id="probe-codex-unittest",
+        kind=VerificationProbeKind.PYTHON_UNITTEST,
+        harness_type=session.harness_type,
+        session_id=session.id,
+        project_id=session.project_id,
+        goal_id=session.goal_id,
+        request_event_id="request-stop",
+        cwd=session.cwd,
+        relative_targets=("test_timeline.py",),
+    )
+    gathering = EvidenceGatheringReceipt(
+        state=EvidenceGatheringState.ATTEMPTED,
+        probe=probe,
+        sources=["harness_verification_request"],
+    )
+    action = ProposedAction(
+        type=InterventionType.REQUEST_VERIFICATION,
+        session_id=session.id,
+        goal_id=session.goal_id,
+        payload={"probe": probe.model_dump(mode="json")},
+        rationale="Need the requested unittest result.",
+        evidence=["goal:unittest"],
+    )
+    prior = Intervention(
+        id="verification-codex-unittest",
+        session_id=session.id,
+        goal_id=session.goal_id,
+        trigger=EventType.STOP.value,
+        evidence=action.evidence,
+        diagnosis=action.rationale,
+        proposed_action=action,
+        confidence=action.confidence,
+        risk=action.risk.value,
+        reversible=action.reversible,
+        authority_required=action.authority_required.value,
+        action_taken=action.type.value,
+        policy_verdict=PolicyVerdict.ALLOW,
+        result="verification_requested",
+        created_at=created_at,
+        metadata={"trigger_event_id": "request-stop"},
+    )
+
+    event = HarnessEvent(
+        event_id="unittest-cwd-event",
+        ts=created_at + timedelta(seconds=1),
+        harness_type=HarnessType.CODEX,
+        session_id=session.id,
+        project_id=session.project_id,
+        event_type=EventType.SHELL,
+        command="python -m unittest -v test_timeline.py",
+        process_state={
+            "unittest": {
+                "ok": True,
+                "exit_code": 0,
+                "execution_cwd": session.cwd,
+            }
+        },
+    )
+
+    receipt = _matching_pytest_execution(prior, session, event, gathering)
+    assert receipt is not None
+    assert receipt.result == VerificationExecutionResult.PASSED
+
+    wrong_target = event.model_copy(update={"command": "python -m unittest -v test_other.py"})
+    assert _matching_pytest_execution(prior, session, wrong_target, gathering) is None
 
 
 @pytest.mark.asyncio
@@ -408,9 +483,7 @@ async def test_shared_codex_normalized_delivery_events_require_exact_durable_bin
         assert stop.raw_event_ref is not None
 
         pipeline = _pipeline_with(prior)
-        updates = await pipeline._observe_prior_intervention(
-            session, response, None, persist=False
-        )
+        updates = await pipeline._observe_prior_intervention(session, response, None, persist=False)
         assert updates == [prior]
         assert prior.outcome == "worker_responded"
         assert prior.worker_response

@@ -1,5 +1,5 @@
 import pytest
-from pex_bridge.shell_state import parse_pytest_process_state
+from pex_bridge.shell_state import parse_pytest_process_state, parse_test_process_state
 
 
 def test_pytest_failure_output_becomes_process_state():
@@ -91,3 +91,33 @@ def test_codex_completed_status_is_not_exit_zero():
     assert state["pytest"]["ok"] is False
     assert state["pytest"].get("exit_code") is None
     assert state["pytest"]["failed"] == "tests/test_parser.py::test_nested_array"
+
+
+def test_powershell_wrapped_unittest_exit_becomes_typed_process_state():
+    state = parse_test_process_state(
+        r'"C:\runtime\pwsh.exe" -Command '
+        "'python -m unittest -v test_timeline.py'",
+        {"exit_code": 0, "output": "Ran 4 tests in 0.12s\n\nOK"},
+    )
+
+    assert state == {
+        "unittest": {
+            "ok": True,
+            "output": "Ran 4 tests in 0.12s\n\nOK",
+            "exit_code": 0,
+            "collected": 4,
+            "passed": 4,
+        }
+    }
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo python -m unittest -v test_timeline.py",
+        "python -m unittest -v test_timeline.py && echo done",
+        "python -m unittest -v test_timeline.py > result.txt",
+    ],
+)
+def test_spoofed_or_composed_unittest_commands_do_not_create_state(command):
+    assert parse_test_process_state(command, {"exit_code": 0}) is None

@@ -18,8 +18,11 @@ from pex_protocol.session import HarnessEvent
 from pex_protocol.verification import (
     PytestInvocation,
     PytestInvocationScope,
+    UnittestInvocation,
+    UnittestInvocationScope,
     VerificationProbeKind,
     classify_pytest_invocation,
+    classify_unittest_invocation,
 )
 
 from pex_supervisor.workspace import HIDDEN, artifact_row_count
@@ -56,6 +59,11 @@ MAX_EXPECTED_ROWS = 1_000_000_000
 MAX_EXPECTED_TESTS = 1_000_000_000
 _PYTEST_REQUIREMENT = re.compile(
     r"\b(?:pytest|test\s+suite|tests?\s+(?:pass|passing|green|succeed))\b",
+    re.I,
+)
+_UNITTEST_REQUIREMENT = re.compile(r"\b(?:python\s+-m\s+unittest|unittest)\b", re.I)
+_UNITTEST_TARGET = re.compile(
+    r"\bpython(?:\d+(?:\.\d+)*)?\s+-m\s+unittest\b(?P<args>[^\r\n`]*)",
     re.I,
 )
 _SERVICE_HEALTH_REQUIREMENT = re.compile(
@@ -156,6 +164,72 @@ def _latest_pytest(
         info, invocation = evidence
         found = (event, info, index, invocation)
     return found
+
+
+def _unittest_info(event: HarnessEvent) -> tuple[dict[str, Any], UnittestInvocation] | None:
+    invocation = classify_unittest_invocation(event.command)
+    if invocation is None:
+        return None
+    state = event.process_state if isinstance(event.process_state, dict) else {}
+    info = state.get("unittest") if isinstance(state.get("unittest"), dict) else None
+    payload = dict(info or {})
+    if event.error and "error" not in payload:
+        payload["error"] = event.error
+    if "ok" not in payload and event.error:
+        payload["ok"] = False
+    return payload, invocation
+
+
+def _latest_unittest(
+    events: list[HarnessEvent],
+) -> tuple[HarnessEvent, dict[str, Any], int, UnittestInvocation] | None:
+    found: tuple[HarnessEvent, dict[str, Any], int, UnittestInvocation] | None = None
+    for index, event in enumerate(events):
+        evidence = _unittest_info(event)
+        if evidence is not None:
+            found = (event, evidence[0], index, evidence[1])
+    return found
+
+
+def _goal_unittest_targets(goal: Goal | None) -> tuple[str, ...]:
+    """Extract only explicit project-relative .py targets from unittest requirements."""
+
+    targets: list[str] = []
+    if goal is None:
+        return ()
+    for raw in [goal.objective, *goal.acceptance_criteria, *goal.evidence_requirements]:
+        for match in _UNITTEST_TARGET.finditer(str(raw or "")):
+            for token in match.group("args").split():
+                cleaned = token.strip("'\"(),:").replace("\\", "/")
+                if cleaned.endswith(".py") and _visible_goal_path(cleaned):
+                    targets.append(cleaned)
+    return tuple(dict.fromkeys(targets))
+
+
+def _unittest_supports_goal(
+    info: dict[str, Any],
+    invocation: UnittestInvocation,
+    *,
+    edits: list[str],
+    goal: Goal | None,
+) -> bool:
+    exit_code = info.get("exit_code")
+    if (
+        info.get("ok") is not True
+        or not isinstance(exit_code, int)
+        or isinstance(exit_code, bool)
+        or exit_code != 0
+        or edits
+    ):
+        return False
+    required_targets = _goal_unittest_targets(goal)
+    if required_targets:
+        return (
+            invocation.scope == UnittestInvocationScope.TARGETED
+            and not invocation.selection_flags
+            and invocation.relative_targets == required_targets
+        )
+    return invocation.scope == UnittestInvocationScope.FULL_SUITE
 
 
 def _failed_node(info: dict[str, Any], event: HarnessEvent) -> str | None:
@@ -521,7 +595,52 @@ def _tests_pass_verdict(
     events: list[HarnessEvent],
     goal: Goal | None,
 ) -> dict[str, Any]:
-    latest = _latest_pytest(events)
+    latest_unittest = _latest_unittest(events)
+    latest_pytest = _latest_pytest(events)
+    if latest_unittest is not None and (
+        latest_pytest is None or latest_unittest[2] > latest_pytest[2]
+    ):
+        event, info, index, invocation = latest_unittest
+        exit_code = info.get("exit_code")
+        valid_exit = isinstance(exit_code, int) and not isinstance(exit_code, bool)
+        edits = _later_edits(events, index)
+        evidence = [
+            f"unittest_event_id={event.event_id}",
+            f"unittest_scope={invocation.scope.value}",
+            *([f"unittest_exit_code={exit_code}"] if valid_exit else []),
+        ]
+        if (valid_exit and exit_code != 0) or event.error:
+            if edits:
+                return {
+                    "claim": claim,
+                    "status": "uncertain",
+                    "evidence": [*evidence, f"later_edit:{edits[-1]}"],
+                    "correction": None,
+                }
+            node = info.get("failed")
+            detail = f"The latest observed unittest run failed (exit {exit_code})."
+            if node:
+                detail += f" Failing test: {node}."
+            return {
+                "claim": claim,
+                "status": "contradicted",
+                "evidence": [*evidence, "unittest_ok=false"],
+                "correction": f"You said the tests pass. {detail} Continue from that failure.",
+            }
+        if _unittest_supports_goal(info, invocation, edits=edits, goal=goal):
+            return {
+                "claim": claim,
+                "status": "supported",
+                "evidence": [*evidence, "unittest_ok=true"],
+                "correction": None,
+            }
+        return {
+            "claim": claim,
+            "status": "uncertain",
+            "evidence": [*evidence, "unittest_evidence_inconsistent"],
+            "correction": None,
+        }
+    latest = latest_pytest
     if latest is None:
         return {
             "claim": claim,
@@ -1038,9 +1157,7 @@ def _unfinished_pytest_verdict(
     _missing, violated = _test_count_violations(requirement, info)
     if not violated:
         return None
-    expected = ", ".join(
-        f"{item.metric} {item.comparator} {item.count}" for item in violated
-    )
+    expected = ", ".join(f"{item.metric} {item.comparator} {item.count}" for item in violated)
     observed = ", ".join(
         f"{item.metric}={_observed_pytest_metric(info, item.metric)}" for item in violated
     )
@@ -1065,9 +1182,7 @@ def _unfinished_pytest_verdict(
 def _goal_requirement_text(goal: Goal | None) -> str:
     if goal is None:
         return ""
-    return " ".join(
-        [goal.objective, *goal.acceptance_criteria, *goal.evidence_requirements]
-    )
+    return " ".join([goal.objective, *goal.acceptance_criteria, *goal.evidence_requirements])
 
 
 def _command_exit_targets(goal: Goal | None) -> list[str]:
@@ -1080,8 +1195,7 @@ def _command_exit_targets(goal: Goal | None) -> list[str]:
         for match in _COMMAND_EXIT_REQUIREMENT.finditer(str(raw or "")):
             path = match.group("path").replace("\\", "/")
             if (
-                FILE_TOKEN.fullmatch(path)
-                or path.endswith((".sh", ".ps1", ".js", ".mjs", ".py"))
+                FILE_TOKEN.fullmatch(path) or path.endswith((".sh", ".ps1", ".js", ".mjs", ".py"))
             ) and _visible_goal_path(path):
                 names.append(path)
     return list(dict.fromkeys(names))
@@ -1114,6 +1228,8 @@ def verification_probe_targets(
         return tuple(_artifact_tail_targets(goal)[:256])
     if kind == VerificationProbeKind.COMMAND_EXIT:
         return tuple(_command_exit_targets(goal)[:256])
+    if kind == VerificationProbeKind.PYTHON_UNITTEST:
+        return _goal_unittest_targets(goal)[:256]
     return ()
 
 
@@ -1127,12 +1243,25 @@ def required_verification_probe_kind(
 
     if verification.get("status") not in {"uncertain", "no_claims"}:
         return None
-    claims_require_pytest = any(
-        item.get("polarity") != "denied" and item.get("kind") == "tests_pass"
-        for item in claims
+    claims_require_tests = any(
+        item.get("polarity") != "denied" and item.get("kind") == "tests_pass" for item in claims
     )
+    goal_requires_unittest = _UNITTEST_REQUIREMENT.search(_goal_requirement_text(goal)) is not None
+    if goal_requires_unittest:
+        latest = _latest_unittest(events)
+        if latest is None:
+            return VerificationProbeKind.PYTHON_UNITTEST
+        _event, info, index, invocation = latest
+        if _unittest_supports_goal(
+            info,
+            invocation,
+            edits=_later_edits(events, index),
+            goal=goal,
+        ):
+            return None
+        return VerificationProbeKind.PYTHON_UNITTEST
     goal_requires_pytest = _PYTEST_REQUIREMENT.search(_goal_requirement_text(goal)) is not None
-    if claims_require_pytest or goal_requires_pytest:
+    if claims_require_tests or goal_requires_pytest:
         if _test_count_requirement(goal).status == "ambiguous":
             # Another pytest run cannot resolve contradictory or unsupported goal
             # language; require semantic/human clarification instead of looping.
@@ -1145,7 +1274,6 @@ def required_verification_probe_kind(
         if _pytest_supports_goal(info, invocation, edits=edits, goal=goal):
             return None
         return VerificationProbeKind.PYTEST
-
     evidence = [
         str(item)
         for verdict in verification.get("verdicts") or []
@@ -1153,8 +1281,7 @@ def required_verification_probe_kind(
         for item in verdict.get("evidence") or []
     ]
     if any(
-        item.startswith("row_count_unavailable:")
-        or item.startswith("content_check_incomplete:")
+        item.startswith("row_count_unavailable:") or item.startswith("content_check_incomplete:")
         for item in evidence
     ) and _artifact_tail_targets(goal):
         return VerificationProbeKind.ARTIFACT_TAIL
@@ -1236,6 +1363,7 @@ def verify_claims(
         status = "uncertain"
     chosen = contradicted[0] if contradicted else unsatisfied[0] if unsatisfied else None
     latest_pytest = _latest_pytest(events)
+    latest_unittest = _latest_unittest(events)
     pytest_provenance = (
         None
         if latest_pytest is None
@@ -1259,14 +1387,31 @@ def verify_claims(
             ),
             "ok": pytest_info.get("ok") if type(pytest_info.get("ok")) is bool else None,
             "exit_code": (
-                pytest_info.get("exit_code")
-                if type(pytest_info.get("exit_code")) is int else None
+                pytest_info.get("exit_code") if type(pytest_info.get("exit_code")) is int else None
             ),
         }
         for metric in ("passed", "failed_count", "skipped", "errors", "collected"):
             value = pytest_info.get(metric)
             if type(value) is int and 0 <= value <= 2**53 - 1:
                 pytest_observation[metric] = value
+    unittest_observation = None
+    if latest_unittest is not None:
+        unittest_event, unittest_info, unittest_index, invocation = latest_unittest
+        unittest_observation = {
+            "event_id": unittest_event.event_id,
+            "scope": invocation.scope.value,
+            "targets": list(invocation.relative_targets),
+            "basis": "observed_worker_command",
+            "later_file_edits_observed": any(
+                item.event_type == EventType.FILE_EDIT for item in events[unittest_index + 1 :]
+            ),
+            "ok": (unittest_info.get("ok") if type(unittest_info.get("ok")) is bool else None),
+            "exit_code": (
+                unittest_info.get("exit_code")
+                if type(unittest_info.get("exit_code")) is int
+                else None
+            ),
+        }
     return {
         "status": status,
         "acceptance_status": acceptance_status,
@@ -1277,6 +1422,8 @@ def verify_claims(
         "pytest_scope": None if latest_pytest is None else latest_pytest[3].scope.value,
         "latest_pytest": pytest_provenance,
         "pytest_observation": pytest_observation,
+        "unittest_event_id": (None if latest_unittest is None else latest_unittest[0].event_id),
+        "unittest_observation": unittest_observation,
         "missing_files": [
             item[8:]
             for item in (chosen.get("evidence") or [] if chosen else [])

@@ -48,7 +48,7 @@ from pex_bridge.adapters.desktop import (
     upsert_desktop_observe_session,
 )
 from pex_bridge.adapters.strict_json import strict_json_dumps
-from pex_bridge.shell_state import parse_pytest_process_state
+from pex_bridge.shell_state import parse_test_process_state
 
 HOOK_EVENT_MAP = {
     "sessionStart": EventType.SESSION_START,
@@ -176,9 +176,7 @@ class CursorAdapter(HarnessAdapter):
             approve=active_permission,
             deny=active_permission,
             permission_response_mode=(
-                PermissionResponseMode.INLINE
-                if active_permission
-                else PermissionResponseMode.NONE
+                PermissionResponseMode.INLINE if active_permission else PermissionResponseMode.NONE
             ),
             start=False,
             stop=False,
@@ -197,9 +195,7 @@ class CursorAdapter(HarnessAdapter):
                 if active_stop or active_permission
                 else ControlGranularity.SESSION
             ),
-            trust_level=(
-                0.8 if hook_live else 0.6 if acp_ready else 0.4 if desktop else 0.0
-            ),
+            trust_level=(0.8 if hook_live else 0.6 if acp_ready else 0.4 if desktop else 0.0),
             support_label=label,
             notes=(
                 "Cursor desktop via an already-running Cursor.exe. "
@@ -360,15 +356,18 @@ class CursorAdapter(HarnessAdapter):
         process_state = None
         error = None
         if hook_name in {"afterShellExecution", "postToolUse", "postToolUseFailure"}:
-            process_state = parse_pytest_process_state(str(command or ""), payload)
+            process_state = parse_test_process_state(str(command or ""), payload)
             error = _optional_bounded_text(
                 payload.get("error") or payload.get("stderr"), field="hook error"
             )
             if hook_name == "postToolUseFailure" and not error:
-                error = _optional_bounded_text(
-                    payload.get("output") or payload.get("message"),
-                    field="hook failure",
-                ) or "tool failed"
+                error = (
+                    _optional_bounded_text(
+                        payload.get("output") or payload.get("message"),
+                        field="hook failure",
+                    )
+                    or "tool failed"
+                )
         event_id = _cursor_event_id(session.id, payload)
         raw_generation_id = payload.get("generation_id")
         generation_id = (
@@ -655,8 +654,7 @@ class CursorAdapter(HarnessAdapter):
             or intervention.result != "hook_followup_prepared_delivery_uncertain"
             or not any(str(item).strip() for item in intervention.evidence)
             or str(payload.get("text") or "").strip() != text
-            or hashlib.sha256(text.encode("utf-8")).hexdigest()
-            != receipt["message_sha256"]
+            or hashlib.sha256(text.encode("utf-8")).hexdigest() != receipt["message_sha256"]
             or (intervention.metadata or {}).get("worker_delivery_receipt") is not None
         ):
             return None
@@ -770,9 +768,8 @@ def _loopback_bridge_url(bridge_url: str | None) -> str | None:
 
 def _valid_bridge_token(value: object) -> str:
     token = str(value or "").strip()
-    if (
-        not MIN_BRIDGE_TOKEN_CHARS <= len(token) <= MAX_BRIDGE_TOKEN_CHARS
-        or any(ord(char) < 0x21 or ord(char) > 0x7E for char in token)
+    if not MIN_BRIDGE_TOKEN_CHARS <= len(token) <= MAX_BRIDGE_TOKEN_CHARS or any(
+        ord(char) < 0x21 or ord(char) > 0x7E for char in token
     ):
         return ""
     return token

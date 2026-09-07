@@ -43,7 +43,7 @@ from pex_bridge.adapters.base import (
 from pex_bridge.adapters.codex_bin import app_server_command
 from pex_bridge.adapters.codex_output import OUTPUT_WITHHELD_KEY, command_output_is_withheld
 from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
-from pex_bridge.shell_state import parse_pytest_process_state
+from pex_bridge.shell_state import parse_test_process_state
 
 CLIENT_INFO = {"name": "pex", "title": "PEX", "version": "0.1.0"}
 INIT_PARAMS = {"clientInfo": CLIENT_INFO, "capabilities": {}}
@@ -1511,8 +1511,10 @@ class CodexAdapter(HarnessAdapter):
             field="Codex user message",
             max_chars=MAX_ADAPTER_MESSAGE_CHARS,
         )
-        return observed, truncated, observed is not None and (
-            observed != prefix or "[REDACTED:" in prefix
+        return (
+            observed,
+            truncated,
+            observed is not None and (observed != prefix or "[REDACTED:" in prefix),
         )
 
     @classmethod
@@ -1621,8 +1623,7 @@ class CodexAdapter(HarnessAdapter):
             message != raw_message or "[REDACTED:" in raw_message
         )
         has_unsupported = bool(
-            metadata["unsupported_content_parts"]
-            or metadata["malformed_content_parts"]
+            metadata["unsupported_content_parts"] or metadata["malformed_content_parts"]
         )
         if metadata["content_truncated"]:
             metadata["content_status"] = "truncated"
@@ -1722,19 +1723,23 @@ class CodexAdapter(HarnessAdapter):
             process_state = (
                 {"pytest_unavailable_reason": "output_exceeds_bound"}
                 if output_withheld
-                else parse_pytest_process_state(str(command or ""), payload)
+                else parse_test_process_state(str(command or ""), payload)
             )
-            if process_state is not None and "pytest" in process_state:
-                pytest_state = process_state.get("pytest")
+            test_key = next(
+                (key for key in ("pytest", "unittest") if key in (process_state or {})),
+                None,
+            )
+            if process_state is not None and test_key is not None:
+                test_state = process_state.get(test_key)
                 execution_cwd, cwd_reason = _validated_execution_cwd(session, item.get("cwd"))
-                if not isinstance(pytest_state, dict):
+                if not isinstance(test_state, dict):
                     process_state = None
                 elif execution_cwd is None:
                     # Preserve that this was a shell observation without turning
                     # its output into typed pytest evidence for another workspace.
-                    process_state = {"pytest_unavailable_reason": cwd_reason}
+                    process_state = {f"{test_key}_unavailable_reason": cwd_reason}
                 else:
-                    pytest_state["execution_cwd"] = execution_cwd
+                    test_state["execution_cwd"] = execution_cwd
             status = item.get("status")
             if isinstance(status, str) and status.lower() in {"failed", "error"}:
                 error = bounded_observed_text(

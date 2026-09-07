@@ -34,6 +34,13 @@ class PytestInvocationScope(StrEnum):
     TARGETED = "targeted"
 
 
+class UnittestInvocationScope(StrEnum):
+    """Coverage established by a concrete Python unittest invocation."""
+
+    FULL_SUITE = "full_suite"
+    TARGETED = "targeted"
+
+
 class PytestInvocation(BaseModel):
     """A non-executable classification of an observed pytest command."""
 
@@ -48,12 +55,12 @@ class PytestInvocation(BaseModel):
         default_factory=tuple,
         max_length=128,
     )
-    relative_targets: tuple[
-        Annotated[str, Field(min_length=1, max_length=4_096)], ...
-    ] = Field(default_factory=tuple, max_length=128)
-    selection_flags: tuple[
-        Annotated[str, Field(min_length=1, max_length=4_096)], ...
-    ] = Field(default_factory=tuple, max_length=128)
+    relative_targets: tuple[Annotated[str, Field(min_length=1, max_length=4_096)], ...] = Field(
+        default_factory=tuple, max_length=128
+    )
+    selection_flags: tuple[Annotated[str, Field(min_length=1, max_length=4_096)], ...] = Field(
+        default_factory=tuple, max_length=128
+    )
 
     @model_validator(mode="after")
     def validate_scope(self) -> Self:
@@ -64,6 +71,33 @@ class PytestInvocation(BaseModel):
             raise ValueError("a full-suite pytest invocation cannot contain selectors")
         if self.scope == PytestInvocationScope.TARGETED and not self.selectors:
             raise ValueError("a targeted pytest invocation requires selectors")
+        return self
+
+
+class UnittestInvocation(BaseModel):
+    """A non-executable classification of an observed Python unittest command."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    argv: tuple[Annotated[str, Field(min_length=1, max_length=4_096)], ...] = Field(
+        min_length=3,
+        max_length=128,
+    )
+    scope: UnittestInvocationScope
+    relative_targets: tuple[Annotated[str, Field(min_length=1, max_length=4_096)], ...] = Field(
+        default_factory=tuple, max_length=128
+    )
+    selection_flags: tuple[Annotated[str, Field(min_length=1, max_length=4_096)], ...] = Field(
+        default_factory=tuple, max_length=128
+    )
+
+    @model_validator(mode="after")
+    def validate_scope(self) -> Self:
+        selected = bool(self.relative_targets or self.selection_flags)
+        if self.scope == UnittestInvocationScope.FULL_SUITE and selected:
+            raise ValueError("a full-suite unittest invocation cannot contain selectors")
+        if self.scope == UnittestInvocationScope.TARGETED and not selected:
+            raise ValueError("a targeted unittest invocation requires selectors")
         return self
 
 
@@ -253,9 +287,40 @@ def _pytest_arguments(argv: Sequence[str]) -> tuple[str, ...] | None:
     return None
 
 
-def _powershell_command_payload(
-    command: str, argv: Sequence[str]
-) -> tuple[str, ...] | None:
+def _unittest_arguments(argv: Sequence[str]) -> tuple[str, ...] | None:
+    """Return unittest arguments only for a recognized direct Python launcher."""
+
+    if not argv:
+        return None
+    executable = _executable_name(argv[0])
+    if _PYTHON_RUNNER.fullmatch(executable):
+        if len(argv) >= 3 and argv[1] == "-m" and argv[2].casefold() == "unittest":
+            return tuple(argv[3:])
+        return None
+    if executable in {"uv", "uv.exe", "poetry", "poetry.exe", "pipenv", "pipenv.exe"}:
+        if len(argv) < 3 or argv[1].casefold() != "run":
+            return None
+        index = 2
+        if executable in {"uv", "uv.exe"}:
+            uv_value_flags = {"--directory", "--env-file", "--index", "--python"}
+            uv_boolean_flags = {"--active", "--frozen", "--isolated", "--locked", "--no-sync"}
+            while index < len(argv) and argv[index].startswith("-"):
+                flag = argv[index].split("=", 1)[0]
+                if flag == "--":
+                    index += 1
+                    break
+                if flag in uv_boolean_flags or "=" in argv[index]:
+                    index += 1
+                    continue
+                if flag in uv_value_flags and index + 1 < len(argv):
+                    index += 2
+                    continue
+                return None
+        return _unittest_arguments(argv[index:])
+    return None
+
+
+def _powershell_command_payload(command: str, argv: Sequence[str]) -> tuple[str, ...] | None:
     """Unwrap exactly one literal PowerShell ``-Command`` into direct argv.
 
     Shell payloads are not generally auditable. This accepts only a bounded
@@ -311,9 +376,7 @@ def classify_pytest_argv(argv: Sequence[str]) -> PytestInvocation | None:
             positional = True
             index += 1
             continue
-        if flag in _TARGETED_FLAGS or (
-            folded.startswith(("-k", "-m")) and len(token) > 2
-        ):
+        if flag in _TARGETED_FLAGS or (folded.startswith(("-k", "-m")) and len(token) > 2):
             selectors.append(token)
             selection_flags.append(token)
             if "=" not in token and flag in {"-k", "-m", "--keyword", "--markexpr"}:
@@ -334,9 +397,7 @@ def classify_pytest_argv(argv: Sequence[str]) -> PytestInvocation | None:
             index += 2
             continue
         if folded in _SAFE_BOOLEAN_FLAGS or (
-            folded.startswith("-")
-            and len(folded) > 2
-            and set(folded[1:]) <= {"q", "s", "v", "x"}
+            folded.startswith("-") and len(folded) > 2 and set(folded[1:]) <= {"q", "s", "v", "x"}
         ):
             index += 1
             continue
@@ -351,9 +412,7 @@ def classify_pytest_argv(argv: Sequence[str]) -> PytestInvocation | None:
         relative_targets.append(token.replace("\\", "/"))
         index += 1
 
-    scope = (
-        PytestInvocationScope.TARGETED if selectors else PytestInvocationScope.FULL_SUITE
-    )
+    scope = PytestInvocationScope.TARGETED if selectors else PytestInvocationScope.FULL_SUITE
     return PytestInvocation(
         argv=normalized,
         scope=scope,
@@ -376,6 +435,96 @@ def classify_pytest_invocation(command: str | None) -> PytestInvocation | None:
     return classify_pytest_argv(wrapped) if wrapped is not None else None
 
 
+def classify_unittest_argv(argv: Sequence[str]) -> UnittestInvocation | None:
+    """Classify a direct ``python -m unittest`` argv without executing it."""
+
+    normalized = tuple(str(item) for item in argv)
+    if not normalized or any(not item or len(item) > 4_096 for item in normalized):
+        return None
+    args = _unittest_arguments(normalized)
+    if args is None:
+        return None
+    if any(item.startswith("@") for item in args):
+        return None
+
+    targets: list[str] = []
+    selection_flags: list[str] = []
+    index = 0
+    while index < len(args):
+        token = args[index]
+        folded = token.casefold()
+        flag = folded.split("=", 1)[0]
+        if folded in {"-h", "--help", "--locals"}:
+            return None
+        if flag in {
+            "-k",
+            "--start-directory",
+            "-s",
+            "--pattern",
+            "-p",
+            "--top-level-directory",
+            "-t",
+        }:
+            selection_flags.append(token)
+            if "=" not in token:
+                if index + 1 >= len(args):
+                    return None
+                selection_flags.append(args[index + 1])
+                index += 2
+            else:
+                index += 1
+            continue
+        if folded in {
+            "-v",
+            "--verbose",
+            "-q",
+            "--quiet",
+            "-f",
+            "--failfast",
+            "-c",
+            "--catch",
+            "-b",
+            "--buffer",
+        }:
+            index += 1
+            continue
+        if token == "discover":
+            selection_flags.append(token)
+            index += 1
+            continue
+        if token.startswith("-"):
+            selection_flags.append(token)
+            index += 1
+            continue
+        targets.append(token.replace("\\", "/"))
+        index += 1
+
+    scope = (
+        UnittestInvocationScope.TARGETED
+        if targets or selection_flags
+        else UnittestInvocationScope.FULL_SUITE
+    )
+    return UnittestInvocation(
+        argv=normalized,
+        scope=scope,
+        relative_targets=tuple(targets),
+        selection_flags=tuple(selection_flags),
+    )
+
+
+def classify_unittest_invocation(command: str | None) -> UnittestInvocation | None:
+    """Recognize one direct Python unittest invocation, including the safe wrapper."""
+
+    tokens = _command_tokens(command or "")
+    if tokens is None:
+        return None
+    direct = classify_unittest_argv(tokens)
+    if direct is not None:
+        return direct
+    wrapped = _powershell_command_payload(command or "", tokens)
+    return classify_unittest_argv(wrapped) if wrapped is not None else None
+
+
 class EvidenceGatheringState(StrEnum):
     """Monotonic truth states for evidence collection."""
 
@@ -389,6 +538,7 @@ class VerificationProbeKind(StrEnum):
     """Closed probe vocabulary; models never provide an arbitrary command."""
 
     PYTEST = "pytest"
+    PYTHON_UNITTEST = "python_unittest"
     FILE_COUNT = "file_count"
     ARTIFACT_TAIL = "artifact_tail"
     COMMAND_EXIT = "command_exit"
@@ -482,6 +632,19 @@ class VerificationProbe(BaseModel):
             return invocation.scope == PytestInvocationScope.FULL_SUITE
         return (
             invocation.scope == PytestInvocationScope.TARGETED
+            and not invocation.selection_flags
+            and invocation.relative_targets == self.relative_targets
+        )
+
+    def matches_unittest_invocation(self, invocation: UnittestInvocation) -> bool:
+        """Require the observed unittest run to fulfill this exact typed request."""
+
+        if self.kind != VerificationProbeKind.PYTHON_UNITTEST:
+            return False
+        if not self.relative_targets:
+            return invocation.scope == UnittestInvocationScope.FULL_SUITE
+        return (
+            invocation.scope == UnittestInvocationScope.TARGETED
             and not invocation.selection_flags
             and invocation.relative_targets == self.relative_targets
         )
@@ -607,11 +770,23 @@ class EvidenceGatheringReceipt(BaseModel):
                     raise ValueError("pytest execution requires an actual pytest invocation")
                 if not self.probe.matches_pytest_invocation(invocation):
                     raise ValueError("pytest invocation must match the exact typed probe")
+            elif self.probe.kind == VerificationProbeKind.PYTHON_UNITTEST:
+                invocation = (
+                    classify_unittest_invocation(self.execution.observed_command)
+                    if self.execution.backend == VerificationBackendKind.HARNESS
+                    else classify_unittest_argv(self.execution.argv)
+                )
+                if invocation is None:
+                    raise ValueError("unittest execution requires python -m unittest")
+                if not self.probe.matches_unittest_invocation(invocation):
+                    raise ValueError("unittest invocation must match the exact typed probe")
             elif self.execution.backend == VerificationBackendKind.HARNESS:
                 if not self.execution.observed_command:
                     raise ValueError("non-pytest harness execution requires the observed command")
                 if classify_pytest_invocation(self.execution.observed_command) is not None:
                     raise ValueError("non-pytest probe cannot close on a pytest invocation")
+                if classify_unittest_invocation(self.execution.observed_command) is not None:
+                    raise ValueError("non-test probe cannot close on a unittest invocation")
         elif self.execution is not None:
             raise ValueError("only executed evidence may carry an execution receipt")
         if self.state == EvidenceGatheringState.ATTEMPTED and self.probe is None:

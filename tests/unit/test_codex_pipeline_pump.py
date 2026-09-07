@@ -80,11 +80,14 @@ async def test_codex_pump_ingests_stop_permission_and_agent_message():
     assert session.cwd == "C:/proj"
 
 
-@pytest.mark.parametrize("command", [
-    "pytest -q",
-    r'"C:\runtime\pwsh.exe" -Command '
-    "'C:/workspace/.venv/Scripts/python.exe -m pytest -q tests/test_parser.py'",
-])
+@pytest.mark.parametrize(
+    "command",
+    [
+        "pytest -q",
+        r'"C:\runtime\pwsh.exe" -Command '
+        "'C:/workspace/.venv/Scripts/python.exe -m pytest -q tests/test_parser.py'",
+    ],
+)
 async def test_codex_pump_uses_official_items_once_and_preserves_pytest_failure(command):
     transport = CodexAppServerTransport()
     transport.threads = [{"id": "thr_pytest", "preview": "pytest thread", "cwd": "C:/proj"}]
@@ -209,6 +212,43 @@ def test_codex_normalize_item_keeps_shell_output_out_of_claims():
     assert event.process_state["pytest"]["execution_cwd"] == "C:/proj"
 
 
+def test_codex_normalize_item_binds_unittest_to_observed_cwd():
+    from pex_protocol.enums import HarnessType, SessionStatus
+    from pex_protocol.session import HarnessSession
+
+    session = HarnessSession(
+        id="codex:thr_unittest",
+        harness_type=HarnessType.CODEX,
+        vendor_session_id="thr_unittest",
+        status=SessionStatus.WORKING,
+        cwd="C:/proj",
+        project_id="C:/proj",
+    )
+    adapter = CodexAdapter()
+    adapter.sessions[session.id] = session
+
+    event = adapter.normalize_item(
+        session,
+        {
+            "id": "item_unittest",
+            "type": "commandExecution",
+            "command": (
+                r'"C:\runtime\pwsh.exe" -Command '
+                "'python -m unittest -v test_timeline.py'"
+            ),
+            "cwd": "C:/proj",
+            "aggregatedOutput": "Ran 4 tests in 0.12s\n\nOK",
+            "exitCode": 0,
+            "status": "completed",
+        },
+    )
+
+    assert event.process_state is not None
+    assert event.process_state["unittest"]["ok"] is True
+    assert event.process_state["unittest"]["exit_code"] == 0
+    assert event.process_state["unittest"]["execution_cwd"] == "C:/proj"
+
+
 @pytest.mark.parametrize(
     ("cwd", "reason"),
     [
@@ -296,11 +336,14 @@ def test_codex_item_turn_identity_cannot_override_enclosing_turn():
     )
 
 
-@pytest.mark.parametrize("command", [
-    "pytest -q",
-    r'"C:\runtime\pwsh.exe" -Command '
-    "'C:/workspace/.venv/Scripts/python.exe -m pytest -q tests/test_parser.py'",
-])
+@pytest.mark.parametrize(
+    "command",
+    [
+        "pytest -q",
+        r'"C:\runtime\pwsh.exe" -Command '
+        "'C:/workspace/.venv/Scripts/python.exe -m pytest -q tests/test_parser.py'",
+    ],
+)
 async def test_official_codex_failure_flows_through_pipeline_to_exact_nudge(tmp_path, command):
     worker = tmp_path / "worker"
     worker.mkdir()

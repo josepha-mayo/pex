@@ -16,7 +16,10 @@ _REFACTOR = re.compile(
     re.I,
 )
 _FILE_TOKEN = re.compile(r"[A-Za-z0-9._-]+\.[A-Za-z0-9]{1,12}")
-_ROUTINE_TEST = re.compile(r"\b(?:pytest|npm\s+test|cargo\s+test|go\s+test)\b", re.I)
+_ROUTINE_TEST = re.compile(
+    r"\b(?:pytest|python(?:\d+(?:\.\d+)*)?\s+-m\s+unittest|npm\s+test|cargo\s+test|go\s+test)\b",
+    re.I,
+)
 _BROAD_UNRELATED = 4
 
 
@@ -24,8 +27,7 @@ def goal_path_names(goal: Goal | None) -> set[str]:
     if goal is None:
         return set()
     names = {
-        PurePosixPath(str(name).replace("\\", "/")).name.casefold()
-        for name in required_files(goal)
+        PurePosixPath(str(name).replace("\\", "/")).name.casefold() for name in required_files(goal)
     }
     haystack = " ".join(
         [
@@ -51,11 +53,7 @@ def unrelated_refactor(event: HarnessEvent, goal: Goal | None) -> str | None:
         return None
     relevant = goal_path_names(goal)
     paths = [str(path).replace("\\", "/") for path in event.file_paths if str(path).strip()]
-    unrelated = [
-        path
-        for path in paths
-        if PurePosixPath(path).name.casefold() not in relevant
-    ]
+    unrelated = [path for path in paths if PurePosixPath(path).name.casefold() not in relevant]
     command = str(event.command or event.message_delta or "").strip()
     named_required = bool(
         relevant and any(name in command.casefold().replace("\\", "/") for name in relevant)
@@ -96,8 +94,11 @@ def duplicate_sibling_work(
         for prior in events:
             if (
                 prior.session_id != session_id
-                or prior.event_type not in {
-                    EventType.FILE_EDIT, EventType.SHELL, EventType.TOOL_CALL,
+                or prior.event_type
+                not in {
+                    EventType.FILE_EDIT,
+                    EventType.SHELL,
+                    EventType.TOOL_CALL,
                 }
                 or prior.ts.utcoffset() is None
                 or event.ts.utcoffset() is None

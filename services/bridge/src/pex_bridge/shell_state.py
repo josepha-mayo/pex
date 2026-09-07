@@ -1,11 +1,14 @@
-"""Turn harness shell payloads into pytest process_state. No worker narration."""
+"""Turn harness shell payloads into typed test process state. No narration."""
 
 from __future__ import annotations
 
 import re
 from typing import Any
 
-from pex_protocol.verification import classify_pytest_invocation
+from pex_protocol.verification import (
+    classify_pytest_invocation,
+    classify_unittest_invocation,
+)
 
 FAILED_NODE = re.compile(r"FAILED\s+(\S+)")
 SUMMARY_LINE = re.compile(
@@ -21,6 +24,8 @@ SUMMARY_PART = re.compile(
     re.I,
 )
 COLLECTED_LINE = re.compile(r"^\s*=*\s*collected\s+(?P<count>\d+)\s+items?\b.*=*\s*$", re.I)
+UNITTEST_RAN = re.compile(r"^Ran\s+(?P<count>\d+)\s+tests?\s+in\s+", re.M)
+UNITTEST_FAILED = re.compile(r"^(?:FAIL|ERROR):\s+(?P<node>\S+)", re.M)
 
 
 def _blob(payload: dict[str, Any]) -> str:
@@ -129,3 +134,31 @@ def parse_pytest_process_state(
     if failed:
         state["failed"] = failed
     return {"pytest": state}
+
+
+def parse_test_process_state(
+    command: str | None, payload: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    """Return framework-specific state for one safely classified test command."""
+
+    pytest_state = parse_pytest_process_state(command, payload)
+    if pytest_state is not None:
+        return pytest_state
+    if classify_unittest_invocation(command) is None:
+        return None
+    payload = payload or {}
+    text = _blob(payload)
+    code = _exit_code(payload)
+    state: dict[str, Any] = {"ok": None if code is None else code == 0, "output": text[-4000:]}
+    if code is not None:
+        state["exit_code"] = code
+    ran = UNITTEST_RAN.search(text)
+    if ran:
+        count = int(ran.group("count"))
+        state["collected"] = count
+        if code == 0:
+            state["passed"] = count
+    failed = UNITTEST_FAILED.search(text)
+    if failed:
+        state["failed"] = failed.group("node")
+    return {"unittest": state}

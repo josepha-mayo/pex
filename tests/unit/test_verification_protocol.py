@@ -8,12 +8,14 @@ from pex_protocol.verification import (
     EvidenceGatheringReceipt,
     EvidenceGatheringState,
     PytestInvocationScope,
+    UnittestInvocationScope,
     VerificationBackendKind,
     VerificationExecutionReceipt,
     VerificationExecutionResult,
     VerificationProbe,
     VerificationProbeKind,
     classify_pytest_invocation,
+    classify_unittest_invocation,
 )
 from pydantic import ValidationError
 
@@ -114,8 +116,36 @@ def test_classifier_unwraps_only_one_literal_powershell_command_pytest_payload()
     assert invocation.scope == PytestInvocationScope.TARGETED
     assert invocation.relative_targets == ("test_normalizer.py",)
     assert invocation.argv == (
-        "C:/workspace/.venv/Scripts/python.exe", "-m", "pytest", "-q", "test_normalizer.py",
+        "C:/workspace/.venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "test_normalizer.py",
     )
+
+
+def test_classifier_recognizes_exact_powershell_wrapped_unittest_target():
+    invocation = classify_unittest_invocation(
+        r'"C:\runtime\pwsh.exe" -Command '
+        "'python -m unittest -v test_timeline.py'"
+    )
+
+    assert invocation is not None
+    assert invocation.scope == UnittestInvocationScope.TARGETED
+    assert invocation.relative_targets == ("test_timeline.py",)
+    assert invocation.selection_flags == ()
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo python -m unittest test_timeline.py",
+        "python -m unittest test_timeline.py; echo done",
+        "pwsh -Command 'python -m unittest test_timeline.py $args'",
+    ],
+)
+def test_unittest_classifier_rejects_spoofed_or_composed_commands(command):
+    assert classify_unittest_invocation(command) is None
 
 
 @pytest.mark.parametrize(
@@ -265,11 +295,14 @@ def test_executed_pytest_receipt_is_bound_to_probe_cwd_and_scope():
     assert full_receipt.execution.source_event_id == "pytest_1"
 
     equivalent_windows = full_execution.model_copy(update={"cwd": r"c:\workspace"})
-    assert EvidenceGatheringReceipt(
-        state=EvidenceGatheringState.EXECUTED,
-        probe=_probe(relative_targets=[]),
-        execution=equivalent_windows,
-    ).execution is not None
+    assert (
+        EvidenceGatheringReceipt(
+            state=EvidenceGatheringState.EXECUTED,
+            probe=_probe(relative_targets=[]),
+            execution=equivalent_windows,
+        ).execution
+        is not None
+    )
 
     with pytest.raises(ValidationError, match="exact typed probe"):
         EvidenceGatheringReceipt(

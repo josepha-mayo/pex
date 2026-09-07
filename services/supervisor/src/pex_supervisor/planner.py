@@ -62,6 +62,7 @@ def _nudge(
 
 _TYPED_VERIFICATION_KINDS = {
     "pytest",
+    "python_unittest",
     "file_count",
     "artifact_tail",
     "command_exit",
@@ -91,6 +92,19 @@ def _verification_request_copy(kind: str, relative_targets: list[str], evidence:
             f"The test-backed completion criterion is unresolved: {missing} "
             f"Run {scope} from the current project root now. Return the exact "
             "command, terminal exit code, and first failing test node if it fails. "
+            "Do not claim completion until that result is visible."
+        )
+    if kind == "python_unittest":
+        scope = (
+            f"python -m unittest for the requested targets ({named})"
+            if relative_targets
+            else "the full python -m unittest suite"
+        )
+        missing = f"No attributable terminal result for {scope} is visible{after_edit}."
+        return (
+            f"The test-backed completion criterion is unresolved: {missing} "
+            f"Run {scope} from the current project root now. Return the exact "
+            "command, terminal exit code, and first failing test if it fails. "
             "Do not claim completion until that result is visible."
         )
     if kind == "file_count":
@@ -138,9 +152,7 @@ def _request_verification(
             [*evidence, f"unsupported_probe:{kind or 'unknown'}"],
         )
     relative_targets = [
-        str(item).strip()
-        for item in (probe.get("relative_targets") or [])
-        if str(item).strip()
+        str(item).strip() for item in (probe.get("relative_targets") or []) if str(item).strip()
     ]
     return ProposedAction(
         type=InterventionType.REQUEST_VERIFICATION,
@@ -280,9 +292,7 @@ def _debug_overlay(request: SupervisorRequest, evidence: list[str]) -> ProposedA
     )
     extra = {"phase": "debug", "pin": evidence[0] if evidence else ""}
     if _EVIDENCE_BEFORE_DONE in _recommended_overlays(request):
-        instructions += (
-            " Do not treat a stop as done without the attached acceptance evidence."
-        )
+        instructions += " Do not treat a stop as done without the attached acceptance evidence."
         extra["fingerprint_overlay"] = _EVIDENCE_BEFORE_DONE
     overlay = Overlay(
         id=f"ovl_{uuid4().hex[:12]}",
@@ -678,8 +688,9 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
 
     if event.event_type == EventType.COMPACTION and goal is not None:
         title = (goal.title or "").strip() or "attached goal"
-        acceptance = "; ".join(item for item in goal.acceptance_criteria[:3] if item) or (
-            goal.objective[:200]
+        acceptance = (
+            "; ".join(item for item in goal.acceptance_criteria[:3] if item)
+            or (goal.objective[:200])
         )
         constraints = "; ".join(item for item in goal.constraints[:3] if item)
         files = ", ".join(required_files(goal)[:6])

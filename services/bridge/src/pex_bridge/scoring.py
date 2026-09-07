@@ -42,7 +42,10 @@ def extract_features(events: list[HarnessEvent]) -> dict:
         if event.command:
             commands.append(event.command.strip())
             lowered = event.command.lower()
-            if any(token in lowered for token in ("pytest", "npm test", "cargo test", "go test")):
+            if any(
+                token in lowered
+                for token in ("pytest", "-m unittest", "npm test", "cargo test", "go test")
+            ):
                 is_test_event = True
         if event.tool_name:
             tools.append(event.tool_name)
@@ -62,6 +65,10 @@ def extract_features(events: list[HarnessEvent]) -> dict:
                 elif pytest_info.get("ok") is False:
                     is_test_event = True
                     latest_pytest_ok = False
+            unittest_info = event.process_state.get("unittest")
+            if isinstance(unittest_info, dict) and isinstance(unittest_info.get("ok"), bool):
+                is_test_event = True
+                latest_pytest_ok = unittest_info["ok"]
         if is_test_event:
             tests_run += 1
         worker_narration = event.event_type in {
@@ -112,9 +119,7 @@ def score_trajectory(events: list[HarnessEvent], goal: Goal | None) -> Trajector
         0.0,
         min(
             1.0,
-            0.4 * repeated_low_info
-            + 0.5 * error_loop
-            - 0.35 * verified_progress,
+            0.4 * repeated_low_info + 0.5 * error_loop - 0.35 * verified_progress,
         ),
     )
     stagnation = max(

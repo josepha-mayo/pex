@@ -47,6 +47,8 @@ from pex_protocol.verification import (
     EvidenceGatheringState,
     PytestInvocation,
     PytestInvocationScope,
+    UnittestInvocation,
+    UnittestInvocationScope,
     VerificationBackendKind,
     VerificationExecutionReceipt,
     VerificationExecutionResult,
@@ -54,6 +56,8 @@ from pex_protocol.verification import (
     VerificationProbeKind,
     classify_pytest_argv,
     classify_pytest_invocation,
+    classify_unittest_argv,
+    classify_unittest_invocation,
 )
 
 SCHEMA_VERSION = "1"
@@ -114,6 +118,10 @@ __all__ = [
     "VerificationExecutionResult",
     "VerificationProbe",
     "VerificationProbeKind",
+    "UnittestInvocation",
+    "UnittestInvocationScope",
+    "classify_unittest_argv",
+    "classify_unittest_invocation",
     "classify_pytest_argv",
     "classify_pytest_invocation",
     "same_project_locator",

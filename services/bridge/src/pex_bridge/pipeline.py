@@ -51,6 +51,7 @@ from pex_protocol.verification import (
     VerificationProbe,
     VerificationProbeKind,
     classify_pytest_invocation,
+    classify_unittest_invocation,
 )
 from pex_supervisor.background import confirm_abandoned_background, find_abandoned_background
 from pex_supervisor.drift import duplicate_sibling_work, goal_path_names
@@ -273,24 +274,28 @@ def _exact_action_probe(
     return candidate if candidate == gathering.probe else None
 
 
-def _matching_pytest_execution(
+def _matching_test_execution(
     prior: Intervention,
     session: HarnessSession,
     event: HarnessEvent,
     gathering: EvidenceGatheringReceipt,
 ) -> VerificationExecutionReceipt | None:
-    """Return a terminal receipt only for the requested, observed pytest process.
+    """Return a terminal receipt only for the requested, observed test process.
 
     A narration, an unrelated shell command, or a partial process snapshot is not
     execution evidence. The request is correlated by session, time, probe kind,
-    action payload, and the first later exact pytest command with a terminal exit.
+    action payload, and the first later exact test command with a terminal exit.
     """
 
     probe = gathering.probe
     if (
         gathering.state != EvidenceGatheringState.ATTEMPTED
         or probe is None
-        or probe.kind != VerificationProbeKind.PYTEST
+        or probe.kind
+        not in {
+            VerificationProbeKind.PYTEST,
+            VerificationProbeKind.PYTHON_UNITTEST,
+        }
         or prior.proposed_action.type != InterventionType.REQUEST_VERIFICATION
         or prior.policy_verdict != PolicyVerdict.ALLOW
         or event.event_type != EventType.SHELL
@@ -310,23 +315,30 @@ def _matching_pytest_execution(
     if _exact_action_probe(prior.proposed_action, gathering) is None:
         return None
     command = (event.command or "").strip()
-    invocation = classify_pytest_invocation(command)
-    if invocation is None or not probe.matches_pytest_invocation(invocation):
+    if probe.kind == VerificationProbeKind.PYTEST:
+        invocation = classify_pytest_invocation(command)
+        matches = invocation is not None and probe.matches_pytest_invocation(invocation)
+        process_key = "pytest"
+    else:
+        invocation = classify_unittest_invocation(command)
+        matches = invocation is not None and probe.matches_unittest_invocation(invocation)
+        process_key = "unittest"
+    if not matches:
         return None
     state = event.process_state if isinstance(event.process_state, dict) else {}
-    pytest_state = state.get("pytest")
-    if not isinstance(pytest_state, dict):
+    test_state = state.get(process_key)
+    if not isinstance(test_state, dict):
         return None
     if event.harness_type == HarnessType.CODEX:
-        execution_cwd = pytest_state.get("execution_cwd")
+        execution_cwd = test_state.get("execution_cwd")
         if (
             not isinstance(execution_cwd, str)
             or not same_absolute_path(execution_cwd, session.cwd)
             or not same_absolute_path(execution_cwd, probe.cwd)
         ):
             return None
-    ok = pytest_state.get("ok")
-    exit_code = pytest_state.get("exit_code")
+    ok = test_state.get("ok")
+    exit_code = test_state.get("exit_code")
     if isinstance(exit_code, bool) or not isinstance(exit_code, int):
         return None
     if ok is True and exit_code == 0:
@@ -335,7 +347,7 @@ def _matching_pytest_execution(
         result = VerificationExecutionResult.FAILED
     else:
         return None
-    failure = pytest_state.get("failed")
+    failure = test_state.get("failed")
     return VerificationExecutionReceipt(
         backend=VerificationBackendKind.HARNESS,
         policy_verdict=PolicyVerdict.ALLOW,
@@ -346,9 +358,13 @@ def _matching_pytest_execution(
         process_started=True,
         exit_code=exit_code,
         result=result,
-        output=_bounded_utf8(pytest_state.get("output"), probe.output_limit_bytes),
+        output=_bounded_utf8(test_state.get("output"), probe.output_limit_bytes),
         failure_node=(str(failure)[:4_096] if failure else None),
     )
+
+
+# Retain the private compatibility name used by focused attribution regressions.
+_matching_pytest_execution = _matching_test_execution
 
 
 _TYPED_PROCESS_STATE_KEYS = {
@@ -394,7 +410,10 @@ def _matching_typed_execution(
     command = (event.command or "").strip()
     if not command or ".." in command.replace("\\", "/"):
         return None
-    if classify_pytest_invocation(command) is not None:
+    if (
+        classify_pytest_invocation(command) is not None
+        or classify_unittest_invocation(command) is not None
+    ):
         return None
     lowered = command.replace("\\", "/")
     if probe.kind == VerificationProbeKind.COMMAND_EXIT and not probe.relative_targets:
@@ -769,9 +788,7 @@ class Pipeline:
             for session_id, reserved in counts.items()
         }
 
-    async def ingest_observer_lifecycle(
-        self, event: HarnessEvent, session: HarnessSession
-    ) -> None:
+    async def ingest_observer_lifecycle(self, event: HarnessEvent, session: HarnessSession) -> None:
         """Record a local observer disconnect without semantic worker processing.
 
         Only the registered shared adapter receives this callback. Generic event
@@ -855,7 +872,10 @@ class Pipeline:
 
     @staticmethod
     def _freeze_shared_codex_observation(
-        event: HarnessEvent, session: HarnessSession, *, input_baseline=None,
+        event: HarnessEvent,
+        session: HarnessSession,
+        *,
+        input_baseline=None,
     ) -> HarnessEvent:
         """Use the same immutable receipt for live acceptance and loss recovery."""
         observed = event.model_copy(deep=True)
@@ -868,9 +888,9 @@ class Pipeline:
         }
         if "workspace_binding" in session.metadata:
             # Freeze this observation's workspace, not a later attachment's.
-            observed.metadata["pex_observer_snapshot"]["workspace_binding"] = (
-                session.model_copy(deep=True).metadata["workspace_binding"]
-            )
+            observed.metadata["pex_observer_snapshot"]["workspace_binding"] = session.model_copy(
+                deep=True
+            ).metadata["workspace_binding"]
         if input_baseline is not None:
             observed.metadata["pex_observer_snapshot"]["input_baseline"] = asdict(input_baseline)
         return observed
@@ -935,7 +955,9 @@ class Pipeline:
                 if adapter._input_baseline is not None and baseline is None:
                     raise ValueError("retained observation lacks its frozen input baseline")
                 observed = self._freeze_shared_codex_observation(
-                    event, snapshot, input_baseline=baseline,
+                    event,
+                    snapshot,
+                    input_baseline=baseline,
                 )
                 _redact_event(observed)
                 events.append(observed)
@@ -981,7 +1003,9 @@ class Pipeline:
             if adapter._input_baseline is not None and baseline is None:
                 raise ValueError("shared observation lacks its frozen input baseline")
             observed = self._freeze_shared_codex_observation(
-                event, session, input_baseline=baseline,
+                event,
+                session,
+                input_baseline=baseline,
             )
             if (
                 observed.metadata.get("raw_method") == "item/started"
@@ -993,11 +1017,14 @@ class Pipeline:
                 _redact_event(observed)
                 binding = await self.store.project_binding_for_authority(session.project_id)
                 retained = await self.store.retain_observer_events(
-                    (observed,), session, expected_project_binding=binding,
+                    (observed,),
+                    session,
+                    expected_project_binding=binding,
                     require_current_workspace=True,
                 )
                 self._schedule_committed_publication(
-                    "event", retained[0].model_dump(mode="json"),
+                    "event",
+                    retained[0].model_dump(mode="json"),
                 )
                 return None
             if "pex_correction_observation" in observed.metadata:
@@ -1008,7 +1035,9 @@ class Pipeline:
                     raise ValueError("correction observation lacks its queued raw item")
                 _redact_event(observed)
                 retained = await self.store.record_codex_correction_observation(
-                    observed, session, raw_item=strict_json_loads(raw),
+                    observed,
+                    session,
+                    raw_item=strict_json_loads(raw),
                     turn_id=event.metadata["vendor_turn_id"],
                 )
                 self._schedule_committed_publication("event", retained.model_dump(mode="json"))
@@ -1618,7 +1647,11 @@ class Pipeline:
         )
 
     async def _invoke_supervisor(
-        self, request: SupervisorRequest, *, semantic: bool, witness,
+        self,
+        request: SupervisorRequest,
+        *,
+        semantic: bool,
+        witness,
         deterministic_only: bool = False,
     ):
         async def invoke():
@@ -1671,9 +1704,7 @@ class Pipeline:
                 result = await asyncio.wait_for(
                     invoke(), timeout=REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS
                 )
-                return _preserve_deterministic_truth(
-                    request, plan_deterministic(request), result
-                )
+                return _preserve_deterministic_truth(request, plan_deterministic(request), result)
             return await asyncio.wait_for(
                 invoke(), timeout=LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS
             )
@@ -1761,9 +1792,7 @@ class Pipeline:
         if unavailable and not deterministic_only:
             budget_options["semantic_dispatch_available"] = False
         if semantic and not deterministic_only and self.supervisor_dispatch_limit is not None:
-            budget_options["semantic_dispatch_limit"] = (
-                self.supervisor_dispatch_limit
-            )
+            budget_options["semantic_dispatch_limit"] = self.supervisor_dispatch_limit
         if candidate is not None:
             budget_options["trajectory_candidate_key"] = candidate.key
         dispatch = await self.store.start_event_effect_dispatch(
@@ -1774,22 +1803,35 @@ class Pipeline:
         )
         if not dispatch["granted"]:
             if dispatch.get("reason") in {
-                "supervisor_dispatch_budget_exhausted", "trajectory_review_coalesced",
+                "supervisor_dispatch_budget_exhausted",
+                "trajectory_review_coalesced",
                 "trajectory_review_deferred",
                 "trajectory_review_disabled",
                 "supervisor_unavailable",
             }:
                 reason = dispatch["reason"]
                 result = SupervisorResult(
-                    action=_action_from_proposal(request, {
-                        "type": "NOOP", "rationale": reason, "evidence": [reason],
-                    }),
-                    diagnosis=reason, traces=[reason], inference_status="not_attempted",
+                    action=_action_from_proposal(
+                        request,
+                        {
+                            "type": "NOOP",
+                            "rationale": reason,
+                            "evidence": [reason],
+                        },
+                    ),
+                    diagnosis=reason,
+                    traces=[reason],
+                    inference_status="not_attempted",
                 )
                 effect = await self.store.finalize_event_effect(
-                    event_id=event.event_id, effect_key="planner", state="skipped",
-                    result={"code": reason, "provider_started": False,
-                            "supervisor_result": result.model_dump(mode="json")},
+                    event_id=event.event_id,
+                    effect_key="planner",
+                    state="skipped",
+                    result={
+                        "code": reason,
+                        "provider_started": False,
+                        "supervisor_result": result.model_dump(mode="json"),
+                    },
                 )
                 return result, effect, planning_snapshot
             if dispatch.get("reason") == WorkspaceAuthorityError.code:
@@ -1806,7 +1848,8 @@ class Pipeline:
                 effect_key="planner",
                 state="failed",
                 result={
-                    "status": "failed", "code": WorkspaceAuthorityError.code,
+                    "status": "failed",
+                    "code": WorkspaceAuthorityError.code,
                     "provider_started": False,
                 },
             )
@@ -1814,7 +1857,10 @@ class Pipeline:
         try:
             if deterministic_only:
                 result = await self._invoke_supervisor(
-                    request, semantic=False, witness=witness, deterministic_only=True,
+                    request,
+                    semantic=False,
+                    witness=witness,
+                    deterministic_only=True,
                 )
             else:
                 result = await self._invoke_supervisor(request, semantic=semantic, witness=witness)
@@ -1871,7 +1917,8 @@ class Pipeline:
                 effect_key="planner",
                 state="failed",
                 result={
-                    "status": "failed", "code": WorkspaceAuthorityError.code,
+                    "status": "failed",
+                    "code": WorkspaceAuthorityError.code,
                     "provider_started": False,
                 },
             )
@@ -2539,7 +2586,7 @@ class Pipeline:
                     permission_note = "Autonomous correction permission is disabled."
                 # Existing trusted prefixes are consumed by deterministic safety
                 # triage. Preserve them and the protocol's bounded notes field.
-                notes = notes[:65_536 - len(permission_note) - 2] + "\n\n" + permission_note
+                notes = notes[: 65_536 - len(permission_note) - 2] + "\n\n" + permission_note
 
         request = SupervisorRequest(
             session=session,
@@ -2548,9 +2595,7 @@ class Pipeline:
             recent_events=recent,
             scores=scores,
             autonomy=self.settings.autonomy,
-            trajectory_review_enabled=(
-                self.supervisor_dispatch_limit is not None
-            ),
+            trajectory_review_enabled=(self.supervisor_dispatch_limit is not None),
             notes=notes,
             supervisor_context=build_supervisor_context(
                 session,
@@ -2883,8 +2928,11 @@ class Pipeline:
                     "observed_at": request.supervisor_context.observed_at.isoformat(),
                     "packet_sha256": hashlib.sha256(
                         json.dumps(
-                            context_packet, sort_keys=True, separators=(",", ":"),
-                            ensure_ascii=False, allow_nan=False,
+                            context_packet,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                            ensure_ascii=False,
+                            allow_nan=False,
                         ).encode("utf-8")
                     ).hexdigest(),
                 }
@@ -3048,9 +3096,7 @@ class Pipeline:
             else None
         )
         shared_delivery_scope = (
-            effect_result.get("shared_delivery_scope")
-            if isinstance(effect_result, dict)
-            else None
+            effect_result.get("shared_delivery_scope") if isinstance(effect_result, dict) else None
         )
         if hook_preparation_receipt is not None:
             if (
@@ -3358,8 +3404,15 @@ class Pipeline:
         return result
 
     async def _durably_settle_main_result(
-        self, *, processing: dict, reserved: Intervention, session: HarnessSession,
-        outcome: str, effect_state: str, code: str, publish: bool,
+        self,
+        *,
+        processing: dict,
+        reserved: Intervention,
+        session: HarnessSession,
+        outcome: str,
+        effect_state: str,
+        code: str,
+        publish: bool,
         worker_delivery_receipt: dict | None = None,
         hook_preparation_receipt: dict | None = None,
         shared_delivery_scope: dict | None = None,
@@ -3377,8 +3430,10 @@ class Pipeline:
                 or shared_delivery_scope is not None
             ):
                 effect_result = {
-                    "status": effect_state, "outcome": outcome,
-                    "code": code, "effect_id": effect["effect_id"],
+                    "status": effect_state,
+                    "outcome": outcome,
+                    "code": code,
+                    "effect_id": effect["effect_id"],
                 }
                 if worker_delivery_receipt is not None:
                     effect_result["worker_delivery_receipt"] = worker_delivery_receipt
@@ -3387,8 +3442,14 @@ class Pipeline:
                 if shared_delivery_scope is not None:
                     effect_result["shared_delivery_scope"] = shared_delivery_scope
             await self._seal_main_event_effect(
-                processing=processing, effect=effect, reserved=reserved, session=session,
-                outcome=outcome, effect_state=effect_state, code=code, publish=publish,
+                processing=processing,
+                effect=effect,
+                reserved=reserved,
+                session=session,
+                outcome=outcome,
+                effect_state=effect_state,
+                code=code,
+                publish=publish,
                 effect_result=effect_result,
             )
 
@@ -3540,16 +3601,24 @@ class Pipeline:
                     command = event.command or str(frozen_action.payload.get("command") or "")
 
                     def check_local_authority() -> None:
-                        if self.supervision_paused or self.policy.decide(
-                            frozen_action.model_copy(deep=True), command=command,
-                        ) != PolicyVerdict.ALLOW:
+                        if (
+                            self.supervision_paused
+                            or self.policy.decide(
+                                frozen_action.model_copy(deep=True),
+                                command=command,
+                            )
+                            != PolicyVerdict.ALLOW
+                        ):
                             raise ValueError("current local policy refuses shared correction")
 
                     execution = await self.executor.execute(
-                        action, verdict,
+                        action,
+                        verdict,
                         main_effect_context=ClaimedMainEffect(
-                            event_id=event.event_id, owner=owner,
-                            effect_id=effect["effect_id"], effect_version=effect["version"],
+                            event_id=event.event_id,
+                            owner=owner,
+                            effect_id=effect["effect_id"],
+                            effect_version=effect["version"],
                             check_local_authority=check_local_authority,
                         ),
                     )
@@ -3564,22 +3633,34 @@ class Pipeline:
                     outcome = execution
         except asyncio.CancelledError:
             await self._durably_settle_main_result(
-                processing=current, reserved=reserved, session=session,
-                outcome="worker_delivery_uncertain", effect_state="delivery_uncertain",
-                code="cancelled_after_dispatch_marker", publish=False,
+                processing=current,
+                reserved=reserved,
+                session=session,
+                outcome="worker_delivery_uncertain",
+                effect_state="delivery_uncertain",
+                code="cancelled_after_dispatch_marker",
+                publish=False,
             )
             raise
         except Exception:
             await self._durably_settle_main_result(
-                processing=current, reserved=reserved, session=session,
-                outcome="worker_delivery_uncertain", effect_state="delivery_uncertain",
-                code="executor_failed_after_dispatch_marker", publish=False,
+                processing=current,
+                reserved=reserved,
+                session=session,
+                outcome="worker_delivery_uncertain",
+                effect_state="delivery_uncertain",
+                code="executor_failed_after_dispatch_marker",
+                publish=False,
             )
             return
         await self._durably_settle_main_result(
-            processing=current, reserved=reserved, session=session,
-            outcome=outcome, effect_state=self._main_effect_state(outcome),
-            code=outcome, publish=True,
+            processing=current,
+            reserved=reserved,
+            session=session,
+            outcome=outcome,
+            effect_state=self._main_effect_state(outcome),
+            code=outcome,
+            publish=True,
             worker_delivery_receipt=worker_delivery_receipt,
             hook_preparation_receipt=hook_preparation_receipt,
             shared_delivery_scope=shared_delivery_scope,
@@ -3603,9 +3684,7 @@ class Pipeline:
             try:
                 await self._drain_event_processing(event_id)
             except ValueError:
-                logger.exception(
-                    "Skipping unfinished event %s during startup recovery", event_id
-                )
+                logger.exception("Skipping unfinished event %s during startup recovery", event_id)
                 continue
             recovered.append(event_id)
         followup_rows = await self.store.list_recoverable_event_followups()
@@ -3725,8 +3804,7 @@ class Pipeline:
                 # carry its durable verification receipt only to prevent retries.
                 if (
                     verification is not None
-                    and item.proposed_action.type
-                    == InterventionType.REQUEST_VERIFICATION
+                    and item.proposed_action.type == InterventionType.REQUEST_VERIFICATION
                 ):
                     prior_verification = (item.metadata or {}).get("verification")
                     prior_receipt = (
@@ -3736,9 +3814,7 @@ class Pipeline:
                     )
                     if isinstance(prior_receipt, dict):
                         try:
-                            gathering = EvidenceGatheringReceipt.model_validate(
-                                prior_receipt
-                            )
+                            gathering = EvidenceGatheringReceipt.model_validate(prior_receipt)
                         except (TypeError, ValueError):
                             pass
                         else:
@@ -3767,13 +3843,13 @@ class Pipeline:
                     await self.bus.publish("intervention", item.model_dump(mode="json"))
                 updates.append(item)
                 continue
-            if (
-                session.harness_type
-                in {HarnessType.CODEX, HarnessType.OPENCODE, HarnessType.SYNTHETIC}
-                and not isinstance(
-                    (item.metadata or {}).get("worker_delivery_receipt"),
-                    dict,
-                )
+            if session.harness_type in {
+                HarnessType.CODEX,
+                HarnessType.OPENCODE,
+                HarnessType.SYNTHETIC,
+            } and not isinstance(
+                (item.metadata or {}).get("worker_delivery_receipt"),
+                dict,
             ):
                 item.outcome = (
                     "worker_delivery_uncertain"
@@ -3784,9 +3860,7 @@ class Pipeline:
                 item.metadata["outcome_final"] = True
                 if persist:
                     await self.store.update_intervention(item)
-                    await self.bus.publish(
-                        "intervention", item.model_dump(mode="json")
-                    )
+                    await self.bus.publish("intervention", item.model_dump(mode="json"))
                 updates.append(item)
                 continue
             try:
@@ -3801,9 +3875,7 @@ class Pipeline:
                 item.metadata["outcome_final"] = True
                 if persist:
                     await self.store.update_intervention(item)
-                    await self.bus.publish(
-                        "intervention", item.model_dump(mode="json")
-                    )
+                    await self.bus.publish("intervention", item.model_dump(mode="json"))
                 updates.append(item)
                 continue
             if matches_delivery:
@@ -3820,9 +3892,7 @@ class Pipeline:
                     item.metadata["causal_continuation_proven"] = False
                 if persist:
                     await self.store.update_intervention(item)
-                    await self.bus.publish(
-                        "intervention", item.model_dump(mode="json")
-                    )
+                    await self.bus.publish("intervention", item.model_dump(mode="json"))
                 updates.append(item)
         verification_request = next(
             (
@@ -3944,10 +4014,9 @@ class Pipeline:
             turn_id = receipt.get("vendor_turn_id")
             if not isinstance(turn_id, str) or not turn_id:
                 return False
-            return (
-                (event.metadata or {}).get("vendor_turn_id") == turn_id
-                and Pipeline._synthetic_event_ref_is_adapter_minted(session, event)
-            )
+            return (event.metadata or {}).get(
+                "vendor_turn_id"
+            ) == turn_id and Pipeline._synthetic_event_ref_is_adapter_minted(session, event)
         if session.harness_type.value != "codex":
             # Each harness needs its own exact vendor continuation proof.
             # Generic acceptance is never sufficient for outcome attribution.
@@ -3992,8 +4061,7 @@ class Pipeline:
             or raw_ref.get("schema") != "pex.codex-event-ref.v1"
             or raw_ref.get("thread_id") != session.vendor_session_id
             or raw_ref.get("turn_id") != receipt_turn_id
-            or event.raw_event_ref
-            != json.dumps(raw_ref, sort_keys=True, separators=(",", ":"))
+            or event.raw_event_ref != json.dumps(raw_ref, sort_keys=True, separators=(",", ":"))
         ):
             return False
         if event.event_type == EventType.STOP:
@@ -4063,9 +4131,7 @@ class Pipeline:
             or (item_id is not None and not isinstance(vendor_item_id, str))
         ):
             return False
-        stable_id = _stable_record_id(
-            "live_notification", method, receipt_turn_id, vendor_item_id
-        )
+        stable_id = _stable_record_id("live_notification", method, receipt_turn_id, vendor_item_id)
         if item_id is not None and item_id != stable_id:
             return False
         return event.event_id == shared_live_event_id(
@@ -4182,7 +4248,7 @@ class Pipeline:
             return None
 
         if event.event_type != EventType.STOP:
-            execution = _matching_pytest_execution(
+            execution = _matching_test_execution(
                 prior, session, event, gathering
             ) or _matching_typed_execution(prior, session, event, gathering)
             if execution is not None:
@@ -5197,7 +5263,8 @@ class Pipeline:
             final = await durable_finalize(
                 "failed",
                 {
-                    "status": "failed", "reason": WorkspaceAuthorityError.code,
+                    "status": "failed",
+                    "reason": WorkspaceAuthorityError.code,
                     "adapter_started": False,
                 },
             )
@@ -5255,9 +5322,7 @@ class Pipeline:
             else:
                 result = {"status": "delivered"}
                 if message_resolution.worker_delivery_receipt is not None:
-                    result["worker_delivery_receipt"] = (
-                        message_resolution.worker_delivery_receipt
-                    )
+                    result["worker_delivery_receipt"] = message_resolution.worker_delivery_receipt
                 final = await durable_finalize("delivered", result)
         response = await self._operator_handoff_response(final, replayed=replayed)
         await self.bus.publish("intervention", response["intervention"])
@@ -5859,7 +5924,8 @@ class Pipeline:
                 ],
                 "independent_verifier": (
                     result.independent_verifier.model_dump(mode="json")
-                    if result.independent_verifier is not None else None
+                    if result.independent_verifier is not None
+                    else None
                 ),
                 "execution_mode": result.execution_mode,
                 "transport": result.transport,
@@ -5882,8 +5948,7 @@ class Pipeline:
         now = time.monotonic()
         last_attempt = self._desktop_refresh_attempted_at
         if self._desktop_refresh_lock.locked() or (
-            last_attempt is not None
-            and now - last_attempt < DESKTOP_REFRESH_MIN_INTERVAL_SECONDS
+            last_attempt is not None and now - last_attempt < DESKTOP_REFRESH_MIN_INTERVAL_SECONDS
         ):
             return
         live = {"working", "verifying", "drifting", "needs_decision", "blocked"}

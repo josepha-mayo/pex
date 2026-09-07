@@ -16,7 +16,7 @@ _BACKGROUND_LAUNCH = re.compile(
     re.I,
 )
 _TEST_COMMAND = re.compile(
-    r"\b(?:pytest|npm\s+test|cargo\s+test|go\s+test)\b",
+    r"\b(?:pytest|python(?:\d+(?:\.\d+)*)?\s+-m\s+unittest|npm\s+test|cargo\s+test|go\s+test)\b",
     re.I,
 )
 _STILL_ACTIVE = 259
@@ -45,9 +45,9 @@ def find_abandoned_background(events: list[HarnessEvent]) -> dict[str, Any] | No
         if launch is not None:
             if launch["pid"] is not None:
                 launches = [
-                    prior for prior in launches
-                    if (prior["session_id"], prior["pid"])
-                    != (launch["session_id"], launch["pid"])
+                    prior
+                    for prior in launches
+                    if (prior["session_id"], prior["pid"]) != (launch["session_id"], launch["pid"])
                 ]
             launches.append(launch)
             continue
