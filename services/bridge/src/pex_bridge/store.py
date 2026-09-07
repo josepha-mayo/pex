@@ -7051,7 +7051,10 @@ class Store:
         try:
             await self._db.execute("PRAGMA journal_mode=WAL")
             await _configure_connection(self._db)
-            await self._db.executescript(SCHEMA)
+            # executescript otherwise commits each DDL statement separately.
+            # One transaction keeps FULL durability while avoiding a disk flush
+            # per schema object, and never publishes a partly created schema.
+            await self._db.executescript("BEGIN IMMEDIATE;\n" + SCHEMA + "\nCOMMIT;")
             await self._migrate_artifact_project_bindings()
             await self._migrate_goal_intent_authority()
             await self._migrate_goal_control_operation_coverage()

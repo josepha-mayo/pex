@@ -120,7 +120,7 @@ export type StartupRecoveryCopy = {
 
 export function startupRecoverySourceCopy(source: BridgeBootstrapStatus["source"]): string {
   switch (source) {
-    case "owned_sidecar": return "Previously verified desktop bridge";
+    case "owned_sidecar": return "Desktop-launched bridge process";
     case "unverified_port_owner": return "Unknown process on the local bridge port";
     default: return "No verified bridge owner";
   }

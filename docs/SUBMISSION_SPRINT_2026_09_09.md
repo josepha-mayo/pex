@@ -56,7 +56,9 @@ drop requirements or declare an unverified product ready.
   Acceptance: release cold start, retained failure diagnostics, normal Retry,
   close/reopen and persisted setup work without orphan bridge processes.
   Frozen helper tests are supporting evidence, not native-window proof.
-  Native interaction currently requires renewed permission; do not steal PC focus.
+  User authorized PEX-only native checks. On7September clean f08d41d cold start
+  and Retry both timed out. Eager SDK imports were deferred; local source timing
+  improved, but rebuilt native verification remains open. Respect the shared PC.
 
 ### Day 2 — complete human-facing flows
 

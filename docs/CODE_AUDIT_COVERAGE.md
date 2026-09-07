@@ -6,6 +6,16 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Native startup follow-up — 7 Sep
+
+Changed-path review: deferred Strands tool/Responses imports, initial Store schema
+transaction and startup source wording. Added `test_bridge_lazy_supervisor_imports.py`
+and `test_store_bootstrap.py`: cold no-model import gate, failed-DDL rollback,
+existing-data preservation, retry and unchanged FULL/WAL durability.99provider/
+evidence/loop tests,68Store-related tests,200frontend tests and build passed.
+Actual old candidate cold start and Retry timed out. Rebuilt native proof and full
+regression remain open. This is bounded repair review, not full-file audit closure.
+
 ### Review allowance visibility — 7 Sep
 
 Changed-path review: Store indexed count query (1000-ID bound, no mutation),

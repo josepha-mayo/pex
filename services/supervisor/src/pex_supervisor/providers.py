@@ -23,7 +23,6 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 import httpx
 
 from pex_supervisor.catalog import catalog
-from pex_supervisor.openai_responses import OpenAIResponsesModel
 
 logger = logging.getLogger(__name__)
 
@@ -1399,6 +1398,8 @@ def _load_supervisor_model() -> Any | None:
         if not model_id:
             return None
         from strands.models.openai import OpenAIModel
+
+        from pex_supervisor.openai_responses import OpenAIResponsesModel
 
         client_args: dict[str, Any] = {}
         if api_key:

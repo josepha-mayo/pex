@@ -1,5 +1,56 @@
 # PEX agent handoff
 
+## 7 September — actual startup failure reproduced; SDK import repair
+
+The user approved bounded free-Muse/Codex-Spark live checks AFTER clean build/tests
+pass. No live provider/worker call or AWS deployment occurred in this cycle.
+Submission remains NO-GO; do not end after this source checkpoint.
+
+Clean f08d41d release build 77448 is terminal/success. Package verification 67721
+failed only for missing extractor; retained receipt is not green. Reused existing
+main `build/tools/7zip-portable/Files/7-Zip` through scoped PATH; verification 42111
+passed both installers, exact helpers and eight-pet inventories. Receipt:
+`C:/Users/JosephMayo/Projects/pex-release-f08d41d/build/pex-package-receipt-f08d41d-with-extractor.json`,
+SHA256 `2298C3D377C85CD6580F7D99BF8C6B47FA2BAE06691D4A370A96E0E5F36DB2C2`.
+Three frozen lifetime cases initially passed in 93.72s (75848, terminal).
+
+Actual PEX-only Computer Use then reproduced identity_timeout on cold start AND
+one normal Retry. Isolated profile is release checkout `build/native-smoke-f08d41d`;
+launcher is main ignored `build/launch_native_f08d41d.py`, no credentials/model or
+automatic attachment. Desktop PID16732 closed normally through its own Close
+button; returned PEX windows empty. No other app/process was closed. No pet/UI
+readiness is inferred. Extraction completed in about25-30s; subsequent standalone
+frozen readiness also failed at60s (95900), with log reaching application startup.
+Do not keep claiming the initial frozen pass as reliable startup evidence.
+
+Source timing probe `build/profile_bootstrap_20260907.py` measured app imports
+58.803s and total readiness78.425s. Two eager imports pulled in Strands/OpenAI even
+with no model. Moved tool decorator import inside build_evidence_tools and the
+Responses adapter import inside configured OpenAI model construction. New cold
+subprocess test denies every Strands import while creating a no-model app; red
+before, green after. Real SDK provider/evidence/loop suites:99passed74.74s,
+`build/lazy-supervisor-startup-20260907.xml`. Same timing probe after change:
+app imports6.415s, total24.472s, clean shutdown. Local timing, NOT rebuilt native proof.
+
+Also made initial SQLite schema DDL atomic, retaining FULL/WAL: injected mid-schema
+failure previously published partial tables; new tests prove rollback, preservation
+of pre-existing data and successful retry.68tests passed138.34s, receipt
+`build/atomic-schema-regression-20260907.xml`. Four-case microtiming did NOT show a
+speedup; retain this as atomicity repair, not claimed startup performance proof.
+Native failure showed an unverified owned process labeled "Previously verified";
+copy now states "Desktop-launched bridge process".200frontend tests passed,
+production build passed; log `build/desktop-startup-repair-20260907.log`.
+
+Clean regression ef555a3 run35531 failed:178passed,3skips,16deselections, one
+concurrent Settings CAS test returned503/503. Isolated test and full49-test Settings
+file passed; root cause is unresolved. d319268 adds response-detail diagnostics.
+Full d319268 run77682 showed additional failures, then was deliberately interrupted
+at9percent after startup source repairs made it obsolete; NO completed XML.
+Do NOT call either full run green. Restart a clean final-source gate with immediate
+failure reporting, resolve failures, rebuild package, then native cold-start/Retry/
+pet checks, then the authorized bounded live proof. Protected loop.py addition is
+still exactly25lines, excluded from these changes. No new subagents used.
+
 ## 7 September — live-check approval and clean-gate continuation
 
 User explicitly approved resuming bounded live recovery/quiet-completion checks

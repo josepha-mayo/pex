@@ -24,7 +24,6 @@ from pex_protocol.supervisor import (
     SupervisorDecisionItem,
     SupervisorRequest,
 )
-from strands import tool
 
 from pex_supervisor.evidence_observations import (
     EvidenceObservationCollector,
@@ -276,6 +275,9 @@ def build_evidence_tools(
     collector: EvidenceObservationCollector | None = None,
 ) -> list[object]:
     """Build fresh read-only tools bound to one validated request."""
+
+    # Local bridge startup and deterministic review do not need the Strands SDK.
+    from strands import tool
 
     if collector is None:
         collector = EvidenceObservationCollector(

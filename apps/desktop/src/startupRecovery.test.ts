@@ -13,9 +13,19 @@ import {
   normalizeBridgeBootstrapStatus,
   shouldPollBridgeBootstrap,
   startupRecoveryCopy,
+  startupRecoverySourceCopy,
   startupDiagnosticText,
   unavailableBridgeBootstrapStatus,
 } from "./startupRecovery.ts";
+
+test("desktop process ownership never invents a verified identity", () => {
+  assert.equal(startupRecoverySourceCopy("owned_sidecar"), "Desktop-launched bridge process");
+  const diagnostic = startupDiagnosticText(normalizeBridgeBootstrapStatus({
+    phase: "failed", code: "identity_timeout", message: "Unverified cold start",
+    retryable: true, source: "owned_sidecar", attempt: 1,
+  }));
+  assert.doesNotMatch(diagnostic || "", /previously verified/iu);
+});
 
 test("every known startup error renders an actionable safe non-retryable state", async () => {
   const vite = await createServer({ root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom" });
