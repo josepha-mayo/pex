@@ -6,6 +6,19 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Zen free Responses session enforcement — 7 Sep
+
+Changed-path review of provider construction plus live failure evidence. Q08's real
+Strands request failed400 `MissingSessionID`; fallback NOOP remained fail-closed and
+is explicitly not a quiet-pass. A minimal non-sensitive probe reproduced the failure,
+then passed with only `x-opencode-session`. Production creates a new opaque
+`pex_[32 hex]` value per Zen Responses model instance. It sends no worker/user/
+project identity and no OpenCode client impersonation; chat routes and non-Zen
+providers are unchanged. Two construction assertions cover format, uniqueness and
+forbidden headers. Gates:79 provider/import tests,153 broader supervisor tests,
+Ruff, and one real Strands/Muse contract call. The previously green `b1d1223`
+installer is superseded and requires a clean rebuild after this source repair.
+
 ### Rendered desktop surface audit — 7 Sep
 
 Changed-path review of `Inspector.tsx` plus browser-rendered review of Home,

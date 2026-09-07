@@ -20,6 +20,16 @@ then run honest paired demonstrations/benchmarks, re-review the three-spec gaps 
 prepare the video/submission. Submission remains **NO-GO** until those receipts exist.
 The protected 25-line `loop.py` change is operator-owned, unstaged and excluded.
 
+**Newer live-provider finding:** Q08 is a failed quiet case, not progress toward the
+ten-case count. OpenCode began requiring `x-opencode-session` on6September; Muse's
+real call failed400 and PEX correctly fell back to uncertain NOOP. The repaired Zen
+Responses construction sends only a random PEX-owned affinity identifier and passed
+153 affected tests, Ruff and a real free-Muse Strands contract. Therefore the green
+`b1d1223` installers are superseded. Immediate order: commit/push provider repair →
+clean regression and package rebuild → fresh-case evidence-supported quiet proof →
+native UI/pet acceptance. Q08 receipts are immutable failure evidence; never rerun or
+count that case as a pass.
+
 **Live setup refresh, 5 Sep ~20:01 UTC:** read-only Brave/account/runtime checks and local deployment preflight completed. No runtimes in the two checked regions; local authentication/toolchain/Docker/image prerequisites remain. Obtain region/spend approval before cloud creation or invocation, then follow the [bounded live setup queue](AGENTCORE_LIVE_PREFLIGHT_2026_09_05.md). Existing Brave browser extension works; native Computer Use remains paused. First article publication is visible, no bonus award claimed. New subagents: **Sol low**, superseding historical medium assignments.
 
 **Latest accepted source `fe34a3a`:** explicit standing correction permission, private claimed-effect delivery and repeated-cancellation-safe receipt settlement are reviewed and pushed with exact remote equality verified. Main **969 passed/41 files**, final **6-case cancellation/framed gate**, desktop **171 tests/build**, scoped Ruff and staged whitespace passed. [Detailed current receipt](CODEX_CLAIMED_DISPATCH_REVIEW.md). Next core milestone is the actual existing-worker Strands/AgentCore loop; no live-product checklist is completed by local fixture results. The user identified their browser's AWS account; region/spending cap and actual deployed runtime remain unresolved. Preserve the physical Escape browser stop and avoid duplicate publication.

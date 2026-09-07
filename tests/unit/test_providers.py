@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 
 import httpx
 import pytest
@@ -232,7 +233,27 @@ def test_zen_responses_model_is_routed_by_catalog_id(monkeypatch):
     assert model._pex_provenance["model_id"] == "muse-spark-1.3-contributor-free"
     assert model._pex_provenance["generation_api"] == "responses"
     assert "http_client" not in model.client_args
+    assert set(model.client_args["default_headers"]) == {"x-opencode-session"}
+    session_id = model.client_args["default_headers"]["x-opencode-session"]
+    assert re.fullmatch(r"pex_[a-f0-9]{32}", session_id)
     assert model._http_client_factory is not None
+
+
+def test_zen_responses_session_affinity_is_opaque_and_per_model(monkeypatch):
+    monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
+    monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "zen")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "muse-spark-1.3-contributor-free")
+    monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-key")
+
+    first = load_supervisor_model()
+    second = load_supervisor_model()
+
+    first_headers = first.client_args["default_headers"]
+    second_headers = second.client_args["default_headers"]
+    assert first_headers["x-opencode-session"] != second_headers["x-opencode-session"]
+    assert "x-opencode-client" not in first_headers
+    assert "x-opencode-project" not in first_headers
+    assert "x-opencode-request" not in first_headers
 
 
 def test_other_zen_models_preserve_chat_completions_route(monkeypatch):

@@ -13,6 +13,7 @@ import logging
 import math
 import os
 import re
+import secrets
 import socket
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -1420,6 +1421,15 @@ def _load_supervisor_model() -> Any | None:
             from pex_supervisor.openai_responses import OpenAIResponsesModel
 
             model_type = OpenAIResponsesModel
+            if spec.id == "zen":
+                # Zen's free Responses models require a session identifier as
+                # of 2026-09-06.  Use a PEX-owned opaque value: do not expose a
+                # worker/thread/project identifier or impersonate OpenCode's
+                # client header.  One model instance keeps one routing/cache
+                # affinity while a configuration is active.
+                client_args["default_headers"] = {
+                    "x-opencode-session": f"pex_{secrets.token_hex(16)}"
+                }
             responses_args = {
                 "http_client_factory": lambda: credential_safe_http_client(
                     timeout=_supervisor_timeout(),

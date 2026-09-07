@@ -1,5 +1,47 @@
 # PEX agent handoff
 
+### 7 September — live Q08 exposed and repaired Zen session enforcement
+
+The clean `b1d1223` release is fully green as a historical exact artifact: normal
+Tauri build produced MSI/NSIS; package receipt
+`C:/Users/JosephMayo/Projects/pex-release-b1d1223/build/pex-package-receipt-b1d1223.json`
+has SHA256 `458989AAA29FA04BEBE6E0201B55692E60B3708872E03F9FC8A5A3D5634ABEE1`,
+`release_ready=true`, no blockers, exact four-executable inventories and all eight
+pets in both installers. Exact frozen bridge lifetime gate: 3 passed131.93s,
+JUnit SHA256 `8245C3EA5A2A2C4D1D3F7228387252ACF6989E246C518A824B2543890B69E48C`.
+Rust gate:16passed. This package is now superseded by the provider repair below and
+must be rebuilt before final native acceptance.
+
+Bounded current-source Q08 used the retained Codex Spark worker/thread
+`01a077fa-f3a7-7ec0-9799-05ea90639b8d`, exactly one completed warm-up and one work
+turn. The current bridge was isolated on7438 with free Zen Muse and a hard one-
+dispatch/session cap. Origin, observe-only connection, goal and correction grant
+all succeeded. Worker turn completed and reported7passing tests plus a deterministic
+three-manifest summary. PEX emitted one NOOP, but **Q08 is a failed quiet proof**:
+the real Strands request returned HTTP400 `MissingSessionID`; receipt recorded
+`strands_failed:BadRequestError`, `used_llm=true`, one call, `acceptance=uncertain`,
+no independent verifier/evidence refs. Capture SHA256:
+`FCD2741FE7134A7335724C6B8186E4EDFF53BDF6C9E1AA88D5368BFB9CFF61A4`.
+The correction grant was revoked and observer detached. Exact owned bridge and both
+dedicated App Servers were stopped;7438 is free. Do not rerun Q08 or overwrite its
+receipts. A parent pytest rerun independently read four tests/pass plus the summary,
+then three setup errors because the worker-sandbox-owned `.pex-test-tmp` could not be
+removed by the parent; do not misreport those as validator failures or a green
+independent rerun.
+
+OpenCode's live error and current public client contract require
+`x-opencode-session` for the free Zen route beginning6September. A minimal request
+without it reproduced400; the identical request with only an opaque PEX-owned
+session value returned200. Production now adds a random `pex_` plus32hex affinity
+value only to Zen Responses-model client defaults. It does **not** send
+`x-opencode-client`, project, request, worker, thread or user identifiers and does
+not affect chat-only or other providers.79 provider/import tests passed, broader
+provider/Strands/loop gate153passed18.35s with JUnit SHA256
+`3EB5F1C9E85BD4A83504F5D9B8715F666A0E81734D5017EF36C57E5BCA3624E4`,
+Ruff passed, and a real patched Strands/Muse contract passed1test15.60s with exact
+Zen/model/Responses provenance. Next: commit/push, clean regression/package rebuild,
+then use a fresh case—not Q08—to prove evidence-supported quiet behavior.
+
 ### 7 September — headless surface audit and truthful empty-state repair
 
 At source `adb76b6`, the isolated Vite application was reviewed at a 920x700
