@@ -3,7 +3,8 @@
 The full goal remains active. This is the user's three-day internal target, not
 a claim about the organizer's current deadline. Submission status: **NO-GO**.
 Read all three binding specs and `CHECKPOINT_2026_09_06.md` before each work cycle.
-Conserve quota: no new subagents or live-model runs in the current work cycle.
+Conserve quota: no new subagents. The user approved bounded live recovery/quiet
+checks after clean build/tests pass, subject to verifying free-provider setup.
 If independent review is later needed, use the user's Terra / medium preference.
 Preserve the protected supervisor `loop.py` change. Push only reviewed, scoped updates.
 
@@ -76,7 +77,8 @@ drop requirements or declare an unverified product ready.
 - [ ] **F. Complete restraint/recovery and integration evidence.**
   Quiet denominator remains ten: four quiet successes, two inconclusive,
   one early false escalation, three pending. Preserve failures; do not restart
-  prepared Q08. Resume model runs only after resolving the current quota pause.
+  prepared Q08. User approved bounded live checks on 7 September AFTER clean
+  build/tests pass and free-provider configuration is verified. No paid/AWS work.
   AgentCore remains a spec target under the no-card-charge boundary, not an
   excuse to deploy without verified coverage. No mock is live integration proof.
 

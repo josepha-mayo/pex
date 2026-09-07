@@ -1,5 +1,41 @@
 # PEX agent handoff
 
+## 7 September — live-check approval and clean-gate continuation
+
+User explicitly approved resuming bounded live recovery/quiet-completion checks
+AFTER clean build/tests pass. This supersedes the quota pause for those bounded
+runs only. Verify the saved Muse free-provider configuration first; worker remains
+Codex Spark. No AWS deployment, paid-provider work or unverified billing coverage.
+
+Full clean f08d41d test exec 19981 stopped at its first failure: 265 passed,
+3 frozen-helper opt-in skips, 16 live deselections, 1 failed, 276.02s. Receipt
+`C:/Users/JosephMayo/Projects/pex-verify-14bc53d/build/full-regression-f08d41d.xml`,
+SHA256 `CBDCFEA5D669AFA546C7DEE913F3155F71D8F39AD16454E315E195A137D9461A`.
+The failure was an adversarial semantic mock with no configured fake model:
+the new correct deterministic-only route skipped it. Five semantic probe tests
+and the unavailable-adapter policy test now explicitly supply a fake model while
+retaining their exact malicious-payload, NOOP and policy-denial assertions.
+Whole handoff/permission file: 66 passed in 240.01s (exec 18573 terminal), receipt
+`build/handoff-semantic-routing-20260907.xml`. Adapter/input-baseline gate:
+29 passed in 21.84s (60005 terminal), receipt
+`build/semantic-routing-fixtures-20260907.xml`. No production source changed
+after f08d41d in this follow-up. Restart the clean full gate with these fixtures.
+
+Normal release build **running, exec 77448**, clean source f08d41d in separate
+`C:/Users/JosephMayo/Projects/pex-release-f08d41d`. Offline frozen Python sync and
+npm ci completed. Preflight verifies clean tracked inputs, all pinned toolchains,
+exact eight-pet source and Tauri wiring; missing sidecars are being built by the
+normal `npm run tauri -- build`. Do NOT change this checkout or duplicate build.
+After completion use `npm run verify:package -- --receipt <absolute new receipt>`.
+
+Native Computer Use IS available via deferred `mcp__node_repl__js` + `@oai/sky`;
+the browser-only CUA tool is not the Windows path. Skill, guidance, API and
+confirmations were read fully. Node session initialized `globalThis.sky` and
+list_apps returned no PEX app/window. No native input sent. Use only returned
+PEX windows, fresh observations and one-action/refresh; user has authorized
+PEX checks but shares the PC. Preserve app-only scope and stop on physical Escape.
+Use an isolated profile/no-provider startup for native smoke before live proof.
+
 ## 7 September — release-blocking regressions repaired
 
 The clean full run on `14bc53d` exposed a regression introduced by `043976a`:

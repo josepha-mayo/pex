@@ -2553,6 +2553,7 @@ async def test_same_probe_id_with_altered_payload_is_rejected_before_adapter_io(
 
     decide = AsyncMock(side_effect=altered_decide)
     monkeypatch.setattr(state.pipeline.supervisor, "decide", decide)
+    monkeypatch.setattr(state.pipeline, "model", object())
     stopped = await client.post(
         "/v1/synthetic/events",
         json={
@@ -2633,6 +2634,7 @@ async def test_model_verification_reference_binds_current_bridge_probe(
         )
 
     monkeypatch.setattr(state.pipeline.supervisor, "decide", AsyncMock(side_effect=decide))
+    monkeypatch.setattr(state.pipeline, "model", object())
     stopped = await client.post(
         "/v1/synthetic/events",
         json={
@@ -2706,6 +2708,7 @@ async def test_parsed_model_verification_payload_cannot_change_bridge_probe(
         )
 
     monkeypatch.setattr(state.pipeline.supervisor, "decide", AsyncMock(side_effect=decide))
+    monkeypatch.setattr(state.pipeline, "model", object())
     stopped = await client.post(
         "/v1/synthetic/events",
         json={
@@ -2758,6 +2761,7 @@ async def test_parsed_model_noop_is_not_promoted_to_verification_request(
         )
 
     monkeypatch.setattr(state.pipeline.supervisor, "decide", AsyncMock(side_effect=decide))
+    monkeypatch.setattr(state.pipeline, "model", object())
     stopped = await client.post(
         "/v1/synthetic/events",
         json={
@@ -2829,6 +2833,7 @@ async def test_model_cannot_mint_request_verification_probe(
 
     decide = AsyncMock(side_effect=minting_decide)
     monkeypatch.setattr(state.pipeline.supervisor, "decide", decide)
+    monkeypatch.setattr(state.pipeline, "model", object())
     stopped = await client.post(
         "/v1/synthetic/events",
         json={

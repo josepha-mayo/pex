@@ -232,6 +232,7 @@ async def test_unknown_empty_capabilities_fail_closed(tmp_path, monkeypatch):
         Settings.for_test(require_auth=False, home=tmp_path),
     )
     monkeypatch.setattr(pipeline.supervisor, "decide", decide)
+    monkeypatch.setattr(pipeline, "model", object())
     stop = HarnessEvent(
         event_id="stop-unknown",
         ts=datetime.now(UTC),
