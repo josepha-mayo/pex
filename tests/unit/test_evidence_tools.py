@@ -2,11 +2,137 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from pex_protocol.enums import EventType
 from pex_supervisor.evidence_observations import EvidenceObservationCollector
 from pex_supervisor.evidence_tools import build_evidence_tools
 from pex_supervisor.verify import verify_claims
 from test_supervisor_loop import _request
+
+
+@pytest.mark.parametrize("name", ["durations.json", "summary.md", "exports/report.csv"])
+def test_named_output_artifact_is_read_and_audited_without_fixed_filename(tmp_path, name):
+    request = _request(0.1)
+    request.session.cwd = str(tmp_path)
+    target = tmp_path / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"actual output\n")
+    collector = EvidenceObservationCollector(request, stage="main", invocation_id="artifact-read")
+    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
+                if item.tool_name == "inspect_artifact")
+    rendered = tool(path=name)
+    observed = json.loads(rendered)
+    assert observed["path"] == name
+    assert observed["text"] == "actual output\n"
+    assert observed["bytes"] == 14
+    assert observed["preview_kind"] == "head"
+    assert observed["truncated"] is False
+    assert collector.observations[0].output == rendered
+    assert json.loads(collector.observations[0].arguments_json) == {"path": name}
+
+
+def test_named_artifact_preview_is_bounded_and_not_claimed_complete(tmp_path):
+    request = _request(0.1)
+    request.session.cwd = str(tmp_path)
+    (tmp_path / "large-report.txt").write_bytes(b"A" * 800 + b"UNREAD_SENTINEL")
+    tool = next(item for item in build_evidence_tools(request, [])
+                if item.tool_name == "inspect_artifact")
+    rendered = tool(path="large-report.txt")
+    observed = json.loads(rendered)
+    assert observed["text"] == "A" * 800
+    assert observed["truncated"] is True
+    assert "UNREAD_SENTINEL" not in rendered
+
+
+@pytest.mark.parametrize("path", [
+    "../outside.json", "/outside.json", "C:/outside.json", ".env", "config/.secret",
+    "report.json:alternate", "node_modules/package.json", "x" * 241,
+    False, 0, None, [],
+])
+def test_rejected_artifact_path_never_falls_back_to_listing(tmp_path, monkeypatch, path):
+    request = _request(0.1)
+    request.session.cwd = str(tmp_path)
+    def unexpected(*_args, **_kwargs):
+        pytest.fail("rejected artifact path reached filesystem observation")
+    monkeypatch.setattr("pex_supervisor.workspace.artifact_tails", unexpected)
+    monkeypatch.setattr("pex_supervisor.workspace.read_visible", unexpected)
+    tool = next(item for item in build_evidence_tools(request, [])
+                if item.tool_name == "inspect_artifact")
+    assert json.loads(tool(path=path))["error"] == "path rejected"
+
+
+def test_named_artifact_still_refuses_hidden_evaluator_and_missing_file(tmp_path):
+    request = _request(0.1)
+    request.session.cwd = str(tmp_path)
+    (tmp_path / "evaluator.py").write_text("HIDDEN_SENTINEL")
+    tool = next(item for item in build_evidence_tools(request, [])
+                if item.tool_name == "inspect_artifact")
+    assert json.loads(tool(path="evaluator.py"))["error"] == "hidden"
+    assert json.loads(tool(path="missing.json"))["error"] == "missing"
+
+
+@pytest.mark.parametrize("kind", ["hidden_symlink", "outside_symlink", "hardlink"])
+@pytest.mark.parametrize("name", ["report.txt", "results.jsonl"])
+def test_named_artifact_cannot_read_private_link_alias(tmp_path, kind, name):
+    import os
+
+    root = tmp_path / "workspace"
+    root.mkdir()
+    private = (root / ".env") if kind == "hidden_symlink" else (tmp_path / "outside.txt")
+    private.write_text("PRIVATE_ALIAS_SENTINEL")
+    alias = root / name
+    try:
+        if kind == "hardlink":
+            os.link(private, alias)
+        else:
+            alias.symlink_to(private)
+    except OSError as exc:
+        pytest.skip(f"Host cannot create this link: {type(exc).__name__}")
+    request = _request(0.1)
+    request.session.cwd = str(root)
+    collector = EvidenceObservationCollector(request, stage="main", invocation_id="private-alias")
+    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
+                if item.tool_name == "inspect_artifact")
+    rendered = tool(path=name)
+    assert "error" in json.loads(rendered)
+    assert "PRIVATE_ALIAS_SENTINEL" not in rendered
+    assert "PRIVATE_ALIAS_SENTINEL" not in collector.observations[0].output
+    assert "PRIVATE_ALIAS_SENTINEL" not in tool()
+
+
+@pytest.mark.parametrize("name", ["report.txt", "results.jsonl"])
+def test_artifact_rejects_private_hardlink_swapped_at_open(tmp_path, monkeypatch, name):
+    import os
+    from pathlib import Path
+
+    root = tmp_path / "workspace"
+    root.mkdir()
+    target = root / name
+    target.write_text("public output")
+    private = tmp_path / "private.txt"
+    private.write_text("PRIVATE_SWAP_SENTINEL")
+    original_open = Path.open
+    swapped = False
+
+    def swap_before_open(path, *args, **kwargs):
+        nonlocal swapped
+        if path == target and not swapped:
+            swapped = True
+            target.unlink()
+            os.link(private, target)
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", swap_before_open)
+    request = _request(0.1)
+    request.session.cwd = str(root)
+    collector = EvidenceObservationCollector(request, stage="main", invocation_id="link-swap")
+    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
+                if item.tool_name == "inspect_artifact")
+    rendered = tool(path=name)
+    assert swapped
+    assert "PRIVATE_SWAP_SENTINEL" not in rendered
+    assert "error" in json.loads(rendered)
+    assert "PRIVATE_SWAP_SENTINEL" not in collector.observations[0].output
 
 
 def test_worker_test_facts_reach_the_audited_tool_without_becoming_goal_acceptance():

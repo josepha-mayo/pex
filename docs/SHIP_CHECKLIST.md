@@ -1,5 +1,18 @@
 # PEX shipping checklist — 5 September 2026
 
+**Current checkpoint: 8 September WAT.** Follow
+[CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md); older current/latest labels are
+historical. Overall submission remains NO-GO and the full steps below remain required.
+
+- [x] Build and verify exact de83153 MSI/NSIS inventories.
+- [x] Capture real Q18 completed Muse NOOP, oracle and cleanup; retain uncertainty.
+- [x] Repair named-artifact inspection and descriptor-bound reads; 189 tests/5 skips.
+- [ ] Push and run clean full regression for that source slice.
+- [ ] Finish saved-model startup failure/recovery UX and fresh quiet/recovery proof.
+- [ ] Renew native-check permission after Escape; canvas/eight-pet playback still open.
+- [ ] Complete source audit, human workflow, fair comparisons, AgentCore proof,
+  filming and authorized submission. Internal target: 9 September WAT.
+
 **Current 7 September 22:30 UTC checkpoint:** exact `7a1a5b5` is clean-package green:
 114 affected backend/2 skips, desktop214, frozen lifetime3, normal MSI+NSIS and both
 installer inventories pass. Native fresh startup and normal close/reopen both reached

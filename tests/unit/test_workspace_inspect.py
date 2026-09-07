@@ -144,18 +144,27 @@ def test_malformed_jsonl_does_not_produce_a_complete_row_receipt(tmp_path: Path)
 def test_artifact_count_bounds_read_when_size_observation_is_stale(
     tmp_path, monkeypatch, suffix, payload,
 ):
-    from types import SimpleNamespace
+    import os
 
     path = tmp_path / ("results" + suffix)
     path.write_bytes(payload)
     original_stat = Path.stat
+    original_fstat = os.fstat
+
+    def stale_size(observed):
+        fields = list(observed)
+        fields[6] = 1
+        return os.stat_result(fields)
 
     def stale_stat(target, *args, **kwargs):
         if target == path:
-            return SimpleNamespace(st_size=1)
+            return stale_size(original_stat(target, *args, **kwargs))
         return original_stat(target, *args, **kwargs)
 
     monkeypatch.setattr(Path, "stat", stale_stat)
+    # Preserve real file identity while simulating growth after both path and
+    # descriptor size observations; the bounded read must still catch overflow.
+    monkeypatch.setattr(os, "fstat", lambda fd: stale_size(original_fstat(fd)))
     assert artifact_row_count(path, json_limit=32) == (None, False)
 
 
@@ -166,6 +175,25 @@ def test_artifact_count_accepts_exact_byte_limit(tmp_path, suffix, payload):
     path = tmp_path / ("results" + suffix)
     path.write_bytes(payload)
     assert artifact_row_count(path, json_limit=len(payload)) == (2, True)
+
+
+def test_artifact_count_rejects_private_hardlink_swapped_at_open(tmp_path, monkeypatch):
+    import os
+
+    path = tmp_path / "results.jsonl"
+    path.write_bytes(b"{}\n")
+    private = tmp_path / ".private.jsonl"
+    private.write_bytes(b"{}\n{}\n")
+    original_open = Path.open
+
+    def swap_before_open(target, *args, **kwargs):
+        if target == path:
+            path.unlink()
+            os.link(private, path)
+        return original_open(target, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", swap_before_open)
+    assert artifact_row_count(path) == (None, False)
 
 
 def test_nonfinite_jsonl_does_not_produce_a_complete_row_receipt(tmp_path: Path):

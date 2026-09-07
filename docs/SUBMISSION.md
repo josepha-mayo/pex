@@ -1,5 +1,13 @@
 # Devpost submission copy
 
+> **Current, 8 September WAT: still NO-GO.** Follow
+> [the detailed checkpoint](CHECKPOINT_2026_09_08.md). Exact de83153 installers passed
+> integrity checks. Real Q18 completed inference and stayed quiet with acceptance
+> uncertainty; it is not a scored benchmark or full semantic-proof gate. New artifact
+> inspection code needs clean-source verification; native testing paused on Escape.
+> Human workflow, all-eight playback, full audit/comparisons, AgentCore, video and
+> final authorized submission remain open. Older current labels below are historical.
+
 > **Current evidence, 7 September 22:30 UTC:** use the top of
 > [the handoff](AGENT_HANDOFF.md) and [shipping checklist](SHIP_CHECKLIST.md).
 > Exact `7a1a5b5` is clean-package green. Native fresh startup/restart, bubble dismissal,

@@ -130,11 +130,12 @@ def test_changed_authority_during_read_discards_output(
     unavailable(output, bound[2])
 
 
-def test_regular_file_content_edit_does_not_revoke_directory(bound):
+@pytest.mark.parametrize("name", ["inspect_file", "inspect_artifact"])
+def test_regular_file_content_edit_does_not_revoke_directory(bound, name):
     with workspace_evidence_guard(bound[0].session, lambda: check(bound)):
-        before = bound[1]["inspect_file"](path="report.txt")
+        before = bound[1][name](path="report.txt")
         (bound[5] / "report.txt").write_text("VALID_EDIT", encoding="utf-8")
-        after = bound[1]["inspect_file"](path="report.txt")
+        after = bound[1][name](path="report.txt")
     assert "VALID_CONTENT" in before
     assert "VALID_EDIT" in after
     assert len(bound[2].observations) == 2
@@ -149,7 +150,8 @@ def test_inherited_context_is_revoked_after_exit(bound, monkeypatch):
     unavailable(inherited.run(bound[1]["inspect_file"], path="report.txt"), bound[2])
 
 
-async def test_cancelled_invocation_discards_inflight_thread_result(bound, monkeypatch):
+@pytest.mark.parametrize("name", ["inspect_file", "inspect_artifact"])
+async def test_cancelled_invocation_discards_inflight_thread_result(bound, monkeypatch, name):
     entered, release = Event(), Event()
     tasks = []
 
@@ -163,7 +165,7 @@ async def test_cancelled_invocation_discards_inflight_thread_result(bound, monke
     async def invoke():
         with workspace_evidence_guard(bound[0].session, lambda: check(bound)):
             task = asyncio.create_task(
-                asyncio.to_thread(bound[1]["inspect_file"], path="report.txt")
+                asyncio.to_thread(bound[1][name], path="report.txt")
             )
             tasks.append(task)
             return await asyncio.shield(task)
@@ -180,14 +182,15 @@ async def test_cancelled_invocation_discards_inflight_thread_result(bound, monke
     unavailable(await asyncio.wait_for(tasks[0], 5), bound[2])
 
 
-def test_read_failure_after_authority_loss_is_sanitized(bound, monkeypatch):
+@pytest.mark.parametrize("name", ["inspect_file", "inspect_artifact"])
+def test_read_failure_after_authority_loss_is_sanitized(bound, monkeypatch, name):
     def failed(*args, **kwargs):
         bound[5].rename(bound[5].with_name("preserved-original"))
         raise OSError("STALE_CONTENT")
 
     monkeypatch.setattr(workspace_module, "read_visible", failed)
     with workspace_evidence_guard(bound[0].session, lambda: check(bound)):
-        unavailable(bound[1]["inspect_file"](path="report.txt"), bound[2])
+        unavailable(bound[1][name](path="report.txt"), bound[2])
 
 
 @pytest.mark.parametrize("change", ["directory", "origin"])

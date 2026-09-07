@@ -255,7 +255,7 @@ async def test_saved_dispatch_cap_preserves_startup_value_and_revision_authority
     inherited = await client.patch("/v1/supervisor", json={
         "expected_revision": 2, "dispatch_limit_override": None,
     })
-    assert inherited.status_code == 200
+    assert inherited.status_code == 200, inherited.text
     assert inherited.json()["max_dispatches_per_session"] == 30
 
 
@@ -982,27 +982,30 @@ async def test_model_constructor_timeout_quarantines_until_worker_finishes(
 
     def block_model(_config):
         entered.set()
-        release.wait(1)
+        release.wait()
         return object()
 
     monkeypatch.setattr("pex_supervisor.providers.load_supervisor_model", block_model)
     monkeypatch.setattr("pex_bridge.app._SUPERVISOR_CONFIG_TIMEOUT_SECONDS", 0.02)
-    timed_out = await client.patch(
-        "/v1/supervisor",
-        json={"expected_revision": 1, "api_key": "timeout-secret"},
-    )
-    assert entered.is_set()
-    assert timed_out.status_code == 504
-    assert (await asyncio.wait_for(client.get("/health"), 0.25)).status_code == 200
-    refused = await client.patch(
-        "/v1/supervisor",
-        json={"expected_revision": 1, "model_id": "must-not-overlap"},
-    )
-    assert refused.status_code == 503
-    assert (home / "supervisor.json").read_bytes() == before
-    assert secret_store.values == {}
-
-    release.set()
+    try:
+        timed_out = await client.patch(
+            "/v1/supervisor",
+            json={"expected_revision": 1, "api_key": "timeout-secret"},
+        )
+        # The request can time out before a busy host schedules its worker.
+        # Synchronize on entry; keep it blocked until quarantine is inspected.
+        assert await asyncio.to_thread(entered.wait, 1)
+        assert timed_out.status_code == 504
+        assert (await asyncio.wait_for(client.get("/health"), 0.25)).status_code == 200
+        refused = await client.patch(
+            "/v1/supervisor",
+            json={"expected_revision": 1, "model_id": "must-not-overlap"},
+        )
+        assert refused.status_code == 503
+        assert (home / "supervisor.json").read_bytes() == before
+        assert secret_store.values == {}
+    finally:
+        release.set()
     for _ in range(100):
         if state.supervisor_config_task is None:
             break

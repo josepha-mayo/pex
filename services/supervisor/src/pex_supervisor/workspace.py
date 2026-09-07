@@ -6,11 +6,13 @@ import json
 import os
 import shutil
 import signal
+import stat
 import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from pex_protocol.windows_job import CREATE_SUSPENDED, assign_job_and_resume, close_job
 
@@ -355,6 +357,25 @@ def git_snapshot(root: Path) -> dict[str, Any]:
     }
 
 
+@contextmanager
+def _open_observed_file(path: Path):
+    """Bind validation to the opened file, not a path a worker can swap later."""
+    before = path.stat()
+    if not stat.S_ISREG(before.st_mode):
+        raise ValueError("non-regular file rejected")
+    with path.open("rb") as handle:
+        opened = os.fstat(handle.fileno())
+        if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
+            raise ValueError("linked or non-regular file rejected")
+        if (
+            not os.path.samestat(before, opened)
+            or not os.path.samestat(path.stat(), opened)
+            or path.resolve() != path
+        ):
+            raise ValueError("file changed during observation")
+        yield handle, opened
+
+
 def read_visible(root: Path, relpath: str, limit: int = 12000) -> dict[str, Any]:
     try:
         root = root.resolve()
@@ -368,8 +389,8 @@ def read_visible(root: Path, relpath: str, limit: int = 12000) -> dict[str, Any]
         return {"error": "hidden"}
     bounded_limit = _bounded_limit(limit, MAX_VISIBLE_READ_BYTES)
     try:
-        size = target.stat().st_size
-        with target.open("rb") as handle:
+        with _open_observed_file(target) as (handle, opened):
+            size = opened.st_size
             data = handle.read(bounded_limit)
     except (OSError, ValueError, OverflowError) as exc:
         return {"error": str(exc)}
@@ -390,16 +411,23 @@ def artifact_tails(root: Path, limit: int = 4000) -> list[dict[str, Any]]:
     for name in ARTIFACT_TAILS:
         try:
             path = (resolved_root / name).resolve(strict=True)
-            path.relative_to(resolved_root)
+            relative = path.relative_to(resolved_root)
             if not path.is_file() or _hidden(path, resolved_root):
                 continue
-            size = path.stat().st_size
-            with path.open("rb") as handle:
+            if any(part.startswith(".") or part.casefold() in PRUNED_DIRECTORIES
+                   for part in relative.parts):
+                continue
+            with _open_observed_file(path) as (handle, opened):
+                size = opened.st_size
                 handle.seek(max(0, size - bounded_limit))
                 text = handle.read(bounded_limit).decode("utf-8", "replace")
+                # Count from the same checked descriptor as the preview: never
+                # reopen a worker-controlled path after returning its bytes.
+                row_count, count_complete = _artifact_row_count_from_handle(
+                    handle, path.suffix.casefold(), MAX_ARTIFACT_COUNT_BYTES,
+                )
         except (OSError, ValueError, OverflowError):
             continue
-        row_count, count_complete = artifact_row_count(path)
         out.append(
             {
                 "path": name,
@@ -422,13 +450,22 @@ def artifact_row_count(
     grows the file after stat. Larger or malformed documents remain unknown
     instead of producing a false acceptance verdict.
     """
+    bounded_limit = _bounded_limit(json_limit, MAX_ARTIFACT_COUNT_BYTES)
     try:
-        bounded_limit = _bounded_limit(json_limit, MAX_ARTIFACT_COUNT_BYTES)
-        suffix = path.suffix.casefold()
-        if suffix not in {".json", ".jsonl"} or path.stat().st_size > bounded_limit:
+        with _open_observed_file(path.resolve()) as (handle, _opened):
+            return _artifact_row_count_from_handle(handle, path.suffix.casefold(), bounded_limit)
+    except (OSError, ValueError):
+        return None, False
+
+
+def _artifact_row_count_from_handle(
+    handle: BinaryIO, suffix: str, bounded_limit: int,
+) -> tuple[int | None, bool]:
+    try:
+        if suffix not in {".json", ".jsonl"} or os.fstat(handle.fileno()).st_size > bounded_limit:
             return None, False
-        with path.open("rb") as handle:
-            payload = handle.read(bounded_limit + 1)
+        handle.seek(0)
+        payload = handle.read(bounded_limit + 1)
         if len(payload) > bounded_limit:
             return None, False
         if suffix == ".jsonl":

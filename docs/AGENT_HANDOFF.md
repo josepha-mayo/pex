@@ -1,5 +1,17 @@
 # PEX agent handoff
 
+### Current checkpoint — 8 September WAT
+
+Read [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md), all three specs and
+SHIP_CHECKLIST before continuing. It supersedes historical current/latest labels
+below. Exact de83153 Windows installers are verified; native input was stopped by
+Escape, so rebuilt transparency is still open. Real Q18 completed two Muse calls
+and stayed quiet, with acceptance uncertainty exposing a named-artifact inspection
+gap. The reviewed repair passes 189 backend tests/5 skips; clean-source full gates
+and startup recovery UX are next. Full submission remains NO-GO, goal active, with
+9 September WAT filming target. The detailed checkpoint preserves failures, receipts,
+cleanup, the untouched operator loop change and the full ordered remaining scope.
+
 ### 7 September 22:30 UTC — exact 7a package and native bridge pass; canvas fix next
 
 This is the current checkpoint; older current/latest labels are historical. Read

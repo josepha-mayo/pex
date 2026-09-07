@@ -1,5 +1,17 @@
 # PEX code audit coverage — 5 September 2026
 
+## 8 September — named-artifact and descriptor-bound read slice
+
+See [the current checkpoint](CHECKPOINT_2026_09_08.md) for Q18 causal evidence,
+negative regressions and exact receipts. Parent reviewed changed evidence_tools.py,
+workspace.py and four affected test files; bounded independent Terra review caught
+falsey path validation and a private-hardlink swap race, both repaired. Three race
+negatives failed before the checked-descriptor fix. Scoped regression:189 passed,
+5 host symlink skips. This does not mark the whole source inventory reviewed.
+The operator-owned loop.py tail is excluded and unchanged. The one historical
+configuration-save 503 is unreproduced after 49 focused and 30 diagnostic repetitions;
+its cause remains unknown and the improved assertion preserves any future response.
+
 ## 7 September — cancellation cleanup could erase real inference provenance
 
 Live Q14 showed a correct worker completion followed by Muse HTTP 200 and a tool-turn

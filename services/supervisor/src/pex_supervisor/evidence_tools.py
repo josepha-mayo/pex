@@ -755,19 +755,62 @@ def build_evidence_tools(
 
     @tool(
         name="inspect_artifact",
-        description="Inspect a bounded tail of an observed result artifact such as results.jsonl.",
+        description=(
+            "Inspect a named visible output in this workspace (JSON, CSV, Markdown, etc.). "
+            "Returns a bounded preview, explicitly marked if truncated. With no path, "
+            "list the conventional result artifact tails. Hidden evaluators are refused."
+        ),
     )
     def inspect_artifact(path: str = "") -> str:
+        from pex_supervisor.workspace import PRUNED_DIRECTORIES
+
+        if not isinstance(path, str):
+            return record("inspect_artifact", {"error": "path rejected"}, {"path": path})
         rel = _safe_relpath(path) if path else None
+        if path and (
+            len(path) > 240
+            or not rel
+            or ":" in path
+            or any(ord(char) < 32 for char in path)
+            or any(
+                part.startswith(".") or part.casefold() in PRUNED_DIRECTORIES
+                for part in rel.split("/")
+            )
+        ):
+            return record("inspect_artifact", {"error": "path rejected"}, {"path": path})
         cwd = request.session.cwd
         if cwd:
-            from pex_supervisor.workspace import artifact_tails
+            from pex_supervisor.workspace import artifact_tails, read_visible
 
             def read() -> dict:
                 tails = artifact_tails(Path(cwd), limit=800)
                 if rel:
                     match = next((item for item in tails if item.get("path") == rel), None)
-                    return match or {"error": "artifact not observed", "path": rel}
+                    if match is not None:
+                        return {**match, "preview_kind": "tail", "truncated": match["bytes"] > 800}
+                    # An explicitly named output need not have a conventional
+                    # test-run filename. Keep the same bounded visible-file and
+                    # invocation authority checks as inspect_file; never execute it.
+                    root = Path(cwd).resolve()
+                    target = (root / rel).resolve()
+                    try:
+                        resolved_rel = target.relative_to(root)
+                    except ValueError:
+                        return {"error": "path escapes workspace"}
+                    if any(part.startswith(".") or part.casefold() in PRUNED_DIRECTORIES
+                           for part in resolved_rel.parts):
+                        return {"error": "hidden"}
+                    # Do not use an ordinary output name to read a hidden or
+                    # out-of-workspace file through a link alias.
+                    if target.is_file() and target.stat().st_nlink > 1:
+                        return {"error": "linked artifact rejected", "path": rel}
+                    visible = read_visible(root, str(resolved_rel), limit=800)
+                    if "error" in visible:
+                        return visible
+                    return {
+                        **visible, "path": rel, "preview_kind": "head",
+                        "truncated": visible["bytes"] > 800,
+                    }
                 return {"artifacts": tails[:12]}
 
             return local_record("inspect_artifact", read, {"path": path})

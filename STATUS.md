@@ -1,5 +1,15 @@
 # STATUS
 
+## Current — 8 September WAT
+
+See [the detailed checkpoint](docs/CHECKPOINT_2026_09_08.md). Exact de83153 installers
+are verified. Native testing paused on Escape, with PEX left open. Q18 completed
+real Muse reasoning and stayed quiet on independently tested output, but artifact
+inspection left acceptance uncertain; it is not a benchmark or full quiet gate.
+The descriptor-bound named-output repair passes 189 tests/5 skips and is ready for
+clean-source verification. Full submission remains NO-GO; 9 September WAT filming
+target and every remaining shipping checklist obligation are unchanged.
+
 ## 7 September 22:30 UTC — native startup and pet controls verified; submission NO-GO
 
 Exact pushed `7a1a5b5` passed clean affected backend114/2 skips, desktop214, frozen
