@@ -1,5 +1,28 @@
 # PEX agent handoff
 
+### 7 September — headless surface audit and truthful empty-state repair
+
+At source `adb76b6`, the isolated Vite application was reviewed at a 920x700
+viewport across Home, Inspector, Deck and Settings (Supervisor and Companion).
+All routes rendered without browser errors; Home's status message dismissed and
+stayed absent. This is browser-rendered layout/copy evidence only: the bridge was
+intentionally offline, so it does not prove native pet playback, native close/
+restore, or an installed-package flow. Screenshots are retained under ignored
+`build/ui-*-adb76b6.png` plus `build/ui-inspector-empty-fixed.png`.
+
+The review found one dishonest Inspector empty state: when no intervention existed,
+the explanatory line claimed the bridge had recorded an action without a diagnosis.
+It now says that no intervention has been recorded. Desktop gate after the repair:
+205/205 tests passed and TypeScript/Vite production build passed (63 modules).
+The test runner printed a non-fatal port-24678-in-use diagnostic; do not terminate
+that listener without proving ownership because other operator work may use it.
+
+Clean final-source Python regression for `adb76b6` is still running in
+`C:/Users/JosephMayo/Projects/pex-verify-14bc53d`; it passed 69 percent without a
+failure at the last observation. Do not call it green until its terminal receipt is
+checked. A fresh package that includes this UI repair remains required after that
+gate. Live Muse/Codex-Spark checks remain deferred until the clean build/tests pass.
+
 ### 7 September — final-source package green; provider import boundary repaired
 
 Clean source4e8359f release build95920 TERMINAL SUCCESS: final application plus

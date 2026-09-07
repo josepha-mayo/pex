@@ -6,6 +6,16 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Rendered desktop surface audit — 7 Sep
+
+Changed-path review of `Inspector.tsx` plus browser-rendered review of Home,
+Inspector, Deck and Settings at 920x700. No-intervention state no longer claims an
+action was recorded. The status bubble is independently dismissible and the
+dismissed Home state was visually confirmed. All four routes produced no browser
+errors; 205 desktop tests and the TypeScript/Vite production build passed. Because
+the isolated browser fixture had no native bridge, the 0/8 pet roster and fallback
+pet marker are explicitly not pet-asset failures or native runtime evidence.
+
 ### Provider Responses import boundary — 7 Sep
 
 Changed-path review of the OpenAI-compatible construction branch and isolated
