@@ -6,6 +6,16 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Bridge-to-supervisor timeout alignment — 7 Sep
+
+Changed-path review of Pipeline's local/remote semantic invocation boundary and
+post-dispatch uncertainty receipt. Q10's provider returned HTTP200, then the bridge's
+independent30-second `wait_for` cancelled the60-second main-agent repair. Local calls
+now have a70-second outer budget; remote AgentCore remains30seconds. Unexpected
+post-dispatch failures retain only the exception class, never message text.83 affected
+tests and Ruff passed. Q10 remains failed evidence; source tests do not replace a fresh
+whole-pipeline live proof. The protected `loop.py` tail remains outside this review.
+
 ### Main Strands wall budget — 7 Sep
 
 Changed-path review of `loop.py` timeout selection and its bounded-timeout unit

@@ -7,7 +7,11 @@ import pytest
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings
-from pex_bridge.pipeline import Pipeline
+from pex_bridge.pipeline import (
+    LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS,
+    REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS,
+    Pipeline,
+)
 from pex_bridge.store import ProjectIdentityBlockedError, Store, stable_event_artifact_id
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.context import ContextItem
@@ -174,6 +178,12 @@ async def _drain_presentations(pipeline: Pipeline) -> None:
     # Drain the whole tree, not only the tasks present at the first snapshot.
     while pipeline._presentation_tasks:
         await asyncio.gather(*tuple(pipeline._presentation_tasks), return_exceptions=True)
+
+
+def test_local_supervisor_dispatch_budget_outlives_main_agent_budget():
+    assert LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS == 70.0
+    assert REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS == 30.0
+    assert LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS > 60.0
 
 
 @pytest.mark.asyncio

@@ -362,6 +362,7 @@ async def test_unexpected_supervisor_failure_is_failed_closed_and_persisted(tmp_
         assert planner_effect["result"] == {
             "status": "delivery_uncertain",
             "code": "planner_failed_after_dispatch_marker",
+            "error_type": "RuntimeError",
         }
         assert len(rows) == 1
         assert "supervisor exploded" not in intervention.model_dump_json()

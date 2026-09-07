@@ -1,5 +1,40 @@
 # PEX agent handoff
 
+### 7 September — Q10 proved the outer bridge timeout contradicted the repair
+
+Exact pushed `23d3bc0` rebuilt normally and passed package verification. MSI/NSIS
+contain the exact four executables and ordered eight-pet inventory;
+`release_ready=true`, blockers empty. Receipt
+`C:/Users/JosephMayo/Projects/pex-release-b1d1223/build/pex-package-receipt-23d3bc0.json`
+SHA256 `587FE124343D5F4EB5BE93A0EFBD4702CF8BEB598B24590CDC3D5658235701C5`.
+Exact packaged bridge lifetime:3passed73.67s; JUnit SHA256
+`0A4B15F97FCA835F17233406A8FAB6C78A5E50999872D49A11525B2D9C0A3852`.
+
+Fresh Q10 used retained Codex Spark thread
+`01a07c91-55c5-7930-b260-1292e857f7aa`, one READY warm-up and one work turn,
+exact `23d3bc0` bridge on7438, free Muse Responses, one dispatch cap, observe-only
+attachment, persistent goal and revocable correction grant. Worker output independently
+passed5/5 tests, its help artifact is correct, and immutable inputs match. The real
+Zen request returned HTTP200, but the bridge then recorded
+`planner_failed_after_dispatch_marker`, deterministic NOOP, `used_llm=false` and
+uncertain acceptance. **Q10 is another immutable failed quiet case; never count or
+rerun it.** Capture SHA256:
+`CD3E58EED490A6BBF70AE7DF9C6D25DD53DC8194C08E240327DB720E1CBD50C1`.
+Grant was revoked, observer detached, owned bridge/App Server stopped, port7438 free.
+
+Exact root cause: Pipeline wrapped the local supervisor in a separate hard30-second
+`wait_for`, cancelling the repaired60-second main agent shortly after its HTTP200.
+Local source repair sets a70-second outer budget, leaving AgentCore's remote30-second
+boundary unchanged. Generic post-dispatch reconciliation now retains only the safe
+exception class (`error_type`), never provider text, so future uncertainty is
+diagnosable without leaking secrets.83 event-pipeline/AgentCore/Strands tests passed
+in67.23s; Ruff passed; JUnit SHA256
+`DF9EB8D914F0F5B0FAFC8F21DBF8A9F36B5AD7E5D440B3C097853B06F32B1AC8`.
+Next: stage/review/push only this bridge repair and tests, rebuild/reverify the frozen
+package, then run one newly created diagnostic case through the whole pipeline. Do not
+retroactively relabel Q08-Q10. Native UI/pet acceptance and formal quiet/benchmark
+counts remain open; submission is NO-GO.
+
 ### 7 September — exact release green; Q09 exposed main-agent timeout
 
 Exact pushed source `fcd696c` passed the clean final non-live gate: 3942 passed,

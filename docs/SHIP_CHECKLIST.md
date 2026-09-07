@@ -31,6 +31,16 @@ free-Muse Strands contract pass. Push that reviewed slice, then prove a fresh ca
 Do not count or rerun Q08/Q09. Native app/pet acceptance, ten quiet cases, paired
 benchmarks, AgentCore deployment proof and final submission remain OPEN/NO-GO.
 
+**Later live checkpoint:** exact `23d3bc0` installers are green and Q10's worker
+artifact independently passes5tests. Its real Muse request returned HTTP200, but a
+second hard30-second timeout in Pipeline cancelled the60-second main Agent and forced
+an uncertain deterministic NOOP. Q10 is failed evidence and cannot be counted/rerun.
+Local repair gives local supervision a70-second outer budget, preserves AgentCore's
+30-second boundary and logs only safe exception class on uncertainty;83 affected
+tests plus Ruff pass. Push/repackage, then require a fresh whole-pipeline diagnostic
+success before resuming any claimed quiet count. All native/formal/submission gates
+remain OPEN.
+
 **Newer live-provider finding:** Q08 is a failed quiet case, not progress toward the
 ten-case count. OpenCode began requiring `x-opencode-session` on6September; Muse's
 real call failed400 and PEX correctly fell back to uncertain NOOP. The repaired Zen

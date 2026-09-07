@@ -171,6 +171,8 @@ _COMPLETION_SIGNAL = re.compile(
     re.I,
 )
 DESKTOP_DISCOVERY_TIMEOUT_SECONDS = 3.0
+LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS = 70.0
+REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS = 30.0
 DESKTOP_REFRESH_MIN_INTERVAL_SECONDS = 8.0
 DESKTOP_REFRESH_ADAPTERS = (
     "cursor",
@@ -1666,11 +1668,15 @@ class Pipeline:
                 and self.supervisor.agentcore is not None
             ):
                 # No hybrid second call after an ambiguous remote boundary.
-                result = await asyncio.wait_for(invoke(), timeout=30)
+                result = await asyncio.wait_for(
+                    invoke(), timeout=REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS
+                )
                 return _preserve_deterministic_truth(
                     request, plan_deterministic(request), result
                 )
-            return await asyncio.wait_for(invoke(), timeout=30)
+            return await asyncio.wait_for(
+                invoke(), timeout=LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS
+            )
 
     async def _resolve_durable_supervisor(
         self,
@@ -1904,7 +1910,7 @@ class Pipeline:
                 )
             )
             raise
-        except Exception:
+        except Exception as exc:
             effect = await asyncio.shield(
                 self.store.finalize_event_effect(
                     event_id=event.event_id,
@@ -1913,6 +1919,7 @@ class Pipeline:
                     result={
                         "status": "delivery_uncertain",
                         "code": "planner_failed_after_dispatch_marker",
+                        "error_type": type(exc).__name__,
                     },
                 )
             )
