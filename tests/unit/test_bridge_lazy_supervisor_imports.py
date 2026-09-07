@@ -38,3 +38,39 @@ print('bridge_without_model_ready')
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "bridge_without_model_ready"
+
+
+def test_chat_only_model_does_not_import_responses_adapter(tmp_path):
+    environment = {name: value for name, value in os.environ.items() if not name.startswith("PEX_")}
+    environment.update({
+        "PEX_HOME": str(tmp_path), "PEX_SUPERVISOR_PROVIDER": "zen",
+        "PEX_SUPERVISOR_MODEL": "muse-spark-1.3",
+        "PEX_SUPERVISOR_API_KEY": "fixture-key",
+    })
+    script = """
+import asyncio
+import importlib.abc
+import sys
+
+class NoResponsesAdapter(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'pex_supervisor.openai_responses':
+            raise RuntimeError('chat-only model must not load the Responses adapter')
+        return None
+
+sys.meta_path.insert(0, NoResponsesAdapter())
+from pex_supervisor.providers import load_supervisor_model
+model = load_supervisor_model()
+assert model is not None
+assert model._pex_provenance['generation_api'] == 'chat'
+assert 'pex_supervisor.openai_responses' not in sys.modules
+asyncio.run(model.client_args['http_client'].aclose())
+print('chat_only_model_ready')
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script], env=environment, cwd=tmp_path,
+        capture_output=True, text=True, timeout=90,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "chat_only_model_ready"

@@ -1,5 +1,43 @@
 # PEX agent handoff
 
+### 7 September — final-source package green; provider import boundary repaired
+
+Clean source4e8359f release build95920 TERMINAL SUCCESS: final application plus
+MSI and NSIS produced. Package verification67720 TERMINAL SUCCESS with both
+payloads, exact desktop/bridge/Cursor helper inventories and all eight pet assets;
+receipt `pex-release-startup-20260907/build/pex-package-receipt-4e8359f.json`,
+SHA256 `87DCEF07DA889484616E0AE3C3A7B3914C1325BCABD1C4AEF3ACF2A73164E3FC`.
+Installed-helper frozen lifetime gate14636:3passed103.27s. Release Rust gate:
+16passed, no failures. Clean frontend gate:205passed4.116s. This is exact package
+and source evidence; installed/native UX and live supervision remain separate.
+
+Full clean4e8359f regression84645 reached3103passed/11skipped/16live-deselected,
+then failed in `test_zen_responses_model_is_routed_by_catalog_id`. Root cause was
+test-order-sensitive and architecturally real: chat-only OpenAI-compatible setup
+unconditionally imported the custom Responses subclass. A preceding test's
+temporary Strands OpenAIModel replacement could therefore become the subclass's
+cached base. Production now imports `OpenAIResponsesModel` only when the selected
+catalog route uses Responses; chat-only startup does not load it. Existing
+Responses factory/credential-safe transport and chat transport are unchanged.
+Four exact route cases passed, then99 provider/lazy/evidence/loop cases passed,
+and final78 providers plus isolated import-boundary cases passed13.567s. New
+subprocess test rejects any Responses-adapter import during chat-only construction.
+Full final-source clean regression must be restarted after this commit; G stays OPEN.
+
+Isolated model-disabled native candidate PID19100 was launched from exact4e8359f,
+profile `pex-release-startup-20260907/build/native-smoke-4e8359f`, no worker
+attachment. Computer Use was then stopped by physical Escape before the window
+could be selected. Do not claim any native UI result or issue further UI input
+without a new turn/authorization. Do not silently kill another process; first
+reconcile this exact PID/executable/profile. No live model call occurred.
+
+Q08 read attempt against the old saved socket failed `operator connector closed`;
+no work turn was started. A separate read-only Codex task query confirms the exact
+saved worker `01a077fa-f3a7-7ec0-9799-05ea90639b8d`, workspace Q08, notLoaded,
+and exactly one completed READY warm-up. Official App Server docs confirm a stored
+thread resumes by recorded thread id. Recover a dedicated listener only after final
+clean gates; preserve worker/receipts and do not prepare/warm up Q08 again.
+
 ### 7 September — frozen startup gate passed; full regression fixture repaired
 
 Correct staged8023a73 lifetime gate88170 TERMINAL SUCCESS:3passed123.53s,

@@ -1399,8 +1399,6 @@ def _load_supervisor_model() -> Any | None:
             return None
         from strands.models.openai import OpenAIModel
 
-        from pex_supervisor.openai_responses import OpenAIResponsesModel
-
         client_args: dict[str, Any] = {}
         if api_key:
             client_args["api_key"] = api_key
@@ -1411,24 +1409,28 @@ def _load_supervisor_model() -> Any | None:
         if base_url:
             client_args["base_url"] = base_url
         client_args["timeout"] = _supervisor_timeout()
+        generation_api = _generation_api(spec.id, model_id)
         model_type = OpenAIModel
-        if _generation_api(spec.id, model_id) == "responses":
+        responses_args: dict[str, Any] = {}
+        if generation_api == "responses":
+            # Keep the Responses subclass out of chat-only startup. Besides
+            # avoiding an irrelevant SDK/class load, this prevents integrations
+            # that temporarily substitute OpenAIModel from defining the cached
+            # subclass against that temporary implementation.
+            from pex_supervisor.openai_responses import OpenAIResponsesModel
+
             model_type = OpenAIResponsesModel
-        else:
-            client_args["http_client"] = credential_safe_http_client(
-                timeout=_supervisor_timeout(),
-                asynchronous=True,
-            )
-        responses_args = (
-            {
+            responses_args = {
                 "http_client_factory": lambda: credential_safe_http_client(
                     timeout=_supervisor_timeout(),
                     asynchronous=True,
                 )
             }
-            if model_type is OpenAIResponsesModel
-            else {}
-        )
+        else:
+            client_args["http_client"] = credential_safe_http_client(
+                timeout=_supervisor_timeout(),
+                asynchronous=True,
+            )
         return ready(
             model_type(
                 client_args=client_args or None,
@@ -1436,7 +1438,7 @@ def _load_supervisor_model() -> Any | None:
                 stream=False,
                 params=(
                     _openai_compat_chat_params(spec)
-                    if _generation_api(spec.id, model_id) == "chat"
+                    if generation_api == "chat"
                     else {}
                 ),
                 **responses_args,

@@ -6,6 +6,17 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Provider Responses import boundary — 7 Sep
+
+Changed-path review of the OpenAI-compatible construction branch and isolated
+startup tests. Chat-only routes formerly imported and cached the custom Responses
+subclass unnecessarily; this made class identity depend on temporary integration
+substitutions and caused the clean full suite to fail after3103passes. The import
+now occurs only for catalog entries explicitly routed to Responses. Four exact
+route tests,99 provider/lazy/evidence/loop cases, then78 provider plus subprocess
+import-boundary cases passed. No live inference, endpoint, credential, timeout or
+provider fallback was changed. Full final-source regression remains open.
+
 ### Native startup follow-up — 7 Sep
 
 Changed-path review: deferred Strands tool/Responses imports, initial Store schema
