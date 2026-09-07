@@ -17,11 +17,16 @@ It now says that no intervention has been recorded. Desktop gate after the repai
 The test runner printed a non-fatal port-24678-in-use diagnostic; do not terminate
 that listener without proving ownership because other operator work may use it.
 
-Clean final-source Python regression for `adb76b6` is still running in
-`C:/Users/JosephMayo/Projects/pex-verify-14bc53d`; it passed 69 percent without a
-failure at the last observation. Do not call it green until its terminal receipt is
-checked. A fresh package that includes this UI repair remains required after that
-gate. Live Muse/Codex-Spark checks remain deferred until the clean build/tests pass.
+Clean backend final-source regression for `adb76b6` is terminal green in
+`C:/Users/JosephMayo/Projects/pex-verify-14bc53d`: 3941 passed, 13 explicit
+environment/opt-in skips, 16 live cases deselected, 1756.75s. JUnit receipt
+`build/full-regression-adb76b6.xml` has SHA256
+`ED3E30FDBD1634597E084EE7F63E9886F376FD110AFFBB4CFB3F900343C42883`.
+The subsequent `b1d1223` commit changes only Inspector copy/docs and has its own
+205-test frontend/build evidence above. A fresh normal package that includes this UI
+repair is now running from clean detached `b1d1223`; do not call it green before its
+terminal build and package-verifier receipts. Live Muse/Codex-Spark checks remain
+deferred until that clean build verification passes.
 
 ### 7 September — final-source package green; provider import boundary repaired
 

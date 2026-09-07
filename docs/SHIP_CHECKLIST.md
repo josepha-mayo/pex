@@ -8,6 +8,18 @@ unchanged; none of the remaining live, benchmark or submission gates is waived.
 Latest user subagent setting: **GPT-5.6 Terra, medium reasoning**, superseding all
 older Sol assignments below. Interrupted tests after the PC shutdown are not passes.
 
+**Authoritative 7 September checkpoint:** pushed source is `b1d1223`; local and
+upstream hashes match. Its backend parent `adb76b6` passed the clean non-live Python
+gate (3941 passed, 13 environment/opt-in skips, 16 live deselections), while the only
+subsequent production change is truthful Inspector empty-state copy and passed all
+205 desktop tests plus the TypeScript/Vite build. A normal clean `b1d1223` Tauri
+release build is in progress. The remaining critical path is: verify that package;
+prove native cold startup, Retry, pet close/hide/restore and eight-pet playback;
+complete bounded Q08-Q10 quiet/recovery evidence with free Muse plus Codex Spark;
+then run honest paired demonstrations/benchmarks, re-review the three-spec gaps and
+prepare the video/submission. Submission remains **NO-GO** until those receipts exist.
+The protected 25-line `loop.py` change is operator-owned, unstaged and excluded.
+
 **Live setup refresh, 5 Sep ~20:01 UTC:** read-only Brave/account/runtime checks and local deployment preflight completed. No runtimes in the two checked regions; local authentication/toolchain/Docker/image prerequisites remain. Obtain region/spend approval before cloud creation or invocation, then follow the [bounded live setup queue](AGENTCORE_LIVE_PREFLIGHT_2026_09_05.md). Existing Brave browser extension works; native Computer Use remains paused. First article publication is visible, no bonus award claimed. New subagents: **Sol low**, superseding historical medium assignments.
 
 **Latest accepted source `fe34a3a`:** explicit standing correction permission, private claimed-effect delivery and repeated-cancellation-safe receipt settlement are reviewed and pushed with exact remote equality verified. Main **969 passed/41 files**, final **6-case cancellation/framed gate**, desktop **171 tests/build**, scoped Ruff and staged whitespace passed. [Detailed current receipt](CODEX_CLAIMED_DISPATCH_REVIEW.md). Next core milestone is the actual existing-worker Strands/AgentCore loop; no live-product checklist is completed by local fixture results. The user identified their browser's AWS account; region/spending cap and actual deployed runtime remain unresolved. Preserve the physical Escape browser stop and avoid duplicate publication.
