@@ -41,6 +41,17 @@ tests plus Ruff pass. Push/repackage, then require a fresh whole-pipeline diagno
 success before resuming any claimed quiet count. All native/formal/submission gates
 remain OPEN.
 
+**Current whole-pipeline checkpoint:** exact pushed/package-verified `4c8503c`
+completed a real Codex+Strands recovery diagnostic. Q11's frozen fixture caused the
+worker-visible pytest command to fail; after later edits, PEX used four evidence tools,
+completed Muse inference plus an independent verifier, sent a specific verification
+request to the same worker, observed exit1 and recorded
+`verification_revealed_unsatisfied_goal` with `helped=true`. Immutable inputs match;
+parent safe-temp verification passed8/8. This clears one current specific-intervention
+loop, not the quiet-ten-case, native, benchmark, AgentCore or submission gates. Next:
+exact `4c8503c` native cold-start/Retry/pet close/restore/eight-pet acceptance, then an
+independently reviewed quiet protocol. Submission stays NO-GO.
+
 **Newer live-provider finding:** Q08 is a failed quiet case, not progress toward the
 ten-case count. OpenCode began requiring `x-opencode-session` on6September; Muse's
 real call failed400 and PEX correctly fell back to uncertain NOOP. The repaired Zen

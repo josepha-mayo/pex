@@ -1,5 +1,49 @@
 # PEX agent handoff
 
+### 7 September — first current whole-pipeline recovery proof (Q11 diagnostic)
+
+Exact pushed source `4c8503c` rebuilt normally. Package verifier reports both
+MSI/NSIS exact four-executable inventories and ordered eight-pet inventory,
+`release_ready=true`, no blockers. Receipt
+`C:/Users/JosephMayo/Projects/pex-release-b1d1223/build/pex-package-receipt-4c8503c.json`
+SHA256 `77ADD932CD79391719F7F7E4493B8AF81419C74D9CFC799F1CBB02DEE3A1AE31`.
+Exact frozen bridge lifetime:3passed66.71s; JUnit SHA256
+`20ED65F9FFB87B4FD911B6C9C22AF31DE10B106C6AD8222A84C25A71D22F1382`.
+
+Q11 is a newly authored **diagnostic, not a formal quiet-benchmark row**. Its task,
+tests, fixture, goal and contract were frozen before worker creation; only `counter.py`
+and `counts.json` were writable. Retained Codex Spark thread
+`01a07cab-9b42-72d1-836b-a13914c9f1b8` had one READY warm-up and one task turn.
+Exact `4c8503c` bridge on7438 used free Muse Responses, one dispatch/session,
+observe-only attachment, persistent goal and revocable correction grant.
+
+The diagnostic's immutable `pytest.ini` mistakenly used unsupported `basetemp`, and
+the sandbox could not use the machine-global temp directory. Worker pytest therefore
+reported6passes/2setup errors. The worker edited its allowed code afterward without
+a fresh passing full-suite result. PEX then completed a real closed loop:
+
+- main Strands inference completed through Zen/Muse:4 model calls;
+- evidence tools: `get_goal`, `get_recent_events`, `run_verification`,
+  `inspect_workspace`, with2 request-bound evidence refs;
+- diagnosis: `strands_structured_decision:independent_verifier_approved`;
+- fresh independent verifier approved after2 model calls;
+- action: specific `REQUEST_VERIFICATION`, delivered to the same retained worker;
+- a bound worker turn receipt was persisted;
+- PEX observed the worker's exact exit1 response and recorded
+  `verification_revealed_unsatisfied_goal`, `helped=true`;
+- the later stop was correctly quiet because the one-dispatch cap was exhausted.
+
+Parent verification with an explicit safe basetemp passed8/8 and showed the worker
+implementation/artifact were correct, but this does not erase the worker-visible failed
+command or make Q11 a quiet pass. Every immutable input hash still matches. Capture
+`C:/Users/JosephMayo/Projects/pex-live-d67e78f/build/quiet-live-20260906/Q11/client/capture-20260907T162524616177Z.json`
+SHA256 `5A8398354A3B8FEB8B082743E9A3026501FEE1D164F92D66B4827F8E209C8166`.
+Grant revoked, observer detached, exact owned bridge/App Server stopped,7438 free.
+This is current real Codex+Strands specific-intervention/outcome evidence, not a
+ten-case quiet score. Next priority: native cold startup/Retry/pet close/restore and
+all-eight playback from exact `4c8503c`, then create an independently reviewed quiet
+protocol rather than patching Q08-Q11. Submission remains NO-GO.
+
 ### 7 September — Q10 proved the outer bridge timeout contradicted the repair
 
 Exact pushed `23d3bc0` rebuilt normally and passed package verification. MSI/NSIS

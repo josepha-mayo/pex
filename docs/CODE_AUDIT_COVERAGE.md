@@ -6,6 +6,18 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Current whole-pipeline diagnostic — 7 Sep
+
+Q11 is not source-audit closure or a formal benchmark row. It proved the repaired
+local timeout chain through real Codex+Strands: Muse main inference, bounded evidence
+tools, second verifier, specific same-worker verification request, delivery receipt
+and observed unsatisfied outcome. The deliberately isolated fixture accidentally made
+the exact pytest command fail on temp setup; PEX correctly intervened rather than
+accepting the worker's post-edit completion. Parent tests with a safe temp path passed
+8/8; immutable inputs match. This validates the affected runtime route but does not
+complete quiet false-positive measurement, native UI, AgentCore deployment or the
+path-by-path repository audit.
+
 ### Bridge-to-supervisor timeout alignment — 7 Sep
 
 Changed-path review of Pipeline's local/remote semantic invocation boundary and
