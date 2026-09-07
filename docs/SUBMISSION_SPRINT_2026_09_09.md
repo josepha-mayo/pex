@@ -37,7 +37,11 @@ drop requirements or declare an unverified product ready.
   with revision checks, startup inheritance and failed-write rollback. Source
   gates: 196 frontend tests/build, 106 backend tests (one platform skip), then
   ten startup/saved-cap and disabled-review interleaving cases. Native usage,
-  remaining-count display and aggregate spend accounting are still unverified/open.
+  aggregate spend accounting is still open. Inspector remaining-count source
+  path now exists: retained reservations through batched pet/deck projections,
+  stale/offline handling and newer-snapshot merge. Gates: 74 backend pipeline/
+  Store/pet tests, 49 settings/API tests, 199 frontend tests including Inspector
+  SSR, and production build. Native remaining-count validation remains open.
   Missing-supervisor repair: no dispatch or trajectory reservation is consumed
   when routing is known unavailable; later evidence after setup can be reviewed.
   UI labels this as unavailable, not verified completion. Scoped four-file gate:

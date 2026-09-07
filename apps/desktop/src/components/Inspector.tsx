@@ -20,6 +20,7 @@ import {
   meaningfulEvidence,
   nextExpectedEvent,
   partitionLedgerDecisions,
+  supervisorReviewAllowanceCopy,
   titleCase,
 } from "../viewModel";
 
@@ -177,6 +178,12 @@ export function Inspector({
               <dt>Next expected event</dt>
               <dd>{nextExpectedEvent(current)}</dd>
             </div>
+            {current ? (
+              <div>
+                <dt>Supervisor review allowance</dt>
+                <dd>{supervisorReviewAllowanceCopy(current, canonicalStateAvailable)}</dd>
+              </div>
+            ) : null}
             <div>
               <dt>Adapter control</dt>
               <dd>

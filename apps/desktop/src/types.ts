@@ -33,6 +33,12 @@ export type SessionRow = {
   external_url?: string | null;
   revision?: number;
   control_revision?: number;
+  supervisor_review_allowance?: {
+    limit: number | null;
+    reserved: number;
+    remaining: number | null;
+    observed_at: string;
+  };
 };
 
 export type SessionGoalAttachmentReceipt = {

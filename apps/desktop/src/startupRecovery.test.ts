@@ -18,7 +18,7 @@ import {
 } from "./startupRecovery.ts";
 
 test("every known startup error renders an actionable safe non-retryable state", async () => {
-  const vite = await createServer({ root: process.cwd(), server: { middlewareMode: true }, appType: "custom" });
+  const vite = await createServer({ root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom" });
   try {
     const loaded = await vite.ssrLoadModule("/src/components/StartupRecovery.tsx") as {
       StartupRecovery: ComponentType<{
@@ -80,7 +80,7 @@ test("startup actions match the exact native retryability matrix", async () => {
     token_generation_failed: true,
   };
   assert.deepEqual(Object.keys(retryability).sort(), [...KNOWN_BRIDGE_FAILURE_CODES].sort());
-  const vite = await createServer({ root: process.cwd(), server: { middlewareMode: true }, appType: "custom" });
+  const vite = await createServer({ root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom" });
   try {
     const loaded = await vite.ssrLoadModule("/src/components/StartupRecovery.tsx") as {
       StartupRecovery: ComponentType<{

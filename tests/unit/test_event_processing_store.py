@@ -434,6 +434,14 @@ async def test_two_store_instances_claim_once_and_stale_dispatch_is_uncertain(tm
             ),
         )
         assert sum(item["granted"] for item in grants) == 1
+        assert await first.supervisor_dispatch_counts(
+            [event.session_id, "codex:other", event.session_id]
+        ) == {event.session_id: 1, "codex:other": 0}
+        assert await first.supervisor_dispatch_counts([]) == {}
+        with pytest.raises(ValueError):
+            await first.supervisor_dispatch_counts([""])
+        with pytest.raises(ValueError):
+            await first.supervisor_dispatch_counts([event.session_id] * 1001)
         with sqlite3.connect(path) as inspection:
             assert inspection.execute(
                 "SELECT COUNT(*) FROM supervisor_dispatch_reservations"
@@ -444,6 +452,9 @@ async def test_two_store_instances_claim_once_and_stale_dispatch_is_uncertain(tm
         recovered = await recovery.recover_dispatching_event_effects()
         assert len(recovered) == 1
         assert recovered[0]["state"] == "delivery_uncertain"
+        assert await recovery.supervisor_dispatch_counts([event.session_id]) == {
+            event.session_id: 1,
+        }
         processing = await recovery.get_event_processing(event.event_id)
         assert processing is not None
         assert processing["state"] == "plan_generation_uncertain"

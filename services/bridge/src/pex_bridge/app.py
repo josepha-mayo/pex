@@ -5679,8 +5679,14 @@ def create_app() -> FastAPI:
             *(probe_for_deck(adapter) for adapter in state.adapters.all())
         )
         pretty = decorate_agent_fingerprints(fingerprint_rows)
+        allowances = await state.pipeline.supervisor_review_allowances(
+            [s.id for s in visible_sessions]
+        )
         return {
-            "sessions": [s.model_dump(mode="json") for s in visible_sessions],
+            "sessions": [
+                {**s.model_dump(mode="json"), "supervisor_review_allowance": allowances[s.id]}
+                for s in visible_sessions
+            ],
             "interventions": [i.model_dump(mode="json") for i in interventions],
             "adapters": adapters,
             "fingerprints": pretty,

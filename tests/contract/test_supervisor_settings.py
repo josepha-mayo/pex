@@ -160,6 +160,46 @@ async def _wait_until(predicate, *, attempts: int = 100) -> None:
     assert predicate()
 
 
+@pytest.mark.asyncio
+async def test_deck_reports_session_review_reservations_without_cross_session_leakage(
+    supervisor_client, monkeypatch,
+):
+    from datetime import UTC, datetime
+
+    from pex_protocol.enums import HarnessType, SessionStatus
+    from pex_protocol.session import HarnessSession
+
+    client, *_ = supervisor_client
+    monkeypatch.setattr(state.adapters, "all", lambda: [])
+    now = datetime.now(UTC)
+    for name in ("allowance-a", "allowance-b"):
+        await state.store.upsert_session(HarnessSession(
+            id=f"codex:{name}", harness_type=HarnessType.CODEX,
+            vendor_session_id=name, status=SessionStatus.IDLE, last_activity=now,
+        ))
+    # Seed retained reservations, independent of event retention. Dispatch and
+    # restart semantics are exercised through the real planner in unit tests.
+    await state.store.db.executemany(
+        "INSERT INTO supervisor_dispatch_reservations VALUES (?, ?, ?)",
+        [(f"reserved-{i}", "codex:allowance-a", now.isoformat()) for i in range(2)],
+    )
+    await state.store.db.commit()
+    state.pipeline.supervisor_dispatch_limit_override = 1
+    response = await client.get("/v1/deck")
+    assert response.status_code == 200
+    rows = {row["id"]: row["supervisor_review_allowance"] for row in response.json()["sessions"]}
+    assert rows["codex:allowance-a"]["reserved"] == 2
+    assert rows["codex:allowance-a"]["remaining"] == 0
+    assert rows["codex:allowance-b"]["reserved"] == 0
+    assert rows["codex:allowance-b"]["remaining"] == 1
+    assert all(row["limit"] == 1 for row in rows.values())
+    state.pipeline.supervisor_dispatch_limit_override = None
+    unlimited = await client.get("/v1/deck")
+    assert unlimited.status_code == 200
+    assert all(row["supervisor_review_allowance"]["remaining"] is None
+               for row in unlimited.json()["sessions"])
+
+
 def _custom_payload(**updates):
     payload = {
         "expected_revision": 0,

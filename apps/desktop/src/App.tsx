@@ -112,6 +112,7 @@ import {
   type ProjectIdentityResolutionAttempt,
   reconnectDelay,
   selectPrimarySession,
+  mergeSessionObservation,
   sessionGoalAttachmentPayload,
   splitPetCatalog,
   settleCanonicalResource,
@@ -847,7 +848,7 @@ export function App() {
     const merged = new Map<string, SessionRow>();
     for (const session of deck.sessions || []) merged.set(session.id, session);
     for (const session of pet?.sessions || []) {
-      merged.set(session.id, { ...merged.get(session.id), ...session });
+      merged.set(session.id, mergeSessionObservation(merged.get(session.id), session));
     }
     return Array.from(merged.values());
   }, [deck.sessions, pet?.sessions]);

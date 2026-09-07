@@ -513,10 +513,20 @@ async def test_pet_snapshot_includes_idle_harness_for_prompts(tmp_path):
         Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
     )
     snap = await pipeline.pet_snapshot()
-    await store.close()
     assert snap["headline"] == "quiet"
     assert snap["sessions"][0]["id"] == "codex:thread-1"
     assert snap["sessions"][0]["activity"] == "Ready for a prompt"
+    allowance = snap["sessions"][0]["supervisor_review_allowance"]
+    assert allowance["limit"] is None
+    assert allowance["remaining"] is None
+    assert allowance["reserved"] == 0
+    assert datetime.fromisoformat(allowance["observed_at"]).tzinfo is not None
+    pipeline.supervisor_dispatch_limit_override = 3
+    limited = await pipeline.pet_snapshot()
+    allowance = limited["sessions"][0]["supervisor_review_allowance"]
+    assert allowance["limit"] == 3
+    assert allowance["remaining"] == 3
+    await store.close()
 
 
 def test_activity_phrase_matches_codex_style():

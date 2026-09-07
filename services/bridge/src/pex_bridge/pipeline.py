@@ -753,6 +753,20 @@ class Pipeline:
             else self.settings.supervisor_max_dispatches_per_session
         )
 
+    async def supervisor_review_allowances(self, session_ids: list[str]) -> dict[str, dict]:
+        counts = await self.store.supervisor_dispatch_counts(session_ids)
+        limit = self.supervisor_dispatch_limit
+        observed_at = datetime.now(UTC).isoformat()
+        return {
+            session_id: {
+                "limit": limit,
+                "reserved": reserved,
+                "remaining": None if limit is None else max(0, limit - reserved),
+                "observed_at": observed_at,
+            }
+            for session_id, reserved in counts.items()
+        }
+
     async def ingest_observer_lifecycle(
         self, event: HarnessEvent, session: HarnessSession
     ) -> None:
@@ -6102,8 +6116,10 @@ class Pipeline:
         )
         sessions_out = []
         live_ids = {item.id for item in live}
+        allowances = await self.supervisor_review_allowances([s.id for s in promptable])
         for session in promptable:
             row = session.model_dump(mode="json")
+            row["supervisor_review_allowance"] = allowances[session.id]
             goal = goals.get(session.goal_id or "")
             row["last_message"] = lines_by_session.get(session.id)
             row["label"] = agent_label(session, goal)

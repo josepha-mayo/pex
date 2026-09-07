@@ -6,6 +6,18 @@ All entries start `PENDING` for the fresh independent audit. Replace status only
 
 ## New-path addendum and bounded repair review
 
+### Review allowance visibility — 7 Sep
+
+Changed-path review: Store indexed count query (1000-ID bound, no mutation),
+pipeline effective-cap projection, authenticated deck route, App observation
+merge, Inspector/types/view-model and regression tests. No new polling/model
+call; delayed pet data cannot overwrite newer deck allowance. Counts remain
+reservations, not token/dollar usage; invalid/stale/offline values are unknown.
+74 pipeline/Store/pet tests and 49 settings/API tests passed. Frontend 199 passed
+including rendered Inspector and merge ordering; build passed (63 modules).
+React checklist applied to derived rendering and canonical guards. No native
+approval or full-file audit is claimed. Handoff contains receipt hashes.
+
 ### Saved supervisor limit — 7 Sep
 
 Changed-path review of Settings/App/draft helpers, supervisor API/config, pipeline

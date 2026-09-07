@@ -1,5 +1,33 @@
 # PEX agent handoff
 
+## 7 September — session review allowance visibility
+
+Inspector now displays remaining review dispatches from retained reservation
+rows via the existing pet/deck refresh flow. This is a session cap snapshot,
+NOT total model usage or a spending balance. Failed/uncertain reservations remain
+counted after restart. Raising the limit changes remaining allowance without
+resetting reservations; lowering clamps remaining to zero; no limit is null.
+Unknown, inconsistent, stale or offline data renders unavailable. Session merge
+preserves the newer allowance if an older pet snapshot arrives after deck refresh.
+The batched indexed Store read is bounded to 1000 IDs and exposes no other session
+counts. No migration, model call, native input, bridge restart or subagent used.
+
+Verification: 74 pipeline/Store/pet tests passed in 49.60s; 49 full settings/API
+tests passed in 33.88s. Receipts:
+
+- `build/review-allowance-20260907.xml`, SHA256
+  `C0BC6EE3716AEE32EC4C856625BE553B34337AED53FA1C11A492F7C1988D1605`.
+- `build/review-allowance-settings-20260907.xml`, SHA256
+  `53C3537332056085F9EC436AED16016DA824960610576ECC0210E0F6144E46B2`.
+Both execs 5892 and 48108 are terminal; do not poll them. Frontend: 199 passed,
+including actual Inspector SSR and delayed-snapshot regressions. Build passed:
+63 modules, 1.45s. SSR startup tests now disable unneeded HMR, removing test-only
+port contention. Four existing pet/deck authority and failed-adapter integration
+cases also passed (7 deselected, 7.32s), receipt
+`build/review-allowance-projection-20260907.xml`. React review retained existing refreshes, derived rendering and
+canonical-state guards, with no added effect/dependency. Full native UX,
+aggregate accounting and final-source full release gate remain OPEN.
+
 ## 7 September — unavailable supervisor reservation repair
 
 Known unavailable semantic routing now becomes an audited skipped planner effect

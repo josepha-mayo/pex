@@ -61,6 +61,7 @@ import {
   channelStatusCopy,
   reconnectDelay,
   selectPrimarySession,
+  mergeSessionObservation,
   sessionGoalAttachmentPayload,
   splitPetCatalog,
   ASK_PEX_QUESTIONS,
@@ -72,6 +73,7 @@ import {
   contextItemMarks,
   initialCanonicalResources,
   supervisorHonestyCopy,
+  supervisorReviewAllowanceCopy,
   statusCopy,
   settleCanonicalResource,
   starterHarnessInventoryCopy,
@@ -87,6 +89,84 @@ import type {
   ProjectIdentityResolutionResponse,
   ProjectIdentityStatusView,
 } from "./types.ts";
+
+test("review allowance is a fresh reservation snapshot, not model usage or spending", () => {
+  const now = Date.parse("2026-09-07T12:00:00Z");
+  const session = {
+    id: "codex:one", harness_type: "codex", status: "working",
+    supervisor_review_allowance: {
+      limit: 5, reserved: 2, remaining: 3, observed_at: new Date(now).toISOString(),
+    },
+  };
+  assert.match(supervisorReviewAllowanceCopy(session, true, now), /3 of 5 review dispatches remaining/);
+  assert.match(supervisorReviewAllowanceCopy(session, true, now), /not a token or dollar balance/);
+  assert.match(supervisorReviewAllowanceCopy(session, false, now), /unavailable/);
+  assert.match(supervisorReviewAllowanceCopy(undefined, true, now), /unavailable/);
+  for (const patch of [
+    { observed_at: "invalid" }, { observed_at: new Date(now - 30_001).toISOString() },
+    { observed_at: new Date(now + 5_001).toISOString() }, { reserved: -1 },
+    { reserved: 1.5 }, { limit: 0 }, { limit: 100_001 }, { remaining: 4 },
+  ]) {
+    assert.match(supervisorReviewAllowanceCopy({ ...session, supervisor_review_allowance: {
+      ...session.supervisor_review_allowance, ...patch,
+    } }, true, now), /unavailable/);
+  }
+  assert.match(supervisorReviewAllowanceCopy({ ...session, supervisor_review_allowance: {
+    ...session.supervisor_review_allowance, reserved: 9, remaining: 0,
+  } }, true, now), /0 of 5/);
+  assert.match(supervisorReviewAllowanceCopy({ ...session, supervisor_review_allowance: {
+    ...session.supervisor_review_allowance, limit: null, remaining: null,
+  } }, true, now), /No review limit configured/);
+});
+
+test("delayed pet snapshots cannot replace a newer allowance or another session's count", () => {
+  const older = { id: "codex:a", harness_type: "codex", status: "working",
+    supervisor_review_allowance: {
+      limit: 5, reserved: 2, remaining: 3, observed_at: "2026-09-07T12:00:00Z",
+    } };
+  const newer = { ...older, status: "idle", supervisor_review_allowance: {
+    limit: 5, reserved: 5, remaining: 0, observed_at: "2026-09-07T12:00:01Z",
+  } };
+  assert.equal(mergeSessionObservation(newer, older).supervisor_review_allowance?.remaining, 0);
+  assert.equal(mergeSessionObservation(older, newer).supervisor_review_allowance?.remaining, 0);
+  const other = { id: "codex:b", harness_type: "codex", status: "idle" };
+  assert.equal(mergeSessionObservation(newer, other).supervisor_review_allowance, undefined);
+  assert.equal(mergeSessionObservation(undefined, older), older);
+  assert.equal(older.supervisor_review_allowance.remaining, 3);
+});
+
+test("inspector renders review allowance and replaces stale numbers with unavailable", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createServer } = await import("vite");
+  const vite = await createServer({
+    root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom",
+  });
+  try {
+    const { Inspector } = await vite.ssrLoadModule("/src/components/Inspector.tsx");
+    const props = {
+      current: { id: "codex:one", harness_type: "codex", status: "working",
+        supervisor_review_allowance: {
+          limit: 5, reserved: 2, remaining: 3, observed_at: new Date().toISOString(),
+        } },
+      goals: [], status: { tone: "work", label: "Working", detail: "Observed work" },
+      question: "", answer: "", asking: false, askInput: { current: null },
+      goalDraft: { projectId: "", title: "", objective: "", acceptance: "", constraints: "",
+        nonGoals: "", preferences: "", evidence: "", decisions: "", rejectedApproaches: "",
+        unresolvedQuestions: "" },
+    };
+    const html = renderToStaticMarkup(createElement(Inspector, props));
+    assert.match(html, /<dt>Supervisor review allowance<\/dt>/);
+    assert.match(html, /3 of 5 review dispatches remaining at last refresh/);
+    const offline = renderToStaticMarkup(createElement(Inspector, {
+      ...props, canonicalStateAvailable: false,
+    }));
+    assert.match(offline, /Review allowance unavailable/);
+    assert.doesNotMatch(offline, /3 of 5 review dispatches/);
+  } finally {
+    await vite.close();
+  }
+});
 
 test("goal replacement binds exact goal and control authority", () => {
   assert.deepEqual(sessionGoalAttachmentPayload("goal-next", "goal-current", 4, 7), {

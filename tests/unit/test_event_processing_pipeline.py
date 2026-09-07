@@ -358,6 +358,17 @@ async def test_semantic_dispatch_cap_survives_failure_replay_and_restart(
         snapshot = await pipeline.pet_snapshot()
         assert snapshot["last_action"]["diagnosis"] == "supervisor_dispatch_budget_exhausted"
         assert snapshot["last_action"]["used_llm"] is False
+        allowances = await pipeline.supervisor_review_allowances([session.id])
+        assert allowances[session.id]["reserved"] == 1
+        assert allowances[session.id]["remaining"] == 0
+        pipeline.supervisor_dispatch_limit_override = 3
+        raised = await pipeline.supervisor_review_allowances([session.id])
+        assert raised[session.id]["remaining"] == 2
+        pipeline.supervisor_dispatch_limit_override = None
+        pipeline.settings.supervisor_max_dispatches_per_session = None
+        unlimited = await pipeline.supervisor_review_allowances([session.id])
+        assert unlimited[session.id]["remaining"] is None
+        assert unlimited[session.id]["reserved"] == 1
         await _drain_presentations(pipeline)
     finally:
         await store.close()

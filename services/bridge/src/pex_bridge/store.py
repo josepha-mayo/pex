@@ -15466,6 +15466,28 @@ class Store:
                 await transaction.rollback()
                 raise
 
+    async def supervisor_dispatch_counts(self, session_ids: list[str]) -> dict[str, int]:
+        """Read retained cap reservations, not inferred provider usage."""
+        if len(session_ids) > MAX_LIST_QUERY_LIMIT:
+            raise ValueError("too many sessions for review allowance snapshot")
+        for session_id in session_ids:
+            _validate_store_id(session_id, label="review allowance session")
+        counts = dict.fromkeys(session_ids, 0)
+        if not counts:
+            return counts
+        async with self._write_lock:
+            cursor = await self.db.execute(
+                "SELECT session_id, COUNT(*) AS reserved "
+                "FROM supervisor_dispatch_reservations "
+                "WHERE session_id IN (SELECT value FROM json_each(?)) "
+                "GROUP BY session_id",
+                (json.dumps(list(counts)),),
+            )
+            rows = await cursor.fetchall()
+            await cursor.close()
+        counts.update({row["session_id"]: int(row["reserved"]) for row in rows})
+        return counts
+
     async def list_sessions(
         self,
         *,

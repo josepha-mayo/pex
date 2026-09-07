@@ -20,6 +20,38 @@ import type { PetMood } from "./pets/atlas";
 
 const LIFECYCLE_ACTIONS = new Set(["START_AGENT", "STOP_AGENT", "FORK_PROBE", "CLEANUP"]);
 
+export function mergeSessionObservation(previous: SessionRow | undefined, incoming: SessionRow): SessionRow {
+  if (!previous || previous.id !== incoming.id) return incoming;
+  const merged = { ...previous, ...incoming };
+  const oldTime = Date.parse(previous.supervisor_review_allowance?.observed_at || "");
+  const newTime = Date.parse(incoming.supervisor_review_allowance?.observed_at || "");
+  if (Number.isFinite(oldTime) && Number.isFinite(newTime) && oldTime > newTime) {
+    merged.supervisor_review_allowance = previous.supervisor_review_allowance;
+  }
+  return merged;
+}
+
+export function supervisorReviewAllowanceCopy(
+  session: SessionRow | undefined,
+  fresh: boolean,
+  now = Date.now(),
+): string {
+  const allowance = session?.supervisor_review_allowance;
+  const unknown = "Review allowance unavailable. Refresh PEX to check this session.";
+  if (!fresh || !allowance) return unknown;
+  const observed = Date.parse(allowance.observed_at);
+  if (!Number.isFinite(observed) || observed > now + 5_000 || now - observed > 30_000
+    || !Number.isSafeInteger(allowance.reserved) || allowance.reserved < 0) return unknown;
+  if (allowance.limit === null) {
+    return allowance.remaining === null
+      ? "No review limit configured. This is not a spending safeguard."
+      : unknown;
+  }
+  if (!Number.isSafeInteger(allowance.limit) || allowance.limit < 1 || allowance.limit > 100_000
+    || allowance.remaining !== Math.max(0, allowance.limit - allowance.reserved)) return unknown;
+  return `${allowance.remaining} of ${allowance.limit} review dispatches remaining at last refresh · ${allowance.reserved} reserved. Failed or uncertain attempts count. This is not a token or dollar balance.`;
+}
+
 export const BUILT_IN_PET_IDS = [
   "pex",
   "ledger",
