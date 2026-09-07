@@ -1,5 +1,14 @@
 # Known failures
 
+## 7 September 2026 — Q14 source defect repaired; live semantic proof still open
+
+- The cancellation-drain provenance defect exposed by Q14 is repaired, pushed and
+  clean-package verified in `797d06b`. Focused 48, broader 100, desktop 205, Rust 16,
+  frozen lifetime 3 and both-installer package checks pass.
+- Q14 itself remains failed evidence because its free-provider continuation received
+  HTTP 429. Never relabel or rerun it; use a fresh bounded case after rate recovery.
+- Native exact-candidate interaction/persistence/eight-pet playback is still unverified.
+
 ## 7 September 2026 — Q14 provider rate-limit and cancellation-drain failure
 
 - Q14 is not a quiet pass. A correct Codex Spark completion was observed, but free Muse
@@ -7,8 +16,8 @@
   no worker message.
 - The 60-second Strands timeout then waited without a bound for cancellation cleanup,
   allowing Pipeline's 70-second timeout to finalize an ambiguous planner failure with
-  null model/request provenance. Local bounded-cleanup repair is tested but not yet live
-  verified or packaged.
+  null model/request provenance. The bounded-cleanup repair is now pushed and packaged
+  in `797d06b`, but still needs a fresh live semantic case.
 - Q12 and Q13 contain only pre-worker `create.intent` reservations from private-socket
   preflight failures. Never retry, overwrite or count them.
 - Native PEX visual checks remain incomplete: the exact candidate is minimized and the

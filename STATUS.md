@@ -1,5 +1,19 @@
 # STATUS
 
+## 7 September 2026 — exact 797d06b package integrity green
+
+- Bounded Strands cancellation cleanup is pushed as `797d06b`; local/upstream matched.
+- Detached clean source passed desktop 205 tests/build, Rust 16 tests, normal Tauri
+  MSI+NSIS build, both-installer extraction/inventory checks and frozen bridge lifetime
+  3/3 in 76.34s.
+- Package receipt SHA256
+  `F65FF67242107684F2273222BA371BC43C829C803ACE891B4C7EEB2F6134C60B`
+  reports `release_ready:true`, zero blockers, exact four executables and ordered eight
+  pets in both installers.
+- Exact candidate native interaction/persistence/eight-pet playback and a fresh real
+  correct-completion semantic NOOP remain open. Q14 stays a failed diagnostic.
+- Overall submission remains **NO-GO**.
+
 ## 7 September 2026 — native cold start passed; inference cleanup repair under review
 
 - Exact clean `4c8503c` desktop cold-started in an isolated profile with supervisor and
@@ -9,8 +23,8 @@
 - Q14 worker completed correctly: independent 3/3 unittest, exact ordered JSON artifact,
   immutable hashes unchanged. PEX sent no message, but a Muse 200 followed by 429 caused
   the outer planner boundary to record an ambiguous failure without model provenance.
-- Uncommitted root-cause repair bounds Strands/verifier cancellation cleanup. 48 focused
-  and 100 broader tests pass; Ruff passes. Exact live semantic NOOP is still unproven.
+- Root-cause repair bounds Strands/verifier cancellation cleanup. It is pushed and
+  clean-package verified as `797d06b`; exact live semantic NOOP is still unproven.
 - Overall submission remains **NO-GO**.
 
 ## Current continuation — 6 September, internal ship target 9 September

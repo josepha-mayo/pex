@@ -1,5 +1,48 @@
 # PEX agent handoff
 
+### 7 September — cancellation repair pushed; exact 797d06b package closure green
+
+The bounded Strands cancellation-drain repair and its regression were reviewed,
+committed and pushed as exact source
+`797d06b4d441a2e6d5c5d456ff4b9cce76e0590a`; local and upstream hashes matched.
+The main checkout still contains only the operator-owned `loop.py` tail as an
+unstaged change. Do not stage, rewrite or use that tail as release input.
+
+A detached clean release worktree at
+`C:/Users/JosephMayo/Projects/pex-release-797d06b` was synced from the frozen lock,
+then passed desktop `npm test` (**205 passed**), `npm run build`, the normal
+`npm run tauri -- build` path, Rust `cargo test` (**16 passed**), and the exact
+packaged bridge lifetime gate (**3 passed in 76.34s**). The normal Tauri build
+produced both MSI and NSIS. Package verification extracted both installers,
+executed each frozen bridge inventory, confirmed the ordered eight pets and all
+four executables, linked all three sidecar hashes to clean source, and accepted
+only Tauri's exact four-byte bundle marker difference between desktop variants.
+Final receipt reports `release_ready:true` with zero blockers:
+
+- receipt `build/pex-package-receipt-797d06b-v2.json`, SHA256
+  `F65FF67242107684F2273222BA371BC43C829C803ACE891B4C7EEB2F6134C60B`;
+- lifetime JUnit `build/frozen-lifetime-797d06b.xml`, SHA256
+  `A9B8C1749066DE4419115E5FA71C931A03DB44CA74C438B44B44CF0F8DEA2681`;
+- MSI SHA256 `23DFA2DC45D0BB340E2EB5DF2C96F83C98E728B0F6301A0CF04C50FDCD72A227`;
+- NSIS SHA256 `70A3AB16D3B7A55756C35DBAF481D773F153458410DFC9F8BF62DD30467155D5`;
+- embedded bridge SHA256
+  `CAA07979E78E43BEC7061C8B5ACF7B03724CD68D338AE0E2013209C9168C3D76`.
+
+The first verifier receipt is intentionally retained as a failed tooling attempt:
+MSI passed, but the ignored portable 7-Zip extractor was absent. After copying the
+existing byte-identical build tool into the isolated worktree, a rerun against the
+same installers reached the green v2 receipt. A second intermediate run completed
+verification but refused to overwrite the first receipt (`EEXIST`); this is expected
+fail-closed receipt behavior, not a product failure.
+
+This closes clean source/package integrity for `797d06b`, not native UX or semantic
+quiet acceptance. Next: launch this exact candidate in an isolated PEX profile and
+prove native bridge recovery, pet dismissal/restore/restart persistence and all-eight
+playback; then attempt one fresh bounded correct-completion case only after the free
+Muse rate window is healthy. Q12–Q14 remain excluded diagnostics. Formal quiet count,
+fair benchmark, AgentCore deployment, video and submission remain open. Overall
+submission is still **NO-GO**.
+
 ### 7 September — exact native cold start green; Q14 exposed cancellation-drain provenance loss
 
 The exact clean `4c8503c991ee147dde5065125a4cdc82505f8f52` release candidate was
@@ -36,15 +79,15 @@ Grant revoked, observer detached, Q14 bridge/listener stopped and port 7438 free
 Root cause: after the 60-second inner Strands wall expired, cancellation waited without
 a bound for provider cleanup; the 70-second Pipeline boundary then won and could retain
 only an exception class, losing the already-created local invocation/model provenance.
-Current uncommitted repair bounds cancellation draining to 250 ms for main and verifier,
+The repair now pushed in `797d06b` bounds cancellation draining to 250 ms for main and verifier,
 consumes late task results safely, and returns the inner timeout receipt with its
 provenance before the outer boundary. A cancellation-resistant regression was added.
 Final focused runtime: 48 passed; broader supervisor/Pipeline/AgentCore gate: 100 passed
 in 90.64s, JUnit SHA256
 `F3DF38CF241369A0ADFBC9178CE40670CCA90DF42B42001D45A9FD690F9DE097`;
 Ruff passed. The operator-owned unreachable 25-line tail in `loop.py` remains present,
-unreviewed and must remain unstaged. Next: stage only the repair hunks/test/docs, review
-and push, rebuild/reverify exact release, then obtain a fresh correct-completion semantic
+unreviewed and must remain unstaged. The exact release has since been rebuilt and verified
+as recorded above; next obtain a fresh correct-completion semantic
 NOOP only after the free-provider rate window recovers. Submission remains NO-GO.
 
 ### 7 September — first current whole-pipeline recovery proof (Q11 diagnostic)
