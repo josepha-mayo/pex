@@ -1,6 +1,46 @@
 # STATUS
 
-## Current — 8 September WAT
+## Current — 8 September WAT, final minimal submission path
+
+Current packaged product source is `b0438bd4e01b9f930c152960cbd33b1a86cfefb5`.
+Its only product-code change after the live-tested `af35707` backend is the reviewed
+high-contrast treatment for the floating status bubble and separate hide control. The
+full desktop contract gate passes **260/260**, the TypeScript/Vite production build
+passes, and a hidden PEX-only browser render confirms the bubble stays readable on a
+light desktop and can be dismissed while Pex remains visible. This is browser-rendered
+evidence, not native transparency, persistence, drag, click-through, or freeze proof.
+
+A detached clean worktree produced the normal Tauri MSI and NSIS installers from exact
+`b0438bd`. `npm run verify:package` reports `release_ready: true`, zero blockers, and
+verified extracted desktop/bridge/Cursor-helper/pet inventories for both bundles. The
+exact package receipt is `docs/PACKAGE_RECEIPT_B0438BD.json`.
+
+- MSI: 125,468,672 bytes; SHA-256
+  `21E2D8F2A45A76DCB6F40820FCFE6CD75B63AEEF6DA1CD4B4237D671C48DB967`.
+- NSIS: 124,199,647 bytes; SHA-256
+  `D06DF0F1A065C46C6908179F19DA385CF1BDC32446E2F38110109411CD4C06E3`.
+- Canonical desktop: SHA-256
+  `DF80E4CD4630DF3D0EA1829CC01F11E7554947B9B9217ACDDE78E9AA7BD84A3D`.
+- Exact frozen bridge lifecycle: **3/3 passed in 52.48 seconds**.
+- Signing: both installers are `NotSigned`; integrity does not prove publisher trust.
+
+The backend-identical `af35707` source passed the two required live Codex + real
+Strands/free-Muse contracts: correct completion produced an evidence-supported NOOP;
+premature completion produced a specific same-thread `SEND_NUDGE`, `report.txt=shipped`,
+`helped=true`, then a final NOOP. Sanitized evidence is
+`docs/demo/evidence/LIVE_CODEX_STRANDS_2026-09-08.md`. No AgentCore deployment or paid
+provider claim is made.
+
+Overall status remains **NO-GO** only for the post-freeze native stability/interaction
+run, the public <=5-minute demo video, and user-authorized Devpost submission. The exact
+bounded harness is
+`C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-b0438bd.ps1`, SHA-256
+`608C2692E2ABA803B33A29376D4614E847FF5EBFFD2FE1D7AD5673DC45E4D6C3`.
+It parses with zero errors and has not run. The pushed repo is clean; the shared checkout
+has one excluded, unreachable duplicate-tail edit in protected `loop.py` and no other
+uncommitted path. All older "Current" text below is historical.
+
+## Historical checkpoint — superseded by the current block above
 
 Latest pushed product source is `d66e6a1`. A detached clean release worktree at that
 exact commit produced the normal Tauri MSI and NSIS installers, and the repository package

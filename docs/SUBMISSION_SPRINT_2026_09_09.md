@@ -1,7 +1,9 @@
 # PEX submission sprint — target 9 September 2026, WAT
 
-The full goal remains active. This is the user's three-day internal target, not
-a claim about the organizer's current deadline. Submission status: **NO-GO**.
+The full goal remains active. September 9 is the user's internal filming target. The
+[official rules](https://agentsforhumans.devpost.com/rules), refreshed 8 September,
+close submissions on 14 September 2026 at 5:00 PM PDT (15 September at 1:00 AM WAT).
+Submission status: **NO-GO**.
 Read all three binding specs and `CHECKPOINT_2026_09_08.md` before each work cycle.
 Conserve quota: no new subagents. The user approved bounded live recovery/quiet
 checks after clean build/tests pass, subject to verifying free-provider setup.

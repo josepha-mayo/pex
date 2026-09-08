@@ -4,6 +4,12 @@
 [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md); older current/latest labels are
 historical. Overall submission remains NO-GO and the full steps below remain required.
 
+- [x] Recheck the official contest surface: submission closes 14 September 2026 at
+  5:00 PM PDT; public repository, visible MIT license, README, architecture diagram,
+  text description, AWS Builder ID, and public YouTube/Vimeo video of at most five minutes
+  are required. AgentCore is encouraged, not required; Strands is required.
+- [x] Verify the public GitHub repository, MIT license, README, and architecture PNG resolve.
+
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.
   The prior harnesses are superseded. The exact `b0438bd` harness is

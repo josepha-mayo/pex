@@ -5,8 +5,10 @@
 - Production sidecar builds previously accepted dirty Git state until later package
   verification. They now fail before PyInstaller; the real command refused the protected
   concurrent edit without changing helper bytes. Release tests pass 12/12, desktop passes
-  259/259, and the production frontend build succeeds. The final rebuild remains pending
-  a deliberately clean worktree and does not prove native stability.
+  260/260, and the production frontend build succeeds. A detached clean `b0438bd` worktree
+  has since rebuilt and verified both installers with zero package blockers, and its exact
+  frozen bridge passes 3/3 in 52.48 seconds. Package integrity still does not prove native
+  stability; the guarded post-freeze run remains unexecuted.
 - Devin message IDs were marked seen before durable ingestion, so a transient callback
   failure silently prevented retry. The negative timed out; post-success marking now
   retries the stable event. Dedupe is also one 65,536 fixed-digest FIFO instead of up to
