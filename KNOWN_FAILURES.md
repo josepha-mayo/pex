@@ -2,6 +2,12 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Pet/deck projection previously opened a configured SQLite connection/transaction for
+  every retained forensic session, up to 1,000 per visible pet refresh. A one-snapshot
+  authority batch now preserves project/goal validation, strict default failures and
+  recency order; 41/41 plus 25/25 focused checks and Ruff pass. It still performs
+  bounded per-session SQL inside that transaction and per accepted goal-bound artifact
+  reads afterward. Native cost and causality for the reported freeze remain unknown.
 - Empty Cursor inbox observation now backs off to a two-second cap and resets after
   valid work; 30 observer/inbox checks and Ruff pass. Malformed-only acknowledged
   batches may also back off. This is not measured live Cursor latency or evidence

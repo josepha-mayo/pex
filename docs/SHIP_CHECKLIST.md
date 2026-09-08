@@ -20,6 +20,10 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   seconds while retaining fast startup/failure recovery. Desktop 248/248 and TS pass.
 - [x] Replace per-displayed-worker pet control-state queries with one bounded batch;
   exact CAS receipts preserved. Related backend 45/45 and Ruff pass; native unmeasured.
+- [x] Replace per-forensic-session authority connections/transactions in pet/deck
+  projection with one bounded coherent snapshot; strict identity failures remain the
+  default and projection-only stale history is omitted explicitly. Related gates
+  41/41 and 25/25 plus Ruff pass; per-artifact query work/native impact remain open.
 - [x] Pause hidden/page-background sprite and CSS animation without resetting
   dismissed messages; share and clean up the visibility listener. 223 tests/TS pass.
   Native timer/GPU/CPU measurements remain part of the open P0 verification gate.

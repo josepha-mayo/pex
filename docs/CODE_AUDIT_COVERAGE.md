@@ -2,6 +2,17 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: `tests/unit/test_current_projection_session_batch.py`. Parent read
+the complete session/goal/project authority loaders, singular transaction API,
+`current_projection`, both consumers and the new tests. The projection previously
+opened one configured connection/read transaction per forensic session; it now uses
+one bounded coherent transaction for at most 1,000 validated unique IDs and rebuilds
+the original recency order. Strict blocked identity behavior remains the batch default;
+only the present-tense projection opts into omitting such historical rows. Negatives
+failed before repair; final related gates pass 41/41 and 25/25 with Ruff clean. This is
+changed-path review, not full-file approval of large Store/Pipeline modules, complete
+artifact-query optimization, native stability evidence or freeze-cause approval.
+
 New-path addendum: `tests/unit/test_pet_control_batch.py`. Parent reviewed AppState's
 complete `live_pet` path, Pipeline pet projection/promptable collapse, the Store
 single-read receipt, existing JSON-list query pattern and new bounded batch. Two

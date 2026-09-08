@@ -2,6 +2,13 @@
 
 ## Current — 8 September WAT
 
+Pet/deck canonical projection now checks up to 1,000 forensic sessions inside one
+coherent SQLite read transaction instead of opening/configuring one connection per
+session. Bounds, exact-ID validation, recency order and strict identity failures are
+preserved; only the present-tense view explicitly omits stale identity-bound history.
+Two focused gates pass 41/41 and 25/25 with Ruff clean. Per-artifact query fanout and
+native resource impact remain open; PEX stayed closed.
+
 Pet snapshots now batch displayed-worker CAS receipts into one bounded SQLite query
 instead of issuing an N+1 control-state read on every refresh; duplicate IDs collapse
 and the single-reader cursor now closes explicitly. Two negatives and the combined

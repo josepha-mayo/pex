@@ -12145,6 +12145,53 @@ class Store:
                 await transaction.rollback()
                 raise
 
+    async def get_sessions_for_authority(
+        self,
+        session_ids: list[str],
+        *,
+        require_goal_binding: bool = False,
+        omit_blocked: bool = False,
+    ) -> dict[str, HarnessSession]:
+        """Load a bounded authority-safe session set from one read snapshot.
+
+        Projection callers may omit rows whose creation-time project identity
+        is no longer live. Other authority failures remain fail closed, and the
+        default preserves the singular loader's strict blocked-row behavior.
+        """
+
+        if len(session_ids) > MAX_LIST_QUERY_LIMIT:
+            raise ValueError("too many sessions for authority snapshot")
+        unique_ids = list(dict.fromkeys(session_ids))
+        for session_id in unique_ids:
+            _validate_store_id(session_id, label="session id")
+        if not unique_ids:
+            return {}
+
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN")
+            try:
+                sessions: dict[str, HarnessSession] = {}
+                for session_id in unique_ids:
+                    try:
+                        session, _ = await _load_bound_session(
+                            transaction,
+                            session_id,
+                            require_goal_binding=require_goal_binding,
+                        )
+                    except LookupError:
+                        continue
+                    except ProjectIdentityBlockedError:
+                        if omit_blocked:
+                            continue
+                        raise
+                    sessions[session_id] = session
+                await transaction.commit()
+                return sessions
+            except Exception:
+                await transaction.rollback()
+                raise
+
     async def get_session_control_state(self, session_id: str) -> dict[str, Any] | None:
         """Read the canonical session plus its Store-owned CAS state."""
 

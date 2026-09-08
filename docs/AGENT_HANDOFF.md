@@ -2,6 +2,18 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: canonical pet/deck projections no longer open and configure a separate SQLite
+connection and read transaction for every retained session while filtering forensic
+history. Store now validates and deduplicates at most 1,000 exact IDs, evaluates every
+session/goal/project binding inside one coherent read snapshot, and retains strict
+blocked-row failure by default. The present-tense projection explicitly omits only
+identity-blocked history and reconstructs Store recency order rather than trusting map
+order. Two negatives failed before repair; final authority/pet/serialization/project
+identity gate passes 41/41, adjacent authority/source-contract gate passes 25/25, and
+Ruff is clean. Related artifact queries are still per accepted goal-bound session, so
+this is a connection/transaction-storm repair, not whole-projection optimization or
+native freeze diagnosis. PEX remains closed.
+
 Latest: `/v1/pet` no longer performs one session-control SQL query for every displayed
 worker after building its canonical projection. A bounded Store batch reads up to
 1,000 unique IDs in one statement, returns the same canonical CAS receipts, and the

@@ -5,6 +5,39 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: one-snapshot session authority projection
+
+`Pipeline.current_projection()` first lists as many as 1,000 forensic sessions, then
+previously called `Store.get_session_for_authority()` once for every row. That singular
+API opens a new SQLite connection, configures it and begins a read transaction before
+checking the session's creation-time project and goal bindings. A visible `/v1/pet`
+refresh therefore could create up to 1,000 connections/transactions every four seconds;
+the deck had the same pattern at a 201-row scan. This was upstream of the already-fixed
+per-displayed-worker CAS query.
+
+Store now provides `get_sessions_for_authority()`. It rejects more than 1,000 input
+IDs, validates every ID, deduplicates without widening authority and checks all rows in
+one coherent read transaction. Missing rows remain absent. Strict callers still receive
+`ProjectIdentityBlockedError`; only callers that explicitly request `omit_blocked=True`
+may filter identity-invalid history. Permission, corruption and other errors still abort
+the whole snapshot. Pipeline makes exactly one batch call, then reconstructs the original
+forensic recency order so mapping insertion order cannot alter user-visible precedence.
+
+Both negative tests failed before implementation: Store lacked the batch API, and a
+batch-only projection fake exposed the old singular call. The final authority/pet/
+serialization/project-identity selection passes **41/41** in 21.36s. The adjacent
+authority-consumer, source-contract, M0 deck, pet-CAS and new-batch selection passes
+**25/25** in 32.43s; Ruff is clean.
+
+Parent review covered `_load_bound_session`, goal/project binding checks, singular
+transaction behavior, ordering/truncation semantics, bounds, duplicate/missing/blocked
+rows and all projection call sites. The connection storm is removed, but the loader
+still performs bounded per-session SQL within the one snapshot and accepted goal-bound
+sessions still have per-session intervention/event reads. This is not a claim that the
+whole projection is optimal, that native idle resources are measured, or that the
+whole-PC freeze cause is known. PEX stayed closed; no model, worker, browser, cloud,
+build, large suite or native process ran.
+
 ## Latest offline slice: pet control-state batch projection
 
 `AppState.live_pet()` first built a bounded canonical pet projection, then looped over

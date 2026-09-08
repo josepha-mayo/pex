@@ -6127,14 +6127,15 @@ class Pipeline:
             raise ValueError("current projection event limit is invalid")
 
         forensic_sessions = await self.store.list_sessions(limit=session_scan_limit)
-        current_sessions: list[HarnessSession] = []
-        for forensic_session in forensic_sessions:
-            try:
-                current = await self.store.get_session_for_authority(forensic_session.id)
-            except ProjectIdentityBlockedError:
-                continue
-            if current is not None:
-                current_sessions.append(current)
+        current_by_id = await self.store.get_sessions_for_authority(
+            [session.id for session in forensic_sessions],
+            omit_blocked=True,
+        )
+        current_sessions = [
+            current_by_id[session.id]
+            for session in forensic_sessions
+            if session.id in current_by_id
+        ]
 
         sessions = current_sessions[:session_limit]
         goals: dict[str, Goal] = {}
