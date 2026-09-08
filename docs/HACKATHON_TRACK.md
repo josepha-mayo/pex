@@ -2,8 +2,16 @@
 
 Living checklist. Do **not** put secrets, tokens, or account IDs here.
 
-Last updated: 2026-09-06
-Release remains NO-GO. Controlled Codex + provider-live Strands proof exists at `5c49c10`; AgentCore is not deployed, the benchmark is unfrozen, and final-revision/package evidence is still open. Architecture PNG is at `docs/architecture/pex-architecture.png`. Do not Submit until the final reviewed repository, video, and required identity fields are verified at action time.
+Last updated: 2026-09-08
+Release remains NO-GO. Current source is pushed through `7995f53`; current desktop
+contracts pass 258/258, Rust passes 18/18, and all eight built-in pets pass structural,
+atlas, and static visual review. The 6 September sidecars/installers are stale against
+current source. Controlled Codex + provider-live Strands proof exists at `5c49c10`, but
+the final-revision live pair and bounded post-freeze native run remain open. AgentCore is
+not deployed and the benchmark is unfrozen. Architecture PNG is at
+`docs/architecture/pex-architecture.png`. Do not Submit until the final reviewed source,
+current package/native evidence, video, and required identity fields are verified at
+action time.
 
 ## Open pages (user said these are already logged in)
 
@@ -64,4 +72,7 @@ When ready to use the console in-browser:
 
 Do not pause product work to click consoles. Browser the AWS pages when we need a credential, a deployment, a screenshot, or a published post.
 
-Current product milestone: repair clean final-revision evidence closure, recapture the proven Codex + Strands pair in the reviewed app, visually review/package it, then submit. PexBench remains unfrozen; AgentCore deployment is optional and must not be claimed unless actually proven.
+Current product milestone: rebuild all three sidecars from the final reviewed source,
+run the bounded native recovery/idle/all-eight visual gate, recapture the proven Codex +
+Strands pair on that exact revision, then record and submit. PexBench remains unfrozen;
+AgentCore deployment is optional and must not be claimed unless actually proven.

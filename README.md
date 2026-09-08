@@ -83,7 +83,10 @@ Tauri starts its owned authenticated bridge, proves its identity with a fresh
 nonce, and only then releases its in-memory bearer to the local UI. An unknown
 process already occupying port 7420 makes startup fail closed. A successful
 source build is not evidence that a packaged installer or release bundle passed
-its clean-profile checks.
+its clean-profile checks. Native desktop startup explicitly uses the standard
+`~/.pex/pex.sqlite` profile; ambient `PEX_HOME` or `PEX_DB_PATH` values from a
+benchmark shell do not redirect the owned bridge. Provider configuration remains
+explicit and local as documented below.
 
 ### Connect a worker
 
@@ -224,7 +227,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. Uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Overall contest state is **NO-GO**: the controlled live loop exists at `5c49c10`, but clean final-revision evidence closure, packaged-app review, the unfrozen benchmark, and submission authorization remain open. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md). There is no citeable impact score or validated leaderboard rank.
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. Uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Current source is pushed through `7995f53`, while the controlled live loop remains historical proof at `5c49c10`. Overall contest state is **NO-GO**: current-source sidecars/installers, bounded post-freeze native review, final-revision live proof, the unfrozen benchmark, and submission authorization remain open. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md). There is no citeable impact score or validated leaderboard rank.
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)

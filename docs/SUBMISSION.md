@@ -5,13 +5,20 @@
 > resource repairs do not prove stability. Submission remains NO-GO; follow the
 > incident at the top of [the current checkpoint](CHECKPOINT_2026_09_08.md).
 
-> **Current, 8 September WAT: still NO-GO.** Follow
-> [the detailed checkpoint](CHECKPOINT_2026_09_08.md). Exact de83153 installers passed
-> integrity checks. Real Q18 completed inference and stayed quiet with acceptance
-> uncertainty; it is not a scored benchmark or full semantic-proof gate. New artifact
-> inspection code needs clean-source verification; native testing paused on Escape.
-> Human workflow, all-eight playback, full audit/comparisons, AgentCore, video and
-> final authorized submission remain open. Older current labels below are historical.
+> **Current, 8 September WAT: source `7995f53` is pushed; submission is still NO-GO.**
+> Offline verification is green for the current desktop surface: 258/258 Node contracts,
+> 18/18 Rust tests, TypeScript, and Rust formatting. The eight built-in pets pass source,
+> atlas, manifest, and high-detail static review. The native launcher now pins the standard
+> `~/.pex/pex.sqlite` profile instead of inheriting an ambient benchmark database, and a
+> large-history N+1 authority read is repaired. These are source/test results, not current
+> installer or native stability proof. The three 6 September sidecars/installers predate
+> the current source. The user-reported idle whole-PC freeze, bounded native recovery and
+> all-eight playback, final-revision live Codex + Strands pair, AgentCore deployment,
+> four-arm benchmark, video, and authorized submission remain open. Follow
+> [the detailed checkpoint](CHECKPOINT_2026_09_08.md), [handoff](AGENT_HANDOFF.md), and
+> [shipping checklist](SHIP_CHECKLIST.md). Every older "current" block below is historical.
+
+## Historical package and live-proof evidence
 
 > **Current evidence, 7 September 22:30 UTC:** use the top of
 > [the handoff](AGENT_HANDOFF.md) and [shipping checklist](SHIP_CHECKLIST.md).
@@ -43,7 +50,8 @@ were proven on the same packaged runtime earlier. A Windows Security Node-automa
 prompt blocked the final all-eight playback and Alt+F4 replay, so the demo must not imply
 those final replays were completed. Backend startup/keyring authority repairs passed the
 final 36-test strict focus after a broader 139-pass/3-skip gate; desktop passed 180/180
-and Rust passed 14. The protected `loop.py` SHA-256 remains
+and Rust passed 14. At that historical package checkpoint, the protected `loop.py`
+SHA-256 was
 `392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`.
 
 > **Draft only — release and submission remain NO-GO.** The real Codex + Strands loop is now validated on source revision `5c49c10`; do not publish or submit until that evidence is recaptured on the final reviewed release candidate, the packaged app is visually reviewed, and the operator gives action-time authorization.
@@ -113,11 +121,12 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 ## Checklist before clicking Submit
 
-- [x] Public MIT repository contains final reviewed source/package revision `f99fe43`; verify exact remote equality again at submission time
-- [x] README and architecture source/PNG are current; the 6 September render was visually inspected with the verifier in the blue local-contract tier
+- [x] Public MIT repository source is pushed through `7995f53`; verify exact remote equality again at submission time
+- [ ] Build all three sidecars/installers from the final reviewed source and produce a clean current package-integrity receipt (the 6 September package is historical)
+- [ ] Re-review README and architecture source/PNG against the final release candidate; the 6 September render is historical evidence
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)
-- [ ] Recapture the validated pair on final revision `f99fe43` and record it in the packaged-app demo
+- [ ] After bounded native stability passes, recapture the validated pair on the final revision and record it in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence is contract-only, while controlled local Codex + provider-live Strands evidence now exists
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)
