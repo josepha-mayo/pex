@@ -1807,6 +1807,13 @@ class CodexAdapter(HarnessAdapter):
                     seen_items.clear()
                     seen_item_order.clear()
                     last_discover = None
+                if transport is None:
+                    # Desktop process inventory is refreshed centrally with one
+                    # shared snapshot. This pump owns App Server events only; a
+                    # transportless pass must not spawn another `tasklist` every
+                    # second merely to recreate the observation-only desktop tile.
+                    await asyncio.sleep(0.25)
+                    continue
                 now = asyncio.get_running_loop().time()
                 if last_discover is None or now - last_discover >= 1.0:
                     await self.discover_sessions()

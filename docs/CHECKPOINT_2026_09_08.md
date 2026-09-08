@@ -5,7 +5,30 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: worker intervention specificity boundary
+## Latest offline slice: transportless Codex pump discovery
+
+The always-on Codex event pump called `discover_sessions()` once per second even when
+it had no App Server transport. In that state Codex discovery falls back to the
+observation-only desktop tile, which can launch Windows `tasklist`. This duplicated
+the bridge's central desktop refresh, which already captures one shared process-image
+snapshot and fans it across adapters under an eight-second minimum interval.
+
+The pump now clears transport-local state on detach, then sleeps without discovery
+until an actual transport is present. Attachment detection remains bounded by the
+existing 250ms sleep; once attached, thread discovery and notification processing are
+unchanged. The central shared-snapshot refresh remains the sole owner of the generic
+desktop tile. No process enumeration cadence, session authority, adapter capability,
+App Server protocol or event acknowledgement contract was broadened.
+
+A deterministic negative replaced `discover_sessions` and the pump sleep: prior
+source made one discovery call before its first sleep; repaired source makes zero.
+The complete Codex pump file passes **33/33** in 24.51s. Central desktop discovery,
+existing-session and pet-snapshot coverage passes **42/42** in 6.37s. Ruff passes the
+changed adapter and test. This removes one `tasklist`-capable idle path per second but
+does not quantify native CPU, prove the whole-PC freeze cause, or clear stability.
+PEX stayed closed; no model, worker, browser, cloud, build or broad suite ran.
+
+## Earlier offline slice: worker intervention specificity boundary
 
 The Recovery Spec forbids empty or generic worker corrections, but the supervisor
 parser's protected source allowed an evidence-bearing worker action with no `text`,

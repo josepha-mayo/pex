@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+The Codex event pump no longer launches redundant desktop process discovery while
+it has no App Server transport. A deterministic negative reproduced the prior call;
+all 33 Codex pump tests plus 42 central discovery/pet tests and Ruff pass. Central
+shared-snapshot discovery and attached transport behavior remain intact. This removes
+one `tasklist`-capable idle path per second; native resource impact is not yet measured.
+
 Worker-facing supervisor actions now fail closed at the durable bridge boundary:
 empty/non-string text and the Recovery Spec's generic boilerplate are coerced to
 NOOP before policy, persistence or dispatch. The executor independently rejects

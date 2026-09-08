@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent reviewed the full Codex pump's transport transition,
+discovery and event-loop ordering plus the central shared-snapshot discovery owner.
+Transportless pumping no longer calls the `tasklist`-capable desktop fallback every
+second; attached App Server discovery and the central tile remain. The deterministic
+negative failed one call on prior source and passes zero after repair. Complete Codex
+pump tests 33/33, existing-session/pet discovery tests 42/42, Ruff clean. This is not
+a whole adapter audit, live CPU receipt, native stability result or freeze diagnosis.
+
 Changed-path addendum: parent reviewed the supervisor proposal-to-pipeline action
 boundary, verification-action binding order, ActionExecutor worker dispatch split,
 and the new focused tests. Empty/non-string worker text and explicit Recovery Spec

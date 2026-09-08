@@ -17,6 +17,34 @@ from pex_protocol.intervention import Intervention
 from pex_protocol.session import HarnessEvent, HarnessSession
 
 
+async def test_codex_pump_does_not_discover_without_a_transport(monkeypatch):
+    adapter = CodexAdapter()
+    sleep_entered = asyncio.Event()
+    discover_calls = 0
+
+    async def discover_sessions():
+        nonlocal discover_calls
+        discover_calls += 1
+        return []
+
+    async def blocked_sleep(_delay):
+        sleep_entered.set()
+        await asyncio.Event().wait()
+
+    async def ingest(_event, _session):
+        raise AssertionError("transportless pump cannot ingest an event")
+
+    monkeypatch.setattr(adapter, "discover_sessions", discover_sessions)
+    monkeypatch.setattr("pex_bridge.adapters.codex.asyncio.sleep", blocked_sleep)
+    task = adapter.start_pipeline_pump(ingest)
+    try:
+        await asyncio.wait_for(sleep_entered.wait(), timeout=1)
+        assert discover_calls == 0
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+
 async def test_codex_pump_ingests_stop_permission_and_agent_message():
     transport = CodexAppServerTransport()
     transport.threads = [{"id": "thr_pump", "preview": "pump thread", "cwd": "C:/proj"}]

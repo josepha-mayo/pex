@@ -2,6 +2,15 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the always-on Codex pump no longer invokes desktop discovery every second
+while no App Server transport exists. That path could spawn Windows `tasklist` and
+duplicated the central shared process snapshot. The pump now sleeps until transport
+attachment (<=250ms detection), while attached discovery/events remain unchanged and
+the central eight-second-throttled refresh retains the observation-only desktop tile.
+Prior-source negative called discovery once before first sleep; repaired source zero.
+Codex pump 33/33, central discovery/pet 42/42, Ruff clean. This is offline work-removal,
+not native CPU measurement or proof of the reported freeze. PEX remains closed.
+
 Latest: the bridge now enforces the Recovery Spec's worker-message contract after
 locally binding verification probes and before policy/persistence/dispatch. Blank,
 missing or non-string text on SEND_NUDGE/INJECT_CONTEXT/CONTINUE_SESSION/
