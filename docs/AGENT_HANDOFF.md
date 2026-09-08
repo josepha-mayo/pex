@@ -9038,3 +9038,8 @@ The dirty bit is expected because the protected operator-owned file below is ret
   formatted, restored, or committed without the exact user phrase `remove the protected loop
   tail`. PEX remains closed after the user's whole-PC freeze report; do not run the prepared
   native harness unless the user gives the exact phrase `run bounded native smoke`.
+- Accepted pushed commits for this slice are `1930a70` (deterministic source revision,
+  receipt/row emission, manifest status, tests and truth docs) and `e696899` (freeze-time
+  receipt-to-row binding plus the second-review regression). Local and remote `main` both
+  resolved to `e6968998736e0362f7a41100e5129d23cfc91d79` immediately after the second push.
+  The shared checkout then contained only the protected `loop.py` change.
