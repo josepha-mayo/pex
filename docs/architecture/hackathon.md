@@ -6,10 +6,11 @@ pair at `5c49c10`, blue is locally implemented/tested, and dashed gold is a depl
 target. The independent verifier is blue because the curated live receipt does not expose
 judge-readable independent-verifier evidence.
 
-Devpost image target: [`pex-architecture.png`](pex-architecture.png). It was regenerated
-and visually inspected on 6 September as historical evidence; later source changes do not
-alter the depicted trust boundaries, but the image must be re-reviewed against the final
-release candidate. The verifier is visibly in the blue local-contract tier:
+Devpost image target: [`pex-architecture.png`](pex-architecture.png). It was regenerated on
+6 September and re-reviewed at original resolution on 8 September against clean packaged
+product source `d66e6a1`. Later repairs do not alter its depicted trust boundaries. It still
+separates the controlled historical Codex/Strands live tier, locally implemented/tested tier,
+and undeployed AgentCore target; the verifier remains visibly in the blue local-contract tier:
 [`pex-architecture.mmd`](pex-architecture.mmd).
 
 ```mermaid

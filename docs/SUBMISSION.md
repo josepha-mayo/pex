@@ -18,7 +18,7 @@
 > call. The current Home, Inspector, Deck, Settings, and Pex overlay were inspected in an
 > isolated browser render; message dismissal visibly left the pet present. This is not native
 > transparency, click-through, hide/restore, restart-persistence, or freeze-resolution proof.
-> Latest pushed HEAD `28119ad` adds documentation and the corrected live Codex contract only;
+> Commits after `d66e6a1` add documentation and the corrected live Codex contract only;
 > product release inputs remain those verified at `d66e6a1`. The bounded native run, final-
 > revision live semantic recovery pair, demo video, and authorized submission remain open.
 > Follow
@@ -128,10 +128,11 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 ## Checklist before clicking Submit
 
-- [x] Public MIT repository is pushed through `28119ad`; verify exact remote equality again at submission time
+- [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
 - [x] Build all three sidecars/installers from clean product source `d66e6a1`; both installer
   inventories and the retained `PACKAGE_RECEIPT_D66E6A1.json` pass with zero package blockers
-- [ ] Re-review README and architecture source/PNG against the final release candidate; the 6 September render is historical evidence
+- [x] Re-review README and architecture source/PNG against packaged product source `d66e6a1`;
+  current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)
