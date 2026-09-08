@@ -2,6 +2,10 @@
 
 ## Current — 8 September WAT
 
+Codex v2 custom-pet manifests now reject exponent overflow throughout the bounded JSON
+object. The exactly-eight fleet/import suite passes 59/59 with Ruff clean. Hatch-pet
+normal-size motion/direction review and native playback remain open after the freeze.
+
 Public benchmark summaries and recorded-demo fixtures now reject exponent-overflow JSON
 instead of admitting infinity through ignored fields. Benchmark/demo security tests pass
 23/23 with Ruff clean. This is artifact admission hardening, not frozen/live evidence.

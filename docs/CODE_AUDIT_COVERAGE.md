@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent applied the hatch-pet v2 contract to custom manifest
+admission and the exactly-eight built-in fleet checks. Bounded manifests rejected
+duplicates/constants but accepted overflow in ignored fields. Finite-float parsing now
+precedes version/atlas validation. The complete fleet/import file passes 59/59 and Ruff
+is clean. Normal-size motion/direction and native playback remain unreviewed after the
+freeze; no asset was regenerated or self-approved.
+
 Changed-path addendum: parent reviewed judge-facing public benchmark and recorded-demo
 artifact readers. Both bounded the file and rejected duplicates/constants but accepted
 exponent overflow in ignored fields. Whole-document finite-float checks now reject those

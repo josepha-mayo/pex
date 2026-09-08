@@ -2,6 +2,14 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: Codex v2 custom-pet manifests now reject exponent-overflow JSON anywhere in the
+bounded `pet.json`, including ignored fields. The import path already enforced unique
+keys, non-standard-constant refusal, exact version 2, 1536x2288 RGBA atlas geometry,
+used/unused cell structure and containment; finite float parsing closes the remaining
+decoder gap. The complete fleet/import file passes 59/59 and Ruff is clean. Per the
+hatch-pet contract this is deterministic/source proof for exactly eight built-ins, not
+normal-size motion/direction visual QA or native playback. PEX stayed closed.
+
 Latest: judge-facing public benchmark summaries and recorded-demo fixtures now reject
 exponent-overflow JSON anywhere in their bounded documents. Previously `1e9999` could
 decode as infinity in an ignored field even though duplicates and `NaN` were refused.

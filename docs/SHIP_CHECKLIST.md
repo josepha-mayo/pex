@@ -94,6 +94,8 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   94/94 with one Windows skip and Ruff; live completion behavior remains open.
 - [x] Reject exponent overflow in public benchmark summaries and recorded-demo fixtures.
   Focused security coverage passes 23/23 and Ruff; no live/frozen evidence is implied.
+- [x] Reject exponent overflow throughout bounded Codex v2 custom-pet manifests. Complete
+  fleet/import coverage passes 59/59 and Ruff; eight-pet normal-size/native QA stays open.
 - [x] Bound local notification receipt replay before parsing and reject ambiguous JSON
   idempotency rows so corruption cannot suppress a human alert. Channel tests pass 8/8
   and Ruff; cross-process append/rotation remains outside this slice.

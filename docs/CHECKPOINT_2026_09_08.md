@@ -5,6 +5,18 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: finite Codex v2 pet manifests
+
+The custom-pet importer bounded `pet.json`, rejected duplicate keys/constants and
+validated version 2 plus exact atlas structure, but exponent overflow in an ignored
+manifest field still decoded as infinity. The manifest decoder now requires finite
+floats across the complete object. The `hatch-pet` contract kept this check aligned to
+exactly eight built-ins and the 1536x2288, 192x208-cell v2 format. Complete fleet/import
+coverage passes **59/59** and scoped Ruff passes.
+
+This is deterministic/source validation, not the mandatory normal-size contact-sheet,
+motion, 16-direction or native playback review. No native app or image generation ran.
+
 ## Latest offline slice: finite judge-facing JSON artifacts
 
 The public frozen-benchmark summary and recorded-demo fixture readers were bounded and

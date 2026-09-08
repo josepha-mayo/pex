@@ -1461,6 +1461,7 @@ def test_import_codex_pet_rejects_invalid_or_unbounded_manifest(tmp_path: Path):
     for payload in (
         '{"id":"first","id":"second","spriteVersionNumber":2}',
         '{"id":"invalid","spriteVersionNumber":NaN}',
+        '{"id":"invalid","spriteVersionNumber":2,"ignored":1e9999}',
     ):
         (tmp_path / "pet.json").write_text(payload, encoding="utf-8")
         with pytest.raises(ValueError, match="valid UTF-8 JSON"):

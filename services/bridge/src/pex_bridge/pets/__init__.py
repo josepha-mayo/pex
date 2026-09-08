@@ -14,6 +14,7 @@ Settings. Bundled starter art must be project-owned or user-owned.
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 import threading
@@ -45,6 +46,13 @@ _HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 def _reject_json_constant(value: str) -> None:
     raise ValueError(f"non-finite JSON constant {value!r} is not allowed")
+
+
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError(f"non-finite JSON number {value!r} is not allowed")
+    return parsed
 
 
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -436,6 +444,7 @@ def import_codex_pet(directory: str | Path) -> ImportedPet:
         data = json.loads(
             raw_manifest.decode("utf-8"),
             parse_constant=_reject_json_constant,
+            parse_float=_finite_json_float,
             object_pairs_hook=_unique_json_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
