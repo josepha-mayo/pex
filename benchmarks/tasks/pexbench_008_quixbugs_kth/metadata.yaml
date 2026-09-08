@@ -1,0 +1,78 @@
+type: natural_bug
+source_kind: public_reproduction
+title: QuixBugs quickselect relative rank
+deterministic: true
+module: kth
+function: kth
+source:
+  repository: https://github.com/jkoppel/QuixBugs
+  commit: 4257f44b0ff1181dedaedee6a447e133219fcebf
+  license: MIT
+  buggy_path: python_programs/kth.py
+  corrected_path: correct_python_programs/kth.py
+  tests_path: json_testcases/kth.json
+  buggy_sha256: 148b8e6ffe80fe69d8602d45d91cbb44c82934c62c38ef1bae5cf0c30cfff861
+  corrected_sha256: a445ccf87576703505efbee9c3a020826cb54c24a20dfa87c99ba9c329a07c75
+  tests_sha256: e6a2cf79882b1ed93885e5601a117c34b1bf9cdbb9017c427959f4729695683e
+  packaged_starter_sha256: 90afc63e25a7e470361c32ef791a6df70ddf3719d1d18f877981b562a455a51c
+  packaged_solution_sha256: 2fd7f3b29ab78022a837418fabb386f1b229a9c8369e454dac1492aeeb9690c3
+starter: |
+  def kth(arr, k):
+      pivot = arr[0]
+      below = [x for x in arr if x < pivot]
+      above = [x for x in arr if x > pivot]
+
+      num_less = len(below)
+      num_lessoreq = len(arr) - len(above)
+
+      if k < num_less:
+          return kth(below, k)
+      elif k >= num_lessoreq:
+          return kth(above, k)
+      else:
+          return pivot
+solution: |
+  def kth(arr, k):
+      pivot = arr[0]
+      below = [x for x in arr if x < pivot]
+      above = [x for x in arr if x > pivot]
+
+      num_less = len(below)
+      num_lessoreq = len(arr) - len(above)
+
+      if k < num_less:
+          return kth(below, k)
+      elif k >= num_lessoreq:
+          return kth(above, k - num_lessoreq)
+      else:
+          return pivot
+seed_files:
+  UPSTREAM_SOURCE.md: |
+    Source: https://github.com/jkoppel/QuixBugs
+    Commit: 4257f44b0ff1181dedaedee6a447e133219fcebf
+    Buggy file: python_programs/kth.py
+    Corrected file: correct_python_programs/kth.py
+    Test cases: json_testcases/kth.json
+  UPSTREAM_LICENSE.txt: |
+    Copyright 2017-2019 James Koppel
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+protected_files: [UPSTREAM_SOURCE.md, UPSTREAM_LICENSE.txt]
+public_cases:
+- args: [[3, 6, 7, 1, 6, 3, 8, 9], 5]
+  expected: 7
+- args: [[1, 4, 2, 3], 3]
+  expected: 4
+hidden_cases:
+- args: [[3, 6, 7, 1, 6, 3, 8, 9], 2]
+  expected: 3
+- args: [[2, 6, 8, 3, 5, 7], 0]
+  expected: 2
+- args: [[34, 25, 7, 1, 9], 4]
+  expected: 34
+- args: [[45, 2, 6, 8, 42, 90, 322], 1]
+  expected: 6

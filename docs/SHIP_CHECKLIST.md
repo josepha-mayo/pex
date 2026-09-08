@@ -740,3 +740,14 @@ Do the next safe, highest-impact item immediately. If a required external choice
 - [ ] Rebuild current sidecars, then prove the pinned native profile and measure startup/idle
   CPU, memory, disk, database, and WAL behavior. The 154.89 MiB + 226.41 MiB contest profile is
   evidence of risk, not proof that profile inheritance was the sole freeze cause.
+- [x] Reach the §34.5 development-smoke floor with eight predeclared tasks: five PEX management
+  stressors and three source/license/hash-pinned public QuixBugs repairs. The 32-row plan,
+  fail-closed provenance checks, failing starters, passing references, and private-data boundary
+  passed the clean 200-test benchmark/Cursor-hook gate.
+- [ ] Enforce an OS-level worker boundary that blocks controller/hidden-evaluator reads and
+  network access before changing `natural_task_source_status` or executing presentation rows.
+- [x] Keep Strands and AgentCore integration contracts green: runtime, supervisor, client,
+  pipeline, cloud runtime, and preflight coverage passed 200/200 offline.
+- [ ] Deploy and invoke AgentCore only after authenticated AWS, current tooling, a verified ARM64
+  image/runtime ARN, and explicit zero-card-spend authority are all proven. Current preflight is
+  NO-GO and no cloud mutation occurred.

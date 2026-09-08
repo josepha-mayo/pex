@@ -401,8 +401,9 @@ def analyze_run(path: Path) -> dict[str, Any]:
             "evidence.",
             "Requested model IDs and settings are pinned, but provider-side immutable model "
             "revisions remain unavailable unless the harness supplies them.",
-            "The current five-task recovery suite is self-contained management stress, not "
-            "the required natural public-repository task set.",
+            "The eight-task development smoke combines five management stressors with three "
+            "source-pinned public QuixBugs reproductions; isolated execution and a larger "
+            "final task set remain required before a presentation claim.",
             "Cursor+PEX is admissible only with an observed follow-up in the same conversation; "
             "a saved or replayed stop payload is not evidence of that continuation.",
         ],

@@ -559,3 +559,12 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   Current source pins normal desktop startup to the existing default `~/.pex/pex.sqlite` profile.
   The incident environment was not retained, so this is a repaired plausible contributor, not
   sole-cause proof. Frozen sidecars still predate the repair and native resource proof is open.
+- The benchmark development smoke now reaches the specified 8-task floor with three pinned
+  public QuixBugs repairs, and its 200-test harness/Cursor-hook gate passes. This does not make a
+  result citeable: candidate execution lacks an OS-enforced hidden-data/no-network boundary,
+  Cursor capture remains partial, and no single coherent 32-row live run exists. The manifest
+  therefore remains unfrozen and `natural_task_source_status` remains `not_yet_satisfied`.
+- Strands/AgentCore offline contracts pass 200 tests, but AgentCore is not deployed. The current
+  read-only preflight reports no AWS authentication, no current AgentCore CLI, no CDK, a stopped
+  Docker engine, no verified ARM64 image, and no configured runtime ARN. Do not claim cloud proof
+  or start billable resources from these local results.

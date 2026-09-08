@@ -1,0 +1,71 @@
+type: natural_bug
+source_kind: public_reproduction
+title: QuixBugs text wrapping remainder
+deterministic: true
+module: wrap
+function: wrap
+source:
+  repository: https://github.com/jkoppel/QuixBugs
+  commit: 4257f44b0ff1181dedaedee6a447e133219fcebf
+  license: MIT
+  buggy_path: python_programs/wrap.py
+  corrected_path: correct_python_programs/wrap.py
+  tests_path: json_testcases/wrap.json
+  buggy_sha256: eb76433536ae58fa2955fbe053a8f9e45e7deb7d3894048acb7cdab13f1f5282
+  corrected_sha256: 682bede441b4e5cd04e44677a0c05dfdb69c8c0642ed0ebf1089fa408fa01a8c
+  tests_sha256: 2e4c9246883f6f11d84a976647a9f167fc6892861aacb00598615fd1489b752d
+  packaged_starter_sha256: 0f71ef192ccd94dce85f414de6cc6836ef87209e5329522f195a6397f72a9c84
+  packaged_solution_sha256: 0adf849cad6804b9b93c99a0aa16f16980effb4661905f685b13019b61b28d44
+starter: |
+  def wrap(text, cols):
+      lines = []
+      while len(text) > cols:
+          end = text.rfind(' ', 0, cols + 1)
+          if end == -1:
+              end = cols
+          line, text = text[:end], text[end:]
+          lines.append(line)
+
+      return lines
+solution: |
+  def wrap(text, cols):
+      lines = []
+      while len(text) > cols:
+          end = text.rfind(' ', 0, cols + 1)
+          if end == -1:
+              end = cols
+          line, text = text[:end], text[end:]
+          lines.append(line)
+
+      lines.append(text)
+      return lines
+seed_files:
+  UPSTREAM_SOURCE.md: |
+    Source: https://github.com/jkoppel/QuixBugs
+    Commit: 4257f44b0ff1181dedaedee6a447e133219fcebf
+    Buggy file: python_programs/wrap.py
+    Corrected file: correct_python_programs/wrap.py
+    Test cases: json_testcases/wrap.json
+  UPSTREAM_LICENSE.txt: |
+    Copyright 2017-2019 James Koppel
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+protected_files: [UPSTREAM_SOURCE.md, UPSTREAM_LICENSE.txt]
+public_cases:
+- args: ["alpha beta", 5]
+  expected: [alpha, " beta"]
+- args: ["abcdef", 3]
+  expected: [abc, def]
+hidden_cases:
+- args: ["short", 10]
+  expected: [short]
+- args: ["a b c", 3]
+  expected: ["a b", " c"]
+- args: ["", 4]
+  expected: [""]
+- args: ["four", 4]
+  expected: [four]

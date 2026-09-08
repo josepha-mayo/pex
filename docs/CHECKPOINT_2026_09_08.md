@@ -1701,3 +1701,27 @@ Tauri now resolves the user's home and explicitly pins the owned sidecar to the 
 ignored, and home-resolution failure is explicit. Focused startup tests passed 15/15, all Rust
 tests 18/18, complete desktop contracts 258/258, TypeScript passed, and Rust formatting passed.
 No PEX process was launched and no profile data was changed.
+
+## 9 September pinned natural-task benchmark slice
+
+- Added three public QuixBugs repair packages—`wrap`, `next_permutation`, and `kth`—pinned to
+  commit `4257f44b0ff1181dedaedee6a447e133219fcebf` under the upstream MIT license. Metadata binds
+  the upstream buggy/corrected/test paths and SHA-256 values, the exact seeded and reference code
+  bytes, and protected source/license notices.
+- The canonical smoke is now eight tasks across four arms, producing a deterministic 32-row
+  plan. Five existing recovery tasks remain the management-stress half; the three additions are
+  the natural public-source half at development-smoke scale.
+- Fail-closed tests mutate source commit, packaged starter hash, and source notice. Every natural
+  starter is proven failing and every reference solution passing under public plus hidden checks;
+  the seeded worker tree contains no private metadata or reference implementation.
+- An initial broad run stopped honestly after 73 passes on one stale five-task timing assertion.
+  After correcting all remaining suite-size wording/expectations, the source paths/hashes were
+  additionally bound to a controller-owned lock. The final clean restart passed 200/200 across
+  `test_pexbench.py` and `test_cursor_hooks.py` in 441.54 seconds. Scoped Ruff passed.
+- Strands runtime/supervisor integration plus AgentCore client/pipeline/runtime/preflight passed
+  200/200 in 17.34 seconds. The read-only AgentCore environment preflight is still NO-GO: AWS is
+  unauthenticated, AgentCore CLI/CDK are missing, Docker is stopped, ARM64 image proof is absent,
+  and no runtime ARN is configured. No cloud resource or paid call was made.
+- Keep `frozen: false`. Source packaging is satisfied, but natural execution stays
+  `not_yet_satisfied` until an OS-enforced hidden-data/no-network worker boundary exists. Complete
+  Cursor capture and a single coherent live 32-row result also remain required.

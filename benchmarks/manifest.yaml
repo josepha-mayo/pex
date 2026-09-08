@@ -1,17 +1,19 @@
 version: 2
 frozen: false
 suite:
-  kind: deterministic_self_contained_management_stress
-  minimum_tasks: 5
-  task_count: 5
+  kind: deterministic_mixed_source_development_smoke
+  minimum_tasks: 8
+  task_count: 8
   natural_task_source_status: not_yet_satisfied
+  natural_task_package_status: satisfied
   task_execution_boundary: controlled_fixtures_only
   limitation: >-
-    These are deterministic repository-shaped microtasks, not a frozen subset of public
-    reproducible repository issues or SWE-bench Verified. Repository tests execute only
-    for these controller-seeded fixtures; untrusted repository code requires an isolated
-    worker boundary that cannot read controller or hidden-evaluator files. Do not describe
-    this suite alone as the natural-task half of the primary experiment.
+    Five tasks are deterministic repository-shaped PEX management stressors. Three additional
+    tasks are source- and license-pinned reproductions from the public QuixBugs program-repair
+    benchmark. Natural-source packaging is satisfied, but execution remains controlled fixtures:
+    untrusted repository code requires an isolated worker boundary that cannot read controller
+    or hidden-evaluator files. Do not describe the natural-task source gate as satisfied until
+    that execution boundary exists.
   required_stressors:
   - premature_stop
   - forgotten_acceptance
@@ -83,3 +85,9 @@ tasks:
   type: false_completion
 - id: pexbench_005_handoff
   type: cross_session_handoff
+- id: pexbench_006_quixbugs_wrap
+  type: natural_bug
+- id: pexbench_007_quixbugs_next_permutation
+  type: natural_bug
+- id: pexbench_008_quixbugs_kth
+  type: natural_bug

@@ -9136,3 +9136,50 @@ The dirty bit is expected because the protected operator-owned file below is ret
   `kth`, but **no task-package or manifest change has been accepted yet**. Do not call the natural
   source gate satisfied until exact source metadata, package hashes, evaluator contracts and the
   still-missing isolated untrusted execution boundary all pass.
+
+### 9 September accepted eight-task development-smoke slice
+
+- The three QuixBugs candidates are now accepted benchmark packages:
+  `pexbench_006_quixbugs_wrap`, `pexbench_007_quixbugs_next_permutation`, and
+  `pexbench_008_quixbugs_kth`. They are pinned to the official repository at commit
+  `4257f44b0ff1181dedaedee6a447e133219fcebf` and retain the MIT notice. Each metadata file binds
+  upstream buggy/corrected/test paths and SHA-256 values, the exact LF-normalized packaged starter
+  and private reference bytes, and a protected public `UPSTREAM_SOURCE.md` plus
+  `UPSTREAM_LICENSE.txt`.
+- `benchmarks/evaluator.py` now recognizes five recovery IDs followed by exactly three natural
+  IDs. It rejects an incorrect repository/commit/license, unsafe source path, malformed source
+  hash, package/hash drift, incomplete source notice, or an unprotected notice. Recovery stressor
+  accounting remains limited to the five management tasks so `natural_bug` cannot masquerade as
+  a required PEX management stressor.
+- `benchmarks/runner.py` and `manifest.yaml` now predeclare the canonical eight-task/four-arm
+  development smoke: 32 rows and 16 within-harness baseline/treatment pairs. The manifest says
+  `natural_task_package_status: satisfied` but deliberately retains
+  `natural_task_source_status: not_yet_satisfied`, `task_execution_boundary:
+  controlled_fixtures_only`, and `frozen: false`. Do not flip those fields until an OS-enforced
+  hidden-data/no-network execution backend exists and the remaining presentation evidence gates
+  pass.
+- New adversarial tests corrupt the pinned commit, packaged starter hash, and public source
+  notice. They also prove that each natural seeded tree exposes only the public task, starter,
+  public tests, source notice, and license; private metadata/reference code do not enter the
+  worker tree. All three starters fail evaluation and all three private references pass public
+  plus hidden checks.
+- The first broad test attempt stopped after 73 passes because one report fixture still expected
+  five missing active-time rows per arm. It was corrected to eight, and stale five-task language
+  in `benchmarks/report.py` and `BENCHMARKS.md` was replaced. Do not count the aborted run. The
+  source hashes were then bound to a controller-owned per-task lock and a valid-hex hash mutation
+  test was added. The final clean restart passed **200/200 in 441.54 seconds** across
+  `tests/unit/test_pexbench.py` and `tests/contract/test_cursor_hooks.py`; scoped Ruff passed.
+- The binding Strands, AgentCore, and benchmark sections of all three specs were reread. Offline
+  Strands runtime/integration plus AgentCore client/pipeline/runtime/preflight coverage passed
+  **200/200 in 17.34 seconds**. A fresh read-only `deploy/agentcore/preflight.py` report remains
+  `deployable:false`, `invokable:false`: AWS credentials are inactive, current AgentCore CLI and
+  CDK are absent, Docker is stopped, no verified ARM64 image exists, and no runtime ARN is set.
+  No AWS resource, deployment, native PEX process, Cursor session, or paid model call ran.
+- Next causal benchmark step is the execution boundary, not quota-consuming rows. After it is
+  implemented and adversarially verified, re-run the preflight, then obtain complete Cursor raw
+  evidence and one same-session treatment chain before attempting one clean 32-row run. Preserve
+  all aborts and keep scores unpublished unless one result file passes every freeze check.
+- Continue to leave the protected `services/supervisor/src/pex_supervisor/loop.py` tail untouched
+  unless the user says exactly `remove the protected loop tail`; expected SHA-256 is
+  `DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`. Keep native PEX closed
+  unless the user says exactly `run bounded native smoke`.

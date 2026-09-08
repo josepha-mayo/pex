@@ -57,9 +57,8 @@ receipt.
 
 ## Task list (not frozen)
 
-See `benchmarks/manifest.yaml`. The recovery suite deliberately remains the five
-self-contained deterministic tasks that existed when the recovery spec froze
-feature expansion. It covers:
+See `benchmarks/manifest.yaml`. The development smoke combines five
+self-contained deterministic recovery tasks:
 
 - premature stop
 - forgotten acceptance criterion
@@ -67,25 +66,27 @@ feature expansion. It covers:
 - cross-session handoff
 - false completion
 
-Each package has a concrete public prompt, starter repository, public cases,
+and three MIT-licensed, source-pinned QuixBugs reproductions: `wrap`,
+`next_permutation`, and `kth`. Each natural package binds the upstream repository,
+exact commit, source/test paths and SHA-256 values, exact packaged starter and
+reference bytes, plus protected public source and license notices.
+
+Every package has a concrete public prompt, starter repository, public cases,
 private cases, and a private reference implementation used only to validate the
-fixture. All five reference implementations pass both case sets. The repaired
-handoff tasks use identical durable artifacts in every arm; they no longer
-assume an oracle fact known only to one harness.
+fixture. All eight reference implementations pass both case sets, and each of the
+three natural starters fails before repair. The repaired handoff tasks use identical
+durable artifacts in every arm; they do not assume an oracle fact known only to one
+harness.
 
-The recovery spec says not to add benchmark tasks before the live closed loop
-passes. The discarded 006–036 microtask expansion was therefore not a valid
-way to improve the impact claim.
-
-This suite is the deterministic management-stress half only. It is
-repository-shaped, but it is not a frozen set of public reproducible repository
-issues or SWE-bench Verified tasks. Natural-task coverage in §34.6 remains a
-NO-GO gap and the suite must not be described as satisfying that half of the
-primary experiment.
+This meets the source-packaging part of the development-smoke task mix. It does not
+yet meet the execution requirement: candidate code still lacks an enforced OS-level
+filesystem/network boundary, so `natural_task_source_status` stays
+`not_yet_satisfied`. Eight tasks are the §34.6 development-smoke floor, not the
+30-plus final benchmark target.
 
 ## Predeclared execution and reporting protocol
 
-`manifest.yaml` now fixes a deterministic 20-row schedule. It SHA-256 sorts 10
+`manifest.yaml` now fixes a deterministic 32-row schedule. It SHA-256 sorts 16
 task-within-harness paired blocks and independently randomizes baseline versus
 treatment order inside every block. Every row binds the schedule and protocol
 hashes. The natural-completion cap is 600 seconds across worker plus PEX, with
@@ -130,7 +131,7 @@ hook receipts with explicitly partial coverage rather than a complete vendor tra
 the global §34.12 raw-harness-log preflight field remains `not_yet_satisfied` and presentation
 freeze still fails closed.
 
-`frozen: false` until one result file contains all 20 live rows (5 tasks × 4
+`frozen: false` until one result file contains all 32 live rows (8 tasks × 4
 arms) with an intact record chain, exact suite/controller fingerprints, paired
 models/settings, fresh-workspace receipts, and real treatment audits. Coverage
 may not be merged across files. If more than one coherent run exists, the run
@@ -141,7 +142,7 @@ must be selected explicitly.
 **No valid presentation scores.** A prior Codex 1/5 vs Codex+PEX 4/5 run stuffed
 treatment-only instructions and a handoff oracle into the worker prompt. Those
 jsonl files are quarantined and must not be cited. Other local development rows
-predate the current five-task declarative fingerprint and hash-chain contract, so they cannot
+predate the current eight-task declarative fingerprint and hash-chain contract, so they cannot
 freeze this manifest either; they remain preserved as raw development evidence.
 
 Synthetic smoke remains `not_a_presentation_arm`.
@@ -150,8 +151,7 @@ Synthetic smoke remains `not_a_presentation_arm`.
 
 - Implement synchronous, evidenced same-session Cursor continuation without
   opening a second Cursor window.
-- After the live recovery loop passes, replace or supplement the recovery
-  fixtures with a predeclared natural public-repository task set and validate its setup.
+- Enforce an OS-level hidden-data/no-network worker boundary for the pinned natural tasks.
 - Obtain exact worker-token/cost/raw-log telemetry and active-human-time capture
   where the harness surface supports it.
 - Execute isolated paired arms with identical `TASK.md` and seed fingerprints.

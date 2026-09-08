@@ -54,6 +54,12 @@ RECOVERY_TASK_IDS = (
     "pexbench_004_false_claim",
     "pexbench_005_handoff",
 )
+NATURAL_TASK_IDS = (
+    "pexbench_006_quixbugs_wrap",
+    "pexbench_007_quixbugs_next_permutation",
+    "pexbench_008_quixbugs_kth",
+)
+ALL_TASK_IDS = (*RECOVERY_TASK_IDS, *NATURAL_TASK_IDS)
 _MAX_COUNT = 10**12
 _MAX_CONTROLLER_FILE_BYTES = 4 * 1024 * 1024
 _MAX_MANIFEST_BYTES = 512_000
@@ -303,8 +309,8 @@ def experiment_plan(manifest: dict | None = None) -> list[dict[str, object]]:
     protocol = protocol_config(source)
     seed = str(protocol["randomization"]["seed"])
     tasks = [str(item.get("id") or "") for item in source.get("tasks") or []]
-    if tuple(tasks) != RECOVERY_TASK_IDS:
-        raise ValueError("benchmark plan requires exactly the five recovery tasks in order")
+    if tuple(tasks) != ALL_TASK_IDS:
+        raise ValueError("benchmark plan requires the canonical eight-task smoke suite")
     if tuple(source.get("arms") or ()) != PRESENTATION_ARMS:
         raise ValueError("benchmark plan requires the canonical four presentation arms")
     blocks: list[tuple[str, str, str]] = []

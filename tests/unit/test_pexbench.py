@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 from collections import Counter
+from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -1556,7 +1557,7 @@ def test_handoff_scores_final_workspace_not_stuffed_prompt(tmp_path):
     assert passed["success"] is True
 
 
-def test_management_suite_keeps_the_five_recovery_spec_tasks_only():
+def test_development_smoke_combines_recovery_and_pinned_natural_tasks():
     ev = _evaluator()
     ids = ev.task_ids()
     assert ids == [
@@ -1565,15 +1566,83 @@ def test_management_suite_keeps_the_five_recovery_spec_tasks_only():
         "pexbench_003_permission_spam",
         "pexbench_004_false_claim",
         "pexbench_005_handoff",
+        "pexbench_006_quixbugs_wrap",
+        "pexbench_007_quixbugs_next_permutation",
+        "pexbench_008_quixbugs_kth",
     ]
     assert ev.validate_suite() == []
-    counts = Counter(ev.stressor_type(task) for task in ids)
+    counts = Counter(ev.stressor_type(task) for task in ev.RECOVERY_TASK_IDS)
     manifest = _runner().load_manifest()
     assert set(counts) == set(manifest["suite"]["required_stressors"])
     assert all(count == 1 for count in counts.values())
-    assert manifest["suite"]["task_count"] == 5
+    assert manifest["suite"]["task_count"] == 8
     assert manifest["suite"]["natural_task_source_status"] == "not_yet_satisfied"
+    assert manifest["suite"]["natural_task_package_status"] == "satisfied"
     assert manifest["suite"]["task_execution_boundary"] == "controlled_fixtures_only"
+
+
+def test_natural_task_provenance_and_packaged_code_are_fail_closed(monkeypatch):
+    ev = _evaluator()
+    original = ev.task_spec
+    task = ev.NATURAL_TASK_IDS[0]
+
+    def validate_with(mutator):
+        changed = deepcopy(original(task))
+        mutator(changed)
+        monkeypatch.setattr(
+            ev,
+            "task_spec",
+            lambda task_id: changed if task_id == task else original(task_id),
+        )
+        return ev.validate_suite()
+
+    errors = validate_with(lambda spec: spec["source"].__setitem__("commit", "0" * 40))
+    assert f"{task} public repository identity is invalid" in errors
+
+    errors = validate_with(
+        lambda spec: spec["source"].__setitem__("packaged_starter_sha256", "0" * 64)
+    )
+    assert f"{task} packaged starter does not match provenance" in errors
+
+    errors = validate_with(
+        lambda spec: spec["source"].__setitem__("buggy_sha256", "0" * 64)
+    )
+    assert f"{task} source paths or hashes differ from the source lock" in errors
+
+    errors = validate_with(lambda spec: spec["seed_files"].pop("UPSTREAM_SOURCE.md"))
+    assert f"{task} public source notice is incomplete" in errors
+
+
+def test_natural_tasks_seed_only_public_material_and_starters_fail(tmp_path):
+    ev = _evaluator()
+    for task in ev.NATURAL_TASK_IDS:
+        workspace = tmp_path / task
+        seed = ev.seed_workspace(task, workspace)
+        spec = ev.task_spec(task)
+        expected_files = {
+            "TASK.md",
+            "test_public.py",
+            f"{spec['module']}.py",
+            "UPSTREAM_SOURCE.md",
+            "UPSTREAM_LICENSE.txt",
+        }
+        assert {path.name for path in workspace.iterdir()} == expected_files
+        assert "metadata.yaml" not in {path.name for path in workspace.iterdir()}
+        assert (workspace / f"{spec['module']}.py").read_text(encoding="utf-8") != str(
+            spec["solution"]
+        ).rstrip() + "\n"
+        assert set(seed["protected_sha256"]) == {
+            "test_public.py",
+            "UPSTREAM_SOURCE.md",
+            "UPSTREAM_LICENSE.txt",
+        }
+        failed = ev.evaluate(task, workspace, seed)
+        assert failed["success"] is False, f"{task} starter unexpectedly passed"
+
+        extra = ev.complete_synthetic(task, workspace)
+        extra.update(seed)
+        passed = ev.evaluate(task, workspace, extra)
+        assert passed["success"], f"{task}: {passed['reasons']}\n{passed['pytest']}"
 
 
 def test_experiment_plan_is_predeclared_balanced_and_deterministic():
@@ -1581,9 +1650,9 @@ def test_experiment_plan_is_predeclared_balanced_and_deterministic():
     first = runner.experiment_plan()
     second = runner.experiment_plan()
     assert first == second
-    assert len(first) == 5 * 4
-    assert [row["schedule_index"] for row in first] == list(range(1, 21))
-    assert len({(row["arm"], row["task"]) for row in first}) == 20
+    assert len(first) == 8 * 4
+    assert [row["schedule_index"] for row in first] == list(range(1, 33))
+    assert len({(row["arm"], row["task"]) for row in first}) == 32
     for index in range(0, len(first), 2):
         left, right = first[index : index + 2]
         assert left["task"] == right["task"]
@@ -2498,7 +2567,7 @@ def test_freeze_accepts_one_coherent_fingerprinted_run(tmp_path, monkeypatch):
         assert arm["human_interventions_per_task"] == 0.0
         assert arm["human_active_seconds_total"] is None
         assert arm["human_active_seconds_observed_total"] == 0
-        assert arm["human_active_seconds_missing"] == 5
+        assert arm["human_active_seconds_missing"] == 8
     for comparison in analyzed["metrics"]["within_harness"]:
         assert comparison["median_human_active_seconds_delta"] is None
         assert comparison["paired_human_active_seconds_delta_bootstrap_95"] is None

@@ -62,6 +62,40 @@ RECOVERY_TASK_IDS = (
     "pexbench_004_false_claim",
     "pexbench_005_handoff",
 )
+NATURAL_TASK_IDS = (
+    "pexbench_006_quixbugs_wrap",
+    "pexbench_007_quixbugs_next_permutation",
+    "pexbench_008_quixbugs_kth",
+)
+ALL_TASK_IDS = (*RECOVERY_TASK_IDS, *NATURAL_TASK_IDS)
+QUIXBUGS_REPOSITORY = "https://github.com/jkoppel/QuixBugs"
+QUIXBUGS_COMMIT = "4257f44b0ff1181dedaedee6a447e133219fcebf"
+QUIXBUGS_SOURCE_LOCK = {
+    "pexbench_006_quixbugs_wrap": {
+        "buggy_path": "python_programs/wrap.py",
+        "corrected_path": "correct_python_programs/wrap.py",
+        "tests_path": "json_testcases/wrap.json",
+        "buggy_sha256": "eb76433536ae58fa2955fbe053a8f9e45e7deb7d3894048acb7cdab13f1f5282",
+        "corrected_sha256": "682bede441b4e5cd04e44677a0c05dfdb69c8c0642ed0ebf1089fa408fa01a8c",
+        "tests_sha256": "2e4c9246883f6f11d84a976647a9f167fc6892861aacb00598615fd1489b752d",
+    },
+    "pexbench_007_quixbugs_next_permutation": {
+        "buggy_path": "python_programs/next_permutation.py",
+        "corrected_path": "correct_python_programs/next_permutation.py",
+        "tests_path": "json_testcases/next_permutation.json",
+        "buggy_sha256": "0411c86a51f9898b02ecd778c83d973124d769dda7d8c3831f803871eef4a22f",
+        "corrected_sha256": "e2605b6e023c7a551fbde8fda13f9f00fd304385d07dc1daa0b32d056a4ea69d",
+        "tests_sha256": "ae9beb68d4b00b93100c04b8e5200c596bb93f44f38e8bac051f6b73279a3ea3",
+    },
+    "pexbench_008_quixbugs_kth": {
+        "buggy_path": "python_programs/kth.py",
+        "corrected_path": "correct_python_programs/kth.py",
+        "tests_path": "json_testcases/kth.json",
+        "buggy_sha256": "148b8e6ffe80fe69d8602d45d91cbb44c82934c62c38ef1bae5cf0c30cfff861",
+        "corrected_sha256": "a445ccf87576703505efbee9c3a020826cb54c24a20dfa87c99ba9c329a07c75",
+        "tests_sha256": "e6a2cf79882b1ed93885e5601a117c34b1bf9cdbb9017c427959f4729695683e",
+    },
+}
 _TASK_ID = re.compile(r"^pexbench_[0-9]{3}_[a-z0-9_]+$")
 _SUBPROCESS_ENV_KEYS = {
     "CI",
@@ -211,7 +245,7 @@ def validate_suite(ids: list[str] | None = None) -> list[str]:
     ]
     errors: list[str] = []
     suite = manifest.get("suite") or {}
-    minimum = int(suite.get("minimum_tasks") or 5)
+    minimum = int(suite.get("minimum_tasks") or 8)
     if len(ids) < minimum:
         errors.append(f"suite has {len(ids)} tasks; minimum is {minimum}")
     declared_count = suite.get("task_count")
@@ -219,8 +253,10 @@ def validate_suite(ids: list[str] | None = None) -> list[str]:
         errors.append("suite task_count does not match the declared task list")
     if len(set(ids)) != len(ids):
         errors.append("task ids are not unique")
-    if tuple(ids) != RECOVERY_TASK_IDS:
-        errors.append("suite must contain exactly the five recovery-spec tasks in order")
+    if tuple(ids) != ALL_TASK_IDS:
+        errors.append(
+            "suite must contain the five recovery tasks followed by three pinned natural tasks"
+        )
     actual_task_dirs = {
         path.name
         for path in TASKS.iterdir()
@@ -249,7 +285,87 @@ def validate_suite(ids: list[str] | None = None) -> list[str]:
             errors.append(str(exc))
             continue
         stressor = str(spec.get("type") or "")
-        type_counts[stressor] += 1
+        if task_id in RECOVERY_TASK_IDS:
+            type_counts[stressor] += 1
+        else:
+            source = spec.get("source")
+            required_source_fields = {
+                "repository",
+                "commit",
+                "license",
+                "buggy_path",
+                "corrected_path",
+                "tests_path",
+                "buggy_sha256",
+                "corrected_sha256",
+                "tests_sha256",
+                "packaged_starter_sha256",
+                "packaged_solution_sha256",
+            }
+            if (
+                spec.get("source_kind") != "public_reproduction"
+                or stressor != "natural_bug"
+                or not isinstance(source, dict)
+                or set(source) != required_source_fields
+            ):
+                errors.append(f"{task_id} lacks exact public-source provenance")
+            else:
+                if (
+                    source.get("repository") != QUIXBUGS_REPOSITORY
+                    or source.get("commit") != QUIXBUGS_COMMIT
+                    or source.get("license") != "MIT"
+                ):
+                    errors.append(f"{task_id} public repository identity is invalid")
+                for field in ("buggy_path", "corrected_path", "tests_path"):
+                    value = source.get(field)
+                    if (
+                        not isinstance(value, str)
+                        or not value
+                        or "\\" in value
+                        or value.startswith("/")
+                        or ".." in value.split("/")
+                    ):
+                        errors.append(f"{task_id} source path {field} is invalid")
+                for field in (
+                    "buggy_sha256",
+                    "corrected_sha256",
+                    "tests_sha256",
+                    "packaged_starter_sha256",
+                    "packaged_solution_sha256",
+                ):
+                    if not re.fullmatch(r"[0-9a-f]{64}", str(source.get(field) or "")):
+                        errors.append(f"{task_id} source hash {field} is invalid")
+                expected_source = QUIXBUGS_SOURCE_LOCK.get(task_id)
+                if expected_source is None or any(
+                    source.get(field) != expected
+                    for field, expected in expected_source.items()
+                ):
+                    errors.append(f"{task_id} source paths or hashes differ from the source lock")
+                starter_hash = _sha256_text(str(spec.get("starter") or "").rstrip() + "\n")
+                solution_hash = _sha256_text(str(spec.get("solution") or "").rstrip() + "\n")
+                if source.get("packaged_starter_sha256") != starter_hash:
+                    errors.append(f"{task_id} packaged starter does not match provenance")
+                if source.get("packaged_solution_sha256") != solution_hash:
+                    errors.append(f"{task_id} packaged solution does not match provenance")
+                seed_files = spec.get("seed_files")
+                source_notice = (
+                    seed_files.get("UPSTREAM_SOURCE.md")
+                    if isinstance(seed_files, dict)
+                    else None
+                )
+                expected_notice_values = (
+                    QUIXBUGS_REPOSITORY,
+                    QUIXBUGS_COMMIT,
+                    str(source.get("buggy_path") or ""),
+                    str(source.get("corrected_path") or ""),
+                    str(source.get("tests_path") or ""),
+                )
+                if not isinstance(source_notice, str) or any(
+                    value not in source_notice for value in expected_notice_values
+                ):
+                    errors.append(f"{task_id} public source notice is incomplete")
+                if "UPSTREAM_SOURCE.md" not in (spec.get("protected_files") or []):
+                    errors.append(f"{task_id} public source notice is not protected")
         if stressor != manifest_types.get(task_id):
             errors.append(f"{task_id} manifest/metadata stressor mismatch")
         if spec.get("deterministic") is not True:

@@ -2162,3 +2162,24 @@ documented default `~/.pex/pex.sqlite` path while preserving authenticated loopb
 and existing default user state. The incident environment was not captured, so this removes a
 real startup hazard without claiming it was the sole freeze cause. Startup passed 15/15, Rust
 18/18, desktop 258/258, TypeScript and formatting passed; native/rebuilt proof remains open.
+
+## Eight-task benchmark development smoke
+
+The predeclared benchmark smoke now contains eight tasks and 32 four-arm rows: five PEX
+management stressors plus three MIT-licensed QuixBugs repairs (`wrap`, `next_permutation`, and
+`kth`) pinned to upstream commit `4257f44b0ff1181dedaedee6a447e133219fcebf`. Natural-task
+metadata binds upstream paths and hashes, exact packaged starter/reference bytes, and protected
+public source/license notices. Tampered commits, packaged hashes, or source notices fail suite
+validation; each natural starter fails and each reference solution passes public plus hidden
+evaluation. After the final controller-owned source-lock hardening, the clean
+benchmark/Cursor-hook gate passed 200/200 in 441.54 seconds.
+
+This is development-harness evidence, not a score. `frozen` remains false and natural task
+execution remains NO-GO until an OS-enforced hidden-data/no-network boundary exists. Cursor raw
+capture and one coherent live four-arm run also remain open.
+
+Strands and AgentCore remain implemented rather than decorative: the offline runtime,
+supervisor-integration, AgentCore client/pipeline/runtime, and deployment-preflight suite passed
+200/200 in 17.34 seconds. A fresh read-only deployment preflight remains NO-GO because AWS is
+not authenticated, the current AgentCore CLI and CDK are absent, Docker is stopped, no verified
+ARM64 image exists, and no runtime ARN is configured. No AWS resource or paid inference ran.
