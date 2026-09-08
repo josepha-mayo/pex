@@ -77,6 +77,89 @@ def test_snapshot_prunes_dependency_trees_before_inventory_cap(tmp_path: Path):
     assert all(not path.startswith("node_modules/") for path in seen["files"])
 
 
+def test_snapshot_bounds_directory_entries_before_building_an_unbounded_list(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    import pex_supervisor.workspace as workspace_module
+
+    for index in range(4):
+        (tmp_path / f"file-{index}.txt").write_text("visible\n", encoding="utf-8")
+    monkeypatch.setattr(workspace_module, "MAX_INVENTORY_ENTRIES", 3)
+
+    seen = snapshot(tmp_path, run_pytest=False)
+
+    assert seen["files_truncated"] is True
+    assert seen["inventory_reason"] == "entry_bound"
+
+
+def test_snapshot_marks_directory_mutation_incomplete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    import pex_supervisor.workspace as workspace_module
+
+    (tmp_path / "first.txt").write_text("visible\n", encoding="utf-8")
+    real_scandir = workspace_module.os.scandir
+
+    class MutatingScan:
+        def __init__(self, path):
+            self._scan = real_scandir(path)
+            self._iterator = None
+            self._mutated = False
+
+        def __enter__(self):
+            self._iterator = self._scan.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self._scan.__exit__(*args)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            if not self._mutated:
+                self._mutated = True
+                (tmp_path / "arrived-during-scan.txt").write_text("late\n", encoding="utf-8")
+            return next(self._iterator)
+
+    monkeypatch.setattr(workspace_module.os, "scandir", MutatingScan)
+
+    seen = snapshot(tmp_path, run_pytest=False)
+
+    assert seen["files_truncated"] is True
+    assert seen["inventory_reason"] == "directory_changed_during_scan"
+
+
+def test_snapshot_binds_file_metadata_to_the_scanned_entry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    import pex_supervisor.workspace as workspace_module
+
+    target = tmp_path / "first.txt"
+    target.write_text("before\n", encoding="utf-8")
+    real_stat = workspace_module.Path.stat
+    target_stats = 0
+
+    def mutating_stat(path, *args, **kwargs):
+        nonlocal target_stats
+        observed = real_stat(path, *args, **kwargs)
+        if path == target:
+            target_stats += 1
+        # The first target stat belongs to path resolution; mutate only after
+        # the explicit scan-time identity capture so the later fence sees it.
+        if path == target and target_stats == 2:
+            target.write_text("replacement is longer\n", encoding="utf-8")
+        return observed
+
+    monkeypatch.setattr(workspace_module.Path, "stat", mutating_stat)
+
+    seen = snapshot(tmp_path, run_pytest=False)
+
+    assert seen["files"] == []
+    assert seen["files_truncated"] is True
+    assert seen["inventory_reason"] == "file_changed_during_scan"
+
+
 def test_git_snapshot_does_not_walk_parent_repo(tmp_path: Path):
     nested = tmp_path / "worker"
     nested.mkdir()

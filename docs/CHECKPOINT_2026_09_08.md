@@ -5,6 +5,20 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: bounded, mutation-aware supervisor inventory
+
+The supervisor evidence snapshot still used `os.walk`; one hostile directory could force
+an unbounded name list before the existing 400-file cap ran. Inventory is now incremental,
+with 4,000-entry, 400-file and two-second cooperative limits. It refuses symlink/junction
+traversal, checks directory identity/mtime across each scan, and binds each later file stat
+to its scan-time identity, size and mtime. Any cap, mutation or metadata failure marks the
+inventory incomplete through `files_truncated` and a bounded `inventory_reason` rather
+than presenting partial evidence as complete. Workspace/evidence/verification coverage
+passes **131/131** with five platform skips and Ruff passes.
+
+This cannot interrupt a single kernel/filesystem call that never returns, and repeated-
+event aggregate work remains under audit. No native app, worker or large suite ran.
+
 ## Latest offline slice: event-driven ACP observation
 
 Kimi, Hermes and OMP share an ACP pump that previously woke every 50ms even when its

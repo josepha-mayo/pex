@@ -9,6 +9,7 @@ import signal
 import stat
 import subprocess
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from math import isfinite
@@ -56,6 +57,8 @@ def _terminate_process_tree(process: subprocess.Popen[bytes]) -> None:
 
 
 MAX_INVENTORY_FILES = 400
+MAX_INVENTORY_ENTRIES = 4_000
+MAX_INVENTORY_SECONDS = 2.0
 MAX_VISIBLE_READ_BYTES = 1_000_000
 MAX_ARTIFACT_TAIL_BYTES = 64_000
 MAX_ARTIFACT_COUNT_BYTES = 4_000_000
@@ -124,52 +127,115 @@ def _bounded_limit(value: object, maximum: int) -> int:
     return min(maximum, max(0, parsed))
 
 
+def _workspace_inventory(
+    root: Path,
+) -> tuple[list[str], list[dict[str, Any]], bool, str | None]:
+    """Build a deterministic, cooperative, mutation-aware workspace inventory."""
+
+    files: list[str] = []
+    file_meta: list[dict[str, Any]] = []
+    pending = [root]
+    entries_seen = 0
+    deadline = time.monotonic() + MAX_INVENTORY_SECONDS
+    incomplete_reason: str | None = None
+
+    while pending and len(files) < MAX_INVENTORY_FILES:
+        if time.monotonic() >= deadline:
+            return files, file_meta, True, "time_bound"
+        directory = pending.pop()
+        try:
+            before = directory.stat(follow_symlinks=False)
+            if (
+                not stat.S_ISDIR(before.st_mode)
+                or directory.resolve(strict=True) != directory
+                or not directory.is_relative_to(root)
+            ):
+                return files, file_meta, True, "directory_identity_changed"
+            directories: list[Path] = []
+            filenames: list[tuple[str, os.stat_result]] = []
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    if time.monotonic() >= deadline:
+                        return files, file_meta, True, "time_bound"
+                    entries_seen += 1
+                    if entries_seen > MAX_INVENTORY_ENTRIES:
+                        return files, file_meta, True, "entry_bound"
+                    path = directory / entry.name
+                    is_junction = getattr(entry, "is_junction", lambda: False)()
+                    if entry.is_symlink() or is_junction:
+                        continue
+                    if entry.is_dir(follow_symlinks=False):
+                        if (
+                            entry.name not in PRUNED_DIRECTORIES
+                            and not _hidden(path, root)
+                            and _inside_workspace(path, root)
+                        ):
+                            directories.append(path)
+                    elif (
+                        entry.is_file(follow_symlinks=False)
+                        and not entry.name.startswith(".")
+                        and not _hidden(path, root)
+                        and _inside_workspace(path, root)
+                    ):
+                        # Windows DirEntry.stat can omit link/identity fields;
+                        # capture through the concrete path for the later fence.
+                        expected_file = path.stat(follow_symlinks=False)
+                        if not stat.S_ISREG(expected_file.st_mode) or expected_file.st_nlink != 1:
+                            incomplete_reason = incomplete_reason or "file_identity_unavailable"
+                            continue
+                        filenames.append((entry.name, expected_file))
+            after = directory.stat(follow_symlinks=False)
+            if (
+                not os.path.samestat(before, after)
+                or before.st_mtime_ns != after.st_mtime_ns
+                or directory.resolve(strict=True) != directory
+            ):
+                return files, file_meta, True, "directory_changed_during_scan"
+        except OSError:
+            return files, file_meta, True, "directory_unavailable"
+
+        pending.extend(sorted(directories, key=lambda item: item.name.casefold(), reverse=True))
+        for filename, expected_file in sorted(filenames, key=lambda item: item[0].casefold()):
+            if time.monotonic() >= deadline:
+                return files, file_meta, True, "time_bound"
+            path = directory / filename
+            if len(files) >= MAX_INVENTORY_FILES:
+                return files, file_meta, True, "file_bound"
+            rel = str(path.relative_to(root)).replace("\\", "/")
+            try:
+                observed = path.stat(follow_symlinks=False)
+                if (
+                    not stat.S_ISREG(observed.st_mode)
+                    or observed.st_nlink != 1
+                    or not os.path.samestat(expected_file, observed)
+                    or expected_file.st_size != observed.st_size
+                    or expected_file.st_mtime_ns != observed.st_mtime_ns
+                    or path.resolve(strict=True) != path
+                ):
+                    return files, file_meta, True, "file_changed_during_scan"
+            except OSError:
+                return files, file_meta, True, "file_metadata_unavailable"
+            files.append(rel)
+            file_meta.append(
+                {"path": rel, "bytes": observed.st_size, "mtime": int(observed.st_mtime)}
+            )
+
+    if pending:
+        return files, file_meta, True, "file_bound"
+    return files, file_meta, incomplete_reason is not None, incomplete_reason
+
+
 def snapshot(workspace: str | Path, *, run_pytest: bool = False) -> dict[str, Any]:
     root = Path(workspace).resolve()
     if not root.is_dir():
         return {"workspace": str(root), "files": [], "pytest": None, "error": "cwd missing"}
-    files: list[str] = []
-    file_meta: list[dict[str, Any]] = []
-    files_truncated = False
-    inventory_full = False
-    for directory, dirnames, filenames in os.walk(root, followlinks=False):
-        dirnames[:] = sorted(
-            (
-                name
-                for name in dirnames
-                if name not in PRUNED_DIRECTORIES
-                and not _hidden(Path(directory) / name, root)
-            ),
-            key=str.casefold,
-        )
-        for filename in sorted(filenames, key=str.casefold):
-            path = Path(directory) / filename
-            if (
-                filename.startswith(".")
-                or _hidden(path, root)
-                or not _inside_workspace(path, root)
-            ):
-                continue
-            if len(files) >= MAX_INVENTORY_FILES:
-                files_truncated = True
-                inventory_full = True
-                break
-            rel = str(path.relative_to(root)).replace("\\", "/")
-            files.append(rel)
-            try:
-                stat = path.stat()
-                file_meta.append(
-                    {"path": rel, "bytes": stat.st_size, "mtime": int(stat.st_mtime)}
-                )
-            except OSError:
-                file_meta.append({"path": rel})
-        if inventory_full:
-            break
+    files, file_meta, files_truncated, inventory_reason = _workspace_inventory(root)
     result: dict[str, Any] = {
         "workspace": str(root),
         "files": files,
         "file_meta": file_meta,
         "files_truncated": files_truncated,
+        "inventory_reason": inventory_reason,
         "pytest": None,
         "git": git_snapshot(root),
         "artifacts": artifact_tails(root),

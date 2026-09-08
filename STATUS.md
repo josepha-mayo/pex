@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Supervisor workspace inventory is now incremental and mutation-aware rather than using
+unbounded `os.walk` name collection. Entry/file/cooperative-time caps and exact directory/
+file fences make partial evidence explicit. Relevant tests pass 131/131 with five platform
+skips and Ruff clean; blocked OS calls and aggregate repeated-event work remain open.
+
 Kimi/Hermes/OMP ACP observation now waits for stdio or local prompt/permission activity
 instead of scanning every 50ms. Focused gates pass 74/74 and 83/83 with Ruff clean. No
 ACP/native process ran; the freeze gate remains open.

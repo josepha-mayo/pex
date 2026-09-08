@@ -2,6 +2,10 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Supervisor workspace inventory is incremental, entry/file/time bounded and detects
+  directory or scan-to-stat file mutation; 131 tests pass with five platform skips and
+  Ruff. A blocked individual OS call cannot be preempted, and repeated-event aggregate
+  work remains under audit.
 - Kimi/Hermes/OMP ACP observation no longer scans every 50ms; stdio and local prompt/
   permission activity now wake the pump. Focused gates pass 74/74 and 83/83 with Ruff.
   No live ACP/native resource evidence exists yet.

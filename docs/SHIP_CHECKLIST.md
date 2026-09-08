@@ -128,6 +128,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   observer coverage passes 33/33 and Ruff; producer disk retention remains open.
 - [ ] Resolve remaining observation lifetime limits: non-atomic directory enumeration,
   blocked OS calls and aggregate repeated-event work. Do not claim a hard deadline.
+  Incremental supervisor inventory now has entry/file/time caps plus directory and exact
+  file-identity mutation fences (131 passed/5 skipped); blocked OS calls and aggregate
+  repeated-event work keep this parent gate open.
 - [ ] Confirm a bounded native resource capture before reopening the app or large gates.
 
 - [x] Build and verify exact de83153 MSI/NSIS inventories.

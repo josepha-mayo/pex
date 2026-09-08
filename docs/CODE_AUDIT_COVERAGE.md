@@ -2,6 +2,12 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent replaced supervisor `os.walk` inventory with incremental
+scanning capped at 4,000 entries, 400 files and two cooperative seconds. Directory changes
+and scan-to-stat file swaps now make evidence explicitly incomplete; links/junctions are
+not traversed. Relevant coverage passes 131/131 with five platform skips and Ruff clean.
+Blocked OS calls and aggregate repeated-event work remain open.
+
 Changed-path addendum: parent traced the shared ACP pump's 50ms scan across Kimi, Hermes
 and OMP. Stdio event/EOF/close and adapter-local prompt/permission queues now wake a
 combined first-completer wait; the losing task is cancelled and joined. Two focused gates

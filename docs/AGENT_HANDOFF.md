@@ -2,6 +2,14 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: supervisor workspace inventory no longer delegates to `os.walk`, which can build
+an unbounded directory-name list before PEX regains control. It now scans incrementally
+with 4,000-entry, 400-file and two-second cooperative caps, prunes links/junctions, checks
+directory mutation, and binds later file metadata to the exact scan-time identity/size/
+mtime. Incomplete scans are labeled with `files_truncated` plus `inventory_reason`.
+Workspace/evidence/verification coverage passes 131/131 with five platform skips and
+Ruff clean. Individual blocked OS calls and aggregate repeated-event work remain open.
+
 Latest: attached ACP adapters (Kimi, Hermes and OMP) no longer rescan a quiet transport
 every 50ms. The stdio reader signals retained events and EOF/close; the adapter races
 that signal against its local permission and prompt-result queues, cancelling the losing
