@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Pet snapshots now batch displayed-worker CAS receipts into one bounded SQLite query
+instead of issuing an N+1 control-state read on every refresh; duplicate IDs collapse
+and the single-reader cursor now closes explicitly. Two negatives and the combined
+pet/discovery/lifecycle gate pass 45/45 with Ruff clean. PEX stayed closed; native
+resource impact remains unmeasured.
+
 Native bootstrap observation now stops with a hidden page and backs off from 750ms
 to five seconds once ready; startup and failed recovery retain 750ms, and showing the
 page performs an immediate read. The native identity monitor still owns liveness.

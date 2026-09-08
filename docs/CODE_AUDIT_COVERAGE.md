@@ -2,6 +2,15 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: `tests/unit/test_pet_control_batch.py`. Parent reviewed AppState's
+complete `live_pet` path, Pipeline pet projection/promptable collapse, the Store
+single-read receipt, existing JSON-list query pattern and new bounded batch. Two
+negatives first failed on the missing batch API and legacy per-session call. The
+repaired route uses one statement for at most 1,000 unique exact IDs and preserves
+revision/control_revision; both batch and singular cursors close. Final related
+pet/control/discovery/lifecycle gate 45/45 plus Ruff clean. This is not whole Store,
+projection, native-resource or freeze-cause approval.
+
 Changed-path addendum: parent reviewed bootstrap-status ownership across App,
 `startupRecovery.ts`, the native status command/identity monitor and visibility store.
 Main/settings pages now stop bootstrap IPC when hidden, poll startup/failure at 750ms,

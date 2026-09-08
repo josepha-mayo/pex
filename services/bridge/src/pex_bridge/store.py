@@ -12154,7 +12154,32 @@ class Store:
             (session_id,),
         )
         row = await cursor.fetchone()
+        await cursor.close()
         return _session_control_receipt(row) if row is not None else None
+
+    async def get_session_control_states(
+        self,
+        session_ids: list[str],
+    ) -> dict[str, dict[str, Any]]:
+        """Read a bounded set of canonical session CAS receipts in one query."""
+
+        if len(session_ids) > MAX_LIST_QUERY_LIMIT:
+            raise ValueError("too many sessions for control-state snapshot")
+        unique_ids = list(dict.fromkeys(session_ids))
+        for session_id in unique_ids:
+            _validate_store_id(session_id, label="session control id")
+        if not unique_ids:
+            return {}
+        cursor = await self.db.execute(
+            "SELECT * FROM sessions WHERE id IN (SELECT value FROM json_each(?))",
+            (json.dumps(unique_ids),),
+        )
+        rows = await cursor.fetchall()
+        await cursor.close()
+        return {
+            str(row["id"]): _session_control_receipt(row)
+            for row in rows
+        }
 
     async def get_autonomous_correction_grant_status(
         self, session_id: str

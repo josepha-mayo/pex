@@ -5,7 +5,35 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: bootstrap observer cadence and visibility
+## Latest offline slice: pet control-state batch projection
+
+`AppState.live_pet()` first built a bounded canonical pet projection, then looped over
+every displayed worker and issued an additional `sessions` query for its revision and
+control revision. Promptable collapse retains all live groups plus recent idle groups,
+and the route's hard session bound is 1,000, so repeated visible pet refreshes had an
+avoidable N+1 SQLite path even when the UI needed one coherent projection.
+
+Store now exposes a bounded batch control-state read. It validates at most 1,000 input
+IDs, deduplicates them without widening the requested set, uses one `json_each`-bound
+statement, closes its cursor and returns the existing `_session_control_receipt` keyed
+by exact session ID. The original singular reader also closes its cursor after fetch.
+`live_pet` filters canonical-shaped session rows once, requests the batch once, then
+copies only `revision` and `control_revision` from each exact receipt. Missing rows
+remain omitted exactly as before; no mutation or inferred authority is introduced.
+
+Both focused negatives failed before repair: Store had no batch API, and live pet
+attempted the absent singular method on a batch-only fake. Final combined batch,
+pet-snapshot, desktop-discovery and dormant-pump selection passes **45/45** in 15.32s.
+Ruff and scoped whitespace checks pass.
+
+Parent review covered the complete live-pet wrapper, Pipeline projection and
+promptable collapse, receipt construction, JSON-list query precedent, bounds,
+deduplication and cursor lifetime. This removes repeated SQLite calls but does not
+profile native resources, approve the whole Store/AppState/projection, identify the
+whole-PC freeze cause or clear stability. PEX stayed closed; no model, worker, browser,
+cloud, build or broad suite ran.
+
+## Earlier offline slice: bootstrap observer cadence and visibility
 
 The main/settings webview observed the native bridge bootstrap command every 750ms
 for its entire lifetime. That cadence was useful while a sidecar was starting or a

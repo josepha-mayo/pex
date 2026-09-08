@@ -938,10 +938,16 @@ class AppState:
         except TimeoutError:
             logger.warning("Desktop session refresh timed out; returning durable state")
         snapshot = await run_in_threadpool(self.decorate_pet, await self.pipeline.pet_snapshot())
-        for session in snapshot.get("sessions") or []:
-            if not isinstance(session, dict) or not isinstance(session.get("id"), str):
-                continue
-            control = await self.store.get_session_control_state(session["id"])
+        sessions = [
+            session
+            for session in snapshot.get("sessions") or []
+            if isinstance(session, dict) and isinstance(session.get("id"), str)
+        ]
+        controls = await self.store.get_session_control_states(
+            [session["id"] for session in sessions]
+        )
+        for session in sessions:
+            control = controls.get(session["id"])
             if control is not None:
                 session["revision"] = control["revision"]
                 session["control_revision"] = control["control_revision"]

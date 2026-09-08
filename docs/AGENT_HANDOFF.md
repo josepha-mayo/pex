@@ -2,6 +2,15 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: `/v1/pet` no longer performs one session-control SQL query for every displayed
+worker after building its canonical projection. A bounded Store batch reads up to
+1,000 unique IDs in one statement, returns the same canonical CAS receipts, and the
+legacy singular reader now closes its cursor. Live pet decoration applies the batch
+by exact session ID. Both negatives failed before repair; pet/control/discovery/lifecycle
+selection passes 45/45 and Ruff is clean. This removes repeated visible-idle SQLite
+work but is not native profiling, whole Store/AppState approval or freeze diagnosis.
+PEX remains closed.
+
 Latest: the main/settings webview no longer polls native bootstrap state every 750ms
 forever. Startup/failure still use 750ms for responsive recovery; verified ready state
 uses five seconds, and hidden pages stop the observer entirely. Visibility return is
