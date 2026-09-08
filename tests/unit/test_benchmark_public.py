@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -165,6 +166,14 @@ async def test_authenticated_bridge_surface_exposes_only_public_summary(tmp_path
         "settings",
         Settings.for_test(require_auth=False, home=tmp_path),
     )
+    request_thread = threading.get_ident()
+    summary_threads: list[int] = []
+
+    def traced_summary():
+        summary_threads.append(threading.get_ident())
+        return load_public_summary()
+
+    monkeypatch.setattr("pex_bridge.benchmark_public.load_public_summary", traced_summary)
 
     async with AsyncClient(
         transport=ASGITransport(app=create_app()),
@@ -175,6 +184,7 @@ async def test_authenticated_bridge_surface_exposes_only_public_summary(tmp_path
     assert response.status_code == 200
     assert response.json()["status"] == "frozen"
     assert "secret transcript" not in response.text
+    assert summary_threads and summary_threads[0] != request_thread
 
     raw = _summary()
     raw["runs"][0]["arm"] = "codex"

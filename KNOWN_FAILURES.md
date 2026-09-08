@@ -504,3 +504,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   Valid event pages and changed handoff identities wake it immediately, with a 30-second idle
   reconciliation and stale-key guard. The source/tests prove scheduling and cancellation, but
   no native trace confirms event latency, worst-case 200-row batch duration, or resource cost.
+- Benchmark summary filesystem/JSON work now runs in a bridge worker thread and the desktop
+  schedules it every 32 seconds instead of eight. Unit tests prove thread separation and source
+  cadence, but there is no native trace of filesystem latency, event-loop responsiveness, or
+  whole-machine resource impact after the reported freeze.

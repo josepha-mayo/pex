@@ -157,7 +157,7 @@ test("goal evidence polling is bound to goal intent, not every session snapshot"
   );
 });
 
-test("expensive harness discovery follows the slow detail tick", async () => {
+test("filesystem benchmark and harness discovery reads follow the slow detail tick", async () => {
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
   const start = source.indexOf("const loadDetails =");
@@ -168,6 +168,11 @@ test("expensive harness discovery follows the slow detail tick", async () => {
     details,
     /includeDeck\s*\?\s*bridgeJson<\{ found\?:[\s\S]*?>\("\/v1\/discover", \{ signal \}\)\s*:\s*Promise\.resolve/u,
     "the eight-second lightweight poll must not launch process discovery every pass",
+  );
+  assert.match(
+    details,
+    /includeDeck\s*\?\s*bridgeJson<\{ runs\?: BenchRun\[\]; message\?: string \}>\("\/v1\/bench\/runs", \{ signal \}\)\s*:\s*Promise\.resolve/u,
+    "the eight-second lightweight poll must not synchronously reread benchmark artifacts",
   );
 });
 

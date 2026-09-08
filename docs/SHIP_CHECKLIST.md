@@ -632,3 +632,8 @@ Do the next safe, highest-impact item immediately. If a required external choice
   desktop 254/254, and TypeScript pass.
 - [ ] Confirm event responsiveness, batch duration, and idle request reduction for handoff
   status in the bounded native profile; source scheduling is not freeze-resolution evidence.
+- [x] Move benchmark-summary stat/read/strict-JSON work off the bridge event loop and refresh it
+  on the 32-second slow UI tick while retaining the last validated summary. Backend 16/16,
+  focused desktop 23/23, complete desktop 254/254, Ruff, and TypeScript pass.
+- [ ] Measure benchmark-summary request cadence and bridge-loop responsiveness in the bounded
+  native profile; worker-thread execution and source cadence do not close the freeze incident.

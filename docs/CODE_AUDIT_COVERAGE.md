@@ -1284,3 +1284,15 @@ The negative contract failed on the old code. Focused tests passed 23/23, adjace
 coverage passed 93/93, complete desktop tests passed 254/254, and TypeScript exited 0. The
 history page remains capped at 200 and each fan-out batch remains four-concurrent and bounded.
 Native request counts and batch latency are still unmeasured.
+
+## 8 September benchmark-summary I/O focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `services/bridge/src/pex_bridge/app.py` `/v1/bench/runs` | REVIEWED / REPAIRED | Synchronous file and JSON work is dispatched through `run_in_threadpool` instead of blocking the request event loop. |
+| `tests/unit/test_benchmark_public.py` route execution contract | REVIEWED / EXTENDED | Records request and loader thread IDs and rejects same-thread execution. |
+| `apps/desktop/src/App.tsx` benchmark reader | REVIEWED / REPAIRED | Summary follows the existing slow tick and retains the last validated result when skipped. |
+| `apps/desktop/src/readBudget.test.ts` slow-reader contract | REVIEWED / EXTENDED | Rejects eight-second benchmark artifact reads alongside process discovery. |
+
+Both negative contracts failed before the changes. Backend 16/16, desktop focused 23/23,
+desktop complete 254/254, scoped Ruff, and TypeScript passed. Native I/O timing is unmeasured.

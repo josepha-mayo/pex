@@ -8713,3 +8713,18 @@ The dirty bit is expected because the protected operator-owned file below is ret
   **23/23**, adjacent read/view-model coverage passed **93/93**, complete desktop coverage
   passed **254/254**, and TypeScript exited 0. Idle scheduled fan-out frequency is 73.3% lower
   by source; active event-driven behavior and native resource impact remain unmeasured.
+
+### 8 September benchmark-summary I/O slice
+
+- `/v1/bench/runs` previously performed synchronous filesystem stat/read and strict JSON
+  validation of an artifact up to 1 MB directly inside its async bridge route. Inspector and
+  Deck also requested it every eight seconds even though the published summary changes only
+  when a benchmark freezes.
+- The bridge now runs the loader in Starlette's worker threadpool. Desktop requests the summary
+  on the existing 32-second slow detail tick and retains the last validated result between
+  ticks; the first visible tick still loads it immediately. This reduces scheduled unchanged
+  reads by 75% and prevents the filesystem work from blocking the bridge event loop.
+- Both negative contracts failed before implementation. The backend gate passed **16/16** and
+  proves the route loader ran on a thread different from the request loop; focused desktop
+  coverage passed **23/23**, complete desktop coverage passed **254/254**, scoped Ruff passed,
+  and TypeScript exited 0. Filesystem latency and native freeze impact remain unmeasured.

@@ -1068,7 +1068,9 @@ export function App() {
       bridgeJson<ContextItem[]>(contextPath, { signal }),
       interventionRequest,
       bridgeJson<AttentionMetrics>("/v1/attention/metrics", { signal }),
-      bridgeJson<{ runs?: BenchRun[]; message?: string }>("/v1/bench/runs", { signal }),
+      includeDeck
+        ? bridgeJson<{ runs?: BenchRun[]; message?: string }>("/v1/bench/runs", { signal })
+        : Promise.resolve<{ runs?: BenchRun[]; message?: string } | null>(null),
       includeDeck
         ? bridgeJson<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] }>("/v1/discover", { signal })
         : Promise.resolve<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] } | null>(null),
@@ -1115,18 +1117,19 @@ export function App() {
       discoverResult.status === "fulfilled" && discoverResult.value
         ? starterInventoryFromDiscover(discoverResult.value)
         : undefined;
-    if (benchResult.status === "rejected") {
+    if (includeDeck && benchResult.status === "rejected") {
       setBench((state) => ({
         loading: false,
         runs: [],
         message: "Benchmark result endpoint could not be reached.",
         inventory: inventory ?? state.inventory,
       }));
-    } else {
+    } else if (benchResult.status === "fulfilled" && benchResult.value) {
+      const currentBench = benchResult.value;
       setBench((state) => ({
         loading: false,
-        runs: benchResult.value.runs || [],
-        message: benchResult.value.message,
+        runs: currentBench.runs || [],
+        message: currentBench.message,
         inventory: inventory ?? state.inventory,
       }));
     }

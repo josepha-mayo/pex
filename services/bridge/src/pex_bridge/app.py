@@ -5536,7 +5536,7 @@ def create_app() -> FastAPI:
     async def benchmark_runs(_: None = Depends(_require_token)):
         from pex_bridge.benchmark_public import load_public_summary
 
-        return load_public_summary()
+        return await run_in_threadpool(load_public_summary)
 
     async def _publish_committed_decision_update(intervention) -> None:
         await state.bus.publish_committed(

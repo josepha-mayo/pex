@@ -1985,3 +1985,10 @@ history no longer waits for up to 200 status reads. The old implementation faile
 contract. Focused tests passed 23/23, adjacent coverage passed 93/93, complete desktop coverage
 passed 254/254, and TypeScript exited 0. This is a 73.3% idle scheduling reduction by source,
 not a post-freeze native profile.
+
+Benchmark-summary loading no longer blocks the async bridge loop with synchronous stat/read
+and strict JSON parsing of an artifact up to 1 MB. The route uses the server threadpool, and
+the desktop requests it on the existing 32-second slow tick rather than every eight seconds,
+retaining the last validated summary between ticks. Both old behaviors failed their new
+contracts. Backend tests passed 16/16, focused desktop passed 23/23, complete desktop passed
+254/254, scoped Ruff passed, and TypeScript exited 0. Native I/O and freeze impact remain open.

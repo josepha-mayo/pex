@@ -1536,3 +1536,12 @@ longer waits for that potentially 200-item bounded batch; failed history and cha
 clear old authority, and mid-batch identity changes are retried before publication. The old
 wiring failed the new contract. Focused tests passed 23/23, adjacent coverage passed 93/93,
 complete desktop coverage passed 254/254, and TypeScript exited 0. Native impact is unmeasured.
+
+## Benchmark-summary I/O isolation
+
+The file-backed `/v1/bench/runs` route no longer performs up to 1 MB of stat/read/JSON work on
+the async bridge event loop; it uses the bounded server threadpool. Inspector and Deck now
+refresh the summary on the existing 32-second slow tick rather than every eight seconds and
+retain the last validated result between ticks. Both old behaviors failed their new tests.
+Backend coverage passed 16/16 with a different-thread assertion, focused desktop passed 23/23,
+complete desktop passed 254/254, Ruff passed, and TypeScript exited 0. Native impact is open.
