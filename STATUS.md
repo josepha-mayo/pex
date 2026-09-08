@@ -20,6 +20,11 @@ bounded local key derived from status kind and intervention identity. It stores 
 text or credentials, fails safely when browser storage is unavailable, reopens for a genuinely
 new intervention, and remains distinct from hiding/restoring the pet. Focused coverage passed
 70/70, the complete desktop gate passed 259/259, and the production frontend build passed.
+An isolated localhost render was then inspected through PEX's current Home, Inspector, Deck,
+Settings/Companion, and floating-pet surfaces. The new hierarchy is coherent at the test
+viewport, and clicking the message dismiss control visibly removed only the bubble while the
+Pex owl remained. This is browser-rendered UI evidence, not native transparency, Tauri hide,
+or restart-persistence proof; the browser sandbox exposes no localStorage.
 
 Store connections now explicitly cap retained SQLite
 WAL allocation at 16 MiB after successful checkpoints and retain the 1,000-page automatic

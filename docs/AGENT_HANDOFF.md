@@ -34,6 +34,14 @@ or credentials; a new intervention reopens the bubble, storage failures fall bac
 the main/pet webviews synchronize through storage events. Focused tests pass 70/70, the full
 desktop gate passes 259/259, and TypeScript/Vite production compilation passes.
 
+After packaging, an isolated localhost build was inspected through current Home, Inspector,
+Deck, Settings/Companion, and `pet.html` surfaces. The old large centered speech card is gone;
+the compact hierarchy is readable, the Pex owl has no opaque card behind it, and the distinct
+message dismiss control visibly removes the bubble while leaving the pet present. The browser
+sandbox does not expose localStorage, so it cannot prove restart persistence; it also does not
+prove native window transparency, Tauri hide/restore, click-through, drag, or resource safety.
+Do not upgrade this bounded browser render to native proof.
+
 Commit `bdf257f` bounds retained
 SQLite WAL allocation: every Store connection applies `wal_autocheckpoint=1000` and a
 16 MiB `journal_size_limit`. This followed read-only inspection of the contest profile,
