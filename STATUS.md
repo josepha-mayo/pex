@@ -1969,3 +1969,11 @@ retaining the nominal 10-second persistent-loss threshold; the immediate process
 is unchanged. The source contract failed first, and the first Rust compile caught a missing
 test import that was corrected. The named test and all 17 Rust tests passed, followed by
 desktop 253/253 and TypeScript. Runtime resource impact and freeze resolution remain open.
+
+Inspector harness discovery now runs on the existing 32-second slow detail tick rather than
+every eight-second pass. Each `/v1/discover` request can invoke Windows `tasklist`, four local
+HTTP probes, and CLI resolution, so this reduces its scheduled frequency by 75% while keeping
+lightweight detail at eight seconds and preserving the prior inventory between slow ticks.
+The old unconditional wiring failed the new source contract; focused coverage passed 23/23,
+complete desktop coverage passed 254/254, and TypeScript exited 0. This has not been measured
+in the native app and does not close the machine-freeze incident.

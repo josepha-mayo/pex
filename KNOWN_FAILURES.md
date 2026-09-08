@@ -496,3 +496,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   seconds and fails after five consecutive misses, preserving its nominal 10-second boundary
   while halving steady probes. Rust/source tests pass, but the packaged runtime cadence and
   whole-machine resource effect have not been observed; the freeze incident remains open.
+- Inspector now schedules `/v1/discover` every 32 seconds rather than every eight. Source
+  inspection confirms that request includes Windows process inventory, loopback probes, and
+  CLI resolution, and desktop tests bind the slower cadence. No post-change native trace
+  exists, so actual `tasklist` cost and whole-machine freeze impact remain unknown.

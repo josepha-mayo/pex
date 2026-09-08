@@ -8683,3 +8683,17 @@ The dirty bit is expected because the protected operator-owned file below is ret
   bypassed. The named native test passed, then all **17/17** Rust tests passed. Complete desktop
   tests passed **253/253** and TypeScript exited 0. PEX itself was not launched, so real cadence,
   resource impact, and freeze resolution remain unverified.
+
+### 8 September Inspector discovery cadence slice
+
+- Inspector's eight-second detail loop previously called `/v1/discover` on every pass. That
+  endpoint performs a Windows `tasklist` inventory, four bounded loopback probes, and CLI
+  executable resolution; it does not refresh the supervisor pipeline.
+- Harness discovery now follows the existing 32-second slow detail tick. Lightweight context,
+  intervention, attention, and benchmark reads remain at eight seconds, and the last truthful
+  inventory is retained between discovery ticks. This reduces scheduled discovery frequency
+  by 75% while Inspector remains open.
+- The source contract failed against the old unconditional call and passed after the change.
+  Focused read-budget coverage passed **23/23**, complete desktop coverage passed **254/254**,
+  and `npx tsc --noEmit` exited 0. PEX remained closed, so this is not native resource or
+  freeze-resolution proof.

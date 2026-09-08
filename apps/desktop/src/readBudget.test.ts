@@ -157,6 +157,20 @@ test("goal evidence polling is bound to goal intent, not every session snapshot"
   );
 });
 
+test("expensive harness discovery follows the slow detail tick", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const start = source.indexOf("const loadDetails =");
+  const end = source.indexOf("const loadProjectIdentityConflicts", start);
+  assert.ok(start > 0 && end > start);
+  const details = source.slice(start, end);
+  assert.match(
+    details,
+    /includeDeck\s*\?\s*bridgeJson<\{ found\?:[\s\S]*?>\("\/v1\/discover", \{ signal \}\)\s*:\s*Promise\.resolve/u,
+    "the eight-second lightweight poll must not launch process discovery every pass",
+  );
+});
+
 test("view-owned background reads propagate cancellation and handoff reads use a bounded batch", async () => {
   // Source wiring only; native/UI lifecycle checks are a separate release gate.
   const { readFile } = await import("node:fs/promises");

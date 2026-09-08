@@ -1516,3 +1516,13 @@ still handles exits immediately, and the nominal persistent identity-loss bounda
 before the repair. A first native compile exposed a missing test import and was corrected;
 the named test and all 17 Rust tests then passed. Complete desktop tests passed 253/253 and
 TypeScript exited 0. Runtime cadence and freeze impact are still unmeasured.
+
+## Inspector harness-discovery cadence
+
+The visible Inspector no longer performs full harness discovery every eight seconds. The
+expensive `/v1/discover` read, which includes Windows `tasklist`, four bounded loopback probes,
+and CLI resolution, now follows the existing 32-second slow tick. Lightweight detail remains
+at eight seconds and the previous inventory remains visible between slow ticks. The negative
+source contract failed before the repair; focused read-budget coverage passed 23/23, complete
+desktop coverage passed 254/254, and TypeScript exited 0. PEX stayed closed, so native load and
+the reported freeze remain open verification items.

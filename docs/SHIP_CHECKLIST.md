@@ -621,3 +621,8 @@ Do the next safe, highest-impact item immediately. If a required external choice
   misses retain the nominal 10-second loss boundary; 17/17 Rust, 253/253 desktop and TypeScript
   pass after a negative source contract and corrected compile failure.
 - [ ] Confirm the identity probe cadence and failure transition in a bounded native trace.
+- [x] Move Inspector `/v1/discover` from every eight-second detail pass to the existing
+  32-second slow tick while retaining lightweight reads and the last truthful inventory;
+  negative source contract, 23/23 focused, 254/254 desktop, and TypeScript pass.
+- [ ] Confirm Inspector `tasklist`/loopback discovery cadence and resource impact in the
+  bounded native profile; source call scheduling does not resolve the machine-freeze report.

@@ -1061,7 +1061,9 @@ export function App() {
       interventionRequest,
       bridgeJson<AttentionMetrics>("/v1/attention/metrics", { signal }),
       bridgeJson<{ runs?: BenchRun[]; message?: string }>("/v1/bench/runs", { signal }),
-      bridgeJson<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] }>("/v1/discover", { signal }),
+      includeDeck
+        ? bridgeJson<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] }>("/v1/discover", { signal })
+        : Promise.resolve<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] } | null>(null),
     ]);
     if (requestSequence !== detailRequestSequence.current) {
       await assimilationRequest;
@@ -1096,7 +1098,7 @@ export function App() {
     setDetailsError(coreFailed ? "Some live bridge data is unavailable." : null);
 
     const inventory =
-      discoverResult.status === "fulfilled"
+      discoverResult.status === "fulfilled" && discoverResult.value
         ? starterInventoryFromDiscover(discoverResult.value)
         : undefined;
     if (benchResult.status === "rejected") {

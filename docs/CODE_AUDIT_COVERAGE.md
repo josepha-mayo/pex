@@ -1261,3 +1261,14 @@ coverage passed 252/252, and TypeScript exited 0. Native Tauri lifecycle is unme
 
 The first Rust compile caught a missing test-module import and was repaired. Named native test
 and all 17 Rust tests passed; complete desktop 253/253 and TypeScript passed. Runtime unmeasured.
+
+## 8 September Inspector discovery-cadence focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/App.tsx` Inspector detail reader | REVIEWED / REPAIRED | Full harness discovery follows the existing slow tick; lightweight detail stays responsive and prior inventory is retained. |
+| `apps/desktop/src/readBudget.test.ts` discovery cadence contract | REVIEWED / EXTENDED | Negative contract rejects an unconditional `/v1/discover` request and binds it to `includeDeck`. |
+| `services/bridge/src/pex_bridge/adapters/discover.py` discovery cost | REVIEWED / UNCHANGED | Confirmed one desktop process inventory, four loopback probes, and CLI resolution per request; it does not refresh the supervisor pipeline. |
+
+Focused read-budget tests passed 23/23, complete desktop tests passed 254/254, and TypeScript
+exited 0. Native resource behavior remains unmeasured because PEX stayed closed.
