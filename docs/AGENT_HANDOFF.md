@@ -50,6 +50,22 @@ discovery and initialization-metadata checks. Together with the adjacent pump su
 34/34 and Ruff is clean. No Codex turn, supervisor inference, model call, benchmark arm, or
 worker mutation occurred.
 
+Current public integration guidance was consolidated in pushed commit `5530938`; obsolete
+checkpoint prose and stale commit IDs no longer precede the capability matrix. A combined
+offline gate for the three submission-priority paths passed **362/362 in 47.03 seconds** across
+Cursor hook/capture/delivery/policy, isolated Codex attach/pump, and OpenCode
+fork/outcome/pump coverage. This started no worker, model, native app, or paid call.
+
+Pex and Von received an additional two-pet submission QA using the installed hatch-pet
+validator and original-resolution contact/direction sheets. Both are valid v2 RGBA WebP atlases
+at `1536x2288` with 11 rows, zero validator errors/warnings, and zero transparent-RGB residue;
+the repository validator still names exactly eight built-ins. Visual review found clean
+transparency, distinct state rows, consistent identities, and readable up/right/down/left
+cardinals. Continuity reports remain `ok: true` but request review for silhouette-gap and local
+diff heuristics; original-resolution review identifies the gaps as expected eyes/ears/fur and
+no broken seam band. This is strong static visual evidence, not native playback proof. Local QA
+artifacts are under `C:\Users\JosephMayo\Documents\Codex\pex-pet-qa-5530938`.
+
 Commit `bdf257f` bounds retained
 SQLite WAL allocation: every Store connection applies `wal_autocheckpoint=1000` and a
 16 MiB `journal_size_limit`. This followed read-only inspection of the contest profile,

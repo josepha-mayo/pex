@@ -18,6 +18,14 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   Ruff; commit `e591bd3` is pushed.
 - [x] Re-run the static pet validator: exactly eight built-ins pass (`pex`, `ledger`,
   `mesh`, `nudge`, `drift`, `quiet`, `ember`, `von`). Native playback remains open.
+- [x] Re-validate the two submission-priority pets, Pex and Von, with the independent v2
+  atlas validator and original-resolution contact/direction sheets. Both are 1536x2288 RGBA,
+  11-row v2 atlases with zero structural warnings or transparent-RGB residue; visual review
+  confirms clean transparency, distinct states and readable cardinals. Native playback remains
+  part of the P0 gate.
+- [x] Re-run one combined offline gate for the practical demo integrations: 362/362 Cursor,
+  isolated-Codex and OpenCode hook/attach/pump/outcome tests pass in 47.03 seconds. No worker,
+  model, native app or paid call ran.
 - [x] Refuse production sidecar builds before PyInstaller when any staged, modified, or
   untracked path exists. The actual command failed fast on the protected concurrent edit
   without rewriting the helpers; release tests pass 12/12, desktop passes 259/259, and
