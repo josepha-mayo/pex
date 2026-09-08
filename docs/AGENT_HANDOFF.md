@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: judge-facing public benchmark summaries and recorded-demo fixtures now reject
+exponent-overflow JSON anywhere in their bounded documents. Previously `1e9999` could
+decode as infinity in an ignored field even though duplicates and `NaN` were refused.
+Public-summary/demo security coverage passes 23/23 and Ruff is clean. This prevents an
+invalid artifact from looking usable; it does not create a frozen benchmark, live demo
+or submission evidence. PEX stayed closed.
+
 Latest: workspace artifact counting and claim verification now reject exponent-overflow
 JSON before a row count can satisfy goal acceptance. Previously a `1e9999` value decoded
 as infinity and could make an otherwise invalid JSON/JSONL artifact look complete. The

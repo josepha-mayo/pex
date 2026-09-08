@@ -5,6 +5,18 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: finite judge-facing JSON artifacts
+
+The public frozen-benchmark summary and recorded-demo fixture readers were bounded and
+rejected duplicate keys/non-standard constants, but exponent overflow could still enter
+an ignored field as infinity. Both whole-document decoders now require finite floats.
+Negatives prove `1e9999` yields an invalid public summary or rejected fixture rather than
+a plausible-looking artifact. Focused benchmark/demo security coverage passes **23/23**
+and scoped Ruff passes.
+
+This hardens evidence admission only. It does not create a frozen comparison, live demo,
+video or submission proof, and no native app/model/worker/large suite ran.
+
 ## Latest offline slice: finite artifact acceptance evidence
 
 Both workspace inspection and claim verification counted JSON/JSONL rows after rejecting

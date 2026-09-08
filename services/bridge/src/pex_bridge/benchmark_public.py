@@ -46,6 +46,13 @@ def _reject_json_constant(value: str) -> None:
     raise ValueError(f"non-finite JSON constant {value!r} is not allowed")
 
 
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError(f"non-finite JSON number {value!r} is not allowed")
+    return parsed
+
+
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -95,6 +102,7 @@ def load_public_summary(path: str | Path | None = None) -> dict[str, Any]:
         raw = json.loads(
             content.decode("utf-8"),
             parse_constant=_reject_json_constant,
+            parse_float=_finite_json_float,
             object_pairs_hook=_unique_json_object,
         )
         return _validate_summary(raw)

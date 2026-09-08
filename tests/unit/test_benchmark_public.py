@@ -96,6 +96,7 @@ def test_public_summary_rejects_unfrozen_or_duplicate_arms(tmp_path):
     [
         '{"schema_version": 1, "schema_version": 1}',
         '{"schema_version": 1, "score": NaN}',
+        '{"schema_version": 1, "ignored": 1e9999}',
     ],
 )
 def test_public_summary_rejects_non_strict_json(tmp_path, payload):

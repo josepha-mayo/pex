@@ -2,6 +2,10 @@
 
 ## Current — 8 September WAT
 
+Public benchmark summaries and recorded-demo fixtures now reject exponent-overflow JSON
+instead of admitting infinity through ignored fields. Benchmark/demo security tests pass
+23/23 with Ruff clean. This is artifact admission hardening, not frozen/live evidence.
+
 Workspace inspection and claim verification now reject exponent-overflow JSON/JSONL
 before row counts can satisfy goal acceptance. The regression keeps an overflowed
 artifact incomplete/uncertain; combined coverage passes 94/94 with one Windows skip and

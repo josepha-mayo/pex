@@ -2,6 +2,12 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent reviewed judge-facing public benchmark and recorded-demo
+artifact readers. Both bounded the file and rejected duplicates/constants but accepted
+exponent overflow in ignored fields. Whole-document finite-float checks now reject those
+artifacts. Benchmark/demo security coverage passes 23/23 with Ruff clean. No benchmark,
+live demo or submission evidence was generated.
+
 Changed-path addendum: parent traced JSON/JSONL artifact row counts through both workspace
 inspection and claim acceptance. Exponent overflow remained valid after duplicate and
 constant checks, so it could contribute to an exact acceptance count. Both independent

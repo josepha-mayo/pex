@@ -61,6 +61,7 @@ def test_demo_listing_skips_malformed_files(tmp_path, monkeypatch) -> None:
     [
         '{"events": [], "score": NaN}',
         '{"events": [], "score": Infinity}',
+        '{"events": [], "ignored": 1e9999}',
         '{"events": [], "events": [{}]}',
     ],
 )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,13 @@ _FIXTURE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 
 def _reject_json_constant(value: str) -> None:
     raise ValueError(f"non-finite JSON constant {value!r} is not allowed")
+
+
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError(f"non-finite JSON number {value!r} is not allowed")
+    return parsed
 
 
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -76,6 +84,7 @@ def load_fixture(fixture_id: str) -> dict:
         data = json.loads(
             raw.decode("utf-8"),
             parse_constant=_reject_json_constant,
+            parse_float=_finite_json_float,
             object_pairs_hook=_unique_json_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
