@@ -15,6 +15,11 @@ pass; bounded independent review found no actionable issue. No native relaunch.
 Discovery probes now also have a complete-response deadline; 18 targeted backend
 tests pass, including slow-progress, cleanup and cancellation cases. Freeze cause
 and native stability remain unverified.
+Workspace observation now rejects outside hardlinks/open-time replacement, avoids
+duplicate read-only hashing and applies cooperative time/entry budgets. 26 focused
+backend checks pass; 1 Windows FIFO skip, 2 subprocess checks unrun. Non-atomic
+directory enumeration, blocked OS calls and repeated-event aggregate work remain
+open limitations, detailed in KNOWN_FAILURES and the checkpoint.
 
 See [the detailed checkpoint](docs/CHECKPOINT_2026_09_08.md). Exact de83153 installers
 are verified. Native testing paused on Escape; PEX was already absent when the

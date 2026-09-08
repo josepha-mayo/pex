@@ -123,6 +123,54 @@ a healthy peer, valid health, malformed/oversized bodies and continuous progress
 Parent reviewed this small backend slice; no extra subagent was used. These tests
 do not establish the cause of the whole-PC freeze or prove native idle stability.
 
+### Follow-up offline slice: bounded, descriptor-checked workspace observation
+
+Current baseline before this slice is pushed `af5161c066cf7cbedc23c432cc2ceeb5d69ccb0e`.
+Independent Terra audit found a reachable containment gap in observe.py: a workspace
+hardlink to an outside file was hashed, and replacement between containment check
+and open bypassed the earlier path check. These are production observation paths
+used by Pipeline during relevant tool/shell events, STOP and claim verification.
+Only tiny fixture secrets were used to reproduce them; no real private data read.
+
+The repair rejects linked/non-regular files, checks opened-descriptor identity
+before bytes, and discards a hash if size/mtime/path identity changes during the
+read. Common credential filenames and private-directory exclusions now recognize
+case variants. Read-only snapshots no longer hash the whole workspace twice;
+explicitly authorized verification still rescans afterward for new artifacts.
+No new test execution, provider call, cache, model behavior or policy bypass is added.
+
+Resource bounds now include a five-second **cooperative** per-manifest budget,
+checked between directories, entries, files and chunks, plus a 20,000-total-entry
+enumeration cap before sorting. Existing 10,000-file, 64 MiB/file and 512 MiB/pass
+caps remain, and the total byte budget rejects an over-budget next file before
+hashing it. Incremental scandir replaces os.walk's unbounded directory-list setup;
+normal sorted depth-first manifest ordering is retained. Queued directories retain
+their Path.stat identities and are rechecked before/after enumeration. The initial
+DirEntry.stat implementation failed the normal nested-directory test on Windows;
+using Path.stat for identity repaired it. Do not erase that development failure.
+
+Evidence: two external-hardlink negatives failed on original source; parent added
+three more negatives for duplicate hashing, non-regular open and replacement exactly
+at open. A fake-clock negative then proved the missing time budget. Independent
+review exposed enumeration before budget checks; two tiny negatives reproduced that
+gap before incremental/capped enumeration. The reviewer subsequently exposed queued
+directory replacement; the final cross-platform fixture proves refusal before the
+replacement is enumerated. Final review found no new concrete regression.
+
+Final lightweight verification, from main; all commands exit 0:
+
+- `.venv/Scripts/python.exe -m pytest -q tests/unit/test_observe_budget.py tests/unit/test_observe_security.py -k 'not public_pytest' --tb=short`: **18 passed, 1 FIFO-host skip, 2 subprocess tests deselected**, 0.91s.
+- `.venv/Scripts/python.exe -m pytest -q tests/unit/test_workspace_continuity_pipeline.py -k 'change_during_snapshot or queued_snapshot or snapshot_cancellation or unchanged_directory_identity' --tb=short`: **7 passed, 14 deselected**, 5.49s.
+- `.venv/Scripts/python.exe -m pytest -q tests/unit/test_pexbench.py -k workspace_hashing_streams --tb=short`: **1 passed, 128 deselected**, 0.66s; a small streaming-hash fixture, not a benchmark run.
+- Ruff passed the three changed Python paths; changed-path whitespace check passed.
+
+Remaining limitations are **not closed by this slice**: an OS metadata/open/read
+call already blocked cannot be interrupted by the cooperative budget; repeated
+events can trigger separate bounded scans; path-based directory validation is not
+atomic descriptor-bound enumeration. No claim of a whole-workspace atomic snapshot,
+native stability, or cause of the reported idle freeze. Protected loop.py remains
+untouched at its recorded hash. No native/build/live-model/CU workload was started.
+
 Next: continue bounded offline audit; the main process/read lifetime paths still
 need broader coverage. Native resource verification needs renewed operator
 confirmation; the previous question remains unanswered. Proposed next native check,

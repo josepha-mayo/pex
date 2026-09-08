@@ -10,6 +10,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Stop per-snapshot goal GET buildup and cancel superseded goal evidence reads.
 - [x] Refresh loading-only supervisor status without resetting drafts or rebasing revisions.
 - [x] Bound complete discovery HTTP probes; test stalled/trickling peers offline.
+- [x] Repair workspace hash containment and duplicate scans; test cooperative time/entry caps.
+- [ ] Resolve remaining observation lifetime limits: non-atomic directory enumeration,
+  blocked OS calls and aggregate repeated-event work. Do not claim a hard deadline.
 - [ ] Confirm a bounded native resource capture before reopening the app or large gates.
 
 - [x] Build and verify exact de83153 MSI/NSIS inventories.

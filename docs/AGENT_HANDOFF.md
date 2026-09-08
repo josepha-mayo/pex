@@ -17,6 +17,11 @@ See the checkpoint for precise scope, negative tests and the unapproved native p
 The goal/status slice is pushed as 7fd3757. A subsequent discovery probe deadline
 repair passes 18 targeted backend tests (125 deselected), including a continuous
 body-progress negative on prior source; details are in the same checkpoint.
+Next observation-safety slice rejects external hardlinks/open-time replacement,
+removes duplicate read-only hashing, and caps cooperative scan time/enumeration.
+26 focused backend checks pass; 1 Windows FIFO skip and 2 subprocess tests unrun.
+The checkpoint and root KNOWN_FAILURES preserve the non-atomic directory/open,
+blocked-OS-call and repeated-event limitations; these are not freeze-cause proof.
 
 Read [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md), all three specs and
 SHIP_CHECKLIST before continuing. It supersedes historical current/latest labels

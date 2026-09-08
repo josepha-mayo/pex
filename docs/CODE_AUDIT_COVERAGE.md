@@ -2,6 +2,18 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: `tests/unit/test_observe_budget.py`. Parent and Terra reviewed
+observe.py's workspace reader and its reachable Pipeline call sites; the entire
+new budget test and changed security test were reviewed. External hardlink/open
+replacement and redundant hashing negatives reproduced on prior code. Independent
+follow-up review found an enumeration-budget gap and queued-directory replacement;
+parent integrated bounded scandir and identity checks, correcting a Windows
+DirEntry.stat identity regression exposed by the normal nested-tree control.
+Final scoped verification is 18/1skip/2deselected plus 7 pipeline and 1 streaming
+hash test, with Ruff passed. Final reviewer found no new regression but retained
+non-atomic enumeration, blocked OS calls and aggregate repeated-event limitations.
+See the checkpoint and KNOWN_FAILURES; no full repository/native proof is implied.
+
 New-path addendum: `tests/unit/test_discovery_budget.py` (nine in-memory cases).
 Parent read discovery.py and reviewed the complete-response timeout, explicit
 loopback proxy/redirect policy and pre-append byte bound. The new test file was

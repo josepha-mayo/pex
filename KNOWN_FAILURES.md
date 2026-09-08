@@ -1,5 +1,32 @@
 # Known failures
 
+## 8 September 2026 — idle whole-PC freeze; native stability not established
+
+- The user reports a whole-PC freeze while doing nothing in PEX. Cause unknown.
+  PEX was already absent at inspection; the exact assistant-owned large regression
+  process was stopped. Other apps/model servers were left untouched. The interrupted
+  suite is not a pass. No native relaunch, Computer Use or live benchmark afterward.
+- The current incident, receipts and opt-in native plan are in
+  [CHECKPOINT_2026_09_08.md](docs/CHECKPOINT_2026_09_08.md). Native/build workload
+  requires renewed bounded-run confirmation; no userspace watchdog guarantees
+  recovery from a kernel/display-driver freeze.
+- Pushed resource repairs 1fdb766, 7fd3757 and af5161c bound polling/GET/atlas work,
+  cancel superseded goal reads, refresh loading supervisor status safely, and bound
+  complete discovery probes. Unit/source checks do not explain or resolve the freeze.
+- Further offline observation audit reproduced outside-hardlink and check/open
+  replacement reads using tiny fixture files. The descriptor-checked hash repair,
+  duplicate-scan removal and cooperative time/entry caps pass 26 focused backend
+  checks; one Windows FIFO case skips and two subprocess tests were not run.
+- **Still open:** directory enumeration uses path identity checks, not an atomic
+  handle-bound traversal. A path change inside an OS check/open boundary is not
+  excluded. The five-second budget cannot interrupt an already-blocked OS metadata,
+  open or read call, and frequent events may still trigger separate bounded scans.
+  These limitations must not be described as fixed, hard-bounded or the freeze cause.
+- Desktop background callbacks not yet all consume cancellation signals. Handoff
+  status expansion also warrants a bounded-fanout audit; neither is currently a
+  reproduced explanation for the incident. Full audit, native stability, quiet/
+  recovery gates, fair comparisons and final submission remain open.
+
 ## 7 September 2026 — Q17 provider timeout; unittest source defect is repaired
 
 - Q16 proved PEX misclassified an exact passing task-required unittest run and asked

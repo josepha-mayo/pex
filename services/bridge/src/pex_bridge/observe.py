@@ -10,9 +10,12 @@ import hashlib
 import json
 import os
 import signal
+import stat
 import subprocess
 import sys
 import threading
+import time
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -65,8 +68,10 @@ IGNORED_FILES = {".coverage", ".npmrc", ".pypirc", "auth.json", "credentials.jso
 _MAX_PYTEST_OUTPUT = 1500
 _HASH_CHUNK_BYTES = 1024 * 1024
 _MAX_MANIFEST_FILES = 10_000
+_MAX_MANIFEST_ENTRIES = 20_000
 _MAX_MANIFEST_FILE_BYTES = 64 * 1024 * 1024
 _MAX_MANIFEST_TOTAL_BYTES = 512 * 1024 * 1024
+_MAX_MANIFEST_SECONDS = 5.0
 _MAX_PUBLIC_TEST_FILES = 256
 _PYTEST_TIMEOUT_SECONDS = 60
 _PUBLIC_ENV_KEYS = {
@@ -102,39 +107,117 @@ def assert_readable(root: Path, target: Path) -> Path:
     return target
 
 
-def _file_digest(path: Path) -> tuple[str, int]:
+def _check_observation_deadline(deadline: float | None) -> None:
+    if deadline is not None and time.monotonic() >= deadline:
+        raise ValueError("workspace observation exceeded its time budget")
+
+
+def _file_digest(path: Path, *, deadline: float | None = None) -> tuple[str, int]:
     """Hash a workspace file without loading an attacker-sized file into RAM."""
+    _check_observation_deadline(deadline)
+    before = path.stat(follow_symlinks=False)
+    if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
+        raise ValueError("linked or non-regular workspace file rejected")
+    if path.resolve(strict=True) != path:
+        raise ValueError("workspace file changed before observation")
     digest = hashlib.sha256()
     size_bytes = 0
     with path.open("rb") as handle:
-        while chunk := handle.read(_HASH_CHUNK_BYTES):
+        opened = os.fstat(handle.fileno())
+        if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
+            raise ValueError("linked or non-regular workspace file rejected")
+        if (
+            not os.path.samestat(before, opened)
+            or not os.path.samestat(path.stat(follow_symlinks=False), opened)
+            or path.resolve(strict=True) != path
+        ):
+            raise ValueError("workspace file changed during observation")
+        while True:
+            _check_observation_deadline(deadline)
+            chunk = handle.read(_HASH_CHUNK_BYTES)
+            _check_observation_deadline(deadline)
+            if not chunk:
+                break
             digest.update(chunk)
             size_bytes += len(chunk)
             if size_bytes > _MAX_MANIFEST_FILE_BYTES:
                 raise ValueError(
                     f"workspace file exceeds the 64 MiB observation bound: {path.name}"
                 )
+        after = os.fstat(handle.fileno())
+        if (
+            after.st_nlink != 1
+            or after.st_size != size_bytes
+            or after.st_size != opened.st_size
+            or after.st_mtime_ns != opened.st_mtime_ns
+            or not os.path.samestat(path.stat(follow_symlinks=False), after)
+            or path.resolve(strict=True) != path
+        ):
+            raise ValueError("workspace file changed during observation")
     return digest.hexdigest(), size_bytes
+
+
+def _bounded_workspace_files(root: Path, deadline: float) -> Iterator[tuple[Path, list[str]]]:
+    """Enumerate incrementally: os.walk builds an unbounded directory list first."""
+    pending = [(root, root.stat(follow_symlinks=False))]
+    entries_seen = 0
+    while pending:
+        _check_observation_deadline(deadline)
+        base, expected = pending.pop()
+        current = base.stat(follow_symlinks=False)
+        if (
+            not stat.S_ISDIR(current.st_mode)
+            or not os.path.samestat(expected, current)
+            or base.resolve(strict=True) != base
+            or not base.is_relative_to(root)
+        ):
+            raise ValueError("workspace directory changed during observation")
+        directories: list[tuple[Path, os.stat_result]] = []
+        filenames: list[str] = []
+        with os.scandir(base) as entries:
+            if (
+                not os.path.samestat(current, base.stat(follow_symlinks=False))
+                or base.resolve(strict=True) != base
+            ):
+                raise ValueError("workspace directory changed during observation")
+            for entry in entries:
+                _check_observation_deadline(deadline)
+                entries_seen += 1
+                if entries_seen > _MAX_MANIFEST_ENTRIES:
+                    raise ValueError("workspace exceeds the 20000-entry observation bound")
+                if entry.is_symlink():
+                    continue
+                if entry.is_dir(follow_symlinks=False):
+                    path = base / entry.name
+                    if entry.name.casefold() not in IGNORED_PARTS and not is_hidden_path(path):
+                        # Windows DirEntry.stat can omit the file identity fields.
+                        directories.append((path, path.stat(follow_symlinks=False)))
+                else:
+                    filenames.append(entry.name)
+        _check_observation_deadline(deadline)
+        if (
+            not os.path.samestat(current, base.stat(follow_symlinks=False))
+            or base.resolve(strict=True) != base
+        ):
+            raise ValueError("workspace directory changed during observation")
+        pending.extend(sorted(directories, key=lambda item: item[0].name, reverse=True))
+        yield base, sorted(filenames)
 
 
 def _public_file_manifest(root: Path) -> list[dict[str, Any]]:
     """Hash only ordinary files contained by the observed workspace."""
+    # Cooperative checks bound further work; they cannot interrupt a blocked OS read.
+    deadline = time.monotonic() + _MAX_MANIFEST_SECONDS
     rows: list[dict[str, Any]] = []
     total_bytes = 0
-    for directory, names, filenames in os.walk(root, topdown=True, followlinks=False):
-        base = Path(directory)
-        names[:] = sorted(
-            name
-            for name in names
-            if name not in IGNORED_PARTS
-            and not (base / name).is_symlink()
-            and not is_hidden_path(base / name)
-        )
-        for filename in sorted(filenames):
+    for base, filenames in _bounded_workspace_files(root, deadline):
+        _check_observation_deadline(deadline)
+        for filename in filenames:
+            _check_observation_deadline(deadline)
             path = base / filename
             if (
                 path.is_symlink()
-                or filename in IGNORED_FILES
+                or filename.casefold() in IGNORED_FILES
                 or filename.casefold().startswith(".env")
                 or is_hidden_path(path)
             ):
@@ -142,16 +225,22 @@ def _public_file_manifest(root: Path) -> list[dict[str, Any]]:
             safe_path = assert_readable(root, path)
             try:
                 relative_path = safe_path.relative_to(root)
-                declared_size = safe_path.stat().st_size
+                declared = safe_path.stat(follow_symlinks=False)
+                declared_size = declared.st_size
             except (OSError, ValueError) as exc:
                 raise ValueError("workspace changed while it was being observed") from exc
+            if not stat.S_ISREG(declared.st_mode) or declared.st_nlink != 1:
+                raise ValueError("linked or non-regular workspace file rejected")
             if declared_size > _MAX_MANIFEST_FILE_BYTES:
                 raise ValueError(
                     f"workspace file exceeds the 64 MiB observation bound: {filename}"
                 )
             if len(rows) >= _MAX_MANIFEST_FILES:
                 raise ValueError("workspace exceeds the 10000-file observation bound")
-            sha256, size_bytes = _file_digest(safe_path)
+            if total_bytes + declared_size > _MAX_MANIFEST_TOTAL_BYTES:
+                raise ValueError("workspace exceeds the 512 MiB observation bound")
+            sha256, size_bytes = _file_digest(safe_path, deadline=deadline)
+            _check_observation_deadline(deadline)
             total_bytes += size_bytes
             if total_bytes > _MAX_MANIFEST_TOTAL_BYTES:
                 raise ValueError("workspace exceeds the 512 MiB observation bound")
@@ -162,6 +251,7 @@ def _public_file_manifest(root: Path) -> list[dict[str, Any]]:
                     "size_bytes": size_bytes,
                 }
             )
+    _check_observation_deadline(deadline)
     return rows
 
 
@@ -276,7 +366,7 @@ def snapshot(workspace: Path, *, run_pytest: bool = False) -> dict[str, Any]:
     pytest_result = _public_pytest(root, [row["path"] for row in before]) if run_pytest else None
     # Public tests can legitimately write artifacts. Re-scan afterward so the
     # fingerprint describes the state actually presented to the supervisor.
-    manifest = _public_file_manifest(root)
+    manifest = _public_file_manifest(root) if run_pytest else before
     return {
         "workspace": str(root),
         "files": [row["path"] for row in manifest],
