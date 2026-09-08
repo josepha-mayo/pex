@@ -2,6 +2,18 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the Tauri production build invoked a forced-clean PyInstaller sidecar rebuild,
+but did not require a clean Git worktree before compilation. It could therefore package
+an unreviewed concurrent source edit and discover the dirty state only during later
+package verification. Release mode now checks complete porcelain status before any
+PyInstaller invocation and refuses staged, modified, or untracked paths; development
+mode remains usable. The real command failed fast against the protected `loop.py` edit
+without changing any sidecar binary. Release-contract coverage passes 12/12, the complete
+desktop gate passes 259/259, and the production TypeScript/Vite build succeeds. Final
+sidecar/package rebuild remains open until the worktree is intentionally clean; PEX did
+not launch. The protected file remains unstaged with SHA-256
+`DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`.
+
 Latest: Devin message polling marked an API message ID seen **before** Pipeline ingestion
 returned. A transient durable-ingestion failure was therefore caught by the outer poll
 loop, but the next poll silently skipped the exact message forever. The negative timed

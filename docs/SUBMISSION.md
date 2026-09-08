@@ -6,7 +6,7 @@
 > incident at the top of [the current checkpoint](CHECKPOINT_2026_09_08.md).
 
 > **Current, 8 September WAT: source `7995f53` is pushed; submission is still NO-GO.**
-> Offline verification is green for the current desktop surface: 258/258 Node contracts,
+> Offline verification is green for the current desktop surface: 259/259 Node contracts,
 > 18/18 Rust tests, TypeScript, and Rust formatting. The eight built-in pets pass source,
 > atlas, manifest, and high-detail static review. The native launcher now pins the standard
 > `~/.pex/pex.sqlite` profile instead of inheriting an ambient benchmark database, and a

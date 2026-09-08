@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent found production packaging forced a clean PyInstaller
+analysis but did not fail on dirty Git state before building the three helpers. Release
+mode now requires empty complete porcelain status before PyInstaller; development mode
+is unchanged and the later source-fingerprint fence remains. The actual command refused
+the protected concurrent edit without rewriting sidecars. Release tests pass 12/12,
+desktop passes 259/259, and the production frontend build succeeds. Package/native proof
+remains open.
+
 Changed-path addendum: parent found Devin message dedupe advanced before durable Pipeline
 ingestion. A transient failure made the poller permanently skip the message; the negative
 timed out without a retry. The cache now advances only after callback success and uses one

@@ -213,9 +213,21 @@ export function sidecarBuildPolicy(args) {
     releaseBuild,
     preflightRelease,
     validatePetsOnly,
+    requireCleanWorktree: releaseBuild,
     allowCachedHelpers: !releaseBuild,
     pyinstallerCleanArgs: releaseBuild ? ["--clean"] : [],
   };
+}
+
+export function assertReleaseBuildSourceClean(required, gitStatus) {
+  if (typeof required !== "boolean" || typeof gitStatus !== "string") {
+    throw new TypeError("Release source cleanliness requires a boolean policy and Git status text");
+  }
+  if (required && gitStatus !== "") {
+    throw new Error(
+      "Release sidecars require a clean worktree before PyInstaller; review and resolve Git status first",
+    );
+  }
 }
 
 export function toolchainsMatch({ pins, active, uvLock }) {

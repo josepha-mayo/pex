@@ -4,7 +4,7 @@ Living checklist. Do **not** put secrets, tokens, or account IDs here.
 
 Last updated: 2026-09-08
 Release remains NO-GO. Current source is pushed through `7995f53`; current desktop
-contracts pass 258/258, Rust passes 18/18, and all eight built-in pets pass structural,
+contracts pass 259/259, Rust passes 18/18, and all eight built-in pets pass structural,
 atlas, and static visual review. The 6 September sidecars/installers are stale against
 current source. Controlled Codex + provider-live Strands proof exists at `5c49c10`, but
 the final-revision live pair and bounded post-freeze native run remain open. AgentCore is

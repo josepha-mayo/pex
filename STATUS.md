@@ -2,6 +2,14 @@
 
 ## Current — 8 September WAT
 
+Production sidecar builds now refuse a non-clean Git worktree before PyInstaller, so an
+unreviewed concurrent source edit cannot silently enter a package and be caught only by
+later verification. The real release command failed fast against the protected
+`loop.py` edit without changing existing helpers. Release contracts pass 12/12, the
+complete desktop gate passes 259/259, and the production frontend build succeeds. Final
+sidecar/package rebuild remains open until the worktree is intentionally clean; PEX did
+not launch.
+
 Devin no longer marks an API message seen before durable Pipeline ingestion succeeds. A
 forced transient failure previously lost the message on every later poll; it now retries
 the same stable event. Dedupe memory is one 65,536-entry fixed-digest FIFO rather than up

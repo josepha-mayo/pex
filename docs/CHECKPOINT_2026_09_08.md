@@ -5,6 +5,22 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: refuse dirty production sidecar builds
+
+Tauri production packaging always requested a fresh PyInstaller analysis, but the
+sidecar release mode did not inspect Git cleanliness before compiling. A modified,
+staged, or untracked source path could therefore enter the three frozen helpers and be
+rejected only by the later package verifier. Release mode now reads complete porcelain
+status and fails before PyInstaller unless it is empty. Development mode remains
+available, and the existing post-build source fingerprint still protects against source
+changes during compilation.
+
+The focused release contract passes **12/12**. The real release command failed fast on
+the protected concurrent `loop.py` edit and did not alter any sidecar binary. The complete
+desktop gate passes **259/259**, and the production TypeScript/Vite build succeeds.
+Final sidecar/package rebuild remains open until the worktree is intentionally clean;
+PEX and the native shell were not launched.
+
 ## Latest offline slice: retain Devin messages only after durable ingestion
 
 The Devin poller inserted each remote message ID into its in-memory seen set before

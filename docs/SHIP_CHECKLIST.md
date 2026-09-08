@@ -6,6 +6,10 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.
+- [x] Refuse production sidecar builds before PyInstaller when any staged, modified, or
+  untracked path exists. The actual command failed fast on the protected concurrent edit
+  without rewriting the helpers; release tests pass 12/12, desktop passes 259/259, and
+  the production frontend build succeeds. Final rebuild still requires a clean worktree.
 - [x] Replace the attached shared-Codex observer's 25ms empty-buffer poll with a
   notification/revocation wake signal. Five focused files pass 174/174 and Ruff;
   native idle/resource proof and the freeze root cause remain open.

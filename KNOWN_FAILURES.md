@@ -2,6 +2,11 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Production sidecar builds previously accepted dirty Git state until later package
+  verification. They now fail before PyInstaller; the real command refused the protected
+  concurrent edit without changing helper bytes. Release tests pass 12/12, desktop passes
+  259/259, and the production frontend build succeeds. The final rebuild remains pending
+  a deliberately clean worktree and does not prove native stability.
 - Devin message IDs were marked seen before durable ingestion, so a transient callback
   failure silently prevented retry. The negative timed out; post-success marking now
   retries the stable event. Dedupe is also one 65,536 fixed-digest FIFO instead of up to

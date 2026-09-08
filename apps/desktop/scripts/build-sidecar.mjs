@@ -25,6 +25,7 @@ import {
   assertPublicReleaseEvidence,
   assertFrozenBundleInventory,
   assertSchema2EvidenceClosure,
+  assertReleaseBuildSourceClean,
   classifyGitReleaseInputs,
   parseFrozenBundleInventory,
   preflightSnapshotIsStable,
@@ -1674,6 +1675,14 @@ function installBinary(built, target) {
 }
 
 try {
+const releaseBuildStatus = buildPolicy.requireCleanWorktree
+  ? execFileSync(
+    "git",
+    ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    { cwd: repo, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 },
+  )
+  : "";
+assertReleaseBuildSourceClean(buildPolicy.requireCleanWorktree, releaseBuildStatus);
 for (const path of [binaries, join(repo, "build", "sidecar-pets"), join(repo, "build", "pyinstaller")]) {
   assertSafeDirectory(path, "Sidecar build path");
 }

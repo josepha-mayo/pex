@@ -11,6 +11,7 @@ import {
   assertCanonicalRepoRelativePath,
   assertPublicReleaseEvidence,
   assertFrozenBundleInventory,
+  assertReleaseBuildSourceClean,
   assertSchema2EvidenceClosure,
   classifyGitReleaseInputs,
   parseFrozenBundleInventory,
@@ -290,6 +291,7 @@ test("release sidecar mode always bypasses cache and cleans PyInstaller", () => 
     releaseBuild: false,
     preflightRelease: false,
     validatePetsOnly: false,
+    requireCleanWorktree: false,
     allowCachedHelpers: true,
     pyinstallerCleanArgs: [],
   });
@@ -297,6 +299,7 @@ test("release sidecar mode always bypasses cache and cleans PyInstaller", () => 
     releaseBuild: true,
     preflightRelease: false,
     validatePetsOnly: false,
+    requireCleanWorktree: true,
     allowCachedHelpers: false,
     pyinstallerCleanArgs: ["--clean"],
   });
@@ -305,6 +308,19 @@ test("release sidecar mode always bypasses cache and cleans PyInstaller", () => 
     /mutually exclusive/u,
   );
   assert.throws(() => sidecarBuildPolicy([42]), /must be text/u);
+});
+
+test("release sidecars refuse dirty source before starting a package build", () => {
+  assert.doesNotThrow(() => assertReleaseBuildSourceClean(true, ""));
+  assert.doesNotThrow(() => assertReleaseBuildSourceClean(false, " M source.py\0"));
+  for (const status of [" M source.py\0", "?? untracked.py\0", "M  staged.py\0"]) {
+    assert.throws(
+      () => assertReleaseBuildSourceClean(true, status),
+      /clean worktree before PyInstaller/u,
+    );
+  }
+  assert.throws(() => assertReleaseBuildSourceClean("yes", ""), /boolean policy/u);
+  assert.throws(() => assertReleaseBuildSourceClean(true, []), /Git status text/u);
 });
 
 test("sidecar stamp is exact and rejects stale, forged, malformed, and extended records", () => {
