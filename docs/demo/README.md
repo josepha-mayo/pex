@@ -1,10 +1,20 @@
 # Demo assets
 
-**Current evidence:** [6 September continuation checkpoint](../CHECKPOINT_2026_09_06.md).
-The retained package is `4f8b567`, superseding the old package block below. Native status
-bubble dismissal and Alt+F4 pet close were observed; restore/restart and all-eight replay
-remain unfinished after the user stopped Computer Use. Latest settings source changes
-still need rendered verification and a new final package. No submission video exists.
+**Current evidence, 8 September:** clean product source `d66e6a1` has a normal verified MSI
+and NSIS package. Both extracted inventories contain the desktop, frozen bridge, Cursor hook,
+Cursor observer, and packaged pet assets; the package verifier reports `release_ready: true`
+with zero blockers. The final frozen bridge passes 3/3 lifecycle tests. Exact hashes and the
+receipt are in [`PACKAGE_RECEIPT_D66E6A1.json`](../PACKAGE_RECEIPT_D66E6A1.json).
+Both installers are currently `NotSigned`, so filming should account for a possible Windows
+reputation prompt rather than treating package verification as publisher signing.
+
+The current Home, Inspector, Deck, Settings/Companion, and Pex overlay were inspected in an
+isolated browser render. The compact hierarchy is coherent, the pet has no opaque card behind
+it, and dismissing the status message visibly leaves the pet present. This is not native Tauri
+evidence: the browser sandbox cannot prove desktop transparency, click-through, hide/restore,
+restart persistence, or resource safety. PEX remains closed after the user-reported idle
+whole-PC freeze. A bounded native run still needs explicit approval, and no submission video
+exists. The 6 September native block below is historical.
 
 ## 6 September native-package checkpoint
 

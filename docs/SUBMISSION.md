@@ -1,20 +1,27 @@
 # Devpost submission copy
 
-> **P0 override: user-reported whole-PC freeze while PEX was idle.** Root cause is
-> unknown. Native PEX and the assistant's large test workload are stopped. Offline
-> resource repairs do not prove stability. Submission remains NO-GO; follow the
-> incident at the top of [the current checkpoint](CHECKPOINT_2026_09_08.md).
+> **P0 override: user-reported whole-PC freeze while PEX was idle.** The source now removes
+> multiple hot-poll/resource amplifiers, bounds retained SQLite WAL allocation, and pins the
+> desktop-owned bridge to the normal `~/.pex/pex.sqlite` profile. Those repairs do not prove
+> native stability. PEX has stayed closed since the incident; a fresh bounded native run still
+> requires explicit user approval. Submission remains NO-GO until that run and the video pass.
 
-> **Current, 8 September WAT: source `7995f53` is pushed; submission is still NO-GO.**
-> Offline verification is green for the current desktop surface: 259/259 Node contracts,
-> 18/18 Rust tests, TypeScript, and Rust formatting. The eight built-in pets pass source,
-> atlas, manifest, and high-detail static review. The native launcher now pins the standard
-> `~/.pex/pex.sqlite` profile instead of inheriting an ambient benchmark database, and a
-> large-history N+1 authority read is repaired. These are source/test results, not current
-> installer or native stability proof. The three 6 September sidecars/installers predate
-> the current source. The user-reported idle whole-PC freeze, bounded native recovery and
-> all-eight playback, final-revision live Codex + Strands pair, AgentCore deployment,
-> four-arm benchmark, video, and authorized submission remain open. Follow
+> **Current, 8 September WAT: product source `d66e6a1` is clean-package green.** A detached
+> clean worktree produced normal MSI and NSIS installers. `npm run verify:package` reports
+> `release_ready: true`, zero blockers, and verified desktop/bridge/Cursor-helper inventories
+> in both installers. Both artifacts are currently `NotSigned`; package integrity does not
+> imply publisher identity or suppress Windows reputation prompts. The final frozen bridge
+> passed 3/3 lifecycle tests. The complete desktop contract gate passes 259/259; Rust passes
+> 18/18; TypeScript/Vite production compilation and
+> the 184-test Strands/AgentCore offline gate pass. A bounded live Codex App Server check now
+> proves the truthful `basic` handshake -> `deep` healthy-event-pump transition without a model
+> call. The current Home, Inspector, Deck, Settings, and Pex overlay were inspected in an
+> isolated browser render; message dismissal visibly left the pet present. This is not native
+> transparency, click-through, hide/restore, restart-persistence, or freeze-resolution proof.
+> Latest pushed HEAD `28119ad` adds documentation and the corrected live Codex contract only;
+> product release inputs remain those verified at `d66e6a1`. The bounded native run, final-
+> revision live semantic recovery pair, demo video, and authorized submission remain open.
+> Follow
 > [the detailed checkpoint](CHECKPOINT_2026_09_08.md), [handoff](AGENT_HANDOFF.md), and
 > [shipping checklist](SHIP_CHECKLIST.md). Every older "current" block below is historical.
 
@@ -121,12 +128,13 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 ## Checklist before clicking Submit
 
-- [x] Public MIT repository source is pushed through `7995f53`; verify exact remote equality again at submission time
-- [ ] Build all three sidecars/installers from the final reviewed source and produce a clean current package-integrity receipt (the 6 September package is historical)
+- [x] Public MIT repository is pushed through `28119ad`; verify exact remote equality again at submission time
+- [x] Build all three sidecars/installers from clean product source `d66e6a1`; both installer
+  inventories and the retained `PACKAGE_RECEIPT_D66E6A1.json` pass with zero package blockers
 - [ ] Re-review README and architecture source/PNG against the final release candidate; the 6 September render is historical evidence
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)
-- [ ] After bounded native stability passes, recapture the validated pair on the final revision and record it in the packaged-app demo
+- [ ] After bounded native stability passes, recapture the validated semantic pair on the final product revision and record it in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence is contract-only, while controlled local Codex + provider-live Strands evidence now exists
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)
