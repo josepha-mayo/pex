@@ -150,6 +150,13 @@ def _reject_nonfinite_json_constant(value: str) -> None:
     raise ValueError(f"non-finite JSON constant {value}")
 
 
+def _reject_nonfinite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not isfinite(parsed):
+        raise ValueError(f"non-finite JSON number {value}")
+    return parsed
+
+
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -822,6 +829,7 @@ class AgentCoreSupervisorClient:
             envelope = json.loads(
                 raw.decode("utf-8"),
                 parse_constant=_reject_nonfinite_json_constant,
+                parse_float=_reject_nonfinite_json_float,
                 object_pairs_hook=_unique_json_object,
             )
         except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):

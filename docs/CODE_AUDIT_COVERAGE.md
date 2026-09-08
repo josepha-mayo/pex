@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced the bounded AgentCore response bytes through JSON
+decoding, envelope binding, Pydantic modeling and local policy reconstruction. Duplicate
+keys and `NaN` were refused, but an overflow such as `1e9999` decoded to infinity even
+in an ignored envelope field. A negative reproduced the permissive admission. The whole
+response now applies a finite-float decoder and fails through the existing uncertain-
+delivery protocol path. AgentCore client coverage passes 89/89 and Ruff is clean. This
+does not prove a deployed runtime, provider behavior or native stability.
+
 Changed-path addendum: parent compared the adapter strict decoder with the duplicate
 local strict decoders used for pet/control files and durable Store rows. Those readers
 rejected `NaN` constants but allowed exponent overflow such as `1e9999` to become

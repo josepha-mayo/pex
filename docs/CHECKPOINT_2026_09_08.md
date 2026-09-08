@@ -5,6 +5,19 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: strict AgentCore response envelope
+
+The AgentCore client already rejected duplicate keys and JavaScript-style non-finite
+constants, but Python's decoder still converted an exponent-overflow token such as
+`1e9999` to infinity. A negative placed that number in an otherwise ignored top-level
+response field and reproduced successful permissive decoding. The whole response now
+uses a finite-float hook before envelope binding or result modeling, and any overflow
+follows the existing fail-closed delivery-uncertain `response_protocol_failure` path.
+
+All **89/89** AgentCore client tests and scoped Ruff pass. No provider, AWS resource,
+network call, model, worker, native app or large suite was started. This is source-level
+cloud-boundary hardening, not deployed AgentCore evidence or native freeze resolution.
+
 ## Latest offline slice: finite local JSON authority
 
 PEX had three conceptually strict local JSON readers. The shared adapter reader rejected

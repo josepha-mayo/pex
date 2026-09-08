@@ -2,6 +2,14 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the AgentCore response envelope now rejects exponent-overflow JSON numbers
+before any ignored or modeled field can cross the cloud proposal boundary. A focused
+negative placed `1e9999` in an otherwise ignored top-level field; the old decoder
+accepted it as infinity and would have continued. The strict float hook now maps the
+whole response to the existing delivery-uncertain `response_protocol_failure` path.
+All 89 AgentCore client tests and Ruff pass. No AWS call, model, worker, native app or
+large suite ran; deployed AgentCore proof and native stability remain open.
+
 Latest: pet/control-file and durable Store-row JSON readers now reject exponent overflow
 such as `1e9999` instead of decoding it as infinity. Their `NaN` and duplicate-key checks
 were already present, but finite float parsing was missing; two negatives reproduced the

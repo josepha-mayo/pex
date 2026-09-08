@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+AgentCore response decoding now rejects exponent-overflow JSON numbers across the whole
+envelope instead of allowing an ignored field to become infinity. The focused negative
+reproduced the old admission; all 89 AgentCore client tests and Ruff pass. This is offline
+protocol hardening, not a deployed AWS/provider or native-stability result.
+
 Parsed Cursor records with permanently invalid hook shape/bounds no longer block every
 later observer record. Only deterministic adapter HTTP-422 preparation failures advance;
 timeouts, authority/Store failures, collisions and cancellation retain the batch for

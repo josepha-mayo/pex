@@ -80,6 +80,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Reject exponent-overflow JSON numbers in local control-file and durable Store-row
   readers instead of decoding them as infinity. Both negatives failed before repair;
   control/Store/goal-operation coverage passes 23/23 and Ruff.
+- [x] Reject exponent-overflow numbers anywhere in an AgentCore response envelope,
+  including ignored fields, before proposal modeling. The negative reproduced the
+  admission; all 89 AgentCore client tests and Ruff pass. Live AWS proof remains open.
 - [x] Advance newline-free Cursor records once they irreversibly exceed the record
   limit, persisting discard-until-newline state without parsing a suffix. Inbox/
   observer coverage passes 33/33 and Ruff; producer disk retention remains open.

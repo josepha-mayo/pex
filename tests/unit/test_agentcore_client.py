@@ -993,6 +993,17 @@ async def test_agentcore_client_rejects_non_json_and_oversized_response(tmp_path
     with pytest.raises(AgentCoreDeliveryUncertainError):
         await AgentCoreSupervisorClient(_settings(tmp_path), client=nonfinite).decide(request)
 
+    overflow_response = _aws_response(request, _result(request))
+    overflow_body = overflow_response["response"].read()
+    overflow_response["response"] = io.BytesIO(
+        overflow_body[:-1] + b',"ignored":1e9999}'
+    )
+    with pytest.raises(AgentCoreDeliveryUncertainError) as caught:
+        await AgentCoreSupervisorClient(
+            _settings(tmp_path), client=FakeAwsClient(overflow_response)
+        ).decide(request)
+    assert caught.value.reason_code == "response_protocol_failure"
+
     duplicate_binding = FakeAwsClient(
         _aws_response(
             request,

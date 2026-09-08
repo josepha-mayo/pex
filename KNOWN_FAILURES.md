@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- The AgentCore response decoder now refuses exponent-overflow numbers across the whole
+  envelope and maps them to delivery-uncertain protocol failure; 89 client tests and
+  Ruff pass. No deployed runtime/provider was exercised, so AgentCore proof remains open.
 - Parsed Cursor dictionaries that fail deterministic adapter shape/bound validation now
   advance without blocking later records. Only preparation HTTP 422 is classified
   permanent; timeout, collision, authority, Store and cancellation paths remain
