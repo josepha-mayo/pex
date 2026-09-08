@@ -26,6 +26,13 @@ viewport, and clicking the message dismiss control visibly removed only the bubb
 Pex owl remained. This is browser-rendered UI evidence, not native transparency, Tauri hide,
 or restart-persistence proof; the browser sandbox exposes no localStorage.
 
+The bounded live Codex handshake check had one stale expectation: it demanded `deep` support
+before starting the observation pump, while the binding support taxonomy requires structured
+observation for `deep`. The check now proves the real transition from `basic` after App Server
+handshake/thread listing to `deep` after the event pump starts, then discovers sessions and
+verifies initialization metadata. The live handshake plus adjacent pump suite passes 34/34
+with Ruff clean. It did not send a model prompt or consume a benchmark turn.
+
 Store connections now explicitly cap retained SQLite
 WAL allocation at 16 MiB after successful checkpoints and retain the 1,000-page automatic
 checkpoint threshold. This addresses a measured 237,406,792-byte retained contest WAL

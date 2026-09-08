@@ -42,6 +42,14 @@ sandbox does not expose localStorage, so it cannot prove restart persistence; it
 prove native window transparency, Tauri hide/restore, click-through, drag, or resource safety.
 Do not upgrade this bounded browser render to native proof.
 
+The single bounded live Codex attach check initially failed because its old assertion expected
+`deep` immediately after handshake. Current adapter behavior is correctly conservative:
+handshake plus thread listing is `basic`; structured observation becomes `deep` only while the
+event pump is healthy. The live contract now proves that exact transition before session
+discovery and initialization-metadata checks. Together with the adjacent pump suite it passes
+34/34 and Ruff is clean. No Codex turn, supervisor inference, model call, benchmark arm, or
+worker mutation occurred.
+
 Commit `bdf257f` bounds retained
 SQLite WAL allocation: every Store connection applies `wal_autocheckpoint=1000` and a
 16 MiB `journal_size_limit`. This followed read-only inspection of the contest profile,
