@@ -500,3 +500,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   inspection confirms that request includes Windows process inventory, loopback probes, and
   CLI resolution, and desktop tests bind the slower cadence. No post-change native trace
   exists, so actual `tasklist` cost and whole-machine freeze impact remain unknown.
+- Handoff assimilation status no longer fans out from every eight-second core history read.
+  Valid event pages and changed handoff identities wake it immediately, with a 30-second idle
+  reconciliation and stale-key guard. The source/tests prove scheduling and cancellation, but
+  no native trace confirms event latency, worst-case 200-row batch duration, or resource cost.

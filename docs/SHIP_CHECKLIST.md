@@ -626,3 +626,9 @@ Do the next safe, highest-impact item immediately. If a required external choice
   negative source contract, 23/23 focused, 254/254 desktop, and TypeScript pass.
 - [ ] Confirm Inspector `tasklist`/loopback discovery cadence and resource impact in the
   bounded native profile; source call scheduling does not resolve the machine-freeze report.
+- [x] Remove per-handoff assimilation fan-out from the eight-second core detail loop: valid
+  event pages and changed IDs wake one coalesced reader, unchanged history reconciles every
+  30 seconds, and core history no longer waits. Focused 23/23, adjacent 93/93, complete
+  desktop 254/254, and TypeScript pass.
+- [ ] Confirm event responsiveness, batch duration, and idle request reduction for handoff
+  status in the bounded native profile; source scheduling is not freeze-resolution evidence.

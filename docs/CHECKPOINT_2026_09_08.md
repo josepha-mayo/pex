@@ -1526,3 +1526,13 @@ at eight seconds and the previous inventory remains visible between slow ticks. 
 source contract failed before the repair; focused read-budget coverage passed 23/23, complete
 desktop coverage passed 254/254, and TypeScript exited 0. PEX stayed closed, so native load and
 the reported freeze remain open verification items.
+
+## Event-first handoff-assimilation status
+
+Inspector no longer performs one assimilation-status request per handoff in every eight-second
+core detail pass. A separate coalesced reader wakes immediately for valid committed event pages
+and changed handoff IDs, then reconciles unchanged history every 30 seconds. Core history no
+longer waits for that potentially 200-item bounded batch; failed history and changed identities
+clear old authority, and mid-batch identity changes are retried before publication. The old
+wiring failed the new contract. Focused tests passed 23/23, adjacent coverage passed 93/93,
+complete desktop coverage passed 254/254, and TypeScript exited 0. Native impact is unmeasured.

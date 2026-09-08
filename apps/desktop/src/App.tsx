@@ -139,6 +139,7 @@ const BRIDGE = "http://127.0.0.1:7420";
 const EVENT_CURSOR_STORAGE_KEY = "pex.event_cursor.v1";
 const PET_RECONCILIATION_INTERVAL_MS = 30_000;
 const GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS = 30_000;
+const HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS = 30_000;
 
 function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
   if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return "local";
@@ -309,6 +310,14 @@ function interventionHandoffEffectId(item: Intervention): string | null {
   return typeof effectId === "string" && effectId.trim() ? effectId.trim() : null;
 }
 
+function handoffInterventionFingerprint(interventions: Intervention[]): string {
+  return Array.from(new Set(
+    interventions
+      .map(interventionHandoffEffectId)
+      .filter((effectId): effectId is string => effectId !== null),
+  )).join("\n");
+}
+
 async function loadHandoffAssimilationStatuses(
   interventions: Intervention[],
   signal?: AbortSignal,
@@ -471,6 +480,9 @@ export function App() {
   const supervisorKeyAudience = useRef<string | null>(null);
   const goalEvidenceKey = useRef<string | null>(null);
   const goalEvidenceRefresh = useRef<(() => Promise<unknown>) | null>(null);
+  const handoffInterventions = useRef<Intervention[]>([]);
+  const handoffInterventionKey = useRef("");
+  const handoffAssimilationRefresh = useRef<(() => Promise<unknown>) | null>(null);
   const bridgeStartupRef = useRef(bridgeStartup);
   const bridgeAvailable = bridgeBootstrapAvailable(
     TAURI,
@@ -685,8 +697,9 @@ export function App() {
                   /* Resume remains available for this live socket. */
                 }
                 // Canonical commits wake goal evidence immediately. Bursts
-                // share the evidence effect's one in-flight reconciliation.
+                // share each evidence effect's one in-flight reconciliation.
                 void goalEvidenceRefresh.current?.();
+                void handoffAssimilationRefresh.current?.();
               }
             }
           } catch {
@@ -1050,11 +1063,6 @@ export function App() {
       "/v1/interventions?include_handoff_bundle=true",
       { signal },
     );
-    // Handle rejection immediately, but do not hold core history behind the
-    // bounded follow-up batch. The poll still awaits both stages before repeating.
-    const assimilationRequest = Promise.allSettled([interventionRequest.then((rows) =>
-      loadHandoffAssimilationStatuses(Array.isArray(rows) ? rows : [], signal),
-    )]);
     const [deckResult, contextResult, interventionResult, attentionResult, benchResult, discoverResult] = await Promise.allSettled([
       includeDeck ? bridgeJson<DeckData>("/v1/deck", { signal }) : Promise.resolve<DeckData | null>(null),
       bridgeJson<ContextItem[]>(contextPath, { signal }),
@@ -1065,10 +1073,7 @@ export function App() {
         ? bridgeJson<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] }>("/v1/discover", { signal })
         : Promise.resolve<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] } | null>(null),
     ]);
-    if (requestSequence !== detailRequestSequence.current) {
-      await assimilationRequest;
-      return;
-    }
+    if (requestSequence !== detailRequestSequence.current) return;
     if (includeDeck) {
       if (deckResult.status === "fulfilled" && deckResult.value) {
         setDeck(deckResult.value);
@@ -1085,13 +1090,22 @@ export function App() {
       markCanonical("context", "failed", "Context could not be refreshed.");
     }
     if (interventionResult.status === "fulfilled" && Array.isArray(interventionResult.value)) {
-      setInterventions(interventionResult.value);
+      const currentInterventions = interventionResult.value;
+      setInterventions(currentInterventions);
+      handoffInterventions.current = currentInterventions;
+      const nextHandoffKey = handoffInterventionFingerprint(currentInterventions);
+      if (nextHandoffKey !== handoffInterventionKey.current) {
+        handoffInterventionKey.current = nextHandoffKey;
+        setHandoffAssimilation({});
+        void handoffAssimilationRefresh.current?.();
+      }
       markCanonical("interventions", "fresh");
     } else {
+      handoffInterventions.current = [];
+      handoffInterventionKey.current = "";
+      setHandoffAssimilation({});
       markCanonical("interventions", "failed", "Intervention history could not be refreshed.");
     }
-    // Do not present the previous history snapshot's target-use checks as fresh.
-    setHandoffAssimilation({});
     setAttentionMetrics(attentionResult.status === "fulfilled" ? attentionResult.value : null);
     const coreFailed = [contextResult, interventionResult, attentionResult].some((item) => item.status === "rejected") ||
       (includeDeck && deckResult.status === "rejected");
@@ -1117,9 +1131,6 @@ export function App() {
       }));
     }
     if (showLoading) setDetailsLoading(false);
-    const [assimilationResult] = await assimilationRequest;
-    if (requestSequence !== detailRequestSequence.current) return;
-    setHandoffAssimilation(assimilationResult.status === "fulfilled" ? assimilationResult.value : {});
   }, [markCanonical, projectId]);
 
   const loadProjectIdentityConflicts = useCallback(async (options: {
@@ -1237,6 +1248,46 @@ export function App() {
       stopPolling();
     };
   }, [bridgeAvailable, loadDetails, pageVisible, shell, surface, pet?.last_action?.id]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;
+    let cancelled = false;
+    const controller = new AbortController();
+    // A view that was hidden may have missed events. Do not present its prior
+    // target-use projection while the immediate reconciliation is in flight.
+    setHandoffAssimilation({});
+    const refreshHandoffAssimilation = coalesceBackgroundRead(async () => {
+      while (!cancelled) {
+        const requestedKey = handoffInterventionKey.current;
+        const requestedInterventions = handoffInterventions.current;
+        if (!requestedKey) {
+          setHandoffAssimilation({});
+          return;
+        }
+        const statuses = await loadHandoffAssimilationStatuses(
+          requestedInterventions,
+          controller.signal,
+        );
+        if (cancelled) return;
+        if (handoffInterventionKey.current !== requestedKey) continue;
+        setHandoffAssimilation(statuses);
+        return;
+      }
+    });
+    handoffAssimilationRefresh.current = refreshHandoffAssimilation;
+    const stopPolling = startSerialPolling(
+      refreshHandoffAssimilation,
+      HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS,
+    );
+    return () => {
+      cancelled = true;
+      if (handoffAssimilationRefresh.current === refreshHandoffAssimilation) {
+        handoffAssimilationRefresh.current = null;
+      }
+      controller.abort();
+      stopPolling();
+    };
+  }, [bridgeAvailable, pageVisible, shell, surface]);
 
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;

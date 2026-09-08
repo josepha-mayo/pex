@@ -1272,3 +1272,15 @@ and all 17 Rust tests passed; complete desktop 253/253 and TypeScript passed. Ru
 
 Focused read-budget tests passed 23/23, complete desktop tests passed 254/254, and TypeScript
 exited 0. Native resource behavior remains unmeasured because PEX stayed closed.
+
+## 8 September handoff-assimilation cadence focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/App.tsx` handoff status reader | REVIEWED / REPAIRED | Fan-out is independent from core detail, event-first, coalesced, 30-second reconciled, identity-guarded, and cancelled with the view. |
+| `apps/desktop/src/readBudget.test.ts` handoff scheduling contract | REVIEWED / REPLACED | Rejects the old core-blocking reader and binds event wake, slow reconciliation, changed-ID refresh, and stale-key rejection. |
+
+The negative contract failed on the old code. Focused tests passed 23/23, adjacent read/view
+coverage passed 93/93, complete desktop tests passed 254/254, and TypeScript exited 0. The
+history page remains capped at 200 and each fan-out batch remains four-concurrent and bounded.
+Native request counts and batch latency are still unmeasured.

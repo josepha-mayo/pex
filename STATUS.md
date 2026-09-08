@@ -1977,3 +1977,11 @@ lightweight detail at eight seconds and preserving the prior inventory between s
 The old unconditional wiring failed the new source contract; focused coverage passed 23/23,
 complete desktop coverage passed 254/254, and TypeScript exited 0. This has not been measured
 in the native app and does not close the machine-freeze incident.
+
+Handoff target-use evidence is now event-first instead of being coupled to every eight-second
+Inspector detail pass. Valid committed event pages and changed handoff IDs wake one coalesced,
+identity-guarded batch immediately; unchanged history reconciles every 30 seconds, and core
+history no longer waits for up to 200 status reads. The old implementation failed the new
+contract. Focused tests passed 23/23, adjacent coverage passed 93/93, complete desktop coverage
+passed 254/254, and TypeScript exited 0. This is a 73.3% idle scheduling reduction by source,
+not a post-freeze native profile.

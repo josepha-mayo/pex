@@ -224,19 +224,23 @@ test("a read batch caps concurrency at four and retains ordered successes and fa
   });
 });
 
-test("history publishes core reads before assimilation, guards both stages, and still awaits the batch", async () => {
+test("handoff assimilation is event-first with a slow reconciliation and never blocks core history", async () => {
   // Source contract: rendered/native latency is a separate acceptance check.
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
   const start = source.indexOf("const loadDetails =");
   const end = source.indexOf("const loadProjectIdentityConflicts =", start);
   const details = source.slice(start, end);
-  assert.match(details, /const assimilationRequest = Promise\.allSettled\(/);
-  assert.doesNotMatch(details, /\n\s+assimilationRequest,/);
-  assert.match(details, /setInterventions\(interventionResult\.value\)[\s\S]*?setHandoffAssimilation\(\{\}\)/);
-  assert.match(details, /setDetailsLoading\(false\);\s*const \[assimilationResult\] = await assimilationRequest;/);
-  assert.match(details, /await assimilationRequest;\s*if \(requestSequence !== detailRequestSequence\.current\) return;/);
-  assert.match(details, /if \(requestSequence !== detailRequestSequence\.current\) \{\s*await assimilationRequest;\s*return;\s*\}/);
+  assert.doesNotMatch(details, /loadHandoffAssimilationStatuses\(/);
+  assert.doesNotMatch(details, /await assimilationRequest/);
+  assert.match(details, /handoffInterventions\.current = currentInterventions/);
+  assert.match(details, /nextHandoffKey !== handoffInterventionKey\.current[\s\S]*?setHandoffAssimilation\(\{\}\)[\s\S]*?handoffAssimilationRefresh\.current\?\.\(\)/);
+
+  assert.match(source, /const HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS = 30_000/);
+  assert.match(source, /message\.topic === "event_page"[\s\S]*?handoffAssimilationRefresh\.current\?\.\(\)/);
+  assert.match(source, /setHandoffAssimilation\(\{\}\);\s*const refreshHandoffAssimilation = coalesceBackgroundRead/);
+  assert.match(source, /handoffInterventionKey\.current !== requestedKey[\s\S]*?return/);
+  assert.match(source, /startSerialPolling\([\s\S]*?refreshHandoffAssimilation,[\s\S]*?HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS/);
 });
 
 test("a batch deadline aborts active reads and leaves queued and late results unavailable", async () => {

@@ -8697,3 +8697,19 @@ The dirty bit is expected because the protected operator-owned file below is ret
   Focused read-budget coverage passed **23/23**, complete desktop coverage passed **254/254**,
   and `npx tsc --noEmit` exited 0. PEX remained closed, so this is not native resource or
   freeze-resolution proof.
+
+### 8 September event-first handoff-assimilation slice
+
+- Inspector previously launched one target-use status request per unique handoff on every
+  eight-second detail pass. The history page can contain 200 records; four-way concurrency
+  bounded simultaneous requests but did not reduce total queued work, and core loading still
+  waited for the complete batch.
+- Handoff status now has an independent coalesced reader. A valid committed `event_page` or a
+  changed set of handoff effect IDs wakes it immediately; unchanged history reconciles every
+  30 seconds. Core intervention history publishes without waiting. Changed IDs clear the old
+  map, failed history clears authority, and a key change during a batch causes a fresh pass
+  rather than publishing mismatched results.
+- The old implementation failed the new source contract. Focused read-budget tests passed
+  **23/23**, adjacent read/view-model coverage passed **93/93**, complete desktop coverage
+  passed **254/254**, and TypeScript exited 0. Idle scheduled fan-out frequency is 73.3% lower
+  by source; active event-driven behavior and native resource impact remain unmeasured.
