@@ -960,11 +960,18 @@ def _strict_json(raw: bytes) -> Any:
             result[key] = value
         return result
 
+    def finite_float(value: str) -> float:
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            raise ValueError(f"invalid JSON number {value}")
+        return parsed
+
     return json.loads(
         raw.decode("utf-8"),
         parse_constant=lambda value: (_ for _ in ()).throw(
             ValueError(f"invalid JSON constant {value}")
         ),
+        parse_float=finite_float,
         object_pairs_hook=unique_object,
     )
 

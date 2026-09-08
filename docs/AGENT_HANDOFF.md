@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: external provider JSON is now finite across both model-catalog refresh and the
+review-answer path. Overflow could previously enter an ignored catalog field, an outer
+usage field or the model's embedded JSON answer as infinity despite duplicate/`NaN`
+checks. Negatives cover all three boundaries; provider plus review coverage passes 96/96
+and Ruff is clean. No live provider/model/network call ran, and this does not replace the
+Strands main/verifier path or prove provider availability. PEX stayed closed.
+
 Latest: both inbound JSON control planes now reject exponent-overflow numbers before
 endpoint or model logic. The bridge-wide request limiter covers typed and headerless
 JSON; the AgentCore runtime covers its bounded invocation body, including ignored

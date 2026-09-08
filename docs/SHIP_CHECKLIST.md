@@ -86,6 +86,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Apply the same finite-number rule at both inbound JSON control planes: bridge-wide
   request limiting and AgentCore runtime invocation. Combined coverage passes 46/46 and
   Ruff; no live/deployed proof follows.
+- [x] Reject exponent overflow from bounded provider catalog responses and both the outer
+  and embedded review-answer JSON. Provider/review coverage passes 96/96 and Ruff; live
+  provider availability and Strands proof remain open.
 - [x] Bound local notification receipt replay before parsing and reject ambiguous JSON
   idempotency rows so corruption cannot suppress a human alert. Channel tests pass 8/8
   and Ruff; cross-process append/rotation remains outside this slice.

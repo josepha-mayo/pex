@@ -5,6 +5,19 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: finite external provider responses
+
+The bounded live-model catalog reader and review-answer client rejected duplicate keys
+and non-standard constants but still allowed exponent overflow. That could enter through
+an ignored catalog field, the outer completion/usage envelope or the model's embedded
+JSON answer. All three decoders now require finite floats before catalog validation,
+usage accounting or answer projection. Focused provider and review coverage passes
+**96/96** and scoped Ruff passes.
+
+No live provider, network request, model, worker or native app ran. The review endpoint
+is an Ask-PEX surface, not the Strands action-authority path; this source repair proves
+neither provider availability nor the required main/verifier live evidence.
+
 ## Latest offline slice: finite inbound control-plane JSON
 
 The bridge-wide request-body middleware and AgentCore runtime HTTP entrypoint rejected

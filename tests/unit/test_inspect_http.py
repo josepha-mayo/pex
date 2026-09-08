@@ -140,6 +140,8 @@ def test_review_parser_rejects_malformed_response_shapes(payload):
 def test_review_parser_rejects_nonfinite_json_and_bounds_usage_counts():
     with pytest.raises(ValueError, match="non-finite"):
         _loads_object('{"answer":NaN}')
+    with pytest.raises(ValueError, match="non-finite"):
+        _loads_object('{"answer":"safe","ignored":1e9999}')
     with pytest.raises(ValueError, match="duplicate JSON key"):
         _loads_object('{"answer":"safe","answer":"overridden"}')
     assert usage_tokens(
@@ -204,6 +206,36 @@ def test_chat_json_rejects_oversized_streamed_response(monkeypatch):
             200,
             headers={"content-type": "application/json"},
             content=b"x" * 262_145,
+        )
+    )
+    real_client = httpx.Client
+    monkeypatch.setattr(
+        "pex_supervisor.inspect_http.openai_compat_client_config",
+        lambda: {
+            "provider": "openrouter",
+            "base_url": "https://example.invalid/v1",
+            "model_id": "test-model",
+            "api_key": None,
+        },
+    )
+    monkeypatch.setattr(
+        "pex_supervisor.providers.httpx.Client",
+        lambda **kwargs: real_client(transport=transport, **kwargs),
+    )
+
+    with pytest.raises(RuntimeError, match="ValueError"):
+        _chat_json("system", "user")
+
+
+def test_chat_json_rejects_overflowed_outer_response(monkeypatch):
+    transport = httpx.MockTransport(
+        lambda _request: httpx.Response(
+            200,
+            headers={"content-type": "application/json"},
+            content=(
+                b'{"choices":[{"message":{"content":"{\\"answer\\":\\"safe\\"}"}}],'
+                b'"usage":{"prompt_tokens":1e9999}}'
+            ),
         )
     )
     real_client = httpx.Client

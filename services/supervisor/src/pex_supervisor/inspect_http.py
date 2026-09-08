@@ -8,6 +8,7 @@ not expose an alternate action-proposal path.
 from __future__ import annotations
 
 import json
+from math import isfinite
 from typing import Any
 
 import httpx
@@ -27,6 +28,13 @@ _MAX_RESPONSE_CHUNKS = 4_096
 
 def _reject_nonfinite_json_constant(value: str) -> None:
     raise ValueError(f"non-finite JSON constant {value}")
+
+
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not isfinite(parsed):
+        raise ValueError(f"non-finite JSON number {value}")
+    return parsed
 
 
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -103,6 +111,7 @@ def _loads_object(text: str) -> dict[str, Any]:
             decoded = json.loads(
                 candidate,
                 parse_constant=_reject_nonfinite_json_constant,
+                parse_float=_finite_json_float,
                 object_pairs_hook=_unique_json_object,
             )
         except (json.JSONDecodeError, ValueError) as exc:
@@ -211,6 +220,7 @@ def _chat_json(
                     data = json.loads(
                         response_text,
                         parse_constant=_reject_nonfinite_json_constant,
+                        parse_float=_finite_json_float,
                         object_pairs_hook=_unique_json_object,
                     )
                     if not isinstance(data, dict):

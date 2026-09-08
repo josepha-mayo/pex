@@ -2,6 +2,12 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced external provider bytes through bounded model-catalog
+decode and the review HTTP client's outer plus embedded JSON decoders. All rejected
+duplicates/constants but accepted exponent overflow in ignored, usage or answer fields.
+Finite-float hooks now precede catalog/usage/answer validation. Provider and review tests
+pass 96/96 with Ruff clean. No live provider or Strands authority proof follows.
+
 Changed-path addendum: parent compared the bridge-wide request limiter and AgentCore
 runtime's bounded JSON entrypoint against the strict adapter decoder. Both rejected
 duplicate keys/constants but accepted exponent overflow before endpoint/model validation.

@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Provider catalog and review-answer JSON now reject exponent overflow at ignored,
+  outer-usage and embedded-answer positions; focused coverage passes 96/96 with Ruff.
+  No live provider call ran, so availability and Strands model evidence remain open.
 - Inbound bridge and AgentCore runtime JSON now reject exponent-overflow numbers before
   endpoint/model logic; typed, headerless and ignored-field negatives pass in a 46-test
   gate with Ruff clean. Deployment/provider behavior and native stability are unverified.

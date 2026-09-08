@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Provider catalog refresh and review-answer decoding now reject exponent overflow in
+ignored catalog fields, the outer usage envelope and embedded answer JSON. Provider plus
+review tests pass 96/96 with Ruff clean. No live model/network call ran, so availability
+and Strands main/verifier evidence remain open.
+
 Bridge-wide JSON request admission and the AgentCore runtime invocation endpoint now
 reject exponent-overflow tokens before endpoint/model logic, including headerless and
 ignored-field cases. The combined gate passes 46/46 with Ruff clean. No native or cloud

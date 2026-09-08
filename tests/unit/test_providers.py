@@ -623,7 +623,15 @@ def test_live_catalog_rejects_excessive_empty_chunks(monkeypatch):
         refresh_model_catalog("openai", client=Client())
 
 
-def test_live_catalog_rejects_duplicate_json_keys(monkeypatch):
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b'{"data":[],"data":[{"id":"spoofed"}]}',
+        b'{"data":[],"ignored":1e9999}',
+        b'{"data":[],"ignored":NaN}',
+    ],
+)
+def test_live_catalog_rejects_ambiguous_or_nonfinite_json(monkeypatch, payload):
     monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "secret")
 
     class Response:
@@ -637,7 +645,7 @@ def test_live_catalog_rejects_duplicate_json_keys(monkeypatch):
             return None
 
         def iter_bytes(self):
-            yield b'{"data":[],"data":[{"id":"spoofed"}]}'
+            yield payload
 
     class Client:
         def stream(self, method, url, headers=None):
