@@ -8823,3 +8823,22 @@ The dirty bit is expected because the protected operator-owned file below is ret
   all exist and their bytes match the 6 September stamp. The source has changed since that
   build, so they remain stale/unverified for the current commit and a clean rebuild/preflight
   is still required; the current blocker is no longer a missing cursor-observe file.
+
+### 8 September large-history authority-read repair
+
+- Read-only inspection of the actual default profile found a 117.65 MiB primary database with
+  19,079 accepted events. One real session owns 9,032 events; its retained event JSON alone is
+  46.57 MiB. This is evidence of meaningful history pressure, not permission to delete it.
+- `recent_events_for_authority` and its through-event variant previously repeated the same live
+  project-binding query for every returned event even after the surrounding transaction had
+  already proved the requested project and goal authority. The pet projection may request 120
+  recent events per promptable session, so this was an avoidable N+1 SQLite path during reads.
+- Both methods now cache only transaction-local comparisons. Exact requested/goal identities
+  reuse the already-proved result; a distinct event project is still checked once, corrupt or
+  quarantined authority still fails closed, and every later request starts a fresh transaction
+  and therefore observes re-resolution immediately.
+- The new regression proves two returned events require one authority comparison rather than
+  three, for both newest and through-event reads. Focused identity coverage passed **3/3**;
+  broader event-store/current-projection/pet-snapshot coverage passed **58/58**; scoped Ruff and
+  diff checks passed. PEX remained closed, so this materially reduces a demonstrated read
+  amplification but does not by itself close the reported whole-PC freeze.

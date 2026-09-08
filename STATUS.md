@@ -2045,3 +2045,12 @@ The earlier frozen cursor-observe “missing” caveat is stale: bridge, control
 sidecars all exist and match their 6 September stamp. Because current source includes later
 bridge changes, those bytes are not a current release artifact. Clean rebuild, source preflight,
 and package smoke remain required before submission.
+
+Read-only profiling of the actual default state found 19,079 accepted events in a 117.65 MiB
+database, including one 9,032-event session with 46.57 MiB of event JSON. A pet-facing recent
+projection could repeat the same project-authority query for every one of up to 120 returned
+events per promptable session. Recent and through-event Store readers now reuse the authority
+already proven inside that transaction and validate any distinct project id once; a later read
+still starts fresh and sees quarantine/re-resolution. Focused tests passed 3/3, broader
+store/projection/pet coverage passed 58/58, and Ruff/diff checks passed. This reduces a real
+large-history backend amplification but does not replace the pending bounded native profile.

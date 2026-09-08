@@ -1611,3 +1611,17 @@ All three frozen sidecars now exist and match their 6 September stamp, including
 `pex-cursor-observe`; earlier “missing” wording is obsolete. They do not prove a current release
 because bridge/source changes landed afterward. Clean rebuild, current-source preflight, and
 package smoke remain required.
+
+## Large-history projection repair
+
+The real default PEX profile is 117.65 MiB and contains 19,079 accepted events; one session has
+9,032 events and 46.57 MiB of event JSON. Read-only inspection identified a hot amplification:
+authority-filtered recent-event reads rechecked the same live project binding once per returned
+event, even within one transaction. Pet snapshots can request 120 recent events per promptable
+session.
+
+Recent and through-event authority reads now reuse the binding already proven by that read
+transaction and check each genuinely distinct project identity at most once. No history was
+deleted and quarantine/re-resolution checks remain fresh across requests. Focused identity
+tests passed 3/3; event-store/current-projection/pet-snapshot coverage passed 58/58; Ruff and
+scoped diff checks passed. This is a concrete backend load repair, not native freeze closure.

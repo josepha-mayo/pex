@@ -6,6 +6,7 @@ import json
 import sqlite3
 from datetime import timedelta
 
+import pex_bridge.store as store_module
 import pytest
 from pex_bridge.store import (
     ProjectIdentityBlockedError,
@@ -1485,6 +1486,54 @@ async def test_main_claim_rejects_project_identity_reresolved_after_plan(tmp_pat
         effect = await store.get_event_effect(event.event_id, "main")
         assert effect is not None
         assert effect["state"] == "reserved"
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_recent_authority_events_reuse_one_live_project_check(
+    tmp_path, monkeypatch
+):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        first, session = await _bound_event(store, "recent-authority-first")
+        second = _event(
+            "recent-authority-second",
+            seconds=1,
+            goal_id=first.goal_id,
+        )
+        await store.accept_pipeline_event(first, session_snapshot=session)
+        await store.accept_pipeline_event(second, session_snapshot=session)
+
+        checks: list[tuple[str, str]] = []
+        original = store_module._same_live_project_binding
+
+        async def counted(transaction, left: str, right: str) -> bool:
+            checks.append((left, right))
+            return await original(transaction, left, right)
+
+        monkeypatch.setattr(store_module, "_same_live_project_binding", counted)
+        recent = await store.recent_events_for_authority(
+            session.id,
+            goal_id=str(first.goal_id),
+            project_id=str(first.project_id),
+            harness_type=first.harness_type,
+        )
+
+        assert recent == [first, second]
+        assert checks == [("C:/repo", "C:/repo")]
+
+        checks.clear()
+        through = await store.recent_events_through_for_authority(
+            session.id,
+            second.event_id,
+            goal_id=str(first.goal_id),
+            project_id=str(first.project_id),
+            harness_type=first.harness_type,
+        )
+        assert through == [first, second]
+        assert checks == [("C:/repo", "C:/repo")]
     finally:
         await store.close()
 

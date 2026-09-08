@@ -23879,6 +23879,10 @@ class Store:
                         "event project identity does not match its goal",
                         code="artifact_project_identity_changed",
                     )
+                live_project_matches = {
+                    project_id: True,
+                    goal.project_id: True,
+                }
                 bound_cursor = await transaction.execute(
                     "SELECT accept_seq, session_id, goal_id, project_id, harness_type, "
                     "accepted_project_binding FROM event_processing WHERE event_id = ?",
@@ -23887,17 +23891,24 @@ class Store:
                 bound = await bound_cursor.fetchone()
                 if bound is None:
                     raise LookupError("event processing row not found")
+                bound_project_id = bound["project_id"]
+                if not isinstance(bound_project_id, str):
+                    bound_project_matches = False
+                elif bound_project_id in live_project_matches:
+                    bound_project_matches = live_project_matches[bound_project_id]
+                else:
+                    bound_project_matches = await _same_live_project_binding(
+                        transaction,
+                        bound_project_id,
+                        project_id,
+                    )
+                    live_project_matches[bound_project_id] = bound_project_matches
                 if (
                     str(bound["session_id"]) != session_id
                     or str(bound["goal_id"]) != goal_id
                     or str(bound["harness_type"]) != harness_value
                     or bound["accepted_project_binding"] != binding.project_binding
-                    or not isinstance(bound["project_id"], str)
-                    or not await _same_live_project_binding(
-                        transaction,
-                        str(bound["project_id"]),
-                        project_id,
-                    )
+                    or not bound_project_matches
                 ):
                     raise ProjectIdentityBlockedError(
                         "event prefix authority binding changed",
@@ -23921,16 +23932,23 @@ class Store:
                 rows = await cursor.fetchall()
                 events = [HarnessEvent.model_validate_json(row["json"]) for row in rows]
                 for event in events:
+                    event_project_id = event.project_id
+                    if event_project_id is None:
+                        event_project_matches = False
+                    elif event_project_id in live_project_matches:
+                        event_project_matches = live_project_matches[event_project_id]
+                    else:
+                        event_project_matches = await _same_live_project_binding(
+                            transaction,
+                            event_project_id,
+                            project_id,
+                        )
+                        live_project_matches[event_project_id] = event_project_matches
                     if (
                         event.session_id != session_id
                         or event.goal_id != goal_id
                         or event.harness_type.value != harness_value
-                        or event.project_id is None
-                        or not await _same_live_project_binding(
-                            transaction,
-                            event.project_id,
-                            project_id,
-                        )
+                        or not event_project_matches
                     ):
                         raise ProjectIdentityBlockedError(
                             "event prefix contains a corrupt authority binding",
@@ -23979,6 +23997,17 @@ class Store:
                         "event project identity does not match its goal",
                         code="artifact_project_identity_changed",
                     )
+                # This transaction already proved the requested project and the
+                # goal's project are the same live authority.  A busy worker can
+                # contribute hundreds of recent events with that exact project id;
+                # repeating the project-binding lookup for every row turns a
+                # bounded projection into an avoidable N+1 SQLite workload.
+                # Cache only within this read transaction so a later request still
+                # observes quarantine or re-resolution immediately.
+                live_project_matches = {
+                    project_id: True,
+                    goal.project_id: True,
+                }
                 cursor = await transaction.execute(
                     "SELECT e.json FROM event_processing AS p "
                     "JOIN events AS e ON e.event_id = p.event_id "
@@ -23990,16 +24019,23 @@ class Store:
                 rows = await cursor.fetchall()
                 events = [HarnessEvent.model_validate_json(row["json"]) for row in rows]
                 for event in events:
+                    event_project_id = event.project_id
+                    if event_project_id is None:
+                        event_project_matches = False
+                    elif event_project_id in live_project_matches:
+                        event_project_matches = live_project_matches[event_project_id]
+                    else:
+                        event_project_matches = await _same_live_project_binding(
+                            transaction,
+                            event_project_id,
+                            project_id,
+                        )
+                        live_project_matches[event_project_id] = event_project_matches
                     if (
                         event.session_id != session_id
                         or event.goal_id != goal_id
                         or event.harness_type.value != harness_value
-                        or event.project_id is None
-                        or not await _same_live_project_binding(
-                            transaction,
-                            event.project_id,
-                            project_id,
-                        )
+                        or not event_project_matches
                     ):
                         raise ProjectIdentityBlockedError(
                             "recent event contains a corrupt authority binding",

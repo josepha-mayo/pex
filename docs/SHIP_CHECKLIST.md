@@ -671,3 +671,10 @@ Do the next safe, highest-impact item immediately. If a required external choice
   complete desktop 257/257, and TypeScript pass.
 - [ ] Confirm the Inspector spinner settles under an immediate mutation/refresh race in the
   bounded native UI run.
+- [x] Remove per-event project-identity N+1 reads from authority-filtered recent/through-event
+  projections. The real default profile has 19,079 events and a 9,032-event session; the new
+  regression binds one comparison for two same-project results instead of three. Focused 3/3,
+  adjacent store/projection/pet 58/58, Ruff, and scoped diff checks pass.
+- [ ] Measure pet-snapshot SQLite time/CPU against the retained 117.65 MiB profile during the
+  bounded native run. Transaction-local caching reduces a demonstrated amplification but does
+  not prove the whole-PC freeze is resolved or authorize history deletion.

@@ -1371,3 +1371,16 @@ unmeasured after the freeze incident.
 
 No pet or binary was changed. This closes current atlas/metadata/static evidence, not native
 animation/interaction or current release packaging.
+
+## 8 September large-history projection focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `services/bridge/src/pex_bridge/store.py` recent/through-event authority readers | REVIEWED / REPAIRED | Reuses only transaction-local live-project results; distinct identities still receive one check and later requests revalidate from a fresh transaction. |
+| `tests/unit/test_event_processing_store.py` | REVIEWED / EXTENDED | Proves two same-project events require one authority comparison for both bounded read variants while returning the same ordered events. |
+| Real default `~/.pex/pex.sqlite` | READ-ONLY PROFILE EVIDENCE | 117.65 MiB, 19,079 events; largest session 9,032 events / 46.57 MiB event JSON. No data changed. |
+
+Focused identity coverage passed 3/3; event-store/current-projection/pet-snapshot coverage passed
+58/58; scoped Ruff and diff checks passed. The former maximum was one initial comparison plus
+one per returned event (121 for a 120-row page); the repaired same-project case uses one. Native
+SQLite timing and whole-machine freeze resolution remain open.

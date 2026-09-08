@@ -533,3 +533,8 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   6 September stamp, but later source changes make that set non-current for release. A clean
   rebuild/preflight/package smoke is still required; do not present the stamped bytes as the
   submission artifact.
+- The real default database has retained 19,079 events (117.65 MiB), including a 9,032-event
+  session. Authority-filtered recent reads formerly performed the same live-project lookup for
+  every returned event; transaction-local caching now removes that N+1 path without deleting
+  history or carrying authority across requests. Tests prove the source behavior, but native
+  SQLite latency/CPU on this profile remains unmeasured and the whole-PC freeze is still open.
