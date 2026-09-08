@@ -1475,3 +1475,13 @@ failed the broader compatibility test because it removed the observe tile; the f
 preserves that tile and delegates later process refresh/removal to the central shared snapshot.
 A forced multi-refresh regression requires one inventory call across at least three list
 refreshes. The complete adapter gate passed 117/117 with Ruff clean.
+
+## Event-first attached-goal evidence
+
+The visible desktop no longer performs decisions plus completion reads every four seconds
+for an unchanged attached goal. Each valid durable `event_page` now wakes one coalesced
+evidence refresh immediately, while a 30-second reconciliation covers missed/non-event
+changes. Cleanup clears the wake target and aborts both reads. The old implementation failed
+the new source contract; the focused desktop gate passed 125/125 and TypeScript passed.
+This proves an 86.7% reduction in scheduled unchanged-state evidence reads (30 to 4 per
+minute), not measured native resource behavior or freeze resolution.

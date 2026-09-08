@@ -144,10 +144,17 @@ test("goal evidence polling is bound to goal intent, not every session snapshot"
   assert.ok(start > 0 && end > start);
   const effect = source.slice(start, end);
   assert.ok(!/markCanonical, sessions\]/.test(effect), "worker snapshots must not restart reads");
-  assert.ok(/startSerialPolling\(async \(signal\)/.test(effect));
+  assert.match(effect, /coalesceBackgroundRead\(async \(\) =>/);
+  assert.match(effect, /goalEvidenceRefresh\.current = refreshGoalEvidence/);
+  assert.match(effect, /GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS/);
   assert.ok(/completion`, \{ signal \}\)/.test(effect));
   assert.ok(/decisions`, \{ signal \}\)/.test(effect));
-  assert.ok(/cancelled = true;\s*stopPolling\(\)/.test(effect));
+  assert.ok(/cancelled = true;[\s\S]*?controller\.abort\(\);[\s\S]*?stopPolling\(\)/.test(effect));
+  assert.match(
+    source,
+    /message\.topic === "event_page"[\s\S]*?goalEvidenceRefresh\.current\?\.\(\)/,
+    "committed event pages should wake attached-goal evidence immediately",
+  );
 });
 
 test("view-owned background reads propagate cancellation and handoff reads use a bounded batch", async () => {

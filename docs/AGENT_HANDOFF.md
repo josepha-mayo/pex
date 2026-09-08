@@ -8625,3 +8625,17 @@ The dirty bit is expected because the protected operator-owned file below is ret
   desktop-thread isolation test still passes.
 - Final Codex/discovery gate: **117/117 passed in 32.26 seconds**; scoped Ruff and diff checks
   passed. This proves call-count behavior in tests, not native `tasklist` duration or CPU.
+
+### 8 September event-first goal-evidence slice
+
+- A visible main/settings shell with an attached goal still fetched both the decisions and
+  completion endpoints every four seconds: 30 scheduled local requests per minute even when
+  no evidence changed. The durable event socket already receives an `event_page` after each
+  committed canonical event.
+- Valid event pages now wake one coalesced goal-evidence reconciliation immediately. The
+  periodic path is a 30-second safety reconciliation, reducing unchanged-state scheduled
+  reads from 30 to 4 per minute. Goal/intent switches and hidden/unmounted views clear the
+  wake callback, abort both endpoint reads, and prevent an old observation from publishing.
+- The updated source contract failed against the old four-second implementation, then passed.
+  The focused desktop gate passed **125/125** and `npx tsc --noEmit` exited 0. This is source
+  scheduling evidence only; native CPU and the reported freeze remain unverified.

@@ -1940,3 +1940,10 @@ creates the required ChatGPT observe tile once per transport attachment, then le
 presence/removal to the central shared snapshot. A first zero-inventory draft was rejected
 by the existing compatibility test; the corrected forced-multi-refresh contract and full
 117-test adapter gate pass. Native resource impact remains unmeasured.
+
+Attached-goal evidence is now event-first too. A valid durable event page immediately wakes
+one coalesced decisions/completion refresh; the unchanged-state fallback is 30 seconds rather
+than four, and view/goal cleanup aborts both reads. The prior wiring made 30 scheduled local
+requests per minute for an idle attached goal; the fallback now makes 4. The negative source
+contract failed before the repair, then the focused desktop gate passed 125/125 and TypeScript
+passed. This remains source evidence, not a native CPU measurement or freeze closure.

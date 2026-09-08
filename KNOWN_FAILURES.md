@@ -482,3 +482,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   retained at transport attachment so the ChatGPT observe tile remains truthful. This is
   contract-tested across forced repeated refreshes, but native `tasklist`, App Server, bridge,
   and WebView resource use still need a joint bounded profile before closing the freeze.
+- Attached-goal decisions/completion now refresh immediately from valid durable event-page
+  wakes and reconcile every 30 seconds instead of polling both endpoints every four. The
+  source contract covers coalescing and cleanup cancellation, but the native app has not been
+  reopened; event responsiveness, idle resource impact, and freeze resolution remain open.

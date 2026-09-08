@@ -603,3 +603,8 @@ Do the next safe, highest-impact item immediately. If a required external choice
 - [x] Remove repeated Windows process inventory from the Codex event pump: one inventory per
   transport attachment, then thread-only refreshes; forced multi-refresh and observe-tile
   compatibility tests pass within a 117-test adapter gate.
+- [x] Make attached-goal evidence event-first: durable event pages trigger one coalesced
+  decisions/completion refresh and unchanged-state reconciliation is 30 seconds rather than
+  four; goal/view cleanup aborts both reads. Focused desktop 125/125 and TypeScript pass.
+- [ ] Confirm goal-evidence responsiveness and lower idle request load in the authorized
+  bounded native profile; source scheduling is not freeze-resolution proof.

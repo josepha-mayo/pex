@@ -138,6 +138,7 @@ import {
 const BRIDGE = "http://127.0.0.1:7420";
 const EVENT_CURSOR_STORAGE_KEY = "pex.event_cursor.v1";
 const PET_RECONCILIATION_INTERVAL_MS = 30_000;
+const GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS = 30_000;
 
 function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
   if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return "local";
@@ -468,6 +469,7 @@ export function App() {
   const supervisorSaveInFlight = useRef(false);
   const supervisorKeyAudience = useRef<string | null>(null);
   const goalEvidenceKey = useRef<string | null>(null);
+  const goalEvidenceRefresh = useRef<(() => Promise<unknown>) | null>(null);
   const bridgeStartupRef = useRef(bridgeStartup);
   const bridgeAvailable = bridgeBootstrapAvailable(
     TAURI,
@@ -681,6 +683,9 @@ export function App() {
                 } catch {
                   /* Resume remains available for this live socket. */
                 }
+                // Canonical commits wake goal evidence immediately. Bursts
+                // share the evidence effect's one in-flight reconciliation.
+                void goalEvidenceRefresh.current?.();
               }
             }
           } catch {
@@ -970,6 +975,7 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable) {
       goalEvidenceKey.current = null;
+      goalEvidenceRefresh.current = null;
       markCanonical("decisions", "reset");
       markCanonical("completion", "reset");
       return;
@@ -977,6 +983,7 @@ export function App() {
     if (!pageVisible) return;
     if (!attachedGoal?.id) {
       goalEvidenceKey.current = null;
+      goalEvidenceRefresh.current = null;
       setLedgerDecisions([]);
       setGoalCompletion(null);
       markCanonical("decisions", "fresh");
@@ -992,8 +999,10 @@ export function App() {
       markCanonical("completion", "reset");
     }
     let cancelled = false;
+    const controller = new AbortController();
     const goalId = encodeURIComponent(attachedGoal.id);
-    const stopPolling = startSerialPolling(async (signal) => {
+    const refreshGoalEvidence = coalesceBackgroundRead(async () => {
+      const signal = controller.signal;
       const [decisionsResult, completionResult] = await Promise.allSettled([
         bridgeJson<LedgerDecision[]>(`/v1/goals/${goalId}/decisions`, { signal }),
         bridgeJson<GoalCompletion>(`/v1/goals/${goalId}/completion`, { signal }),
@@ -1013,9 +1022,16 @@ export function App() {
         completionResult.status === "fulfilled" ? "fresh" : "failed",
         "Goal completion could not be refreshed.",
       );
-    }, 4000);
+    });
+    goalEvidenceRefresh.current = refreshGoalEvidence;
+    const stopPolling = startSerialPolling(
+      refreshGoalEvidence,
+      GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS,
+    );
     return () => {
       cancelled = true;
+      if (goalEvidenceRefresh.current === refreshGoalEvidence) goalEvidenceRefresh.current = null;
+      controller.abort();
       stopPolling();
     };
   }, [attachedGoal?.id, attachedGoal?.intent_revision, bridgeAvailable, markCanonical, pageVisible]);

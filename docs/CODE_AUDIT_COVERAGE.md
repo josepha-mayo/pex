@@ -1220,3 +1220,13 @@ remain unmeasured after this source change.
 
 The first zero-inventory draft failed broader compatibility and was corrected before commit.
 Final three-file adapter gate passed 117/117; this is not native CPU evidence.
+
+## 8 September attached-goal evidence transport focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/App.tsx` goal-evidence effect and event socket | REVIEWED / REPAIRED | Valid durable event pages wake one coalesced decisions/completion refresh; fallback cadence is 30 seconds; cleanup clears and aborts old-goal work. |
+| `apps/desktop/src/readBudget.test.ts` source/resource contract | REVIEWED / EXTENDED | Negative contract rejected the prior four-second poll and binds event wake, coalescing, cancellation, and reconciliation wiring. |
+
+Focused desktop coverage passed 125/125 and TypeScript passed. Native responsiveness and
+resource use remain unmeasured after this source change.
