@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the isolated Codex App Server pump no longer rescans approvals and notifications
+every 50ms. Its blocking stdout reader now signals notification/approval/EOF activity;
+the adapter sleeps on that signal with a one-second deadline for session discovery, and
+transport close wakes pending observers. Codex transport/pump/attach coverage passes
+109/109 and Ruff is clean. No Codex process or native app ran, so live resource behavior
+and the whole-PC freeze remain open.
+
 Latest: production OpenCode and Qwen SSE pumps now sleep on transport activity instead
 of rescanning unchanged retained events every 50ms. Qwen retains a deadline wake for
 scheduled discovery. The live HTTP reader also backs off one second after clean EOF;

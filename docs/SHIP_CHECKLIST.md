@@ -12,6 +12,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Replace live OpenCode/Qwen 50ms empty SSE scans with transport activity waits,
   preserve Qwen discovery deadlines, and back off clean SSE EOF reconnects. Relevant
   adapter coverage passes 71/71 and Ruff; native resource proof remains open.
+- [x] Replace isolated Codex 50ms approval/notification scans with stdout activity wakes
+  while retaining its one-second discovery deadline. Related coverage passes 109/109
+  and Ruff; no worker/native process ran.
 - [x] Repair the stale unknown-capability test fixture so its specific mock nudge reaches
   the intended gate; the original proposal is retained beside fail-closed NOOP execution.
   The complete capability file passes 24/24 and Ruff.

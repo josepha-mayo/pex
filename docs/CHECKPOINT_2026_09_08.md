@@ -5,6 +5,15 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: event-driven isolated-Codex observation
+
+The isolated Codex adapter previously woke every 50ms to rescan unchanged approvals and
+notifications. Its App Server stdout reader already blocks on incoming lines; it now
+signals notification, approval, EOF and close activity. The pump blocks on that signal
+and uses a one-second deadline only for its required session discovery. Codex transport,
+pump and attach coverage passes **109/109** and scoped Ruff passes. The test uses no child
+process; PEX and Codex remained closed, so native/resource proof is still required.
+
 ## Latest offline slice: event-driven HTTP harness observation
 
 Production OpenCode and Qwen adapters previously rescanned retained SSE events every

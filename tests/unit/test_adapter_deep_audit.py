@@ -249,6 +249,25 @@ async def test_live_http_clean_sse_eof_backs_off(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_live_codex_activity_wait_is_quiet_and_wakes(tmp_path):
+    executable = tmp_path / "codex.exe"
+    executable.write_bytes(b"test executable identity")
+    transport = CodexStdioTransport([str(executable.resolve())])
+
+    waiter = asyncio.create_task(transport.wait_for_activity())
+    await asyncio.sleep(0)
+    assert not waiter.done()
+    transport._append_notification({"method": "turn/completed", "params": {}})
+    await asyncio.wait_for(waiter, timeout=1)
+
+    quiet = asyncio.create_task(transport.wait_for_activity())
+    await asyncio.sleep(0)
+    assert not quiet.done()
+    await transport.close()
+    await asyncio.wait_for(quiet, timeout=1)
+
+
+@pytest.mark.asyncio
 async def test_sse_line_reader_discards_unterminated_oversized_lines(monkeypatch):
     monkeypatch.setattr(http_json_module, "MAX_SSE_LINE_CHARS", 8)
     response = httpx.Response(200, content=b"0123456789\n\ndata: {}\n\n")

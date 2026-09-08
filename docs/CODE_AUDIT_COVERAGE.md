@@ -2,6 +2,12 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced isolated Codex's 50ms approval/notification scans
+into its already-blocking stdout reader. Production transport activity now wakes the
+pump, with a one-second deadline retained for discovery and EOF/close wakeups for cleanup.
+Codex transport/pump/attach coverage passes 109/109 and Ruff is clean. No worker or native
+resource run occurred.
+
 Changed-path addendum: parent traced OpenCode/Qwen 50ms retained-event scans to the live
 HTTP SSE reader. Production pumps now wait for event/stream activity, with Qwen retaining
 its discovery deadline. Normal SSE EOF now backs off one second instead of reconnecting

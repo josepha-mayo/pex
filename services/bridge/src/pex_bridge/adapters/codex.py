@@ -279,6 +279,7 @@ class CodexStdioTransport:
         self.connection_generation = 0
         self.pending_approvals: dict[str, dict[str, Any]] = {}
         self.notifications: list[dict[str, Any]] = []
+        self._activity_ready = asyncio.Event()
         self.raw_capture: list[dict[str, Any]] = []
         self.stderr_tail: list[str] = []
         self.init_result: dict[str, Any] | None = None
@@ -292,6 +293,7 @@ class CodexStdioTransport:
         if len(self.notifications) >= MAX_CODEX_RECORDS:
             raise RuntimeError("Codex notification retention safety bound reached")
         self.notifications.append(message)
+        self._activity_ready.set()
         if len(self.raw_capture) < MAX_CODEX_RECORDS:
             self.raw_capture.append(dict(message))
 
@@ -377,6 +379,7 @@ class CodexStdioTransport:
                         "method": method,
                         "params": params,
                     }
+                    self._activity_ready.set()
                     continue
                 # Official turn/item events are notifications. Some builds still attach
                 # an `id`; only documented approval methods are requests.
@@ -384,6 +387,20 @@ class CodexStdioTransport:
                 self._append_notification({"method": method, "params": params})
         finally:
             self._fail_pending(RuntimeError("codex app-server stdout closed"))
+            self._activity_ready.set()
+
+    async def wait_for_activity(self, *, timeout: float | None = None) -> None:
+        """Wait for App Server output or the next scheduled discovery pass."""
+        try:
+            if timeout is None:
+                await self._activity_ready.wait()
+            else:
+                async with asyncio.timeout(max(0.0, timeout)):
+                    await self._activity_ready.wait()
+        except TimeoutError:
+            pass
+        finally:
+            self._activity_ready.clear()
 
     async def _write(self, payload: dict[str, Any]) -> None:
         assert self._proc and self._proc.stdin
@@ -468,6 +485,7 @@ class CodexStdioTransport:
                 "Codex approval response may have been partially written"
             ) from exc
         self.pending_approvals.pop(str(request_id), None)
+        self._activity_ready.set()
         if len(self.approvals) >= MAX_CODEX_RECORDS:
             del self.approvals[: len(self.approvals) - MAX_CODEX_RECORDS + 1]
         self.approvals.append({"request_id": request_id, "decision": decision, "result": result})
@@ -500,6 +518,7 @@ class CodexStdioTransport:
             except (asyncio.CancelledError, Exception):
                 pass
         self._fail_pending(RuntimeError("codex app-server transport closed"))
+        self._activity_ready.set()
         self.initialized = False
         self.init_result = None
 
@@ -1986,7 +2005,16 @@ class CodexAdapter(HarnessAdapter):
                     # records are already reclaimed and cannot exhaust retention.
                     del notifications[0]
                 self.last_pump_error = None
-                await asyncio.sleep(0.05)
+                wait_for_activity = getattr(transport, "wait_for_activity", None)
+                if callable(wait_for_activity):
+                    discovery_due = (
+                        1.0
+                        if last_discover is None
+                        else max(0.0, last_discover + 1.0 - asyncio.get_running_loop().time())
+                    )
+                    await wait_for_activity(timeout=discovery_due)
+                else:
+                    await asyncio.sleep(0.05)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:

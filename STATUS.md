@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Isolated Codex observation now waits for stdout notification/approval/EOF activity rather
+than rescanning every 50ms, while retaining a one-second discovery deadline. Relevant
+tests pass 109/109 with Ruff clean. No worker/native process ran, so the freeze gate stays
+open.
+
 Production OpenCode/Qwen SSE pumps now wait for transport activity instead of scanning
 unchanged events every 50ms; Qwen still wakes for scheduled discovery. Clean SSE EOF now
 backs off one second rather than reconnecting in a tight loop. Relevant tests pass 71/71

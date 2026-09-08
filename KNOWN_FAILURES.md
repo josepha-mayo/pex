@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Isolated Codex observation no longer rescans approvals/notifications every 50ms; its
+  stdout reader now wakes the pump and discovery retains a one-second deadline. Related
+  tests pass 109/109 and Ruff. No live worker/native resource proof exists yet.
 - Production OpenCode/Qwen SSE observation no longer rescans unchanged retained events
   every 50ms, and clean EOF reconnects now back off one second. Relevant tests pass 71/71
   and Ruff is clean. This still lacks native/resource proof.
