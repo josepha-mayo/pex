@@ -6,9 +6,11 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.
-  A pinned isolated 60-second harness now exists at
-  `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-d66e6a1.ps1`; it parses cleanly
-  and was not executed. Fresh explicit operator authorization is still required.
+  The prior `d66e6a1` harness is superseded. The exact `af35707` harness is
+  `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-af35707.ps1`, SHA-256
+  `3F26065E410C8D65E254BE085181DEEF3505DDB8C0117195017E30630CA32FF8`; it parses with zero
+  errors and was not executed. It must not run without fresh explicit operator authorization
+  while the shared PC is otherwise idle.
 - [x] Bound retained SQLite WAL allocation after checkpoints. The contest profile had a
   237,406,792-byte physical WAL but only 2,195 live frames; connections now apply a
   1,000-page auto-checkpoint and 16 MiB journal-size limit. Related gates pass 11/11 and
@@ -474,10 +476,10 @@ These are immediate steps within stage 1, not another competing product plan. Pr
 
 ### 5. Verify normal release build, then all eight pets
 
-- [x] Pass normal release configuration with all required sidecars. Exact clean source `d66e6a1`
+- [x] Pass normal release configuration with all required sidecars. Exact clean source `af35707`
   produced MSI and NSIS bundles; both extracted inventories and the desktop/helper marker
   contract pass with `release_ready: true` and no blockers. The rebuilt bridge then passed its
-  3/3 frozen lifecycle gate. Exact hashes are in `PACKAGE_RECEIPT_D66E6A1.json` and the handoff.
+  3/3 frozen lifecycle gate. Exact hashes are in `PACKAGE_RECEIPT_AF35707.json` and the handoff.
 - [ ] Verify isolated clean-profile startup, setup, retry, crash/reconnect and packaged assets; retain exact source/artifact hashes.
 - [ ] After core/primary flows work, use applicable pet/desktop skills to inspect pex, ledger, mesh, nudge, drift, quiet, ember and von.
 - [ ] Check actual desktop-size animation, transparency/cropping, placement/drag, click-through, compact/expanded and offline/pause behavior.

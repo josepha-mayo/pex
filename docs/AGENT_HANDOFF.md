@@ -2,26 +2,27 @@
 
 ### Current checkpoint — 8 September WAT
 
-Latest pushed product source is now `af35707` on `origin/main`; it repairs a live Codex
-event-pump starvation defect described below. The latest verified package remains the earlier
-`d66e6a1` source and must be rebuilt before submission. A detached clean worktree at
+Current packaged product source is `af35707`; `origin/main` may include later documentation-only
+checkpoints. That product revision repairs a live Codex event-pump starvation defect described
+below. A detached clean worktree at
 `C:\Users\JosephMayo\Projects\pex-release-9329a67` built the normal Tauri release at exact
-commit `d66e6a15100bc9efea68e8da116b1fd7c0a5a558`. The build produced:
+commit `af3570726923b9d233723de950c9d33e4606e033`. The build produced:
 
 - MSI: `apps/desktop/src-tauri/target/release/bundle/msi/PEX_0.1.0_x64_en-US.msi`,
-  125,476,864 bytes, SHA-256
-  `A03203B677FD0E4EB13800C6E961690E8287B39DB9EAB0D492EAA8BC8FA5241A`.
+  125,472,768 bytes, SHA-256
+  `4DE3CEED5A92D301456BD98B6721E3052DECBB99A311D154B85D6558E4722525`.
 - NSIS: `apps/desktop/src-tauri/target/release/bundle/nsis/PEX_0.1.0_x64-setup.exe`,
-  124,208,257 bytes, SHA-256
-  `DE5767D0040400FD48A74AC67F898ED4CB157302C1955B35D435EECB9C7F7B48`.
+  124,200,807 bytes, SHA-256
+  `62B33193D9618FA88C8A37CC405D92D6B95E9E2F7EF73BCD697040E7F6C3C78B`.
 
 `npm run verify:package` exited 0 and reported `release_ready: true`, no blockers, and
 verified both extracted inventories. The packaged frozen helpers are bridge
-`AA8FE66D9CD17A262AFDB0359FB8BA89827C2A3451824BE64B23B308B0BE0B9E`, Cursor hook
-`07AF20AC594512FDFBBD653556D195C3FB88D8211A24D653D12CFEFD8F2897E9`, and Cursor observer
-`B61BA2B005BFCA2C9B4E517B3129F56BEF980929413672A09C96FBDBCF5B2E0A`. The exact receipt is
-retained at `docs/PACKAGE_RECEIPT_D66E6A1.json`. The final sidecar bytes then passed
-`tests/contract/test_frozen_bridge_lifetime.py` **3/3** in 33.71 seconds.
+`46D6266A03861B9F69DAC84B52865FE7B28F0C1CD582A8BD89BDA6D02136CB93`, Cursor hook
+`3431A7F540334EE0F3DA90119EEA0E31F7C1A0E717F05A78D283C0EF2075AC16`, and Cursor observer
+`0BEA583EE984EA2C7BF9312CD3C81A51B32D0299C6C447CA79D62CE74C322A01`. The exact receipt is
+retained at `docs/PACKAGE_RECEIPT_AF35707.json`. The final sidecar bytes then passed
+`tests/contract/test_frozen_bridge_lifetime.py` **3/3** in 55.58 seconds. Both installers are
+`NotSigned`; this is package integrity, not publisher trust or native stability proof.
 
 The source preflight independently passed source cleanliness, exact eight-pet inventory,
 toolchain pins, Tauri wiring, sidecar currency, and frozen inventory with zero blockers. Its
@@ -81,14 +82,14 @@ no broken seam band. This is strong static visual evidence, not native playback 
 artifacts are under `C:\Users\JosephMayo\Documents\Codex\pex-pet-qa-5530938`.
 
 A post-freeze native stability harness is prepared at
-`C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-d66e6a1.ps1` (SHA-256
-`338CC86481866EDD443283996FDF2029F249D6BF8BA733B68A81C51BA8C1D822`) but was **not
-executed**. It is pinned to exact source `d66e6a1` and desktop hash
-`FEF9D302D32FA3278345100D5EE5417788EFB9033547B21DEC4E4A3E5723001B`, refuses an existing
+`C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-af35707.ps1` (SHA-256
+`3F26065E410C8D65E254BE085181DEEF3505DDB8C0117195017E30630CA32FF8`) but was **not
+executed**. It parses with zero errors and is pinned to exact source `af35707` and desktop hash
+`6AA1E294E27E2ACB51B9F6D53B5E42D8D78EB924CCE8FC2AD4E698396DC505ED`. It refuses an existing
 PEX process or occupied port 7420, creates a new isolated profile, disables the supervisor
 and Cursor/Codex auto-attach, bounds startup and idle capture, samples only the owned process
 tree, enforces CPU/memory/handle/thread stops, and starts a separate hidden timeout watchdog.
-PowerShell AST parsing passes. PEX remained closed and port 7420 was free after preparation;
+PEX remained closed during preparation;
 run it only after fresh explicit operator authorization at a time the PC is otherwise idle.
 
 Commit `bdf257f` bounds retained

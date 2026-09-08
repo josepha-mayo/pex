@@ -6,13 +6,15 @@ PEX negotiates support from evidence observed in the current connection. A regis
 worker, installed binary, open port, initialize response, or injected test transport is
 not by itself proof that PEX can observe or control that worker.
 
-The verified release candidate at product source `d66e6a1` includes the bridge and Cursor
+The verified release candidate at product source `af35707` includes the bridge and Cursor
 helpers. Its extracted package inventories pass, but the installers are unsigned and a
-fresh native smoke run remains outstanding after the reported machine freeze. The current
-tree also has a bounded live Codex App Server handshake test: support begins at Basic and
-becomes Deep only while the structured event pump is alive. That check did not send a model
-prompt or prove the packaged native app. See [the submission evidence](docs/SUBMISSION.md)
-and [package receipt](docs/PACKAGE_RECEIPT_D66E6A1.json).
+fresh native smoke run remains outstanding after the reported machine freeze. The same source
+passed a bounded live Codex App Server quiet contract and a same-thread recovery contract with
+the saved free Muse/Strands supervisor: observed completion stayed NOOP; incomplete work earned
+a specific nudge, produced the required artifact, recorded a helped outcome, and returned to
+NOOP. This is source-bound semantic proof, not packaged native-app proof. See
+[the submission evidence](docs/SUBMISSION.md), [sanitized live trace](docs/demo/evidence/LIVE_CODEX_STRANDS_2026-09-08.md),
+and [package receipt](docs/PACKAGE_RECEIPT_AF35707.json).
 
 Shared Codex is deliberately different from isolated Codex. The shared route can observe a
 separately confirmed existing workspace through bounded, durable receipts, but sending,

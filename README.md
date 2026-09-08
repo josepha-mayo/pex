@@ -39,7 +39,7 @@ always-on-top pet overlay. It supervises existing harnesses; it is not a chat UI
 - Plays **Codex v2** atlases (`1536×2288`, `spriteVersionNumber: 2`): pointer movement selects one of sixteen look directions, a dwell hops, dragging moves the overlay with running animation, and click opens the PEX inspector.
 - Import a hatch-pet folder (`pet.json` + `spritesheet.webp`), including a pet already installed under `~/.codex/pets/`.
 - Settings can authorize exactly one potentially billable image call for an unverified custom-pet base candidate through an explicitly configured image provider (`PEX_HATCH_*` or the canonical OpenAI Images endpoint). It does not build an atlas or playable pet; grounded 8×11 assembly and independent QA are still required before import. Text-only or unauthorized endpoints fail honestly.
-- The verified `d66e6a1` package contains exactly eight built-ins: Pex, Ledger, Mesh, Nudge, Drift, Quiet, Ember, and Von. Package inventory and static atlas validation pass; fresh native playback after the reported machine freeze remains deliberately unclaimed. Custom imports and unfinished hatch candidates stay separate from that built-in catalog.
+- The verified `af35707` package contains exactly eight built-ins: Pex, Ledger, Mesh, Nudge, Drift, Quiet, Ember, and Von. Package inventory and static atlas validation pass; fresh native playback after the reported machine freeze remains deliberately unclaimed. Custom imports and unfinished hatch candidates stay separate from that built-in catalog.
 
 ## Benchmark headline
 
@@ -52,9 +52,9 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 ### Windows source prerequisites
 
 This public repository provides a **source-development bootstrap**. A verified local Windows
-installer candidate exists for product source `d66e6a1`, but it has not been published as a
+installer candidate exists for product source `af35707`, but it has not been published as a
 GitHub release and is not code-signed. Its exact package receipt is
-[`docs/PACKAGE_RECEIPT_D66E6A1.json`](docs/PACKAGE_RECEIPT_D66E6A1.json). To build from source,
+[`docs/PACKAGE_RECEIPT_AF35707.json`](docs/PACKAGE_RECEIPT_AF35707.json). To build from source,
 install Git and `uv`, Node matching [`.node-version`](.node-version),
 and Rust matching [`rust-toolchain.toml`](rust-toolchain.toml). A Windows Tauri
 build also needs the Microsoft C++ build tools and WebView2 runtime. `uv` uses
@@ -221,10 +221,11 @@ or rejection becomes NOOP. Deterministic verification truth and local policy
 still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
 target, not a deployed-service claim. The verifier path has local contract coverage but
 is not part of the curated live receipt. Real Codex + provider-live Strands restraint and
-same-thread recovery are validated on source revision `5c49c10`; that controlled source
-receipt is not final-revision or packaged-app semantic proof. Separately, product source
-`d66e6a1` has verified MSI/NSIS inventories and a passing frozen-bridge lifecycle gate.
-Neither evidence tier proves the outstanding bounded native stability run or a benchmark result.
+same-thread recovery are validated on product source `af35707`: the quiet path ended in NOOP,
+and the recovery path sent a specific same-thread nudge, observed `report.txt=shipped`, recorded
+`helped=true`, then ended in NOOP. The same source has verified MSI/NSIS inventories and a
+passing frozen-bridge lifecycle gate. This does not prove the outstanding bounded native
+stability run or a benchmark result.
 
 The cloud supervisor can propose actions. It cannot bypass local policy.
 
@@ -232,7 +233,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Clean product source `d66e6a1` has verified MSI/NSIS package integrity, while the controlled semantic Codex loop remains source-bound proof at `5c49c10`. Overall contest state is **NO-GO** until the bounded post-freeze native review, final-product semantic recapture, demo video, and submission authorization are complete. The benchmark remains unfrozen, with no citeable impact score or validated leaderboard rank. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md).
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Clean product source `af35707` has both verified MSI/NSIS package integrity and source-bound real Codex + provider-live Strands quiet/recovery proof. Overall contest state is **NO-GO** until the bounded post-freeze native review, demo video, and submission authorization are complete. The benchmark remains unfrozen, with no citeable impact score or validated leaderboard rank. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md).
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)

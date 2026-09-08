@@ -110,10 +110,11 @@ drop requirements or declare an unverified product ready.
   Current offline desktop coverage is 259/259, Rust is 18/18, and the production
   frontend build succeeds. The latest settings/config gate passes 64 with one Windows-
   only skip, and the Strands/AgentCore gate passes 184/184. Production sidecar builds refuse
-  dirty source before PyInstaller. A detached clean `d66e6a1` release now has rebuilt MSI and
+  dirty source before PyInstaller. A detached clean `af35707` release now has rebuilt MSI and
   NSIS installers: package verification is `release_ready: true` with no blockers, both
   extracted inventories pass, and the final frozen bridge passes 3/3 lifecycle tests. Exact
-  hashes are retained in `PACKAGE_RECEIPT_D66E6A1.json`. Full current Python and the guarded
+  hashes are retained in `PACKAGE_RECEIPT_AF35707.json`. The same clean product source passes
+  the real quiet and same-thread recovery Codex + free Muse/Strands contracts. Full current Python and the guarded
   installed/fresh-profile native smoke stay open; the protected concurrent `loop.py` edit
   intentionally keeps the primary checkout non-clean.
 - [ ] **H. Finish honest benchmark and code-audit closure.**
