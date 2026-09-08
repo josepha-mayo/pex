@@ -9,6 +9,12 @@ resource plan is confirmed. Root cause remains unknown. Read the incident sectio
 at the top of CHECKPOINT_2026_09_08.md; polling/decode resource repairs have only
 lightweight offline verification, not proof the reported freeze is fixed.
 
+Follow-up: worker snapshots no longer restart goal-evidence GETs; the serial goal
+poll aborts on scope change. Loading supervisor status now refreshes without
+overwriting unsaved settings or accepting a different revision. 207 focused desktop
+tests and TypeScript pass; independent Terra review found no actionable issue.
+See the checkpoint for precise scope, negative tests and the unapproved native plan.
+
 Read [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md), all three specs and
 SHIP_CHECKLIST before continuing. It supersedes historical current/latest labels
 below. Exact de83153 Windows installers are verified; native input was stopped by

@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Follow-up changed-path review covers goal polling in App.tsx, cancellation in
+readBudget.ts, loading-only supervisor status and its revision/sequence helper in
+supervisorDraft.ts, and both focused test files. Two goal negatives and one loading
+wiring negative failed before implementation. Final scoped desktop selection:
+207 passed, TypeScript no-emit passed. Terra independently found no actionable issue
+in these effects or the final keyed pet cache. No whole-file/native stability claim
+is added by these reviews; the exact verification command is in the checkpoint.
+
 Parent reviewed App.tsx polling/read/asset lifecycle, new readBudget.ts, canonical
 activation-state projection/copy, and pet validation concurrency. Independent Terra
 review caught the first global-lock approach delaying completed cache hits; it is

@@ -31,6 +31,19 @@ export function isSupervisorRevision(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 2_147_483_647;
 }
 
+/** Status polling cannot rebase an unsaved draft onto a different configuration. */
+export function supervisorActivationRefreshDisposition(
+  expectedRevision: unknown,
+  receivedRevision: unknown,
+  requestSequence: number,
+  currentRequestSequence: number,
+  saveInFlight: boolean,
+): "ignore" | "accept" | "reload" {
+  if (saveInFlight || requestSequence !== currentRequestSequence) return "ignore";
+  return isSupervisorRevision(expectedRevision) && isSupervisorRevision(receivedRevision)
+    && receivedRevision === expectedRevision ? "accept" : "reload";
+}
+
 export function supervisorCredentialAudience(
   draft: Pick<SupervisorDraft, "provider" | "authMode" | "protocol" | "baseUrl">,
 ): string {

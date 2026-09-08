@@ -64,6 +64,23 @@ test("polling schedules nothing while a read is pending and never resumes after 
   assert.equal(calls, 2);
 });
 
+test("stopping a goal poll aborts both pending evidence reads and schedules no follow-up", async () => {
+  const signals: AbortSignal[] = [];
+  let scheduled = 0;
+  const stop = startSerialPolling(async (signal) => {
+    await Promise.allSettled([0, 1].map(() => boundedRead((incoming) => {
+      signals.push(incoming);
+      return new Promise(() => {});
+    }, signal)));
+  }, 4000, () => { scheduled += 1; return () => {}; });
+  assert.equal(signals.length, 2);
+  stop();
+  assert.ok(signals.every((signal) => signal.aborted));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(scheduled, 0);
+});
+
 test("polling retries a rejected read at the normal interval, never in a tight loop", async () => {
   let calls = 0;
   let scheduled: (() => void) | undefined;
@@ -114,4 +131,18 @@ test("app uses serialized background polls and bounds JSON and asset bodies, not
   assert.match(source, /method === "GET"[\s\S]*?boundedRead/);
   assert.match(source, /boundedRead\(async \(signal\) =>[\s\S]*?response\.blob\(\)/);
   assert.match(source, /controller\.abort\(\)/);
+});
+
+test("goal evidence polling is bound to goal intent, not every session snapshot", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const start = source.indexOf("const evidenceKey =");
+  const end = source.indexOf("const loadDetails =", start);
+  assert.ok(start > 0 && end > start);
+  const effect = source.slice(start, end);
+  assert.ok(!/markCanonical, sessions\]/.test(effect), "worker snapshots must not restart reads");
+  assert.ok(/startSerialPolling\(async \(signal\)/.test(effect));
+  assert.ok(/completion`, \{ signal \}\)/.test(effect));
+  assert.ok(/decisions`, \{ signal \}\)/.test(effect));
+  assert.ok(/cancelled = true;\s*stopPolling\(\)/.test(effect));
 });

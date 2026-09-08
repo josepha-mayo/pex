@@ -49,16 +49,17 @@ export function coalesceBackgroundRead<T>(read: () => Promise<T>): () => Promise
 
 /** A slow refresh never accumulates interval-triggered copies of itself. */
 export function startSerialPolling(
-  refresh: () => Promise<unknown>,
+  refresh: (signal: AbortSignal) => Promise<unknown>,
   intervalMs: number,
   schedule: Schedule = scheduleTimer,
 ): () => void {
   let stopped = false;
+  const controller = new AbortController();
   let cancelTimer: (() => void) | undefined;
   const run = async () => {
     if (stopped) return;
     try {
-      await refresh();
+      await refresh(controller.signal);
     } catch {
       // Refresh owns its canonical failure state; polling must survive failure.
     } finally {
@@ -68,6 +69,7 @@ export function startSerialPolling(
   void run();
   return () => {
     stopped = true;
+    controller.abort();
     cancelTimer?.();
   };
 }

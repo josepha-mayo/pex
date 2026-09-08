@@ -7,12 +7,15 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.
 - [x] Reproduce polling/decode resource-control gaps and test bounded repairs offline.
+- [x] Stop per-snapshot goal GET buildup and cancel superseded goal evidence reads.
+- [x] Refresh loading-only supervisor status without resetting drafts or rebasing revisions.
 - [ ] Confirm a bounded native resource capture before reopening the app or large gates.
 
 - [x] Build and verify exact de83153 MSI/NSIS inventories.
 - [x] Capture real Q18 completed Muse NOOP, oracle and cleanup; retain uncertainty.
 - [x] Repair named-artifact inspection and descriptor-bound reads; 189 tests/5 skips.
-- [ ] Push and run clean full regression for that source slice.
+- [x] Push named-artifact repair (1854eaf) and initial resource bounds (1fdb766).
+- [ ] Run clean full regression for the latest source after renewed resource confirmation.
 - [x] Add canonical saved-model loading/failure/retry guidance; scoped tests pass.
 - [ ] Verify startup recovery natively and finish fresh quiet/recovery proof after stability.
 - [ ] Renew native-check permission after Escape; canvas/eight-pet playback still open.

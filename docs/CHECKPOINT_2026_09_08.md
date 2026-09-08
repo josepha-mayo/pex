@@ -44,6 +44,9 @@ Offline source review identified two resource-control gaps, not a proven freeze 
    bounded to 128 and metadata changes invalidate the key. This is resource control,
    not a waiver of atlas validation or a change to the eight images.
 
+These two repairs and activation-state presentation were pushed as
+`1fdb7668021a49c285a8d724567f351f03d1e0ae`. They are not yet in a rebuilt installer.
+
 Lightweight verification only: 112 focused desktop tests passed serially and
 TypeScript no-emit passed. Fifteen targeted backend tests passed / 48 deselected;
 JUnit in main: `build/freeze-bounded-backend.xml`, SHA256
@@ -60,11 +63,60 @@ automatically, change provider/billing settings, weaken timeouts or claim succes
 inference from client configuration. Eight backend state negatives and one frontend
 guidance negative failed before the presentation repair; scoped positives pass.
 
-Next: finish changed-path review and push; prepare an opt-in, time/resource-bounded
-native idle capture with exact app identity and cleanup. No kernel/driver freeze can
-be guaranteed recoverable by a userspace watchdog, so obtain confirmation before
-reproduction and keep the user's other PC work untouched. Broader release gates and
-all submission work remain open until stability is actually demonstrated.
+### Follow-up offline slice: goal polling and completed setup status
+
+Another source-level buildup path was found: the goal decisions/completion effect
+depended on the entire sessions array. Each worker snapshot restarted both GETs;
+cleanup ignored their results but did not cancel them. It now polls serially every
+four seconds after completion, scoped to goal id/intent revision. Changing that
+scope or losing the bridge aborts both pending reads. `startSerialPolling` exposes
+its lifetime AbortSignal; this goal effect uses it. Do not claim every older poll
+now cancels in-flight work: their callbacks do not all consume the signal yet.
+Two new negative tests failed before this repair; the old-code receipt remains
+`build/goal-poll-negative.log` in main.
+
+The new loading-state presentation also exposed a UI freshness gap: initial GET
+could return `activation_status=loading`, then the backend could finish setup with
+no subsequent Settings read. A loading-only, four-second serial status refresh now
+updates the canonical supervisor snapshot, not the form draft. It never calls
+loadSettings, resets a key/provider/model/input, retries a write, reloads a model,
+or promotes configuration into inference proof. It is disabled for the floating
+pet, unavailable canonical settings and active saves; cancellation and request
+sequence guards discard superseded reads. A changed/invalid saved revision or a
+read failure stops polling and requires explicit reload rather than silently
+rebasing a draft or clearing an uncertain-save warning. Terminal activation states
+stop polling. One wiring negative failed before implementation; helper tests cover
+invalid/changed revisions and concurrent edits/reloads/saves.
+
+Verification of the follow-up source: **207 focused desktop tests passed serially**
+in 3.7 seconds; TypeScript no-emit passed. Command from apps/desktop:
+`node --test --test-concurrency=1 src/viewModel.test.ts src/firstRun.test.ts src/readBudget.test.ts src/startupRecovery.test.ts src/supervisorDraft.test.ts src/operatorRequest.test.ts src/sharedConnection.test.ts src/autonomousCorrections.test.ts src/releasePet.test.ts`.
+This excludes packaging-contract tests and backend/full/native suites. Parent
+reviewed the diffs; the existing Terra-medium reviewer independently found no
+actionable issue in goal cancellation, the final keyed atlas cache, or loading-only
+supervisor refresh. Source/wiring checks are not rendered or native UI evidence.
+The protected operator loop.py hash remains unchanged; do not stage that file.
+
+Next: push the follow-up slice, then continue bounded offline audit. Native resource
+verification needs renewed operator confirmation; the previous question remains
+unanswered. Proposed next native check, **not yet approved or run**:
+
+1. Arrange a time when the operator is not using this PC. Verify exact source and
+   owned process identities; preserve other agents, apps and model servers.
+2. Build sequentially from the clean worktree, without a parallel full suite/live
+   worker. Confirm separate build resource limits before starting that workload.
+3. Launch one isolated PEX profile with inference and automatic attachment disabled.
+   Record only owned process identity/creation time, CPU, memory, handles/threads and
+   sanitized lifecycle status; do not collect credentials or other app content.
+4. Observe a maximum 60-second idle interval, with agreed resource-stop thresholds
+   and an independent bounded watchdog. Do not drive mouse/keyboard during this
+   idle capture or attach a real worker. Stop earlier on abnormal growth or failure.
+5. Close the exact owned instance and retain the receipt, including any failure.
+   Only a successful capture can justify discussing a longer stability/workflow run;
+   it would still not prove the whole-PC freeze resolved.
+
+No kernel/driver freeze can be guaranteed recoverable by a userspace watchdog.
+Broader release gates and submission work remain open until stability is demonstrated.
 
 ## Verified package and paused native check
 

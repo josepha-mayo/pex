@@ -8,8 +8,14 @@ relaunch/large gates without fresh bounded-run confirmation. Offline repairs now
 bound polling, GET/asset reads and cold atlas decode concurrency; 112 focused desktop
 and 15 targeted backend tests pass. This is not native stability verification.
 
+The next offline slice removes worker-snapshot-driven goal GET buildup, aborts
+superseded goal reads, and refreshes loading supervisor status without overwriting
+form inputs or adopting changed revisions. 207 focused desktop tests and TypeScript
+pass; bounded independent review found no actionable issue. No native relaunch.
+
 See [the detailed checkpoint](docs/CHECKPOINT_2026_09_08.md). Exact de83153 installers
-are verified. Native testing paused on Escape, with PEX left open. Q18 completed
+are verified. Native testing paused on Escape; PEX was already absent when the
+later freeze report was investigated. Q18 completed
 real Muse reasoning and stayed quiet on independently tested output, but artifact
 inspection left acceptance uncertain; it is not a benchmark or full quiet gate.
 The descriptor-bound named-output repair passes 189 tests/5 skips and is ready for

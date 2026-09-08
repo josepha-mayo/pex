@@ -39,6 +39,7 @@ import {
 } from "./startupRecovery";
 import {
   isSupervisorRevision,
+  supervisorActivationRefreshDisposition,
   supervisorCredentialAudience,
   supervisorRequest,
   supervisorSavePayload,
@@ -816,6 +817,7 @@ export function App() {
     setClickThrough(petClickThroughEnabled(pet?.settings?.click_through));
   }, [pet?.appearance?.scale, pet?.settings?.click_through, pet?.settings?.custom_name, pet?.settings?.scale]);
 
+  const settingsAvailable = canonicalResourcesAreFresh(canonicalResources, ["supervisor"]);
   const loadSettings = useCallback(async () => {
     if (supervisorSaveInFlight.current) return;
     const requestSequence = ++settingsRequestSequence.current;
@@ -858,6 +860,44 @@ export function App() {
       settingsRequestSequence.current += 1;
     };
   }, [bridgeAvailable, loadSettings, shell]);
+
+  useEffect(() => {
+    const loadingRevision = supervisor?.revision;
+    if (!bridgeAvailable || shell === "pet" || !settingsAvailable || savingSupervisor
+      || supervisor?.activation_status !== "loading" || !isSupervisorRevision(loadingRevision)) return;
+    let cancelled = false;
+    const stopPolling = startSerialPolling(async (signal) => {
+      if (supervisorSaveInFlight.current) return;
+      const requestSequence = settingsRequestSequence.current;
+      try {
+        const data = await bridgeJson<SupervisorInfo>("/v1/supervisor", { signal });
+        if (cancelled) return;
+        const disposition = supervisorActivationRefreshDisposition(
+          loadingRevision, data?.revision, requestSequence,
+          settingsRequestSequence.current, supervisorSaveInFlight.current,
+        );
+        if (disposition === "ignore") return;
+        if (disposition === "reload") {
+          markCanonical("supervisor", "failed", "Supervisor configuration changed. Reload settings before saving.");
+          stopPolling();
+          return;
+        }
+        // Update observed activation only; preserve every unsaved form input.
+        setSupervisor(data);
+        if (data.activation_status !== "loading") stopPolling();
+      } catch {
+        if (cancelled || supervisorSaveInFlight.current
+          || requestSequence !== settingsRequestSequence.current) return;
+        markCanonical("supervisor", "failed", "Supervisor activation status could not be refreshed. Reload settings.");
+        stopPolling();
+      }
+    }, 4000);
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
+  }, [bridgeAvailable, markCanonical, savingSupervisor, settingsAvailable, shell,
+    supervisor?.activation_status, supervisor?.revision]);
 
   const sessions = useMemo(() => {
     const merged = new Map<string, SessionRow>();
@@ -920,10 +960,11 @@ export function App() {
     }
     let cancelled = false;
     const goalId = encodeURIComponent(attachedGoal.id);
-    void Promise.allSettled([
-      bridgeJson<LedgerDecision[]>(`/v1/goals/${goalId}/decisions`),
-      bridgeJson<GoalCompletion>(`/v1/goals/${goalId}/completion`),
-    ]).then(([decisionsResult, completionResult]) => {
+    const stopPolling = startSerialPolling(async (signal) => {
+      const [decisionsResult, completionResult] = await Promise.allSettled([
+        bridgeJson<LedgerDecision[]>(`/v1/goals/${goalId}/decisions`, { signal }),
+        bridgeJson<GoalCompletion>(`/v1/goals/${goalId}/completion`, { signal }),
+      ]);
       if (cancelled) return;
       if (decisionsResult.status === "fulfilled") {
         setLedgerDecisions(Array.isArray(decisionsResult.value) ? decisionsResult.value : []);
@@ -939,11 +980,12 @@ export function App() {
         completionResult.status === "fulfilled" ? "fresh" : "failed",
         "Goal completion could not be refreshed.",
       );
-    });
+    }, 4000);
     return () => {
       cancelled = true;
+      stopPolling();
     };
-  }, [attachedGoal?.id, attachedGoal?.intent_revision, bridgeAvailable, markCanonical, sessions]);
+  }, [attachedGoal?.id, attachedGoal?.intent_revision, bridgeAvailable, markCanonical]);
 
   const loadDetails = useCallback(async (includeDeck = false, showLoading = false) => {
     const requestSequence = ++detailRequestSequence.current;
@@ -1196,7 +1238,6 @@ export function App() {
     canonicalResources,
     ["interventions", "goals"],
   );
-  const settingsAvailable = canonicalResourcesAreFresh(canonicalResources, ["supervisor"]);
   const settingsIssue = canonicalResourceIssue(
     canonicalResources,
     ["supervisor", "channels", "pets"],

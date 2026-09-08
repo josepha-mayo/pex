@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   isSupervisorRevision,
+  supervisorActivationRefreshDisposition,
   supervisorCredentialAudience,
   supervisorRequest,
   supervisorReviewLimitCopy,
@@ -272,4 +273,41 @@ test("Home setup routes reuse guarded connection and goal flows without writing 
   assert.doesNotMatch(route, /bridgeJson|POST|PATCH|setGoalDraft|setEditingGoalId/);
   assert.match(inspector, /data-goal-setup="true" tabIndex=\{-1\}/);
   assert.match(app, /statusWithFirstRunGuidance\(status, setup, Boolean\(pet\?\.paused\)\)/);
+});
+
+test("loading activation refreshes only canonical status without replacing a settings draft", () => {
+  // Wiring contract, not a rendered/native UI claim.
+  const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+  const start = app.indexOf("const loadingRevision = supervisor?.revision;");
+  const end = app.indexOf("const sessions = useMemo", start);
+  assert.ok(start > 0 && end > start, "loading state needs a bounded status-only refresh");
+  const effect = app.slice(start, end);
+  assert.match(effect, /!settingsAvailable \|\| savingSupervisor/);
+  assert.match(effect, /supervisor\?\.activation_status !== "loading"/);
+  assert.match(effect, /startSerialPolling\(async \(signal\)/);
+  assert.match(effect, /bridgeJson<SupervisorInfo>\("\/v1\/supervisor", \{ signal \}\)/);
+  assert.match(effect, /supervisorActivationRefreshDisposition\(/);
+  assert.match(effect, /if \(disposition === "ignore"\) return/);
+  assert.match(effect, /if \(disposition === "reload"\)/);
+  assert.match(effect, /setSupervisor\(data\)/);
+  assert.match(effect, /cancelled = true;\s*stopPolling\(\)/);
+  assert.doesNotMatch(effect, /loadSettings\(|setSupervisor(?:Provider|Model|Auth|Protocol|BaseUrl|ApiKey|CredentialAction|DispatchLimit)\(|method:|"fresh"/);
+});
+
+test("activation status accepts only the unchanged configuration and current request", () => {
+  for (const revision of [0, 7, 2_147_483_647]) {
+    assert.equal(supervisorActivationRefreshDisposition(revision, revision, 5, 5, false), "accept");
+  }
+  for (const received of [undefined, null, false, "7", {}, [], -1, 0.5, NaN, Infinity, 6, 8]) {
+    assert.equal(supervisorActivationRefreshDisposition(7, received, 5, 5, false), "reload");
+  }
+  assert.equal(supervisorActivationRefreshDisposition(undefined, 7, 5, 5, false), "reload");
+});
+
+test("activation status cannot interfere with edits, reloads or a pending save", () => {
+  for (const received of [7, 8, undefined]) {
+    assert.equal(supervisorActivationRefreshDisposition(7, received, 5, 6, false), "ignore");
+    assert.equal(supervisorActivationRefreshDisposition(7, received, 5, 5, true), "ignore");
+    assert.equal(supervisorActivationRefreshDisposition(7, received, 5, 6, true), "ignore");
+  }
 });
