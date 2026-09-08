@@ -9082,7 +9082,10 @@ The dirty bit is expected because the protected operator-owned file below is ret
   length and SHA-256. Header identity binds schema/run/arm/task/capture scope; the footer binds
   thread, initial turn, expected turn count, harness identity, transport, direction counts and
   run end time. The file is created without overwrite/following a final link, fsynced, and its
-  descriptor/path identity is rechecked before close.
+  descriptor/path identity is rechecked before close. A follow-up self-review strengthened
+  sealing further: the file is reread through that still-open verified descriptor, its digest
+  must equal the incremental write digest, and a same-inode same-size external byte mutation is
+  rejected before any hash can be returned.
 - Capture is deliberately synchronous. A write/bound failure propagates through the existing
   transport failure or delivery-uncertain path instead of silently dropping evidence. The
   observer may attach only before process start and may detach at the controller's exact task
@@ -9102,8 +9105,9 @@ The dirty bit is expected because the protected operator-owned file below is ret
   attachment refusal, and the complete real-stdio runner lifecycle through a test-owned fake App
   Server. The fake process emits Windows CRLF on stdout and the journal preserves those exact
   bytes rather than normalizing them.
-- Final scoped Ruff passed. The broad benchmark plus Codex adapter/pump/deep-audit gate passed
-  **289/289 with 3 intentional skips in 288.50 seconds**. No real Codex model, Cursor, native PEX,
+- Final scoped Ruff passed. After descriptor-hash hardening, the broad benchmark plus Codex
+  adapter/pump/deep-audit gate passed **290/290 with 3 intentional skips in 272.57 seconds**. No
+  real Codex model, Cursor, native PEX,
   Docker, AWS resource or paid call ran.
 - Do **not** mark `raw_harness_event_log_status` satisfied. Codex stdio now meets the intended
   exact-capture implementation bar, but `CursorCapture` still advertises `coverage:"partial"`

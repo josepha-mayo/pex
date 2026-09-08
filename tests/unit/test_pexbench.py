@@ -1996,6 +1996,36 @@ def test_exact_codex_protocol_journal_refuses_one_direction_capture(
     assert b'"complete":true' not in path.read_bytes()
 
 
+def test_exact_codex_protocol_journal_detects_same_inode_byte_mutation(
+    tmp_path, monkeypatch
+):
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    path = four._canonical_raw_log_path("mutated", "codex", "task")
+    journal = four.CodexProtocolJournal(
+        path,
+        run_id="mutated",
+        arm="codex",
+        task="task",
+        started_at=datetime.now(UTC).isoformat(),
+    )
+    journal.observe("stdin", b'{"method":"initialized","params":{}}\n')
+    journal.observe("stdout", b"not-json\n")
+    with path.open("r+b") as external:
+        external.write(b"X")
+        external.flush()
+        os.fsync(external.fileno())
+    with pytest.raises(RuntimeError, match="changed during hash verification"):
+        journal.finish(
+            ended_at=datetime.now(UTC).isoformat(),
+            thread_id="thread",
+            initial_turn_id="turn",
+            expected_turn_count=1,
+            harness_identity_sha256="a" * 64,
+        )
+    journal.abort()
+
+
 @pytest.mark.asyncio
 async def test_live_codex_runner_owns_and_seals_exact_protocol_journal(
     tmp_path, monkeypatch

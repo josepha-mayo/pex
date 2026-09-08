@@ -2972,6 +2972,9 @@ async def run_live(
                 task=task_id,
                 started_at=abort_started_at,
             )
+            if _path_has_link_component(raw_path, runner.RESULTS):
+                protocol_journal.abort()
+                raise RuntimeError("Codex protocol journal path changed during creation")
             transport.set_protocol_observer(protocol_journal.observe)
         task_started_perf = time.perf_counter()
         worker_started_perf = task_started_perf

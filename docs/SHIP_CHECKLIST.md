@@ -21,7 +21,7 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   Codex presentation journal. Every line carries exact base64 bytes, length, SHA-256, direction,
   sequence, timestamp and run identity; the footer binds thread, initial turn, expected turns,
   harness identity and counts. The runner validates request/response closure and all bound turn
-  receipts/events before appending a row. The broad benchmark/Codex gate passes **289/289** with
+  receipts/events before appending a row. The broad benchmark/Codex gate passes **290/290** with
   three intentional skips and Ruff is clean. Cursor capture remains partial, so the global raw-log
   status correctly remains open and the manifest stays unfrozen.
 

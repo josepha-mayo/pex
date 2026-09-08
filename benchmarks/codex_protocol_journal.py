@@ -40,11 +40,12 @@ class CodexProtocolJournal:
         self._protocol_lines = 0
         self._direction_counts = {"stdin": 0, "stdout": 0}
         self._bytes_written = 0
+        self._journal_digest = hashlib.sha256()
         self._closed = False
         self._complete = False
         self._failed = False
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+        flags = os.O_RDWR | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
         flags |= getattr(os, "O_NOFOLLOW", 0)
         self._descriptor = os.open(self.path, flags, 0o600)
         self._initial_stat = os.fstat(self._descriptor)
@@ -105,6 +106,7 @@ class CodexProtocolJournal:
         except Exception:
             self._failed = True
             raise
+        self._journal_digest.update(encoded)
         self._bytes_written += len(encoded)
         self._sequence += 1
 
@@ -187,10 +189,35 @@ class CodexProtocolJournal:
         ):
             self._failed = True
             raise RuntimeError("Codex protocol journal path identity changed during capture")
+        digest = hashlib.sha256()
+        os.lseek(self._descriptor, 0, os.SEEK_SET)
+        read_bytes = 0
+        while read_bytes < descriptor_stat.st_size:
+            chunk = os.read(
+                self._descriptor,
+                min(1024 * 1024, descriptor_stat.st_size - read_bytes),
+            )
+            if not chunk:
+                self._failed = True
+                raise RuntimeError("Codex protocol journal ended before its byte count")
+            read_bytes += len(chunk)
+            digest.update(chunk)
+        final_stat = os.fstat(self._descriptor)
+        final_path_stat = os.stat(self.path, follow_symlinks=False)
+        if (
+            read_bytes != self._bytes_written
+            or final_stat.st_size != descriptor_stat.st_size
+            or (final_stat.st_dev, final_stat.st_ino)
+            != (descriptor_stat.st_dev, descriptor_stat.st_ino)
+            or (final_path_stat.st_dev, final_path_stat.st_ino)
+            != (descriptor_stat.st_dev, descriptor_stat.st_ino)
+            or digest.hexdigest() != self._journal_digest.hexdigest()
+        ):
+            self._failed = True
+            raise RuntimeError("Codex protocol journal changed during hash verification")
         self._complete = True
         self._close_descriptor()
-        digest = hashlib.sha256(self.path.read_bytes()).hexdigest()
-        return str(self.path), digest
+        return str(self.path), digest.hexdigest()
 
     def abort(self) -> None:
         """Durably retain an incomplete capture without claiming completeness."""
