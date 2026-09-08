@@ -5,6 +5,21 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: event-driven HTTP harness observation
+
+Production OpenCode and Qwen adapters previously rescanned retained SSE events every
+50ms while quiet. Live HTTP transports now expose an arrival/stream-transition signal;
+OpenCode blocks on it and Qwen uses it with the remaining scheduled-discovery deadline.
+Memory transports retain the deterministic fallback. The SSE reader now also applies its
+one-second reconnect backoff after a clean EOF, closing a request-hammering loop that had
+only backed off exceptions. Focused HTTP/OpenCode/Qwen coverage passes **71/71** and Ruff
+passes. PEX/native code did not run, so this does not close the freeze gate.
+
+An unrelated existing regression was exposed by the broader candidate run:
+`test_unknown_empty_capabilities_fail_closed` expects the original SEND_NUDGE proposal to
+be retained beside a NOOP execution, but currently receives a rewritten NOOP proposal.
+It reproduces alone and remains open; the protected supervisor file was not edited.
+
 ## Latest offline slice: event-driven shared-Codex observation
 
 The attached shared-Codex pump previously called a synchronous empty drain then slept

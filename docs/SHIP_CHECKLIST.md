@@ -9,6 +9,11 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Replace the attached shared-Codex observer's 25ms empty-buffer poll with a
   notification/revocation wake signal. Five focused files pass 174/174 and Ruff;
   native idle/resource proof and the freeze root cause remain open.
+- [x] Replace live OpenCode/Qwen 50ms empty SSE scans with transport activity waits,
+  preserve Qwen discovery deadlines, and back off clean SSE EOF reconnects. Relevant
+  adapter coverage passes 71/71 and Ruff; native resource proof remains open.
+- [ ] Repair the independently reproducing unknown-capability regression: fail-closed
+  execution is NOOP as intended, but the original SEND_NUDGE proposal is overwritten.
 - [x] Reproduce polling/decode resource-control gaps and test bounded repairs offline.
 - [x] Stop per-snapshot goal GET buildup and cancel superseded goal evidence reads.
 - [x] Refresh loading-only supervisor status without resetting drafts or rebasing revisions.

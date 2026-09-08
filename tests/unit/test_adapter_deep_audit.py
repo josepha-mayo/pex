@@ -195,6 +195,60 @@ async def test_live_http_transport_bounds_buffered_json_responses(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_live_http_event_wait_is_quiet_and_wakes_on_activity():
+    transport = LiveHttpTransport("http://127.0.0.1:4096")
+    waiter = asyncio.create_task(transport.wait_for_events(0))
+    await asyncio.sleep(0)
+    assert not waiter.done()
+
+    transport._record_event({"type": "session.updated"})
+    await asyncio.wait_for(waiter, timeout=1)
+    assert transport.events_since(0) == (1, [{"type": "session.updated"}], 0)
+
+    quiet = asyncio.create_task(transport.wait_for_events(1))
+    await asyncio.sleep(0)
+    assert not quiet.done()
+    await transport.aclose()
+    await asyncio.wait_for(quiet, timeout=1)
+
+
+@pytest.mark.asyncio
+async def test_live_http_clean_sse_eof_backs_off(monkeypatch):
+    transport = LiveHttpTransport("http://127.0.0.1:4096")
+    await transport._client.aclose()
+    requests = 0
+
+    def respond(_request):
+        nonlocal requests
+        requests += 1
+        return httpx.Response(200, content=b"")
+
+    client = httpx.AsyncClient(
+        base_url="http://127.0.0.1:4096",
+        transport=httpx.MockTransport(respond),
+    )
+    monkeypatch.setattr(http_json_module.httpx, "AsyncClient", lambda *args, **kwargs: client)
+    sleeping = asyncio.Event()
+    release = asyncio.Event()
+
+    async def hold_retry(delay):
+        assert delay == 1.0
+        sleeping.set()
+        await release.wait()
+
+    monkeypatch.setattr(http_json_module.asyncio, "sleep", hold_retry)
+    task = asyncio.create_task(transport._read_sse("/event"))
+    try:
+        await asyncio.wait_for(sleeping.wait(), timeout=1)
+        assert requests == 1
+        assert "/event" not in transport.connected_sse_paths
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        release.set()
+
+
+@pytest.mark.asyncio
 async def test_sse_line_reader_discards_unterminated_oversized_lines(monkeypatch):
     monkeypatch.setattr(http_json_module, "MAX_SSE_LINE_CHARS", 8)
     response = httpx.Response(200, content=b"0123456789\n\ndata: {}\n\n")

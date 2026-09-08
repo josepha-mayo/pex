@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Production OpenCode/Qwen SSE pumps now wait for transport activity instead of scanning
+unchanged events every 50ms; Qwen still wakes for scheduled discovery. Clean SSE EOF now
+backs off one second rather than reconnecting in a tight loop. Relevant tests pass 71/71
+with Ruff clean. Native proof remains open, and an unrelated unknown-capability proposal-
+preservation test now reproduces as a separate failure.
+
 The shared-Codex live observer now sleeps on notification arrival or connection
 revocation instead of empty-draining every 25ms. Transport/subscription/retention coverage
 passes 174/174 with Ruff clean. This removes a proven per-attachment idle hot poll, but

@@ -853,7 +853,14 @@ class QwenAdapter(HarnessAdapter):
                     await ingest(event, session)
                 seen = next_seen
                 self._last_pump_error = None
-                await asyncio.sleep(0.05)
+                wait_for_events = getattr(transport, "wait_for_events", None)
+                if callable(wait_for_events):
+                    await wait_for_events(
+                        seen,
+                        timeout=max(0.0, next_discovery - time.monotonic()),
+                    )
+                else:
+                    await asyncio.sleep(0.05)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:

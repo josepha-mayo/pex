@@ -2,6 +2,14 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: production OpenCode and Qwen SSE pumps now sleep on transport activity instead
+of rescanning unchanged retained events every 50ms. Qwen retains a deadline wake for
+scheduled discovery. The live HTTP reader also backs off one second after clean EOF;
+previously only exceptions backed off, so a clean-closing daemon could trigger an
+unbounded reconnect loop. Relevant adapter coverage passes 71/71 and Ruff is clean.
+PEX remained closed; native idle proof is still open. A separate existing capability
+test currently fails because a proposed SEND_NUDGE is rewritten to NOOP; see failures.
+
 Latest: the live shared-Codex observer no longer polls an empty notification buffer every
 25ms (about 40 wakeups/second per attachment). The existing socket reader now signals a
 list-compatible bounded buffer; the pump sleeps until notification arrival or connection

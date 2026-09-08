@@ -197,6 +197,7 @@ class LiveHttpTransport:
         )
         self.events: deque[dict[str, Any]] = deque(maxlen=MAX_HTTP_EVENTS)
         self._event_cursor = 0
+        self._events_ready = asyncio.Event()
         self._sse_tasks: dict[str, asyncio.Task] = {}
         self.connected_sse_paths: set[str] = set()
 
@@ -266,6 +267,7 @@ class LiveHttpTransport:
                     async with client.stream("GET", path) as response:
                         response.raise_for_status()
                         self.connected_sse_paths.add(path)
+                        self._events_ready.set()
                         data_lines: list[str] = []
                         frame_chars = 0
                         discarding_frame = False
@@ -274,8 +276,7 @@ class LiveHttpTransport:
                                 if not discarding_frame:
                                     payload = _decode_sse_data(data_lines, path)
                                     if payload is not None:
-                                        self.events.append(payload)
-                                        self._event_cursor += 1
+                                        self._record_event(payload)
                                 data_lines = []
                                 frame_chars = 0
                                 discarding_frame = False
@@ -294,16 +295,23 @@ class LiveHttpTransport:
                 except asyncio.CancelledError:
                     raise
                 except Exception:
+                    pass
+                finally:
                     self.connected_sse_paths.discard(path)
-                    await asyncio.sleep(1.0)
+                    self._events_ready.set()
+                # A clean EOF is still a disconnected stream. Back off exactly
+                # like an error instead of hammering a daemon that closes cleanly.
+                await asyncio.sleep(1.0)
         finally:
             self.connected_sse_paths.discard(path)
+            self._events_ready.set()
             await client.aclose()
 
     async def aclose(self) -> None:
         tasks = list(self._sse_tasks.values())
         self._sse_tasks.clear()
         self.connected_sse_paths.clear()
+        self._events_ready.set()
         for task in tasks:
             task.cancel()
         for task in tasks:
@@ -312,6 +320,29 @@ class LiveHttpTransport:
             except (asyncio.CancelledError, Exception):
                 pass
         await self._client.aclose()
+
+    def _record_event(self, payload: dict[str, Any]) -> None:
+        self.events.append(payload)
+        self._event_cursor += 1
+        self._events_ready.set()
+
+    async def wait_for_events(self, cursor: int, *, timeout: float | None = None) -> None:
+        """Wait for retained SSE activity, a stream transition, or a deadline."""
+        if not isinstance(cursor, int) or isinstance(cursor, bool) or cursor < 0:
+            raise ValueError("HTTP event cursor must be a non-negative integer")
+        if cursor != self._event_cursor:
+            self._events_ready.clear()
+            return
+        try:
+            if timeout is None:
+                await self._events_ready.wait()
+            else:
+                async with asyncio.timeout(max(0.0, timeout)):
+                    await self._events_ready.wait()
+        except TimeoutError:
+            pass
+        finally:
+            self._events_ready.clear()
 
     def events_since(self, cursor: int) -> tuple[int, list[dict[str, Any]], int]:
         """Return retained events after an absolute cursor without unbounded storage."""

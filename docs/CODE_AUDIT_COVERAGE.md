@@ -2,6 +2,12 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced OpenCode/Qwen 50ms retained-event scans to the live
+HTTP SSE reader. Production pumps now wait for event/stream activity, with Qwen retaining
+its discovery deadline. Normal SSE EOF now backs off one second instead of reconnecting
+without delay. Relevant coverage passes 71/71 and Ruff is clean; memory fakes keep their
+bounded polling fallback and native impact remains unmeasured.
+
 Changed-path addendum: parent traced the shared-Codex adapter's 25ms empty-drain loop
 through the subscription into the already-blocking WebSocket reader. A transport-owned
 arrival/revocation signal now leaves a quiet attachment dormant and wakes it without
