@@ -77,6 +77,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Enforce the same duplicate-key/non-finite refusal in the standalone fail-open
   Cursor producer so canonicalization cannot bypass the bridge boundary. Cursor output
   remains fail-open; eight producer helper cases and Ruff pass.
+- [x] Reject exponent-overflow JSON numbers in local control-file and durable Store-row
+  readers instead of decoding them as infinity. Both negatives failed before repair;
+  control/Store/goal-operation coverage passes 23/23 and Ruff.
 - [x] Advance newline-free Cursor records once they irreversibly exceed the record
   limit, persisting discard-until-newline state without parsing a suffix. Inbox/
   observer coverage passes 33/33 and Ruff; producer disk retention remains open.

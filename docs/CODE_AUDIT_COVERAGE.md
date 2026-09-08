@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent compared the adapter strict decoder with the duplicate
+local strict decoders used for pet/control files and durable Store rows. Those readers
+rejected `NaN` constants but allowed exponent overflow such as `1e9999` to become
+infinity. Two negatives reproduced the admissions. Both readers now apply finite-float
+parsing before model or authority validation. Control-file, rejection-Store and goal-
+operation coverage passes 23/23; Ruff is clean. This is corruption hardening, not a
+whole Store/App audit or native stability proof.
+
 Changed-path addendum: parent traced raw editor stdin through the standalone `-S`
 Cursor producer and found that permissive pre-bridge canonicalization bypassed the new
 strict inbox decoder. Duplicate `conversation_id` selected the last value and `NaN`

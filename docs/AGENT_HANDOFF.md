@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: pet/control-file and durable Store-row JSON readers now reject exponent overflow
+such as `1e9999` instead of decoding it as infinity. Their `NaN` and duplicate-key checks
+were already present, but finite float parsing was missing; two negatives reproduced the
+gap. Control-file, rejection-Store and goal-operation coverage passes 23/23 and Ruff is
+clean. This is bounded corruption hardening, not whole Store/App or native stability
+proof. PEX stayed closed and the protected supervisor file remains untouched.
+
 Latest: the standalone `python -S` Cursor producer can no longer canonicalize ambiguous
 raw editor JSON into a clean-looking row that bypasses the bridge's strict decoder. The
 negative showed duplicate `conversation_id` selecting the last value and `NaN` reaching

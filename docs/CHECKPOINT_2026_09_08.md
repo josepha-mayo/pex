@@ -5,7 +5,20 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: strict fail-open Cursor producer
+## Latest offline slice: finite local JSON authority
+
+PEX had three conceptually strict local JSON readers. The shared adapter reader rejected
+duplicate keys, `NaN`/`Infinity` and exponent overflow, but the pet/control-file reader
+and durable Store-row reader lacked the finite-float hook. `1e9999` therefore decoded as
+infinity in both. Two focused negatives reproduced that corruption path. Both readers
+now reject any float that does not remain finite before Pydantic or authority validation.
+Control-file, rejection-Store and goal-operation coverage passes **23/23**; scoped Ruff
+passes. No native app, worker, model or large suite was launched.
+
+This is not whole Store/App approval or freeze-cause proof. The protected supervisor
+loop remains untouched at its recorded hash.
+
+## Earlier offline slice: strict fail-open Cursor producer
 
 The standalone `python -S` Cursor hook parsed and compacted raw editor stdin before the
 bridge's strict JSON boundary. Its permissive decoder silently chose the last duplicate

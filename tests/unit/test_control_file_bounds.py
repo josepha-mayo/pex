@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from pex_bridge.app import _read_bounded_utf8, _strict_json_loads
 from pex_bridge.pets import ImportedPet, PetSettings
+from pex_bridge.store import _strict_json_loads as _strict_store_json_loads
 from pydantic import ValidationError
 
 
@@ -19,11 +20,21 @@ def test_bounded_control_file_reader_rejects_oversize_and_invalid_utf8(tmp_path)
 
 @pytest.mark.parametrize(
     "payload",
-    ['{"choice": NaN}', '{"choice": "first", "choice": "second"}'],
+    [
+        '{"choice": NaN}',
+        '{"choice": 1e9999}',
+        '{"choice": "first", "choice": "second"}',
+    ],
 )
 def test_control_file_json_is_strict(payload: str) -> None:
     with pytest.raises(ValueError):
         _strict_json_loads(payload)
+
+
+@pytest.mark.parametrize("payload", ['{"value": NaN}', '{"value": 1e9999}'])
+def test_store_row_json_is_strict(payload: str) -> None:
+    with pytest.raises(ValueError):
+        _strict_store_json_loads(payload)
 
 
 def test_pet_settings_bound_import_count_and_persisted_fields() -> None:

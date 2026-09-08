@@ -8,6 +8,7 @@ import hmac
 import inspect
 import json
 import logging
+import math
 import os
 import secrets
 import stat
@@ -572,10 +573,18 @@ def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError("non-finite JSON number is not allowed")
+    return parsed
+
+
 def _strict_json_loads(raw: str) -> Any:
     return json.loads(
         raw,
         parse_constant=_reject_json_constant,
+        parse_float=_finite_json_float,
         object_pairs_hook=_unique_json_object,
     )
 
