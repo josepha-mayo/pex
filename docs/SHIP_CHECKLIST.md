@@ -16,8 +16,14 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   the source-revision-capture blocker; the benchmark remains unfrozen and no live arm ran.
 - [x] Add an optional fail-closed Codex stdio protocol observer that receives every exact
   bounded stdin/stdout line before normalization. Adjacent adapter/pump/deep-audit coverage
-  passes 150/150. The benchmark journal is not wired yet and Cursor receipts remain partial,
-  so complete immutable raw harness logs are still an open freeze blocker.
+  passed 150/150 at the primitive checkpoint; the next item records its benchmark wiring.
+- [x] Wire that observer into a controller-owned, exclusive, 64 MiB/10,000-record bounded
+  Codex presentation journal. Every line carries exact base64 bytes, length, SHA-256, direction,
+  sequence, timestamp and run identity; the footer binds thread, initial turn, expected turns,
+  harness identity and counts. The runner validates request/response closure and all bound turn
+  receipts/events before appending a row. The broad benchmark/Codex gate passes **289/289** with
+  three intentional skips and Ruff is clean. Cursor capture remains partial, so the global raw-log
+  status correctly remains open and the manifest stays unfrozen.
 
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.

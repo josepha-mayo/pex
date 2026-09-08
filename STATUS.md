@@ -35,9 +35,12 @@ Overall status remains **NO-GO** for the post-freeze native stability/interactio
 the unfrozen four-arm benchmark, the public <=5-minute demo video, and user-authorized
 Devpost submission. Benchmark source provenance is now stronger: every fresh seed is a
 deterministic Git root commit bound into the external receipt, reverified in HEAD history at scoring, and
-written to the row. The current preflight still refuses quota-consuming arms because OS
-isolation, natural-task coverage, complete raw logs, synchronous Cursor+PEX continuation,
-and controller-verified Cursor networking remain incomplete. The exact
+written to the row. Live Codex stdio presentation runs now also retain and immediately validate
+an exact controller-owned bidirectional protocol journal, including malformed pre-parse output,
+matched requests/responses and bound thread/turn evidence. The current preflight still refuses
+quota-consuming arms because OS isolation, natural-task coverage, complete Cursor raw logs,
+synchronous Cursor+PEX continuation, and controller-verified Cursor networking remain
+incomplete. The exact
 bounded harness is
 `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-b0438bd.ps1`, SHA-256
 `608C2692E2ABA803B33A29376D4614E847FF5EBFFD2FE1D7AD5673DC45E4D6C3`.

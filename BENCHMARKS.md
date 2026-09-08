@@ -113,16 +113,20 @@ question. Codex isolated runs therefore start at zero; synchronous Cursor
 evidence must include an exact action log. Routine-permission requests are
 tracked separately as management requests.
 
-Current harness capture hashes the normalized event subset used by the
-controller, but it does not yet retain and bind a complete vendor raw event
-log. That §34.12 integrity requirement is an explicit preflight blocker, not a
-null field that can silently pass a presentation freeze.
+Live Codex presentation runs now attach a controller-owned journal before the App Server
+process starts. It writes every exact bounded stdin/stdout line as base64 plus byte length and
+SHA-256, including malformed output before parsing, to one exclusive canonical JSONL file.
+The footer binds run, arm, task, thread, initial turn, expected turn count, harness identity,
+transport, direction counts, and completion time. Before a result row can append, the
+controller independently reopens the stable bounded file and verifies the hash, contiguous
+sequence, request/response closure, initialize/thread/start/turn/start receipts, and every
+bound turn start/completion event. Capture, bound, identity, or validation failure aborts the
+row; test doubles retain the older diagnostic-only normalized-event path.
 
-The live Codex stdio transport now offers an optional controller callback for every
-exact bounded stdin/stdout protocol line. It observes malformed stdout before parsing and
-fails a delivered request closed if the callback cannot retain the line. The benchmark has
-not yet wired that callback into an immutable, session-bound journal, and Cursor still has
-only partial local hook receipts; therefore the global raw-log blocker remains open.
+This closes the implementation gap only for Codex stdio. Cursor still exposes ordered local
+hook receipts with explicitly partial coverage rather than a complete vendor transcript, so
+the global §34.12 raw-harness-log preflight field remains `not_yet_satisfied` and presentation
+freeze still fails closed.
 
 `frozen: false` until one result file contains all 20 live rows (5 tasks × 4
 arms) with an intact record chain, exact suite/controller fingerprints, paired

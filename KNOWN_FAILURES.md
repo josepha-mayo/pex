@@ -6,8 +6,11 @@
   workspaces now bind an exact deterministic Git commit into their external seed receipt,
   reject an unrelated rewritten HEAD, and emit the commit in every row. This closes source-revision
   capture only. Execution remains fail-closed on missing OS isolation and Cursor network
-  enforcement; natural public-repo tasks, complete raw logs, and a full synchronous
-  Cursor+PEX path also remain open. No quota-consuming benchmark arm ran in this slice.
+  enforcement; natural public-repo tasks, complete Cursor raw logs, and a full synchronous
+  Cursor+PEX path also remain open. Codex stdio now writes and validates an exact bounded
+  bidirectional protocol journal before accepting a row, but Cursor's hook surface remains
+  explicitly partial, so the global raw-log field stays open. No quota-consuming benchmark arm
+  ran in this slice.
 - Production sidecar builds previously accepted dirty Git state until later package
   verification. They now fail before PyInstaller; the real command refused the protected
   concurrent edit without changing helper bytes. Release tests pass 12/12, desktop passes

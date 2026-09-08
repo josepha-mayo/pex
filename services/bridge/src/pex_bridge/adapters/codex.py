@@ -315,6 +315,14 @@ class CodexStdioTransport:
         if self._protocol_observer is not None:
             self._protocol_observer(direction, bytes(payload))
 
+    def set_protocol_observer(
+        self, observer: CodexProtocolObserver | None
+    ) -> None:
+        """Attach capture before process start, or detach it at a run boundary."""
+        if observer is not None and self._proc is not None:
+            raise RuntimeError("Codex protocol observer must attach before process start")
+        self._protocol_observer = observer
+
     def _append_notification(self, message: dict[str, Any]) -> None:
         if len(self.notifications) >= MAX_CODEX_RECORDS:
             raise RuntimeError("Codex notification retention safety bound reached")

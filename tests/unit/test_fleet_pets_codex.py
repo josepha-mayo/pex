@@ -501,6 +501,10 @@ async def test_codex_stdio_jsonl_fake_process(tmp_path):
     try:
         caps = await adapter.probe()
         assert caps.support_label.value == "basic"
+        with pytest.raises(RuntimeError, match="before process start"):
+            transport.set_protocol_observer(
+                lambda direction, payload: protocol.append((direction, payload))
+            )
         sessions = await adapter.discover_sessions()
         assert sessions[0].vendor_session_id == "thr_jsonl"
 

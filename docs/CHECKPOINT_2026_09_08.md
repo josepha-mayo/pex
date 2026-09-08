@@ -17,7 +17,11 @@ file or inventing a score.
 
 The read-only plan still refuses real arms because OS isolation and controller-enforced
 Cursor networking are absent. Presentation freeze also still requires natural public-repo
-tasks, complete raw harness logs, and synchronous same-session Cursor+PEX continuation.
+tasks, complete Cursor raw harness logs, and synchronous same-session Cursor+PEX continuation.
+Codex stdio now has an exact controller-owned transcript: every pre-parse protocol line is
+bounded and hash-bound, and the runner verifies matched requests/responses plus thread and turn
+receipts/events before accepting a row. This does not make the cross-harness raw-log gate true;
+Cursor's current local hook coverage is still explicitly partial.
 AgentCore preflight remains NO-GO with inactive CLI credentials, missing AgentCore/CDK
 tools, stopped Docker, no ARM64 image and no Runtime ARN. No worker, model, native PEX,
 AWS resource, or paid call ran in this slice.

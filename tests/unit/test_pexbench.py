@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import hashlib
 import importlib.util
 import json
@@ -7,6 +8,7 @@ import subprocess
 import sys
 import time
 from collections import Counter
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -1813,6 +1815,267 @@ def test_codex_raw_log_writer_round_trips_inspector_when_start_and_complete_exis
     inspected, blockers = four._inspect_raw_log(Path(path), row, arm, task)
     assert inspected == digest
     assert blockers == []
+
+
+def _write_exact_codex_protocol_journal(four, tmp_path, monkeypatch):
+    monkey_path = tmp_path / "results"
+    monkeypatch.setattr(four.runner, "RESULTS", monkey_path)
+    run_id = "exact_codex"
+    arm = "codex"
+    task = "pexbench_001_premature_stop"
+    thread_id = "thr_exact"
+    turn_id = "turn_exact"
+    identity = "a" * 64
+    started = datetime.now(UTC).isoformat()
+    path = four._canonical_raw_log_path(run_id, arm, task)
+    journal = four.CodexProtocolJournal(
+        path, run_id=run_id, arm=arm, task=task, started_at=started
+    )
+    lines = [
+        ("stdin", b'{"id":1,"method":"initialize","params":{}}\n'),
+        ("stdout", b'{"id":1,"result":{"serverInfo":{"name":"fake"}}}\n'),
+        ("stdin", b'{"method":"initialized","params":{}}\n'),
+        ("stdin", b'{"id":2,"method":"thread/start","params":{}}\n'),
+        ("stdout", b'{"id":2,"result":{"thread":{"id":"thr_exact"}}}\n'),
+        (
+            "stdin",
+            b'{"id":3,"method":"turn/start","params":{"threadId":"thr_exact"}}\n',
+        ),
+        ("stdout", b'{"id":3,"result":{"turn":{"id":"turn_exact"}}}\n'),
+        ("stdout", b"not-json\n"),
+        (
+            "stdout",
+            b'{"method":"turn/started","params":{"threadId":"thr_exact",'
+            b'"turn":{"id":"turn_exact"}}}\n',
+        ),
+        (
+            "stdout",
+            b'{"method":"turn/completed","params":{"threadId":"thr_exact",'
+            b'"turn":{"id":"turn_exact"}}}\n',
+        ),
+    ]
+    for direction, payload in lines:
+        journal.observe(direction, payload)
+    ended = datetime.now(UTC).isoformat()
+    raw_path, digest = journal.finish(
+        ended_at=ended,
+        thread_id=thread_id,
+        initial_turn_id=turn_id,
+        expected_turn_count=1,
+        harness_identity_sha256=identity,
+    )
+    row = {
+        "run_id": run_id,
+        "thread_id": thread_id,
+        "turn_id": turn_id,
+        "started_at": started,
+        "ended_at": ended,
+        "harness_identity_sha256": identity,
+        "transport_kind": "codex_stdio",
+        "pex": None,
+        "raw_log_sha256": digest,
+        "raw_log_path": raw_path,
+    }
+    return Path(raw_path), digest, row, arm, task
+
+
+def test_exact_codex_protocol_journal_retains_malformed_stdout_and_validates(
+    tmp_path, monkeypatch
+):
+    four = _four_arm()
+    path, digest, row, arm, task = _write_exact_codex_protocol_journal(
+        four, tmp_path, monkeypatch
+    )
+    inspected, blockers = four._inspect_raw_log(path, row, arm, task)
+    assert inspected == digest
+    assert blockers == []
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    malformed = [
+        record
+        for record in records
+        if record.get("record_type") == "protocol_line"
+        and record.get("payload_base64") == "bm90LWpzb24K"
+    ]
+    assert len(malformed) == 1
+    assert records[-1]["captured_protocol_line_count"] == 10
+    assert records[-1]["complete"] is True
+
+
+def test_exact_codex_protocol_journal_rejects_payload_tampering(tmp_path, monkeypatch):
+    four = _four_arm()
+    path, _, row, arm, task = _write_exact_codex_protocol_journal(
+        four, tmp_path, monkeypatch
+    )
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    records[1]["payload_base64"] = "e30K"
+    path.write_text(
+        "".join(
+            json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+            for record in records
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="payload bytes or fingerprint mismatch"):
+        four._inspect_raw_log(path, row, arm, task)
+
+
+def test_exact_codex_protocol_journal_reports_unmatched_request(tmp_path, monkeypatch):
+    four = _four_arm()
+    path, _, row, arm, task = _write_exact_codex_protocol_journal(
+        four, tmp_path, monkeypatch
+    )
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    replacement = b'{"id":99,"result":{"serverInfo":{"name":"fake"}}}\n'
+    records[2].update(
+        {
+            "payload_base64": base64.b64encode(replacement).decode("ascii"),
+            "payload_bytes": len(replacement),
+            "payload_sha256": hashlib.sha256(replacement).hexdigest(),
+        }
+    )
+    path.write_text(
+        "".join(
+            json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+            for record in records
+        ),
+        encoding="utf-8",
+    )
+    _, blockers = four._inspect_raw_log(path, row, arm, task)
+    assert f"{arm}/{task} exact Codex log has unmatched client requests" in blockers
+
+
+def test_incomplete_exact_codex_protocol_journal_has_no_valid_footer(
+    tmp_path, monkeypatch
+):
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    path = four._canonical_raw_log_path("aborted", "codex", "task")
+    started = datetime.now(UTC).isoformat()
+    journal = four.CodexProtocolJournal(
+        path, run_id="aborted", arm="codex", task="task", started_at=started
+    )
+    journal.observe("stdout", b"not-json\n")
+    journal.abort()
+    row = {
+        "run_id": "aborted",
+        "thread_id": "thread",
+        "turn_id": "turn",
+        "started_at": started,
+        "ended_at": datetime.now(UTC).isoformat(),
+        "harness_identity_sha256": "a" * 64,
+        "transport_kind": "codex_stdio",
+        "pex": None,
+    }
+    with pytest.raises(ValueError, match="lacks a complete controller capture footer"):
+        four._inspect_raw_log(path, row, "codex", "task")
+
+
+def test_exact_codex_protocol_journal_refuses_one_direction_capture(
+    tmp_path, monkeypatch
+):
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    path = four._canonical_raw_log_path("one_way", "codex", "task")
+    journal = four.CodexProtocolJournal(
+        path,
+        run_id="one_way",
+        arm="codex",
+        task="task",
+        started_at=datetime.now(UTC).isoformat(),
+    )
+    journal.observe("stdout", b"not-json\n")
+    with pytest.raises(RuntimeError, match="incomplete identity or traffic"):
+        journal.finish(
+            ended_at=datetime.now(UTC).isoformat(),
+            thread_id="thread",
+            initial_turn_id="turn",
+            expected_turn_count=1,
+            harness_identity_sha256="a" * 64,
+        )
+    journal.abort()
+    assert b'"complete":true' not in path.read_bytes()
+
+
+@pytest.mark.asyncio
+async def test_live_codex_runner_owns_and_seals_exact_protocol_journal(
+    tmp_path, monkeypatch
+):
+    from pex_bridge.adapters.codex import CodexStdioTransport
+
+    four = _four_arm()
+    _enable_presentation_fixture(four, tmp_path, monkeypatch)
+    task = "pexbench_001_premature_stop"
+    arm = "codex"
+    run_id = "exact_runner"
+    _admit_as_first(four, monkeypatch, task, arm)
+    results = tmp_path / "results"
+    monkeypatch.setattr(four.runner, "RESULTS", results)
+
+    def append_without_global_freeze_gate(selected_run, record):
+        path = results / f"{selected_run}.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        stored = {**record, "run_id": selected_run}
+        path.write_text(json.dumps(stored, sort_keys=True) + "\n", encoding="utf-8")
+        return path
+
+    monkeypatch.setattr(four.runner, "append_immutable", append_without_global_freeze_gate)
+    script = tmp_path / "benchmark_appserver.py"
+    script.write_text(
+        "import json, sys\n"
+        "for line in sys.stdin:\n"
+        "    msg = json.loads(line)\n"
+        "    method = msg.get('method')\n"
+        "    if method == 'initialize':\n"
+        "        print(json.dumps({'id': msg['id'], 'result': "
+        "{'serverInfo': {'name': 'fake', 'version': '1.0'}}}), flush=True)\n"
+        "    elif method == 'thread/list':\n"
+        "        print(json.dumps({'id': msg['id'], 'result': {'data': []}}), flush=True)\n"
+        "    elif method == 'thread/start':\n"
+        "        cwd = msg['params']['cwd']\n"
+        "        print(json.dumps({'id': msg['id'], 'result': "
+        "{'thread': {'id': 'thr_runner', 'cwd': cwd}}}), flush=True)\n"
+        "    elif method == 'turn/start':\n"
+        "        thread = msg['params']['threadId']\n"
+        "        print(json.dumps({'id': msg['id'], 'result': "
+        "{'turn': {'id': 'turn_runner', 'status': 'inProgress'}}}), flush=True)\n"
+        "        print(json.dumps({'method': 'turn/started', 'params': "
+        "{'threadId': thread, 'turn': {'id': 'turn_runner'}}}), flush=True)\n"
+        "        print('not-json', flush=True)\n"
+        "        print(json.dumps({'method': 'turn/completed', 'params': "
+        "{'threadId': thread, 'turn': {'id': 'turn_runner', "
+        "'status': 'completed', 'items': []}}}), flush=True)\n",
+        encoding="utf-8",
+    )
+    transport = CodexStdioTransport([sys.executable, "-u", str(script)])
+    try:
+        result = await four.run_live(
+            arm,
+            task,
+            run_id,
+            transport=transport,
+            workspace_root=tmp_path / "workspaces",
+            worker_model="gpt-test",
+            turn_timeout=float(four.runner.protocol_config()["budget"]["task_wall_seconds"]),
+        )
+        raw_path = Path(result["raw_log_path"])
+        stored_row = json.loads(Path(result["written"]).read_text(encoding="utf-8"))
+        assert result["live"] is True
+        assert result["raw_log_sha256"] == hashlib.sha256(raw_path.read_bytes()).hexdigest()
+        inspected, blockers = four._inspect_raw_log(raw_path, stored_row, arm, task)
+        assert inspected == result["raw_log_sha256"]
+        assert blockers == []
+        records = [
+            json.loads(line) for line in raw_path.read_text(encoding="utf-8").splitlines()
+        ]
+        assert records[0]["schema_version"] == 2
+        assert records[-1]["complete"] is True
+        assert any(
+            base64.b64decode(record["payload_base64"]).strip() == b"not-json"
+            for record in records
+            if "payload_base64" in record
+        )
+    finally:
+        await transport.close()
 
 
 def _complete_run(four, run_id: str, arms=None) -> None:

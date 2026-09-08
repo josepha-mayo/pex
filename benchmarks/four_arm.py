@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
+import binascii
 import hashlib
 import json
 import math
@@ -39,6 +41,7 @@ if str(ROOT) not in sys.path:
 import boundary  # noqa: E402
 import evaluator  # noqa: E402
 import runner  # noqa: E402
+from codex_protocol_journal import CodexProtocolJournal  # noqa: E402
 from cursor_capture import CursorCapture  # noqa: E402
 
 PRESENTATION_ARMS = evaluator.PRESENTATION_ARMS
@@ -60,7 +63,7 @@ _MAX_RECORD_TEXT_CHARS = 4_000
 _MAX_RECORDED_MESSAGES = 100
 _MAX_RECORDED_JSON_BYTES = 256_000
 _MAX_RAW_LOG_BYTES = 64 * 1024 * 1024
-_MAX_RAW_LOG_RECORD_BYTES = 1024 * 1024
+_MAX_RAW_LOG_RECORD_BYTES = 2 * 1024 * 1024
 _MAX_RAW_LOG_RECORDS = 10_000
 _MAX_GIT_OUTPUT_BYTES = 8_192
 _GIT_TIMEOUT_SECONDS = 20
@@ -560,13 +563,19 @@ def _inspect_raw_log(
         cursor_stop_ids: set[str] = set()
         codex_started_turns: set[str] = set()
         codex_completed_turns: set[str] = set()
+        protocol_schema = 0
+        protocol_lines = 0
+        protocol_direction_counts = {"stdin": 0, "stdout": 0}
+        outbound_requests: dict[str, str] = {}
+        inbound_responses: dict[str, dict[str, Any]] = {}
+        inbound_requests: set[str] = set()
+        outbound_responses: set[str] = set()
+        outbound_notifications: set[str] = set()
         expected_source = "cursor_hook" if arm.startswith("cursor") else "codex_app_server"
         expected_identity = {
-            "schema_version": 1,
             "run_id": row.get("run_id"),
             "arm": arm,
             "task": task,
-            "thread_id": row.get("thread_id"),
         }
 
         with os.fdopen(descriptor, "rb", closefd=False) as handle:
@@ -596,7 +605,15 @@ def _inspect_raw_log(
                     raise ValueError(f"raw log event {record_count} is not an object")
                 if event.get("sequence") != record_count - 1:
                     raise ValueError("raw log event sequence is not contiguous from zero")
+                if record_count == 1:
+                    protocol_schema = event.get("schema_version")
+                    if protocol_schema not in {1, 2}:
+                        raise ValueError("raw log schema is unsupported")
+                if event.get("schema_version") != protocol_schema:
+                    raise ValueError("raw log schema changes within the capture")
                 if any(event.get(key) != value for key, value in expected_identity.items()):
+                    raise ValueError("raw log event identity does not bind the result row")
+                if protocol_schema == 1 and event.get("thread_id") != row.get("thread_id"):
                     raise ValueError("raw log event identity does not bind the result row")
                 try:
                     timestamp = datetime.fromisoformat(
@@ -613,7 +630,7 @@ def _inspect_raw_log(
 
                 record_type = event.get("record_type")
                 if record_count == 1:
-                    if (
+                    legacy_header_invalid = protocol_schema == 1 and (
                         record_type != "capture_header"
                         or event.get("source") != "benchmark_controller"
                         or event.get("event_kind") != "capture_started"
@@ -621,22 +638,158 @@ def _inspect_raw_log(
                         != row.get("harness_identity_sha256")
                         or event.get("transport_kind") != row.get("transport_kind")
                         or timestamp != run_started
-                    ):
+                    )
+                    exact_header_invalid = protocol_schema == 2 and (
+                        not arm.startswith("codex")
+                        or record_type != "capture_header"
+                        or event.get("source") != "benchmark_controller"
+                        or event.get("event_kind") != "capture_started"
+                        or event.get("capture_scope") != "exact_codex_stdio_jsonl"
+                        or event.get("payload_encoding") != "base64"
+                        or event.get("transport_kind") != "codex_stdio"
+                        or "thread_id" in event
+                        or timestamp != run_started
+                    )
+                    if legacy_header_invalid or exact_header_invalid:
                         raise ValueError("raw log lacks its exact controller capture header")
                     continue
                 if footer_seen:
                     raise ValueError("raw log contains data after its completion footer")
                 if record_type == "capture_footer":
-                    if (
+                    legacy_footer_invalid = protocol_schema == 1 and (
                         vendor_count == 0
                         or event.get("source") != "benchmark_controller"
                         or event.get("event_kind") != "capture_completed"
                         or event.get("complete") is not True
                         or event.get("captured_event_count") != vendor_count
                         or timestamp != run_ended
-                    ):
+                    )
+                    exact_footer_invalid = protocol_schema == 2 and (
+                        protocol_lines == 0
+                        or event.get("source") != "benchmark_controller"
+                        or event.get("event_kind") != "capture_completed"
+                        or event.get("complete") is not True
+                        or event.get("captured_protocol_line_count") != protocol_lines
+                        or event.get("stdin_line_count")
+                        != protocol_direction_counts["stdin"]
+                        or event.get("stdout_line_count")
+                        != protocol_direction_counts["stdout"]
+                        or event.get("thread_id") != row.get("thread_id")
+                        or event.get("initial_turn_id") != row.get("turn_id")
+                        or event.get("expected_turn_count")
+                        != 1 + int((row.get("pex") or {}).get("followups") or 0)
+                        or event.get("harness_identity_sha256")
+                        != row.get("harness_identity_sha256")
+                        or event.get("transport_kind") != row.get("transport_kind")
+                        or timestamp != run_ended
+                    )
+                    if legacy_footer_invalid or exact_footer_invalid:
                         raise ValueError("raw log completion footer is inconsistent")
                     footer_seen = True
+                    continue
+                if protocol_schema == 2:
+                    if (
+                        record_type != "protocol_line"
+                        or event.get("source") != "codex_app_server"
+                        or event.get("direction") not in protocol_direction_counts
+                        or not isinstance(event.get("payload_base64"), str)
+                        or not isinstance(event.get("payload_bytes"), int)
+                        or isinstance(event.get("payload_bytes"), bool)
+                        or not _is_sha256(event.get("payload_sha256"))
+                    ):
+                        raise ValueError("raw log contains an invalid exact protocol line")
+                    try:
+                        payload = base64.b64decode(
+                            event["payload_base64"].encode("ascii"), validate=True
+                        )
+                    except (UnicodeError, ValueError, binascii.Error) as exc:
+                        raise ValueError("raw protocol payload is not strict base64") from exc
+                    if (
+                        not payload
+                        or len(payload) > 1024 * 1024
+                        or len(payload) != event["payload_bytes"]
+                        or hashlib.sha256(payload).hexdigest()
+                        != event["payload_sha256"]
+                        or not payload.endswith(b"\n")
+                    ):
+                        raise ValueError("raw protocol payload bytes or fingerprint mismatch")
+                    direction = str(event["direction"])
+                    protocol_lines += 1
+                    protocol_direction_counts[direction] += 1
+                    try:
+                        message = json.loads(
+                            payload.decode("utf-8"),
+                            parse_constant=lambda constant: (_ for _ in ()).throw(
+                                ValueError(f"non-finite JSON number {constant}")
+                            ),
+                            object_pairs_hook=runner._unique_object,
+                        )
+                    except (UnicodeError, json.JSONDecodeError, ValueError, RecursionError):
+                        if direction == "stdin":
+                            raise ValueError(
+                                "controller wrote malformed Codex protocol JSON"
+                            ) from None
+                        continue
+                    if not isinstance(message, dict):
+                        if direction == "stdin":
+                            raise ValueError("controller wrote a non-object Codex protocol line")
+                        continue
+                    raw_id = message.get("id")
+                    if isinstance(raw_id, bool) or not isinstance(raw_id, (int, str)):
+                        message_id = None
+                    else:
+                        message_id = json.dumps(raw_id, separators=(",", ":"))
+                    method = message.get("method")
+                    if direction == "stdin":
+                        if isinstance(method, str) and method:
+                            if message_id is None:
+                                outbound_notifications.add(method)
+                            elif message_id in outbound_requests:
+                                raise ValueError("duplicate outbound Codex request id")
+                            else:
+                                outbound_requests[message_id] = method
+                        elif message_id is not None and (
+                            "result" in message or "error" in message
+                        ):
+                            if message_id in outbound_responses:
+                                raise ValueError("duplicate outbound Codex response id")
+                            outbound_responses.add(message_id)
+                        else:
+                            raise ValueError("controller wrote an unrecognized Codex protocol line")
+                    elif message_id is not None and (
+                        "result" in message or "error" in message
+                    ):
+                        if message_id in inbound_responses:
+                            raise ValueError("duplicate inbound Codex response id")
+                        inbound_responses[message_id] = message
+                    elif isinstance(method, str) and method:
+                        if message_id is not None:
+                            if message_id in inbound_requests:
+                                raise ValueError("duplicate inbound Codex request id")
+                            inbound_requests.add(message_id)
+                        if method in {"turn/started", "turn/completed"}:
+                            params = (
+                                message.get("params")
+                                if isinstance(message.get("params"), dict)
+                                else {}
+                            )
+                            turn = (
+                                params.get("turn")
+                                if isinstance(params.get("turn"), dict)
+                                else {}
+                            )
+                            turn_id = turn.get("id")
+                            if (
+                                params.get("threadId") == row.get("thread_id")
+                                and isinstance(turn_id, str)
+                                and turn_id
+                            ):
+                                target = (
+                                    codex_started_turns
+                                    if method == "turn/started"
+                                    else codex_completed_turns
+                                )
+                                target.add(turn_id)
                     continue
                 if record_type != "vendor_event" or event.get("source") != expected_source:
                     raise ValueError("raw log contains a non-vendor event before completion")
@@ -714,6 +867,49 @@ def _inspect_raw_log(
     if not footer_seen:
         raise ValueError("raw log lacks a complete controller capture footer")
     blockers: list[str] = []
+    if protocol_schema == 2:
+        if set(outbound_requests) != set(inbound_responses):
+            blockers.append(f"{arm}/{task} exact Codex log has unmatched client requests")
+        if inbound_requests != outbound_responses:
+            blockers.append(f"{arm}/{task} exact Codex log has unmatched server requests")
+        methods = list(outbound_requests.values())
+        expected_turn_count = 1 + int((row.get("pex") or {}).get("followups") or 0)
+        if (
+            methods.count("initialize") != 1
+            or "initialized" not in outbound_notifications
+            or methods.count("thread/start") != 1
+            or methods.count("turn/start") != expected_turn_count
+            or protocol_direction_counts["stdin"] == 0
+            or protocol_direction_counts["stdout"] == 0
+        ):
+            blockers.append(f"{arm}/{task} exact Codex request sequence is incomplete")
+        thread_receipts: list[str] = []
+        turn_receipts: list[str] = []
+        for request_id, method in outbound_requests.items():
+            response = inbound_responses.get(request_id) or {}
+            result = response.get("result") if isinstance(response.get("result"), dict) else {}
+            if method == "thread/start":
+                thread = result.get("thread") if isinstance(result.get("thread"), dict) else {}
+                if isinstance(thread.get("id"), str):
+                    thread_receipts.append(thread["id"])
+            elif method == "turn/start":
+                turn = result.get("turn") if isinstance(result.get("turn"), dict) else {}
+                if isinstance(turn.get("id"), str):
+                    turn_receipts.append(turn["id"])
+        expected_thread = row.get("thread_id")
+        initial_turn = row.get("turn_id")
+        if thread_receipts != [expected_thread]:
+            blockers.append(f"{arm}/{task} exact Codex thread receipt is not bound")
+        if (
+            len(turn_receipts) != expected_turn_count
+            or initial_turn not in turn_receipts
+            or set(turn_receipts) != codex_started_turns
+            or set(turn_receipts) != codex_completed_turns
+        ):
+            blockers.append(
+                f"{arm}/{task} exact Codex log lacks all bound turn receipts and events"
+            )
+        return digest.hexdigest(), blockers
     if arm.startswith("cursor"):
         if not cursor_stop_ids:
             blockers.append(f"{arm}/{task} raw log contains no bound Cursor stop event")
@@ -2755,6 +2951,7 @@ async def run_live(
             )
     adapter = CodexAdapter(transport)
     abort_started_at: str | None = None
+    protocol_journal: CodexProtocolJournal | None = None
     try:
         workspace, seed, receipt = prepare_isolated_workspace(
             run_id, arm, task_id, workspace_root
@@ -2764,6 +2961,18 @@ async def run_live(
         boundary.assert_public_prompt(task_id, prompt)
         prompt_sha256 = boundary.sha256_text(prompt)
         abort_started_at = datetime.now(UTC).isoformat()
+        if presentation_candidate:
+            raw_path = _canonical_raw_log_path(run_id, arm, task_id)
+            if _path_has_link_component(raw_path, runner.RESULTS):
+                raise RuntimeError("refusing a linked Codex protocol journal path")
+            protocol_journal = CodexProtocolJournal(
+                raw_path,
+                run_id=run_id,
+                arm=arm,
+                task=task_id,
+                started_at=abort_started_at,
+            )
+            transport.set_protocol_observer(protocol_journal.observe)
         task_started_perf = time.perf_counter()
         worker_started_perf = task_started_perf
         session = await adapter.start_isolated_thread(str(workspace), name="isolated-job")
@@ -2866,6 +3075,8 @@ async def run_live(
             )
         evaluation_wall_seconds = time.perf_counter() - evaluation_started_perf
         ended_at = datetime.now(UTC).isoformat()
+        if protocol_journal is not None:
+            transport.set_protocol_observer(None)
         total_wall_seconds = time.perf_counter() - task_started_perf
         process = getattr(transport, "_proc", None)
         verified_live = (
@@ -2928,19 +3139,48 @@ async def run_live(
             },
             label="Codex captured event subset",
         )
-        raw_log_path, raw_log_sha256 = _try_write_codex_raw_log(
-            run_id=run_id,
-            arm=arm,
-            task=task_id,
-            thread_id=session.vendor_session_id,
-            turn_id=str(turn_id or ""),
-            started_at=abort_started_at,
-            ended_at=ended_at,
-            harness_identity_sha256=harness_identity_sha256,
-            transport_kind=transport_kind,
-            followups=int((pex_meta or {}).get("followups") or 0),
-            raw_capture=getattr(transport, "raw_capture", None),
-        )
+        if protocol_journal is not None:
+            raw_log_path, raw_log_sha256 = protocol_journal.finish(
+                ended_at=ended_at,
+                thread_id=session.vendor_session_id,
+                initial_turn_id=str(turn_id or ""),
+                expected_turn_count=1 + int((pex_meta or {}).get("followups") or 0),
+                harness_identity_sha256=harness_identity_sha256,
+            )
+            inspected_digest, raw_log_blockers = _inspect_raw_log(
+                Path(raw_log_path),
+                {
+                    "run_id": run_id,
+                    "thread_id": session.vendor_session_id,
+                    "turn_id": str(turn_id or ""),
+                    "started_at": abort_started_at,
+                    "ended_at": ended_at,
+                    "harness_identity_sha256": harness_identity_sha256,
+                    "transport_kind": transport_kind,
+                    "pex": pex_meta,
+                },
+                arm,
+                task_id,
+            )
+            if inspected_digest != raw_log_sha256 or raw_log_blockers:
+                raise RuntimeError(
+                    "exact Codex protocol journal failed validation: "
+                    + "; ".join(raw_log_blockers or ["fingerprint mismatch"])
+                )
+        else:
+            raw_log_path, raw_log_sha256 = _try_write_codex_raw_log(
+                run_id=run_id,
+                arm=arm,
+                task=task_id,
+                thread_id=session.vendor_session_id,
+                turn_id=str(turn_id or ""),
+                started_at=abort_started_at,
+                ended_at=ended_at,
+                harness_identity_sha256=harness_identity_sha256,
+                transport_kind=transport_kind,
+                followups=int((pex_meta or {}).get("followups") or 0),
+                raw_capture=getattr(transport, "raw_capture", None),
+            )
         runtime_fields = _runtime_record_fields(
             arm=arm,
             task_id=task_id,
@@ -3013,6 +3253,12 @@ async def run_live(
         result["written"] = str(path)
         return result
     except Exception as exc:
+        if protocol_journal is not None and not protocol_journal.complete:
+            try:
+                transport.set_protocol_observer(None)
+                protocol_journal.abort()
+            except (OSError, RuntimeError) as journal_exc:
+                exc.add_note(f"failed to retain incomplete protocol journal: {journal_exc}")
         if presentation_candidate and abort_started_at is not None:
             message = str(exc).lower()
             if isinstance(exc, TimeoutError):

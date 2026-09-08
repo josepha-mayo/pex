@@ -9068,3 +9068,49 @@ The dirty bit is expected because the protected operator-owned file below is ret
   bounded, exclusive immutable protocol journal; wire it only for benchmark-owned Codex
   transports; bind its header/footer/hash to run, arm, task, thread and row; validate complete
   request/response/turn coverage. Cursor needs a separate honest hook-surface strategy.
+
+### 8 September Codex exact-protocol journal and acceptance gate
+
+- The capture primitive is now wired for real `CodexStdioTransport` presentation candidates.
+  Attachment happens only after all execution preflight checks and fresh-workspace preparation,
+  but before the App Server process starts. Injected in-process test doubles retain the legacy
+  diagnostic path and cannot acquire live/presentation status.
+- `benchmarks/codex_protocol_journal.py` owns one canonical exclusive JSONL file under
+  `results/_scratch/_raw/<run>/<arm>/<task>.jsonl`. It accepts only newline-terminated protocol
+  payloads up to 1 MiB, at most 10,000 total records and 64 MiB total storage. Each protocol
+  record carries contiguous sequence, UTC observation time, direction, exact base64 bytes, byte
+  length and SHA-256. Header identity binds schema/run/arm/task/capture scope; the footer binds
+  thread, initial turn, expected turn count, harness identity, transport, direction counts and
+  run end time. The file is created without overwrite/following a final link, fsynced, and its
+  descriptor/path identity is rechecked before close.
+- Capture is deliberately synchronous. A write/bound failure propagates through the existing
+  transport failure or delivery-uncertain path instead of silently dropping evidence. The
+  observer may attach only before process start and may detach at the controller's exact task
+  boundary. Exceptions retain an incomplete fsynced journal and append the normal immutable
+  abort record; a one-direction or missing-identity capture cannot seal a `complete:true` footer.
+- `_inspect_raw_log` supports the older schema-one Cursor/diagnostic envelope and the new
+  schema-two exact Codex envelope. For schema two it strict-decodes every base64 payload,
+  rechecks byte length/hash/newline and stable file identity, permits malformed stdout only
+  because the transport observed it before parsing, and rejects malformed controller stdin.
+  It requires one initialize exchange and initialized notification, one new thread receipt,
+  exactly the declared number of turn/start receipts, every client/server request-response pair,
+  and the identical set of bound `turn/started` and `turn/completed` notifications. The live
+  runner invokes this inspector immediately after sealing and before `append_immutable`; a
+  blocker becomes an aborted run, never a completed row.
+- Adversarial tests cover exact round trip, deliberate malformed stdout retention, payload
+  tampering, unmatched requests, missing footer, one-direction seal refusal, post-start observer
+  attachment refusal, and the complete real-stdio runner lifecycle through a test-owned fake App
+  Server. The fake process emits Windows CRLF on stdout and the journal preserves those exact
+  bytes rather than normalizing them.
+- Final scoped Ruff passed. The broad benchmark plus Codex adapter/pump/deep-audit gate passed
+  **289/289 with 3 intentional skips in 288.50 seconds**. No real Codex model, Cursor, native PEX,
+  Docker, AWS resource or paid call ran.
+- Do **not** mark `raw_harness_event_log_status` satisfied. Codex stdio now meets the intended
+  exact-capture implementation bar, but `CursorCapture` still advertises `coverage:"partial"`
+  and `complete:false`. The manifest remains `frozen:false`, and there is still no citeable
+  benchmark result or leaderboard claim.
+- Main checkout boundary remains: do not touch, stage, format or restore the protected
+  `services/supervisor/src/pex_supervisor/loop.py` tail unless the user says exactly `remove the
+  protected loop tail`; its expected SHA-256 remains
+  `DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`. Keep PEX closed unless
+  the user says exactly `run bounded native smoke`.
