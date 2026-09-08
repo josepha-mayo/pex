@@ -6,6 +6,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.
+- [x] Replace the attached shared-Codex observer's 25ms empty-buffer poll with a
+  notification/revocation wake signal. Five focused files pass 174/174 and Ruff;
+  native idle/resource proof and the freeze root cause remain open.
 - [x] Reproduce polling/decode resource-control gaps and test bounded repairs offline.
 - [x] Stop per-snapshot goal GET buildup and cancel superseded goal evidence reads.
 - [x] Refresh loading-only supervisor status without resetting drafts or rebasing revisions.

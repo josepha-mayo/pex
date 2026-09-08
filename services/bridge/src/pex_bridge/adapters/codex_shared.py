@@ -18,7 +18,7 @@ import stat
 import subprocess
 import sys
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -154,6 +154,24 @@ class RawByteChannel(Protocol):
 
 ChannelFactory = Callable[[tuple[str, ...]], Awaitable[RawByteChannel]]
 EndpointValidator = Callable[[Path, Path], None]
+
+
+class _NotificationBuffer(list[dict[str, Any]]):
+    """List-compatible notification buffer that wakes the live observer on writes."""
+
+    def __init__(self, ready: asyncio.Event) -> None:
+        super().__init__()
+        self._ready = ready
+
+    def append(self, item: dict[str, Any]) -> None:
+        super().append(item)
+        self._ready.set()
+
+    def extend(self, items: Iterable[dict[str, Any]]) -> None:
+        previous_size = len(self)
+        super().extend(items)
+        if len(self) != previous_size:
+            self._ready.set()
 
 
 def _bounded_path(value: str | os.PathLike[str], *, label: str) -> Path:
@@ -600,7 +618,10 @@ class CodexSharedAppServerTransport:
         self.initialized = False
         self.connection_generation = 0
         self.init_result: dict[str, Any] | None = None
-        self.notifications: list[dict[str, Any]] = []
+        self._notifications_ready = asyncio.Event()
+        self.notifications: list[dict[str, Any]] = _NotificationBuffer(
+            self._notifications_ready
+        )
         self.pending_approvals: dict[str, dict[str, Any]] = {}
         self._channel: RawByteChannel | None = None
         self._websocket: ClientProtocol | None = None
@@ -667,7 +688,15 @@ class CodexSharedAppServerTransport:
             raise ValueError("notification drain limit exceeds the safety bound")
         drained = self.notifications[:limit]
         del self.notifications[: len(drained)]
+        if not self.notifications:
+            self._notifications_ready.clear()
         return drained
+
+    async def wait_for_notifications(self) -> None:
+        """Sleep until a notification arrives or this connection is revoked."""
+        if self.notifications or not self.initialized:
+            return
+        await self._notifications_ready.wait()
 
     async def _flush(
         self, websocket: ClientProtocol, channel: RawByteChannel
@@ -1003,6 +1032,7 @@ class CodexSharedAppServerTransport:
 
     def _invalidate(self, failure: BaseException) -> None:
         self.initialized = False
+        self._notifications_ready.set()
         self.init_result = None
         self.connection_generation += 1
         self._fragment.clear()
@@ -1100,6 +1130,8 @@ class CodexSharedAppServerTransport:
                 raise
             self.initialized = True
             self.init_result = dict(result)
+            if not self.notifications:
+                self._notifications_ready.clear()
             return dict(result)
 
     async def _settle_text_dispatch_close(self) -> None:

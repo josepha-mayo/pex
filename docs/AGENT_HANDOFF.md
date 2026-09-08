@@ -2,6 +2,14 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the live shared-Codex observer no longer polls an empty notification buffer every
+25ms (about 40 wakeups/second per attachment). The existing socket reader now signals a
+list-compatible bounded buffer; the pump sleeps until notification arrival or connection
+revocation, preserving direct-list test compatibility and disconnect cleanup. Five focused
+Codex transport/subscription/retention files pass 174/174 and Ruff is clean. This removes
+a proven idle hot poll but does not establish the cause of the reported whole-PC freeze;
+PEX remained closed and native/resource verification is still required.
+
 Latest: the hatch-pet pipeline now rejects exponent overflow in legacy job imports,
 candidate provenance receipts and bounded image-provider responses. A corrupt legacy job
 stays visibly unverified; a corrupt candidate cannot finalize/reconcile a potentially

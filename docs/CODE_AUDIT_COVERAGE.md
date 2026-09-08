@@ -2,6 +2,12 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced the shared-Codex adapter's 25ms empty-drain loop
+through the subscription into the already-blocking WebSocket reader. A transport-owned
+arrival/revocation signal now leaves a quiet attachment dormant and wakes it without
+claiming worker state. List-compatible fakes preserve direct append/extend tests; five
+focused files pass 174/174 and Ruff is clean. Native resource impact remains unmeasured.
+
 Changed-path addendum: parent applied the hatch-pet durability rules to legacy import,
 candidate receipt reconciliation and bounded image-provider response parsing. Each
 rejected duplicates/constants but admitted exponent overflow. Finite-float parsing now

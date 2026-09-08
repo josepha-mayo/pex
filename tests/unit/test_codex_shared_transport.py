@@ -264,6 +264,35 @@ async def test_routes_fragmented_notifications_and_bounded_drain(tmp_path: Path)
 
 
 @pytest.mark.asyncio
+async def test_notification_wait_is_quiet_and_wakes_on_arrival(tmp_path: Path) -> None:
+    channel = MemoryAppServerChannel()
+    transport = make_transport(tmp_path, channel)
+    await transport.ensure_ready()
+
+    waiter = asyncio.create_task(transport.wait_for_notifications())
+    await asyncio.sleep(0)
+    assert not waiter.done()
+
+    transport.notifications.append(
+        {
+            "method": "turn/completed",
+            "params": {"threadId": "thr_exact"},
+            "shared_server_request": False,
+            "connection_generation": transport.connection_generation,
+        }
+    )
+    await asyncio.wait_for(waiter, timeout=1)
+
+    assert transport.drain_notifications() != []
+    next_waiter = asyncio.create_task(transport.wait_for_notifications())
+    await asyncio.sleep(0)
+    assert not next_waiter.done()
+
+    await transport.close()
+    await asyncio.wait_for(next_waiter, timeout=1)
+
+
+@pytest.mark.asyncio
 async def test_server_request_is_observed_without_response_authority(tmp_path: Path) -> None:
     channel = MemoryAppServerChannel()
     transport = make_transport(tmp_path, channel)

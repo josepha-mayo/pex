@@ -5,6 +5,20 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: event-driven shared-Codex observation
+
+The attached shared-Codex pump previously called a synchronous empty drain then slept
+25ms forever, causing roughly 40 idle wakeups per second for each quiet attachment. The
+socket reader already receives real traffic asynchronously, so the transport now signals
+notification arrival and connection revocation. The pump blocks on that signal; draining
+the final row rearms it without a lost-wakeup window. The buffer remains list-compatible
+for existing deterministic fakes, and reconnect initialization clears a stale revocation
+signal only when no notification is queued.
+
+Transport, adapter, subscription, retention and consumer-shutdown coverage passes
+**174/174** and scoped Ruff passes. This is a source-level idle fix, not proof that the
+reported whole-PC freeze is solved. PEX, native code, workers and large suites did not run.
+
 ## Latest offline slice: strict hatch effect and provider JSON
 
 The hatch-pet durability layer parsed legacy jobs and candidate provenance receipts with

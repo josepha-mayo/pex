@@ -617,7 +617,7 @@ class CodexSharedAdapter(HarnessAdapter):
                 raise
             records = batch.records
             if not records:
-                await asyncio.sleep(0.025)
+                await self.transport.wait_for_notifications()
 
     async def _receive_with_provenance(self, loader) -> None:
         if loader is not None:

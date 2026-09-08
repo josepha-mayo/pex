@@ -2,6 +2,10 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Shared-Codex observation no longer wakes every 25ms while its selected worker is quiet;
+  notification arrival and connection revocation now wake the pump. Five focused files
+  pass 174/174 and Ruff is clean. This is not native resource evidence or a confirmed fix
+  for the reported whole-PC freeze.
 - Hatch legacy imports, candidate receipts and image-provider response JSON now reject
   exponent overflow; 58 durability/provider tests and Ruff pass. No provider call or
   image generation ran, and eight-pet visual/native QA remains open.

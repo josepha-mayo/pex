@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+The shared-Codex live observer now sleeps on notification arrival or connection
+revocation instead of empty-draining every 25ms. Transport/subscription/retention coverage
+passes 174/174 with Ruff clean. This removes a proven per-attachment idle hot poll, but
+PEX remained closed and the whole-PC freeze/native resource gate remains unresolved.
+
 Hatch legacy jobs, candidate provenance receipts and image-provider responses now reject
 exponent overflow. Corrupt jobs remain visible/unverified and corrupt receipts cannot
 finalize a potentially billable effect. Hatch coverage passes 58/58 with Ruff clean; no

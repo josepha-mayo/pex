@@ -74,7 +74,20 @@ class FakeSharedTransport:
         self.reads = [deepcopy(item) for item in reads]
         self.resume = deepcopy(resume)
         self.on_resume = on_resume
-        self.notifications: list[dict[str, Any]] = []
+        self._notifications_ready = asyncio.Event()
+
+        class Notifications(list[dict[str, Any]]):
+            def append(inner_self, item: dict[str, Any]) -> None:
+                super().append(item)
+                self._notifications_ready.set()
+
+            def extend(inner_self, items) -> None:
+                previous_size = len(inner_self)
+                super().extend(items)
+                if len(inner_self) != previous_size:
+                    self._notifications_ready.set()
+
+        self.notifications: list[dict[str, Any]] = Notifications()
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.closed = False
 
@@ -101,14 +114,22 @@ class FakeSharedTransport:
 
     def drain_notifications(self, *, limit: int = 256) -> list[dict[str, Any]]:
         result = self.notifications[:limit]
-        self.notifications = self.notifications[limit:]
+        del self.notifications[: len(result)]
+        if not self.notifications:
+            self._notifications_ready.clear()
         return result
+
+    async def wait_for_notifications(self) -> None:
+        if self.notifications or not self.initialized:
+            return
+        await self._notifications_ready.wait()
 
     async def close(self) -> None:
         self.closed = True
         self.initialized = False
         self.connection_generation += 1
         self.notifications.clear()
+        self._notifications_ready.set()
 
 
 async def _inspect(
