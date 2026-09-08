@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: isolated Codex App Server discovery also had a per-response rather than cumulative
+retained-state bound. Thread updates are now staged, the retained non-desktop union is
+limited to 10,000, and a rotating over-cap response leaves prior state untouched. The
+separate `codex:desktop` process-observation tile is not miscounted as a vendor thread.
+Codex discovery/pump/attach/protocol/fleet coverage passes 158/158 and Ruff is clean. No
+Codex child, model or native app ran.
+
 Latest: the cumulative retained-session repair now covers OpenCode and Qwen, not only
 Devin. Both adapters previously bounded a single discovery response but merged rotating
 IDs into permanent runtime dictionaries. They now stage the complete discovery update,

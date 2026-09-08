@@ -2,6 +2,12 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent found isolated Codex `thread/list` had a bounded response
+but unbounded cumulative merge. Staged discovery now caps the retained non-desktop union
+and preserves prior state on refusal. The process-only desktop tile stays separate.
+Codex discovery/pump/attach/protocol/fleet coverage passes 158/158; Ruff is clean. This
+is not a live App Server/native proof.
+
 Changed-path addendum: parent extended cumulative discovery-state bounds to OpenCode and
 Qwen. Both now stage complete updates, check remote-plus-retained unions and avoid partial
 state on refusal. Full adapter/fleet/OpenCode pump/outcome/fork coverage passes 139/139;

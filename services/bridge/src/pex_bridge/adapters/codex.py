@@ -1413,13 +1413,28 @@ class CodexAdapter(HarnessAdapter):
         rows = _thread_rows(listed)
         if len(rows) > MAX_CODEX_SESSIONS:
             raise RuntimeError("Codex thread listing exceeded the safety bound")
+        retained_session_ids = {
+            session_id for session_id in self.sessions if session_id != "codex:desktop"
+        }
+        if len(retained_session_ids) > MAX_CODEX_SESSIONS:
+            raise RuntimeError("Codex retained session state exceeded the safety bound")
+        updates: dict[str, HarnessSession] = {}
+        new_session_ids: set[str] = set()
         for thread in rows:
             try:
                 vendor_id = bounded_adapter_id(thread.get("id") or "", field="Codex thread id")
             except ValueError:
                 continue
             session_id = f"codex:{vendor_id}"
-            existing = self.sessions.get(session_id)
+            existing = updates.get(session_id) or self.sessions.get(session_id)
+            if (
+                existing is None
+                and session_id != "codex:desktop"
+                and session_id not in new_session_ids
+            ):
+                if len(retained_session_ids) + len(new_session_ids) >= MAX_CODEX_SESSIONS:
+                    raise RuntimeError("Codex retained session state reached the safety bound")
+                new_session_ids.add(session_id)
             status = SessionStatus.WORKING if existing else SessionStatus.DISCOVERED
             raw_status = thread.get("status")
             if isinstance(raw_status, dict) and raw_status.get("type") == "idle":
@@ -1442,7 +1457,7 @@ class CodexAdapter(HarnessAdapter):
                 cwd=listed_cwd,
                 project_id=project_id,
             )
-            self.sessions[session_id] = HarnessSession(
+            updates[session_id] = HarnessSession(
                 id=session_id,
                 harness_type=HarnessType.CODEX,
                 vendor_session_id=vendor_id,
@@ -1461,6 +1476,7 @@ class CodexAdapter(HarnessAdapter):
                     ),
                 },
             )
+        self.sessions.update(updates)
         self._observe_desktop_session()
         return list(self.sessions.values())
 

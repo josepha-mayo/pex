@@ -139,6 +139,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Apply cumulative retained-session bounds and transactional over-cap refusal to
   rotating OpenCode/Qwen inventories. The full related gate passes 139/139 with Ruff;
   no live daemon/native proof is implied.
+- [x] Bound cumulative isolated-Codex thread discovery without counting its separate
+  desktop process tile as a vendor thread; over-cap updates are transactional. Related
+  Codex coverage passes 158/158 with Ruff; no child/native proof is implied.
 - [ ] Resolve remaining observation lifetime limits: non-atomic directory enumeration,
   and blocked OS calls. Do not claim a hard deadline.
   Incremental supervisor inventory now has entry/file/time caps plus directory and exact

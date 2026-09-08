@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Isolated Codex discovery now bounds cumulative retained vendor threads across rotating
+  responses and preserves prior state on refusal; its process-only desktop tile remains
+  separate. Related coverage passes 158/158 and Ruff. Live behavior is unverified.
 - OpenCode/Qwen discovery now bounds cumulative retained sessions across rotating
   inventories and refuses over-cap updates without partial mutation. Related coverage
   passes 139/139 and Ruff; live daemon/native behavior remains unverified.

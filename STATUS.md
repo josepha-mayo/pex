@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Isolated Codex discovery now bounds cumulative retained App Server threads across
+rotating responses and cannot partially mutate state on refusal. The separate desktop
+process tile is excluded from that vendor-thread count. Related coverage passes 158/158
+with Ruff; no live App Server/native evidence follows.
+
 OpenCode and Qwen now apply their session bounds to cumulative retained state across
 rotating discoveries. Over-cap unions leave the prior runtime map intact. The complete
 related gate passes 139/139 with Ruff; no live daemon/native proof follows.

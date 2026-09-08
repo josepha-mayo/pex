@@ -5,6 +5,15 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: bound rotating Codex discovery state
+
+Isolated Codex discovery bounded each `thread/list` response but merged successive IDs
+into permanent runtime state. It now stages each update, bounds the union of retained
+vendor threads to 10,000, and commits nothing when a rotating response would cross that
+cap. The process-only `codex:desktop` tile remains a separate observation and is not
+counted as an App Server thread. Codex discovery, pump, attachment, protocol and fleet
+coverage passes **158/158**; scoped Ruff passes. No Codex process/model/native app ran.
+
 ## Latest offline slice: bound rotating OpenCode/Qwen discovery state
 
 OpenCode and Qwen had the same page/list-size versus cumulative-state gap found in

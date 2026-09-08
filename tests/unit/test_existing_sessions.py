@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 from pex_bridge.adapters import AdapterRegistry
+from pex_bridge.adapters import codex as codex_module
 from pex_bridge.adapters.acp_harness import HermesAdapter
 from pex_bridge.adapters.claude_code import ClaudeCodeAdapter
 from pex_bridge.adapters.codex import CodexAdapter
@@ -158,6 +159,28 @@ async def test_codex_keeps_working_isolated_session_when_chatgpt_is_also_open(
     assert caps.support_label.value == "observe_only"
     assert caps.send_message is False
     assert caps.focus_ui is True
+
+
+@pytest.mark.asyncio
+async def test_codex_rotating_discovery_cannot_exceed_retained_state_bound(monkeypatch):
+    monkeypatch.setattr(codex_module, "MAX_CODEX_SESSIONS", 2)
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.running_image_names",
+        lambda: set(),
+    )
+    transport = codex_module.CodexAppServerTransport()
+    transport.threads = [{"id": "thread-1", "cwd": "C:/repo"}]
+    adapter = CodexAdapter(transport)
+    await adapter.discover_sessions()
+
+    transport.threads = [
+        {"id": "thread-2", "cwd": "C:/repo"},
+        {"id": "thread-3", "cwd": "C:/repo"},
+    ]
+    with pytest.raises(RuntimeError, match="retained session state reached"):
+        await adapter.discover_sessions()
+
+    assert list(adapter.sessions) == ["codex:thread-1"]
 
 
 async def test_chatgpt_desktop_session_cannot_start_app_server_turns(monkeypatch):
