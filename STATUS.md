@@ -25,6 +25,9 @@ is limited to four concurrent reads and a shared deadline. Core history no longe
 waits for that follow-up batch. 213 focused desktop tests and TypeScript pass, with
 an independently spotted stale-poll lifetime defect repaired. No native relaunch,
 build or live calls; current-source native stability is still unverified.
+Cursor inbox reads and per-drain records are now bounded; unread backlog is not
+erased. 13 targeted tests pass / 44 deselected, Ruff passes. Durable acknowledgement,
+path safety, off-loop reads, oversized incomplete lines and retention remain open.
 
 See [the detailed checkpoint](docs/CHECKPOINT_2026_09_08.md). Exact de83153 installers
 are verified. Native testing paused on Escape; PEX was already absent when the

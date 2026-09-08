@@ -174,6 +174,8 @@ untouched at its recorded hash. No native/build/live-model/CU workload was start
 
 ### Follow-up offline slice: view cancellation and handoff read fanout
 
+Pushed as `70ba867a7b50ec787196cc89d1d207cc5eb5b016`.
+
 Baseline: pushed `50e66ff4dd210cdb7330e2cca2629005c79c054b`. App background pet,
 base-state, pet-goal, detail and identity-status reads now consume their view/poll
 lifetime AbortSignal. Cleanup advances the existing request sequence before abort;
@@ -211,6 +213,39 @@ helper/cancellation slice; its two-stage lifetime finding was integrated afterwa
 and rechecked by parent. The protected operator loop.py is untouched at its recorded
 hash. These are source repairs only; installers still predate them. They do not
 explain the reported whole-PC freeze or establish idle/native stability.
+
+### Follow-up offline slice: Cursor inbox read and record budgets
+
+The parent read cursor_inbox.py, its fail-open producer and the bridge's quarter-
+second observer loop. Six tiny negative fixtures exposed unbounded actual file and
+marker reads, no record-count budget, and malformed Unicode/overlong offset handling.
+A seventh negative proved the old over-8-MiB branch erased unread backlog. No user
+inbox was read or modified; all reproductions used temporary fixture files.
+
+The repair caps the actual inbox read at 8 MiB even if a producer grows the file
+after stat, reads at most 65 marker bytes (rejects over 64), and accepts only ASCII
+digit offsets. A drain consumes at most 128 physical lines, including malformed and
+empty ones; only that prefix advances the marker. Incomplete JSONL remains pending.
+Oversized complete records remain skipped under the existing per-record bound.
+The reader no longer truncates a larger backlog: it drains it in bounded reads.
+
+Final targeted verification: **13 passed / 44 deselected, 12.49 seconds** from
+`.venv/Scripts/python.exe -m pytest -q tests/unit/test_cursor_inbox_budget.py tests/contract/test_cursor_hooks.py -k 'inbox or offset or batch_limit or production_batch' --tb=short`.
+The new nine-case file includes the production 128-line cap, Unicode/CRLF byte
+offsets, oversized complete records, partial writes and non-destructive backlog
+draining. Four existing Cursor contracts also pass, including local ASGI ingestion;
+no external server, Cursor process or model was used. Ruff initially found one long
+test signature; wrapping it repaired the lint-only failure and Ruff now passes.
+Parent reviewed both changed files; bounded Terra review found no new regression.
+
+**Still open, not a whole-reader safety pass:** the loop still performs synchronous
+OS I/O; the marker advances before async ingestion, so interruption can lose unread
+processing work; path-based marker writes lack linked-path/generation protection;
+an oversized newline-free record can exceed the read window; safe producer-
+coordinated disk retention is not implemented. Removing destructive truncation
+preserves evidence but is not a disk-space limit. Address these explicitly before
+claiming reliable Cursor observation or native stability. No freeze cause established.
+Protected loop.py remains unchanged. No native/build/live-model/CU work started.
 
 Next: continue bounded offline audit; the main process/read lifetime paths still
 need broader coverage. Native resource verification needs renewed operator

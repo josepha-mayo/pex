@@ -13,6 +13,10 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Repair workspace hash containment and duplicate scans; test cooperative time/entry caps.
 - [x] Propagate view cancellation to background reads and cap handoff-status fanout.
   213 focused desktop tests and TypeScript pass; source-only, not native stability.
+- [x] Bound Cursor inbox reads/record batches and remove destructive backlog clearing.
+  13 targeted checks pass; 44 deselected. No live Cursor/native run.
+- [ ] Finish Cursor inbox acknowledgement, path safety, off-loop I/O, oversized-line
+  recovery and producer-coordinated retention; checkpoint preserves current gaps.
 - [ ] Resolve remaining observation lifetime limits: non-atomic directory enumeration,
   blocked OS calls and aggregate repeated-event work. Do not claim a hard deadline.
 - [ ] Confirm a bounded native resource capture before reopening the app or large gates.

@@ -31,6 +31,13 @@ batch finished; fixed and parent-rechecked. 213 focused desktop tests and TypeSc
 pass. See the checkpoint for scope/limitations; no native/build/live workload ran.
 Installers do not contain these latest repairs. Protected loop.py remains untouched.
 
+View/read cancellation is pushed as 70ba867. The next Cursor inbox slice bounds
+actual file/marker reads and each record batch, and stops erasing unread oversized
+backlogs. 13 targeted backend/contract tests pass (44 deselected); Ruff and bounded
+Terra review pass. The checkpoint explicitly leaves ingestion acknowledgement,
+linked-marker writes, synchronous I/O, malformed long records and disk retention
+open. Do not mistake this partial reader repair for Cursor/native release approval.
+
 Read [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md), all three specs and
 SHIP_CHECKLIST before continuing. It supersedes historical current/latest labels
 below. Exact de83153 Windows installers are verified; native input was stopped by

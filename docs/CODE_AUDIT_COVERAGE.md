@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: tests/unit/test_cursor_inbox_budget.py (nine tiny cases). Parent
+read cursor_inbox.py fully plus its producer and runtime-loop call site; Terra
+reviewed the final reader/test slice, finding no new regression. Six read/offset/
+batch negatives and a destructive-backlog negative failed before their repairs.
+13 targeted positives / 44 deselected and Ruff pass. This is not whole Cursor
+reliability approval: pre-ingestion marker advancement, path safety, synchronous
+I/O, oversized incomplete records and producer-coordinated retention remain open.
+
 Changed-path review: App.tsx view cancellation and two-stage history publication,
 the complete boundedReadBatch helper and its functional/source tests in readBudget,
 and revised signal expectations in supervisorDraft/viewModel tests. Terra's bounded

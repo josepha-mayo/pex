@@ -28,6 +28,12 @@
   establish cancellation of native/backend work, a global request cap or stability.
   Full audit, native stability, quiet/recovery gates, fair comparisons and final
   submission remain open; no repaired path is proven to explain the incident.
+- Cursor inbox actual reads, marker parsing and record counts are now bounded;
+  unread oversized backlogs are no longer erased. 13 targeted checks pass. Remaining
+  source-audit findings: synchronous I/O, marker advancement before ingestion,
+  linked/generation-unsafe marker writes, oversized newline-free records and absent
+  producer-coordinated retention. The non-destructive reader does not limit disk
+  growth. These must be resolved before claiming reliable Cursor observation.
 
 ## 7 September 2026 — Q17 provider timeout; unittest source defect is repaired
 
