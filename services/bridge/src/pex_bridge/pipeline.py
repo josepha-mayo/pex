@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import hashlib
 import json
 import logging
@@ -183,6 +184,7 @@ DESKTOP_REFRESH_ADAPTERS = (
     "claude_code",
 )
 PET_TRANSIENT_SECONDS = 12.0
+PET_PUBLICATION_COALESCE_SECONDS = 0.25
 _CONTEXT_ROUTING_METADATA_KEYS = {"active_files", "current_task", "task_phase"}
 _DURABLE_SESSION_METADATA_KEYS = {
     *_CONTEXT_ROUTING_METADATA_KEYS,
@@ -813,6 +815,9 @@ class Pipeline:
         self._session_locks: dict[str, asyncio.Lock] = {}
         self._event_worker_id = f"{self.store.process_boot_id}:pipeline:{uuid4().hex}"
         self._presentation_tasks: set[asyncio.Task] = set()
+        self._pet_snapshot_task: asyncio.Task[dict] | None = None
+        self._event_pet_publication_task: asyncio.Task[None] | None = None
+        self._event_pet_publication_dirty = False
         # Durable parent/child reconciliation is authoritative work, not
         # presentation. Keep a strong reference while shielded so cancellation
         # cannot strand a delivered overlay child behind a dispatching parent.
@@ -2155,29 +2160,52 @@ class Pipeline:
                 intervention.model_dump(mode="json"),
             )
 
+        self._schedule_event_pet_publication()
+
+    def _schedule_event_pet_publication(self) -> None:
+        """Coalesce committed-event pet refreshes into one bounded serial worker."""
+
+        self._event_pet_publication_dirty = True
+        active = self._event_pet_publication_task
+        if active is not None and not active.done():
+            return
+
         async def publish_pet() -> None:
             try:
-                pet = await self.pet_snapshot()
-            except asyncio.CancelledError:
-                return
-            except Exception as exc:
-                logger.warning(
-                    "committed event pet snapshot failed error=%s",
-                    type(exc).__name__,
-                )
-            else:
-                self._schedule_committed_publication("pet", pet)
+                while True:
+                    # Let a short event burst settle before opening projection
+                    # readers. Events committed during a read request one more
+                    # serial refresh rather than another concurrent task.
+                    await asyncio.sleep(PET_PUBLICATION_COALESCE_SECONDS)
+                    self._event_pet_publication_dirty = False
+                    try:
+                        pet = await self.pet_snapshot()
+                    except asyncio.CancelledError:
+                        return
+                    except Exception as exc:
+                        logger.warning(
+                            "committed event pet snapshot failed error=%s",
+                            type(exc).__name__,
+                        )
+                    else:
+                        self._schedule_committed_publication("pet", pet)
+                    if not self._event_pet_publication_dirty:
+                        return
             finally:
-                # Keep presentation bookkeeping deterministic under a loaded
-                # event loop; the callback below remains the cancellation-
-                # before-first-step fallback.
                 current = asyncio.current_task()
                 if current is not None:
                     self._presentation_tasks.discard(current)
 
         task = asyncio.create_task(publish_pet())
+        self._event_pet_publication_task = task
         self._presentation_tasks.add(task)
-        task.add_done_callback(self._presentation_tasks.discard)
+
+        def retire(completed: asyncio.Task) -> None:
+            self._presentation_tasks.discard(completed)
+            if self._event_pet_publication_task is completed:
+                self._event_pet_publication_task = None
+
+        task.add_done_callback(retire)
 
     async def _snapshot_for_session(self, session: HarnessSession) -> dict:
         """Fence queued reads and discard results if workspace authority changes.
@@ -3770,6 +3798,16 @@ class Pipeline:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._presentation_tasks.difference_update(tasks)
+        self._event_pet_publication_dirty = False
+        if self._event_pet_publication_task is not None and self._event_pet_publication_task.done():
+            self._event_pet_publication_task = None
+        snapshot_task = self._pet_snapshot_task
+        if snapshot_task is not None:
+            if not snapshot_task.done():
+                snapshot_task.cancel()
+            await asyncio.gather(snapshot_task, return_exceptions=True)
+        if self._pet_snapshot_task is snapshot_task:
+            self._pet_snapshot_task = None
         reconciliations = tuple(
             self._overlay_reconciliation_tasks | self._main_effect_settlement_tasks
         )
@@ -6220,6 +6258,31 @@ class Pipeline:
         }
 
     async def pet_snapshot(self) -> dict:
+        """Share one in-flight projection and isolate each caller's mutable result."""
+
+        task = self._pet_snapshot_task
+        if task is None or task.done():
+            task = asyncio.create_task(self._build_pet_snapshot())
+            self._pet_snapshot_task = task
+
+            def retire(completed: asyncio.Task[dict]) -> None:
+                if self._pet_snapshot_task is completed:
+                    self._pet_snapshot_task = None
+                if not completed.cancelled():
+                    # A sole waiter may be cancelled while the shielded build
+                    # later fails. Consume that terminal exception so asyncio
+                    # does not report an unowned background-task warning.
+                    completed.exception()
+
+            task.add_done_callback(retire)
+        try:
+            snapshot = await asyncio.shield(task)
+        finally:
+            if task.done() and self._pet_snapshot_task is task:
+                self._pet_snapshot_task = None
+        return copy.deepcopy(snapshot)
+
+    async def _build_pet_snapshot(self) -> dict:
         now = datetime.now(UTC)
         projection = await self.current_projection(
             session_limit=1_000,

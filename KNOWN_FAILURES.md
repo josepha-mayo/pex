@@ -2,6 +2,12 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Concurrent pet snapshots now single-flight with copy/cancellation isolation, and
+  committed-event bursts use one 250ms serial refresh worker plus a dirty follow-up.
+  Focused 4/4, 11/11 and 60/60 selections and Ruff pass. One filtered handoff mix
+  completed 28 dots then made no progress for roughly 90 seconds and was interrupted;
+  it is not a pass and reported no failing node. Native impact and freeze cause remain
+  unknown; direct low-frequency publication paths still exist by design.
 - Pet-only authority projection now collapses superseded same-goal/promptable history
   before goal/intervention/event enrichment; a negative reduced two artifact-reader
   calls for one returned worker to one. Distinct live groups and the command deck can

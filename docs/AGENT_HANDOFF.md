@@ -2,6 +2,17 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: pet snapshots are now single-flight across concurrent HTTP/websocket/internal
+callers and deep-copied before return so AppState decoration cannot mutate another
+caller's payload. A cancelled waiter cannot cancel the shared build; presentation
+shutdown explicitly cancels and joins an orphaned build. Committed-event pet refreshes
+now use one serial worker, coalesce for 250ms, and request one follow-up if a commit
+arrives mid-read instead of creating an unbounded task/query burst. Concurrency tests
+pass 4/4, event-ledger/websocket 11/11, and event-processing/projection 60/60; Ruff is
+clean. A broader filtered handoff mix completed 28 tests then stopped making progress
+and was interrupted, not counted. This bounds an identified stampede but does not prove
+native stability or freeze causality. PEX remains closed.
+
 Latest: pet projection now collapses canonical authority-safe sessions to the exact
 live/recent-promptable worker set before goal, intervention and event enrichment.
 Previously even sessions that the pet discarded afterward opened their own authority

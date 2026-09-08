@@ -5,6 +5,41 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: single-flight and coalesced pet snapshots
+
+The reduced pet projection still had no concurrency owner. Every committed event
+created a new background snapshot task, while `/v1/pet`, websocket initialization and
+direct decision/handoff publication could request the same nontrivial projection at
+the same time. A fast event burst could therefore multiply Store connections, queries,
+deep model validation and presentation tasks even when all callers wanted effectively
+the same post-commit state.
+
+`Pipeline.pet_snapshot()` now owns one in-flight build. Concurrent callers await it
+through cancellation shielding and receive independent deep copies, preventing the
+mutating AppState decoration step from changing another caller's payload. Cancelling
+one request does not poison another waiter. `close_presentations()` explicitly cancels
+and joins a shared build that outlived its waiter, then clears its ownership reference.
+
+High-frequency committed-event refreshes additionally use one serial publication
+worker. It waits 250ms for a burst to settle, publishes one snapshot, and performs one
+more serial pass when another commit arrives during the read. It never creates a task
+per event or runs event-owned pet reads concurrently. Authority-bearing event and
+intervention publications are unchanged; this only coalesces the derived pet view.
+
+New hostile tests launch 24 simultaneous callers, mutate one returned nested payload,
+cancel one of two waiters, close an orphaned build, and schedule 36 event refreshes
+across a held first read. They prove one shared build, copy isolation, cancellation
+survival, shutdown cleanup and exactly two serial burst refreshes. The new file passes
+**4/4** in 0.80s; event-ledger/websocket coverage passes **11/11** in 4.21s; the broader
+event-processing/projection/pet selection passed **60/60** in 77.37s; Ruff is clean.
+
+An exploratory filtered mix including the large handoff E2E file completed 28 test
+dots, then emitted no progress for roughly 90 seconds and was interrupted to protect
+the user's active PC. It is not a pass and no failing node was reported. The bounded
+green selections above are the evidence for this slice. PEX stayed closed; there was
+no native resource capture, build, model, worker, browser or cloud action, and freeze
+causality remains unknown.
+
 ## Latest offline slice: collapse pet sessions before artifact enrichment
 
 The one-snapshot authority batch removed per-forensic-session connection setup, but

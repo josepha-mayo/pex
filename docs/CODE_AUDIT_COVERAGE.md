@@ -2,6 +2,16 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: `tests/unit/test_pet_snapshot_coalescing.py`. Parent traced all
+Pipeline/AppState/websocket/direct pet snapshot callers, event presentation scheduling,
+shutdown ownership and mutable decoration. Concurrent callers now share one shielded
+build and receive deep copies; committed-event bursts use one 250ms serial worker with
+a dirty follow-up instead of task-per-event fanout. Hostile copy/cancellation/shutdown/
+36-event tests pass 4/4; adjacent event/socket 11/11 and event-processing/projection
+60/60 pass; Ruff clean. A broader handoff-filter mix was interrupted after 28 dots and
+is not green evidence. This is changed-path concurrency review, not whole Pipeline,
+native resource, stability or freeze-cause approval.
+
 Changed-path follow-up: parent re-read pet/current-projection sequencing and the
 promptable collapse contract. Artifact enrichment previously preceded the pet's
 deduplication of same-goal historical sessions. A real-Store negative observed two

@@ -27,6 +27,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Collapse pet-only canonical sessions before artifact enrichment, preventing
   superseded same-goal history from opening goal/intervention/event authority reads.
   General deck semantics unchanged; 55/55 and 26/26 focused checks plus Ruff pass.
+- [x] Single-flight concurrent pet snapshots and coalesce committed-event refresh
+  bursts into one 250ms serial worker with a mid-read follow-up. Copy/cancellation/
+  shutdown tests 4/4, adjacent 11/11 and 60/60; native resource proof remains open.
 - [x] Pause hidden/page-background sprite and CSS animation without resetting
   dismissed messages; share and clean up the visibility listener. 223 tests/TS pass.
   Native timer/GPU/CPU measurements remain part of the open P0 verification gate.

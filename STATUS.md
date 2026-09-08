@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Concurrent pet callers now share one cancellation-shielded build and receive isolated
+copies; event commits use one 250ms-coalesced serial refresh worker with a mid-read
+follow-up instead of task-per-event query storms. Concurrency 4/4, event/socket 11/11,
+and broader affected 60/60 pass with Ruff clean. One filtered handoff mix was stopped
+after 28 dots/no progress and is not counted. Native impact/freeze cause remain open.
+
 Pet projection now collapses authority-safe same-goal/history rows before opening
 goal, intervention and event readers; the command deck keeps its complete projection.
 A real-Store negative saw two artifact paths for one rendered worker before repair and
