@@ -3,7 +3,11 @@
 import sqlite3
 
 import pytest
-from pex_bridge.store import Store
+from pex_bridge.store import (
+    SQLITE_JOURNAL_SIZE_LIMIT_BYTES,
+    SQLITE_WAL_AUTOCHECKPOINT_PAGES,
+    Store,
+)
 
 
 @pytest.mark.asyncio
@@ -40,6 +44,10 @@ async def test_failed_schema_setup_does_not_publish_partial_tables(tmp_path, mon
             assert (await cursor.fetchone())[0] == 2  # FULL, never relaxed for startup speed.
         async with store.db.execute("PRAGMA journal_mode") as cursor:
             assert (await cursor.fetchone())[0] == "wal"
+        async with store.db.execute("PRAGMA wal_autocheckpoint") as cursor:
+            assert (await cursor.fetchone())[0] == SQLITE_WAL_AUTOCHECKPOINT_PAGES
+        async with store.db.execute("PRAGMA journal_size_limit") as cursor:
+            assert (await cursor.fetchone())[0] == SQLITE_JOURNAL_SIZE_LIMIT_BYTES
         assert not store.db.in_transaction
     finally:
         await store.close()

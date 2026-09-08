@@ -1300,6 +1300,8 @@ MAX_OPERATOR_EFFECT_RESULT_BYTES = 65_536
 MAX_CONTEXT_HANDOFF_ITEMS = 256
 MAX_CONTEXT_HANDOFF_REFS_PER_ITEM = 24
 MAX_CONTEXT_HANDOFF_PAYLOAD_BYTES = 64 * 1024
+SQLITE_WAL_AUTOCHECKPOINT_PAGES = 1_000
+SQLITE_JOURNAL_SIZE_LIMIT_BYTES = 16 * 1024 * 1024
 HANDOFF_ASSIMILATION_WINDOW = timedelta(hours=24)
 _WINDOWS_ASCII_LOWER = str.maketrans(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -4392,6 +4394,15 @@ async def _configure_connection(connection: aiosqlite.Connection) -> None:
     await connection.execute("PRAGMA busy_timeout=5000")
     await connection.execute("PRAGMA synchronous=FULL")
     await connection.execute("PRAGMA foreign_keys=ON")
+    # Both settings are connection-local in the ways that matter to PEX's
+    # short-lived writer connections.  Relying on SQLite defaults allowed a
+    # reset WAL to retain hundreds of MiB of allocated space indefinitely.
+    await connection.execute(
+        f"PRAGMA wal_autocheckpoint={SQLITE_WAL_AUTOCHECKPOINT_PAGES}"
+    )
+    await connection.execute(
+        f"PRAGMA journal_size_limit={SQLITE_JOURNAL_SIZE_LIMIT_BYTES}"
+    )
 
 
 def _audit_projection_payload(value: dict[str, Any]) -> str:
