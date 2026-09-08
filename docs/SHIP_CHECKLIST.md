@@ -12,8 +12,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Replace live OpenCode/Qwen 50ms empty SSE scans with transport activity waits,
   preserve Qwen discovery deadlines, and back off clean SSE EOF reconnects. Relevant
   adapter coverage passes 71/71 and Ruff; native resource proof remains open.
-- [ ] Repair the independently reproducing unknown-capability regression: fail-closed
-  execution is NOOP as intended, but the original SEND_NUDGE proposal is overwritten.
+- [x] Repair the stale unknown-capability test fixture so its specific mock nudge reaches
+  the intended gate; the original proposal is retained beside fail-closed NOOP execution.
+  The complete capability file passes 24/24 and Ruff.
 - [x] Reproduce polling/decode resource-control gaps and test bounded repairs offline.
 - [x] Stop per-snapshot goal GET buildup and cancel superseded goal evidence reads.
 - [x] Refresh loading-only supervisor status without resetting drafts or rebasing revisions.

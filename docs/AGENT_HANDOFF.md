@@ -8,7 +8,9 @@ scheduled discovery. The live HTTP reader also backs off one second after clean 
 previously only exceptions backed off, so a clean-closing daemon could trigger an
 unbounded reconnect loop. Relevant adapter coverage passes 71/71 and Ruff is clean.
 PEX remained closed; native idle proof is still open. A separate existing capability
-test currently fails because a proposed SEND_NUDGE is rewritten to NOOP; see failures.
+test initially failed because its mock used newly forbidden generic nudge text and never
+reached the capability gate. The fixture now names a file and criterion; that file passes
+24/24, proving the original proposal is retained beside fail-closed NOOP execution.
 
 Latest: the live shared-Codex observer no longer polls an empty notification buffer every
 25ms (about 40 wakeups/second per attachment). The existing socket reader now signals a

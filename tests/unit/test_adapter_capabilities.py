@@ -217,7 +217,7 @@ async def test_unknown_empty_capabilities_fail_closed(tmp_path, monkeypatch):
         type=InterventionType.SEND_NUDGE,
         session_id=session.id,
         goal_id=goal.id,
-        payload={"text": "Continue with the missing acceptance criterion."},
+        payload={"text": "Update `src/worker.py` to satisfy acceptance criterion 2."},
         rationale="test capability gate",
         evidence=["missing criterion"],
     )

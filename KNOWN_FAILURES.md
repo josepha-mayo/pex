@@ -5,9 +5,10 @@
 - Production OpenCode/Qwen SSE observation no longer rescans unchanged retained events
   every 50ms, and clean EOF reconnects now back off one second. Relevant tests pass 71/71
   and Ruff is clean. This still lacks native/resource proof.
-- `test_unknown_empty_capabilities_fail_closed` independently fails: execution remains
-  safely NOOP, but the original SEND_NUDGE proposal is replaced with NOOP. The failure
-  reproduces alone and remains under audit; the protected supervisor file was not edited.
+- The apparent `test_unknown_empty_capabilities_fail_closed` regression was fixture drift:
+  generic mock nudge text was correctly rejected before capability evaluation. Its now-
+  specific proposal reaches the intended gate; the complete file passes 24/24. No product
+  capability defect was established.
 - Shared-Codex observation no longer wakes every 25ms while its selected worker is quiet;
   notification arrival and connection revocation now wake the pump. Five focused files
   pass 174/174 and Ruff is clean. This is not native resource evidence or a confirmed fix

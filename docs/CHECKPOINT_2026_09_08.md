@@ -15,10 +15,11 @@ one-second reconnect backoff after a clean EOF, closing a request-hammering loop
 only backed off exceptions. Focused HTTP/OpenCode/Qwen coverage passes **71/71** and Ruff
 passes. PEX/native code did not run, so this does not close the freeze gate.
 
-An unrelated existing regression was exposed by the broader candidate run:
-`test_unknown_empty_capabilities_fail_closed` expects the original SEND_NUDGE proposal to
-be retained beside a NOOP execution, but currently receives a rewritten NOOP proposal.
-It reproduces alone and remains open; the protected supervisor file was not edited.
+The broader candidate run also exposed a stale capability-test fixture: its mock proposal
+began with generic `Continue...` text, so the anti-spam worker-text guard correctly stopped
+it before the intended capability gate. The fixture now names `src/worker.py` and
+acceptance criterion 2. The full capability file passes **24/24**, confirming that an
+unsupported adapter executes NOOP while retaining the specific original proposal.
 
 ## Latest offline slice: event-driven shared-Codex observation
 
