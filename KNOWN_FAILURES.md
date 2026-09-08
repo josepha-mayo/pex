@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Pipeline event serialization no longer keeps one lock for every historical session
+  ID. Active owners/waiters keep weakly registered locks alive; inactive entries retire.
+  The affected gate passes 64/64 and Ruff. This is not native freeze proof.
 - Optional prerequisite snapshots triggered by repeated in-progress events now have
   per-session/global admission limits and one in-flight slot. Refusal is explicit while
   STOP/claim verification remains fresh. The combined gate passes 79/79 with one skip,

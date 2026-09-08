@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Inactive Pipeline session locks no longer accumulate for the bridge process lifetime.
+Weak retention preserves exact serialization while owners/waiters exist and releases
+historical worker IDs afterwards. The serialization/shared-observer gate passes 64/64
+with Ruff clean; native stability remains unverified.
+
 Repeated in-progress events no longer multiply optional prerequisite filesystem scans
 without an aggregate ceiling. Admission is limited per session and globally, only one
 optional scan runs at once, and dropped evidence is explicit; STOP/requested claim

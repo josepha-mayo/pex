@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -151,6 +152,8 @@ async def test_same_session_semantic_decisions_never_overlap(tmp_path):
         saved = await store.get_session(session.id)
         assert saved is not None
         assert saved.status == SessionStatus.STOPPED
+        gc.collect()
+        assert len(pipeline._session_locks) == 0
     finally:
         await store.close()
 

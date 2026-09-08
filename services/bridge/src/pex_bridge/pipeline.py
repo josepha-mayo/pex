@@ -13,6 +13,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
+from weakref import WeakValueDictionary
 
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.capabilities import AdapterCapabilities
@@ -817,7 +818,11 @@ class Pipeline:
         self._desktop_refresh_attempted_at: float | None = None
         self._handoff_mutation_lock = asyncio.Lock()
         self._session_locks_guard = asyncio.Lock()
-        self._session_locks: dict[str, asyncio.Lock] = {}
+        # Locks need to live only while an ingestion owns or waits for them.
+        # A permanent session-id map grows with every transient worker PEX has
+        # ever observed; weak values preserve concurrency serialization without
+        # turning worker history into process-lifetime memory.
+        self._session_locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
         self._advisory_workspace_scan_lock = asyncio.Lock()
         self._advisory_workspace_scan_reservations: deque[tuple[float, str]] = deque()
         self._advisory_workspace_scan_last_by_session: dict[str, float] = {}

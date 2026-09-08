@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: `Pipeline._session_locks` no longer retains one `asyncio.Lock` for every session
+ID seen during the bridge process lifetime. Locks are weakly retained while an ingest,
+observer lifecycle, shared-event or retention operation owns/waits for them, then retire
+automatically. Existing same-session serialization and cross-session parallelism remain
+covered; the combined serialization/shared-observer gate passes 64/64 and Ruff is clean.
+This closes one unbounded process-lifetime map, not the native freeze gate.
+
 Latest: repeated in-progress `SHELL`/`TOOL_CALL` events can no longer multiply bounded
 workspace scans without an aggregate ceiling. Optional prerequisite inspection now
 admits at most one scan per session every two seconds and four scans globally per ten

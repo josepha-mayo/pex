@@ -5,6 +5,17 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: retire inactive Pipeline session locks
+
+The bridge serialized all event/observer operations for a worker through a per-session
+lock, but permanently retained every lock by session ID. A long-running PEX process
+therefore accumulated memory with transient worker history. The lock registry now uses
+weak values: an active owner or waiter keeps the exact lock alive, while an inactive
+session leaves no process-lifetime entry. Same-session semantic decisions remain serial
+and independent sessions remain parallel. Serialization, observer lifecycle, retained
+observation, shared status and workspace-continuity coverage passes **64/64**; scoped
+Ruff passes. This is offline source evidence, not native stability or a freeze cause.
+
 ## Latest offline slice: aggregate admission for repeated workspace scans
 
 Every in-progress `SHELL`/`TOOL_CALL` with a required-file criterion could previously

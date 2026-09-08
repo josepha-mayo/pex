@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent found that `Pipeline._session_locks` retained every
+historical session ID for the life of the bridge. Weakly retained locks now preserve one
+shared lock while any operation owns or waits for it and disappear when inactive. The
+original same-session serialization/cross-session parallelism tests plus lifecycle,
+retention, shared-status and continuity paths pass 64/64; Ruff is clean. This is a
+bounded changed-path resource repair, not native stability proof.
+
 Changed-path addendum: parent traced aggregate repeated-event filesystem work to
 prerequisite checks on in-progress `SHELL`/`TOOL_CALL` events. Optional scans now have a
 two-second per-session cooldown, a four-per-ten-second global admission window and one
