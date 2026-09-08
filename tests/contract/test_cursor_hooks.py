@@ -1107,6 +1107,43 @@ def test_cursor_observe_helper_appends_jsonl_and_never_calls_the_bridge(
     assert isinstance(body["observed_ns"], int)
 
 
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b'{"conversation_id":"first","conversation_id":"second"}',
+        b'{"conversation_id":"finite","score":NaN}',
+        b'{"conversation_id":"overflow","score":1e9999}',
+        b'{"conversation_id":"nested","metadata":{"x":1,"x":2}}',
+    ],
+)
+def test_cursor_observe_helper_refuses_ambiguous_non_rfc_source_json(
+    tmp_path, monkeypatch, raw,
+):
+    import importlib.util
+    from io import BytesIO
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "integrations"
+        / "cursor-hook"
+        / "pex_cursor_observe.py"
+    )
+    spec = importlib.util.spec_from_file_location("pex_cursor_observe_strict", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.setenv("PEX_HOME", str(tmp_path))
+    monkeypatch.setattr(module.sys, "stdin", BytesIO(raw))
+    captured: list[str] = []
+    monkeypatch.setattr(module.sys.stdout, "write", captured.append)
+
+    module.main(["pex_cursor_observe.py", "afterFileEdit"])
+
+    assert captured == ["{}"], "the editor must remain fail-open"
+    assert not (tmp_path / "hooks" / "cursor.jsonl").exists()
+
+
 def test_cursor_observe_helper_drops_compact_line_before_huge_edits_finish(
     tmp_path, monkeypatch
 ):

@@ -8,6 +8,7 @@ in the opt-in control helper.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sys
@@ -48,6 +49,36 @@ _KEEP = (
     "model",
     "cursor_version",
 )
+
+
+class _AmbiguousSourceJson(ValueError):
+    """Raw hook input has no single interoperable JSON meaning."""
+
+
+def _strict_json_loads(value: str) -> object:
+    def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        result: dict[str, object] = {}
+        for key, item in pairs:
+            if key in result:
+                raise _AmbiguousSourceJson("duplicate JSON object key")
+            result[key] = item
+        return result
+
+    def finite_float(raw: str) -> float:
+        parsed = float(raw)
+        if not math.isfinite(parsed):
+            raise _AmbiguousSourceJson("non-finite JSON number")
+        return parsed
+
+    def reject_constant(_raw: str) -> None:
+        raise _AmbiguousSourceJson("non-finite JSON constant")
+
+    return json.loads(
+        value,
+        object_pairs_hook=unique_object,
+        parse_float=finite_float,
+        parse_constant=reject_constant,
+    )
 
 
 def inbox_path(home: Path | None = None) -> Path:
@@ -138,8 +169,12 @@ def observe_from_stream(stream, event: str, *, home: Path | None = None) -> dict
     raw = _read_stream(stream, MAX_PREFIX_BYTES)
     extract_ids(raw, extracted)
     try:
-        parsed = json.loads(raw.decode("utf-8") or "{}")
+        parsed = _strict_json_loads(raw.decode("utf-8") or "{}")
         payload = compact_payload(parsed, event) if isinstance(parsed, dict) else dict(extracted)
+    except _AmbiguousSourceJson:
+        # Cursor must remain fail-open, but PEX must not turn ambiguous source
+        # bytes into one invented authoritative observation.
+        return dict(extracted)
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
         payload = dict(extracted)
     for key, value in extracted.items():

@@ -74,6 +74,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Reject duplicate-key and non-finite Cursor inbox JSON at the raw authority
   boundary instead of accepting Python's last-key-wins/NaN extensions. The negative
   reproduced both admissions; the focused inbox/observer gate passes 42/42 and Ruff.
+- [x] Enforce the same duplicate-key/non-finite refusal in the standalone fail-open
+  Cursor producer so canonicalization cannot bypass the bridge boundary. Cursor output
+  remains fail-open; eight producer helper cases and Ruff pass.
 - [x] Advance newline-free Cursor records once they irreversibly exceed the record
   limit, persisting discard-until-newline state without parsing a suffix. Inbox/
   observer coverage passes 33/33 and Ruff; producer disk retention remains open.

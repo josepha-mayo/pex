@@ -2,6 +2,15 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the standalone `python -S` Cursor producer can no longer canonicalize ambiguous
+raw editor JSON into a clean-looking row that bypasses the bridge's strict decoder. The
+negative showed duplicate `conversation_id` selecting the last value and `NaN` reaching
+the inbox. A dependency-free strict decoder now rejects duplicate keys, non-finite
+constants and overflowed floats before compaction. Cursor's response remains fail-open;
+PEX writes no observation from ambiguous source bytes. All eight producer helper cases and
+Ruff pass. Producer retention and installed/live Cursor proof remain open. PEX stayed
+closed and the protected supervisor file remains untouched.
+
 Latest: Cursor inbox checkpoints may now advance past malformed or permanently invalid
 input only after a content-free SQLite rejection receipt is durable. Receipts bind the
 source file identity, exact byte range, raw-record SHA256 and one bounded reason; replay

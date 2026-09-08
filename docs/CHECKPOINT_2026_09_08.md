@@ -5,7 +5,22 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: durable poison receipts and operator visibility
+## Latest offline slice: strict fail-open Cursor producer
+
+The standalone `python -S` Cursor hook parsed and compacted raw editor stdin before the
+bridge's strict JSON boundary. Its permissive decoder silently chose the last duplicate
+key and admitted `NaN`, producing a clean-looking inbox row that bypassed the bridge
+repair. Two negatives reproduced those admissions. The producer now uses a local,
+dependency-free strict decoder for duplicate keys, non-finite constants and overflowed
+floats. Cursor still receives its normal fail-open stdout response; PEX simply refuses
+to write an ambiguous source observation. All eight producer helper cases and scoped Ruff
+pass. No live editor, bridge, model or native app was launched.
+
+Producer-coordinated disk retention is still open. A strict source refusal is not proof
+of installed-hook behavior or whole-product stability. The protected supervisor loop
+remains untouched at its recorded hash.
+
+## Earlier offline slice: durable poison receipts and operator visibility
 
 Cursor inbox acknowledgement can now pass permanently invalid input only after a
 content-free rejection receipt commits to SQLite. Receipts bind file identity, exact byte

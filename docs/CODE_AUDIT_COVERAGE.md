@@ -2,6 +2,15 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced raw editor stdin through the standalone `-S`
+Cursor producer and found that permissive pre-bridge canonicalization bypassed the new
+strict inbox decoder. Duplicate `conversation_id` selected the last value and `NaN`
+survived into a valid compact JSONL row. Two negatives reproduced the bypass. The
+dependency-free producer now rejects duplicate keys, non-finite constants and overflowed
+floats before compaction; Cursor's stdout response stays fail-open while PEX declines to
+write an ambiguous observation. All eight producer helper cases and Ruff pass. This is
+source-authority hardening, not producer retention or installed Cursor proof.
+
 Changed-path addendum: parent followed every malformed/permanent Cursor row from its
 immutable source offsets through observer acknowledgement, SQLite persistence, authenticated
 read projection and the Connections UI. Checkpoint advancement now depends on a durable
