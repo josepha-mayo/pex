@@ -2,6 +2,13 @@
 
 ## Current — 8 September WAT
 
+Cursor observer intake now makes bounded forward progress through an irrevocably
+oversized newline-free JSONL record instead of rereading the same prefix forever.
+Checkpoint v2 persists discard-until-newline state, binds it to the existing file
+identity/anchor, and resumes normal parsing only after the terminator. The negative
+failed before repair; inbox/observer coverage passes 33/33 with Ruff clean. Malformed
+dictionary rejection receipts and producer-coordinated retention remain open.
+
 Canonical projection now fails closed across an entire shared Goal when any sibling
 loses project/goal authority during later artifact reads. Previously the goal was
 removed but an earlier sibling session and event could remain as plausible-looking

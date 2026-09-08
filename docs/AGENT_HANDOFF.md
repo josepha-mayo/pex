@@ -2,6 +2,16 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the Cursor observer no longer rereads the same prefix of a newline-free record
+after that record has irreversibly exceeded `MAX_RECORD_BYTES`. Checkpoint schema v2
+persists `discarding` with the existing offset, file identity and boundary anchor.
+Bounded reads advance through the poison bytes once, never parse a mid-line suffix,
+clear discard mode only at the physical newline, and preserve valid rows afterward.
+The exact negative failed with `read_inbox() is None` at offset zero before repair;
+full inbox/budget/idle-observer coverage passes 33/33 and Ruff is clean. Semantic poison
+dictionaries/rejection receipts and producer-coordinated disk retention remain open.
+PEX remains closed; this is not native freeze-cause proof.
+
 Latest: `current_projection()` now treats a mid-read `ProjectIdentityBlockedError` as
 invalidating the complete shared Goal scope. Before repair, if sibling A had already
 contributed a session/event and sibling B then observed quarantine or rebound, the code

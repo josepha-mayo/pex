@@ -152,8 +152,42 @@ def test_legacy_offset_replays_once_before_migrating_to_a_bound_checkpoint(tmp_p
     assert inbox.read_inbox(tmp_path) is None
 
 
+def test_v1_identity_checkpoint_resumes_without_discard_mode(tmp_path):
+    source = _seed(tmp_path, "already-consumed", "pending")
+    first_line = b'{"id": "already-consumed"}\n'
+    info = source.stat()
+    with source.open("rb") as handle:
+        anchor = inbox._checkpoint_anchor(handle, len(first_line))
+    inbox.offset_path(tmp_path).write_text(
+        json.dumps(
+            {
+                "v": 1,
+                "offset": len(first_line),
+                "dev": info.st_dev,
+                "ino": info.st_ino,
+                "anchor": anchor,
+            }
+        ),
+        encoding="ascii",
+    )
+
+    resumed = inbox.read_inbox(tmp_path)
+
+    assert resumed is not None
+    assert resumed.start == len(first_line)
+    assert resumed.records == ({"id": "pending"},)
+    assert resumed.discarding_line is False
+
+
 @pytest.mark.parametrize(
-    "change", ["bool_offset", "bad_anchor", "negative_device", "duplicate", "oversized"],
+    "change", [
+        "bool_offset",
+        "bad_anchor",
+        "negative_device",
+        "bad_discard",
+        "duplicate",
+        "oversized",
+    ],
 )
 def test_malformed_checkpoint_cannot_skip_records(tmp_path, change):
     _seed(tmp_path, "keep")
@@ -167,9 +201,11 @@ def test_malformed_checkpoint_cannot_skip_records(tmp_path, change):
         value["anchor"] = "0" * 64
     elif change == "negative_device":
         value["dev"] = -1
+    elif change == "bad_discard":
+        value["discarding"] = "false"
     raw = json.dumps(value)
     if change == "duplicate":
-        raw = raw.replace('"v": 1', '"v": 1, "v": 1')
+        raw = raw.replace('"v": 2', '"v": 2, "v": 2')
     elif change == "oversized":
         raw = " " * (inbox.MAX_CHECKPOINT_BYTES + 1) + raw
     marker.write_text(raw, encoding="utf-8")

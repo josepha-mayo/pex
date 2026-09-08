@@ -2,6 +2,16 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent re-read the complete Cursor inbox reader, versioned
+checkpoint decoder, digest-bound acknowledgement and async consumer. A newline-free
+record above `MAX_RECORD_BYTES` previously returned no batch and replayed its same
+prefix forever. Checkpoint v2 now carries a strict boolean discard state under the
+existing file identity/anchor; chunks advance within the total byte budget, suffixes
+cannot parse as records, and normal admission resumes after newline. Existing v1/legacy
+markers remain readable. The negative failed first; all 33 inbox/budget/idle-observer
+checks and Ruff pass. This is full changed-path review, not an interprocess producer
+protocol, semantic poison receipt/UI or total file-size bound.
+
 Changed-path addendum: parent traced `current_projection()` from its session authority
 snapshot through shared Goal caching and per-session artifact readers. A later sibling's
 authority exception popped the Goal but did not retract an earlier accepted sibling or

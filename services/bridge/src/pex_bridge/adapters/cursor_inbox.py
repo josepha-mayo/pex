@@ -29,6 +29,7 @@ class InboxCheckpoint:
     offset: int = 0
     file_identity: tuple[int, int] | None = None
     anchor: str | None = None
+    discarding_line: bool = False
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,7 @@ class InboxBatch:
     end: int
     digest: str
     records: tuple[dict, ...]
+    discarding_line: bool
 
 
 def inbox_path(home: Path) -> Path:
@@ -101,9 +103,16 @@ def _decode_checkpoint(raw: bytes) -> InboxCheckpoint:
         value = strict_json_loads(raw)
     except (ValueError, UnicodeDecodeError, RecursionError):
         return InboxCheckpoint()
-    if not isinstance(value, dict) or set(value) != {"v", "offset", "dev", "ino", "anchor"}:
+    if not isinstance(value, dict):
         return InboxCheckpoint()
-    if type(value["v"]) is not int or value["v"] != 1:
+    version = value.get("v")
+    legacy_keys = {"v", "offset", "dev", "ino", "anchor"}
+    resumable_keys = {*legacy_keys, "discarding"}
+    if type(version) is not int or (
+        (version == 1 and set(value) != legacy_keys)
+        or (version == 2 and set(value) != resumable_keys)
+        or version not in {1, 2}
+    ):
         return InboxCheckpoint()
     for key, bits in (("offset", 63), ("dev", 128), ("ino", 128)):
         if type(value[key]) is not int or not 0 <= value[key] < 2 ** bits:
@@ -111,7 +120,15 @@ def _decode_checkpoint(raw: bytes) -> InboxCheckpoint:
     anchor = value["anchor"]
     if not isinstance(anchor, str) or len(anchor) != 64 or set(anchor) - set("0123456789abcdef"):
         return InboxCheckpoint()
-    return InboxCheckpoint(value["offset"], (value["dev"], value["ino"]), anchor)
+    discarding = value.get("discarding", False)
+    if type(discarding) is not bool:
+        return InboxCheckpoint()
+    return InboxCheckpoint(
+        value["offset"],
+        (value["dev"], value["ino"]),
+        anchor,
+        discarding,
+    )
 
 
 def _read_offset(path: Path) -> int:
@@ -133,6 +150,7 @@ def read_inbox(home: Path) -> InboxBatch | None:
     records: list[dict] = []
     consumed = 0
     digest = hashlib.sha256()
+    discarding_line = False
     try:
         if not _ordinary(path.parent.lstat(), directory=True):
             raise ValueError("Cursor inbox directory is not ordinary")
@@ -149,20 +167,38 @@ def read_inbox(home: Path) -> InboxBatch | None:
                 and _checkpoint_anchor(handle, checkpoint.offset) == checkpoint.anchor
             ):
                 offset = checkpoint.offset
+                discarding_line = checkpoint.discarding_line
             if offset == info.st_size:
                 return None
             handle.seek(offset)
             # Stop after the line count too, rather than repeatedly copying an
-            # entire backlog for a small batch. Partial JSONL never advances it.
-            for _ in range(MAX_RECORDS_PER_DRAIN):
+            # entire backlog for a small batch. A still-admissible partial JSONL
+            # record never advances; an already-oversized one cannot become valid.
+            record_count = 0
+            while record_count < MAX_RECORDS_PER_DRAIN:
                 remaining = MAX_INBOX_BYTES - consumed
                 if remaining <= 0:
                     break
-                line = handle.readline(remaining)
-                if not line.endswith(b"\n"):
+                line = handle.readline(min(remaining, MAX_RECORD_BYTES + 2))
+                if not line:
+                    break
+                terminated = line.endswith(b"\n")
+                if not terminated and not discarding_line and len(line) <= MAX_RECORD_BYTES:
                     break
                 consumed += len(line)
                 digest.update(line)
+                if discarding_line:
+                    if terminated:
+                        discarding_line = False
+                        record_count += 1
+                    continue
+                if not terminated:
+                    # The prefix already exceeds the complete-record limit and
+                    # can never become admissible JSON. Persist discard mode so
+                    # later reads advance to its newline without parsing a suffix.
+                    discarding_line = True
+                    continue
+                record_count += 1
                 content = line[:-1]
                 if not content.strip() or len(content) > MAX_RECORD_BYTES:
                     continue
@@ -183,6 +219,7 @@ def read_inbox(home: Path) -> InboxBatch | None:
         source=path, marker=marker, file_identity=_identity(info),
         marker_state=marker_state, start=offset, end=offset + consumed,
         digest=digest.hexdigest(), records=tuple(records),
+        discarding_line=discarding_line,
     )
 
 
@@ -206,8 +243,9 @@ def acknowledge_inbox(batch: InboxBatch) -> bool:
             return False
         anchor = _checkpoint_anchor(handle, batch.end)
     checkpoint_bytes = (json.dumps({
-        "v": 1, "offset": batch.end, "dev": batch.file_identity[0],
+        "v": 2, "offset": batch.end, "dev": batch.file_identity[0],
         "ino": batch.file_identity[1], "anchor": anchor,
+        "discarding": batch.discarding_line,
     }, separators=(",", ":"), sort_keys=True) + "\n").encode("ascii")
     if len(checkpoint_bytes) > MAX_CHECKPOINT_BYTES:
         raise ValueError("Cursor checkpoint exceeds its format bound")

@@ -2,6 +2,12 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Newline-free Cursor records that have already exceeded the admissible record bound
+  now advance once under a v2 identity/anchor-bound discard checkpoint, rather than
+  rereading up to the same multi-megabyte prefix forever. The reader parses again only
+  after the physical newline and preserves the next valid row; 33/33 focused checks and
+  Ruff pass. Poison dictionaries that reach semantic admission still lack a durable
+  rejection receipt, and producer-coordinated retention/disk-growth bounds remain open.
 - A mid-projection authority loss now removes every session and already-collected
   artifact in that shared Goal scope. Previously an earlier sibling could survive with
   its goal omitted. The exact race and adjacent quarantine/rebind routes pass 28/28
@@ -95,8 +101,8 @@
   guard restart seeks and migrate legacy offsets via replay; 36 targeted checks
   pass. They do not cover historical edits outside the small boundary. Remaining:
   earlier-history changes, non-atomic directory/replace boundaries,
-  resistant cancellation/OS stalls, poison-record receipts/UI, oversized newline-
-  free records and producer-coordinated retention. Invalid dictionaries can block
+  resistant cancellation/OS stalls, poison-record receipts/UI and producer-coordinated
+  retention. Invalid dictionaries can block
   later records; malformed physical lines still lack rejection receipts. The reader
   does not limit disk growth. Full reliable Cursor/native operation is unproven.
 

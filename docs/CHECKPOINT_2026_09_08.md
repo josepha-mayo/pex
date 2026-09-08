@@ -5,6 +5,34 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: resumable oversized Cursor records
+
+Cursor's fail-open observer writes JSONL. The bounded reader correctly refused to
+advance a partial line because it might later become valid, but it used the same rule
+after a newline-free line had already exceeded `MAX_RECORD_BYTES`. Such a line can
+never become admissible; `read_inbox()` returned no batch at offset zero, and the idle
+observer reread the same bounded multi-megabyte prefix on every pass forever.
+
+The checkpoint is now schema v2 and carries a strict `discarding` boolean alongside
+the existing byte offset, file identity and boundary anchor. Once a non-terminated
+prefix exceeds the record limit, each bounded batch advances those bytes exactly once.
+Restart resumes discard mode only when the same identity and anchor validate. No suffix
+of that physical line is parsed as independent JSON; discard mode clears only on its
+newline, after which later valid rows are preserved. Legacy numeric and v1 checkpoints
+remain accepted with discard mode false. Replacement, rewrite, digest and marker-CAS
+checks are unchanged.
+
+The negative used small deterministic limits, observed the old `None` batch and zero
+offset, then proved monotonic bounded offsets across the poison record and successful
+parsing of the first row after its terminator. The complete inbox budget, delivery and
+idle-observer selection passes **33/33** in 4.77 seconds; scoped Ruff is clean.
+
+This closes newline-free oversized replay churn, not all poison handling. A dictionary
+that parses but fails later semantic admission can still replay because no durable
+rejection receipt exists. The producer and consumer still have no coordinated
+compaction/retention protocol, so disk growth is not bounded. PEX stayed closed; no
+native, model, worker, browser, cloud, build or large-suite action ran.
+
 ## Latest offline slice: shared-Goal projection race
 
 `current_projection()` validates the session list first and then loads current Goal,

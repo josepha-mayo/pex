@@ -135,6 +135,35 @@ def test_batch_limit_counts_malformed_lines_and_preserves_partial_json(tmp_path,
     assert _drain_fixture(tmp_path) == [{"conversation_id": "split"}]
 
 
+def test_newline_free_oversized_record_advances_once_and_preserves_next_row(
+    tmp_path, monkeypatch,
+):
+    path = _write_rows(tmp_path, 0)
+    poison = b"x" * 80
+    path.write_bytes(poison)
+    monkeypatch.setattr(inbox, "MAX_RECORD_BYTES", 16)
+    monkeypatch.setattr(inbox, "MAX_INBOX_BYTES", 20)
+    monkeypatch.setattr(inbox, "MAX_RECORDS_PER_DRAIN", 2)
+
+    ends: list[int] = []
+    for _ in range(8):
+        batch = inbox.read_inbox(tmp_path)
+        assert batch is not None
+        assert batch.records == ()
+        assert batch.end > (ends[-1] if ends else 0)
+        ends.append(batch.end)
+        assert inbox.acknowledge_inbox(batch)
+        if batch.end == len(poison):
+            break
+
+    assert ends[-1] == len(poison)
+    assert inbox._read_offset(inbox.offset_path(tmp_path)) == len(poison)
+
+    with path.open("ab") as handle:
+        handle.write(b"\n{}\n")
+    assert _drain_fixture(tmp_path) == [{}]
+
+
 def test_offset_reader_never_reads_the_whole_marker(tmp_path, monkeypatch):
     marker = inbox.offset_path(tmp_path)
     marker.parent.mkdir(parents=True, exist_ok=True)
