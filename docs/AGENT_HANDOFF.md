@@ -8639,3 +8639,16 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - The updated source contract failed against the old four-second implementation, then passed.
   The focused desktop gate passed **125/125** and `npx tsc --noEmit` exited 0. This is source
   scheduling evidence only; native CPU and the reported freeze remain unverified.
+
+### 8 September transparent-overlay compositor slice
+
+- The always-on-top transparent pet combined its bounded atlas-frame timer with an additional
+  infinite CSS transform (`pet-breathe` or `pet-listen`). That second animation can keep the
+  transparent WebView compositing continuously even while PEX is otherwise idle.
+- Only the desktop overlay now disables that redundant CSS animation. The atlas frame loop,
+  mood/state changes, hover look, hop, and drag animations remain; compact Home retains its
+  richer CSS motion. Hidden/inactive animation pausing remains unchanged.
+- The new overlay resource contract failed before the CSS override and passed after it; the
+  focused pet lifecycle/resource gate passed **10/10**, the complete desktop gate passed
+  **252/252**, and TypeScript exited 0. This is source behavior, not measured GPU/CPU proof,
+  and PEX remained closed after the reported machine freeze.

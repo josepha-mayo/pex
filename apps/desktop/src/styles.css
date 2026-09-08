@@ -906,6 +906,12 @@ p {
   animation: pet-listen 1.7s ease-in-out infinite;
 }
 
+/* The transparent always-on-top WebView already advances bounded sprite frames.
+   Avoid a second continuous transform that keeps desktop composition active. */
+.pet-stage-overlay .sprite-3d {
+  animation: none;
+}
+
 /* Inspector */
 
 .inspector-shell {

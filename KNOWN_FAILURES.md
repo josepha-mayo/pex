@@ -486,3 +486,6 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   wakes and reconcile every 30 seconds instead of polling both endpoints every four. The
   source contract covers coalescing and cleanup cancellation, but the native app has not been
   reopened; event responsiveness, idle resource impact, and freeze resolution remain open.
+- The transparent always-on-top pet no longer applies an infinite CSS transform in addition
+  to its bounded atlas timer. Source tests retain actual pet motion, but no post-change native
+  GPU/CPU profile exists; do not claim the reported whole-PC freeze is fixed from CSS alone.

@@ -1947,3 +1947,10 @@ than four, and view/goal cleanup aborts both reads. The prior wiring made 30 sch
 requests per minute for an idle attached goal; the fallback now makes 4. The negative source
 contract failed before the repair, then the focused desktop gate passed 125/125 and TypeScript
 passed. This remains source evidence, not a native CPU measurement or freeze closure.
+
+The transparent always-on-top pet also no longer runs a redundant infinite CSS transform on
+top of its timed sprite animation. The overlay retains mood frames, hover/hop/drag behavior,
+and compact Home keeps its richer motion. The old CSS failed the new resource contract; the
+focused pet lifecycle gate passed 10/10 after the scoped override, then the complete desktop
+gate passed 252/252 and TypeScript exited 0. Native GPU/CPU impact and freeze resolution remain
+unverified because PEX stayed closed.

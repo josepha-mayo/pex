@@ -1485,3 +1485,12 @@ changes. Cleanup clears the wake target and aborts both reads. The old implement
 the new source contract; the focused desktop gate passed 125/125 and TypeScript passed.
 This proves an 86.7% reduction in scheduled unchanged-state evidence reads (30 to 4 per
 minute), not measured native resource behavior or freeze resolution.
+
+## Transparent pet compositor restraint
+
+The always-on-top transparent pet no longer layers an infinite CSS transform on top of its
+existing bounded atlas-frame animation. The override is scoped to the overlay: mood frames,
+hover/hop/drag behavior and Home motion remain. The negative source contract failed on the
+old CSS and the focused pet lifecycle/resource gate passed 10/10 after the change. Native
+GPU/CPU impact remains unmeasured and the freeze incident remains open. The complete desktop
+gate subsequently passed 252/252 and TypeScript exited 0.

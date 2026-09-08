@@ -608,3 +608,8 @@ Do the next safe, highest-impact item immediately. If a required external choice
   four; goal/view cleanup aborts both reads. Focused desktop 125/125 and TypeScript pass.
 - [ ] Confirm goal-evidence responsiveness and lower idle request load in the authorized
   bounded native profile; source scheduling is not freeze-resolution proof.
+- [x] Remove the transparent overlay's redundant infinite CSS transform while retaining its
+  bounded atlas/mood/interaction animation; negative contract, 10/10 focused pet tests,
+  complete desktop 252/252 and TypeScript pass.
+- [ ] Measure overlay WebView GPU/CPU at idle in the bounded native profile; source CSS is not
+  evidence that the whole-PC freeze is resolved.

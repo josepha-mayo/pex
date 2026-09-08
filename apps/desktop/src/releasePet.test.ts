@@ -35,6 +35,23 @@ test("inactive pet rendering pauses CSS motion and releases its transform hint",
   }
 });
 
+test("transparent always-on-top pet avoids a continuous compositor animation", async () => {
+  const [styles, atlas] = await Promise.all([
+    readFile(new URL("./styles.css", import.meta.url), "utf8"),
+    readFile(new URL("./pets/atlas.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(
+    styles,
+    /\.pet-stage-overlay \.sprite-3d\s*\{\s*animation:\s*none;/u,
+    "the transparent overlay should not animate a transform at display refresh rate",
+  );
+  assert.match(
+    atlas,
+    /const FRAME_MS:[\s\S]*?idle:\s*\[[^\]]+\]/u,
+    "the pet should retain its bounded sprite-frame animation",
+  );
+});
+
 test("sprite consumers share one visibility listener and dispose it after the last unsubscribe", async (t) => {
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
   const page = new EventTarget();

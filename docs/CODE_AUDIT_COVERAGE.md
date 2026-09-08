@@ -1230,3 +1230,13 @@ Final three-file adapter gate passed 117/117; this is not native CPU evidence.
 
 Focused desktop coverage passed 125/125 and TypeScript passed. Native responsiveness and
 resource use remain unmeasured after this source change.
+
+## 8 September transparent pet compositor focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/styles.css` overlay sprite motion | REVIEWED / REPAIRED | Transparent always-on-top overlay suppresses the redundant infinite CSS transform while the timed atlas animation remains. |
+| `apps/desktop/src/releasePet.test.ts` overlay resource contract | REVIEWED / EXTENDED | Negative contract failed before the override and binds both compositor restraint and retained atlas timing. |
+
+Focused pet lifecycle/resource coverage passed 10/10; complete desktop coverage passed
+252/252 and TypeScript exited 0. No native GPU/CPU measurement exists.
