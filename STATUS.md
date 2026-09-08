@@ -514,7 +514,7 @@ The core Codex existing-session gap is now documented in `docs/CODEX_EXISTING_SE
 
 Main's final combined local gate passed **332 backend tests across 15 complete files**, **74 desktop Node tests**, TypeScript and scoped Ruff. Main also reran **12 Rust tests** and format checks; the startup owner reports clean Clippy. Exact main/verifier tool observations now survive normal decisions, failures, timeouts and crash replay. Their citations are request/stage/invocation bound; failed/no-model remote results cannot carry worker actions. Original ambiguous responses remain durable while their executable projection is NOOP. Startup now has a visible recovery surface, serialized bounded retries, single-instance handling, safe ownership checks and main-only recovery commands. Independent review closed the evidence, permission and stale-poll findings. Detailed scope and failed intermediate gates are in the current handoff.
 
-**Release caveat:** the frozen `pex-cursor-observe` executable is missing. Rust tests/Clippy used a process-local externalBin override containing only the two existing frozen binaries; the tracked release contract still requires all sidecars. This is not unmodified release/package or live GUI/provider proof. Crash-orphan cleanup remains a diagnosed unknown-owner case, not automatic takeover. Source **`1574c56d00a41a0f9d1769e3c1b6a85e59e0af72`** is pushed and exact remote equality verified. An unexpected post-freeze duplicate unreachable final raise in `loop.py` is left uncommitted and untouched pending writer identification; the handoff records details. Do not claim a clean tree.
+**Release caveat:** Rust tests/Clippy used a process-local `externalBin` override containing only the two frozen binaries then present. All three sidecars, including `pex-cursor-observe`, now exist and match their 6 September stamp, but later source changes make that set non-current; the tracked normal release contract still requires a clean rebuild and preflight. This is not unmodified release/package or live GUI/provider proof. Crash-orphan cleanup remains a diagnosed unknown-owner case, not automatic takeover. Source **`1574c56d00a41a0f9d1769e3c1b6a85e59e0af72`** was the pushed checkpoint for that historical slice. An unexpected post-freeze duplicate unreachable final raise in `loop.py` remains uncommitted and untouched pending writer identification. Do not claim a clean tree.
 
 Next: real Codex same-session main/verifier usefulness and quiet-case proof, first-run/provider/worker/goal flow, then audit/integrity/package/pet/demo gates. The internal target remains **6 September WAT**, exactly eight pets, and **NO-GO** until the actual product and release evidence exists. No live provider/service/hook/package/submission changes occurred here.
 
@@ -2032,3 +2032,16 @@ refresh could make the initial request stale but never clear its loading state. 
 sequence guard still prevents stale data publication. The negative contract failed first;
 focused tests passed 26/26, complete desktop passed 257/257, and TypeScript exited 0. PEX stayed
 closed, so the repaired transition still needs bounded native visual confirmation.
+
+The current built-in fleet is exactly eight and now passes both the project fleet validator and
+the hatch-pet skill's v2 validator per atlas. All manifests declare version 2; hash-bound
+evidence records 1536x2288 geometry, 74 nonempty contract cells, transparent unused cells,
+zero hidden RGB residue, unchanged standard-animation pixels through the neutral repair, and
+three archived blind direction passes per pet. A static inspection of all eight current atlases
+found no blocker that justifies regeneration. Native all-state playback and desktop interaction
+remain open.
+
+The earlier frozen cursor-observe “missing” caveat is stale: bridge, control-hook, and observe
+sidecars all exist and match their 6 September stamp. Because current source includes later
+bridge changes, those bytes are not a current release artifact. Clean rebuild, source preflight,
+and package smoke remain required before submission.

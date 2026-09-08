@@ -334,7 +334,7 @@ A development fixture failure exposed an ambient credential in local tool output
 
 ## Exact-evidence/startup checkpoint limits — 5 Sep 2026
 
-Exact bounded main/verifier observations, failed-remote-action suppression, timeout/crash replay preservation and visible serialized startup recovery have local regression coverage (332 backend, 74 frontend checks). They are not live model quality or GUI proof. The frozen `pex-cursor-observe` executable remains absent; Rust's 12-test/Clippy checks required an explicitly disclosed process-local externalBin override. Normal release config/preflight still requires all sidecars and remains unproven. No Windows Job Object/parent watchdog reaps an orphan after desktop crash; an occupied unknown port is safely reported, not killed or adopted. Packaged single-instance, retry, process-crash and clean-profile smoke remain open. First-run provider/worker attachment is not completed by adding a startup error screen. Formal benchmark isolation/network enforcement, live same-session usefulness, all-eight-pet review and final submission evidence remain open.
+Exact bounded main/verifier observations, failed-remote-action suppression, timeout/crash replay preservation and visible serialized startup recovery have local regression coverage (332 backend, 74 frontend checks). They are not live model quality or GUI proof. The earlier Rust 12-test/Clippy run needed an explicitly disclosed two-sidecar `externalBin` override; all three frozen sidecars now exist and match their 6 September stamp, but later source changes leave them non-current. Normal release config/preflight remains unproven. No Windows Job Object/parent watchdog reaps an orphan after desktop crash; an occupied unknown port is safely reported, not killed or adopted. Packaged single-instance, retry, process-crash and clean-profile smoke remain open. First-run provider/worker attachment is not completed by adding a startup error screen. Formal benchmark isolation/network enforcement, live same-session usefulness, native all-eight-pet review and final submission evidence remain open.
 
 ## Production Cursor delivery boundary — 5 Sep 2026
 
@@ -526,3 +526,10 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
 - Inspector detail loading now clears from the newest accepted request even if a non-loading
   refresh superseded the initial read. Source regression coverage closes the ownership race,
   but no post-freeze native UI run yet proves the spinner transition under live mutations.
+- All eight current pet atlases pass the project and hatch-pet v2 structural validators and
+  have current hash-bound static/direction evidence. This does not replace a fresh native
+  desktop-size playback and interaction review after the freeze incident.
+- The frozen cursor-observe file is no longer absent. All three sidecars exist and match their
+  6 September stamp, but later source changes make that set non-current for release. A clean
+  rebuild/preflight/package smoke is still required; do not present the stamped bytes as the
+  submission artifact.

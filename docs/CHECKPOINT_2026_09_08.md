@@ -1596,3 +1596,18 @@ causing the old request to discard itself while the new request never cleared lo
 responses remain blocked by the existing sequence guard. The old conditional release failed
 the new contract; focused coverage passed 26/26, complete desktop passed 257/257, and TypeScript
 exited 0. Native visual confirmation remains open because PEX stayed closed.
+
+## Current eight-pet and sidecar inventory
+
+The hatch-pet gate now passes for exactly eight packaged v2 pets: pex, ledger, mesh, nudge,
+drift, quiet, ember, and von. Project fleet validation exited 0 and each current atlas passed
+the skill validator independently. Hash-bound evidence confirms 1536x2288 geometry, 74
+populated contract cells, transparent unused cells, zero hidden RGB residue, unchanged standard
+animation pixels through the neutral-copy repair, and three archived blind direction passes per
+pet. Static inspection of every current atlas found no blocker requiring regeneration. Native
+all-state playback and desktop interaction remain open.
+
+All three frozen sidecars now exist and match their 6 September stamp, including
+`pex-cursor-observe`; earlier “missing” wording is obsolete. They do not prove a current release
+because bridge/source changes landed afterward. Clean rebuild, current-source preflight, and
+package smoke remain required.

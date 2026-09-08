@@ -1357,3 +1357,17 @@ miss cost, and freeze impact remain unmeasured.
 The new contract failed on the prior conditional release. Focused coverage passed 26/26,
 complete desktop passed 257/257, and TypeScript exited 0. Native visual behavior remains
 unmeasured after the freeze incident.
+
+## 8 September eight-pet release evidence review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/pets/{pex,ledger,mesh,nudge,drift,quiet,ember,von}` | REVIEWED / UNCHANGED | Exactly eight v2 manifests; project fleet gate and eight current skill validators exit 0; main inspected every current atlas without finding a static blocker. |
+| `apps/desktop/src/pets/release-manifest.json` | REVIEWED / CURRENT | Hashes bind every current manifest/spritesheet and the structural/visual evidence files. |
+| `apps/desktop/src/pets/release-evidence/structural.json` | REVIEWED / CURRENT | Binds geometry, 74 contract cells, transparent unused cells, neutral copy, and zero hidden RGB residue for each current atlas. |
+| `apps/desktop/src/pets/release-evidence/neutral-repair.json` | REVIEWED / CURRENT | Proves standard animation pixels were unchanged while the required neutral cell was copied. |
+| `apps/desktop/src/pets/release-evidence/independent-reviews.json` | REVIEWED / CURRENT BINDING | Three archived independent blind direction passes bind each current direction-cell hash root. |
+| `apps/desktop/src-tauri/binaries/pex-sidecars-x86_64-pc-windows-msvc.json` and three executables | REVIEWED / STALE SOURCE | All binaries exist and match their stamp; the 6 September source fingerprint predates current changes, so rebuild/preflight remains open. |
+
+No pet or binary was changed. This closes current atlas/metadata/static evidence, not native
+animation/interaction or current release packaging.

@@ -447,7 +447,9 @@ These are immediate steps within stage 1, not another competing product plan. Pr
 
 ### 5. Verify normal release build, then all eight pets
 
-- [ ] Pass normal release configuration with all required sidecars, including the missing frozen cursor-observe binary; no test-only override as release proof.
+- [ ] Pass normal release configuration with all required sidecars. All three frozen executables,
+  including cursor-observe, now exist and match their 6 September stamp, but current source is
+  newer; no stale artifact or test-only override counts as release proof.
 - [ ] Verify isolated clean-profile startup, setup, retry, crash/reconnect and packaged assets; retain exact source/artifact hashes.
 - [ ] After core/primary flows work, use applicable pet/desktop skills to inspect pex, ledger, mesh, nudge, drift, quiet, ember and von.
 - [ ] Check actual desktop-size animation, transparency/cropping, placement/drag, click-through, compact/expanded and offline/pause behavior.
@@ -533,7 +535,7 @@ These are source-review findings; status prefixes distinguish completed source s
 | 3 | VERIFIED LOCAL SOURCE: exact bounded observations and citations separately identify main and verifier evidence. | Final 332-test backend gate includes changed-file-between-calls, strict request/ref/hash binding, serialized concurrent budget, failure/timeout/crash preservation and NOOP replay. Actual model use/understanding and live effectiveness remain unproven. |
 | 4 | Main: prove the real Codex supervisor loop before comparative runs. | Correct completion leads to model-backed NOOP; incomplete completion leads to specific verified correction in the same real session and independently verified final state; actual Strands main/verifier calls and overhead recorded. Extend quiet-case coverage to ten tasks. |
 | 5 | PARTIAL SOURCE REPAIR: false quiet/canonical state and independent endpoint failures addressed with local tests. First-run connection flow remains OPEN. | No `All quiet` before live state; cached/failure states labeled; stale-revision actions blocked. Still require visible UI validation and understandable provider/auth, real worker attachment, goal and autonomy from a clean profile. |
-| 6 | PARTIAL LOCAL SOURCE: startup recovery plus provider/source-bootstrap repairs are reviewed. Wrong Python/default global hooks/nonexistent Attach instructions are corrected; actual onboarding/demo/package remain open. | Latest bounded setup/provider gate: 147 passed/1 skip; 97 frontend checks/TypeScript. Earlier 12 Rust tests needed a test-only externalBin override because frozen cursor-observe is missing. Still require normal release config, packaged bootstrap/port/crash/retry smoke, real attachment flow, authenticated source-valid demo and exact package hashes. |
+| 6 | PARTIAL LOCAL SOURCE: startup recovery plus provider/source-bootstrap repairs are reviewed. Wrong Python/default global hooks/nonexistent Attach instructions are corrected; actual onboarding/demo/package remain open. | Latest bounded setup/provider gate: 147 passed/1 skip; 97 frontend checks/TypeScript. Earlier 12 Rust tests needed a two-sidecar test override; all three executables now exist and match their 6 September stamp but are stale for later source. Still require normal release rebuild/config, packaged bootstrap/port/crash/retry smoke, real attachment flow, authenticated source-valid demo and exact package hashes. |
 | 7 | Harness/benchmark owner: repair evidence integrity before enabling a benchmark. Current Codex raw capture drops most frames and synthesizes timestamps/completeness; human intervention count is hardcoded zero. | Original complete permitted vendor events and timestamps retained; coverage gaps explicit; human actions observed or unknown; enforced hidden-evaluator/runtime isolation; no status-flag bypass. |
 | 8 | Main + independent reviewers: finish remaining inventory, including semantic non-STOP actions, handoff criterion matching, remote evidence filtering, annotation delivery labels and pet-window privilege/placement. | Exact full/partial review coverage, regression checks, explicit unresolved severity, no unsupported product claim. |
 | 9 | Final visible phase: inspect all eight pets and run eligible PEX/Cursor UI checks, plus native-protocol Codex/OpenCode work. | Actual app/source identity, screenshots and runtime traces; user-visible PEX; fair comparisons and honest failures/unknowns. |
@@ -556,9 +558,14 @@ Benchmark contract distinction: the three binding specs define the primary froze
 
 ## P2 — Final pet review (after core and UI readiness)
 
-- [ ] Use the hatch-pet skill for this phase; exactly eight built-ins: pex, ledger, mesh, nudge, drift, quiet, ember, von.
+- [x] Use the hatch-pet skill for this phase; exactly eight built-ins: pex, ledger, mesh, nudge,
+  drift, quiet, ember, von. Current project fleet validation and eight individual v2 validators
+  pass; all eight current atlases received a static parent inspection.
 - [ ] Visually review every built-in at actual desktop size and each meaningful state/animation; inspect cropping, transparency, pacing, distinct character, readability, and distraction.
-- [ ] Validate atlas/metadata/import boundaries and packaged asset completeness. Custom imports remain separate from the eight built-ins.
+- [x] Validate atlas/metadata/import boundaries and packaged asset completeness. All manifests
+  declare v2, current hashes match the release manifest/evidence, each atlas is 1536x2288 with
+  74 populated contract cells, unused cells transparent and zero hidden RGB residue; custom
+  imports remain separate from the exact eight built-ins.
 - [ ] Verify always-on-top, drag/placement, click-through behavior when enabled, compact/expanded interactions, and pause/offline states in the actual app.
 
 ## P3 — Visible live product tests and six-cell comparisons

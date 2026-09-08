@@ -8803,3 +8803,23 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - The negative contract failed on the old conditional release. Focused read-budget coverage
   passed **26/26**, complete desktop coverage passed **257/257**, and TypeScript exited 0.
   Native visual proof remains deferred with PEX closed after the freeze report.
+
+### 8 September current eight-pet structural/static review
+
+- The `hatch-pet` workflow was re-read and applied to all current built-ins: exactly `pex`,
+  `ledger`, `mesh`, `nudge`, `drift`, `quiet`, `ember`, and `von`. `npm run validate:pets`
+  exited 0, and the skill's current `validate_atlas.py --require-v2` exited 0 separately for
+  every packaged spritesheet using the bundled workspace Python runtime.
+- Each current manifest declares `spriteVersionNumber: 2`. Hash-bound release evidence records
+  a 1536x2288 atlas, 192x208 cells, 74 nonempty contract cells, transparent unused cells, zero
+  hidden RGB residue, and a copied neutral frame for every pet. Direction-cell roots remain
+  bound to three archived independent blind-review passes per pet. The neutral repair record
+  proves all standard animation pixels were unchanged from the prior direct-playback review.
+- Main inspected all eight current atlases at rendered high detail. No static identity, scale,
+  row completeness, travel-direction, cropping, or cardinal issue justified regeneration.
+  This is not fresh native playback: all-state pacing, desktop-size compositing, placement,
+  drag, click-through, and offline/pause behavior remain open until the bounded native run.
+- Release correction: `pex-bridge`, `pex-cursor-hook`, and `pex-cursor-observe` frozen binaries
+  all exist and their bytes match the 6 September stamp. The source has changed since that
+  build, so they remain stale/unverified for the current commit and a clean rebuild/preflight
+  is still required; the current blocker is no longer a missing cursor-observe file.
