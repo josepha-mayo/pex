@@ -1321,3 +1321,15 @@ latency and database request counts remain unmeasured.
 Negative contracts failed on the old scheduler. Focused coverage passed 24/24, adjacent
 read/view-model coverage passed 94/94, complete desktop passed 255/255, and TypeScript exited
 0. Native request counts, latency, and resource use remain unmeasured.
+
+## 8 September event-socket cadence focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `services/bridge/src/pex_bridge/app.py` caught-up ledger tail | REVIEWED / REPAIRED | Missed-hint recovery uses the 15-second heartbeat boundary; process-local commits still wake the durable read immediately. |
+| `tests/unit/test_websocket_auth.py` cadence/wake/lifetime contract | REVIEWED / EXTENDED | Rejects recovery polling faster than heartbeat while existing behavior checks immediate wake, auth, and disconnect cleanup. |
+| `tests/unit/test_event_publications.py` and `test_broadcast_serialization.py` | REVIEWED / UNCHANGED | Durable ordering/gap and bounded publication serialization remain green. |
+
+The old 5-second recovery constant failed the new contract. Focused socket tests passed 5/5,
+adjacent publication coverage passed 17/17, and scoped Ruff passed. Native SQLite timing and
+multi-window resource behavior are unmeasured.

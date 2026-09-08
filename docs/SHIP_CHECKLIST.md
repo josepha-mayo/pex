@@ -648,3 +648,8 @@ Do the next safe, highest-impact item immediately. If a required external choice
   94/94, complete desktop 255/255, and TypeScript pass.
 - [ ] Confirm core detail event latency, 32-second reconciliation, and bridge/database load in
   the bounded native profile; source scheduling alone does not resolve the freeze.
+- [x] Align caught-up event-socket missed-hint recovery with the 15-second heartbeat instead of
+  polling the durable ledger every five seconds; immediate commit wake and safety semantics
+  remain. Focused 5/5, adjacent socket/publication 17/17, and Ruff pass.
+- [ ] Confirm immediate socket commit wake, 15-second missed-hint recovery, and multi-window
+  idle SQLite load in the bounded native profile.

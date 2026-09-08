@@ -1565,3 +1565,13 @@ prevents an interval request from being lost behind an in-flight event read, and
 changes no longer restart the effect. Old source contracts failed. Focused tests passed 24/24,
 adjacent passed 94/94, complete desktop passed 255/255, and TypeScript exited 0. This is a 75%
 unchanged-state scheduling reduction, not measured native freeze resolution.
+
+## Event-socket recovery cadence
+
+Caught-up authenticated sockets now recover missed process-local hints at the existing
+15-second heartbeat boundary rather than querying the durable ledger every five seconds.
+Committed writes still wake immediately; catch-up, retention gaps, authentication, bounded
+queues, and cancellation are unchanged. With three PEX shells, the source idle maximum falls
+from 36 to 12 ledger page reads per minute. The old cadence failed the new contract; focused
+socket tests passed 5/5, adjacent publication/serialization coverage passed 17/17, and Ruff
+passed. Native SQLite cost and freeze impact remain unmeasured.

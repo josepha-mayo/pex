@@ -4,9 +4,18 @@ import threading
 import time
 
 from fastapi.testclient import TestClient
-from pex_bridge.app import create_app, state
+from pex_bridge.app import (
+    EVENT_SOCKET_HEARTBEAT_SECONDS,
+    EVENT_SOCKET_RECOVERY_POLL_SECONDS,
+    create_app,
+    state,
+)
 from pex_bridge.config import Settings
 from starlette.websockets import WebSocketDisconnect
+
+
+def test_event_socket_recovery_poll_does_not_outpace_heartbeat():
+    assert EVENT_SOCKET_RECOVERY_POLL_SECONDS >= EVENT_SOCKET_HEARTBEAT_SECONDS
 
 
 def test_websocket_requires_token_even_for_tauri_origin(tmp_path, monkeypatch):

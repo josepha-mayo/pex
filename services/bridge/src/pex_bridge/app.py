@@ -147,8 +147,9 @@ EVENT_SOCKET_CATCHUP_PAGE = 100
 EVENT_SOCKET_MAX_CATCHUP = 1000
 EVENT_SOCKET_HEARTBEAT_SECONDS = 15.0
 # Durable commit hints drive the normal tail. This fallback recovers a missed
-# process-local hint without returning to fixed high-frequency SQLite polling.
-EVENT_SOCKET_RECOVERY_POLL_SECONDS = 5.0
+# process-local hint at the existing heartbeat boundary instead of querying
+# SQLite more often than the socket otherwise needs to wake.
+EVENT_SOCKET_RECOVERY_POLL_SECONDS = EVENT_SOCKET_HEARTBEAT_SECONDS
 MAX_ID_CHARS = 512
 MAX_PATH_CHARS = 4096
 MAX_CONTROL_TEXT_CHARS = 65_536

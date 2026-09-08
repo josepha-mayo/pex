@@ -2008,3 +2008,11 @@ its slow-work request cannot be lost behind an in-flight event read. Pet last-ac
 no longer restart the effect. Old contracts failed; focused tests passed 24/24, adjacent
 passed 94/94, complete desktop passed 255/255, and TypeScript exited 0. The source schedule
 drops unchanged core reads by 75%; native resource and freeze impact remain open.
+
+Caught-up authenticated event sockets now query the durable ledger for missed-hint recovery at
+the existing 15-second heartbeat boundary instead of every five seconds. Normal committed
+writes still wake immediately, and frozen catch-up, retention-gap handling, authentication,
+bounded queues, and disconnect cleanup remain. Three visible PEX shells fall from a source
+maximum of 36 to 12 idle page reads per minute. The old cadence failed the new test; focused
+socket coverage passed 5/5, adjacent publication/serialization passed 17/17, and Ruff passed.
+Native SQLite/resource impact and freeze resolution remain open.

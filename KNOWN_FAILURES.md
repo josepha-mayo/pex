@@ -516,3 +516,6 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   one 32-second full reconciliation instead of an eight-second idle loop. Source tests cover
   coalescing, retained slow-pass work, and view cancellation, but native event latency,
   database load, and whole-machine freeze impact have not been measured.
+- Caught-up event sockets now poll durable publication state every 15 seconds rather than five,
+  while committed writes retain immediate wake. Socket/publication tests cover the contract,
+  but no native multi-window trace proves missed-hint latency, SQLite load, or freeze impact.

@@ -8758,3 +8758,18 @@ The dirty bit is expected because the protected operator-owned file below is ret
   passed **24/24**, adjacent read/view-model coverage passed **94/94**, complete desktop coverage
   passed **255/255**, and TypeScript exited 0. This cuts unchanged core-detail scheduling by
   75% by source while retaining immediate committed-event refresh; native proof remains open.
+
+### 8 September event-socket recovery cadence slice
+
+- Each authenticated event socket still queried the durable publication ledger every five
+  seconds while caught up, although normal commits already wake the socket immediately and
+  the application heartbeat is every 15 seconds. Main, Settings, and a visible pet could
+  therefore schedule 36 idle ledger page reads per minute.
+- The missed-hint recovery poll now shares the 15-second heartbeat boundary. Immediate
+  process-local commit wakes, frozen multipage catch-up, retention-gap failure, authentication,
+  bounded queues/sends, and cancellation cleanup are unchanged. The maximum three-shell idle
+  schedule falls to 12 page reads per minute (66.7% lower by source).
+- The cadence contract failed at the old 5s/15s mismatch, then the focused socket gate passed
+  **5/5**. Adjacent socket/publication/serialization coverage passed **17/17** and scoped Ruff
+  passed. PEX remained closed, so missed-hint latency and native SQLite/resource impact remain
+  unmeasured.
