@@ -512,3 +512,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   reconcile every 30 seconds instead of polling every eight. Source tests cover coalescing,
   cancellation, and scope, but no post-freeze native trace proves warning latency or database
   load under real identity conflict traffic.
+- Canonical context/intervention/attention reads now wake on committed event pages and receive
+  one 32-second full reconciliation instead of an eight-second idle loop. Source tests cover
+  coalescing, retained slow-pass work, and view cancellation, but native event latency,
+  database load, and whole-machine freeze impact have not been measured.

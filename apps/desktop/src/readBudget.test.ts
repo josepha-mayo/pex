@@ -176,6 +176,19 @@ test("filesystem benchmark and harness discovery reads follow the slow detail ti
   );
 });
 
+test("canonical detail reads are event-first with one slow full reconciliation", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.match(source, /const DETAIL_RECONCILIATION_INTERVAL_MS = 32_000/);
+  assert.match(source, /message\.topic === "event_page"[\s\S]*?detailRefresh\.current\?\.\(\)/);
+  assert.match(source, /const refreshDetails = coalesceBackgroundRead/);
+  assert.match(source, /let slowDetailsRequested = false/);
+  assert.match(source, /const refreshSlowDetails = \(\) => \{\s*slowDetailsRequested = true;\s*return refreshDetails\(\);\s*\}/);
+  assert.match(source, /refreshSlowDetails,\s*DETAIL_RECONCILIATION_INTERVAL_MS/);
+  assert.doesNotMatch(source, /loadDetails\(ticks % 4 === 0, ticks === 0, signal\)/);
+  assert.doesNotMatch(source, /surface, pet\?\.last_action\?\.id\]\)/);
+});
+
 test("view-owned background reads propagate cancellation and handoff reads use a bounded batch", async () => {
   // Source wiring only; native/UI lifecycle checks are a separate release gate.
   const { readFile } = await import("node:fs/promises");
@@ -184,10 +197,11 @@ test("view-owned background reads propagate cancellation and handoff reads use a
     "refreshPet(controller.signal)",
     "loadBaseState(includeHatch, includeCapability, signal)",
     "refreshPetGoals(signal)",
-    "loadDetails(ticks % 4 === 0, ticks === 0, signal)",
+    "loadDetails(includeSlowDetails, showLoading, controller.signal)",
     "loadProjectIdentityConflicts({ showLoading, signal: controller.signal })",
     "loadProjectIdentityStatus({ showLoading, signal: controller.signal })",
   ]) assert.ok(source.includes(call), `missing lifetime cancellation: ${call}`);
+  assert.match(source, /detailRefresh\.current === refreshDetails[\s\S]*?controller\.abort\(\)/);
   assert.match(source, /identityConflictRefresh\.current === refreshConflicts[\s\S]*?controller\.abort\(\)/);
   assert.match(source, /identityStatusRefresh\.current === refreshStatus[\s\S]*?controller\.abort\(\)/);
   const batchStart = source.indexOf("async function loadHandoffAssimilationStatuses(");

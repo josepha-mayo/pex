@@ -1555,3 +1555,13 @@ pagination, and explicit post-resolution reads. The old source failed the new co
 Adjacent coverage passed 93/93, complete desktop passed 254/254, and TypeScript exited 0.
 The combined Decisions-view idle schedule falls from 15 to 4 requests per minute by source;
 native timing and freeze impact remain unmeasured.
+
+## Event-first canonical detail reader
+
+Context, 200-row intervention history, and exact attention metrics no longer run every eight
+seconds without a change. Valid committed event pages wake one coalesced reader immediately;
+a 32-second full reconciliation also refreshes Deck/discovery/benchmark. A slow-pass flag
+prevents an interval request from being lost behind an in-flight event read, and pet action
+changes no longer restart the effect. Old source contracts failed. Focused tests passed 24/24,
+adjacent passed 94/94, complete desktop passed 255/255, and TypeScript exited 0. This is a 75%
+unchanged-state scheduling reduction, not measured native freeze resolution.

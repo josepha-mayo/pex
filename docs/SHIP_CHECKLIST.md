@@ -642,3 +642,9 @@ Do the next safe, highest-impact item immediately. If a required external choice
   post-resolution refresh intact. Adjacent 93/93, complete desktop 254/254, and TypeScript pass.
 - [ ] Confirm quarantine warnings arrive immediately from a live event and measure the lower
   identity-read cadence in the bounded native profile.
+- [x] Make context, intervention history, and attention metrics event-first with a coalesced
+  committed-event wake and one 32-second full reconciliation; preserve the slow pass if it is
+  requested during an event read and remove pet-action loop restarts. Focused 24/24, adjacent
+  94/94, complete desktop 255/255, and TypeScript pass.
+- [ ] Confirm core detail event latency, 32-second reconciliation, and bridge/database load in
+  the bounded native profile; source scheduling alone does not resolve the freeze.

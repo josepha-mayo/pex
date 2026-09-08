@@ -1309,3 +1309,15 @@ desktop complete 254/254, scoped Ruff, and TypeScript passed. Native I/O timing 
 The negative adjacent run failed both new contracts on the old implementation. Final adjacent
 coverage passed 93/93, complete desktop passed 254/254, and TypeScript exited 0. Native event
 latency and database request counts remain unmeasured.
+
+## 8 September canonical detail scheduler focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/App.tsx` detail scheduler | REVIEWED / REPAIRED | Core context/history/attention reads wake from committed event pages; one 32-second full pass retains Deck/discovery/benchmark and cannot be lost behind an active core read. |
+| `apps/desktop/src/App.tsx` effect lifetime | REVIEWED / REPAIRED | First-load state and abort cleanup remain; unrelated pet last-action identity no longer restarts the full reader. |
+| `apps/desktop/src/readBudget.test.ts` detail cadence contract | REVIEWED / EXTENDED | Rejects the eight-second tick loop and binds event wake, coalescing, slow-pass carry, 32-second reconciliation, and cancellation. |
+
+Negative contracts failed on the old scheduler. Focused coverage passed 24/24, adjacent
+read/view-model coverage passed 94/94, complete desktop passed 255/255, and TypeScript exited
+0. Native request counts, latency, and resource use remain unmeasured.

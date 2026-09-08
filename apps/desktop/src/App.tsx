@@ -141,6 +141,7 @@ const PET_RECONCILIATION_INTERVAL_MS = 30_000;
 const GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS = 30_000;
 const HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS = 30_000;
 const PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS = 30_000;
+const DETAIL_RECONCILIATION_INTERVAL_MS = 32_000;
 
 function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
   if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return "local";
@@ -484,6 +485,7 @@ export function App() {
   const handoffInterventions = useRef<Intervention[]>([]);
   const handoffInterventionKey = useRef("");
   const handoffAssimilationRefresh = useRef<(() => Promise<unknown>) | null>(null);
+  const detailRefresh = useRef<(() => Promise<unknown>) | null>(null);
   const identityConflictRefresh = useRef<(() => Promise<unknown>) | null>(null);
   const identityStatusRefresh = useRef<(() => Promise<unknown>) | null>(null);
   const bridgeStartupRef = useRef(bridgeStartup);
@@ -703,6 +705,7 @@ export function App() {
                 // share each evidence effect's one in-flight reconciliation.
                 void goalEvidenceRefresh.current?.();
                 void handoffAssimilationRefresh.current?.();
+                void detailRefresh.current?.();
                 void identityConflictRefresh.current?.();
                 void identityStatusRefresh.current?.();
               }
@@ -1245,17 +1248,35 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;
     setBench((state) => ({ ...state, loading: state.runs.length === 0 && !state.message }));
-    let ticks = 0;
-    const stopPolling = startSerialPolling((signal) => {
-      const pending = loadDetails(ticks % 4 === 0, ticks === 0, signal);
-      ticks += 1;
-      return pending;
-    }, 8000);
+    let firstRefresh = true;
+    let slowDetailsRequested = false;
+    const controller = new AbortController();
+    const refreshDetails = coalesceBackgroundRead(async () => {
+      while (!controller.signal.aborted) {
+        const includeSlowDetails = slowDetailsRequested;
+        slowDetailsRequested = false;
+        const showLoading = firstRefresh;
+        firstRefresh = false;
+        await loadDetails(includeSlowDetails, showLoading, controller.signal);
+        if (!slowDetailsRequested) return;
+      }
+    });
+    const refreshSlowDetails = () => {
+      slowDetailsRequested = true;
+      return refreshDetails();
+    };
+    detailRefresh.current = refreshDetails;
+    const stopPolling = startSerialPolling(
+      refreshSlowDetails,
+      DETAIL_RECONCILIATION_INTERVAL_MS,
+    );
     return () => {
       detailRequestSequence.current += 1;
+      if (detailRefresh.current === refreshDetails) detailRefresh.current = null;
+      controller.abort();
       stopPolling();
     };
-  }, [bridgeAvailable, loadDetails, pageVisible, shell, surface, pet?.last_action?.id]);
+  }, [bridgeAvailable, loadDetails, pageVisible, shell, surface]);
 
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;

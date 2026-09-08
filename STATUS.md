@@ -2000,3 +2000,11 @@ explicit post-resolution refresh remain. In Deck Decisions, the combined unchang
 schedule falls from 15 to 4 requests per minute. The old source failed both new contracts;
 adjacent tests passed 93/93, complete desktop passed 254/254, and TypeScript exited 0. Native
 event timing and resource effects remain unverified.
+
+Canonical detail data—context, up to 200 interventions, and exact attention metrics—is now
+event-first rather than an unconditional eight-second loop. Valid committed event pages wake
+one coalesced core reader; a 32-second full pass also refreshes Deck/discovery/benchmark, and
+its slow-work request cannot be lost behind an in-flight event read. Pet last-action changes
+no longer restart the effect. Old contracts failed; focused tests passed 24/24, adjacent
+passed 94/94, complete desktop passed 255/255, and TypeScript exited 0. The source schedule
+drops unchanged core reads by 75%; native resource and freeze impact remain open.

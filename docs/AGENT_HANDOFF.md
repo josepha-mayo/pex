@@ -8743,3 +8743,18 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - The adjacent contracts failed on the old polling and passed after repair: **93/93**. Complete
   desktop coverage passed **254/254** and TypeScript exited 0. Native event responsiveness and
   resource impact remain unmeasured because PEX stayed closed.
+
+### 8 September event-first canonical detail slice
+
+- Inspector/Deck still fetched context, up to 200 interventions, and exact attention metrics
+  every eight seconds with no committed change: 22.5 scheduled canonical requests per minute.
+  The prior `pet.last_action` dependency could also restart the loop and force a full slow read.
+- A valid committed `event_page` now wakes one coalesced core-detail reader immediately.
+  Unchanged state receives one 32-second full reconciliation that also carries Deck, discovery,
+  and benchmark data. A pending event read cannot lose a scheduled slow pass: the slow-request
+  flag is consumed in a follow-up iteration. First-load feedback and view-owned cancellation
+  remain, and `pet.last_action` no longer restarts the effect.
+- The new source contracts failed against the old scheduler. Focused read-budget coverage
+  passed **24/24**, adjacent read/view-model coverage passed **94/94**, complete desktop coverage
+  passed **255/255**, and TypeScript exited 0. This cuts unchanged core-detail scheduling by
+  75% by source while retaining immediate committed-event refresh; native proof remains open.
