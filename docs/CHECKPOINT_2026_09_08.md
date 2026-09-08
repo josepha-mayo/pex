@@ -1434,3 +1434,17 @@ and unchanged, SHA256
 Never stage it with this slice. No paid inference, AWS deployment, duplicate public
 post or final submission has been performed. Use economical Terra-medium review
 only when an independent bounded subtask adds value. Keep working on safe open work.
+
+## Offline Home message de-duplication
+
+Review of the latest saved native Home still found one judge-visible defect after the
+earlier redesign: the unavailable first-run state was repeated by the pet bubble, the
+primary setup card, the supervisor note and the canonical-goal footer. Compact Home now
+uses the setup card as its single primary onboarding/recovery message. The pet bubble is
+reserved for post-onboarding operational or decision state, and only redundant secondary
+notices are suppressed during the explicit unavailable setup state. Detailed failure state
+remains available in Inspector and Settings. The new regression first failed on the old
+wiring; the post-change adjacent UI gate passed 110/110, the complete desktop command
+passed 251/251, and TypeScript passed. The full run printed transient Vite WebSocket
+port-24678 diagnostics but left no listener afterward. Native visual proof is still pending
+because PEX stayed closed following the idle machine freeze report.

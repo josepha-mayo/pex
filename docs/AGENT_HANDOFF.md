@@ -8554,3 +8554,26 @@ The dirty bit is expected because the protected operator-owned file below is ret
    only owned blockers and preserve the protected loop file.
 5. Build/package Tauri, visually QA the packaged app and every critical demo surface,
    and rehearse the exact restraint + recovery narrative before preparing Devpost assets.
+
+### 8 September offline Home de-duplication slice
+
+- Saved native capture `build/ui-home-dismissed-adb76b6.png` proved that dismissing
+  the pet bubble worked, but Home still repeated an unavailable first-run state in
+  the header, setup card, supervisor notice, and canonical-goal footer. The duplicate
+  speech bubble was structural: compact Home passed `homeStatus` to `PetStage` while
+  rendering the same `setup` immediately below it.
+- Compact Home now withholds the pet status bubble whenever the setup card is present.
+  During the setup card's explicit `unavailable` recovery state it also withholds the
+  redundant supervisor and goal-resource notices. Operational and decision states keep
+  the dismissible bubble; Inspector and Settings retain detailed diagnostics.
+- A source-wiring regression failed against the prior implementation, then passed after
+  the change. Adjacent `firstRun`, `supervisorDraft`, and `viewModel` checks passed
+  **110/110**; the complete desktop `npm test` command passed **251/251**;
+  `npx tsc --noEmit` exited 0; scoped `git diff --check` passed. The complete run
+  printed two transient Vite WebSocket port-24678 diagnostics, but no listener remained
+  immediately afterward; retain the diagnostic rather than describing the run as silent.
+- This is source/test evidence only. PEX remained closed after the reported idle whole-PC
+  freeze, so the changed Home has not yet received a current native visual receipt.
+  Preserve that distinction when filming or declaring release readiness.
+- The protected `services/supervisor/src/pex_supervisor/loop.py` remained unstaged and
+  has SHA-256 `DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`.

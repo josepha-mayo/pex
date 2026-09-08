@@ -466,3 +466,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   the TCP connect. Public scrape URLs with DNS names are resolved the same way and fail closed
   on non-global answers. Residual risk is limited to a cooperating local stub transport that
   ignores the rewritten URL; the production httpx/httpcore path uses the pinned origin.
+- The latest saved compact Home capture predates the 8 September message de-duplication
+  change. Source and adjacent tests prove the new conditional wiring, not its native visual
+  result. Do not use that older capture as evidence of the changed Home, and do not reopen
+  PEX for visual proof until the post-freeze bounded native run is authorized.

@@ -1178,3 +1178,15 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `tests/unit/test_websocket_auth.py` | Test cross-review | PENDING |
 | `tests/unit/test_worker_hook_credentials.py` | Test cross-review | PENDING |
 | `tests/unit/test_workspace_inspect.py` | Test cross-review | PENDING |
+
+## 8 September compact Home focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/App.tsx` compact route | REVIEWED / REPAIRED | Saved native Home capture plus bounded source review found duplicate first-run/recovery presentation. Setup now owns onboarding copy; unavailable setup hides only redundant Home notices. |
+| `apps/desktop/src/supervisorDraft.test.ts` Home wiring contract | REVIEWED / EXTENDED | Negative failed on old `status={homeStatus}` wiring; post-fix focused test passed. |
+| `apps/desktop/src/firstRun.ts` and adjacent state semantics | REVIEWED / NO CHANGE | Existing unavailable, connect-worker, set-goal, paused and operational precedence remains correct; adjacent three-file gate passed 110/110. |
+
+The complete desktop command also passed 251/251 and TypeScript passed. Two transient Vite
+port-24678 diagnostics left no listener immediately after the run. This is not a review of
+all desktop code and is not current native visual evidence.

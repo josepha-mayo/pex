@@ -2370,7 +2370,7 @@ export function App() {
               mood={mood}
               scale={Math.max(scale, 1.08)}
               reducedMotion={reducedMotion}
-              status={homeStatus}
+              status={setup ? undefined : homeStatus}
               onActivate={() => openInspector()}
             />
             <div
@@ -2407,9 +2407,9 @@ export function App() {
                 Inspect what PEX knows
               </button>
             )}
-            {supervisorNotice}
+            {setup?.state !== "unavailable" ? supervisorNotice : null}
           </div>
-          {compactGoalIssue ? (
+          {compactGoalIssue && setup?.state !== "unavailable" ? (
             <p className="canonical-state-warning compact-state-warning" role="status" aria-live="polite">
               {compactGoalIssue} Goal controls stay unavailable until refresh succeeds.
             </p>

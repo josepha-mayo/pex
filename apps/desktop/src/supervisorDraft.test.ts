@@ -90,6 +90,18 @@ test("floating pet uses canonical first-run status instead of raw quiet copy", (
   }
 });
 
+test("Home presents onboarding once instead of repeating it through the pet and recovery notices", () => {
+  const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+  const start = app.indexOf('<section\n          className="compact-surface');
+  const end = app.indexOf('{surface === "inspector"', start);
+  assert.ok(start >= 0 && end > start, "compact Home route must have a bounded source region");
+  const home = app.slice(start, end);
+
+  assert.match(home, /status=\{setup \? undefined : homeStatus\}/u);
+  assert.match(home, /\{setup\?\.state !== "unavailable" \? supervisorNotice : null\}/u);
+  assert.match(home, /\{compactGoalIssue && setup\?\.state !== "unavailable" \? \(/u);
+});
+
 test("floating pet refreshes canonical goals without loading heavy settings state", () => {
   const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
 

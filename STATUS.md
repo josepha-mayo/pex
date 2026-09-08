@@ -1910,3 +1910,15 @@ The exact-eight release evidence is now transitively sealed into schema-2 fleet/
 | Submit | The architecture PNG was regenerated and visually inspected on 6 September with the verifier in the local-contract tier. No AgentCore AWS deploy, no ≤5 min YouTube/Vimeo live-attach pitch, and **Submit is not done**. One of three builder.aws.com posts is user-reported published and its signed-in Published state was observed; logged-out accessibility and bonus credit remain unverified. |
 
 Never cite leaked 1/5 vs 4/5 under `benchmarks/results/INVALID_LEAKED_RUNS_DO_NOT_USE/`.
+
+## 8 September offline Home UX checkpoint
+
+The newest saved Home capture showed that the status bubble is closable, but the same
+unavailable first-run condition remained repeated across four surfaces. Compact Home now
+presents setup/recovery once: while a setup card exists, the pet bubble is absent; while
+that card is explicitly unavailable, duplicate supervisor and goal-resource notices are
+also absent. Live operational and decision bubbles are unchanged, and detailed diagnostics
+remain in Inspector/Settings. The old implementation failed the new regression; the fixed
+implementation passed 110 adjacent UI tests, all 251 desktop tests, and TypeScript. The full
+run emitted transient Vite WebSocket port diagnostics but left no listener. PEX was not
+reopened, so current native visual behavior and freeze resolution remain unverified.

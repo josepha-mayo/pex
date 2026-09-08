@@ -581,3 +581,14 @@ Benchmark contract distinction: the three binding specs define the primary froze
 - [ ] Present evidence-backed GO/NO-GO with exact remaining gaps. Final publish/deploy/submission actions require explicit authority; “ship tomorrow” is not permission to fabricate readiness or silently submit.
 
 Do the next safe, highest-impact item immediately. If a required external choice or authority blocks a milestone, ask once with exact state and a concrete next action; continue independent safe work where possible.
+
+### Latest verified UI slice — 8 September
+
+- [x] Compact Home no longer repeats an active first-run/setup message in the pet bubble.
+- [x] Explicit unavailable setup suppresses duplicate supervisor and goal-resource notices
+  on Home while Inspector/Settings keep the detailed diagnostics.
+- [x] Negative source contract reproduced old wiring; adjacent desktop UI tests passed
+  110/110, complete desktop tests passed 251/251, TypeScript passed, and scoped diff
+  review passed. Two transient Vite port diagnostics did not leave a listener.
+- [ ] Re-capture and inspect the changed Home in the native app after bounded-run authority
+  is renewed following the idle whole-PC freeze. This source slice is not visual proof.
