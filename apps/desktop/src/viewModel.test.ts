@@ -1262,7 +1262,7 @@ test("overlay Undo claims completion only from a delivered canonical projection"
   assert.match(source, /Promise\.allSettled\(\[refreshPet\(\), loadDetails\(\)\]\)/u);
   assert.match(source, /auditInterventions=\{displayedInterventions\}/u);
   assert.match(source, /interventions=\{\(deck\.interventions \|\| \[\]\)/u);
-  assert.match(source, /bridgeJson<AttentionMetrics>\("\/v1\/attention\/metrics"\)/u);
+  assert.match(source, /bridgeJson<AttentionMetrics>\("\/v1\/attention\/metrics", \{ signal \}\)/u);
   assert.match(source, /setAttentionMetrics\(attentionResult\.status === "fulfilled"/u);
 });
 

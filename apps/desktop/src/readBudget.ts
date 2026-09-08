@@ -27,6 +27,42 @@ export async function boundedRead<T>(
   }
 }
 
+/** Bound read fanout and the whole batch, preserving unavailable entries and order. */
+export async function boundedReadBatch<Input, Output>(
+  items: readonly Input[],
+  read: (item: Input, signal: AbortSignal) => Promise<Output>,
+  parentSignal?: AbortSignal | null,
+  timeoutMs = 15_000,
+): Promise<PromiseSettledResult<Output>[]> {
+  const results: (PromiseSettledResult<Output> | undefined)[] = new Array(items.length);
+  let cursor = 0;
+  let stopped = false;
+  let failure: unknown = new Error("Local state was not read.");
+  try {
+    await boundedRead(async (signal) => {
+      await Promise.all(Array.from({ length: Math.min(4, items.length) }, async () => {
+        while (!stopped && !signal.aborted) {
+          const index = cursor++;
+          if (index >= items.length) return;
+          try {
+            const value = await read(items[index], signal);
+            if (!stopped && !signal.aborted) results[index] = { status: "fulfilled", value };
+          } catch (reason) {
+            if (!stopped && !signal.aborted) results[index] = { status: "rejected", reason };
+          }
+        }
+      }));
+    }, parentSignal, timeoutMs);
+  } catch (error) {
+    failure = error;
+  } finally {
+    stopped = true;
+  }
+  // Copy rather than returning the working array: late uncooperative reads must
+  // not mutate a published result or release another queued request.
+  return Array.from(results, (result) => result ?? { status: "rejected", reason: failure });
+}
+
 type Schedule = (callback: () => void, delayMs: number) => () => void;
 const scheduleTimer: Schedule = (callback, delayMs) => {
   const timer = setTimeout(callback, delayMs);

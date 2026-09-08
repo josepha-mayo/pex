@@ -20,6 +20,11 @@ duplicate read-only hashing and applies cooperative time/entry budgets. 26 focus
 backend checks pass; 1 Windows FIFO skip, 2 subprocess checks unrun. Non-atomic
 directory enumeration, blocked OS calls and repeated-event aggregate work remain
 open limitations, detailed in KNOWN_FAILURES and the checkpoint.
+View-owned background reads now cancel on cleanup; handoff-status history expansion
+is limited to four concurrent reads and a shared deadline. Core history no longer
+waits for that follow-up batch. 213 focused desktop tests and TypeScript pass, with
+an independently spotted stale-poll lifetime defect repaired. No native relaunch,
+build or live calls; current-source native stability is still unverified.
 
 See [the detailed checkpoint](docs/CHECKPOINT_2026_09_08.md). Exact de83153 installers
 are verified. Native testing paused on Escape; PEX was already absent when the

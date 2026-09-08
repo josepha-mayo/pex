@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { boundedRead, coalesceBackgroundRead, startSerialPolling } from "./readBudget.ts";
+import { boundedRead, boundedReadBatch, coalesceBackgroundRead, startSerialPolling } from "./readBudget.ts";
 
 test("a stalled complete read times out and aborts even if its implementation ignores abort", async () => {
   let signal: AbortSignal | undefined;
@@ -145,4 +145,118 @@ test("goal evidence polling is bound to goal intent, not every session snapshot"
   assert.ok(/completion`, \{ signal \}\)/.test(effect));
   assert.ok(/decisions`, \{ signal \}\)/.test(effect));
   assert.ok(/cancelled = true;\s*stopPolling\(\)/.test(effect));
+});
+
+test("view-owned background reads propagate cancellation and handoff reads use a bounded batch", async () => {
+  // Source wiring only; native/UI lifecycle checks are a separate release gate.
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  for (const call of [
+    "refreshPet(controller.signal)",
+    "loadBaseState(includeHatch, includeCapability, signal)",
+    "refreshPetGoals(signal)",
+    "loadDetails(ticks % 4 === 0, ticks === 0, signal)",
+    "loadProjectIdentityConflicts({ showLoading: firstRefresh, signal })",
+    "loadProjectIdentityStatus({ showLoading: firstRefresh, signal })",
+  ]) assert.ok(source.includes(call), `missing lifetime cancellation: ${call}`);
+  const batchStart = source.indexOf("async function loadHandoffAssimilationStatuses(");
+  const batchEnd = source.indexOf("function operationError", batchStart);
+  const batch = source.slice(batchStart, batchEnd);
+  assert.match(batch, /boundedReadBatch\(/);
+  assert.doesNotMatch(batch, /Promise\.allSettled\(/);
+  assert.match(batch, /\{ signal: readSignal \}/);
+});
+
+test("a read batch caps concurrency at four and retains ordered successes and failures", async () => {
+  const items = Array.from({ length: 9 }, (_, index) => index);
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const calls: number[] = [];
+  let active = 0;
+  let peak = 0;
+  const pending = boundedReadBatch(items, async (item) => {
+    calls.push(item);
+    active += 1;
+    peak = Math.max(peak, active);
+    try {
+      await gate;
+      if (item === 5) throw new Error("fixture rejection");
+      return item * 2;
+    } finally {
+      active -= 1;
+    }
+  });
+  assert.deepEqual(calls, [0, 1, 2, 3]);
+  release();
+  const settled = await pending;
+  assert.equal(peak, 4);
+  assert.deepEqual(calls, items);
+  assert.equal(settled.length, items.length);
+  settled.forEach((result, index) => {
+    if (index === 5) {
+      assert.equal(result.status, "rejected");
+      if (result.status === "rejected") assert.match(String(result.reason), /fixture rejection/);
+    } else assert.deepEqual(result, { status: "fulfilled", value: index * 2 });
+  });
+});
+
+test("history publishes core reads before assimilation, guards both stages, and still awaits the batch", async () => {
+  // Source contract: rendered/native latency is a separate acceptance check.
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const start = source.indexOf("const loadDetails =");
+  const end = source.indexOf("const loadProjectIdentityConflicts =", start);
+  const details = source.slice(start, end);
+  assert.match(details, /const assimilationRequest = Promise\.allSettled\(/);
+  assert.doesNotMatch(details, /\n\s+assimilationRequest,/);
+  assert.match(details, /setInterventions\(interventionResult\.value\)[\s\S]*?setHandoffAssimilation\(\{\}\)/);
+  assert.match(details, /setDetailsLoading\(false\);\s*const \[assimilationResult\] = await assimilationRequest;/);
+  assert.match(details, /await assimilationRequest;\s*if \(requestSequence !== detailRequestSequence\.current\) return;/);
+  assert.match(details, /if \(requestSequence !== detailRequestSequence\.current\) \{\s*await assimilationRequest;\s*return;\s*\}/);
+});
+
+test("a batch deadline aborts active reads and leaves queued and late results unavailable", async () => {
+  const signals: AbortSignal[] = [];
+  const finish: ((value: string) => void)[] = [];
+  const settled = await boundedReadBatch(Array.from({ length: 200 }, (_, index) => index),
+    (_item, signal) => {
+      signals.push(signal);
+      return new Promise<string>((resolve) => { finish.push(resolve); });
+    }, undefined, 5);
+  assert.equal(signals.length, 4);
+  assert.ok(signals.every((signal) => signal.aborted));
+  assert.equal(settled.length, 200);
+  for (const result of settled) {
+    assert.equal(result.status, "rejected");
+    if (result.status === "rejected") assert.match(String(result.reason), /timed out/);
+  }
+  finish.forEach((resolve) => resolve("late stale status"));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(signals.length, 4, "late completion must not release queued reads");
+  assert.ok(settled.every((result) => result.status === "rejected"));
+});
+
+test("caller cancellation keeps completed observations and cancels the rest of the batch", async () => {
+  const controller = new AbortController();
+  const pending = boundedReadBatch([0, 1, 2, 3, 4, 5], async (item) => {
+    if (item === 0) return "observed";
+    return new Promise<string>(() => {});
+  }, controller.signal);
+  await Promise.resolve();
+  await Promise.resolve();
+  controller.abort();
+  const settled = await pending;
+  assert.deepEqual(settled[0], { status: "fulfilled", value: "observed" });
+  assert.ok(settled.slice(1).every((result) => result.status === "rejected"));
+});
+
+test("empty and already-cancelled batches perform no read", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const never = async () => { assert.fail("must not issue a read"); };
+  assert.deepEqual(await boundedReadBatch([], never), []);
+  const cancelled = await boundedReadBatch([1, 2], never, controller.signal);
+  assert.equal(cancelled.length, 2);
+  assert.ok(cancelled.every((result) => result.status === "rejected"));
 });

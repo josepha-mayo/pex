@@ -11,6 +11,8 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Refresh loading-only supervisor status without resetting drafts or rebasing revisions.
 - [x] Bound complete discovery HTTP probes; test stalled/trickling peers offline.
 - [x] Repair workspace hash containment and duplicate scans; test cooperative time/entry caps.
+- [x] Propagate view cancellation to background reads and cap handoff-status fanout.
+  213 focused desktop tests and TypeScript pass; source-only, not native stability.
 - [ ] Resolve remaining observation lifetime limits: non-atomic directory enumeration,
   blocked OS calls and aggregate repeated-event work. Do not claim a hard deadline.
 - [ ] Confirm a bounded native resource capture before reopening the app or large gates.

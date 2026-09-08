@@ -72,8 +72,9 @@ depended on the entire sessions array. Each worker snapshot restarted both GETs;
 cleanup ignored their results but did not cancel them. It now polls serially every
 four seconds after completion, scoped to goal id/intent revision. Changing that
 scope or losing the bridge aborts both pending reads. `startSerialPolling` exposes
-its lifetime AbortSignal; this goal effect uses it. Do not claim every older poll
-now cancels in-flight work: their callbacks do not all consume the signal yet.
+its lifetime AbortSignal; this goal effect uses it. At that checkpoint the older
+poll callbacks did not all consume the signal; the view-lifetime slice below
+addresses those callbacks, not every native or backend cancellation boundary.
 Two new negative tests failed before this repair; the old-code receipt remains
 `build/goal-poll-negative.log` in main.
 
@@ -170,6 +171,46 @@ events can trigger separate bounded scans; path-based directory validation is no
 atomic descriptor-bound enumeration. No claim of a whole-workspace atomic snapshot,
 native stability, or cause of the reported idle freeze. Protected loop.py remains
 untouched at its recorded hash. No native/build/live-model/CU workload was started.
+
+### Follow-up offline slice: view cancellation and handoff read fanout
+
+Baseline: pushed `50e66ff4dd210cdb7330e2cca2629005c79c054b`. App background pet,
+base-state, pet-goal, detail and identity-status reads now consume their view/poll
+lifetime AbortSignal. Cleanup advances the existing request sequence before abort;
+late responses cannot publish into a superseding view. Explicit post-mutation reads
+remain independent; there are no new writes, automatic mutation retries or model
+calls. This is client cancellation, not proof that native or backend work stops.
+
+History previously expanded up to 200 intervention rows into concurrent handoff
+status GETs. The shared read helper now permits at most four active reads per batch
+under one 15-second complete-batch deadline. Cancellation/deadline stops queued
+reads; completed results retain their order, and unread entries explicitly map to
+the existing unreachable presentation. Late uncooperative completions cannot mutate
+the returned result or release queued work. This is not a global request limiter.
+
+Core history data publishes without waiting for the follow-up status batch. Old
+status results are cleared rather than presented as current; a second sequence
+guard protects later publication. The batch promise is rejection-handled immediately
+and remains part of the serial poll lifetime. Independent Terra follow-up caught
+the first stale-sequence exit returning before the pending batch settled; parent
+fixed that exit to await the bounded batch without publishing stale results.
+
+Verification: **213 focused desktop tests passed, 0 skipped, in 3.52 seconds**;
+TypeScript no-emit and changed-path diff check pass. The serial command is the same
+nine-file desktop selection recorded above (not package-contract/full/native tests).
+New functional tests cover four-read concurrency, ordered success/failure, a 200-item
+deadline fixture, caller cancellation, empty/already-cancelled input and late results.
+Source contracts cover signal plumbing and two-stage publication; those contracts
+are not rendered/UI interaction evidence. The initial signal-wiring negative failed
+on prior source. Two old source-regex expectations needed the added signal argument;
+the first broader run failed on the stale AttentionMetrics regex, then passed after
+the expectation was updated. No real bridge, model, worker or native app was launched.
+
+Parent reviewed all changed desktop paths. Terra found no issue in the bounded-read
+helper/cancellation slice; its two-stage lifetime finding was integrated afterward
+and rechecked by parent. The protected operator loop.py is untouched at its recorded
+hash. These are source repairs only; installers still predate them. They do not
+explain the reported whole-PC freeze or establish idle/native stability.
 
 Next: continue bounded offline audit; the main process/read lifetime paths still
 need broader coverage. Native resource verification needs renewed operator

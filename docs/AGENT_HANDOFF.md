@@ -23,6 +23,14 @@ removes duplicate read-only hashing, and caps cooperative scan time/enumeration.
 The checkpoint and root KNOWN_FAILURES preserve the non-atomic directory/open,
 blocked-OS-call and repeated-event limitations; these are not freeze-cause proof.
 
+The latest desktop slice propagates view cancellation to background reads and caps
+handoff-status batches at four concurrent GETs with a shared 15-second deadline.
+Core history renders independently of status expansion; unread checks remain
+explicitly unavailable. A Terra follow-up caught a stale poll returning before its
+batch finished; fixed and parent-rechecked. 213 focused desktop tests and TypeScript
+pass. See the checkpoint for scope/limitations; no native/build/live workload ran.
+Installers do not contain these latest repairs. Protected loop.py remains untouched.
+
 Read [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md), all three specs and
 SHIP_CHECKLIST before continuing. It supersedes historical current/latest labels
 below. Exact de83153 Windows installers are verified; native input was stopped by

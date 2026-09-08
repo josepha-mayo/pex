@@ -22,7 +22,7 @@ import { PetStage } from "./components/PetStage";
 import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
 import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { createOperatorRequest } from "./operatorRequest";
-import { boundedRead, coalesceBackgroundRead, startSerialPolling } from "./readBudget";
+import { boundedRead, boundedReadBatch, coalesceBackgroundRead, startSerialPolling } from "./readBudget";
 import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
@@ -297,19 +297,21 @@ function interventionHandoffEffectId(item: Intervention): string | null {
 
 async function loadHandoffAssimilationStatuses(
   interventions: Intervention[],
+  signal?: AbortSignal,
 ): Promise<Record<string, HandoffAssimilationStatus | "unreachable">> {
   const effectIds = Array.from(new Set(
     interventions
       .map(interventionHandoffEffectId)
       .filter((effectId): effectId is string => effectId !== null),
   ));
-  const settled = await Promise.allSettled(
-    effectIds.map(async (effectId) => ({
+  const settled = await boundedReadBatch(
+    effectIds, async (effectId, readSignal) => ({
       effectId,
       status: await bridgeJson<HandoffAssimilationStatus>(
         `/v1/handoffs/${encodeURIComponent(effectId)}/assimilation`,
+        { signal: readSignal },
       ),
-    })),
+    }), signal,
   );
   const statuses: Record<string, HandoffAssimilationStatus | "unreachable"> = {};
   settled.forEach((result, index) => {
@@ -511,10 +513,10 @@ export function App() {
     ));
   }, []);
 
-  const refreshPet = useCallback(async () => {
+  const refreshPet = useCallback(async (signal?: AbortSignal) => {
     const requestSequence = ++petRequestSequence.current;
     try {
-      const snapshot = await bridgeJson<PetSnapshot>("/v1/pet");
+      const snapshot = await bridgeJson<PetSnapshot>("/v1/pet", { signal });
       if (requestSequence !== petRequestSequence.current) {
         return { status: "superseded" as const };
       }
@@ -532,16 +534,16 @@ export function App() {
     }
   }, [markCanonical]);
 
-  const loadBaseState = useCallback(async (includeHatch = false, includeCapability = includeHatch) => {
+  const loadBaseState = useCallback(async (includeHatch = false, includeCapability = includeHatch, signal?: AbortSignal) => {
     const requestSequence = ++baseRequestSequence.current;
     const [goalsResult, petsResult, hatchResult, capResult] = await Promise.allSettled([
-      bridgeJson<Goal[]>("/v1/goals"),
-      bridgeJson<{ catalog?: CatalogPet[]; starters?: CatalogPet[] }>("/v1/pets"),
+      bridgeJson<Goal[]>("/v1/goals", { signal }),
+      bridgeJson<{ catalog?: CatalogPet[]; starters?: CatalogPet[] }>("/v1/pets", { signal }),
       includeHatch
-        ? bridgeJson<{ jobs?: HatchJobRow[] }>("/v1/pets/hatch")
+        ? bridgeJson<{ jobs?: HatchJobRow[] }>("/v1/pets/hatch", { signal })
         : Promise.resolve<{ jobs?: HatchJobRow[] } | null>(null),
       includeCapability
-        ? bridgeJson<HatchCap>("/v1/pets/hatch/capability")
+        ? bridgeJson<HatchCap>("/v1/pets/hatch/capability", { signal })
         : Promise.resolve<HatchCap | null>(null),
     ]);
     if (requestSequence !== baseRequestSequence.current) return;
@@ -567,10 +569,10 @@ export function App() {
     if (capResult.status === "fulfilled" && capResult.value) setHatchCap(capResult.value);
   }, [markCanonical]);
 
-  const refreshPetGoals = useCallback(async () => {
+  const refreshPetGoals = useCallback(async (signal?: AbortSignal) => {
     const requestSequence = ++baseRequestSequence.current;
     try {
-      const refreshed = await bridgeJson<Goal[]>("/v1/goals");
+      const refreshed = await bridgeJson<Goal[]>("/v1/goals", { signal });
       if (requestSequence !== baseRequestSequence.current) return;
       if (!Array.isArray(refreshed)) throw new Error("invalid goal list");
       setGoals(refreshed);
@@ -584,10 +586,11 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable) return;
     let cancelled = false;
+    const controller = new AbortController();
     // Event bursts share the pending background read; explicit post-mutation
     // refreshes outside this effect still request their own fresh state.
     const refreshBackgroundPet = coalesceBackgroundRead<unknown>(() =>
-      cancelled ? Promise.resolve() : refreshPet(),
+      cancelled ? Promise.resolve() : refreshPet(controller.signal),
     );
     const stopPolling = startSerialPolling(refreshBackgroundPet, 4000);
     let socket: WebSocket | null = null;
@@ -675,6 +678,7 @@ export function App() {
     return () => {
       cancelled = true;
       petRequestSequence.current += 1;
+      controller.abort();
       stopPolling();
       if (retryTimer != null) window.clearTimeout(retryTimer);
       socket?.close();
@@ -686,10 +690,10 @@ export function App() {
     const includeHatch = shell === "settings";
     let firstRefresh = true;
     const stopPolling = startSerialPolling(
-      () => {
+      (signal) => {
         const includeCapability = firstRefresh && includeHatch;
         firstRefresh = false;
-        return loadBaseState(includeHatch, includeCapability);
+        return loadBaseState(includeHatch, includeCapability, signal);
       },
       includeHatch ? 8000 : 30000,
     );
@@ -701,7 +705,7 @@ export function App() {
 
   useEffect(() => {
     if (!bridgeAvailable || shell !== "pet") return;
-    const stopPolling = startSerialPolling(() => refreshPetGoals(), 30000);
+    const stopPolling = startSerialPolling((signal) => refreshPetGoals(signal), 30000);
     return () => {
       baseRequestSequence.current += 1;
       stopPolling();
@@ -987,7 +991,7 @@ export function App() {
     };
   }, [attachedGoal?.id, attachedGoal?.intent_revision, bridgeAvailable, markCanonical]);
 
-  const loadDetails = useCallback(async (includeDeck = false, showLoading = false) => {
+  const loadDetails = useCallback(async (includeDeck = false, showLoading = false, signal?: AbortSignal) => {
     const requestSequence = ++detailRequestSequence.current;
     if (showLoading) {
       setDetailsLoading(true);
@@ -998,20 +1002,25 @@ export function App() {
     const contextPath = projectId ? `/v1/context?project_id=${encodeURIComponent(projectId)}` : "/v1/context";
     const interventionRequest = bridgeJson<Intervention[]>(
       "/v1/interventions?include_handoff_bundle=true",
+      { signal },
     );
-    const assimilationRequest = interventionRequest.then((rows) =>
-      loadHandoffAssimilationStatuses(Array.isArray(rows) ? rows : []),
-    );
-    const [deckResult, contextResult, interventionResult, assimilationResult, attentionResult, benchResult, discoverResult] = await Promise.allSettled([
-      includeDeck ? bridgeJson<DeckData>("/v1/deck") : Promise.resolve<DeckData | null>(null),
-      bridgeJson<ContextItem[]>(contextPath),
+    // Handle rejection immediately, but do not hold core history behind the
+    // bounded follow-up batch. The poll still awaits both stages before repeating.
+    const assimilationRequest = Promise.allSettled([interventionRequest.then((rows) =>
+      loadHandoffAssimilationStatuses(Array.isArray(rows) ? rows : [], signal),
+    )]);
+    const [deckResult, contextResult, interventionResult, attentionResult, benchResult, discoverResult] = await Promise.allSettled([
+      includeDeck ? bridgeJson<DeckData>("/v1/deck", { signal }) : Promise.resolve<DeckData | null>(null),
+      bridgeJson<ContextItem[]>(contextPath, { signal }),
       interventionRequest,
-      assimilationRequest,
-      bridgeJson<AttentionMetrics>("/v1/attention/metrics"),
-      bridgeJson<{ runs?: BenchRun[]; message?: string }>("/v1/bench/runs"),
-      bridgeJson<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] }>("/v1/discover"),
+      bridgeJson<AttentionMetrics>("/v1/attention/metrics", { signal }),
+      bridgeJson<{ runs?: BenchRun[]; message?: string }>("/v1/bench/runs", { signal }),
+      bridgeJson<{ found?: Array<{ name?: string; kind?: string }>; not_running?: string[] }>("/v1/discover", { signal }),
     ]);
-    if (requestSequence !== detailRequestSequence.current) return;
+    if (requestSequence !== detailRequestSequence.current) {
+      await assimilationRequest;
+      return;
+    }
     if (includeDeck) {
       if (deckResult.status === "fulfilled" && deckResult.value) {
         setDeck(deckResult.value);
@@ -1033,7 +1042,8 @@ export function App() {
     } else {
       markCanonical("interventions", "failed", "Intervention history could not be refreshed.");
     }
-    setHandoffAssimilation(assimilationResult.status === "fulfilled" ? assimilationResult.value : {});
+    // Do not present the previous history snapshot's target-use checks as fresh.
+    setHandoffAssimilation({});
     setAttentionMetrics(attentionResult.status === "fulfilled" ? attentionResult.value : null);
     const coreFailed = [contextResult, interventionResult, attentionResult].some((item) => item.status === "rejected") ||
       (includeDeck && deckResult.status === "rejected");
@@ -1059,9 +1069,13 @@ export function App() {
       }));
     }
     if (showLoading) setDetailsLoading(false);
+    const [assimilationResult] = await assimilationRequest;
+    if (requestSequence !== detailRequestSequence.current) return;
+    setHandoffAssimilation(assimilationResult.status === "fulfilled" ? assimilationResult.value : {});
   }, [markCanonical, projectId]);
 
   const loadProjectIdentityConflicts = useCallback(async (options: {
+    signal?: AbortSignal;
     conflictOffset?: number;
     appendConflicts?: boolean;
     showLoading?: boolean;
@@ -1071,6 +1085,7 @@ export function App() {
     try {
       const nextPage = await bridgeJson<ProjectIdentityConflictPage>(
         `/v1/project-identities/conflicts?limit=200&offset=${options.conflictOffset ?? 0}`,
+        { signal: options.signal },
       );
       if (requestSequence !== identityConflictRequestSequence.current) return null;
       setIdentityConflicts((currentPage) => {
@@ -1102,6 +1117,7 @@ export function App() {
   }, []);
 
   const loadProjectIdentityStatus = useCallback(async (options: {
+    signal?: AbortSignal;
     targetProjectId?: string;
     candidateOffset?: number;
     appendCandidates?: boolean;
@@ -1121,6 +1137,7 @@ export function App() {
         "/v1/project-identities/status" +
           `?legacy_project_id=${encodeURIComponent(exactProjectId)}` +
           `&candidate_limit=200&candidate_offset=${options.candidateOffset ?? 0}`,
+        { signal: options.signal },
       );
       if (requestSequence !== identityStatusRequestSequence.current) return null;
       setIdentityStatus((currentStatus) => {
@@ -1162,8 +1179,8 @@ export function App() {
     if (!bridgeAvailable || surface === "compact" || shell !== "main") return;
     setBench((state) => ({ ...state, loading: state.runs.length === 0 && !state.message }));
     let ticks = 0;
-    const stopPolling = startSerialPolling(() => {
-      const pending = loadDetails(ticks % 4 === 0, ticks === 0);
+    const stopPolling = startSerialPolling((signal) => {
+      const pending = loadDetails(ticks % 4 === 0, ticks === 0, signal);
       ticks += 1;
       return pending;
     }, 8000);
@@ -1176,8 +1193,8 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable || surface === "compact" || shell !== "main") return;
     let firstRefresh = true;
-    const stopPolling = startSerialPolling(() => {
-      const pending = loadProjectIdentityConflicts({ showLoading: firstRefresh });
+    const stopPolling = startSerialPolling((signal) => {
+      const pending = loadProjectIdentityConflicts({ showLoading: firstRefresh, signal });
       firstRefresh = false;
       return pending;
     }, 8000);
@@ -1191,8 +1208,8 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable || surface !== "deck" || shell !== "main" || activeView !== "decisions") return;
     let firstRefresh = true;
-    const stopPolling = startSerialPolling(() => {
-      const pending = loadProjectIdentityStatus({ showLoading: firstRefresh });
+    const stopPolling = startSerialPolling((signal) => {
+      const pending = loadProjectIdentityStatus({ showLoading: firstRefresh, signal });
       firstRefresh = false;
       return pending;
     }, 8000);

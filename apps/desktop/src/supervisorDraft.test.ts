@@ -95,11 +95,11 @@ test("floating pet refreshes canonical goals without loading heavy settings stat
 
   assert.match(
     app,
-    /const refreshPetGoals = useCallback\([\s\S]*?bridgeJson<Goal\[\]>\("\/v1\/goals"\)[\s\S]*?markCanonical\("goals", "fresh"\)/u,
+    /const refreshPetGoals = useCallback\([\s\S]*?bridgeJson<Goal\[\]>\("\/v1\/goals", \{ signal \}\)[\s\S]*?markCanonical\("goals", "fresh"\)/u,
   );
   assert.match(
     app,
-    /if \(!bridgeAvailable \|\| shell !== "pet"\) return;[\s\S]*?refreshPetGoals\(\)[\s\S]*?baseRequestSequence\.current \+= 1/u,
+    /if \(!bridgeAvailable \|\| shell !== "pet"\) return;[\s\S]*?refreshPetGoals\(signal\)[\s\S]*?baseRequestSequence\.current \+= 1/u,
   );
 });
 

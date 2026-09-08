@@ -22,10 +22,12 @@
   excluded. The five-second budget cannot interrupt an already-blocked OS metadata,
   open or read call, and frequent events may still trigger separate bounded scans.
   These limitations must not be described as fixed, hard-bounded or the freeze cause.
-- Desktop background callbacks not yet all consume cancellation signals. Handoff
-  status expansion also warrants a bounded-fanout audit; neither is currently a
-  reproduced explanation for the incident. Full audit, native stability, quiet/
-  recovery gates, fair comparisons and final submission remain open.
+- Desktop view-owned background callbacks now consume cancellation signals, and
+  handoff-status expansion is capped at four concurrent reads per batch under a
+  shared deadline. 213 focused desktop tests and TypeScript pass. This does not
+  establish cancellation of native/backend work, a global request cap or stability.
+  Full audit, native stability, quiet/recovery gates, fair comparisons and final
+  submission remain open; no repaired path is proven to explain the incident.
 
 ## 7 September 2026 — Q17 provider timeout; unittest source defect is repaired
 

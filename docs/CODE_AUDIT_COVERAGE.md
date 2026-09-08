@@ -2,6 +2,15 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path review: App.tsx view cancellation and two-stage history publication,
+the complete boundedReadBatch helper and its functional/source tests in readBudget,
+and revised signal expectations in supervisorDraft/viewModel tests. Terra's bounded
+review found no batch/cancellation issue; its follow-up found an early stale return
+that could let a serial poll overlap unfinished status expansion. Parent repaired
+that exit and rechecked the diff. Final 213 focused desktop tests and TS no-emit
+pass. No whole-file App audit or rendered/native proof is implied. The checkpoint
+preserves the initial source-wiring failure and stale-regex development failure.
+
 New-path addendum: `tests/unit/test_observe_budget.py`. Parent and Terra reviewed
 observe.py's workspace reader and its reachable Pipeline call sites; the entire
 new budget test and changed security test were reviewed. External hardlink/open
