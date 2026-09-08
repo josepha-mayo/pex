@@ -39,9 +39,13 @@ event-id collision errors never imply acknowledgement. Opened-descriptor, source
 digest and prior-marker checks protect the checkpoint replacement. 27 targeted
 inbox/contract checks plus 6 HTTP behavior checks and Ruff pass. Independent review
 caught the missing observer deadline; a cooperative 90-second failure boundary was
-integrated. The checkpoint preserves development failures and remaining generation,
-atomic path, poison-record, malformed-line, retention and cancellation limitations.
-This remains partial source repair, not Cursor/native release approval.
+integrated and pushed as b7fadf7. Next, versioned device/inode + 4-KiB-boundary
+checkpoints repair restart skip cases and migrate unbound offsets through replay.
+Incremental reads stop after 128 lines; idle reads no longer read the backlog body.
+36 targeted checks pass / 44 deselected and Ruff passes. The checkpoint preserves
+development failures and remaining earlier-history, atomic path, poison-record,
+malformed-line, retention and cancellation limits. This remains partial source
+repair, not Cursor/native release approval or an installed-app stability fix.
 
 Read [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md), all three specs and
 SHIP_CHECKLIST before continuing. It supersedes historical current/latest labels

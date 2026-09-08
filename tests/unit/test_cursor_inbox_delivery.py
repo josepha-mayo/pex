@@ -119,6 +119,100 @@ def test_appending_to_the_same_file_does_not_acknowledge_new_records(tmp_path):
     assert later.records == ({"id": "later"},)
 
 
+def test_checkpoint_does_not_skip_a_replacement_file_after_restart(tmp_path):
+    source = _seed(tmp_path, "original")
+    batch = inbox.read_inbox(tmp_path)
+    assert batch is not None and inbox.acknowledge_inbox(batch)
+    replacement = tmp_path / "replacement.jsonl"
+    replacement.write_bytes(b'{"id":"replacement is larger than the original"}\n')
+    os.replace(replacement, source)
+    restarted = inbox.read_inbox(tmp_path)
+    assert restarted is not None
+    assert restarted.records == ({"id": "replacement is larger than the original"},)
+
+
+def test_checkpoint_rejects_same_inode_rewrite_of_the_consumed_boundary(tmp_path):
+    source = _seed(tmp_path, "before")
+    batch = inbox.read_inbox(tmp_path)
+    assert batch is not None and inbox.acknowledge_inbox(batch)
+    source.write_bytes(b'{"id":"rewritten with the same file identity"}\n')
+    restarted = inbox.read_inbox(tmp_path)
+    assert restarted is not None
+    assert restarted.records == ({"id": "rewritten with the same file identity"},)
+
+
+def test_legacy_offset_replays_once_before_migrating_to_a_bound_checkpoint(tmp_path):
+    source = _seed(tmp_path, "unproven legacy admission")
+    inbox.offset_path(tmp_path).write_text(f"{source.stat().st_size}\n")
+    legacy = inbox.read_inbox(tmp_path)
+    assert legacy is not None
+    assert legacy.start == 0
+    assert legacy.records == ({"id": "unproven legacy admission"},)
+    assert inbox.acknowledge_inbox(legacy)
+    assert inbox.read_inbox(tmp_path) is None
+
+
+@pytest.mark.parametrize(
+    "change", ["bool_offset", "bad_anchor", "negative_device", "duplicate", "oversized"],
+)
+def test_malformed_checkpoint_cannot_skip_records(tmp_path, change):
+    _seed(tmp_path, "keep")
+    batch = inbox.read_inbox(tmp_path)
+    assert batch is not None and inbox.acknowledge_inbox(batch)
+    marker = inbox.offset_path(tmp_path)
+    value = json.loads(marker.read_bytes())
+    if change == "bool_offset":
+        value["offset"] = True
+    elif change == "bad_anchor":
+        value["anchor"] = "0" * 64
+    elif change == "negative_device":
+        value["dev"] = -1
+    raw = json.dumps(value)
+    if change == "duplicate":
+        raw = raw.replace('"v": 1', '"v": 1, "v": 1')
+    elif change == "oversized":
+        raw = " " * (inbox.MAX_CHECKPOINT_BYTES + 1) + raw
+    marker.write_text(raw, encoding="utf-8")
+    replay = inbox.read_inbox(tmp_path)
+    assert replay is not None
+    assert replay.start == 0 and replay.records == ({"id": "keep"},)
+
+
+def test_idle_checkpoint_reads_only_a_small_boundary_and_no_body(tmp_path, monkeypatch):
+    source = _seed(tmp_path, "complete")
+    batch = inbox.read_inbox(tmp_path)
+    assert batch is not None and inbox.acknowledge_inbox(batch)
+    original = Path.open
+    sizes = []
+
+    class Tracked:
+        def __init__(self):
+            self.handle = original(source, "rb")
+
+        def __getattr__(self, name):
+            return getattr(self.handle, name)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            self.handle.close()
+
+        def read(self, size=-1):
+            sizes.append(size)
+            return self.handle.read(size)
+
+        def readline(self, *_args):
+            pytest.fail("a caught-up inbox must not read the backlog body")
+
+    def tracked(self, mode="r", *args, **kwargs):
+        return Tracked() if self == source else original(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", tracked)
+    assert inbox.read_inbox(tmp_path) is None
+    assert len(sizes) == 1 and 0 < sizes[0] <= 4096
+
+
 @pytest.mark.parametrize("target", ["source", "marker"])
 def test_linked_inbox_paths_are_refused_without_modifying_the_target(tmp_path, target):
     source = _seed(tmp_path, "one")

@@ -56,6 +56,10 @@ def test_inbox_reader_bounds_the_actual_read_not_just_prior_stat(tmp_path, monke
             sizes.append(size)
             return self.handle.read(size)
 
+        def readline(self, size=-1):
+            sizes.append(size)
+            return self.handle.readline(size)
+
     def tracked_open(self, mode="r", *args, **kwargs):
         if self == path and mode == "rb":
             return TrackedReader()
@@ -123,9 +127,9 @@ def test_batch_limit_counts_malformed_lines_and_preserves_partial_json(tmp_path,
     path.write_bytes(b"bad\n\n{}\n{\"conversation_id\":\"split")
     monkeypatch.setattr(inbox, "MAX_RECORDS_PER_DRAIN", 2, raising=False)
     assert _drain_fixture(tmp_path) == []
-    assert inbox.offset_path(tmp_path).read_text().strip() == "5"
+    assert inbox._read_offset(inbox.offset_path(tmp_path)) == 5
     assert _drain_fixture(tmp_path) == [{}]
-    assert inbox.offset_path(tmp_path).read_text().strip() == "8"
+    assert inbox._read_offset(inbox.offset_path(tmp_path)) == 8
     with path.open("ab") as handle:
         handle.write(b"\"}\n")
     assert _drain_fixture(tmp_path) == [{"conversation_id": "split"}]
@@ -160,4 +164,4 @@ def test_offset_reader_never_reads_the_whole_marker(tmp_path, monkeypatch):
 
     monkeypatch.setattr(Path, "open", lambda *_args, **_kwargs: TrackedMarker())
     assert inbox._read_offset(marker) == 12
-    assert sizes and all(0 < size <= 65 for size in sizes)
+    assert sizes and all(0 < size <= inbox.MAX_CHECKPOINT_BYTES + 1 for size in sizes)

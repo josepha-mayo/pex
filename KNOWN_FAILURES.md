@@ -31,8 +31,10 @@
 - Cursor inbox actual reads, marker parsing and record counts are now bounded;
   unread oversized backlogs are no longer erased. The next slice uses non-consuming
   reads and checkpoints after durable observer ingestion, with off-loop I/O and
-  descriptor/prefix/marker checks. 27 inbox and 6 HTTP checks pass. Remaining:
-  generation binding across restart, non-atomic directory/replace boundaries,
+  descriptor/prefix/marker checks. Versioned file-identity/boundary checkpoints now
+  guard restart seeks and migrate legacy offsets via replay; 36 targeted checks
+  pass. They do not cover historical edits outside the small boundary. Remaining:
+  earlier-history changes, non-atomic directory/replace boundaries,
   resistant cancellation/OS stalls, poison-record receipts/UI, oversized newline-
   free records and producer-coordinated retention. Invalid dictionaries can block
   later records; malformed physical lines still lack rejection receipts. The reader

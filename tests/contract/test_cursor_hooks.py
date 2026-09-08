@@ -1325,6 +1325,7 @@ async def test_observe_inbox_failed_admission_is_not_acknowledged(
 
 def test_observe_inbox_does_not_lose_a_record_split_across_drains(tmp_path):
     from pex_bridge.adapters.cursor_inbox import (
+        _read_offset,
         acknowledge_inbox,
         inbox_path,
         offset_path,
@@ -1349,7 +1350,7 @@ def test_observe_inbox_does_not_lose_a_record_split_across_drains(tmp_path):
     path.write_bytes(first + b"\n" + split[:split_at])
 
     assert [row["conversation_id"] for row in drain_fixture(tmp_path)] == ["complete"]
-    assert int(offset_path(tmp_path).read_text(encoding="utf-8")) == len(first) + 1
+    assert _read_offset(offset_path(tmp_path)) == len(first) + 1
 
     with path.open("ab") as handle:
         handle.write(split[split_at:] + b"\n")

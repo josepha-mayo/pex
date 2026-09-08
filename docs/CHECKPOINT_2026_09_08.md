@@ -251,6 +251,8 @@ Protected loop.py remains unchanged. No native/build/live-model/CU work started.
 
 ### Follow-up offline slice: durable Cursor admission before checkpoint
 
+Pushed as `b7fadf7`.
+
 The previous goal turn made progress (70ba867 and 43d9337 pushed); the full goal
 remains active. This slice replaces consuming `drain_inbox` with a non-consuming
 `read_inbox` batch and explicit `acknowledge_inbox`. The runtime performs both file
@@ -305,6 +307,40 @@ production has no acknowledgement-before-consumption shortcut. Parent reviewed a
 changed paths; Terra's observer-path findings were integrated and parent-rechecked.
 Protected loop.py is unchanged at its recorded hash. Native stability/freeze cause,
 latest installers and the full submission scope remain unverified/NO-GO.
+
+### Follow-up offline slice: restart-bound inbox checkpoint and incremental reads
+
+Three tiny negatives reproduced skipped new events after file replacement, same-
+inode rewriting at the consumed boundary, and trusting an unproven legacy offset.
+The checkpoint is now versioned JSON containing offset, filesystem device/inode
+identity and a SHA256 of at most 4 KiB ending at that offset. Reads verify the
+identity/boundary before seeking past old records. An unbound legacy or invalid
+checkpoint replays from the beginning, and successful durable ingestion migrates it
+once. Existing Pipeline semantic duplicate checks still arbitrate replay. Migration
+can require processing a backlog; do not call it a no-work or live-proven upgrade.
+
+Checkpoint parsing reads at most 257 bytes and rejects documents over 256 bytes,
+duplicate keys, invalid version/field shapes, boolean/inadmissible numeric fields,
+and invalid hashes. Legacy numeric input remains capped at 64 bytes. The exact prior
+marker bytes, not merely its numeric offset, are checked before replacement.
+Caught-up reads examine only the small boundary and do not read the backlog body.
+Active reads now stop after 128 complete physical lines using bounded readline;
+they no longer copy a whole backlog merely to consume that prefix. The 8 MiB
+per-pass and existing per-record limits remain, and incomplete lines stay pending.
+
+Final same three-file targeted inbox/contract command above: **36 passed / 44
+deselected, 15.50s**. This includes nine added restart/format/idle tests; all three
+restart negatives failed on b7fadf7 before repair. Ruff initially found one long
+parameterization decorator; wrapping it repaired the lint-only failure. Ruff and
+changed-path diff checks pass. Parent reviewed this small follow-up without another
+subagent; no app/build/model/worker run. Protected loop.py remains unchanged.
+
+Limits remain explicit: device/inode plus a small boundary checksum is not a digest
+of all historic bytes. In-place edits earlier than that boundary, non-atomic
+directory/check-open/replace races, resistant cancellation and blocked OS calls are
+not excluded. Poison-record rejection receipts/UI, oversized newline-free recovery
+and producer-coordinated retention remain next. Source protection is not installed-
+app verification, native stability or a proven cause of the reported PC freeze.
 
 Next: continue bounded offline audit; the main process/read lifetime paths still
 need broader coverage. Native resource verification needs renewed operator

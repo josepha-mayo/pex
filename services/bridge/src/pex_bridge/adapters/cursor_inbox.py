@@ -13,11 +13,22 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
 
+from pex_bridge.adapters.strict_json import strict_json_loads
+
 # Per-read memory budget, not permission to discard a larger unread backlog.
 MAX_INBOX_BYTES = 8_388_608
 MAX_RECORD_BYTES = 1_048_576
 MAX_RECORDS_PER_DRAIN = 128
 MAX_OFFSET_BYTES = 64
+MAX_CHECKPOINT_BYTES = 256
+CHECKPOINT_ANCHOR_BYTES = 4096
+
+
+@dataclass(frozen=True)
+class InboxCheckpoint:
+    offset: int = 0
+    file_identity: tuple[int, int] | None = None
+    anchor: str | None = None
 
 
 @dataclass(frozen=True)
@@ -25,7 +36,7 @@ class InboxBatch:
     source: Path
     marker: Path
     file_identity: tuple[int, int]
-    marker_offset: int
+    marker_state: bytes
     start: int
     end: int
     digest: str
@@ -72,59 +83,106 @@ def _checked_reader(path: Path) -> BinaryIO:
     return handle
 
 
-def _read_offset(path: Path) -> int:
+def _read_marker(path: Path) -> bytes:
     try:
         with _checked_reader(path) as handle:
-            raw = handle.read(MAX_OFFSET_BYTES + 1)
+            return handle.read(MAX_CHECKPOINT_BYTES + 1)
     except FileNotFoundError:
-        return 0
-    if len(raw) > MAX_OFFSET_BYTES:
-        return 0
-    raw = raw.strip()
-    if not raw.isdigit():
-        return 0
-    return int(raw)
+        return b""
+
+
+def _decode_checkpoint(raw: bytes) -> InboxCheckpoint:
+    if len(raw) > MAX_CHECKPOINT_BYTES:
+        return InboxCheckpoint()
+    legacy = raw.strip()
+    if len(legacy) <= MAX_OFFSET_BYTES and legacy.isdigit():
+        return InboxCheckpoint(offset=int(legacy))
+    try:
+        value = strict_json_loads(raw)
+    except (ValueError, UnicodeDecodeError, RecursionError):
+        return InboxCheckpoint()
+    if not isinstance(value, dict) or set(value) != {"v", "offset", "dev", "ino", "anchor"}:
+        return InboxCheckpoint()
+    if type(value["v"]) is not int or value["v"] != 1:
+        return InboxCheckpoint()
+    for key, bits in (("offset", 63), ("dev", 128), ("ino", 128)):
+        if type(value[key]) is not int or not 0 <= value[key] < 2 ** bits:
+            return InboxCheckpoint()
+    anchor = value["anchor"]
+    if not isinstance(anchor, str) or len(anchor) != 64 or set(anchor) - set("0123456789abcdef"):
+        return InboxCheckpoint()
+    return InboxCheckpoint(value["offset"], (value["dev"], value["ino"]), anchor)
+
+
+def _read_offset(path: Path) -> int:
+    return _decode_checkpoint(_read_marker(path)).offset
+
+
+def _checkpoint_anchor(handle: BinaryIO, offset: int) -> str:
+    # A cheap append-only restart guard, not a digest of the complete history.
+    # Earlier in-place edits outside this boundary require stronger generation tracking.
+    length = min(CHECKPOINT_ANCHOR_BYTES, MAX_INBOX_BYTES, offset)
+    handle.seek(offset - length)
+    return hashlib.sha256(handle.read(length)).hexdigest()
 
 
 def read_inbox(home: Path) -> InboxBatch | None:
     """Read a bounded prefix without advancing delivery or mutating source bytes."""
     path = inbox_path(home)
     marker = offset_path(home)
+    records: list[dict] = []
+    consumed = 0
+    digest = hashlib.sha256()
     try:
         if not _ordinary(path.parent.lstat(), directory=True):
             raise ValueError("Cursor inbox directory is not ordinary")
-        marker_offset = _read_offset(marker)
+        marker_state = _read_marker(marker)
+        checkpoint = _decode_checkpoint(marker_state)
         with _checked_reader(path) as handle:
             info = os.fstat(handle.fileno())
-            offset = marker_offset if marker_offset <= info.st_size else 0
+            # Legacy offsets have no file-generation proof. Replay them once;
+            # successful durable consumption migrates to the bound checkpoint.
+            offset = 0
+            if (
+                checkpoint.file_identity == _identity(info)
+                and checkpoint.offset <= info.st_size
+                and _checkpoint_anchor(handle, checkpoint.offset) == checkpoint.anchor
+            ):
+                offset = checkpoint.offset
+            if offset == info.st_size:
+                return None
             handle.seek(offset)
-            leftover = handle.read(MAX_INBOX_BYTES)
+            # Stop after the line count too, rather than repeatedly copying an
+            # entire backlog for a small batch. Partial JSONL never advances it.
+            for _ in range(MAX_RECORDS_PER_DRAIN):
+                remaining = MAX_INBOX_BYTES - consumed
+                if remaining <= 0:
+                    break
+                line = handle.readline(remaining)
+                if not line.endswith(b"\n"):
+                    break
+                consumed += len(line)
+                digest.update(line)
+                content = line[:-1]
+                if not content.strip() or len(content) > MAX_RECORD_BYTES:
+                    continue
+                try:
+                    payload = json.loads(content)
+                except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
+                    continue
+                if isinstance(payload, dict):
+                    records.append(payload)
             current = path.lstat()
             if not _ordinary(current) or _identity(info) != _identity(current):
                 raise ValueError("Cursor inbox changed during read")
     except FileNotFoundError:
         return None
-    # Only complete JSONL lines belong to this batch. Malformed/empty lines count
-    # against its processing budget; partial writes remain pending.
-    final_newline = leftover.rfind(b"\n")
-    if final_newline < 0:
+    if consumed == 0:
         return None
-    records: list[dict] = []
-    consumed = 0
-    for line in leftover[:final_newline + 1].split(b"\n", MAX_RECORDS_PER_DRAIN)[:-1]:
-        consumed += len(line) + 1
-        if not line.strip() or len(line) > MAX_RECORD_BYTES:
-            continue
-        try:
-            payload = json.loads(line)
-        except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
-            continue
-        if isinstance(payload, dict):
-            records.append(payload)
     return InboxBatch(
         source=path, marker=marker, file_identity=_identity(info),
-        marker_offset=marker_offset, start=offset, end=offset + consumed,
-        digest=hashlib.sha256(leftover[:consumed]).hexdigest(), records=tuple(records),
+        marker_state=marker_state, start=offset, end=offset + consumed,
+        digest=digest.hexdigest(), records=tuple(records),
     )
 
 
@@ -134,7 +192,7 @@ def acknowledge_inbox(batch: InboxBatch) -> bool:
     This is a single-consumer checkpoint, not an interprocess CAS or directory lock.
     Concurrent append is allowed; replacement or modification of consumed bytes is not.
     """
-    if _read_offset(batch.marker) != batch.marker_offset:
+    if _read_marker(batch.marker) != batch.marker_state:
         return False
     parent_info = batch.marker.parent.lstat()
     if not _ordinary(parent_info, directory=True):
@@ -146,6 +204,13 @@ def acknowledge_inbox(batch: InboxBatch) -> bool:
         consumed = handle.read(batch.end - batch.start)
         if hashlib.sha256(consumed).hexdigest() != batch.digest:
             return False
+        anchor = _checkpoint_anchor(handle, batch.end)
+    checkpoint_bytes = (json.dumps({
+        "v": 1, "offset": batch.end, "dev": batch.file_identity[0],
+        "ino": batch.file_identity[1], "anchor": anchor,
+    }, separators=(",", ":"), sort_keys=True) + "\n").encode("ascii")
+    if len(checkpoint_bytes) > MAX_CHECKPOINT_BYTES:
+        raise ValueError("Cursor checkpoint exceeds its format bound")
     # Replace a freshly created checkpoint, never follow/truncate an existing
     # marker target. Directory check/open boundaries are still not OS-atomic.
     temporary: Path | None = None
@@ -153,14 +218,14 @@ def acknowledge_inbox(batch: InboxBatch) -> bool:
         with tempfile.NamedTemporaryFile(mode="wb", dir=batch.marker.parent,
                                          prefix=".cursor-offset-", delete=False) as handle:
             temporary = Path(handle.name)
-            handle.write(f"{batch.end}\n".encode("ascii"))
+            handle.write(checkpoint_bytes)
             handle.flush()
             os.fsync(handle.fileno())
         current_parent = batch.marker.parent.lstat()
         if not (
             _ordinary(current_parent, directory=True)
             and _identity(current_parent) == _identity(parent_info)
-            and _read_offset(batch.marker) == batch.marker_offset
+            and _read_marker(batch.marker) == batch.marker_state
             and _identity(batch.source.lstat()) == batch.file_identity
         ):
             return False

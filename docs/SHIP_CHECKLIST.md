@@ -17,7 +17,10 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   13 targeted checks pass; 44 deselected. No live Cursor/native run.
 - [x] Move inbox file work off-loop and checkpoint after durable observer ingestion;
   check consumed bytes/descriptor/marker and preserve failed batches. 27+6 checks pass.
-- [ ] Finish generation-bound checkpoints, atomic path safety, poison-record receipts/
+- [x] Bind restart checkpoints to file identity and a small boundary checksum;
+  replay/migrate legacy offsets and stop reading full backlogs for small batches.
+  36 targeted checks pass; not a whole-history integrity or native proof.
+- [ ] Finish earlier-history/atomic path safety, poison-record receipts/
   UI, oversized-line recovery and producer-coordinated retention. Deadlines remain
   cooperative; checkpoint preserves exact limitations and development failures.
 - [ ] Resolve remaining observation lifetime limits: non-atomic directory enumeration,

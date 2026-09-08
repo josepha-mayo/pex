@@ -28,8 +28,10 @@ build or live calls; current-source native stability is still unverified.
 Cursor inbox reads and per-drain records are now bounded; unread backlog is not
 erased. Its follow-up checkpoints only after durable observer ingestion and moves
 file work off-loop, with prefix/descriptor checks. 27 inbox and 6 unchanged-HTTP
-checks plus Ruff pass. Generation/atomic path safety, poison records, oversized
-incomplete lines, resistant cancellation and retention remain open. See checkpoint.
+checks plus Ruff pass. The next versioned identity/boundary checkpoint and incremental
+reader slice passes 36 targeted checks/44 deselected and Ruff. Earlier-history/
+atomic path safety, poison records, oversized incomplete lines, resistant cancellation
+and retention remain open. See checkpoint; no installed-app or native stability claim.
 
 See [the detailed checkpoint](docs/CHECKPOINT_2026_09_08.md). Exact de83153 installers
 are verified. Native testing paused on Escape; PEX was already absent when the

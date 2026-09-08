@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Parent-only follow-up review covers the complete versioned checkpoint parser,
+device/inode/boundary validation, legacy replay migration and incremental line
+reader, plus nine new tests and changed format expectations. Three restart negatives
+failed before repair; final targeted inbox/contract selection is 36 pass/44 deselect
+and Ruff passes. Small-boundary validation does not prove whole historic-file
+integrity, atomic filesystem behavior, installed-app behavior or native stability.
+
 New-path addendum: tests/unit/test_cursor_inbox_delivery.py. Parent reviewed the
 entire new two-phase cursor_inbox reader and its two test files, changed app observer/
 shared preparation blocks, and changed Cursor contracts. Terra reviewed HTTP-vs-
