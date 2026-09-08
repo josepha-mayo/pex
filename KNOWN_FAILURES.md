@@ -2,6 +2,10 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Committed-event presentation previously spawned one task per accepted event. A held
+  listener plus 200 later commits reproduced 201 live tasks. Event hints now use one
+  serial coalescing worker with a newest-pending follow-up; 62 related tests and Ruff pass.
+  Durable replay is unchanged. Native resource behavior and freeze causality are unknown.
 - Isolated Codex discovery now bounds cumulative retained vendor threads across rotating
   responses and preserves prior state on refusal; its process-only desktop tile remains
   separate. Related coverage passes 158/158 and Ruff. Live behavior is unverified.

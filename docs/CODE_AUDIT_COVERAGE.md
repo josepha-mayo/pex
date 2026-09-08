@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent reproduced unbounded post-commit presentation fanout. A
+blocked event listener plus 200 further durable commits retained 201 tasks even though
+production sockets use event publication only to wake their durable ledger tail. One
+serial coalescing worker now retains the newest pending hint and guarantees a follow-up
+wake for a mid-publication commit. The event/bus/socket/pet gate passes 62/62 and Ruff is
+clean. Durable event truth is unchanged; native freeze/resource proof remains open.
+
 Changed-path addendum: parent found isolated Codex `thread/list` had a bounded response
 but unbounded cumulative merge. Staged discovery now caps the retained non-desktop union
 and preserves prior state on refusal. The process-only desktop tile stays separate.

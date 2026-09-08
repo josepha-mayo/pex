@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Committed events no longer create one best-effort presentation task apiece. A blocked
+listener plus 200 later commits reproduced 201 simultaneous tasks; one serial worker now
+coalesces them to the first in-flight wake and newest follow-up hint while durable cursor
+replay remains authoritative. The related event/bus/socket/pet gate passes 62/62 with
+Ruff. PEX stayed closed, so native stability and freeze causality remain unverified.
+
 Isolated Codex discovery now bounds cumulative retained App Server threads across
 rotating responses and cannot partially mutate state on refusal. The separate desktop
 process tile is excluded from that vendor-thread count. Related coverage passes 158/158

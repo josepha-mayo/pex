@@ -2,6 +2,16 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: committed event presentation previously created one task per accepted event even
+though production event sockets use that publication only as a wake hint for the durable
+ledger. A blocked listener plus 200 later commits reproduced **201 live tasks**. Event
+publication is now one serial coalescing worker: it preserves the first in-flight wake,
+keeps only the newest pending hint, and performs one follow-up wake when a commit arrives
+mid-publication. Durable acceptance, cursor replay and authoritative processing are
+unchanged. Event-processing/publication/bus/WebSocket/pet-coalescing coverage passes
+62/62 and Ruff is clean. PEX remained closed; this removes a burst amplifier but does not
+prove native stability or identify the whole-PC freeze cause.
+
 Latest: isolated Codex App Server discovery also had a per-response rather than cumulative
 retained-state bound. Thread updates are now staged, the retained non-desktop union is
 limited to 10,000, and a rotating over-cap response leaves prior state untouched. The

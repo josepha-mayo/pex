@@ -5,6 +5,23 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: coalesce committed-event wake tasks
+
+Every durably accepted event scheduled a separate best-effort presentation task. The
+production WebSocket path ignores those individual payloads and treats publication only
+as a hint to read the authoritative event ledger, but a slow listener still allowed an
+unbounded task burst. A regression held one listener and scheduled 200 more commits; the
+old path retained **201 simultaneous tasks**. The new path retains one serial event-wake
+worker, the newest pending payload only, and exactly one follow-up iteration when another
+commit arrives during an in-flight publication. It therefore cannot lose the post-commit
+wake window or accumulate one task per event.
+
+The combined event-processing, durable-publication, EventBus, WebSocket and pet-
+coalescing gate passes **62/62**; scoped Ruff passes. Store acceptance, decimal cursor
+replay, socket queue limits and supervisor decisions are unchanged. PEX, harness workers
+and providers remained closed. This is source-level burst control, not native resource
+capture or proof that the reported whole-PC freeze is resolved.
+
 ## Latest offline slice: bound rotating Codex discovery state
 
 Isolated Codex discovery bounded each `thread/list` response but merged successive IDs

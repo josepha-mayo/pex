@@ -688,6 +688,42 @@ async def test_presentation_listener_cannot_delay_or_invalidate_event_receipt(tm
 
 
 @pytest.mark.asyncio
+async def test_event_wake_publication_coalesces_a_blocked_burst(tmp_path):
+    bus = EventBus()
+    first_started = asyncio.Event()
+    release = asyncio.Event()
+    seen: list[str] = []
+
+    async def blocked_listener(topic, payload):
+        assert topic == "event"
+        seen.append(payload["event_id"])
+        first_started.set()
+        await release.wait()
+
+    bus.subscribe(blocked_listener)
+    store, _, _, pipeline = await _pipeline(tmp_path, bus=bus)
+    try:
+        pipeline._schedule_committed_publication("event", {"event_id": "event-0"})
+        await asyncio.wait_for(first_started.wait(), timeout=1)
+
+        for index in range(1, 201):
+            pipeline._schedule_committed_publication(
+                "event",
+                {"event_id": f"event-{index}"},
+            )
+
+        assert len(pipeline._presentation_tasks) == 1
+        release.set()
+        await asyncio.wait_for(_drain_presentations(pipeline), timeout=1)
+        assert seen == ["event-0", "event-200"]
+        assert pipeline._event_publication_task is None
+    finally:
+        release.set()
+        await pipeline.close_presentations()
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_duplicate_replays_exact_receipt_after_live_session_changes(tmp_path):
     store, _, session, pipeline = await _pipeline(tmp_path)
     supervisor = _NudgeSupervisor()

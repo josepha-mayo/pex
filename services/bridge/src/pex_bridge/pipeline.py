@@ -830,6 +830,9 @@ class Pipeline:
         self._event_worker_id = f"{self.store.process_boot_id}:pipeline:{uuid4().hex}"
         self._presentation_tasks: set[asyncio.Task] = set()
         self._pet_snapshot_task: asyncio.Task[dict] | None = None
+        self._event_publication_task: asyncio.Task[None] | None = None
+        self._event_publication_dirty = False
+        self._event_publication_payload: dict | None = None
         self._event_pet_publication_task: asyncio.Task[None] | None = None
         self._event_pet_publication_dirty = False
         # Durable parent/child reconciliation is authoritative work, not
@@ -2130,6 +2133,10 @@ class Pipeline:
     def _schedule_committed_publication(self, topic: str, payload: dict) -> None:
         """Wake presentation listeners after commit without gating the receipt."""
 
+        if topic == "event":
+            self._schedule_committed_event_publication(payload)
+            return
+
         async def publish() -> None:
             try:
                 await self.bus.publish_committed(
@@ -2156,6 +2163,54 @@ class Pipeline:
         task = asyncio.create_task(publish())
         self._presentation_tasks.add(task)
         task.add_done_callback(self._presentation_tasks.discard)
+
+    def _schedule_committed_event_publication(self, payload: dict) -> None:
+        """Coalesce durable-ledger wake hints into one bounded serial worker."""
+
+        self._event_publication_dirty = True
+        self._event_publication_payload = dict(payload)
+        active = self._event_publication_task
+        if active is not None and not active.done():
+            return
+
+        async def publish_events() -> None:
+            try:
+                while True:
+                    self._event_publication_dirty = False
+                    current_payload = self._event_publication_payload
+                    if current_payload is None:
+                        return
+                    try:
+                        await self.bus.publish_committed(
+                            "event",
+                            current_payload,
+                            timeout_seconds=0.1,
+                        )
+                    except asyncio.CancelledError:
+                        return
+                    except Exception as exc:
+                        logger.warning(
+                            "committed event publication failed topic=event error=%s",
+                            type(exc).__name__,
+                        )
+                    if not self._event_publication_dirty:
+                        self._event_publication_payload = None
+                        return
+            finally:
+                current = asyncio.current_task()
+                if current is not None:
+                    self._presentation_tasks.discard(current)
+
+        task = asyncio.create_task(publish_events())
+        self._event_publication_task = task
+        self._presentation_tasks.add(task)
+
+        def retire(completed: asyncio.Task) -> None:
+            self._presentation_tasks.discard(completed)
+            if self._event_publication_task is completed:
+                self._event_publication_task = None
+
+        task.add_done_callback(retire)
 
     async def _publish_event_plan_commit(
         self,
@@ -3868,6 +3923,10 @@ class Pipeline:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._presentation_tasks.difference_update(tasks)
+        self._event_publication_dirty = False
+        self._event_publication_payload = None
+        if self._event_publication_task is not None and self._event_publication_task.done():
+            self._event_publication_task = None
         self._event_pet_publication_dirty = False
         if self._event_pet_publication_task is not None and self._event_pet_publication_task.done():
             self._event_pet_publication_task = None
