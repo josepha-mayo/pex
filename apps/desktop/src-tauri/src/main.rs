@@ -2,6 +2,7 @@
 
 use std::io::{ErrorKind, Read, Write};
 use std::net::{SocketAddr, TcpStream};
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -561,6 +562,12 @@ fn bridge_sidecar_args() -> [&'static str; 4] {
     ["--host", BRIDGE_HOST, "--port", BRIDGE_PORT]
 }
 
+fn bridge_data_paths(home_dir: &Path) -> (PathBuf, PathBuf) {
+    let home = home_dir.join(".pex");
+    let database = home.join("pex.sqlite");
+    (home, database)
+}
+
 fn stop_owned_bridge(app: &tauri::AppHandle) {
     let Some(state) = app.try_state::<BridgeRuntime>() else {
         return;
@@ -712,6 +719,21 @@ fn monitor_verified_bridge_identity(app: tauri::AppHandle, attempt: u64, token: 
 
 fn run_bridge_bootstrap(app: tauri::AppHandle, attempt: u64) {
     let deadline = Instant::now() + BRIDGE_STARTUP_TIMEOUT;
+    let home_dir = match app.path().home_dir() {
+        Ok(path) => path,
+        Err(_) => {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "desktop_home_unavailable",
+                "PEX could not resolve its desktop data directory.",
+                false,
+                BridgeSource::NotReady,
+            );
+            return;
+        }
+    };
+    let (bridge_home, bridge_database) = bridge_data_paths(&home_dir);
     let token = match app.state::<BridgeRuntime>().token_for_attempt(attempt) {
         Ok(token) => token,
         Err(_) => {
@@ -822,6 +844,12 @@ fn run_bridge_bootstrap(app: tauri::AppHandle, attempt: u64) {
         .env("PEX_PORT", BRIDGE_PORT)
         .env("PEX_REQUIRE_AUTH", "true")
         .env("PEX_TOKEN", &token)
+        // The native app owns its durable profile. Do not inherit a developer
+        // shell's PEX_HOME/PEX_DB_PATH (for example a large benchmark profile)
+        // and then make ordinary desktop startup pay that profile's recovery
+        // and WAL cost. These paths preserve the documented default profile.
+        .env("PEX_HOME", &bridge_home)
+        .env("PEX_DB_PATH", &bridge_database)
         .env("PEX_DESKTOP_PARENT_PID", std::process::id().to_string())
         .spawn();
     let (mut events, child) = match spawned {
@@ -1028,11 +1056,11 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use super::{
-        bridge_address, bridge_identity_proof, bridge_port_is_free_for_owned_launch,
-        bridge_port_state_at, bridge_sidecar_args, command_event_is_terminal,
-        is_pex_identity_response, normalize_bridge_token, remaining_timeout,
-        trusted_webview_navigation, window_close_action, BridgeAuth, BridgeBootstrapPhase,
-        BridgePortState, BridgeRuntime, BridgeSource, WindowCloseAction,
+        bridge_address, bridge_data_paths, bridge_identity_proof,
+        bridge_port_is_free_for_owned_launch, bridge_port_state_at, bridge_sidecar_args,
+        command_event_is_terminal, is_pex_identity_response, normalize_bridge_token,
+        remaining_timeout, trusted_webview_navigation, window_close_action, BridgeAuth,
+        BridgeBootstrapPhase, BridgePortState, BridgeRuntime, BridgeSource, WindowCloseAction,
         BRIDGE_IDENTITY_MISS_LIMIT, BRIDGE_IDENTITY_MONITOR_INTERVAL, MAX_BRIDGE_TOKEN_CHARS,
     };
 
@@ -1147,6 +1175,13 @@ mod tests {
         assert!(bridge_sidecar_args()
             .iter()
             .all(|argument| !argument.contains("token")));
+    }
+
+    #[test]
+    fn sidecar_data_paths_ignore_ambient_profile_selection() {
+        let (home, database) = bridge_data_paths(std::path::Path::new("C:/Users/example"));
+        assert_eq!(home, std::path::PathBuf::from("C:/Users/example/.pex"));
+        assert_eq!(database, home.join("pex.sqlite"));
     }
 
     #[test]
@@ -1351,8 +1386,7 @@ mod tests {
         assert_eq!(BRIDGE_IDENTITY_MONITOR_INTERVAL, Duration::from_secs(2));
         assert_eq!(BRIDGE_IDENTITY_MISS_LIMIT, 5);
         assert_eq!(
-            BRIDGE_IDENTITY_MONITOR_INTERVAL.as_secs()
-                * u64::from(BRIDGE_IDENTITY_MISS_LIMIT),
+            BRIDGE_IDENTITY_MONITOR_INTERVAL.as_secs() * u64::from(BRIDGE_IDENTITY_MISS_LIMIT),
             10
         );
     }

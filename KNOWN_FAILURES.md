@@ -538,3 +538,8 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   every returned event; transaction-local caching now removes that N+1 path without deleting
   history or carrying authority across requests. Tests prove the source behavior, but native
   SQLite latency/CPU on this profile remains unmeasured and the whole-PC freeze is still open.
+- The desktop-owned sidecar used to inherit ambient `PEX_HOME`/`PEX_DB_PATH`; launching PEX from
+  a benchmark shell could attach it to the 154.89 MiB contest database and 226.41 MiB WAL.
+  Current source pins normal desktop startup to the existing default `~/.pex/pex.sqlite` profile.
+  The incident environment was not retained, so this is a repaired plausible contributor, not
+  sole-cause proof. Frozen sidecars still predate the repair and native resource proof is open.

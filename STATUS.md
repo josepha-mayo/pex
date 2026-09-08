@@ -2054,3 +2054,11 @@ already proven inside that transaction and validate any distinct project id once
 still starts fresh and sees quarantine/re-resolution. Focused tests passed 3/3, broader
 store/projection/pet coverage passed 58/58, and Ruff/diff checks passed. This reduces a real
 large-history backend amplification but does not replace the pending bounded native profile.
+
+Native bridge startup no longer inherits `PEX_HOME`/`PEX_DB_PATH` from a developer or benchmark
+shell. This mattered in the actual workspace: the contest profile is 154.89 MiB with a 226.41
+MiB WAL, and its `event_effects` table occupies 118.06 MiB. Tauri now explicitly supplies the
+documented default `~/.pex/pex.sqlite` path while preserving authenticated loopback ownership
+and existing default user state. The incident environment was not captured, so this removes a
+real startup hazard without claiming it was the sole freeze cause. Startup passed 15/15, Rust
+18/18, desktop 258/258, TypeScript and formatting passed; native/rebuilt proof remains open.

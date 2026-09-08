@@ -678,3 +678,10 @@ Do the next safe, highest-impact item immediately. If a required external choice
 - [ ] Measure pet-snapshot SQLite time/CPU against the retained 117.65 MiB profile during the
   bounded native run. Transaction-local caching reduces a demonstrated amplification but does
   not prove the whole-PC freeze is resolved or authorize history deletion.
+- [x] Pin the desktop-owned bridge to the documented default `~/.pex/pex.sqlite` profile so an
+  ambient benchmark `PEX_HOME`/`PEX_DB_PATH` cannot redirect native startup into a heavyweight
+  database. Focused startup 15/15, Rust 18/18, complete desktop 258/258, TypeScript, and format
+  checks pass.
+- [ ] Rebuild current sidecars, then prove the pinned native profile and measure startup/idle
+  CPU, memory, disk, database, and WAL behavior. The 154.89 MiB + 226.41 MiB contest profile is
+  evidence of risk, not proof that profile inheritance was the sole freeze cause.

@@ -1384,3 +1384,15 @@ Focused identity coverage passed 3/3; event-store/current-projection/pet-snapsho
 58/58; scoped Ruff and diff checks passed. The former maximum was one initial comparison plus
 one per returned event (121 for a 120-row page); the repaired same-project case uses one. Native
 SQLite timing and whole-machine freeze resolution remain open.
+
+## 8 September native-profile ownership review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src-tauri/src/main.rs` owned-sidecar environment | REVIEWED / REPAIRED | Resolves OS home through Tauri and pins `PEX_HOME=~/.pex` plus `PEX_DB_PATH=~/.pex/pex.sqlite`; loopback/auth/token/parent ownership remains explicit. |
+| `apps/desktop/src/startupRecovery.test.ts` | REVIEWED / EXTENDED | Source contract rejects an inherited ambient profile path and binds both explicit sidecar variables. |
+| Real `~/.pex/contest-goal` profile | READ-ONLY RISK EVIDENCE | 154.89 MiB database + 226.41 MiB WAL; `event_effects` 118.06 MiB. Incident environment unavailable, so causality remains unproven. |
+
+Focused startup tests passed 15/15, Rust passed 18/18, complete desktop contracts passed 258/258,
+TypeScript exited 0, and Rust formatting passed. No PEX process or database mutation occurred.
+Current-source sidecar rebuild and bounded native resource proof remain open.

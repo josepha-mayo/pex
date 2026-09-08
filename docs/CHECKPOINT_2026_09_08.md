@@ -1625,3 +1625,17 @@ transaction and check each genuinely distinct project identity at most once. No 
 deleted and quarantine/re-resolution checks remain fresh across requests. Focused identity
 tests passed 3/3; event-store/current-projection/pet-snapshot coverage passed 58/58; Ruff and
 scoped diff checks passed. This is a concrete backend load repair, not native freeze closure.
+
+## Native profile isolation
+
+The desktop-owned sidecar previously inherited `PEX_HOME` and `PEX_DB_PATH` from its launching
+shell. That could silently attach ordinary PEX startup to a benchmark/demo profile. The actual
+contest profile is 154.89 MiB with a 226.41 MiB WAL; its `event_effects` table alone occupies
+118.06 MiB. The freeze incident's environment was not retained, so this is a concrete risk and
+plausible contributor rather than proof of the sole cause.
+
+Tauri now resolves the user's home and explicitly pins the owned sidecar to the documented
+`~/.pex/pex.sqlite` default. Existing default state is preserved, ambient benchmark paths are
+ignored, and home-resolution failure is explicit. Focused startup tests passed 15/15, all Rust
+tests 18/18, complete desktop contracts 258/258, TypeScript passed, and Rust formatting passed.
+No PEX process was launched and no profile data was changed.

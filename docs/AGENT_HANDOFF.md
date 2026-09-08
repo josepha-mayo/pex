@@ -8842,3 +8842,22 @@ The dirty bit is expected because the protected operator-owned file below is ret
   broader event-store/current-projection/pet-snapshot coverage passed **58/58**; scoped Ruff and
   diff checks passed. PEX remained closed, so this materially reduces a demonstrated read
   amplification but does not by itself close the reported whole-PC freeze.
+
+### 8 September native-profile isolation slice
+
+- Tauri pinned host, port, auth, token, and parent PID for the owned bridge, but it inherited
+  ambient `PEX_HOME` and `PEX_DB_PATH`. A desktop launched from a benchmark/demo shell could
+  therefore open that shell's heavyweight profile instead of the documented default profile.
+- The retained contest profile is concrete risk evidence: `pex.sqlite` is 154.89 MiB and its
+  WAL is 226.41 MiB. `event_effects` occupies 118.06 MiB, primarily 3,871 delivered supervisor
+  decisions whose frozen requests repeat bounded recent-event context. The incident process
+  environment was not captured, so this is a plausible freeze/startup contributor, not a
+  proven sole cause, and no database bytes were changed.
+- Native launch now resolves the OS home through Tauri and explicitly passes `~/.pex` plus
+  `~/.pex/pex.sqlite` to the owned sidecar. Ambient benchmark profile selection cannot leak
+  into normal desktop startup; the existing default user profile and authenticated loopback
+  contract are preserved. Home-resolution failure is explicit and non-retryable.
+- The new Rust test and source contract bind both paths. Focused startup tests passed **15/15**,
+  all Rust tests passed **18/18**, complete desktop contracts passed **258/258**, TypeScript
+  exited 0, and Rust formatting passed. PEX was not launched; current-source sidecars still
+  require rebuild and this slice still needs a bounded native profile before freeze closure.
