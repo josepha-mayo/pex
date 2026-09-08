@@ -2351,6 +2351,7 @@ export function App() {
           scale={scale}
           reducedMotion={reducedMotion}
           status={homeStatus}
+          statusIdentity={pet?.last_action?.id}
           onActivate={() => void expandMainSurface()}
           onDismiss={() => void changePetVisibility(false)}
         />
@@ -2547,6 +2548,7 @@ export function App() {
               scale={Math.max(scale, 1.08)}
               reducedMotion={reducedMotion}
               status={setup ? undefined : homeStatus}
+              statusIdentity={pet?.last_action?.id}
               onActivate={() => openInspector()}
             />
             <div

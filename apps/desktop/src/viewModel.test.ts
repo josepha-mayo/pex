@@ -1382,6 +1382,10 @@ test("pet dragging recognizes vertical and diagonal movement without accidental 
 
 test("pet status bubble stays dismissed across stable polls and reopens for a changed decision", async () => {
   const {
+    persistStatusBubbleKey,
+    persistentStatusBubbleKey,
+    readPersistedStatusBubbleKey,
+    STATUS_BUBBLE_DISMISSAL_STORAGE_KEY,
     statusBubbleMaterialKey,
     statusBubbleShouldReopen,
   } = await import("./petBubble.ts");
@@ -1403,6 +1407,29 @@ test("pet status bubble stays dismissed across stable polls and reopens for a ch
     label: "Codex working",
     detail: "Tests are running",
   }), false);
+
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+  };
+  const persistentKey = persistentStatusBubbleKey(decision, "intervention-42");
+  assert.equal(persistentKey, "need\0id:intervention-42");
+  persistStatusBubbleKey(storage, persistentKey);
+  assert.equal(values.size, 1);
+  assert.equal(values.get(STATUS_BUBBLE_DISMISSAL_STORAGE_KEY), persistentKey);
+  assert.equal(readPersistedStatusBubbleKey(storage), persistentKey);
+  assert.equal(
+    statusBubbleShouldReopen(false, persistentKey, decision, "intervention-42"),
+    false,
+  );
+  assert.equal(
+    statusBubbleShouldReopen(false, persistentKey, decision, "intervention-43"),
+    true,
+  );
+  assert.equal(persistentStatusBubbleKey(decision, " invalid "), null);
+  assert.equal(persistentStatusBubbleKey(decision, null), null);
+  assert.equal(persistentStatusBubbleKey({ ...decision, tone: "work" }, "work-1"), null);
 });
 
 test("pet renders separate keyboard buttons for status dismissal, activation, and pet hiding", async () => {

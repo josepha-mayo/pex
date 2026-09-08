@@ -2,7 +2,13 @@ import { type MouseEvent, type PointerEvent, useEffect, useRef, useState } from 
 
 import { CodexSprite, lookIndex, type PetMood } from "../pets/atlas";
 import { usePageVisibility } from "../pageVisibility";
-import { statusBubbleMaterialKey, statusBubbleShouldReopen } from "../petBubble";
+import {
+  persistStatusBubbleKey,
+  persistentStatusBubbleKey,
+  readPersistedStatusBubbleKey,
+  STATUS_BUBBLE_DISMISSAL_STORAGE_KEY,
+  statusBubbleMaterialKey,
+} from "../petBubble";
 import { petDragThresholdReached, petPointerShouldActivate } from "../petInteraction";
 import { startPetDrag } from "../releasePet";
 import type { StatusCopy } from "../types";
@@ -19,6 +25,7 @@ export function PetStage({
   overlay = false,
   active = true,
   status,
+  statusIdentity,
   onActivate,
   onDismiss,
 }: {
@@ -30,14 +37,25 @@ export function PetStage({
   overlay?: boolean;
   active?: boolean;
   status?: StatusCopy;
+  statusIdentity?: string | null;
   onActivate: () => void;
   onDismiss?: () => void;
 }) {
   const pageVisible = usePageVisibility();
   const interactive = active && pageVisible;
+  const materialKey = statusBubbleMaterialKey(status, statusIdentity);
+  const persistentKey = persistentStatusBubbleKey(status, statusIdentity);
+  const initialDismissal = useRef<boolean | null>(null);
+  if (initialDismissal.current === null) {
+    initialDismissal.current = persistentKey !== null
+      && readPersistedStatusBubbleKey() === persistentKey;
+  }
+  const initiallyDismissed = initialDismissal.current;
   const [hop, setHop] = useState(false);
-  const [bubbleVisible, setBubbleVisible] = useState(true);
-  const [dismissedMaterialKey, setDismissedMaterialKey] = useState<string | null>(null);
+  const [bubbleVisible, setBubbleVisible] = useState(!initiallyDismissed);
+  const [dismissedMaterialKey, setDismissedMaterialKey] = useState<string | null>(
+    initiallyDismissed ? materialKey : null,
+  );
   const [dragDir, setDragDir] = useState<-1 | 0 | 1>(0);
   const [look, setLook] = useState<number | null>(null);
   const actor = useRef<HTMLButtonElement>(null);
@@ -69,10 +87,37 @@ export function PetStage({
   }, [interactive, reducedMotion]);
 
   useEffect(() => {
-    if (!bubbleVisible && statusBubbleShouldReopen(false, dismissedMaterialKey, status)) {
+    if (
+      persistentKey !== null
+      && readPersistedStatusBubbleKey() === persistentKey
+    ) {
+      setDismissedMaterialKey(materialKey);
+      setBubbleVisible(false);
+      return;
+    }
+    if (
+      !bubbleVisible
+      && materialKey !== null
+      && materialKey !== dismissedMaterialKey
+    ) {
       setBubbleVisible(true);
     }
-  }, [bubbleVisible, dismissedMaterialKey, status]);
+  }, [bubbleVisible, dismissedMaterialKey, materialKey, persistentKey]);
+
+  useEffect(() => {
+    if (persistentKey === null) return;
+    const syncDismissal = (event: StorageEvent) => {
+      if (
+        event.key === STATUS_BUBBLE_DISMISSAL_STORAGE_KEY
+        && event.newValue === persistentKey
+      ) {
+        setDismissedMaterialKey(materialKey);
+        setBubbleVisible(false);
+      }
+    };
+    window.addEventListener("storage", syncDismissal);
+    return () => window.removeEventListener("storage", syncDismissal);
+  }, [materialKey, persistentKey]);
 
   useEffect(() => {
     if (!overlay || !onDismiss) return;
@@ -144,8 +189,9 @@ export function PetStage({
   }
 
   function dismissStatusBubble() {
-    setDismissedMaterialKey(statusBubbleMaterialKey(status));
+    setDismissedMaterialKey(materialKey);
     setBubbleVisible(false);
+    persistStatusBubbleKey(undefined, persistentKey);
   }
 
   return (
