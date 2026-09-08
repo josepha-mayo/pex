@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from collections import deque
 from datetime import UTC, datetime
 from urllib.parse import quote
 from uuid import uuid4
@@ -37,7 +38,9 @@ _POLL_INTERVAL_SECONDS = 10.0
 _MAX_SESSIONS = 1_024
 _MAX_PAGE_ITEMS = 200
 _MAX_POLLED_PER_CYCLE = 100
-_MAX_SEEN_MESSAGES = 10_000
+# Aggregate process-lifetime dedupe budget. The Store remains the durable event
+# authority when an older digest is evicted and observed again.
+_MAX_SEEN_MESSAGES = 65_536
 _MAX_INBOX_MESSAGES = 1_000
 _MAX_HOOK_RECEIPTS = 10_000
 _MAX_PATH_CHARS = 4_096
@@ -55,7 +58,8 @@ class DevinAdapter(HarnessAdapter):
         self._pump_task: asyncio.Task | None = None
         self._terminal_markers: dict[str, str] = {}
         self._status_markers: dict[str, str] = {}
-        self._seen_message_ids: dict[str, set[str]] = {}
+        self._seen_message_ids: set[bytes] = set()
+        self._seen_message_order: deque[bytes] = deque()
         self._primed_messages: set[str] = set()
         self._last_pump_error: str | None = None
         self._poll_offset = 0
@@ -71,6 +75,24 @@ class DevinAdapter(HarnessAdapter):
         self.transport = transport
         if org_id:
             self.org_id = org_id
+
+    @staticmethod
+    def _message_cache_key(vendor_id: str, message_id: str) -> bytes:
+        return hashlib.sha256(
+            vendor_id.encode("utf-8") + b"\0" + message_id.encode("utf-8")
+        ).digest()
+
+    def _message_seen(self, vendor_id: str, message_id: str) -> bool:
+        return self._message_cache_key(vendor_id, message_id) in self._seen_message_ids
+
+    def _remember_message(self, vendor_id: str, message_id: str) -> None:
+        key = self._message_cache_key(vendor_id, message_id)
+        if key in self._seen_message_ids:
+            return
+        while len(self._seen_message_order) >= _MAX_SEEN_MESSAGES:
+            self._seen_message_ids.discard(self._seen_message_order.popleft())
+        self._seen_message_ids.add(key)
+        self._seen_message_order.append(key)
 
     def _sessions_path(self) -> str:
         return f"/v3/organizations/{quote(self.org_id, safe='')}/sessions"
@@ -379,14 +401,10 @@ class DevinAdapter(HarnessAdapter):
                     except Exception:
                         rows = []
                     replay = vendor_id not in self._primed_messages
-                    seen = self._seen_message_ids.setdefault(vendor_id, set())
                     for index, item in enumerate(rows):
                         message_id = _message_id(item, index)
-                        if message_id in seen:
+                        if self._message_seen(vendor_id, message_id):
                             continue
-                        if len(seen) >= _MAX_SEEN_MESSAGES:
-                            raise RuntimeError("Devin message retention safety bound reached")
-                        seen.add(message_id)
                         text = item.get("message") or item.get("content") or item.get("text")
                         source = (
                             bounded_observed_text(
@@ -421,6 +439,9 @@ class DevinAdapter(HarnessAdapter):
                             },
                         )
                         await ingest(event, session)
+                        # Returning from ingest is the durable acceptance receipt.
+                        # A transient failure must retry this exact API message.
+                        self._remember_message(vendor_id, message_id)
                     self._primed_messages.add(vendor_id)
 
                     status_marker = f"{status}:{status_detail}:{updated_at or ''}"

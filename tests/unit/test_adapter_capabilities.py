@@ -454,6 +454,84 @@ async def test_devin_v3_cursor_pages_and_message_events_match_current_contract()
 
 
 @pytest.mark.asyncio
+async def test_devin_retries_message_after_transient_ingestion_failure(monkeypatch):
+    class RetryingDevinTransport:
+        async def request(self, method: str, path: str, *, json=None):
+            del method, json
+            if path.endswith("/sessions?first=200"):
+                return {
+                    "items": [
+                        {
+                            "session_id": "retry-session",
+                            "project_id": "project-1",
+                            "status": "running",
+                            "status_detail": "working",
+                        }
+                    ],
+                    "has_next_page": False,
+                }
+            if path.endswith("/retry-session"):
+                return {
+                    "status": "running",
+                    "status_detail": "working",
+                    "updated_at": 1_788_000_000,
+                }
+            if "/retry-session/messages?" in path:
+                return {
+                    "items": [
+                        {
+                            "event_id": "message-retry",
+                            "created_at": 1_788_000_001,
+                            "message": "Retry me after durable ingestion fails.",
+                            "source": "devin",
+                        }
+                    ],
+                    "has_next_page": False,
+                }
+            raise AssertionError(f"unexpected request: {path}")
+
+    monkeypatch.setattr(devin_module, "_POLL_INTERVAL_SECONDS", 0.01)
+    adapter = DevinAdapter(RetryingDevinTransport())  # type: ignore[arg-type]
+    retried = asyncio.Event()
+    attempts = 0
+
+    async def ingest(event: HarnessEvent, _session: HarnessSession):
+        nonlocal attempts
+        if event.event_id != "devin-message:retry-session:message-retry":
+            return
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("temporary durable ingestion failure")
+        retried.set()
+
+    pump = adapter.start_pipeline_pump(ingest)
+    try:
+        await asyncio.wait_for(retried.wait(), timeout=1.25)
+    finally:
+        pump.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await pump
+
+    assert attempts == 2
+
+
+def test_devin_message_dedupe_uses_one_aggregate_fifo_bound(monkeypatch):
+    monkeypatch.setattr(devin_module, "_MAX_SEEN_MESSAGES", 2)
+    adapter = DevinAdapter()
+
+    adapter._remember_message("session-a", "message-1")
+    adapter._remember_message("session-b", "message-2")
+    adapter._remember_message("session-c", "message-3")
+
+    assert len(adapter._seen_message_ids) == 2
+    assert len(adapter._seen_message_order) == 2
+    assert all(len(key) == 32 for key in adapter._seen_message_ids)
+    assert not adapter._message_seen("session-a", "message-1")
+    assert adapter._message_seen("session-b", "message-2")
+    assert adapter._message_seen("session-c", "message-3")
+
+
+@pytest.mark.asyncio
 async def test_devin_rotating_discovery_cannot_grow_or_partially_mutate_retained_state(
     monkeypatch,
 ):

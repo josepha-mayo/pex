@@ -2,6 +2,16 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: Devin message polling marked an API message ID seen **before** Pipeline ingestion
+returned. A transient durable-ingestion failure was therefore caught by the outer poll
+loop, but the next poll silently skipped the exact message forever. The negative timed
+out without a retry. Seen-state now advances only after the ingestion callback returns.
+The previous cache also permitted 10,000 variable-length IDs for each of up to 1,024
+retained sessions; it is now one aggregate 65,536-entry FIFO of fixed 32-byte SHA-256
+keys. Evicted rows may replay through their stable event IDs, leaving Store acceptance as
+the durable dedupe authority. Adapter-capability/session/fleet coverage passes 115/115
+and Ruff is clean. No Devin endpoint, worker, model or native app ran.
+
 Latest: committed event presentation previously created one task per accepted event even
 though production event sockets use that publication only as a wake hint for the durable
 ledger. A blocked listener plus 200 later commits reproduced **201 live tasks**. Event

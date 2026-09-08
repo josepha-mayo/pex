@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent found Devin message dedupe advanced before durable Pipeline
+ingestion. A transient failure made the poller permanently skip the message; the negative
+timed out without a retry. The cache now advances only after callback success and uses one
+65,536-entry FIFO of fixed SHA-256 keys instead of 10,000 variable strings per retained
+session. Stable event IDs preserve Store-level replay dedupe. The full adapter/session/
+fleet gate passes 115/115 and Ruff is clean; no live Devin/native proof follows.
+
 Changed-path addendum: parent reproduced unbounded post-commit presentation fanout. A
 blocked event listener plus 200 further durable commits retained 201 tasks even though
 production sockets use event publication only to wake their durable ledger tail. One

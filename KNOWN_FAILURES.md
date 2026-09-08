@@ -2,6 +2,11 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Devin message IDs were marked seen before durable ingestion, so a transient callback
+  failure silently prevented retry. The negative timed out; post-success marking now
+  retries the stable event. Dedupe is also one 65,536 fixed-digest FIFO instead of up to
+  10,000 strings per 1,024 sessions. The 115-test adapter gate and Ruff pass. Live Devin
+  and native resource behavior remain unverified.
 - Committed-event presentation previously spawned one task per accepted event. A held
   listener plus 200 later commits reproduced 201 live tasks. Event hints now use one
   serial coalescing worker with a newest-pending follow-up; 62 related tests and Ruff pass.

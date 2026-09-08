@@ -5,6 +5,22 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: retain Devin messages only after durable ingestion
+
+The Devin poller inserted each remote message ID into its in-memory seen set before
+awaiting Pipeline ingestion. If that callback failed transiently, the outer loop backed
+off but every later poll treated the uncommitted message as already delivered. A focused
+negative forced the first ingestion to fail and timed out because the message was never
+retried. Seen-state now advances only after the callback returns successfully, so the
+same stable event is retried and Store acceptance remains the final idempotency boundary.
+
+The old dedupe budget was also per session: 10,000 strings multiplied by the 1,024-session
+retention cap. The adapter now holds one process-wide FIFO of at most 65,536 fixed 32-byte
+SHA-256 keys. Eviction cannot invent a new semantic event; a re-observed row retains its
+stable `devin-message:{session}:{message}` event ID and re-enters durable Store dedupe.
+Adapter capabilities, rotating-session behavior and fleet contracts pass **115/115**;
+scoped Ruff passes. No live Devin API, provider, worker or native process ran.
+
 ## Latest offline slice: coalesce committed-event wake tasks
 
 Every durably accepted event scheduled a separate best-effort presentation task. The

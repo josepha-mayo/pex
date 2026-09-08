@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Devin no longer marks an API message seen before durable Pipeline ingestion succeeds. A
+forced transient failure previously lost the message on every later poll; it now retries
+the same stable event. Dedupe memory is one 65,536-entry fixed-digest FIFO rather than up
+to 10,000 variable IDs for each of 1,024 sessions. The full adapter/session/fleet gate
+passes 115/115 with Ruff. No live Devin or native evidence follows.
+
 Committed events no longer create one best-effort presentation task apiece. A blocked
 listener plus 200 later commits reproduced 201 simultaneous tasks; one serial worker now
 coalesces them to the first in-flight wake and newest follow-up hint while durable cursor

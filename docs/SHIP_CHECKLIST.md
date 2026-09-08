@@ -136,6 +136,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Bound cumulative Devin discovery state across rotating API inventories and commit
   no partial merge on over-cap refusal. The complete adapter/fleet gate passes 84/84
   with Ruff; live Devin behavior remains unproven.
+- [x] Advance Devin message dedupe only after durable Pipeline ingestion and replace the
+  possible 1,024 × 10,000 variable-ID cache with one 65,536-entry fixed-digest FIFO.
+  Transient-retry plus adapter/session/fleet coverage passes 115/115 with Ruff.
 - [x] Apply cumulative retained-session bounds and transactional over-cap refusal to
   rotating OpenCode/Qwen inventories. The full related gate passes 139/139 with Ruff;
   no live daemon/native proof is implied.
