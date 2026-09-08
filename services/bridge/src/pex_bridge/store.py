@@ -16112,14 +16112,14 @@ class Store:
             (resource_id,),
         )
         row = await cur.fetchone()
-        return json.loads(row["json"]) if row else None
+        return _strict_json_loads(str(row["json"])) if row else None
 
     async def list_lifecycle_resources(self, session_id: str) -> list[dict[str, Any]]:
         cur = await self.db.execute(
             "SELECT json FROM lifecycle_resources WHERE session_id = ? ORDER BY id",
             (session_id,),
         )
-        return [json.loads(row["json"]) for row in await cur.fetchall()]
+        return [_strict_json_loads(str(row["json"])) for row in await cur.fetchall()]
 
     async def get_lifecycle_resource_for_authority(
         self,
@@ -27196,7 +27196,7 @@ class Store:
             (intervention_id,),
         )
         row = await cur.fetchone()
-        return json.loads(row["json"]) if row else None
+        return _strict_json_loads(str(row["json"])) if row else None
 
     async def reserve_permission_resolution(
         self,
@@ -27552,7 +27552,7 @@ class Store:
             (intervention_id,),
         )
         row = await cur.fetchone()
-        return json.loads(row["json"]) if row else None
+        return _strict_json_loads(str(row["json"])) if row else None
 
     async def reserve_lifecycle_resolution(
         self,

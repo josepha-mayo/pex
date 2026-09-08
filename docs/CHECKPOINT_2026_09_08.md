@@ -5,6 +5,20 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: strict durable action/resource reads
+
+Four public Store getters for lifecycle resources and human permission/lifecycle
+resolution receipts still used permissive JSON while their authority-aware siblings used
+the strict decoder. These rows influence resource cleanup and whether consequential
+human decisions may be reused. Existing immutable-binding triggers correctly blocked
+ordinary SQL tampering. The negative then removed only the isolated test database's
+triggers to emulate offline corruption and proved duplicate-key/overflow rows fail at
+read time. Both single and list resource reads are covered. The complete affected files
+pass **51/51 with one platform skip**; scoped Ruff passes.
+
+This is defense-in-depth against corrupted storage, not whole-Store review or live
+external-side-effect proof. No native app, adapter action, worker or model ran.
+
 ## Latest offline slice: finite Codex v2 pet manifests
 
 The custom-pet importer bounded `pet.json`, rejected duplicate keys/constants and

@@ -2,6 +2,10 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Lifecycle resource and permission/lifecycle resolution getters now use strict Store
+  JSON. Binding triggers blocked normal mutation and offline-corruption simulations prove
+  fail-closed reads; 51 affected tests pass, one platform case skips, and Ruff is clean.
+  Other Store reads and live external effects remain incompletely reviewed.
 - Codex v2 custom-pet manifests now reject exponent overflow in any field; the complete
   59-test fleet/import file and Ruff pass. The hatch-pet visual contract still requires
   normal-size motion/direction and native playback QA for all eight built-ins.

@@ -96,6 +96,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   Focused security coverage passes 23/23 and Ruff; no live/frozen evidence is implied.
 - [x] Reject exponent overflow throughout bounded Codex v2 custom-pet manifests. Complete
   fleet/import coverage passes 59/59 and Ruff; eight-pet normal-size/native QA stays open.
+- [x] Use strict Store decoding for lifecycle resources and human permission/lifecycle
+  resolution receipts; offline-corruption negatives plus affected files pass 51/51 with
+  one platform skip and Ruff. Remaining Store reads are still audited separately.
 - [x] Bound local notification receipt replay before parsing and reject ambiguous JSON
   idempotency rows so corruption cannot suppress a human alert. Channel tests pass 8/8
   and Ruff; cross-process append/rotation remains outside this slice.

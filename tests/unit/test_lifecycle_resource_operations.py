@@ -201,6 +201,40 @@ async def test_bound_resource_blocks_rebind_but_forensic_read_survives(tmp_path)
 
 
 @pytest.mark.asyncio
+async def test_lifecycle_resource_getters_reject_overflowed_stored_json(tmp_path):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        _, session, project = await _seed(store, tmp_path, suffix="corrupt-json")
+        resource, _ = await _ready_resource(
+            store,
+            session,
+            project,
+            suffix="corrupt-json",
+        )
+        row = await (
+            await store.db.execute(
+                "SELECT json FROM lifecycle_resources WHERE id = ?",
+                (resource["id"],),
+            )
+        ).fetchone()
+        corrupt = str(row["json"])[:-1] + ',"ignored":1e9999}'
+        await store.db.execute("DROP TRIGGER trg_lifecycle_resources_bound_update")
+        await store.db.execute(
+            "UPDATE lifecycle_resources SET json = ? WHERE id = ?",
+            (corrupt, resource["id"]),
+        )
+        await store.db.commit()
+
+        with pytest.raises(ValueError, match="non-finite JSON number"):
+            await store.get_lifecycle_resource(resource["id"])
+        with pytest.raises(ValueError, match="non-finite JSON number"):
+            await store.list_lifecycle_resources(session.id)
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_historical_resource_remains_unbound_and_forensic_only(tmp_path):
     path = tmp_path / "legacy.sqlite"
     connection = sqlite3.connect(path)

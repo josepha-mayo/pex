@@ -2,6 +2,14 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: lifecycle-resource and human permission/lifecycle resolution getters now decode
+durable rows with the Store's strict JSON authority instead of Python's permissive
+decoder. Normal SQL mutation was first blocked by existing immutable-binding triggers;
+the hostile test then removed only its test triggers to emulate offline corruption and
+proved duplicate/overflow rows fail before reuse. The full affected files pass 51/51
+with one platform skip; Ruff is clean. This is fail-closed persistence hardening, not
+whole-Store approval or live side-effect proof. PEX stayed closed.
+
 Latest: Codex v2 custom-pet manifests now reject exponent-overflow JSON anywhere in the
 bounded `pet.json`, including ignored fields. The import path already enforced unique
 keys, non-standard-constant refusal, exact version 2, 1536x2288 RGBA atlas geometry,

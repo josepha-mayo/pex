@@ -341,6 +341,70 @@ async def test_permission_allow_cannot_cross_same_key_physical_reresolution(tmp_
         await store.close()
 
 
+@pytest.mark.asyncio
+async def test_resolution_getters_reject_ambiguous_or_overflowed_stored_json(tmp_path):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        _, session, _ = await _seed(store, suffix="corrupt-resolution-json")
+        permission = _permission_intervention(session, suffix="corrupt-json")
+        lifecycle = _lifecycle_intervention(
+            InterventionType.START_AGENT,
+            session,
+            suffix="corrupt-json",
+        )
+        await store.add_intervention(permission)
+        await store.add_intervention(lifecycle)
+        await store.reserve_permission_resolution(
+            intervention_id=permission.id,
+            session_id=session.id,
+            request_id=str(permission.proposed_action.payload["request_id"]),
+            decision="deny",
+            started_at=utcnow(),
+        )
+        await store.reserve_lifecycle_resolution(
+            intervention_id=lifecycle.id,
+            session_id=session.id,
+            decision="deny",
+            started_at=utcnow(),
+        )
+
+        permission_row = await (
+            await store.db.execute(
+                "SELECT json FROM permission_resolutions WHERE intervention_id = ?",
+                (permission.id,),
+            )
+        ).fetchone()
+        lifecycle_row = await (
+            await store.db.execute(
+                "SELECT json FROM lifecycle_resolutions WHERE intervention_id = ?",
+                (lifecycle.id,),
+            )
+        ).fetchone()
+        permission_corrupt = (
+            str(permission_row["json"])[:-1] + ',"ignored":1,"ignored":2}'
+        )
+        lifecycle_corrupt = str(lifecycle_row["json"])[:-1] + ',"ignored":1e9999}'
+        await store.db.execute("DROP TRIGGER trg_permission_resolutions_bound_update")
+        await store.db.execute("DROP TRIGGER trg_lifecycle_resolutions_bound_update")
+        await store.db.execute(
+            "UPDATE permission_resolutions SET json = ? WHERE intervention_id = ?",
+            (permission_corrupt, permission.id),
+        )
+        await store.db.execute(
+            "UPDATE lifecycle_resolutions SET json = ? WHERE intervention_id = ?",
+            (lifecycle_corrupt, lifecycle.id),
+        )
+        await store.db.commit()
+
+        with pytest.raises(ValueError, match="duplicate JSON"):
+            await store.get_permission_resolution(permission.id)
+        with pytest.raises(ValueError, match="non-finite JSON number"):
+            await store.get_lifecycle_resolution(lifecycle.id)
+    finally:
+        await store.close()
+
+
 @pytest.mark.parametrize(
     "kind",
     [

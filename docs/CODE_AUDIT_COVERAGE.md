@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced lifecycle-resource and permission/lifecycle
+resolution getters into cleanup and human-decision callers. These four reads bypassed the
+strict Store decoder. Existing binding triggers blocked ordinary mutation; isolated tests
+then dropped their test triggers to simulate offline corruption and proved duplicate or
+overflow rows fail before reuse. Affected files pass 51/51 with one platform skip and
+Ruff clean. Other Store JSON reads and live side effects remain under audit.
+
 Changed-path addendum: parent applied the hatch-pet v2 contract to custom manifest
 admission and the exactly-eight built-in fleet checks. Bounded manifests rejected
 duplicates/constants but accepted overflow in ignored fields. Finite-float parsing now

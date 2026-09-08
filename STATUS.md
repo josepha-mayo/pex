@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Lifecycle-resource and permission/lifecycle resolution getters now reject duplicate or
+overflowed durable JSON before cleanup/decision reuse. Existing triggers blocked ordinary
+tampering; offline-corruption simulations pass within 51 affected tests, one platform
+skip, and clean Ruff. Whole-Store and live side-effect proof remain open.
+
 Codex v2 custom-pet manifests now reject exponent overflow throughout the bounded JSON
 object. The exactly-eight fleet/import suite passes 59/59 with Ruff clean. Hatch-pet
 normal-size motion/direction review and native playback remain open after the freeze.
