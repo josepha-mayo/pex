@@ -7,8 +7,9 @@ target. The independent verifier is blue because the curated live receipt does n
 judge-readable independent-verifier evidence.
 
 Devpost image target: [`pex-architecture.png`](pex-architecture.png). It was regenerated
-and visually inspected on 6 September from the current source; the verifier is visibly in
-the blue local-contract tier:
+and visually inspected on 6 September as historical evidence; later source changes do not
+alter the depicted trust boundaries, but the image must be re-reviewed against the final
+release candidate. The verifier is visibly in the blue local-contract tier:
 [`pex-architecture.mmd`](pex-architecture.mmd).
 
 ```mermaid

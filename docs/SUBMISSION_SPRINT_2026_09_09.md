@@ -2,13 +2,13 @@
 
 The full goal remains active. This is the user's three-day internal target, not
 a claim about the organizer's current deadline. Submission status: **NO-GO**.
-Read all three binding specs and `CHECKPOINT_2026_09_06.md` before each work cycle.
+Read all three binding specs and `CHECKPOINT_2026_09_08.md` before each work cycle.
 Conserve quota: no new subagents. The user approved bounded live recovery/quiet
 checks after clean build/tests pass, subject to verifying free-provider setup.
 If independent review is later needed, use the user's Terra / medium preference.
 Preserve the protected supervisor `loop.py` change. Push only reviewed, scoped updates.
 
-## Active execution queue — refreshed 6 September
+## Active execution queue — refreshed 8 September
 
 This queue drives work; the historical evidence below does not close newer gates.
 The target remains 9 September WAT. Timeboxes set priority, not permission to
@@ -16,7 +16,7 @@ drop requirements or declare an unverified product ready.
 
 ### Day 1 — usable runtime and real supervision
 
-- [x] **A. Finish the native release build and verify packaged bytes.**
+- [x] **A. Retain the historical baseline package and verify its exact bytes.**
   Proven for clean source `60ffa76`, checkout `pex-verify-5ee1ee7`: both MSI and
   NSIS built and passed extracted-payload verification. Execs 46349 and 89984
   are terminal. Receipt `build/pex-package-receipt-60ffa76.json`, SHA256
@@ -56,18 +56,22 @@ drop requirements or declare an unverified product ready.
   Acceptance: release cold start, retained failure diagnostics, normal Retry,
   close/reopen and persisted setup work without orphan bridge processes.
   Frozen helper tests are supporting evidence, not native-window proof.
-  User authorized PEX-only native checks. On7September clean f08d41d cold start
+  User authorized PEX-only native checks. On 7 September clean f08d41d cold start
   and Retry both timed out. Eager SDK imports were deferred; local source timing
-  improved, but rebuilt native verification remains open. Respect the shared PC.
+  improved. The launcher now pins the standard desktop database instead of inheriting
+  an ambient benchmark profile, and multiple idle polling/fanout paths are repaired in
+  source. These changes do not establish native stability. Rebuilt bounded native
+  verification remains open and needs fresh post-freeze confirmation. Respect the
+  shared PC.
 
 ### Day 2 — complete human-facing flows
 
 - [ ] **D. Finish actual-UI onboarding and all eight pets.**
-  Current follow-up: compact status message dismissal repaired (195 frontend
-  tests and production build passed). Source-only eight-pet contact sheets
-  inspected; Drift jumping frame 0 has a visually flat-cut lower body despite
-  transparent cell margins. Retain `build/pet-source-audit-5c00433`, including
-  exact exported Drift frames. No sprite edits or native playback approval.
+  Current source has exactly eight built-ins. Manifest/atlas validation, release
+  evidence, and high-detail static review pass for all eight; the earlier Drift frame
+  concern did not justify regeneration after exact-cell review. Compact message
+  dismissal and pet hiding remain distinct in source contracts. No sprite edit or
+  native playback approval follows.
   Acceptance: goal, connection, BYOK and supervisor setup are understandable;
   each pet animates without an opaque background; dismissing a message and
   hiding/restoring the pet are distinct and persist correctly after restart.
@@ -96,6 +100,10 @@ drop requirements or declare an unverified product ready.
   exec 16849 is terminal. Receipt/hash in handoff. This excludes later Settings,
   compact dismissal and trajectory updates, so G stays open. Include frontend/Rust,
   package integrity and installed/fresh-profile smoke after final code changes.
+  Current offline desktop coverage is 259/259, Rust is 18/18, and the production
+  frontend build succeeds. Production sidecar builds now refuse dirty source before
+  PyInstaller. Full current Python, rebuilt sidecars/installers, and native smoke stay
+  open; the protected concurrent `loop.py` edit intentionally keeps Git non-clean.
 - [ ] **H. Finish honest benchmark and code-audit closure.**
   Acceptance: equivalent prompts/environments, no evaluator leakage, failed
   runs and PEX overhead retained; full spec/audit coverage checked, not inferred
@@ -125,7 +133,8 @@ our build-spec target, subject to the user's no-card-charge authorization.
 - [x] Real shared Codex thread inspected and confirmed without creating its work.
 - [x] Repair pre-event worker visibility so its goal can be attached first.
 - [x] Persistent goal and scoped correction grant accepted by production HTTP API.
-- [x] Real Strands + independent verifier generated a specific correction.
+- [x] Real Strands generated a specific correction; the independent verifier has
+  separate local contract coverage and is not claimed by the curated live receipt.
 - [x] Correction reached the existing thread; worker produced exact `shipped\n`.
 - [x] Subsequent Strands decision was NOOP, not another warning.
 - [x] Grant revoked and observer detached; worker remains readable, idle, three
