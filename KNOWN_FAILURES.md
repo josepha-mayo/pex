@@ -2,6 +2,11 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Event socket idle polling used a joined MIN/MAX full-ledger scan; two SQLite
+  work-count negatives reproduced growth. Indexed endpoint reads now meet the
+  fixture's <=500-step bound with unchanged cursor semantics; 15 backend checks
+  and Ruff pass. This does not measure native resource use, establish the reported
+  freeze cause or prove every publication query/corrupt-ledger case bounded.
 - Hidden-overlay/page-background sprite scheduling and CSS animations now pause;
   the shared visibility listener cleans up and bubble state stays mounted. SSR/
   helper/source coverage passes (223 desktop, TS), but native visibility reporting,

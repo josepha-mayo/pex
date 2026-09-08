@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Parent reviewed the event socket tail/queue and the event_publication_page bounds
+query plus relevant table/trigger/index definitions. Only the bounds query/cursor
+lifetime was changed; two VM-work negatives reproduced a linear idle-history scan.
+The complete three new publication tests and changed query were reviewed by parent;
+Terra independently found no regression. Targeted publication/socket/broadcast:
+15 pass, Ruff pass. This grants no whole-store/app audit or native resource proof.
+
 New-path addendum: apps/desktop/src/pageVisibility.ts. Parent reviewed the complete
 visibility store, CodexSprite motion guard/CSS hints, PetStage pointer cleanup and
 App visibility forwarding. One SSR negative failed before repair; helper/source

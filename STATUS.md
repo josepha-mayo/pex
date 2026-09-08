@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Idle event-ledger bounds now use indexed endpoint lookups instead of full-history
+scans. Two negative SQLite work-count tests reproduced the defect; 15 targeted
+backend tests and Ruff pass, independently reviewed. No native measurement or
+freeze-cause claim. See the checkpoint's newest section.
+
 Hidden-overlay and page-background pet motion now pauses without resetting dismissed
 messages; visibility listeners are shared and cleaned up. 223 focused desktop tests
 and TypeScript pass, parent-reviewed. Native resource use and freeze recovery remain

@@ -5,7 +5,34 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: hidden-pet animation lifetime
+## Latest offline slice: idle event-ledger scan
+
+Each desktop event socket tails event_publication_page every 250ms when caught up.
+Its combined joined MIN/MAX bounds query scanned the entire publication history on
+every idle read. Two small production-schema fixtures reproduced growing work:
+at least 1,100 SQLite VM steps for 128 accepted records and 18,400 for 2,048. Both
+failed the new 500-step ceiling on prior c5d8a04 source. These are query work counts,
+not host CPU/GPU measurements or proof of the whole-PC freeze cause.
+
+The replacement reads the two indexed endpoints with ASC/DESC LIMIT 1 scalar
+subqueries in one statement, keeping the same join and statement-level bounds
+snapshot. No schema/index migration, persisted watermark cache, polling interval,
+event loss, retention-gap waiver or cursor-semantic change. The read cursor now
+closes explicitly. Empty-ledger bounds, frozen pages, scope, retention gaps, socket
+authentication, replay/cancellation and broadcast cleanup are covered by the narrow
+three-file backend selection: **15 passed in 9.59s**, Ruff passed both changed Python
+files. Both size cases now meet the <=500-step ceiling. The work-count guard targets
+the valid caught-up ledger, not every query shape or corrupt orphan-row case.
+
+Parent reviewed the query, relevant table/trigger/index definitions and tests. The
+same existing Terra reviewer checked the narrow SQL/fixture diff independently and
+found no actionable regression in empty/pruned/frozen/scoped behavior. This is not
+a full store.py audit. No native app, worker/model, port-listening server, cloud,
+large suite or build ran; fixture HTTP/WebSockets were local ASGI/TestClient only.
+Protected loop.py hash is unchanged. Native stability and all submission gates
+remain open; de83153 installers still predate these repairs.
+
+## Earlier offline slice: hidden-pet animation lifetime
 
 The renderer did not consume overlay visibility or page visibility. Hidden pets
 could retain their frame timer, and CSS breathing/listening loops were not explicitly
@@ -37,7 +64,7 @@ Protected loop.py retains its recorded hash. PEX remains closed; no build, nativ
 input, paid/cloud operation or live benchmark ran. Reported whole-PC freeze remains
 unexplained. Do not infer current installer quality from these source-only tests.
 
-## Latest offline slice: native bootstrap read lifetime
+## Earlier offline slice: native bootstrap read lifetime
 
 The bootstrap UI awaited native `bridge_bootstrap_status` without a deadline. A
 never-settling IPC left that poll pending indefinitely. It now uses a module-scoped

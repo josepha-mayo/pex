@@ -19,6 +19,8 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Pause hidden/page-background sprite and CSS animation without resetting
   dismissed messages; share and clean up the visibility listener. 223 tests/TS pass.
   Native timer/GPU/CPU measurements remain part of the open P0 verification gate.
+- [x] Replace idle event-ledger full scans with indexed endpoint reads; two negative
+  SQLite work-count tests then 15 targeted backend passes and Ruff. Native cost unmeasured.
 - [x] Bound Cursor inbox reads/record batches and remove destructive backlog clearing.
   13 targeted checks pass; 44 deselected. No live Cursor/native run.
 - [x] Move inbox file work off-loop and checkpoint after durable observer ingestion;

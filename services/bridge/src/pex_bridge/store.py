@@ -23869,12 +23869,18 @@ class Store:
         if session_id is not None:
             _validate_store_id(session_id, label="event session id")
 
-        bounds_cursor = await self.db.execute(
-            "SELECT MIN(pub.accept_seq) AS earliest, MAX(pub.accept_seq) AS latest "
-            "FROM event_publications AS pub "
-            "JOIN event_processing AS p ON p.accept_seq = pub.accept_seq",
-        )
-        bounds = await bounds_cursor.fetchone()
+        # Combining MIN and MAX across this join scans the full publication
+        # history on every idle socket poll. Seek each indexed endpoint instead,
+        # in one statement so both bounds still describe the same DB snapshot.
+        async with self.db.execute(
+            "SELECT (SELECT pub.accept_seq FROM event_publications AS pub "
+            "JOIN event_processing AS p ON p.accept_seq = pub.accept_seq "
+            "ORDER BY pub.accept_seq ASC LIMIT 1) AS earliest, "
+            "(SELECT pub.accept_seq FROM event_publications AS pub "
+            "JOIN event_processing AS p ON p.accept_seq = pub.accept_seq "
+            "ORDER BY pub.accept_seq DESC LIMIT 1) AS latest",
+        ) as bounds_cursor:
+            bounds = await bounds_cursor.fetchone()
         earliest = int(bounds["earliest"]) if bounds and bounds["earliest"] is not None else 0
         watermark = int(bounds["latest"]) if bounds and bounds["latest"] is not None else 0
         frozen_through = watermark if through is None else through

@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: idle event socket reads no longer scan full publication history for ledger
+bounds. Two negative work-count tests reproduced 1,100/18,400 SQLite steps on small
+128/2,048-record fixtures; indexed endpoints now meet <=500 steps. Same joined
+semantics and single-statement snapshot, explicit cursor close. 15 targeted backend
+tests and Ruff pass; bounded independent Terra review found no regression. No native
+run or causal freeze claim. Details/limitations are in the newest checkpoint section.
+
 Hidden-pet follow-up: frame and CSS animation now pause for hidden overlays and
 hidden pages; visibility subscription is shared per webview and cleans up on the
 last subscriber. The PetStage stays mounted to preserve dismissed-message state.

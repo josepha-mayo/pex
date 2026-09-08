@@ -158,3 +158,62 @@ async def test_event_page_reports_retention_gap_instead_of_silent_skip(tmp_path)
         assert resumed["items"][0]["event"]["event_id"] == "evt-kept"
     finally:
         await store.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("count", [128, 2048])
+async def test_caught_up_event_page_does_not_scan_publication_history(tmp_path, count):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        seed = _event("evt-seed", "synthetic:idle", 0)
+        # One fixture transaction, using the production record-only/publication
+        # triggers. No live worker, background observer or model is involved.
+        await store.db.executemany(
+            "INSERT INTO events(event_id, session_id, ts, json) VALUES (?, ?, ?, ?)",
+            [
+                (
+                    f"evt-idle-{index}",
+                    seed.session_id,
+                    seed.ts.isoformat(),
+                    seed.model_copy(update={"event_id": f"evt-idle-{index}"})
+                    .model_dump_json(),
+                )
+                for index in range(count)
+            ],
+        )
+        await store.db.commit()
+        steps = 0
+
+        def progress():
+            nonlocal steps
+            steps += 100
+            return 0
+
+        await store.db.set_progress_handler(progress, 100)
+        page = await store.event_publication_page(after=count)
+        await store.db.set_progress_handler(None, 0)
+        assert page["items"] == []
+        assert page["next"] == page["watermark"] == str(count)
+        assert page["retention"] == {"earliest": "1", "latest": str(count)}
+        # Work count, not host-dependent timing: a caught-up read should seek
+        # the two indexed endpoints rather than revisit every historical row.
+        assert steps <= 500, f"idle read executed at least {steps} SQLite VM steps"
+    finally:
+        await store.db.set_progress_handler(None, 0)
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_empty_event_page_has_zero_bounds(tmp_path):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        page = await store.event_publication_page()
+        assert page["retention"] == {"earliest": "0", "latest": "0"}
+        assert page["through"] == page["next"] == page["watermark"] == "0"
+        assert page["items"] == []
+        assert page["gap"] == {"detected": False}
+        assert page["has_more"] is False
+    finally:
+        await store.close()
