@@ -26,8 +26,10 @@ waits for that follow-up batch. 213 focused desktop tests and TypeScript pass, w
 an independently spotted stale-poll lifetime defect repaired. No native relaunch,
 build or live calls; current-source native stability is still unverified.
 Cursor inbox reads and per-drain records are now bounded; unread backlog is not
-erased. 13 targeted tests pass / 44 deselected, Ruff passes. Durable acknowledgement,
-path safety, off-loop reads, oversized incomplete lines and retention remain open.
+erased. Its follow-up checkpoints only after durable observer ingestion and moves
+file work off-loop, with prefix/descriptor checks. 27 inbox and 6 unchanged-HTTP
+checks plus Ruff pass. Generation/atomic path safety, poison records, oversized
+incomplete lines, resistant cancellation and retention remain open. See checkpoint.
 
 See [the detailed checkpoint](docs/CHECKPOINT_2026_09_08.md). Exact de83153 installers
 are verified. Native testing paused on Escape; PEX was already absent when the

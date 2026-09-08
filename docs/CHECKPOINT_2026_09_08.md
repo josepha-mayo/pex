@@ -216,6 +216,8 @@ explain the reported whole-PC freeze or establish idle/native stability.
 
 ### Follow-up offline slice: Cursor inbox read and record budgets
 
+Pushed as `43d93370bcf72e4b1f01eeb07303d6087774e5a5`.
+
 The parent read cursor_inbox.py, its fail-open producer and the bridge's quarter-
 second observer loop. Six tiny negative fixtures exposed unbounded actual file and
 marker reads, no record-count budget, and malformed Unicode/overlong offset handling.
@@ -246,6 +248,63 @@ coordinated disk retention is not implemented. Removing destructive truncation
 preserves evidence but is not a disk-space limit. Address these explicitly before
 claiming reliable Cursor observation or native stability. No freeze cause established.
 Protected loop.py remains unchanged. No native/build/live-model/CU work started.
+
+### Follow-up offline slice: durable Cursor admission before checkpoint
+
+The previous goal turn made progress (70ba867 and 43d9337 pushed); the full goal
+remains active. This slice replaces consuming `drain_inbox` with a non-consuming
+`read_inbox` batch and explicit `acknowledge_inbox`. The runtime performs both file
+operations on a worker thread, then processes the bounded batch serially. Only
+normal completion of every valid record permits checkpointing. Failure, stop or
+cancellation before acknowledgement keeps the prefix available for at-least-once
+replay. The real Store/Pipeline duplicate contract, not a boolean HTTP response,
+prevents duplicate acceptance. The old consuming helper has no remaining call sites.
+
+Independent Terra audit found that every synchronous Cursor hook class can return
+a normal fail-open response on timeout before durable acceptance. The observer now
+has a separate ingestion path that forces observe-only delivery authority, shares
+the unchanged session/event preparation, and directly awaits Pipeline ingestion and
+continuation observation. HTTP hook response/deadline behavior remains unchanged.
+Collisions, transient capacity/authority failures and other exceptions stay pending;
+the loop no longer treats any error containing "event id collision" as safe to skip.
+Failure polling backs off to 30 seconds and logs only the exception class once until
+recovery, without payload contents. Reviewer follow-up caught the initially absent
+observer deadline. The final 90-second **cooperative** deadline includes preparation,
+ingestion and continuation; expiry propagates as failure, never acknowledgement.
+
+File reads refuse linked/non-regular paths and check opened descriptor identity
+before bytes. Acknowledgement rechecks source identity, the exact consumed-prefix
+digest and the prior offset. It creates/flushed/fsyncs a fresh temporary checkpoint
+and replaces the marker, without truncating through an existing marker link. Normal
+append remains pending for the next batch. Failed replacement preserves the prior
+marker and removes only its newly created temporary file.
+
+Verification on main, no native/model/worker launch: **27 passed / 44 deselected,
+14.64s** in the two inbox unit files plus `test_cursor_hooks.py`, selected with
+`-k 'inbox or offset or batch_limit or production_batch or consumer or checkpoint or stop_between or reader_and_acknowledgement or source_or_marker or same_file or replacement_during_open'`.
+A separate unchanged-HTTP behavior selection in `test_cursor_hooks.py`
+(`-k 'hook_pipeline_deadlines or named_stop_hook_deadline or permission_mapping or pause_supervision'`)
+passed **6 / 46 deselected, 7.74s**. Ruff and changed-path diff checks pass.
+The new API's initial two tests failed because the mechanism did not yet exist;
+do not portray that as an old-runtime reproduction. Two first deadline tests hit
+SQLite setup before the intended injected failure; isolated preparation corrected
+those fixture races. Two import-format lint failures were also corrected. Current
+tests prove real local Store replay, timeout/collision refusal, cancellation, stop,
+off-loop I/O, hardlink/open replacement refusal, checkpoint failure, and append.
+
+**Remaining release obligations:** legacy numeric offsets still need persisted
+file-generation binding across restart; directory/path check-open and final replace
+are not atomic against concurrent external mutation; a blocked OS call or resistant
+cancellation is not hard-bounded. Poison-record rejection receipts/UI, oversized
+newline-free record recovery and producer-coordinated disk retention remain open.
+Malformed physical JSONL lines still use the prior skip behavior without durable
+rejection receipts; semantically invalid dictionaries remain pending and can block
+later records. Do not describe these as reliable full Cursor delivery yet. Existing
+bounded-reader tests were adapted to explicitly acknowledge only fixture reads;
+production has no acknowledgement-before-consumption shortcut. Parent reviewed all
+changed paths; Terra's observer-path findings were integrated and parent-rechecked.
+Protected loop.py is unchanged at its recorded hash. Native stability/freeze cause,
+latest installers and the full submission scope remain unverified/NO-GO.
 
 Next: continue bounded offline audit; the main process/read lifetime paths still
 need broader coverage. Native resource verification needs renewed operator

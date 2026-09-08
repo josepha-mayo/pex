@@ -15,8 +15,11 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   213 focused desktop tests and TypeScript pass; source-only, not native stability.
 - [x] Bound Cursor inbox reads/record batches and remove destructive backlog clearing.
   13 targeted checks pass; 44 deselected. No live Cursor/native run.
-- [ ] Finish Cursor inbox acknowledgement, path safety, off-loop I/O, oversized-line
-  recovery and producer-coordinated retention; checkpoint preserves current gaps.
+- [x] Move inbox file work off-loop and checkpoint after durable observer ingestion;
+  check consumed bytes/descriptor/marker and preserve failed batches. 27+6 checks pass.
+- [ ] Finish generation-bound checkpoints, atomic path safety, poison-record receipts/
+  UI, oversized-line recovery and producer-coordinated retention. Deadlines remain
+  cooperative; checkpoint preserves exact limitations and development failures.
 - [ ] Resolve remaining observation lifetime limits: non-atomic directory enumeration,
   blocked OS calls and aggregate repeated-event work. Do not claim a hard deadline.
 - [ ] Confirm a bounded native resource capture before reopening the app or large gates.

@@ -29,11 +29,14 @@
   Full audit, native stability, quiet/recovery gates, fair comparisons and final
   submission remain open; no repaired path is proven to explain the incident.
 - Cursor inbox actual reads, marker parsing and record counts are now bounded;
-  unread oversized backlogs are no longer erased. 13 targeted checks pass. Remaining
-  source-audit findings: synchronous I/O, marker advancement before ingestion,
-  linked/generation-unsafe marker writes, oversized newline-free records and absent
-  producer-coordinated retention. The non-destructive reader does not limit disk
-  growth. These must be resolved before claiming reliable Cursor observation.
+  unread oversized backlogs are no longer erased. The next slice uses non-consuming
+  reads and checkpoints after durable observer ingestion, with off-loop I/O and
+  descriptor/prefix/marker checks. 27 inbox and 6 HTTP checks pass. Remaining:
+  generation binding across restart, non-atomic directory/replace boundaries,
+  resistant cancellation/OS stalls, poison-record receipts/UI, oversized newline-
+  free records and producer-coordinated retention. Invalid dictionaries can block
+  later records; malformed physical lines still lack rejection receipts. The reader
+  does not limit disk growth. Full reliable Cursor/native operation is unproven.
 
 ## 7 September 2026 — Q17 provider timeout; unittest source defect is repaired
 

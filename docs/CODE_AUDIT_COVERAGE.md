@@ -2,6 +2,15 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: tests/unit/test_cursor_inbox_delivery.py. Parent reviewed the
+entire new two-phase cursor_inbox reader and its two test files, changed app observer/
+shared preparation blocks, and changed Cursor contracts. Terra reviewed HTTP-vs-
+durable admission, then the implementation; its missing observer-deadline finding
+was integrated as a cooperative failure boundary and parent-rechecked. 27 targeted
+inbox checks plus 6 HTTP behavior checks and Ruff pass. Source review leaves explicit
+generation, atomic path, poison-record/receipt, long-record, retention and resistant-
+cancellation findings open. Full app.py/Pipeline or native approval is not granted.
+
 New-path addendum: tests/unit/test_cursor_inbox_budget.py (nine tiny cases). Parent
 read cursor_inbox.py fully plus its producer and runtime-loop call site; Terra
 reviewed the final reader/test slice, finding no new regression. Six read/offset/

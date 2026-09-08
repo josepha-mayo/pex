@@ -124,6 +124,7 @@ _PRE_PERMISSION_HOOKS = {
 CURSOR_PERMISSION_PIPELINE_TIMEOUT_SECONDS = 5.0
 CURSOR_SUBMIT_PIPELINE_TIMEOUT_SECONDS = 4.0
 CURSOR_STOP_PIPELINE_TIMEOUT_SECONDS = 40.0
+CURSOR_OBSERVE_PIPELINE_TIMEOUT_SECONDS = 90.0
 NAMED_HOOK_PERMISSION_PIPELINE_TIMEOUT_SECONDS = 5.0
 NAMED_HOOK_EVENT_PIPELINE_TIMEOUT_SECONDS = 5.0
 NAMED_HOOK_STOP_PIPELINE_TIMEOUT_SECONDS = 40.0
@@ -1307,7 +1308,7 @@ async def apply_cursor_hook(payload: dict) -> dict[str, Any]:
         adapter._delivery_channel.reset(token)
 
 
-async def _apply_cursor_hook(payload: dict) -> dict[str, Any]:
+async def _prepare_cursor_hook(payload: dict) -> tuple[HarnessSession, HarnessEvent]:
     adapter = state.adapters.cursor
     try:
         session = adapter.upsert_from_hook(payload)
@@ -1323,6 +1324,12 @@ async def _apply_cursor_hook(payload: dict) -> dict[str, Any]:
             session.project_id = existing.project_id
     await state.store.upsert_session(session)
     event = adapter.normalize_hook(payload, session)
+    return session, event
+
+
+async def _apply_cursor_hook(payload: dict) -> dict[str, Any]:
+    adapter = state.adapters.cursor
+    session, event = await _prepare_cursor_hook(payload)
     hook_name = payload.get("hook_event_name")
     response: dict[str, Any] = {}
     if hook_name in _PRE_PERMISSION_HOOKS:
@@ -1372,26 +1379,36 @@ async def _apply_cursor_hook(payload: dict) -> dict[str, Any]:
     return response
 
 
-async def _cursor_observe_loop(stop: asyncio.Event) -> None:
-    from pex_bridge.adapters.cursor_inbox import drain_inbox
+async def _process_cursor_observation(payload: dict) -> None:
+    """Observer admission is durable; it is not an editor's fail-open HTTP result."""
+    adapter = state.adapters.cursor
+    token = adapter._delivery_channel.set("observe")
+    try:
+        # Unlike an editor HTTP timeout, this cooperative observer deadline is a
+        # failure, never a successful acknowledgement. It includes authority reads.
+        async with asyncio.timeout(CURSOR_OBSERVE_PIPELINE_TIMEOUT_SECONDS):
+            session, event = await _prepare_cursor_hook(payload)
+            # Ingestion verifies semantic duplicates and durable processing receipts.
+            await state.pipeline.ingest_event(event, session)
+            await _observe_cursor_continuation(event.event_id)
+    finally:
+        adapter._delivery_channel.reset(token)
 
+
+async def _cursor_observe_loop(stop: asyncio.Event) -> None:
+    from pex_bridge.adapters.cursor_inbox import process_inbox
+
+    failures = 0
     while not stop.is_set():
         try:
-            for payload in drain_inbox(state.settings.data_dir):
-                try:
-                    await apply_cursor_hook(payload)
-                except HTTPException:
-                    continue
-                except ValueError as exc:
-                    if "event id collision" not in str(exc):
-                        raise
-                    logger.debug("Cursor observe inbox skipped a timestamp replay")
-                except Exception:
-                    logger.exception("Cursor observe inbox record failed")
-        except Exception:
-            logger.exception("Cursor observe inbox drain failed")
+            await process_inbox(state.settings.data_dir, _process_cursor_observation, stop)
+            failures = 0
+        except Exception as exc:
+            if failures == 0:
+                logger.warning("Cursor observe inbox remains pending (%s)", type(exc).__name__)
+            failures = min(failures + 1, 7)
         try:
-            await asyncio.wait_for(stop.wait(), timeout=0.25)
+            await asyncio.wait_for(stop.wait(), timeout=min(30.0, 0.25 * 2 ** failures))
         except TimeoutError:
             pass
 

@@ -1214,7 +1214,7 @@ def test_cursor_observe_helper_keeps_command_when_shell_output_is_huge(
 async def test_observe_inbox_ingests_file_edits_without_an_http_round_trip(
     client: AsyncClient, tmp_path
 ):
-    from pex_bridge.adapters.cursor_inbox import drain_inbox, inbox_path
+    from pex_bridge.adapters.cursor_inbox import acknowledge_inbox, inbox_path, read_inbox
     from pex_bridge.app import apply_cursor_hook, state
 
     path = inbox_path(tmp_path)
@@ -1231,9 +1231,12 @@ async def test_observe_inbox_ingests_file_edits_without_an_http_round_trip(
         + "\n",
         encoding="utf-8",
     )
-    records = drain_inbox(tmp_path)
+    batch = read_inbox(tmp_path)
+    assert batch is not None
+    records = batch.records
     assert len(records) == 1
     await apply_cursor_hook(records[0])
+    assert acknowledge_inbox(batch)
     session = await state.store.get_session("cursor:obs-1")
     assert session is not None
     assert session.harness_type.value == "cursor"
@@ -1241,8 +1244,98 @@ async def test_observe_inbox_ingests_file_edits_without_an_http_round_trip(
     assert session.project_id == str(tmp_path)
 
 
+@pytest.mark.asyncio
+async def test_observe_inbox_replay_uses_one_durable_event_and_never_http_fail_open(
+    client: AsyncClient, tmp_path, monkeypatch,
+):
+    import pex_bridge.app as bridge_app
+    from pex_bridge.adapters.cursor_inbox import inbox_path, offset_path, process_inbox
+
+    payload = {
+        "hook_event_name": "afterFileEdit", "conversation_id": "durable-observe",
+        "workspace_roots": [str(tmp_path)], "file_path": "answer.txt",
+    }
+    path = inbox_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+    original = path.read_bytes()
+
+    async def forbidden_http(_payload):
+        pytest.fail("observer must not infer acceptance from fail-open HTTP responses")
+
+    monkeypatch.setattr(bridge_app, "apply_cursor_hook", forbidden_http)
+    assert await process_inbox(tmp_path, bridge_app._process_cursor_observation) == 1
+    accepted = await state.store.recent_events("cursor:durable-observe")
+    assert len(accepted) == 1
+    receipt = await state.store.get_event_processing(accepted[0].event_id)
+    assert receipt is not None
+    # Simulate restart before checkpoint persisted: semantic ingestion must replay
+    # the accepted receipt, not insert another event or invent permission authority.
+    offset_path(tmp_path).write_text("0\n")
+    assert await process_inbox(tmp_path, bridge_app._process_cursor_observation) == 1
+    assert len(await state.store.recent_events("cursor:durable-observe")) == 1
+    assert path.read_bytes() == original
+    assert state.adapters.cursor.isolated_agent_messages == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["timeout", "collision", "authority_timeout"])
+async def test_observe_inbox_failed_admission_is_not_acknowledged(
+    client: AsyncClient, tmp_path, monkeypatch, failure,
+):
+    import pex_bridge.app as bridge_app
+    from pex_bridge.adapters.cursor_inbox import (
+        _read_offset,
+        inbox_path,
+        offset_path,
+        process_inbox,
+    )
+
+    path = inbox_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "hook_event_name": "afterFileEdit", "conversation_id": "failed-admission",
+        "workspace_roots": [str(tmp_path)], "file_path": "answer.txt",
+    }) + "\n", encoding="utf-8")
+    channels = []
+
+    async def failed_ingest(*_args):
+        channels.append(state.adapters.cursor._delivery_channel.get())
+        if failure == "collision":
+            raise ValueError("event id collision contains different content")
+        await asyncio.Event().wait()
+
+    async def prepared(_payload):
+        # Isolate the tested downstream deadline from SQLite setup scheduling.
+        # The separate authority_timeout case deliberately stalls preparation.
+        return SimpleNamespace(id="fixture"), SimpleNamespace(event_id="fixture")
+
+    monkeypatch.setattr(bridge_app, "CURSOR_OBSERVE_PIPELINE_TIMEOUT_SECONDS", 0.02)
+    if failure == "authority_timeout":
+        monkeypatch.setattr(bridge_app, "_prepare_cursor_hook", failed_ingest)
+    else:
+        monkeypatch.setattr(bridge_app, "_prepare_cursor_hook", prepared)
+        monkeypatch.setattr(state.pipeline, "ingest_event", failed_ingest)
+    with pytest.raises(ValueError if failure == "collision" else TimeoutError):
+        await process_inbox(tmp_path, bridge_app._process_cursor_observation)
+    assert channels == ["observe"]
+    assert _read_offset(offset_path(tmp_path)) == 0
+    assert state.adapters.cursor._delivery_channel.get() != "observe"
+
+
 def test_observe_inbox_does_not_lose_a_record_split_across_drains(tmp_path):
-    from pex_bridge.adapters.cursor_inbox import drain_inbox, inbox_path, offset_path
+    from pex_bridge.adapters.cursor_inbox import (
+        acknowledge_inbox,
+        inbox_path,
+        offset_path,
+        read_inbox,
+    )
+
+    def drain_fixture(home):
+        batch = read_inbox(home)
+        assert batch is not None
+        assert acknowledge_inbox(batch)
+        return batch.records
 
     path = inbox_path(tmp_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1255,13 +1348,13 @@ def test_observe_inbox_does_not_lose_a_record_split_across_drains(tmp_path):
     split_at = len(split) // 2
     path.write_bytes(first + b"\n" + split[:split_at])
 
-    assert [row["conversation_id"] for row in drain_inbox(tmp_path)] == ["complete"]
+    assert [row["conversation_id"] for row in drain_fixture(tmp_path)] == ["complete"]
     assert int(offset_path(tmp_path).read_text(encoding="utf-8")) == len(first) + 1
 
     with path.open("ab") as handle:
         handle.write(split[split_at:] + b"\n")
 
-    assert [row["conversation_id"] for row in drain_inbox(tmp_path)] == ["split"]
+    assert [row["conversation_id"] for row in drain_fixture(tmp_path)] == ["split"]
 
 
 @pytest.mark.asyncio
