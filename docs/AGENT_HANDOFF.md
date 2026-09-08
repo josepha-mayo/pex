@@ -66,6 +66,17 @@ diff heuristics; original-resolution review identifies the gaps as expected eyes
 no broken seam band. This is strong static visual evidence, not native playback proof. Local QA
 artifacts are under `C:\Users\JosephMayo\Documents\Codex\pex-pet-qa-5530938`.
 
+A post-freeze native stability harness is prepared at
+`C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-d66e6a1.ps1` (SHA-256
+`338CC86481866EDD443283996FDF2029F249D6BF8BA733B68A81C51BA8C1D822`) but was **not
+executed**. It is pinned to exact source `d66e6a1` and desktop hash
+`FEF9D302D32FA3278345100D5EE5417788EFB9033547B21DEC4E4A3E5723001B`, refuses an existing
+PEX process or occupied port 7420, creates a new isolated profile, disables the supervisor
+and Cursor/Codex auto-attach, bounds startup and idle capture, samples only the owned process
+tree, enforces CPU/memory/handle/thread stops, and starts a separate hidden timeout watchdog.
+PowerShell AST parsing passes. PEX remained closed and port 7420 was free after preparation;
+run it only after fresh explicit operator authorization at a time the PC is otherwise idle.
+
 Commit `bdf257f` bounds retained
 SQLite WAL allocation: every Store connection applies `wal_autocheckpoint=1000` and a
 16 MiB `journal_size_limit`. This followed read-only inspection of the contest profile,

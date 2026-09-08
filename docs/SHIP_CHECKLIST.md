@@ -6,6 +6,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.
+  A pinned isolated 60-second harness now exists at
+  `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-d66e6a1.ps1`; it parses cleanly
+  and was not executed. Fresh explicit operator authorization is still required.
 - [x] Bound retained SQLite WAL allocation after checkpoints. The contest profile had a
   237,406,792-byte physical WAL but only 2,195 live frames; connections now apply a
   1,000-page auto-checkpoint and 16 MiB journal-size limit. Related gates pass 11/11 and
