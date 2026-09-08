@@ -2,7 +2,9 @@
 
 ### Current checkpoint — 8 September WAT
 
-Latest pushed product source is `d66e6a1` on `origin/main`. A detached clean worktree at
+Latest pushed product source is now `af35707` on `origin/main`; it repairs a live Codex
+event-pump starvation defect described below. The latest verified package remains the earlier
+`d66e6a1` source and must be rebuilt before submission. A detached clean worktree at
 `C:\Users\JosephMayo\Projects\pex-release-9329a67` built the normal Tauri release at exact
 commit `d66e6a15100bc9efea68e8da116b1fd7c0a5a558`. The build produced:
 
@@ -49,6 +51,18 @@ event pump is healthy. The live contract now proves that exact transition before
 discovery and initialization-metadata checks. Together with the adjacent pump suite it passes
 34/34 and Ruff is clean. No Codex turn, supervisor inference, model call, benchmark arm, or
 worker mutation occurred.
+
+Fresh semantic recapture on a clean detached `af35707` worktree first reproduced a real
+release-candidate defect: Codex wrote `ping.txt=pong`, but PEX recorded zero events because the
+pump waited on account-wide discovery while 22 current notifications, including
+`turn/completed`, remained queued. Commit `af35707` drains buffered work for an already
+identity-bound isolated thread before periodic discovery; unknown sessions still require
+discovery. Its blocked-discovery regression plus adjacent pump/attach coverage passes 57/57 and
+Ruff is clean. The same clean source then passed the real quiet contract in 108.79 seconds and
+the same-thread recovery contract in 173.82 seconds using Codex Spark plus the saved free Muse
+Strands supervisor. Both proof receipts are validated; recovery produced `SEND_NUDGE`,
+`report.txt=shipped`, `helped=true`, and a final NOOP. Sanitized evidence:
+`docs/demo/evidence/LIVE_CODEX_STRANDS_2026-09-08.md`. No native app or AWS resource ran.
 
 Current public integration guidance was consolidated in pushed commit `5530938`; obsolete
 checkpoint prose and stale commit IDs no longer precede the capability matrix. A combined

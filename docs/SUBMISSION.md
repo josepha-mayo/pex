@@ -6,7 +6,10 @@
 > native stability. PEX has stayed closed since the incident; a fresh bounded native run still
 > requires explicit user approval. Submission remains NO-GO until that run and the video pass.
 
-> **Current, 8 September WAT: product source `d66e6a1` is clean-package green.** A detached
+> **Current, 8 September WAT:** product source `af35707` fixes a live Codex event-pump
+> starvation found during final recapture. Its clean quiet and same-thread recovery contracts
+> now pass with real Codex Spark and the free Muse/Strands supervisor. The latest package is
+> still the earlier `d66e6a1` candidate. A detached
 > clean worktree produced normal MSI and NSIS installers. `npm run verify:package` reports
 > `release_ready: true`, zero blockers, and verified desktop/bridge/Cursor-helper inventories
 > in both installers. Both artifacts are currently `NotSigned`; package integrity does not
@@ -18,8 +21,8 @@
 > call. The current Home, Inspector, Deck, Settings, and Pex overlay were inspected in an
 > isolated browser render; message dismissal visibly left the pet present. This is not native
 > transparency, click-through, hide/restore, restart-persistence, or freeze-resolution proof.
-> Commits after `d66e6a1` add documentation and the corrected live Codex contract only;
-> product release inputs remain those verified at `d66e6a1`. The bounded native run, final-
+> Commits after `d66e6a1` now include the production Codex pump repair, so the package must be
+> rebuilt and reverified. The bounded native run, final-
 > revision live semantic recovery pair, demo video, and authorized submission remain open.
 > Follow
 > [the detailed checkpoint](CHECKPOINT_2026_09_08.md), [handoff](AGENT_HANDOFF.md), and
@@ -100,7 +103,13 @@ If agents keep multiplying, humans become full-time dispatchers. PEX attacks tha
 - Keeps a local policy guard. Cloud can propose; it cannot bypass allow/deny/ask.
 - Surfaces attention as a desktop pet, not another chat transcript.
 
-On September 6, PEX completed both prepared live contracts with an isolated Codex worker and a real Strands supervisor: it stayed quiet after evidence-supported completion, then in a separate case detected incomplete work, sent a specific nudge to the same Codex thread, observed the resulting artifact, marked the intervention helped, and ended with a verified NOOP. The supervisor was Zen's free `muse-spark-1.3-contributor-free`; the intentionally modest worker was pinned to `gpt-5.3-codex-spark`. Recapture these contracts on the final release revision before submission.
+On September 8, clean source `af35707` completed both prepared live contracts with an isolated
+Codex worker and a real Strands supervisor: it stayed quiet after evidence-supported completion,
+then detected incomplete work, sent a specific nudge to the same Codex thread, observed the
+resulting artifact, marked the intervention helped, and ended with a verified NOOP. The
+supervisor was Zen's free `muse-spark-1.3-contributor-free`; the intentionally modest worker was
+pinned to `gpt-5.3-codex-spark`. See the
+[sanitized evidence](demo/evidence/LIVE_CODEX_STRANDS_2026-09-08.md).
 
 Current source contains exactly eight built-in pets. Keep the submission demo focused on Pex
 and Von: both independently pass the 11-row v2 atlas validator and original-resolution visual
@@ -148,6 +157,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)
-- [ ] After bounded native stability passes, recapture the validated semantic pair on the final product revision and record it in the packaged-app demo
+- [x] Recapture the validated semantic pair on clean product source `af35707`
+- [ ] Rebuild/package `af35707`, pass bounded native stability, and record the validated pair in
+  the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence is contract-only, while controlled local Codex + provider-live Strands evidence now exists
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)
