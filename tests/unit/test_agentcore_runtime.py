@@ -282,6 +282,7 @@ def test_local_http_bounds_body_and_does_not_echo_invalid_input(monkeypatch):
     for malformed in (
         b'{"schema_version":1,"schema_version":1}',
         b'{"schema_version":1,"padding":NaN}',
+        b'{"schema_version":1,"padding":1e9999}',
     ):
         rejected = client.post(
             "/invocations",

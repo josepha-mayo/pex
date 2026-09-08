@@ -85,17 +85,30 @@ async def test_request_boundary_rejects_ambiguous_or_nonfinite_json() -> None:
             content=b'{"confidence":NaN}',
             headers={"Content-Type": "application/json"},
         )
+        overflow = await client.post(
+            "/",
+            content=b'{"ignored":1e9999}',
+            headers={"Content-Type": "application/json"},
+        )
         headerless_duplicate = await client.post(
             "/",
             content=b'{"decision":"deny","decision":"allow"}',
+        )
+        headerless_overflow = await client.post(
+            "/",
+            content=b'{"ignored":1e9999}',
         )
 
     assert duplicate.status_code == 400
     assert duplicate.json() == {"detail": "invalid JSON body"}
     assert nonfinite.status_code == 400
     assert nonfinite.json() == {"detail": "invalid JSON body"}
+    assert overflow.status_code == 400
+    assert overflow.json() == {"detail": "invalid JSON body"}
     assert headerless_duplicate.status_code == 400
     assert headerless_duplicate.json() == {"detail": "invalid JSON body"}
+    assert headerless_overflow.status_code == 400
+    assert headerless_overflow.json() == {"detail": "invalid JSON body"}
 
 
 def test_goal_control_model_bounds_nested_lists_and_items() -> None:

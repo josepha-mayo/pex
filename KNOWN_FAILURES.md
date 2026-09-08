@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Inbound bridge and AgentCore runtime JSON now reject exponent-overflow numbers before
+  endpoint/model logic; typed, headerless and ignored-field negatives pass in a 46-test
+  gate with Ruff clean. Deployment/provider behavior and native stability are unverified.
 - Local human-notification replay is now size-checked before parsing, byte-bounded and
   strict-JSON-only for idempotency. An ambiguous duplicate-key receipt can no longer
   suppress a fresh alert; 8 channel tests and Ruff pass. External concurrent mutation,

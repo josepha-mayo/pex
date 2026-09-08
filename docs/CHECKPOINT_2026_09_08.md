@@ -5,6 +5,19 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: finite inbound control-plane JSON
+
+The bridge-wide request-body middleware and AgentCore runtime HTTP entrypoint rejected
+duplicate keys and non-standard constants but both allowed exponent-overflow tokens to
+decode as infinity. This occurred before endpoint or supervisor modeling, so an ignored
+field could evade downstream validation. Both bounded decoders now apply finite-float
+hooks. Negatives cover application/json and headerless local bodies plus an ignored
+AgentCore invocation field. Combined request/runtime coverage passes **46/46** and
+scoped Ruff passes.
+
+No native app, provider/AWS call, model, worker or large suite ran. This proves the
+source admission rule only; deployment, live provider and native stability remain open.
+
 ## Latest offline slice: bounded strict human-notification replay
 
 The local notification channel scanned and parsed its complete existing JSONL file before

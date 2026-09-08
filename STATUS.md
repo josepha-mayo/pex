@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Bridge-wide JSON request admission and the AgentCore runtime invocation endpoint now
+reject exponent-overflow tokens before endpoint/model logic, including headerless and
+ignored-field cases. The combined gate passes 46/46 with Ruff clean. No native or cloud
+execution ran, so deployed and stability proof remain open.
+
 Local notification replay now checks its 1 MiB cap before parsing, reads with an explicit
 bound and trusts only strict JSON idempotency receipts. A duplicate-key row previously
 suppressed a fresh human alert; the regression now preserves the alert and canonical

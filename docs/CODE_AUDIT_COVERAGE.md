@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent compared the bridge-wide request limiter and AgentCore
+runtime's bounded JSON entrypoint against the strict adapter decoder. Both rejected
+duplicate keys/constants but accepted exponent overflow before endpoint/model validation.
+Finite-float hooks now reject it for typed and headerless bridge JSON and for the runtime
+invocation envelope, including ignored fields. The focused gate passes 46/46 with Ruff
+clean. This is inbound source coverage, not deployed AgentCore or native proof.
+
 Changed-path addendum: parent traced human-notification delivery through local JSONL
 idempotency replay. The supposedly capped file was parsed before its size check, and a
 duplicate-key row could impersonate a delivered receipt. The reader now refuses files

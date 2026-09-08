@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: both inbound JSON control planes now reject exponent-overflow numbers before
+endpoint or model logic. The bridge-wide request limiter covers typed and headerless
+JSON; the AgentCore runtime covers its bounded invocation body, including ignored
+fields. The negatives previously decoded `1e9999` as infinity. Combined request/runtime
+coverage passes 46/46 and Ruff is clean. No native app, AWS/provider call, model, worker
+or large suite ran; this is source boundary proof, not deployed/runtime stability proof.
+
 Latest: local human-notification idempotency no longer parses a file at or beyond its
 declared 1 MiB cap before returning `notify_inbox_full`, and its bounded replay scan now
 accepts only strict unambiguous JSON. A duplicate-key row previously impersonated the

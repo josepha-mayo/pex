@@ -12,6 +12,7 @@ import json
 import os
 import re
 from functools import lru_cache
+from math import isfinite
 from typing import Any
 
 from pex_protocol.project_binding import project_binding_key as _project_key
@@ -32,6 +33,13 @@ _INVOCATION_ID = re.compile(r"^pexinv_[0-9a-f]{32}$")
 
 def _reject_json_constant(value: str) -> None:
     raise ValueError(f"non-finite JSON constant {value!r} is not allowed")
+
+
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not isfinite(parsed):
+        raise ValueError(f"non-finite JSON number {value!r} is not allowed")
+    return parsed
 
 
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -228,6 +236,7 @@ def _fastapi_app(*, model: object = _UNSET):
                 payload = json.loads(
                     bytes(body),
                     parse_constant=_reject_json_constant,
+                    parse_float=_finite_json_float,
                     object_pairs_hook=_unique_json_object,
                 )
             except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError) as exc:

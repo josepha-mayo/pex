@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import deque
+from math import isfinite
 from typing import Any
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -14,6 +15,13 @@ MAX_HTTP_BODY_CHUNKS = 4096
 
 def _reject_nonfinite_json_constant(value: str) -> None:
     raise ValueError(f"non-finite JSON constant {value}")
+
+
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not isfinite(parsed):
+        raise ValueError(f"non-finite JSON number {value}")
+    return parsed
 
 
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -109,6 +117,7 @@ class RequestBodyLimitMiddleware:
                 json.loads(
                     raw_body.decode("utf-8"),
                     parse_constant=_reject_nonfinite_json_constant,
+                    parse_float=_finite_json_float,
                     object_pairs_hook=_unique_json_object,
                 )
             except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
