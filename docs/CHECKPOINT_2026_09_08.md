@@ -5,6 +5,22 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: aggregate admission for repeated workspace scans
+
+Every in-progress `SHELL`/`TOOL_CALL` with a required-file criterion could previously
+start a separate workspace snapshot. Each snapshot was bounded, but a burst had no
+aggregate ceiling. Optional prerequisite snapshots now use a per-session two-second
+cooldown, a global four-per-ten-second sliding window, and one in-flight slot. Events
+that exceed those limits do not queue or reuse stale evidence; their planner feature
+records the exact unavailable reason. Authoritative STOP verification and explicit MCP
+claim verification still obtain fresh snapshots outside this advisory throttle.
+
+The combined continuity, event-processing and observation-safety gate passes **79/79**
+with one platform skip and two subprocess cases deselected; scoped Ruff passes. This
+closes the known repeated-event scan multiplier. It does not preempt an individual OS
+call already blocked, prove native stability, or identify the reported freeze cause.
+PEX, workers and the native app remained closed.
+
 ## Latest offline slice: bounded, mutation-aware supervisor inventory
 
 The supervisor evidence snapshot still used `os.walk`; one hostile directory could force
@@ -16,8 +32,8 @@ inventory incomplete through `files_truncated` and a bounded `inventory_reason` 
 than presenting partial evidence as complete. Workspace/evidence/verification coverage
 passes **131/131** with five platform skips and Ruff passes.
 
-This cannot interrupt a single kernel/filesystem call that never returns, and repeated-
-event aggregate work remains under audit. No native app, worker or large suite ran.
+This cannot interrupt a single kernel/filesystem call that never returns. No native app,
+worker or large suite ran.
 
 ## Latest offline slice: event-driven ACP observation
 

@@ -2,13 +2,24 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: repeated in-progress `SHELL`/`TOOL_CALL` events can no longer multiply bounded
+workspace scans without an aggregate ceiling. Optional prerequisite inspection now
+admits at most one scan per session every two seconds and four scans globally per ten
+seconds, with only one optional scan in flight; a burst is not queued behind a blocked
+scan. Refusal is carried into planner features as explicit unavailable evidence. STOP
+verification and explicit MCP claim verification still take fresh authoritative
+snapshots and bypass this advisory throttle. The combined continuity/event/observation
+gate passes 79/79 with one platform skip and two subprocess cases deselected; Ruff is
+clean. This removes the known repeated-event multiplier, not the blocked-OS-call or
+native-freeze gates.
+
 Latest: supervisor workspace inventory no longer delegates to `os.walk`, which can build
 an unbounded directory-name list before PEX regains control. It now scans incrementally
 with 4,000-entry, 400-file and two-second cooperative caps, prunes links/junctions, checks
 directory mutation, and binds later file metadata to the exact scan-time identity/size/
 mtime. Incomplete scans are labeled with `files_truncated` plus `inventory_reason`.
 Workspace/evidence/verification coverage passes 131/131 with five platform skips and
-Ruff clean. Individual blocked OS calls and aggregate repeated-event work remain open.
+Ruff clean. Individual blocked OS calls remain open.
 
 Latest: attached ACP adapters (Kimi, Hermes and OMP) no longer rescan a quiet transport
 every 50ms. The stdio reader signals retained events and EOF/close; the adapter races

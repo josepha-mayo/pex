@@ -7,6 +7,7 @@ import json
 import logging
 import re
 import time
+from collections import deque
 from contextlib import nullcontext
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
@@ -186,6 +187,9 @@ DESKTOP_REFRESH_ADAPTERS = (
 )
 PET_TRANSIENT_SECONDS = 12.0
 PET_PUBLICATION_COALESCE_SECONDS = 0.25
+ADVISORY_WORKSPACE_SCAN_WINDOW_SECONDS = 10.0
+ADVISORY_WORKSPACE_SCAN_SESSION_MIN_INTERVAL_SECONDS = 2.0
+ADVISORY_WORKSPACE_SCANS_PER_WINDOW = 4
 _CONTEXT_ROUTING_METADATA_KEYS = {"active_files", "current_task", "task_phase"}
 _DURABLE_SESSION_METADATA_KEYS = {
     *_CONTEXT_ROUTING_METADATA_KEYS,
@@ -814,6 +818,10 @@ class Pipeline:
         self._handoff_mutation_lock = asyncio.Lock()
         self._session_locks_guard = asyncio.Lock()
         self._session_locks: dict[str, asyncio.Lock] = {}
+        self._advisory_workspace_scan_lock = asyncio.Lock()
+        self._advisory_workspace_scan_reservations: deque[tuple[float, str]] = deque()
+        self._advisory_workspace_scan_last_by_session: dict[str, float] = {}
+        self._monotonic = time.monotonic
         self._event_worker_id = f"{self.store.process_boot_id}:pipeline:{uuid4().hex}"
         self._presentation_tasks: set[asyncio.Task] = set()
         self._pet_snapshot_task: asyncio.Task[dict] | None = None
@@ -2248,6 +2256,56 @@ class Pipeline:
         await self.store.require_session_workspace_current(session)
         return result
 
+    def _reserve_advisory_workspace_scan(self, session_id: str) -> str | None:
+        """Admit bounded best-effort scans without weakening authoritative reads."""
+
+        now = self._monotonic()
+        cutoff = now - ADVISORY_WORKSPACE_SCAN_WINDOW_SECONDS
+        while (
+            self._advisory_workspace_scan_reservations
+            and self._advisory_workspace_scan_reservations[0][0] <= cutoff
+        ):
+            observed_at, observed_session_id = (
+                self._advisory_workspace_scan_reservations.popleft()
+            )
+            if (
+                self._advisory_workspace_scan_last_by_session.get(observed_session_id)
+                == observed_at
+            ):
+                self._advisory_workspace_scan_last_by_session.pop(observed_session_id, None)
+
+        previous = self._advisory_workspace_scan_last_by_session.get(session_id)
+        if (
+            previous is not None
+            and now - previous < ADVISORY_WORKSPACE_SCAN_SESSION_MIN_INTERVAL_SECONDS
+        ):
+            return "workspace_snapshot_session_cooldown"
+        if (
+            len(self._advisory_workspace_scan_reservations)
+            >= ADVISORY_WORKSPACE_SCANS_PER_WINDOW
+        ):
+            return "workspace_snapshot_aggregate_budget"
+
+        self._advisory_workspace_scan_reservations.append((now, session_id))
+        self._advisory_workspace_scan_last_by_session[session_id] = now
+        return None
+
+    async def _advisory_snapshot_for_session(
+        self, session: HarnessSession,
+    ) -> tuple[dict | None, str | None]:
+        """Run one optional scan or expose why current evidence was not gathered."""
+
+        # Do not queue a burst behind an already-running optional filesystem scan.
+        # STOP and explicit claim verification use _snapshot_for_session directly
+        # and therefore never inherit this advisory throttle.
+        if self._advisory_workspace_scan_lock.locked():
+            return None, "workspace_snapshot_busy"
+        refused = self._reserve_advisory_workspace_scan(session.id)
+        if refused is not None:
+            return None, refused
+        async with self._advisory_workspace_scan_lock:
+            return await self._snapshot_for_session(session), None
+
     async def _build_and_commit_event_plan(
         self,
         processing: dict,
@@ -2368,7 +2426,13 @@ class Pipeline:
         ):
             workspace: dict = {}
             try:
-                workspace = await self._snapshot_for_session(session)
+                advisory_workspace, unavailable_reason = (
+                    await self._advisory_snapshot_for_session(session)
+                )
+                if advisory_workspace is None:
+                    scores.features["prerequisite_evidence_unavailable"] = unavailable_reason
+                else:
+                    workspace = advisory_workspace
             except WorkspaceAuthorityError:
                 raise
             except Exception:

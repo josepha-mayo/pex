@@ -126,11 +126,15 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Advance newline-free Cursor records once they irreversibly exceed the record
   limit, persisting discard-until-newline state without parsing a suffix. Inbox/
   observer coverage passes 33/33 and Ruff; producer disk retention remains open.
+- [x] Bound aggregate optional workspace scans from repeated in-progress events: one
+  scan per session per two seconds, four globally per ten seconds and one in flight.
+  Excess evidence is explicit; STOP/claim verification stays fresh. Combined gate
+  passes 79/79 with one skip and two deselections; Ruff passes.
 - [ ] Resolve remaining observation lifetime limits: non-atomic directory enumeration,
-  blocked OS calls and aggregate repeated-event work. Do not claim a hard deadline.
+  and blocked OS calls. Do not claim a hard deadline.
   Incremental supervisor inventory now has entry/file/time caps plus directory and exact
-  file-identity mutation fences (131 passed/5 skipped); blocked OS calls and aggregate
-  repeated-event work keep this parent gate open.
+  file-identity mutation fences (131 passed/5 skipped); an already-blocked OS call keeps
+  this parent gate open.
 - [ ] Confirm a bounded native resource capture before reopening the app or large gates.
 
 - [x] Build and verify exact de83153 MSI/NSIS inventories.

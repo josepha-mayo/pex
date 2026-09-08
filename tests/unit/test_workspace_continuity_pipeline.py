@@ -6,7 +6,7 @@ and supervisor calls are spies; no native subprocess or provider is invoked.
 
 import asyncio
 import threading
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -17,13 +17,16 @@ from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings
 from pex_bridge.local_origin_config import load_local_origin_choice, save_local_origin_choice
 from pex_bridge.local_workspace import measure_local_directory
+from pex_bridge.mcp_auth import MCP_READ_SCOPE, MCP_VERIFY_CLAIM_SCOPE, MCPPrincipal
 from pex_bridge.pipeline import Pipeline
 from pex_bridge.store import Store
 from pex_bridge.workspace_binding import WorkspaceAuthorityError, WorkspaceBinding
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
-from pex_protocol.enums import Authority, EventType
+from pex_protocol.context import ClaimVerificationRequest
+from pex_protocol.enums import Authority, EventPhase, EventType
 from pex_protocol.goal import Goal
 from pex_protocol.project_identity import ProjectLocator, ProjectOrigin
+from pex_protocol.session import HarnessEvent
 from pex_protocol.supervisor import SupervisorResult
 from test_codex_subscription import _notification, _subscribed
 
@@ -759,6 +762,144 @@ async def test_snapshot_cancellation_settles_owned_read_before_return(
     finally:
         release.set()
         await asyncio.gather(operation, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_advisory_workspace_scans_have_per_session_and_aggregate_budgets(
+    bound_pipeline, monkeypatch,
+):
+    bound = bound_pipeline
+    clock = [100.0]
+    monkeypatch.setattr(bound.pipeline, "_monotonic", lambda: clock[0])
+
+    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
+        bound.adapter.session
+    )
+    assert snapshot == {"files": [], "git_diff": ""}
+    assert reason is None
+
+    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
+        bound.adapter.session
+    )
+    assert snapshot is None
+    assert reason == "workspace_snapshot_session_cooldown"
+
+    for elapsed in (2.0, 4.0, 6.0):
+        clock[0] = 100.0 + elapsed
+        snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
+            bound.adapter.session
+        )
+        assert snapshot == {"files": [], "git_diff": ""}
+        assert reason is None
+
+    clock[0] = 108.0
+    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
+        bound.adapter.session
+    )
+    assert snapshot is None
+    assert reason == "workspace_snapshot_aggregate_budget"
+    assert len(bound.snapshots) == 4
+
+    goal = await bound.store.get_goal(bound.adapter.session.goal_id)
+    assert goal is not None
+    goal.acceptance_criteria = ["dataset.parquet exists"]
+    goal.evidence_requirements = ["dataset.parquet"]
+    goal.updated_at = datetime.now(UTC)
+    await bound.store.upsert_goal(goal)
+    event = HarnessEvent(
+        event_id="workspace-budget-prerequisite-event",
+        ts=datetime.now(UTC),
+        harness_type=bound.adapter.session.harness_type,
+        session_id=bound.adapter.session.id,
+        project_id=bound.adapter.session.project_id,
+        goal_id=bound.adapter.session.goal_id,
+        event_type=EventType.SHELL,
+        phase=EventPhase.DURING,
+        command="python train.py",
+    )
+    await bound.pipeline.ingest_event(event, bound.adapter.session)
+    features = bound.supervisor_calls[-1].scores.features
+    assert features["prerequisite_evidence_unavailable"] == (
+        "workspace_snapshot_aggregate_budget"
+    )
+    assert "missing_prerequisites" not in features
+    assert len(bound.snapshots) == 4
+
+    now = datetime.now(UTC)
+    principal_record = await bound.store.issue_mcp_principal(
+        principal_id="mcp-workspace-budget-proof",
+        session_id=bound.adapter.session.id,
+        goal_id=bound.adapter.session.goal_id,
+        project_id=bound.adapter.session.project_id,
+        vendor_session_id=bound.adapter.session.vendor_session_id,
+        harness_type=bound.adapter.session.harness_type.value,
+        scopes=[MCP_READ_SCOPE, MCP_VERIFY_CLAIM_SCOPE],
+        token_digest="0" * 64,
+        issued_at=now - timedelta(seconds=1),
+        expires_at=now + timedelta(minutes=5),
+    )
+    principal = MCPPrincipal.from_store_record(principal_record, now=now)
+    claim_result = await bound.pipeline.verify_reported_claim(
+        bound.adapter.session,
+        principal=principal,
+        request=ClaimVerificationRequest(
+            idempotency_key="workspace-budget-claim-proof",
+            claim="The selected workspace remains available.",
+        ),
+    )
+    assert claim_result["status"] in {"uncertain", "verified"}
+    assert len(bound.snapshots) == 5
+
+    _, stop_processing = await _terminal_observation(bound)
+    assert stop_processing["state"] == "complete"
+    assert len(bound.snapshots) == 6
+
+    clock[0] = 110.0
+    snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
+        bound.adapter.session
+    )
+    assert snapshot == {"files": [], "git_diff": ""}
+    assert reason is None
+    assert len(bound.snapshots) == 7
+
+
+@pytest.mark.asyncio
+async def test_advisory_workspace_scan_burst_does_not_queue_behind_blocked_scan(
+    bound_pipeline, monkeypatch,
+):
+    bound = bound_pipeline
+    started, release = threading.Event(), threading.Event()
+
+    def held_snapshot(cwd, *, run_pytest=False):
+        assert cwd == bound.adapter.session.cwd
+        assert run_pytest is False
+        started.set()
+        if not release.wait(timeout=5):
+            raise AssertionError("test did not release the advisory snapshot")
+        return {"files": [], "git_diff": ""}
+
+    monkeypatch.setattr(pipeline_module, "snapshot", held_snapshot)
+    first = asyncio.create_task(
+        bound.pipeline._advisory_snapshot_for_session(bound.adapter.session)
+    )
+    try:
+        async def wait_for_start():
+            while not started.is_set():
+                await asyncio.sleep(0.01)
+
+        await asyncio.wait_for(wait_for_start(), timeout=5)
+        snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
+            bound.adapter.session
+        )
+        assert snapshot is None
+        assert reason == "workspace_snapshot_busy"
+        assert not first.done()
+    finally:
+        release.set()
+    assert await asyncio.wait_for(first, timeout=5) == (
+        {"files": [], "git_diff": ""},
+        None,
+    )
 
 
 @pytest.mark.asyncio

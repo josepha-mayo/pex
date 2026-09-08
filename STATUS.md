@@ -2,10 +2,16 @@
 
 ## Current — 8 September WAT
 
+Repeated in-progress events no longer multiply optional prerequisite filesystem scans
+without an aggregate ceiling. Admission is limited per session and globally, only one
+optional scan runs at once, and dropped evidence is explicit; STOP/requested claim
+verification remains fresh. The combined gate passes 79/79 with one skip and two
+deselections plus Ruff. Blocked OS calls and native stability remain open.
+
 Supervisor workspace inventory is now incremental and mutation-aware rather than using
 unbounded `os.walk` name collection. Entry/file/cooperative-time caps and exact directory/
 file fences make partial evidence explicit. Relevant tests pass 131/131 with five platform
-skips and Ruff clean; blocked OS calls and aggregate repeated-event work remain open.
+skips and Ruff clean; blocked OS calls remain open.
 
 Kimi/Hermes/OMP ACP observation now waits for stdio or local prompt/permission activity
 instead of scanning every 50ms. Focused gates pass 74/74 and 83/83 with Ruff clean. No

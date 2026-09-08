@@ -2,11 +2,18 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced aggregate repeated-event filesystem work to
+prerequisite checks on in-progress `SHELL`/`TOOL_CALL` events. Optional scans now have a
+two-second per-session cooldown, a four-per-ten-second global admission window and one
+in-flight slot. Throttled evidence is explicit; STOP and requested claim verification
+still take fresh snapshots. The combined gate passes 79/79 with one skip and two
+deselected subprocess cases; Ruff is clean. Blocked individual OS calls remain open.
+
 Changed-path addendum: parent replaced supervisor `os.walk` inventory with incremental
 scanning capped at 4,000 entries, 400 files and two cooperative seconds. Directory changes
 and scan-to-stat file swaps now make evidence explicitly incomplete; links/junctions are
 not traversed. Relevant coverage passes 131/131 with five platform skips and Ruff clean.
-Blocked OS calls and aggregate repeated-event work remain open.
+Blocked OS calls remain open.
 
 Changed-path addendum: parent traced the shared ACP pump's 50ms scan across Kimi, Hermes
 and OMP. Stdio event/EOF/close and adapter-local prompt/permission queues now wake a
