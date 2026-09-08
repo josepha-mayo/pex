@@ -8594,3 +8594,19 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - This proves a four-fifths reduction in scheduled idle list-RPC frequency by contract,
   not a measured CPU reduction. Native PEX remained closed; re-profile during a later
   bounded run before calling the freeze fixed.
+
+### 8 September event-first pet state slice
+
+- Desktop previously fetched `/v1/pet` every four seconds even while its authenticated
+  WebSocket was receiving initial and committed pet snapshots. The duplicate read stayed
+  serialized, but it was continuous avoidable bridge/database work in every visible shell.
+- The HTTP path is now a 30-second reconciliation. Authenticated pet frames immediately
+  update the view and mark canonical pet state fresh. A malformed frame or socket close
+  triggers an immediate coalesced HTTP refresh, so lowering the steady cadence does not
+  turn failure recovery into a 30-second wait.
+- The changed resource contract failed against the former four-second wiring, then passed.
+  Complete desktop tests passed **251/251**, TypeScript passed, and scoped diff checks passed.
+  The test process again emitted transient Vite port-24678 diagnostics; this is retained
+  as test-harness noise, not hidden.
+- The scheduled steady HTTP frequency is reduced by 86.7% by source contract. This remains
+  unmeasured in the native app and does not close the idle-freeze incident.

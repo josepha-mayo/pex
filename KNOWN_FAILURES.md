@@ -474,3 +474,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   seconds with immediate notification wakes preserved. This removes scheduled RPC frequency
   by contract but has not been live-profiled. The prior idle freeze remains unresolved until
   a bounded native run measures desktop, bridge, and App Server process CPU/memory together.
+- Desktop `/v1/pet` reconciliation now runs every 30 seconds rather than every four while
+  authenticated WebSocket snapshots carry current state; malformed frames and closure still
+  refresh immediately. This passed desktop source/tests but has not been observed in the
+  native app. The idle-freeze failure remains open pending bounded resource measurement.

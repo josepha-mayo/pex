@@ -137,6 +137,7 @@ import {
 
 const BRIDGE = "http://127.0.0.1:7420";
 const EVENT_CURSOR_STORAGE_KEY = "pex.event_cursor.v1";
+const PET_RECONCILIATION_INTERVAL_MS = 30_000;
 
 function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
   if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return "local";
@@ -613,7 +614,10 @@ export function App() {
     const refreshBackgroundPet = coalesceBackgroundRead<unknown>(() =>
       cancelled ? Promise.resolve() : refreshPet(controller.signal),
     );
-    const stopPolling = startSerialPolling(refreshBackgroundPet, 4000);
+    const stopPolling = startSerialPolling(
+      refreshBackgroundPet,
+      PET_RECONCILIATION_INTERVAL_MS,
+    );
     let socket: WebSocket | null = null;
     let retryTimer: number | null = null;
     let retryAttempt = 0;
@@ -662,6 +666,7 @@ export function App() {
             if (message.topic === "pet" && isRecord(message.payload) && !cancelled) {
               setPet(message.payload as PetSnapshot);
               setBridgeError(null);
+              markCanonical("pet", "fresh");
             } else if (message.topic === "intervention" && !cancelled) {
               void refreshBackgroundPet();
             } else if (
@@ -679,7 +684,9 @@ export function App() {
               }
             }
           } catch {
-            /* HTTP polling remains authoritative when a frame is malformed. */
+            // Recover this observation immediately; the normal HTTP path is a
+            // low-frequency reconciliation while authenticated frames are healthy.
+            if (!cancelled) void refreshBackgroundPet();
           }
         };
         currentSocket.onerror = () => currentSocket.close();
@@ -704,7 +711,7 @@ export function App() {
       if (retryTimer != null) window.clearTimeout(retryTimer);
       socket?.close();
     };
-  }, [bridgeAvailable, pageVisible, refreshPet]);
+  }, [bridgeAvailable, markCanonical, pageVisible, refreshPet]);
 
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || shell === "pet") return;

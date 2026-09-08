@@ -111,7 +111,7 @@ test("hidden webviews release background polling and event sockets", async () =>
   );
   assert.match(
     app,
-    /if \(!bridgeAvailable \|\| !pageVisible\) return;[\s\S]*?const stopPolling = startSerialPolling\(refreshBackgroundPet, 4000\);[\s\S]*?socket\?\.close\(\);[\s\S]*?\}, \[bridgeAvailable, pageVisible, refreshPet\]\);/u,
+    /const PET_RECONCILIATION_INTERVAL_MS = 30_000;[\s\S]*?if \(!bridgeAvailable \|\| !pageVisible\) return;[\s\S]*?const stopPolling = startSerialPolling\(\s*refreshBackgroundPet,\s*PET_RECONCILIATION_INTERVAL_MS,?\s*\);[\s\S]*?message\.topic === "pet"[\s\S]*?markCanonical\("pet", "fresh"\);[\s\S]*?catch \{[\s\S]*?void refreshBackgroundPet\(\);[\s\S]*?socket\?\.close\(\);[\s\S]*?\}, \[bridgeAvailable, markCanonical, pageVisible, refreshPet\]\);/u,
   );
   const visibilityStops = app.match(/if \([^\n]*!pageVisible[^\n]*\) return;/gu) ?? [];
   assert.ok(visibilityStops.length >= 7, "every recurring state poll must stop while hidden");

@@ -1928,3 +1928,9 @@ Its list refresh is now every five seconds while App Server events/approvals sti
 immediately. The cadence regression failed before the implementation and the three-file
 Codex/discovery gate passed 116/116 afterward. This is verified scheduling behavior, not a
 measured CPU improvement; PEX stayed closed and the machine-freeze report remains open.
+
+Desktop pet state is now event-first as well: authenticated pet frames mark canonical state
+fresh, parse failure or socket closure triggers immediate coalesced HTTP recovery, and the
+steady reconciliation interval is 30 seconds rather than four. The updated negative contract,
+all 251 desktop tests, and TypeScript pass. This establishes scheduling semantics and an
+86.7% reduction in scheduled pet reads, not measured native CPU or freeze resolution.

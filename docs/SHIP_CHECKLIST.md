@@ -596,3 +596,7 @@ Do the next safe, highest-impact item immediately. If a required external choice
   preserving immediate event/approval wakes; negative contract and 116-test adapter gate pass.
 - [ ] Measure native bridge/desktop CPU after this backoff; source cadence is not proof that
   the reported whole-PC freeze is fixed.
+- [x] Make pet state event-first: authenticated WebSocket snapshots establish freshness,
+  malformed/closed sockets refresh immediately, and steady HTTP reconciliation is 30 seconds
+  instead of four. Full desktop 251/251 and TypeScript pass.
+- [ ] Confirm the lower pet-read cadence and error recovery in a bounded native profile.

@@ -1200,3 +1200,13 @@ all desktop code and is not current native visual evidence.
 
 The three-file gate passed 116/116 in 30.86 seconds and Ruff was clean. This does not
 establish measured runtime CPU or complete review of Codex adapter behavior.
+
+## 8 September desktop pet transport focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/App.tsx` pet transport effect | REVIEWED / REPAIRED | Authenticated snapshots now establish canonical freshness; malformed/closed sockets recover immediately; steady HTTP reconciliation is 30 seconds. |
+| `apps/desktop/src/releasePet.test.ts` lifecycle/resource contract | REVIEWED / EXTENDED | Updated contract failed on the former four-second loop and passed after event-first wiring. |
+
+Complete desktop tests passed 251/251 and TypeScript passed. Native CPU and failure recovery
+remain unmeasured after this source change.

@@ -1457,3 +1457,12 @@ list cadence is now a named, tested 5-second interval. The negative cadence test
 before implementation; the post-change Codex/discovery gate passed 116/116 with Ruff clean.
 This is a source-level four-fifths reduction in scheduled list RPCs, not live CPU proof and
 not a claim that the reported freeze is resolved. PEX remained closed.
+
+## Event-first desktop pet state
+
+Visible desktop shells no longer duplicate authenticated pet WebSocket delivery with a
+four-second `/v1/pet` loop. The loop is a 30-second reconciliation; valid pet frames mark
+canonical state fresh, while malformed frames and socket closure request immediate coalesced
+HTTP recovery. The old wiring failed the updated contract. All 251 desktop tests and
+TypeScript passed after the repair. This is an 86.7% source-level reduction in scheduled
+steady pet reads, not native CPU evidence; the freeze gate stays open.
