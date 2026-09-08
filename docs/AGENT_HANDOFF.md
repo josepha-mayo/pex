@@ -2,6 +2,14 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: durable intervention-audit projection and human action/coverage integrity reads
+now use strict Store JSON. Duplicate keys could previously collapse into the exact
+expected record and evade equality checks. Production immutability triggers blocked the
+first test mutations; isolated tests removed only their own triggers to emulate offline
+corruption. Ambiguous audit rows are not projected and ambiguous coverage is not counted.
+Audit/attention coverage passes 25/25 and Ruff is clean. Other Store reads and whole-
+product audit remain open; PEX stayed closed.
+
 Latest: lifecycle-resource and human permission/lifecycle resolution getters now decode
 durable rows with the Store's strict JSON authority instead of Python's permissive
 decoder. Normal SQL mutation was first blocked by existing immutable-binding triggers;

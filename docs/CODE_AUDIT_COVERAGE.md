@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent followed durable intervention-audit rows into JSONL
+projection and human action/coverage rows into attention metrics. Permissive parsing let
+duplicate keys collapse to an exact expected dictionary. Production immutable triggers
+blocked normal SQL mutation; isolated tests removed their test triggers to simulate
+offline corruption. Strict decoding now prevents projection/counting. Audit/attention
+coverage passes 25/25 and Ruff is clean. Remaining Store reads stay under audit.
+
 Changed-path addendum: parent traced lifecycle-resource and permission/lifecycle
 resolution getters into cleanup and human-decision callers. These four reads bypassed the
 strict Store decoder. Existing binding triggers blocked ordinary mutation; isolated tests

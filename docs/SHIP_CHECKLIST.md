@@ -99,6 +99,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Use strict Store decoding for lifecycle resources and human permission/lifecycle
   resolution receipts; offline-corruption negatives plus affected files pass 51/51 with
   one platform skip and Ruff. Remaining Store reads are still audited separately.
+- [x] Strictly decode durable intervention-audit and human action/coverage rows so
+  duplicate keys cannot evade equality checks or suppress truth. Audit/attention tests
+  pass 25/25 and Ruff; remaining Store reads are still audited separately.
 - [x] Bound local notification receipt replay before parsing and reject ambiguous JSON
   idempotency rows so corruption cannot suppress a human alert. Channel tests pass 8/8
   and Ruff; cross-process append/rotation remains outside this slice.

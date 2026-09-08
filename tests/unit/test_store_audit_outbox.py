@@ -98,6 +98,38 @@ async def test_store_connections_use_full_sqlite_synchronization(tmp_path) -> No
 
 
 @pytest.mark.asyncio
+async def test_corrupt_durable_audit_json_is_not_projected(tmp_path):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    await _bind_audit_session(store)
+    try:
+        await store.add_intervention(_intervention("int_corrupt_durable_audit"))
+        store.audit_path.unlink()
+        row = await (
+            await store.db.execute(
+                "SELECT id, json FROM intervention_audit WHERE intervention_id = ?",
+                ("int_corrupt_durable_audit",),
+            )
+        ).fetchone()
+        corrupt = str(row["json"]).replace(
+            '"record_type":"created"',
+            '"record_type":"forged","record_type":"created"',
+            1,
+        )
+        await store.db.execute(
+            "UPDATE intervention_audit SET json = ? WHERE id = ?",
+            (corrupt, row["id"]),
+        )
+        await store.db.commit()
+
+        with pytest.raises(ValueError, match="duplicate JSON"):
+            await store._sync_intervention_audit()
+        assert not store.audit_path.exists()
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_failed_jsonl_projection_remains_durable_and_is_repaired(tmp_path, monkeypatch):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()

@@ -5,6 +5,20 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: strict audit and human-attention truth
+
+Intervention-audit projection reparsed durable SQLite JSON permissively before appending
+it to the audit ledger, and attention metrics did the same for human action/coverage
+receipts. Duplicate keys could collapse into the exact expected record, defeating later
+dictionary equality. These readers now use the Store's duplicate/non-finite/overflow-
+rejecting decoder. Existing production immutability triggers blocked the first attempted
+test mutations; the final isolated regressions remove only their test triggers to emulate
+offline corruption. Ambiguous audit rows are not projected and ambiguous coverage is not
+counted. Audit/attention coverage passes **25/25** and scoped Ruff passes.
+
+This is persistence-integrity defense, not whole-Store review, live human workflow or
+native proof. No native app, model, worker or external action ran.
+
 ## Latest offline slice: strict durable action/resource reads
 
 Four public Store getters for lifecycle resources and human permission/lifecycle

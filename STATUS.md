@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Durable intervention-audit projection and human action/coverage integrity checks now use
+strict Store JSON, preventing duplicate keys from collapsing into trusted dictionaries.
+Offline-corruption regressions pass in 25 audit/attention tests with Ruff clean. Whole-
+Store and live human-workflow review remain open.
+
 Lifecycle-resource and permission/lifecycle resolution getters now reject duplicate or
 overflowed durable JSON before cleanup/decision reuse. Existing triggers blocked ordinary
 tampering; offline-corruption simulations pass within 51 affected tests, one platform

@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Durable intervention-audit and human action/coverage reads now reject ambiguous Store
+  JSON before projection or counting; 25 audit/attention tests and Ruff pass. Production
+  immutable triggers also blocked ordinary mutation. Other Store paths remain under audit.
 - Lifecycle resource and permission/lifecycle resolution getters now use strict Store
   JSON. Binding triggers blocked normal mutation and offline-corruption simulations prove
   fail-closed reads; 51 affected tests pass, one platform case skips, and Ruff is clean.

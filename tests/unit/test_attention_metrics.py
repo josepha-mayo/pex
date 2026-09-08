@@ -695,6 +695,34 @@ async def test_attention_metrics_fail_closed_on_malformed_human_action_receipt(t
 
 
 @pytest.mark.asyncio
+async def test_attention_metrics_reject_duplicate_coverage_keys(tmp_path):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        row = await (
+            await store.db.execute(
+                "SELECT action_kind, json FROM human_session_control_coverage LIMIT 1"
+            )
+        ).fetchone()
+        corrupt = str(row["json"]).replace(
+            '"schema":"pex.human-action-coverage.v1"',
+            '"schema":"forged","schema":"pex.human-action-coverage.v1"',
+            1,
+        )
+        await store.db.execute("DROP TRIGGER trg_human_session_control_coverage_immutable")
+        await store.db.execute(
+            "UPDATE human_session_control_coverage SET json = ? WHERE action_kind = ?",
+            (corrupt, row["action_kind"]),
+        )
+        await store.db.commit()
+
+        with pytest.raises(ValueError, match="duplicate JSON"):
+            await store.attention_metrics()
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_attention_metrics_reject_self_consistent_future_control_receipt(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()

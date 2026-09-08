@@ -25263,7 +25263,7 @@ class Store:
                         projected.add((audit_id, _audit_projection_payload(value)))
             missing: list[tuple[int, str]] = []
             for audit_id, raw in rows:
-                value = json.loads(raw)
+                value = _strict_json_loads(raw)
                 if not isinstance(value, dict):  # pragma: no cover - DB invariant
                     raise RuntimeError("stored intervention audit is not an object")
                 if (audit_id, _audit_projection_payload(value)) not in projected:
@@ -25283,7 +25283,7 @@ class Store:
                     # append-only artifact, then resume with valid JSONL records.
                     handle.write(b"\n")
                 for audit_id, raw in missing:
-                    value = json.loads(raw)
+                    value = _strict_json_loads(raw)
                     if not isinstance(value, dict):  # pragma: no cover - DB invariant
                         raise RuntimeError("stored intervention audit is not an object")
                     value["audit_id"] = audit_id
@@ -25425,7 +25425,7 @@ class Store:
                 )
                 for row in await control_action_cursor.fetchall():
                     try:
-                        record = json.loads(str(row["json"]))
+                        record = _strict_json_loads(str(row["json"]))
                     except (TypeError, ValueError) as exc:
                         raise RuntimeError("human action receipt is corrupt") from exc
                     before_hash = record.get("before_session_sha256")
@@ -25809,7 +25809,7 @@ class Store:
                 )
                 action_coverage: list[dict[str, Any]] = []
                 for row in await action_coverage_cursor.fetchall():
-                    record = json.loads(str(row["json"]))
+                    record = _strict_json_loads(str(row["json"]))
                     expected = {
                         "schema": "pex.human-action-coverage.v1",
                         "action_kind": str(row["action_kind"]),
