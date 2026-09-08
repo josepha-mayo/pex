@@ -2,6 +2,19 @@
 
 ## Current — 8 September WAT
 
+Latest pushed HEAD is `e591bd3`. Store connections now explicitly cap retained SQLite
+WAL allocation at 16 MiB after successful checkpoints and retain the 1,000-page automatic
+checkpoint threshold. This addresses a measured 237,406,792-byte retained contest WAL
+whose current index held only 2,195 live frames; it does not establish the cause or repair
+of the reported native freeze. Related backend gates pass 11/11 and 94/94 with Ruff.
+
+The offline Strands/AgentCore implementation gate passes 184/184. Read-only deployment
+preflight still says the machine cannot deploy or invoke AgentCore because AWS credentials
+and required CLIs/runtime artifacts are absent and Docker's engine is stopped; no cloud or
+paid action ran. Supervisor routing config now rejects exponent-overflow JSON before
+schema validation (64 passed, one Windows-only skip, Ruff clean). Static pet validation
+passes with exactly eight built-ins; native playback/transparency remains open.
+
 Production sidecar builds now refuse a non-clean Git worktree before PyInstaller, so an
 unreviewed concurrent source edit cannot silently enter a package and be caught only by
 later verification. The real release command failed fast against the protected

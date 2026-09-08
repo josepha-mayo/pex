@@ -2,6 +2,22 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: read-only contest-profile inspection found a 237,406,792-byte
+physical WAL but only 2,195 current indexed frames, identifying retained allocation after
+checkpoint cycles rather than an equally large current logical backlog. Store connections
+now explicitly set `wal_autocheckpoint=1000` and `journal_size_limit=16777216`.
+Bootstrap/audit coverage passes 11/11 and event-processing/pipeline/workspace-recovery
+coverage passes 94/94 with Ruff. No user database was mutated; native causality remains
+unknown. Commit `bdf257f` is pushed.
+
+Changed-path addendum: the full offline AgentCore/Strands client, pipeline, runtime and
+supervisor integration selection passes 184/184. Read-only deployment preflight remains
+NO-GO due to inactive AWS credentials, absent AgentCore/CDK CLIs, stopped Docker engine,
+and missing image/runtime ARN. The saved supervisor-choice decoder now also rejects
+exponent-overflow floats before schema validation; configuration/settings coverage passes
+64 with one Windows-only skip and Ruff. Commit `e591bd3` is pushed. Static pet validation
+passes exactly eight built-ins; this is not native visual/playback proof.
+
 Changed-path addendum: parent found production packaging forced a clean PyInstaller
 analysis but did not fail on dirty Git state before building the three helpers. Release
 mode now requires empty complete porcelain status before PyInstaller; development mode

@@ -2,6 +2,31 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest pushed source is `e591bd3` on `origin/main`. Commit `bdf257f` bounds retained
+SQLite WAL allocation: every Store connection applies `wal_autocheckpoint=1000` and a
+16 MiB `journal_size_limit`. This followed read-only inspection of the contest profile,
+whose WAL file was 237,406,792 bytes while the current shared-memory index reported only
+2,195 live frames. Bootstrap/audit coverage passes 11/11; event-processing, pipeline and
+workspace-recovery coverage passes 94/94; Ruff is clean. No user database was modified
+or checkpointed, and this is not native freeze proof.
+
+The offline Strands/AgentCore gate now passes **184/184** across client, pipeline,
+runtime, Strands runtime and integration tests. Read-only AgentCore preflight reports the
+source/docker contract is present but the current machine is not deployable or invokable:
+AWS credentials are inactive; the AgentCore and CDK CLIs are absent; Docker is installed
+but its engine is stopped; no ARM64 image or runtime ARN exists. No install, daemon start,
+cloud resource, provider call or paid action occurred. Commit `e591bd3` also makes the
+saved supervisor-choice decoder reject exponent-overflow JSON before schema validation;
+its settings/config gate passes 64 with one Windows-only skip and Ruff clean.
+
+`npm run validate:pets` passes and names exactly eight built-ins: `pex`, `ledger`,
+`mesh`, `nudge`, `drift`, `quiet`, `ember`, and `von`. This does not replace normal-size
+native playback/transparency review. Keep PEX closed until the user authorizes a fresh
+bounded post-freeze native run. The only dirty path is the protected concurrent
+`services/supervisor/src/pex_supervisor/loop.py`; do not edit, stage, restore or format it.
+Its SHA-256 remains
+`DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`.
+
 Latest: the Tauri production build invoked a forced-clean PyInstaller sidecar rebuild,
 but did not require a clean Git worktree before compilation. It could therefore package
 an unreviewed concurrent source edit and discover the dirty state only during later

@@ -5,6 +5,31 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: bound retained SQLite WAL allocation and recheck cloud path
+
+The contest profile retained a **237,406,792-byte** WAL file even though its current
+WAL index described only 2,195 live frames (about 8.6 MiB). The gap was retained file
+allocation after checkpoints, not 226 MiB of current logical changes. Every Store
+connection now sets SQLite's 1,000-page automatic checkpoint and a 16 MiB journal-size
+limit explicitly. This bounds retained allocation after successful checkpoints without
+rewriting or checkpointing the user's existing databases during this audit. Bootstrap/
+audit coverage passes 11/11; event-processing, pipeline and workspace-recovery coverage
+passes 94/94; Ruff is clean. Commit `bdf257f` is pushed. Native resource behavior and
+the reported whole-PC freeze remain unproven.
+
+The complete offline Strands/AgentCore selection, request, response, pipeline, runtime
+and supervisor-integration gate passes **184/184**. The read-only deployment preflight
+still reports no active AWS credentials, no AgentCore/CDK CLI, no running Docker engine,
+no ARM64 image and no runtime ARN; therefore deployed/invoked AgentCore proof remains
+open and no cloud resource or paid call was attempted. Saved supervisor configuration
+also now rejects exponent-overflow JSON before schema validation; settings/configuration
+coverage passes 64 with one Windows-only skip and Ruff clean. Commit `e591bd3` is pushed.
+
+The static packaged-pet validator passes with exactly these eight built-ins: `pex`,
+`ledger`, `mesh`, `nudge`, `drift`, `quiet`, `ember`, and `von`. This is structural
+evidence only; normal-size native playback and transparency remain open while PEX stays
+closed after the freeze report.
+
 ## Latest offline slice: refuse dirty production sidecar builds
 
 Tauri production packaging always requested a fresh PyInstaller analysis, but the

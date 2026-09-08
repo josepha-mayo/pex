@@ -60,7 +60,10 @@ drop requirements or declare an unverified product ready.
   and Retry both timed out. Eager SDK imports were deferred; local source timing
   improved. The launcher now pins the standard desktop database instead of inheriting
   an ambient benchmark profile, and multiple idle polling/fanout paths are repaired in
-  source. These changes do not establish native stability. Rebuilt bounded native
+  source. A measured 237,406,792-byte retained contest WAL had only 2,195 live frames;
+  source now applies a 1,000-page auto-checkpoint and 16 MiB retained journal limit on
+  every Store connection (`bdf257f`, 11/11 plus 94/94 tests). No user DB was changed.
+  These changes do not establish native stability. Rebuilt bounded native
   verification remains open and needs fresh post-freeze confirmation. Respect the
   shared PC.
 
@@ -71,7 +74,8 @@ drop requirements or declare an unverified product ready.
   evidence, and high-detail static review pass for all eight; the earlier Drift frame
   concern did not justify regeneration after exact-cell review. Compact message
   dismissal and pet hiding remain distinct in source contracts. No sprite edit or
-  native playback approval follows.
+  native playback approval follows. The current static validator was rerun successfully
+  and names exactly `pex`, `ledger`, `mesh`, `nudge`, `drift`, `quiet`, `ember`, `von`.
   Acceptance: goal, connection, BYOK and supervisor setup are understandable;
   each pet animates without an opaque background; dismissing a message and
   hiding/restoring the pet are distinct and persist correctly after restart.
@@ -86,7 +90,10 @@ drop requirements or declare an unverified product ready.
   prepared Q08. User approved bounded live checks on 7 September AFTER clean
   build/tests pass and free-provider configuration is verified. No paid/AWS work.
   AgentCore remains a spec target under the no-card-charge boundary, not an
-  excuse to deploy without verified coverage. No mock is live integration proof.
+  excuse to deploy without verified coverage. Its complete offline client/pipeline/
+  runtime/Strands integration gate passes 184/184. Read-only preflight still finds no
+  active AWS credentials, required CLIs, running Docker engine, image or runtime ARN,
+  so deployed proof remains open. No mock is live integration proof.
 
 ### Day 3 — freeze, demonstrate, review submission
 
@@ -101,7 +108,8 @@ drop requirements or declare an unverified product ready.
   compact dismissal and trajectory updates, so G stays open. Include frontend/Rust,
   package integrity and installed/fresh-profile smoke after final code changes.
   Current offline desktop coverage is 259/259, Rust is 18/18, and the production
-  frontend build succeeds. Production sidecar builds now refuse dirty source before
+  frontend build succeeds. The latest settings/config gate passes 64 with one Windows-
+  only skip, and the Strands/AgentCore gate passes 184/184. Production sidecar builds now refuse dirty source before
   PyInstaller. Full current Python, rebuilt sidecars/installers, and native smoke stay
   open; the protected concurrent `loop.py` edit intentionally keeps Git non-clean.
 - [ ] **H. Finish honest benchmark and code-audit closure.**

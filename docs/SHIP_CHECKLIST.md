@@ -6,6 +6,18 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.
+- [x] Bound retained SQLite WAL allocation after checkpoints. The contest profile had a
+  237,406,792-byte physical WAL but only 2,195 live frames; connections now apply a
+  1,000-page auto-checkpoint and 16 MiB journal-size limit. Related gates pass 11/11 and
+  94/94 with Ruff. No user database was altered and native freeze proof remains open.
+- [x] Re-run the complete offline Strands/AgentCore client, pipeline, runtime and
+  integration gate: 184/184 pass. Deployment preflight is still honestly NO-GO because
+  AWS credentials/tooling/runtime evidence is absent; no cloud or paid action ran.
+- [x] Reject exponent-overflow JSON in persisted supervisor routing before schema
+  validation. Configuration/settings coverage passes 64 with one Windows-only skip and
+  Ruff; commit `e591bd3` is pushed.
+- [x] Re-run the static pet validator: exactly eight built-ins pass (`pex`, `ledger`,
+  `mesh`, `nudge`, `drift`, `quiet`, `ember`, `von`). Native playback remains open.
 - [x] Refuse production sidecar builds before PyInstaller when any staged, modified, or
   untracked path exists. The actual command failed fast on the protected concurrent edit
   without rewriting the helpers; release tests pass 12/12, desktop passes 259/259, and
