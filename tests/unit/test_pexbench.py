@@ -1854,6 +1854,7 @@ def _complete_run(four, run_id: str, arms=None) -> None:
                 "prepared_before_worker": True,
                 "prompt_sha256": prompt_sha256,
                 "seed_manifest_sha256": seed_manifest_sha256,
+                "source_repo_commit": _digest("commit"),
                 "task_package_sha256": four.runner.task_package_sha256(),
                 "benchmark_sha256": four.runner.benchmark_sha256(),
                 "nonce": _digest(f"nonce:{arm}:{task}")[:32],
@@ -2271,6 +2272,37 @@ def test_freeze_recomputes_snapshot_and_seed_receipt_provenance(tmp_path, monkey
     blockers = four.freeze_blockers(run_id="tampered")
     assert any("final workspace fingerprint" in blocker for blocker in blockers)
     assert any("seed receipt fingerprint" in blocker for blocker in blockers)
+
+
+def test_freeze_receipt_must_bind_the_row_source_commit(tmp_path, monkeypatch):
+    four = _four_arm()
+    results = tmp_path / "results"
+    monkeypatch.setattr(four.runner, "RESULTS", results)
+    _complete_run(four, "commit_receipt")
+    result_path = results / "commit_receipt.jsonl"
+    row = next(
+        record
+        for record in four.runner.read_result_records(result_path)
+        if record["arm"] == "codex"
+    )
+    receipt_path = Path(row["isolation_proof"]["receipt_path"])
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt["source_repo_commit"] = _digest("different-commit")
+    receipt_path.write_text(
+        json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+    row["isolation_proof"]["receipt_sha256"] = hashlib.sha256(
+        receipt_path.read_bytes()
+    ).hexdigest()
+
+    blockers = four._provenance_blockers(
+        result_path,
+        row,
+        str(row["arm"]),
+        str(row["task"]),
+    )
+    assert any("does not bind this exact row" in blocker for blocker in blockers)
 
 
 def test_freeze_refuses_linked_raw_log_evidence(tmp_path, monkeypatch):

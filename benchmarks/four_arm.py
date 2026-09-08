@@ -445,6 +445,7 @@ def _provenance_blockers(
             "prepared_before_worker": True,
             "prompt_sha256": row.get("prompt_sha256"),
             "seed_manifest_sha256": row.get("seed_manifest_sha256"),
+            "source_repo_commit": row.get("repo_commit"),
             "task_package_sha256": row.get("task_package_sha256"),
             "benchmark_sha256": row.get("benchmark_sha256"),
             "workspace": row.get("cwd"),

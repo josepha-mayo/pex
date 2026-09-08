@@ -9017,10 +9017,14 @@ The dirty bit is expected because the protected operator-owned file below is ret
   `measurement_availability.repo_commit=true`; `repo_revision` remains the independent canonical
   byte fingerprint. Baseline and treatment therefore bind both identical bytes and an identical
   deterministic source revision.
+- Post-run freeze reconciliation also compares `source_repo_commit` from the external receipt
+  to the chained row's `repo_commit`. A focused negative rewrites only that receipt field, updates
+  the copied receipt hash to bypass the generic fingerprint check, and proves the semantic row
+  binding still rejects it. This closes a second-review omission found after the first push.
 - Added explicit tests prove (1) paired baseline/treatment seeds for the same task create the
   same commit and same seed hash, and (2) replacing HEAD with another valid commit is rejected.
-  Scoped Ruff passed. The exact final benchmark/unit safety gate passed **151/151 in
-  228.71 seconds**.
+  Scoped Ruff passed. After the freeze-time receipt-binding review, the exact final
+  benchmark/unit safety gate passed **152/152 in 237.40 seconds**.
   One earlier 147/148 run is not a product failure: `four_arm.py` was patched for Ruff while that
   process was still computing source hashes, so the run correctly detected a mid-run controller
   fingerprint change. The stable rerun after edits passed completely.

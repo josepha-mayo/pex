@@ -10,8 +10,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   are required. AgentCore is encouraged, not required; Strands is required.
 - [x] Verify the public GitHub repository, MIT license, README, and architecture PNG resolve.
 - [x] Bind every newly prepared benchmark workspace to a deterministic Git root commit,
-  retain it in the external seed receipt, reverify it in HEAD history before scoring, and emit it in the
-  immutable row. Tampered-HEAD and paired-repeatability contracts pass. This removes only
+  retain it in the external seed receipt, reverify it in HEAD history before scoring, emit it in the
+  immutable row, and compare receipt-to-row again at freeze. Tampered-HEAD, receipt-tamper,
+  descendant-commit, and paired-repeatability contracts pass. This removes only
   the source-revision-capture blocker; the benchmark remains unfrozen and no live arm ran.
 
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
