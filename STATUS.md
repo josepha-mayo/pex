@@ -12,6 +12,9 @@ The next offline slice removes worker-snapshot-driven goal GET buildup, aborts
 superseded goal reads, and refreshes loading supervisor status without overwriting
 form inputs or adopting changed revisions. 207 focused desktop tests and TypeScript
 pass; bounded independent review found no actionable issue. No native relaunch.
+Discovery probes now also have a complete-response deadline; 18 targeted backend
+tests pass, including slow-progress, cleanup and cancellation cases. Freeze cause
+and native stability remain unverified.
 
 See [the detailed checkpoint](docs/CHECKPOINT_2026_09_08.md). Exact de83153 installers
 are verified. Native testing paused on Escape; PEX was already absent when the

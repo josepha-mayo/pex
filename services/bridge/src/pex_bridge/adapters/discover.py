@@ -97,19 +97,24 @@ async def probe_local_harnesses(timeout: float = 0.35) -> list[dict]:
     # Process enumeration can take seconds on Windows. It must never prevent
     # the bridge from answering its desktop owner's identity challenge.
     items: list[dict] = list(await asyncio.to_thread(list_desktop_apps))
-    async with httpx.AsyncClient(timeout=timeout) as client:
+    async with httpx.AsyncClient(
+        timeout=timeout, trust_env=False, follow_redirects=False
+    ) as client:
         for name, url, contract in PROBES:
             if _has(items, name, "http"):
                 continue
             try:
-                async with client.stream("GET", url) as response:
-                    if not 200 <= response.status_code < 300:
-                        continue
-                    body = bytearray()
-                    async for chunk in response.aiter_bytes():
-                        body.extend(chunk)
-                        if len(body) > MAX_DISCOVERY_RESPONSE_BYTES:
-                            raise RuntimeError("discovery response exceeded the safety bound")
+                # HTTPX's read timeout bounds each wait, not total response time.
+                # A trickling local peer must not retain a background probe forever.
+                async with asyncio.timeout(timeout):
+                    async with client.stream("GET", url) as response:
+                        if not 200 <= response.status_code < 300:
+                            continue
+                        body = bytearray()
+                        async for chunk in response.aiter_bytes():
+                            if len(body) + len(chunk) > MAX_DISCOVERY_RESPONSE_BYTES:
+                                raise RuntimeError("discovery response exceeded the safety bound")
+                            body.extend(chunk)
                 payload = strict_json_loads(bytes(body))
             except Exception:
                 continue

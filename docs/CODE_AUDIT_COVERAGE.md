@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: `tests/unit/test_discovery_budget.py` (nine in-memory cases).
+Parent read discovery.py and reviewed the complete-response timeout, explicit
+loopback proxy/redirect policy and pre-append byte bound. The new test file was
+reviewed in full. Four negatives on prior code and 18 targeted positives are
+recorded in the checkpoint. No live process enumeration, sockets or model calls
+were made by these fixtures. This does not grant native stability or full adapter
+coverage; process enumeration/executable resolution are outside the new HTTP budget.
+
 Follow-up changed-path review covers goal polling in App.tsx, cancellation in
 readBudget.ts, loading-only supervisor status and its revision/sequence helper in
 supervisorDraft.ts, and both focused test files. Two goal negatives and one loading

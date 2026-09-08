@@ -65,6 +65,8 @@ guidance negative failed before the presentation repair; scoped positives pass.
 
 ### Follow-up offline slice: goal polling and completed setup status
 
+Pushed as `7fd37570013bbd3bf7be73e59de41aad335ce3eb`.
+
 Another source-level buildup path was found: the goal decisions/completion effect
 depended on the entire sessions array. Each worker snapshot restarted both GETs;
 cleanup ignored their results but did not cancel them. It now polls serially every
@@ -97,9 +99,34 @@ actionable issue in goal cancellation, the final keyed atlas cache, or loading-o
 supervisor refresh. Source/wiring checks are not rendered or native UI evidence.
 The protected operator loop.py hash remains unchanged; do not stage that file.
 
-Next: push the follow-up slice, then continue bounded offline audit. Native resource
-verification needs renewed operator confirmation; the previous question remains
-unanswered. Proposed next native check, **not yet approved or run**:
+### Follow-up offline slice: discovery response deadline
+
+Discovery limited individual HTTP waits and response size, but not the complete
+response lifetime. A peer could keep sending small chunks without ever finishing.
+The repair wraps each probe's headers/body/stream cleanup in `asyncio.timeout`,
+using the existing configured timeout (default 350 ms, validated maximum five
+seconds). The next peer is still probed after timeout. Loopback probes now explicitly
+disable environment proxies and redirects; malformed and oversized responses remain
+rejected, with size checked before appending a chunk to the accumulated body.
+This is not a deadline on the complete discovery function: desktop enumeration and
+executable resolution retain their existing separate behavior.
+
+Three initial negatives failed on the previous source (stalled headers, stalled
+body, and missing explicit proxy policy). A fourth test sends continuous small
+chunks; it failed when the committed pre-fix module was loaded only into a child
+test process, then passed on the repaired source. No live socket/worker was used,
+and production files were not reverted for that negative. Final targeted command:
+`.venv/Scripts/python.exe -m pytest -q tests/unit/test_discovery_budget.py tests/unit/test_adapter_deep_audit.py tests/unit/test_existing_sessions.py tests/unit/test_fleet_pets_codex.py -k 'discovery or discovered or probe_local' --tb=short`.
+Result: **18 passed / 125 deselected, 1.59 seconds**. Ruff and changed-path diff check
+pass. The nine new tests include stream closure, caller cancellation, continuing to
+a healthy peer, valid health, malformed/oversized bodies and continuous progress.
+Parent reviewed this small backend slice; no extra subagent was used. These tests
+do not establish the cause of the whole-PC freeze or prove native idle stability.
+
+Next: continue bounded offline audit; the main process/read lifetime paths still
+need broader coverage. Native resource verification needs renewed operator
+confirmation; the previous question remains unanswered. Proposed next native check,
+**not yet approved or run**:
 
 1. Arrange a time when the operator is not using this PC. Verify exact source and
    owned process identities; preserve other agents, apps and model servers.

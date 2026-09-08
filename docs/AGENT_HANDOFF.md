@@ -14,6 +14,9 @@ poll aborts on scope change. Loading supervisor status now refreshes without
 overwriting unsaved settings or accepting a different revision. 207 focused desktop
 tests and TypeScript pass; independent Terra review found no actionable issue.
 See the checkpoint for precise scope, negative tests and the unapproved native plan.
+The goal/status slice is pushed as 7fd3757. A subsequent discovery probe deadline
+repair passes 18 targeted backend tests (125 deselected), including a continuous
+body-progress negative on prior source; details are in the same checkpoint.
 
 Read [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md), all three specs and
 SHIP_CHECKLIST before continuing. It supersedes historical current/latest labels
