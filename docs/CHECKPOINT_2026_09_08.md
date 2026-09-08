@@ -5,7 +5,36 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: wake-driven durable event tail
+## Latest offline slice: idle Cursor observer backoff
+
+The fail-open Cursor inbox observer called its bounded descriptor reader every
+250ms forever when no inbox work existed. It now backs off after consecutive empty
+passes: 250ms, 500ms, 1s, then a two-second cap. Processing any valid record resets
+the next delay to 250ms. Observer failure retry remains the existing independent
+exponential path (500ms through 30s); a failure resets the idle counter. The loop's
+stop event remains interruptible during every delay.
+
+This does not change inbox bytes/record caps, descriptor checks, restart checkpoint,
+acknowledgement order, at-least-once replay or the 90-second cooperative processing
+deadline. A batch containing only malformed/empty/oversized complete lines counts
+as no valid records after its prefix is acknowledged and may therefore back off;
+poison-record receipts/UI and oversized incomplete-line recovery remain open. The
+maximum two-second detection latency applies to this fallback observer path; normal
+Cursor HTTP hooks are unchanged.
+
+Both new delay and loop-wiring regressions first failed on prior 5882994 source
+(missing helper; the wiring test also exposed its fixture attempting to mutate a
+read-only Settings property, corrected before implementation). Final observer plus
+two complete inbox unit files: **30 passed in 3.40s**; Ruff passed changed app/test.
+Parent reviewed the delay math, reset/failure/stop behavior and full new test. No
+additional independent reviewer was used. This is not live Cursor latency, native
+resource capture, whole observer correctness or freeze-cause proof.
+
+PEX remains closed. No native app, external Cursor, worker/model, cloud, large test
+or build ran. Protected loop.py hash is unchanged; installers still predate these
+offline repairs. Remaining full submission gates are unchanged.
+
+## Earlier offline slice: wake-driven durable event tail
 
 After the indexed-bounds repair, a caught-up desktop socket still queried the
 ledger every 250ms. Normal accepted events already emit a process-local post-commit

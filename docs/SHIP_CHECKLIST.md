@@ -24,6 +24,8 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Make caught-up desktop event streams wake from post-commit hints instead of
   fixed 4Hz DB polling; durable pages remain authoritative, five-second recovery
   fallback retained. 16 targeted tests/Ruff pass; native resource capture still open.
+- [x] Back off empty Cursor inbox observation from 250ms to a two-second cap and
+  reset immediately after valid work. 30 observer/inbox tests and Ruff pass.
 - [x] Bound Cursor inbox reads/record batches and remove destructive backlog clearing.
   13 targeted checks pass; 44 deselected. No live Cursor/native run.
 - [x] Move inbox file work off-loop and checkpoint after durable observer ingestion;

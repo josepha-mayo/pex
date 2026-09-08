@@ -2,6 +2,10 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Empty Cursor inbox observation now backs off to a two-second cap and resets after
+  valid work; 30 observer/inbox checks and Ruff pass. Malformed-only acknowledged
+  batches may also back off. This is not measured live Cursor latency or evidence
+  that all filesystem/background activity or the freeze is resolved.
 - Caught-up desktop event sockets are now post-commit wake-driven instead of querying
   SQLite every 250ms. Durable pages remain delivery authority; missed hints recover
   within five seconds. 16 focused tests/Ruff pass. Actual native idle CPU/GPU/memory,

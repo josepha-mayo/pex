@@ -2,6 +2,12 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: idle Cursor inbox observation backs off from 250ms through a two-second cap;
+valid work immediately restores 250ms and failure retry stays separate. No durable
+checkpoint/acknowledgement/HTTP-hook change. 30 observer/inbox tests and Ruff pass.
+Parent-reviewed; malformed-only batches may back off and existing poison/long-line
+limits remain. This is filesystem-wakeup control, not live/native freeze proof.
+
 Latest: the desktop durable event tail is wake-driven instead of polling SQLite at
 4Hz while caught up. Post-commit events only set a per-socket hint; delivery still
 comes from the canonical ledger. Five-second recovery polling covers missed hints;

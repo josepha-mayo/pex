@@ -2,6 +2,10 @@
 
 ## Current — 8 September WAT
 
+Empty Cursor fallback observation now backs off to a two-second cap, immediately
+resetting after valid work; 30 observer/inbox tests and Ruff pass. Durable intake
+semantics are unchanged. No live/native stability claim.
+
 Caught-up event sockets now sleep until a post-commit hint instead of polling SQLite
 at 4Hz; delivery still reads the durable ledger and a five-second fallback covers a
 missed hint. 16 targeted tests and Ruff pass. No native stability/freeze claim.

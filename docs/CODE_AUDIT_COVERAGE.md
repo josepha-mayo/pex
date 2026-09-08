@@ -2,6 +2,12 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: tests/unit/test_cursor_observe_idle.py. Parent reviewed the full
+new delay/loop tests and Cursor observer idle-delay wiring in app.py. The fallback
+now backs off only on no valid records, resets after work, retains failure backoff
+and interruptible stop. 30 observer/inbox tests and Ruff pass. No independent review,
+live Cursor timing, whole app.py/observer approval or native resource proof implied.
+
 Parent reviewed AppState event-socket registration/broadcast cleanup and the full
 wake-driven websocket tail change. The new TestClient test covers caught-up sleep,
 post-commit wake, durable page delivery and no resumed fixed polling; broadcast and

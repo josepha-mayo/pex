@@ -1409,20 +1409,39 @@ async def _process_cursor_observation(payload: dict) -> None:
         adapter._delivery_channel.reset(token)
 
 
+def _cursor_observe_delay(*, idle_passes: int, failures: int) -> float:
+    if failures:
+        return min(30.0, 0.25 * 2 ** min(failures, 7))
+    return min(2.0, 0.25 * 2 ** max(0, min(idle_passes, 4) - 1))
+
+
 async def _cursor_observe_loop(stop: asyncio.Event) -> None:
     from pex_bridge.adapters.cursor_inbox import process_inbox
 
     failures = 0
+    idle_passes = 0
     while not stop.is_set():
         try:
-            await process_inbox(state.settings.data_dir, _process_cursor_observation, stop)
+            processed = await process_inbox(
+                state.settings.data_dir,
+                _process_cursor_observation,
+                stop,
+            )
             failures = 0
+            idle_passes = 0 if processed else min(idle_passes + 1, 4)
         except Exception as exc:
             if failures == 0:
                 logger.warning("Cursor observe inbox remains pending (%s)", type(exc).__name__)
             failures = min(failures + 1, 7)
+            idle_passes = 0
         try:
-            await asyncio.wait_for(stop.wait(), timeout=min(30.0, 0.25 * 2 ** failures))
+            await asyncio.wait_for(
+                stop.wait(),
+                timeout=_cursor_observe_delay(
+                    idle_passes=idle_passes,
+                    failures=failures,
+                ),
+            )
         except TimeoutError:
             pass
 
