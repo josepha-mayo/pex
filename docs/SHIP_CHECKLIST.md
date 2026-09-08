@@ -36,6 +36,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Batch existing authority reads for discovered workers per adapter in <=1,000-ID
   chunks; strict blocked identity and ordered Store upserts remain. Related 53/53 plus
   focused 3/3 and Ruff pass; total adapter output/native cost remain open.
+- [x] Back the always-on overlay TTL Store sweep from one second to an eight-second
+  empty cap, resetting to one second after expiry work and backing repeated errors to
+  30 seconds. Loop/lifecycle tests pass 10/10 and Ruff; native impact remains open.
 - [x] Pause hidden/page-background sprite and CSS animation without resetting
   dismissed messages; share and clean up the visibility listener. 223 tests/TS pass.
   Native timer/GPU/CPU measurements remain part of the open P0 verification gate.

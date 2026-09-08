@@ -2,6 +2,17 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: `tests/unit/test_overlay_expiry_idle.py`. Parent reviewed the
+lifespan task owner, `ActionExecutor.expire_overlays()` pagination/serialization and
+shutdown stop path. The owner previously swept an empty Store every second and retried/
+logged failures at the same fixed rate. It now backs empty waits to eight seconds,
+resets on real expiry work, backs failures to 30 seconds and keeps stop-event waits.
+The negative failed before implementation; loop/lifecycle coverage passes 10/10 with
+Ruff clean. Parent also re-read supervisor configuration daemon-call, staged-secret,
+commit-revocation and shutdown ownership; its hostile selection passes 11/11. This is
+changed-path and focused transaction review, not whole `app.py`/Executor/Store approval,
+native resource proof or freeze-cause identification.
+
 Changed-path follow-up: parent traced discovered-session merge authority from all five
 desktop adapters through Store binding checks and upsert. Existing rows now resolve in
 strict per-adapter chunks of at most 1,000 instead of singular connection/transactions;

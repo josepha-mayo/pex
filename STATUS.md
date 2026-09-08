@@ -2,6 +2,14 @@
 
 ## Current — 8 September WAT
 
+The always-on overlay TTL owner no longer opens a Store sweep every second while
+there is no expiry work. Empty passes back off through 1/2/4/8 seconds, real expiry
+work immediately restores the one-second cadence, and failures back off to 30 seconds
+without delaying shutdown. The negative observed five one-second waits before the
+repair; loop/lifecycle coverage passes 10/10 with Ruff clean. Supervisor configuration
+timeout/quarantine/shutdown safety was separately re-audited at 11/11. PEX stayed
+closed; neither result is native freeze-cause proof.
+
 Discovered workers now resolve existing authority state in strict per-adapter batches
 of at most 1,000 rather than one SQLite connection/transaction each. Missing/new rows,
 identity failure, merge order and sequential upserts are preserved. Related tests pass

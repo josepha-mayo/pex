@@ -2,6 +2,16 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the lifespan-owned overlay TTL loop no longer performs an empty Store sweep
+every second forever. Empty passes back off through 1/2/4/8 seconds, actual expiry work
+restores one-second response, repeated failures cap at 30 seconds, and stop-event waits
+retain immediate shutdown. The negative first saw five one-second waits; loop/lifecycle
+coverage passes 10/10 and Ruff is clean. Long-idle TTL settlement can be up to eight
+seconds late. The previously recorded supervisor-constructor/configuration concern was
+also re-read against its current daemon-worker ownership and hostile regressions:
+activation/timeout/cancellation/vault/shutdown coverage passes 11/11, so no speculative
+rewrite was made. PEX remains closed; native impact and freeze cause remain unknown.
+
 Latest: desktop discovery now resolves existing canonical sessions through strict
 authority batches per adapter, chunked at 1,000 IDs, instead of opening one configured
 SQLite transaction for each discovered worker. Missing rows remain new; blocked project/

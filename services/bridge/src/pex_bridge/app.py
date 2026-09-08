@@ -1463,14 +1463,35 @@ async def _cursor_observe_loop(stop: asyncio.Event) -> None:
             pass
 
 
+def _overlay_expiry_delay(*, idle_passes: int, failures: int) -> float:
+    """Keep TTL cleanup responsive without polling an empty Store every second."""
+
+    if failures:
+        return min(30.0, 2.0**min(failures, 5))
+    return min(8.0, 2.0 ** max(0, min(idle_passes, 4) - 1))
+
+
 async def _overlay_expiry_loop(stop: asyncio.Event) -> None:
+    failures = 0
+    idle_passes = 0
     while not stop.is_set():
         try:
-            await state.pipeline.executor.expire_overlays()
-        except Exception:
-            logger.exception("Overlay TTL sweep failed")
+            outcomes = await state.pipeline.executor.expire_overlays()
+            failures = 0
+            idle_passes = 0 if outcomes else min(idle_passes + 1, 4)
+        except Exception as exc:
+            if failures == 0:
+                logger.exception("Overlay TTL sweep failed (%s)", type(exc).__name__)
+            failures = min(failures + 1, 5)
+            idle_passes = 0
         try:
-            await asyncio.wait_for(stop.wait(), timeout=1)
+            await asyncio.wait_for(
+                stop.wait(),
+                timeout=_overlay_expiry_delay(
+                    idle_passes=idle_passes,
+                    failures=failures,
+                ),
+            )
         except TimeoutError:
             pass
 

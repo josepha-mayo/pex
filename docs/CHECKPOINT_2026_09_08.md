@@ -5,6 +5,31 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: adaptive overlay-expiry ownership
+
+The lifespan-owned overlay TTL loop called `expire_overlays()` every second for the
+entire bridge lifetime. An empty sweep still opens Store work, so an installation with
+no active or expired overlays performed roughly 60 needless cleanup checks per minute.
+Repeated sweep failures also logged and retried once per second indefinitely.
+
+The owner now backs successful empty passes through one, two, four and eight seconds.
+Any actual expiry outcome restores the next wait to one second, while repeated failures
+back off through two seconds to a 30-second cap and emit the full exception only on the
+first consecutive failure. Waiting still uses the same stop event, so shutdown remains
+immediate rather than sleeping out the cadence. The tradeoff is explicit: after a long
+idle interval, an overlay can settle up to eight seconds after its nominal TTL.
+
+The negative first observed five consecutive one-second waits and the absence of the
+delay owner. Repaired source passes **4/4** across the new loop contract, Cursor idle
+owner and lifespan task-start rollback, plus **6/6** adjacent overlay expiry/lifecycle
+checks; Ruff is clean. A separate read-only re-audit ran **11/11** hostile supervisor
+configuration cases covering saved activation, constructor timeout, request
+cancellation, vault cancellation and bounded lifespan shutdown. That older P0 item is
+implemented and tested; no rewrite was made from a stale handoff note.
+
+PEX stayed closed. No native resource capture, model, worker, browser, cloud, build or
+large suite ran, and neither offline result identifies the reported whole-PC freeze.
+
 ## Latest offline slice: batch discovered-session authority reads
 
 After each adapter's bounded discovery returned, `refresh_desktop_sessions()` still

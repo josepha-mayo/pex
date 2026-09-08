@@ -2,6 +2,12 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Empty overlay-expiry ownership now backs Store sweeps from one second to an
+  eight-second cap, restores one-second response after actual work, and backs repeated
+  errors to 30 seconds. Loop/lifecycle checks pass 10/10 and supervisor configuration
+  timeout/quarantine/shutdown checks pass 11/11. Active expiry may therefore settle
+  up to eight seconds after its wall-clock TTL following a long idle period; no native
+  resource measurement or causal explanation for the reported freeze follows.
 - Existing discovered sessions now resolve through strict <=1,000-ID authority batches
   per adapter, removing per-worker configured read transactions while retaining blocked
   identity failure and sequential writes. Related 53/53 plus focused 3/3 and Ruff pass.
