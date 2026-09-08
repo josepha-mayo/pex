@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the cumulative retained-session repair now covers OpenCode and Qwen, not only
+Devin. Both adapters previously bounded a single discovery response but merged rotating
+IDs into permanent runtime dictionaries. They now stage the complete discovery update,
+bound the union with existing state, and leave prior state untouched on over-cap refusal.
+Adapter/fleet/OpenCode pump/outcome/fork coverage passes 139/139 and Ruff is clean. No
+daemon, worker or native app ran.
+
 Latest: Devin discovery no longer treats the 1,024-row per-response bound as a lifetime
 state bound while merging every newly rotated vendor ID forever. Discovery stages a
 complete update, refuses a union beyond 1,024 retained sessions, and leaves the prior

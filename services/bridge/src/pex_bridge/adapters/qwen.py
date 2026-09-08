@@ -250,6 +250,10 @@ class QwenAdapter(HarnessAdapter):
             cursor = next_cursor
         else:
             raise RuntimeError("Qwen session listing exceeded the pagination safety bound")
+        if len(self.sessions) > QWEN_MAX_SESSIONS:
+            raise RuntimeError("Qwen retained session state exceeded the safety bound")
+        updates: dict[str, HarnessSession] = {}
+        new_session_ids: set[str] = set()
         for item in listed_items:
             try:
                 vendor_id = bounded_adapter_id(
@@ -259,7 +263,11 @@ class QwenAdapter(HarnessAdapter):
             except ValueError:
                 continue
             session_id = f"qwen:{vendor_id}"
-            existing = self.sessions.get(session_id)
+            existing = updates.get(session_id) or self.sessions.get(session_id)
+            if existing is None and session_id not in new_session_ids:
+                if len(self.sessions) + len(new_session_ids) >= QWEN_MAX_SESSIONS:
+                    raise RuntimeError("Qwen retained session state reached the safety bound")
+                new_session_ids.add(session_id)
             item_cwd = _optional_bounded_path(item.get("workspaceCwd") or item.get("cwd")) or ""
             if item_cwd and ntpath.normcase(ntpath.normpath(item_cwd)) != ntpath.normcase(
                 ntpath.normpath(workspace)
@@ -270,7 +278,7 @@ class QwenAdapter(HarnessAdapter):
                 cwd=workspace,
                 project_id=workspace,
             )
-            self.sessions[session_id] = HarnessSession(
+            updates[session_id] = HarnessSession(
                 id=session_id,
                 harness_type=HarnessType.QWEN,
                 vendor_session_id=vendor_id,
@@ -289,6 +297,7 @@ class QwenAdapter(HarnessAdapter):
                     ),
                 },
             )
+        self.sessions.update(updates)
         return list(self.sessions.values())
 
     async def send_message(

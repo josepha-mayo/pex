@@ -2,6 +2,10 @@
 
 ## Current — 8 September WAT
 
+OpenCode and Qwen now apply their session bounds to cumulative retained state across
+rotating discoveries. Over-cap unions leave the prior runtime map intact. The complete
+related gate passes 139/139 with Ruff; no live daemon/native proof follows.
+
 Devin's 1,024-session limit now bounds cumulative retained runtime state, not merely one
 API response. Rotating inventories fail before partial mutation instead of growing the
 session and marker maps indefinitely. The adapter/fleet gate passes 84/84 with Ruff;

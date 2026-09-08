@@ -2,6 +2,11 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent extended cumulative discovery-state bounds to OpenCode and
+Qwen. Both now stage complete updates, check remote-plus-retained unions and avoid partial
+state on refusal. Full adapter/fleet/OpenCode pump/outcome/fork coverage passes 139/139;
+Ruff is clean. No live transport or native resource evidence follows.
+
 Changed-path addendum: parent found Devin's page-size guard did not bound cumulative
 runtime state across rotating API inventories. Discovery now stages updates, rejects a
 union beyond 1,024 retained sessions and cannot partially mutate the prior state on

@@ -275,6 +275,10 @@ class OpenCodeAdapter(HarnessAdapter):
             merged.extend(extra)
         if len(merged) > MAX_TRACKED_SESSIONS:
             raise RuntimeError("OpenCode session listing exceeded the safety bound")
+        if len(self.sessions) > MAX_TRACKED_SESSIONS:
+            raise RuntimeError("OpenCode retained session state exceeded the safety bound")
+        updates: dict[str, HarnessSession] = {}
+        new_session_ids: set[str] = set()
         for item in merged:
             if not isinstance(item, dict):
                 continue
@@ -283,14 +287,20 @@ class OpenCodeAdapter(HarnessAdapter):
             except ValueError:
                 continue
             session_id = f"opencode:{vendor_id}"
-            existing = self.sessions.get(session_id)
+            existing = updates.get(session_id) or self.sessions.get(session_id)
+            if existing is None and session_id not in new_session_ids:
+                if len(self.sessions) + len(new_session_ids) >= MAX_TRACKED_SESSIONS:
+                    raise RuntimeError(
+                        "OpenCode retained session state reached the safety bound"
+                    )
+                new_session_ids.add(session_id)
             cwd = _optional_bounded_path(item.get("cwd") or item.get("directory"))
             goal_id, paused = preserve_bridge_state(
                 existing,
                 cwd=cwd,
                 project_id=cwd,
             )
-            self.sessions[session_id] = HarnessSession(
+            updates[session_id] = HarnessSession(
                 id=session_id,
                 harness_type=HarnessType.OPENCODE,
                 vendor_session_id=vendor_id,
@@ -306,6 +316,7 @@ class OpenCodeAdapter(HarnessAdapter):
                     )
                 },
             )
+        self.sessions.update(updates)
         upsert_desktop_observe_session(
             self.sessions,
             harness=HarnessType.OPENCODE,

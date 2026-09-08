@@ -5,6 +5,16 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: bound rotating OpenCode/Qwen discovery state
+
+OpenCode and Qwen had the same page/list-size versus cumulative-state gap found in
+Devin: each remote response was bounded, but new IDs from later polls were merged into
+permanent runtime maps. Each adapter now stages its full update, checks the union with
+retained sessions, and commits nothing on an over-cap refusal. Rotating-inventory
+negatives prove the previous state stays intact. Adapter, fleet, OpenCode pump, outcome
+and fork coverage passes **139/139**; scoped Ruff passes. No HTTP daemon, worker, model
+or native app ran.
+
 ## Latest offline slice: bound retained Devin discovery state
 
 Devin pagination capped each response at 1,024 sessions but merged successive rotating

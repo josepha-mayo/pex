@@ -136,6 +136,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Bound cumulative Devin discovery state across rotating API inventories and commit
   no partial merge on over-cap refusal. The complete adapter/fleet gate passes 84/84
   with Ruff; live Devin behavior remains unproven.
+- [x] Apply cumulative retained-session bounds and transactional over-cap refusal to
+  rotating OpenCode/Qwen inventories. The full related gate passes 139/139 with Ruff;
+  no live daemon/native proof is implied.
 - [ ] Resolve remaining observation lifetime limits: non-atomic directory enumeration,
   and blocked OS calls. Do not claim a hard deadline.
   Incremental supervisor inventory now has entry/file/time caps plus directory and exact

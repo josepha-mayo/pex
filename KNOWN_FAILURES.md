@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- OpenCode/Qwen discovery now bounds cumulative retained sessions across rotating
+  inventories and refuses over-cap updates without partial mutation. Related coverage
+  passes 139/139 and Ruff; live daemon/native behavior remains unverified.
 - Devin discovery now bounds cumulative retained sessions across rotating inventories
   and fails without a partial merge. The adapter/fleet gate passes 84/84 and Ruff. No
   live Devin/native evidence was collected.

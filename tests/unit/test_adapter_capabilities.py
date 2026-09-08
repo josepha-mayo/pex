@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 import pytest
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters import devin as devin_module
+from pex_bridge.adapters import opencode as opencode_module
+from pex_bridge.adapters import qwen as qwen_module
 from pex_bridge.adapters.base import (
     AdapterMessageResult,
     HarnessAdapter,
@@ -487,6 +489,62 @@ async def test_devin_rotating_discovery_cannot_grow_or_partially_mutate_retained
         await adapter.discover_sessions()
 
     assert list(adapter.sessions) == ["devin:devin-1"]
+
+
+@pytest.mark.asyncio
+async def test_opencode_rotating_discovery_cannot_exceed_retained_state_bound(monkeypatch):
+    class RotatingOpenCodeTransport:
+        def __init__(self) -> None:
+            self.vendor_ids = ["session-1"]
+
+        async def request(self, method: str, path: str, *, json=None):
+            del json
+            assert method == "GET" and path == "/session"
+            return [{"id": vendor_id, "title": vendor_id} for vendor_id in self.vendor_ids]
+
+    monkeypatch.setattr(opencode_module, "MAX_TRACKED_SESSIONS", 2)
+    transport = RotatingOpenCodeTransport()
+    adapter = OpenCodeAdapter(transport)  # type: ignore[arg-type]
+    await adapter.discover_sessions()
+
+    transport.vendor_ids = ["session-2", "session-3"]
+    with pytest.raises(RuntimeError, match="retained session state reached"):
+        await adapter.discover_sessions()
+
+    assert list(adapter.sessions) == ["opencode:session-1"]
+
+
+@pytest.mark.asyncio
+async def test_qwen_rotating_discovery_cannot_exceed_retained_state_bound(monkeypatch):
+    class RotatingQwenTransport:
+        def __init__(self) -> None:
+            self.vendor_ids = ["session-1"]
+
+        async def request(self, method: str, path: str, *, json=None):
+            del json
+            assert method == "GET" and path.startswith("/workspace/")
+            return {
+                "sessions": [
+                    {"sessionId": vendor_id, "workspaceCwd": "C:/repo"}
+                    for vendor_id in self.vendor_ids
+                ],
+                "nextCursor": None,
+            }
+
+    monkeypatch.setattr(qwen_module, "QWEN_MAX_SESSIONS", 2)
+    transport = RotatingQwenTransport()
+    adapter = QwenAdapter(transport)  # type: ignore[arg-type]
+    adapter._daemon_capabilities = {
+        "features": ["session_list"],
+        "workspaceCwd": "C:/repo",
+    }
+    await adapter.discover_sessions()
+
+    transport.vendor_ids = ["session-2", "session-3"]
+    with pytest.raises(RuntimeError, match="retained session state reached"):
+        await adapter.discover_sessions()
+
+    assert list(adapter.sessions) == ["qwen:session-1"]
 
 
 @pytest.mark.asyncio
