@@ -16,6 +16,13 @@ restart persistence, or resource safety. PEX remains closed after the user-repor
 whole-PC freeze. A bounded native run still needs explicit approval, and no submission video
 exists. The 6 September native block below is historical.
 
+For the final video, keep the visual story to Pex and Von. Both independently pass the strict
+v2 atlas validator at 1536x2288 with 11 rows, no structural warnings, and no transparent-RGB
+residue. Original-resolution contact and direction sheets show clean transparency, distinct
+states, coherent identities and readable cardinal directions. Local QA artifacts are under
+`C:\Users\JosephMayo\Documents\Codex\pex-pet-qa-5530938`. These are static visual results,
+not native animation or stability proof.
+
 ## 6 September native-package checkpoint
 
 The final repository revision is

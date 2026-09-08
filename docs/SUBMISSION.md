@@ -92,7 +92,9 @@ If agents keep multiplying, humans become full-time dispatchers. PEX attacks tha
 
 ## What PEX does
 
-- Attaches to existing harnesses. Work does not have to start inside PEX.
+- Connects through each harness's supported surface and labels the resulting capability at
+  runtime. Existing shared sessions may be observe-only; isolated Codex App Server and
+  OpenCode HTTP sessions can earn deeper support only after their event transport is healthy.
 - Implements a bounded Strands supervisor with six request-scoped, read-only evidence tools and requires a validated structured action. The live Codex proof demonstrates real Strands decisions and outcome verification; it does not claim every tool path was exercised on camera.
 - Routes semantic-only interventions through an independent verifier Agent in locally tested contracts; failures and evidence-free approvals become NOOP, while deterministic verification truth remains authoritative. The curated live receipt does not independently prove this tier, so do not call it live-demonstrated unless a judge-readable trace is captured.
 - Keeps a local policy guard. Cloud can propose; it cannot bypass allow/deny/ask.
@@ -100,15 +102,21 @@ If agents keep multiplying, humans become full-time dispatchers. PEX attacks tha
 
 On September 6, PEX completed both prepared live contracts with an isolated Codex worker and a real Strands supervisor: it stayed quiet after evidence-supported completion, then in a separate case detected incomplete work, sent a specific nudge to the same Codex thread, observed the resulting artifact, marked the intervention helped, and ended with a verified NOOP. The supervisor was Zen's free `muse-spark-1.3-contributor-free`; the intentionally modest worker was pinned to `gpt-5.3-codex-spark`. Recapture these contracts on the final release revision before submission.
 
-Current source contains exactly eight built-in pets. A one-call hatch result is only an unverified base candidate, not a playable pet.
+Current source contains exactly eight built-in pets. Keep the submission demo focused on Pex
+and Von: both independently pass the 11-row v2 atlas validator and original-resolution visual
+review. A one-call hatch result is only an unverified base candidate, not a playable pet.
 
 ## Demo video voiceover (≤5 minutes)
 
-Timebox. Screen-record the pet + inspector + one live Cursor or Codex session. Do not use leaked benchmark numbers.
+Timebox. Screen-record Pex (with one quick switch to Von), the inspector, and one isolated
+Codex App Server session. Do not turn the broader integration matrix into a demo tour, and do
+not use leaked benchmark numbers.
 
 1. **0:00–0:25 — Problem.** Several coding agents running. You are the babysitter: continue, approve pytest, catch drift, copy context.
 2. **0:25–0:45 — Who / why.** Built for people who already use those tools. Goal: get the human back to intent and irreversible calls.
-3. **0:45–1:15 — Pet.** Compact PEX pet. Close it, restore it from Settings, then open the inspector. Show that the companion communicates state instead of becoming another transcript.
+3. **0:45–1:15 — Pet.** Start with Pex. Dismiss its status message while leaving the pet
+   visible, then hide and restore the pet from Settings. Switch briefly to Von and open the
+   inspector. Show that the companion communicates state without becoming another transcript.
 4. **1:15–2:45 — Live recovery.** In one Codex thread, show the intentional stop, PEX's specific `SEND_NUDGE`, the second turn on the same thread ID, `report.txt = shipped`, `helped=true`, and the final evidence-supported `NOOP`.
 5. **2:45–3:35 — Strands and safety.** Show the real `used_llm=true`, `runtime=strands-agents` receipts and the local deterministic-truth/policy boundary. Show an independent-verifier receipt only if a separate judge-readable capture exists. Do not call this a Strands Graph or claim web/side-effect tools. Optional AgentCore `/ping` only if actually deployed.
 6. **3:35–4:15 — Restraint.** Show the separate completed-task contract: one turn, artifact `pong`, and PEX correctly choosing `NOOP`. The point is fewer pointless interruptions, not maximum agent activity.
@@ -133,6 +141,10 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   inventories and the retained `PACKAGE_RECEIPT_D66E6A1.json` pass with zero package blockers
 - [x] Re-review README and architecture source/PNG against packaged product source `d66e6a1`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
+- [x] Re-run 362 focused Cursor/Codex/OpenCode integration tests plus all 259 desktop/UI
+  contracts and a production TypeScript/Vite build; no worker, model, native app or paid call ran
+- [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases and review their full contact and
+  direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)
