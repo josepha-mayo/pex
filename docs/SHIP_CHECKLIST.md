@@ -89,6 +89,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Reject exponent overflow from bounded provider catalog responses and both the outer
   and embedded review-answer JSON. Provider/review coverage passes 96/96 and Ruff; live
   provider availability and Strands proof remain open.
+- [x] Reject exponent-overflow JSON/JSONL artifacts in both workspace inspection and
+  claim verification so invalid rows cannot satisfy goal acceptance. Coverage passes
+  94/94 with one Windows skip and Ruff; live completion behavior remains open.
 - [x] Bound local notification receipt replay before parsing and reject ambiguous JSON
   idempotency rows so corruption cannot suppress a human alert. Channel tests pass 8/8
   and Ruff; cross-process append/rotation remains outside this slice.

@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Workspace inspection and claim verification now reject exponent-overflow JSON/JSONL
+before row counts can satisfy goal acceptance. The regression keeps an overflowed
+artifact incomplete/uncertain; combined coverage passes 94/94 with one Windows skip and
+Ruff clean. Live quiet/recovery and native proof remain open.
+
 Provider catalog refresh and review-answer decoding now reject exponent overflow in
 ignored catalog fields, the outer usage envelope and embedded answer JSON. Provider plus
 review tests pass 96/96 with Ruff clean. No live model/network call ran, so availability

@@ -198,7 +198,7 @@ def test_artifact_count_rejects_private_hardlink_swapped_at_open(tmp_path, monke
 
 def test_nonfinite_jsonl_does_not_produce_a_complete_row_receipt(tmp_path: Path):
     (tmp_path / "results.jsonl").write_text(
-        '{"score": NaN}\n{"score": Infinity}\n',
+        '{"score": NaN}\n{"score": Infinity}\n{"score": 1e9999}\n',
         encoding="utf-8",
     )
 

@@ -5,6 +5,19 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: finite artifact acceptance evidence
+
+Both workspace inspection and claim verification counted JSON/JSONL rows after rejecting
+duplicate keys and non-standard constants, but exponent overflow still decoded as
+infinity. Such a row could therefore contribute to an exact acceptance count and make an
+invalid artifact appear complete. Both independent readers now require finite floats for
+whole JSON and every JSONL row. The regression adds overflow beside `NaN`/`Infinity` and
+proves row count remains unknown rather than satisfying the criterion. Workspace/verifier
+coverage passes **94/94 with one Windows skip**; scoped Ruff passes.
+
+No native app, worker, model or large suite ran. This is offline evidence-integrity
+hardening, not the required live restraint/recovery pair or native stability proof.
+
 ## Latest offline slice: finite external provider responses
 
 The bounded live-model catalog reader and review-answer client rejected duplicate keys

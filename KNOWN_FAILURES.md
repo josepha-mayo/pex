@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Workspace and verifier artifact readers now reject exponent-overflow JSON/JSONL before
+  row counts can satisfy acceptance; 94 tests pass, one Windows case skips, and Ruff is
+  clean. This is offline integrity coverage, not live completion or native proof.
 - Provider catalog and review-answer JSON now reject exponent overflow at ignored,
   outer-usage and embedded-answer positions; focused coverage passes 96/96 with Ruff.
   No live provider call ran, so availability and Strands model evidence remain open.

@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: workspace artifact counting and claim verification now reject exponent-overflow
+JSON before a row count can satisfy goal acceptance. Previously a `1e9999` value decoded
+as infinity and could make an otherwise invalid JSON/JSONL artifact look complete. The
+independent workspace and verifier paths both apply finite-float parsing for whole JSON
+and JSONL rows. Combined coverage passes 94/94 with one Windows skip; Ruff is clean.
+This is offline false-completion hardening, not live quiet/recovery or native proof.
+
 Latest: external provider JSON is now finite across both model-catalog refresh and the
 review-answer path. Overflow could previously enter an ignored catalog field, an outer
 usage field or the model's embedded JSON answer as infinity despite duplicate/`NaN`

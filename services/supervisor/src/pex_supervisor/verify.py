@@ -9,6 +9,7 @@ import json
 import re
 import time
 from dataclasses import dataclass
+from math import isfinite
 from pathlib import Path
 from typing import Any
 
@@ -128,6 +129,13 @@ def _visible_goal_path(path: str) -> bool:
 
 def _reject_nonfinite_json_constant(value: str) -> None:
     raise ValueError(f"non-finite JSON constant {value}")
+
+
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not isfinite(parsed):
+        raise ValueError(f"non-finite JSON number {value}")
+    return parsed
 
 
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -445,6 +453,7 @@ def _count_rows(text: str, path: str) -> int | None:
                 json.loads(
                     line,
                     parse_constant=_reject_nonfinite_json_constant,
+                    parse_float=_finite_json_float,
                     object_pairs_hook=_unique_json_object,
                 )
         except (ValueError, RecursionError):
@@ -454,6 +463,7 @@ def _count_rows(text: str, path: str) -> int | None:
         data = json.loads(
             stripped,
             parse_constant=_reject_nonfinite_json_constant,
+            parse_float=_finite_json_float,
             object_pairs_hook=_unique_json_object,
         )
     except (ValueError, RecursionError):

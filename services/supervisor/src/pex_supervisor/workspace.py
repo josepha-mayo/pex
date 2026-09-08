@@ -11,6 +11,7 @@ import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from math import isfinite
 from pathlib import Path
 from typing import Any, BinaryIO
 
@@ -79,6 +80,13 @@ def _reject_nonfinite_json_constant(value: str) -> None:
     """Reject Python's permissive NaN/Infinity extension to JSON."""
 
     raise ValueError(f"non-finite JSON constant {value}")
+
+
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not isfinite(parsed):
+        raise ValueError(f"non-finite JSON number {value}")
+    return parsed
 
 
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -476,6 +484,7 @@ def _artifact_row_count_from_handle(
                 json.loads(
                     line,
                     parse_constant=_reject_nonfinite_json_constant,
+                    parse_float=_finite_json_float,
                     object_pairs_hook=_unique_json_object,
                 )
                 count += 1
@@ -483,6 +492,7 @@ def _artifact_row_count_from_handle(
         data = json.loads(
             payload.decode("utf-8"),
             parse_constant=_reject_nonfinite_json_constant,
+            parse_float=_finite_json_float,
             object_pairs_hook=_unique_json_object,
         )
     except (OSError, UnicodeError, ValueError, RecursionError):

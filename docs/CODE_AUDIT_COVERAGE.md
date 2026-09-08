@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced JSON/JSONL artifact row counts through both workspace
+inspection and claim acceptance. Exponent overflow remained valid after duplicate and
+constant checks, so it could contribute to an exact acceptance count. Both independent
+readers now require finite floats for every parsed row/document. The negative proves an
+overflowed artifact stays incomplete/uncertain. Coverage passes 94/94 with one Windows
+skip and Ruff clean. Live supervisor behavior and native stability remain unproved.
+
 Changed-path addendum: parent traced external provider bytes through bounded model-catalog
 decode and the review HTTP client's outer plus embedded JSON decoders. All rejected
 duplicates/constants but accepted exponent overflow in ignored, usage or answer fields.

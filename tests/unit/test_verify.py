@@ -626,7 +626,7 @@ def test_large_jsonl_row_count_uses_complete_file_not_preview(tmp_path):
 
 def test_nonfinite_json_rows_cannot_satisfy_acceptance(tmp_path):
     (tmp_path / "results.jsonl").write_text(
-        '{"score": NaN}\n{"score": Infinity}\n',
+        '{"score": NaN}\n{"score": Infinity}\n{"score": 1e9999}\n',
         encoding="utf-8",
     )
     workspace = snapshot(tmp_path)
@@ -634,7 +634,7 @@ def test_nonfinite_json_rows_cannot_satisfy_acceptance(tmp_path):
     result = verify_claims(
         [],
         [_event(event_type=EventType.STOP)],
-        _goal(acceptance_criteria=["results.jsonl has 2 rows"]),
+        _goal(acceptance_criteria=["results.jsonl has 3 rows"]),
         workspace,
     )
 
