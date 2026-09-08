@@ -508,3 +508,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   schedules it every 32 seconds instead of eight. Unit tests prove thread separation and source
   cadence, but there is no native trace of filesystem latency, event-loop responsiveness, or
   whole-machine resource impact after the reported freeze.
+- Project-identity summary and selected-status reads now wake on valid committed events and
+  reconcile every 30 seconds instead of polling every eight. Source tests cover coalescing,
+  cancellation, and scope, but no post-freeze native trace proves warning latency or database
+  load under real identity conflict traffic.

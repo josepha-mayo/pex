@@ -637,3 +637,8 @@ Do the next safe, highest-impact item immediately. If a required external choice
   focused desktop 23/23, complete desktop 254/254, Ruff, and TypeScript pass.
 - [ ] Measure benchmark-summary request cadence and bridge-loop responsiveness in the bounded
   native profile; worker-thread execution and source cadence do not close the freeze incident.
+- [x] Make project-identity summary and selected-status readers event-first and coalesced with
+  30-second reconciliation, view abort, stale-response guards, pagination, and explicit
+  post-resolution refresh intact. Adjacent 93/93, complete desktop 254/254, and TypeScript pass.
+- [ ] Confirm quarantine warnings arrive immediately from a live event and measure the lower
+  identity-read cadence in the bounded native profile.

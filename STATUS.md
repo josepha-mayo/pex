@@ -1992,3 +1992,11 @@ the desktop requests it on the existing 32-second slow tick rather than every ei
 retaining the last validated summary between ticks. Both old behaviors failed their new
 contracts. Backend tests passed 16/16, focused desktop passed 23/23, complete desktop passed
 254/254, scoped Ruff passed, and TypeScript exited 0. Native I/O and freeze impact remain open.
+
+Project-identity conflict summary and selected candidate/status readers are event-first rather
+than unconditional eight-second polls. Valid committed events wake separate coalesced readers;
+30-second reconciliation, view cancellation, stale-response sequencing, pagination, and
+explicit post-resolution refresh remain. In Deck Decisions, the combined unchanged-state
+schedule falls from 15 to 4 requests per minute. The old source failed both new contracts;
+adjacent tests passed 93/93, complete desktop passed 254/254, and TypeScript exited 0. Native
+event timing and resource effects remain unverified.

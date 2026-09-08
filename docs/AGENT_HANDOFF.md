@@ -8728,3 +8728,18 @@ The dirty bit is expected because the protected operator-owned file below is ret
   proves the route loader ran on a thread different from the request loop; focused desktop
   coverage passed **23/23**, complete desktop coverage passed **254/254**, scoped Ruff passed,
   and TypeScript exited 0. Filesystem latency and native freeze impact remain unmeasured.
+
+### 8 September event-first project-identity slice
+
+- Non-compact Home previously scanned the project-identity conflict summary every eight
+  seconds. Deck's Decisions view also fetched the selected conflict/candidate page every eight
+  seconds, even with no identity event. Both are bounded database reads but the duplicate
+  cadence was avoidable.
+- Valid committed `event_page` frames now wake both active readers immediately through separate
+  coalesced callbacks. Each retains a 30-second reconciliation, its request-sequence stale
+  response guard, view-owned abort signal, first-load feedback, pagination, and explicit
+  post-resolution refresh. On Decisions this changes the combined idle schedule from 15 to 4
+  requests per minute without delaying an observed conflict event.
+- The adjacent contracts failed on the old polling and passed after repair: **93/93**. Complete
+  desktop coverage passed **254/254** and TypeScript exited 0. Native event responsiveness and
+  resource impact remain unmeasured because PEX stayed closed.

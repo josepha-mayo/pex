@@ -185,9 +185,11 @@ test("view-owned background reads propagate cancellation and handoff reads use a
     "loadBaseState(includeHatch, includeCapability, signal)",
     "refreshPetGoals(signal)",
     "loadDetails(ticks % 4 === 0, ticks === 0, signal)",
-    "loadProjectIdentityConflicts({ showLoading: firstRefresh, signal })",
-    "loadProjectIdentityStatus({ showLoading: firstRefresh, signal })",
+    "loadProjectIdentityConflicts({ showLoading, signal: controller.signal })",
+    "loadProjectIdentityStatus({ showLoading, signal: controller.signal })",
   ]) assert.ok(source.includes(call), `missing lifetime cancellation: ${call}`);
+  assert.match(source, /identityConflictRefresh\.current === refreshConflicts[\s\S]*?controller\.abort\(\)/);
+  assert.match(source, /identityStatusRefresh\.current === refreshStatus[\s\S]*?controller\.abort\(\)/);
   const batchStart = source.indexOf("async function loadHandoffAssimilationStatuses(");
   const batchEnd = source.indexOf("function operationError", batchStart);
   const batch = source.slice(batchStart, batchEnd);

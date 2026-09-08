@@ -140,6 +140,7 @@ const EVENT_CURSOR_STORAGE_KEY = "pex.event_cursor.v1";
 const PET_RECONCILIATION_INTERVAL_MS = 30_000;
 const GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS = 30_000;
 const HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS = 30_000;
+const PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS = 30_000;
 
 function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
   if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return "local";
@@ -483,6 +484,8 @@ export function App() {
   const handoffInterventions = useRef<Intervention[]>([]);
   const handoffInterventionKey = useRef("");
   const handoffAssimilationRefresh = useRef<(() => Promise<unknown>) | null>(null);
+  const identityConflictRefresh = useRef<(() => Promise<unknown>) | null>(null);
+  const identityStatusRefresh = useRef<(() => Promise<unknown>) | null>(null);
   const bridgeStartupRef = useRef(bridgeStartup);
   const bridgeAvailable = bridgeBootstrapAvailable(
     TAURI,
@@ -700,6 +703,8 @@ export function App() {
                 // share each evidence effect's one in-flight reconciliation.
                 void goalEvidenceRefresh.current?.();
                 void handoffAssimilationRefresh.current?.();
+                void identityConflictRefresh.current?.();
+                void identityStatusRefresh.current?.();
               }
             }
           } catch {
@@ -1295,14 +1300,24 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;
     let firstRefresh = true;
-    const stopPolling = startSerialPolling((signal) => {
-      const pending = loadProjectIdentityConflicts({ showLoading: firstRefresh, signal });
+    const controller = new AbortController();
+    const refreshConflicts = coalesceBackgroundRead(() => {
+      const showLoading = firstRefresh;
       firstRefresh = false;
-      return pending;
-    }, 8000);
+      return loadProjectIdentityConflicts({ showLoading, signal: controller.signal });
+    });
+    identityConflictRefresh.current = refreshConflicts;
+    const stopPolling = startSerialPolling(
+      refreshConflicts,
+      PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS,
+    );
     return () => {
       identityConflictRequestSequence.current += 1;
       setIdentityConflictLoading(false);
+      if (identityConflictRefresh.current === refreshConflicts) {
+        identityConflictRefresh.current = null;
+      }
+      controller.abort();
       stopPolling();
     };
   }, [bridgeAvailable, loadProjectIdentityConflicts, pageVisible, shell, surface]);
@@ -1310,14 +1325,24 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || surface !== "deck" || shell !== "main" || activeView !== "decisions") return;
     let firstRefresh = true;
-    const stopPolling = startSerialPolling((signal) => {
-      const pending = loadProjectIdentityStatus({ showLoading: firstRefresh, signal });
+    const controller = new AbortController();
+    const refreshStatus = coalesceBackgroundRead(() => {
+      const showLoading = firstRefresh;
       firstRefresh = false;
-      return pending;
-    }, 8000);
+      return loadProjectIdentityStatus({ showLoading, signal: controller.signal });
+    });
+    identityStatusRefresh.current = refreshStatus;
+    const stopPolling = startSerialPolling(
+      refreshStatus,
+      PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS,
+    );
     return () => {
       identityStatusRequestSequence.current += 1;
       setIdentityStatusLoading(false);
+      if (identityStatusRefresh.current === refreshStatus) {
+        identityStatusRefresh.current = null;
+      }
+      controller.abort();
       stopPolling();
     };
   }, [activeView, bridgeAvailable, loadProjectIdentityStatus, pageVisible, shell, surface]);

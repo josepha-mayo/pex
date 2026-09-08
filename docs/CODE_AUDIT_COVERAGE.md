@@ -1296,3 +1296,16 @@ Native request counts and batch latency are still unmeasured.
 
 Both negative contracts failed before the changes. Backend 16/16, desktop focused 23/23,
 desktop complete 254/254, scoped Ruff, and TypeScript passed. Native I/O timing is unmeasured.
+
+## 8 September project-identity reader focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/App.tsx` conflict-summary reader | REVIEWED / REPAIRED | Valid event pages wake a coalesced reader; unchanged state reconciles at 30 seconds with abort and sequence guards. |
+| `apps/desktop/src/App.tsx` selected identity-status reader | REVIEWED / REPAIRED | Active Decisions status uses the same event-first boundary while preserving selection scope, pagination, and explicit resolution refresh. |
+| `apps/desktop/src/readBudget.test.ts` lifecycle contract | REVIEWED / EXTENDED | Binds both readers to owned abort controllers and cleanup. |
+| `apps/desktop/src/viewModel.test.ts` identity-flow contract | REVIEWED / EXTENDED | Binds event wakes, coalescing, 30-second reconciliation, and active-view scope. |
+
+The negative adjacent run failed both new contracts on the old implementation. Final adjacent
+coverage passed 93/93, complete desktop passed 254/254, and TypeScript exited 0. Native event
+latency and database request counts remain unmeasured.

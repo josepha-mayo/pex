@@ -1545,3 +1545,13 @@ refresh the summary on the existing 32-second slow tick rather than every eight 
 retain the last validated result between ticks. Both old behaviors failed their new tests.
 Backend coverage passed 16/16 with a different-thread assertion, focused desktop passed 23/23,
 complete desktop passed 254/254, Ruff passed, and TypeScript exited 0. Native impact is open.
+
+## Event-first project-identity readers
+
+Conflict-summary and active candidate/status reads no longer poll every eight seconds without
+evidence. Valid committed event pages wake their independent coalesced readers immediately;
+each has a 30-second reconciliation and keeps stale-response sequencing, cancellation,
+pagination, and explicit post-resolution reads. The old source failed the new contracts.
+Adjacent coverage passed 93/93, complete desktop passed 254/254, and TypeScript exited 0.
+The combined Decisions-view idle schedule falls from 15 to 4 requests per minute by source;
+native timing and freeze impact remain unmeasured.
