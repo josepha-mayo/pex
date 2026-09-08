@@ -2,6 +2,16 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: `current_projection()` now treats a mid-read `ProjectIdentityBlockedError` as
+invalidating the complete shared Goal scope. Before repair, if sibling A had already
+contributed a session/event and sibling B then observed quarantine or rebound, the code
+removed the cached Goal but returned sibling A and its artifact as current. The hostile
+race failed on that incoherent response. Repaired source tracks rejected Goal IDs,
+skips later siblings and removes earlier sessions/interventions/events from those scopes.
+Projection/pet/authority E2E coverage passes 28/28 and Ruff is clean. The projection is
+still multi-snapshot, so this is fail-closed scope coherence rather than atomic
+all-artifact observation. PEX remains closed.
+
 Latest: the lifespan-owned overlay TTL loop no longer performs an empty Store sweep
 every second forever. Empty passes back off through 1/2/4/8 seconds, actual expiry work
 restores one-second response, repeated failures cap at 30 seconds, and stop-event waits

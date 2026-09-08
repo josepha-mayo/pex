@@ -39,6 +39,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Back the always-on overlay TTL Store sweep from one second to an eight-second
   empty cap, resetting to one second after expiry work and backing repeated errors to
   30 seconds. Loop/lifecycle tests pass 10/10 and Ruff; native impact remains open.
+- [x] Fail closed across a shared Goal when any sibling loses authority during
+  projection artifact reads; remove earlier sibling sessions/events/interventions
+  instead of returning goal-less current state. Related authority gate passes 28/28.
 - [x] Pause hidden/page-background sprite and CSS animation without resetting
   dismissed messages; share and clean up the visibility listener. 223 tests/TS pass.
   Native timer/GPU/CPU measurements remain part of the open P0 verification gate.

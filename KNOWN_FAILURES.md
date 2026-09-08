@@ -2,6 +2,11 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- A mid-projection authority loss now removes every session and already-collected
+  artifact in that shared Goal scope. Previously an earlier sibling could survive with
+  its goal omitted. The exact race and adjacent quarantine/rebind routes pass 28/28
+  with Ruff clean. Projection still spans multiple Store snapshots rather than one
+  all-artifact transaction; unrelated scopes can therefore reflect different instants.
 - Empty overlay-expiry ownership now backs Store sweeps from one second to an
   eight-second cap, restores one-second response after actual work, and backs repeated
   errors to 30 seconds. Loop/lifecycle checks pass 10/10 and supervisor configuration

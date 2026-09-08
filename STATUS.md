@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Canonical projection now fails closed across an entire shared Goal when any sibling
+loses project/goal authority during later artifact reads. Previously the goal was
+removed but an earlier sibling session and event could remain as plausible-looking
+current state. The hostile mid-read race failed before repair; projection/pet/E2E
+authority coverage passes 28/28 with Ruff clean. PEX stayed closed.
+
 The always-on overlay TTL owner no longer opens a Store sweep every second while
 there is no expiry work. Empty passes back off through 1/2/4/8 seconds, real expiry
 work immediately restores the one-second cadence, and failures back off to 30 seconds

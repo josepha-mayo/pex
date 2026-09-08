@@ -5,6 +5,32 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: shared-Goal projection race
+
+`current_projection()` validates the session list first and then loads current Goal,
+intervention and event authority per selected worker. Those artifact reads deliberately
+remain fail-closed because project identity can quarantine or rebind between snapshots.
+The exception path, however, only removed the cached Goal for the worker that noticed
+the change. If an earlier sibling shared that Goal, its session and already-collected
+event or intervention remained in the response without the Goal that authorized it.
+
+A hostile Store fixture returns two initially authoritative Codex siblings for one Goal,
+allows the first event read, then raises `ProjectIdentityBlockedError` during the second.
+Old source returned sibling A and its event while returning no Goal. Repaired source
+tracks rejected Goal IDs, skips any later sibling in that scope, and retracts every
+earlier accepted session, intervention and event carrying that Goal before sorting or
+serialization. Goal-less observe tiles and independent Goal scopes remain unchanged.
+
+The exact negative failed before implementation. The full current-projection and pet
+files, authority-consumer checks, and both quarantine/rebind M0 E2E cases pass **28/28**
+in 15.60 seconds; scoped Ruff is clean. Projection still spans multiple Store snapshots,
+so unrelated scopes can describe slightly different instants. This repair guarantees
+fail-closed coherence for the scope whose authority loss was actually observed; it does
+not claim an atomic all-artifact snapshot.
+
+PEX stayed closed. No native resource capture, model, worker, browser, cloud, build or
+large suite ran, and the reported whole-PC freeze remains unexplained.
+
 ## Latest offline slice: adaptive overlay-expiry ownership
 
 The lifespan-owned overlay TTL loop called `expire_overlays()` every second for the

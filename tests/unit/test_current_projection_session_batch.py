@@ -8,10 +8,10 @@ from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings
 from pex_bridge.pipeline import Pipeline
 from pex_bridge.store import ProjectIdentityBlockedError, Store
-from pex_protocol.enums import HarnessType, SessionStatus
+from pex_protocol.enums import EventPhase, EventType, HarnessType, SessionStatus
 from pex_protocol.goal import Goal
 from pex_protocol.project_identity import PathPlatform, ProjectLocator, ProjectOrigin
-from pex_protocol.session import HarnessSession
+from pex_protocol.session import HarnessEvent, HarnessSession
 
 
 def _session(session_id: str, *, project_id: str | None = None) -> HarnessSession:
@@ -165,3 +165,73 @@ async def test_pet_projection_enriches_only_collapsed_promptable_sessions(tmp_pa
     assert [session["id"] for session in snapshot["sessions"]] == [current.id]
     assert intervention_calls == [current.id]
     assert event_calls == [current.id]
+
+
+@pytest.mark.asyncio
+async def test_projection_drops_a_shared_goal_group_after_mid_read_authority_loss(tmp_path):
+    now = datetime.now(UTC)
+    goal = Goal(
+        id="goal:projection-race",
+        project_id=str(tmp_path),
+        title="Keep canonical projection coherent",
+        objective="Never retain sibling rows after their shared authority is lost.",
+        created_at=now,
+        updated_at=now,
+    )
+    first = _session("codex:projection-race-first", project_id=str(tmp_path)).model_copy(
+        update={"goal_id": goal.id}
+    )
+    second = _session("codex:projection-race-second", project_id=str(tmp_path)).model_copy(
+        update={"goal_id": goal.id}
+    )
+    first_event = HarnessEvent(
+        event_id="event:projection-race-first",
+        ts=now,
+        harness_type=HarnessType.CODEX,
+        session_id=first.id,
+        goal_id=goal.id,
+        event_type=EventType.FILE_EDIT,
+        phase=EventPhase.AFTER,
+    )
+
+    class RacingStore:
+        process_boot_id = "projection-race-test"
+
+        async def list_sessions(self, *, limit: int):
+            assert limit == 2
+            return [first, second]
+
+        async def get_sessions_for_authority(self, session_ids, *, omit_blocked=False):
+            assert session_ids == [first.id, second.id]
+            assert omit_blocked is True
+            return {first.id: first, second.id: second}
+
+        async def get_goal_for_authority(self, goal_id: str):
+            assert goal_id == goal.id
+            return goal
+
+        async def recent_events_for_authority(self, session_id: str, **_kwargs):
+            if session_id == second.id:
+                raise ProjectIdentityBlockedError(
+                    "project identity changed during projection",
+                    code="project_identity_quarantined",
+                )
+            return [first_event]
+
+    pipeline = Pipeline(
+        RacingStore(),  # type: ignore[arg-type]
+        AdapterRegistry(),
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
+    )
+
+    projection = await pipeline.current_projection(
+        session_limit=2,
+        session_scan_limit=2,
+        intervention_limit=0,
+        event_limit=2,
+    )
+
+    assert projection["sessions"] == []
+    assert projection["goals"] == {}
+    assert projection["events"] == []

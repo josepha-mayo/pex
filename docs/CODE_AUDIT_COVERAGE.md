@@ -2,6 +2,15 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced `current_projection()` from its session authority
+snapshot through shared Goal caching and per-session artifact readers. A later sibling's
+authority exception popped the Goal but did not retract an earlier accepted sibling or
+its collected artifacts. The new hostile fake reproduces this mid-read quarantine race.
+The projection now rejects the complete Goal scope in that snapshot, including earlier
+and later siblings plus collected interventions/events. Related unit/E2E authority
+coverage passes 28/28 and Ruff is clean. This is changed-path fail-closed review, not an
+atomic multi-artifact snapshot or whole Pipeline/Store approval.
+
 New-path addendum: `tests/unit/test_overlay_expiry_idle.py`. Parent reviewed the
 lifespan task owner, `ActionExecutor.expire_overlays()` pagination/serialization and
 shutdown stop path. The owner previously swept an empty Store every second and retried/

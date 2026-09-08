@@ -6201,9 +6201,12 @@ class Pipeline:
         interventions_truncated = False
         events_by_id: dict[str, HarnessEvent] = {}
         accepted_sessions: list[HarnessSession] = []
+        blocked_goal_ids: set[str] = set()
         for session in sessions:
             if session.goal_id is None:
                 accepted_sessions.append(session)
+                continue
+            if session.goal_id in blocked_goal_ids:
                 continue
             try:
                 goal = goals.get(session.goal_id)
@@ -6240,11 +6243,31 @@ class Pipeline:
                     events_by_id.update({row.event_id: row for row in rows})
             except ProjectIdentityBlockedError:
                 # The binding may have been quarantined or rebound between the
-                # session read and its related artifact reads.  In that case the
-                # whole row is history, not a partially current projection.
+                # session read and its related artifact reads. In that case the
+                # shared Goal scope is history, not a partially current projection.
+                # A sibling may already have contributed rows earlier in this
+                # non-transactional projection, so filter the complete scope below.
+                blocked_goal_ids.add(session.goal_id)
                 goals.pop(session.goal_id, None)
                 continue
             accepted_sessions.append(session)
+
+        if blocked_goal_ids:
+            accepted_sessions = [
+                session
+                for session in accepted_sessions
+                if session.goal_id not in blocked_goal_ids
+            ]
+            interventions_by_id = {
+                row_id: row
+                for row_id, row in interventions_by_id.items()
+                if row.goal_id not in blocked_goal_ids
+            }
+            events_by_id = {
+                event_id: row
+                for event_id, row in events_by_id.items()
+                if row.goal_id not in blocked_goal_ids
+            }
 
         interventions = sorted(
             interventions_by_id.values(),
