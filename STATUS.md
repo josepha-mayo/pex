@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Local notification replay now checks its 1 MiB cap before parsing, reads with an explicit
+bound and trusts only strict JSON idempotency receipts. A duplicate-key row previously
+suppressed a fresh human alert; the regression now preserves the alert and canonical
+replay. Channel coverage passes 8/8 with Ruff clean. Cross-process append atomicity and
+native freeze causality remain open.
+
 AgentCore response decoding now rejects exponent-overflow JSON numbers across the whole
 envelope instead of allowing an ignored field to become infinity. The focused negative
 reproduced the old admission; all 89 AgentCore client tests and Ruff pass. This is offline

@@ -114,6 +114,22 @@ def test_inbox_full_does_not_truncate_or_overwrite(tmp_path):
     assert path.stat().st_size == MAX_INBOX_BYTES
 
 
+def test_idempotency_scan_reuses_only_strict_unambiguous_receipts(tmp_path):
+    hub = ChannelHub(Settings(home=tmp_path, notify_file=True))
+    path: Path = hub.inbox_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        '{"idempotency_key":"other","idempotency_key":"wanted"}\n',
+        encoding="utf-8",
+    )
+
+    assert hub.deliver("PEX: Cursor needs you.", idempotency_key="wanted") == "notified:file"
+    assert len(path.read_text(encoding="utf-8").splitlines()) == 2
+
+    assert hub.deliver("PEX: Cursor needs you.", idempotency_key="wanted") == "notified:file"
+    assert len(path.read_text(encoding="utf-8").splitlines()) == 2
+
+
 @pytest.mark.asyncio
 async def test_notify_action_writes_the_local_inbox(tmp_path):
     store = Store(tmp_path / "pex.sqlite")

@@ -2,6 +2,14 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: local human-notification idempotency no longer parses a file at or beyond its
+declared 1 MiB cap before returning `notify_inbox_full`, and its bounded replay scan now
+accepts only strict unambiguous JSON. A duplicate-key row previously impersonated the
+requested idempotency receipt and suppressed a fresh alert; the negative now proves it
+is ignored while a later canonical receipt deduplicates. Channel coverage passes 8/8
+and Ruff is clean. External concurrent file mutation is not an atomic append protocol;
+native freeze causality and remote channels remain open. PEX stayed closed.
+
 Latest: the AgentCore response envelope now rejects exponent-overflow JSON numbers
 before any ignored or modeled field can cross the cloud proposal boundary. A focused
 negative placed `1e9999` in an otherwise ignored top-level field; the old decoder

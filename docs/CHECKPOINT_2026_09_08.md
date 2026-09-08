@@ -5,6 +5,19 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: bounded strict human-notification replay
+
+The local notification channel scanned and parsed its complete existing JSONL file before
+checking the declared 1 MiB cap. It also used permissive JSON for idempotency receipts,
+so a duplicate-key row could select the requested key and suppress a fresh human alert.
+The scan now returns full before parsing a file already at the cap, performs any replay
+read with an explicit cap, and trusts only strict duplicate/non-finite-safe JSON. The
+negative proves an ambiguous receipt is ignored and the newly appended canonical receipt
+then deduplicates normally. Channel coverage passes **8/8** and scoped Ruff passes.
+
+This does not provide cross-process atomic append/rotation, live remote messaging or
+native freeze-cause evidence. No native app, provider, worker, model or large suite ran.
+
 ## Latest offline slice: strict AgentCore response envelope
 
 The AgentCore client already rejected duplicate keys and JavaScript-style non-finite

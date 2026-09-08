@@ -13,6 +13,7 @@ from typing import Any
 from pex_protocol.actions import InterventionType, ProposedAction
 from pex_protocol.session import HarnessSession
 
+from pex_bridge.adapters.strict_json import strict_json_loads
 from pex_bridge.config import Settings
 from pex_bridge.secrets import redact_text
 from pex_bridge.store import utcnow
@@ -133,16 +134,23 @@ class ChannelHub:
             return "notification_not_configured"
         path = self.inbox_path
         path.parent.mkdir(parents=True, exist_ok=True)
+        current = path.stat().st_size if path.exists() else 0
+        if current >= MAX_INBOX_BYTES:
+            return "notify_inbox_full"
         if idempotency_key:
             key = idempotency_key[:256]
-            if path.exists():
+            if current:
                 # The inbox is capped at 1 MiB, so an exact replay scan stays
                 # bounded and closes the crash window between append and the
                 # intervention-ledger update.
-                for line in path.read_text(encoding="utf-8").splitlines():
+                with path.open("rb") as handle:
+                    prior_bytes = handle.read(MAX_INBOX_BYTES + 1)
+                if len(prior_bytes) > MAX_INBOX_BYTES:
+                    return "notify_inbox_full"
+                for line in prior_bytes.splitlines():
                     try:
-                        prior = json.loads(line)
-                    except (TypeError, ValueError):
+                        prior = strict_json_loads(line)
+                    except (TypeError, UnicodeDecodeError, ValueError):
                         continue
                     if isinstance(prior, dict) and prior.get("idempotency_key") == key:
                         return "notified:file"
@@ -162,8 +170,7 @@ class ChannelHub:
             + "\n"
         )
         extra = len(encoded.encode("utf-8"))
-        current = path.stat().st_size if path.exists() else 0
-        if current >= MAX_INBOX_BYTES or current + extra > MAX_INBOX_BYTES:
+        if current + extra > MAX_INBOX_BYTES:
             return "notify_inbox_full"
         with path.open("a", encoding="utf-8") as handle:
             handle.write(encoded)

@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced human-notification delivery through local JSONL
+idempotency replay. The supposedly capped file was parsed before its size check, and a
+duplicate-key row could impersonate a delivered receipt. The reader now refuses files
+already at the 1 MiB cap, caps replay bytes, and accepts only strict JSON receipts. The
+negative verifies ambiguous input cannot suppress a fresh alert and canonical replay
+still deduplicates. Channel coverage passes 8/8 and Ruff is clean. Cross-process file
+mutation/append atomicity and native resource impact remain unproved.
+
 Changed-path addendum: parent traced the bounded AgentCore response bytes through JSON
 decoding, envelope binding, Pydantic modeling and local policy reconstruction. Duplicate
 keys and `NaN` were refused, but an overflow such as `1e9999` decoded to infinity even

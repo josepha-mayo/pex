@@ -2,6 +2,10 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Local human-notification replay is now size-checked before parsing, byte-bounded and
+  strict-JSON-only for idempotency. An ambiguous duplicate-key receipt can no longer
+  suppress a fresh alert; 8 channel tests and Ruff pass. External concurrent mutation,
+  cross-process atomic append/rotation and native resource impact remain unverified.
 - The AgentCore response decoder now refuses exponent-overflow numbers across the whole
   envelope and maps them to delivery-uncertain protocol failure; 89 client tests and
   Ruff pass. No deployed runtime/provider was exercised, so AgentCore proof remains open.

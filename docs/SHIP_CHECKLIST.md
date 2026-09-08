@@ -83,6 +83,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Reject exponent-overflow numbers anywhere in an AgentCore response envelope,
   including ignored fields, before proposal modeling. The negative reproduced the
   admission; all 89 AgentCore client tests and Ruff pass. Live AWS proof remains open.
+- [x] Bound local notification receipt replay before parsing and reject ambiguous JSON
+  idempotency rows so corruption cannot suppress a human alert. Channel tests pass 8/8
+  and Ruff; cross-process append/rotation remains outside this slice.
 - [x] Advance newline-free Cursor records once they irreversibly exceed the record
   limit, persisting discard-until-newline state without parsing a suffix. Inbox/
   observer coverage passes 33/33 and Ruff; producer disk retention remains open.
