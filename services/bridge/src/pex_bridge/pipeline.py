@@ -637,6 +637,59 @@ def _required_capability(
     }.get(action.type)
 
 
+_WORKER_TEXT_ACTIONS = frozenset(
+    {
+        InterventionType.SEND_NUDGE,
+        InterventionType.INJECT_CONTEXT,
+        InterventionType.CONTINUE_SESSION,
+        InterventionType.REQUEST_VERIFICATION,
+    }
+)
+_GENERIC_WORKER_TEXT = re.compile(
+    r"^(?:pex:\s*)?(?:"
+    r"keep going\b|continue\b|verify with the required\b|"
+    r"do not stop\b|don't stop until\b|"
+    r"completion is contradicted by current state\b|"
+    r"please run tests and report actual output\b"
+    r")",
+    re.IGNORECASE,
+)
+_WORKER_TEXT_SPECIFICITY = re.compile(
+    r"(?:"
+    r"\b[\w.-]+\.[a-z0-9]{1,12}\b|"
+    r"::|"
+    r"`[^`\r\n]+`|"
+    r"\b(?:acceptance\s+criterion|criterion|requirement|task\s+id|exit\s+code|"
+    r"line|row)\s*(?:#|:)?\s*\d+\b|"
+    r"\b\d+\s*(?:/|of)\s*\d+\b|"
+    r"(?:^|\s)(?:[a-z]:)?[\\/][\w.-]+"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _worker_action_text_rejection(action: ProposedAction) -> str | None:
+    """Reject worker mutations that cannot carry a specific correction.
+
+    ``FRESH_HANDOFF`` is intentionally excluded because its authoritative
+    context can be a structured bundle rather than message text. Verification
+    requests pass this check only after the bridge has replaced model prose
+    with its locally minted, target-specific probe copy.
+    """
+
+    if action.type not in _WORKER_TEXT_ACTIONS:
+        return None
+    raw_text = (action.payload or {}).get("text")
+    if raw_text is None or (isinstance(raw_text, str) and not raw_text.strip()):
+        return "worker_action_text_empty"
+    if not isinstance(raw_text, str):
+        return "worker_action_text_invalid"
+    text = raw_text.strip()
+    if _GENERIC_WORKER_TEXT.search(text) and not _WORKER_TEXT_SPECIFICITY.search(text):
+        return "generic_worker_action_text"
+    return None
+
+
 class Cooldowns:
     def __init__(self) -> None:
         self._last: dict[tuple[str, str], float] = {}
@@ -2736,6 +2789,20 @@ class Pipeline:
                 ]
                 result.inference_status = "failed"
                 action = result.action
+        worker_text_rejection = _worker_action_text_rejection(action)
+        if worker_text_rejection is not None:
+            result.action = _action_from_proposal(
+                request,
+                {
+                    "type": "NOOP",
+                    "rationale": worker_text_rejection,
+                    "evidence": [worker_text_rejection],
+                },
+            )
+            result.diagnosis = worker_text_rejection
+            result.traces = [*result.traces[-255:], worker_text_rejection]
+            result.inference_status = "failed"
+            action = result.action
         if event.phase == EventPhase.BEFORE and action.type not in {
             InterventionType.NOOP,
             InterventionType.RESPOND_PERMISSION,

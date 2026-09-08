@@ -2,6 +2,18 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the bridge now enforces the Recovery Spec's worker-message contract after
+locally binding verification probes and before policy/persistence/dispatch. Blank,
+missing or non-string text on SEND_NUDGE/INJECT_CONTEXT/CONTINUE_SESSION/
+REQUEST_VERIFICATION becomes an auditable NOOP; the explicit generic bad examples
+and inherited bare nag prefixes are also rejected unless concrete evidence anchors
+are present. The executor independently rejects invalid/empty text before the Codex
+claimed-correction split, including the previously live empty CONTINUE_SESSION path.
+Structured FRESH_HANDOFF bundles are unaffected. Overlapping focused gates: pipeline
+10, executor 7, supervisor/claimed correction 32; Ruff clean. One broader event-file
+run stalled after 13 tests and was stopped without being counted. PEX stayed closed.
+See the newest checkpoint section for the exact negative and limitations.
+
 Latest: idle Cursor inbox observation backs off from 250ms through a two-second cap;
 valid work immediately restores 250ms and failure retry stays separate. No durable
 checkpoint/acknowledgement/HTTP-hook change. 30 observer/inbox tests and Ruff pass.

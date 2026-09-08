@@ -380,6 +380,25 @@ class ActionExecutor:
         if adapter is None:
             return "missing_session_or_adapter"
 
+        raw_text = action.payload.get("text")
+        if action.type in {
+            InterventionType.SEND_NUDGE,
+            InterventionType.INJECT_CONTEXT,
+            InterventionType.REQUEST_VERIFICATION,
+            InterventionType.CONTINUE_SESSION,
+        } and raw_text is not None and not isinstance(raw_text, str):
+            return "worker_action_text_invalid"
+        text = raw_text if isinstance(raw_text, str) else ""
+        if len(text) > MAX_ACTION_TEXT_CHARS:
+            return "action_text_too_large"
+        if not text.strip():
+            if action.type in {InterventionType.SEND_NUDGE, InterventionType.INJECT_CONTEXT}:
+                return "send_skipped_empty"
+            if action.type == InterventionType.REQUEST_VERIFICATION:
+                return "verification_skipped_no_specific_probe"
+            if action.type == InterventionType.CONTINUE_SESSION:
+                return "continue_skipped_empty"
+
         from pex_bridge.codex_correction import requires_correction
 
         if requires_correction(session, action.model_dump(mode="json")):
@@ -401,12 +420,7 @@ class ActionExecutor:
         except _WorkspaceDispatchRefused:
             return "workspace_authority_changed"
 
-        text = str(action.payload.get("text") or "")
-        if len(text) > MAX_ACTION_TEXT_CHARS:
-            return "action_text_too_large"
         if action.type in {InterventionType.SEND_NUDGE, InterventionType.INJECT_CONTEXT}:
-            if not text.strip():
-                return "send_skipped_empty"
             try:
                 ok = await asyncio.wait_for(
                     self._workspace_dispatch(session, lambda: adapter.send_message(session, text)),
@@ -423,8 +437,6 @@ class ActionExecutor:
                 rejected_outcome="send_failed",
             )
         if action.type == InterventionType.REQUEST_VERIFICATION:
-            if not text.strip():
-                return "verification_skipped_no_specific_probe"
             try:
                 ok = await asyncio.wait_for(
                     self._workspace_dispatch(session, lambda: adapter.send_message(session, text)),

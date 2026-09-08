@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 from pex_bridge.adapters import AdapterRegistry
@@ -748,6 +749,53 @@ async def test_worker_delivery_calls_are_bounded(
     try:
         action = _action(kind, source.id, {"text": "Run the exact focused check."})
         assert await executor.execute(action, PolicyVerdict.ALLOW) == expected
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("kind", "expected"),
+    [
+        (InterventionType.SEND_NUDGE, "send_skipped_empty"),
+        (
+            InterventionType.REQUEST_VERIFICATION,
+            "verification_skipped_no_specific_probe",
+        ),
+        (InterventionType.CONTINUE_SESSION, "continue_skipped_empty"),
+    ],
+)
+async def test_executor_rejects_empty_worker_text_before_adapter_io(
+    tmp_path, monkeypatch, kind, expected,
+):
+    store, adapters, source, executor = await _runtime(tmp_path)
+    worker_io = AsyncMock(side_effect=AssertionError("empty text reached worker adapter"))
+    method_name = (
+        "continue_or_resume" if kind == InterventionType.CONTINUE_SESSION else "send_message"
+    )
+    monkeypatch.setattr(adapters.synthetic, method_name, worker_io)
+    try:
+        action = _action(kind, source.id, {"text": "  "})
+        assert await executor.execute(action, PolicyVerdict.ALLOW) == expected
+        worker_io.assert_not_awaited()
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_executor_rejects_non_string_worker_text_before_adapter_io(
+    tmp_path, monkeypatch,
+):
+    store, adapters, source, executor = await _runtime(tmp_path)
+    worker_io = AsyncMock(side_effect=AssertionError("invalid text reached worker adapter"))
+    monkeypatch.setattr(adapters.synthetic, "send_message", worker_io)
+    try:
+        action = _action(InterventionType.SEND_NUDGE, source.id, {"text": 7})
+        assert (
+            await executor.execute(action, PolicyVerdict.ALLOW)
+            == "worker_action_text_invalid"
+        )
+        worker_io.assert_not_awaited()
     finally:
         await store.close()
 

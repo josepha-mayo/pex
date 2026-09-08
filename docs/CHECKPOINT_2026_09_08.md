@@ -5,7 +5,46 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: idle Cursor observer backoff
+## Latest offline slice: worker intervention specificity boundary
+
+The Recovery Spec forbids empty or generic worker corrections, but the supervisor
+parser's protected source allowed an evidence-bearing worker action with no `text`,
+and its narrow generic filter did not include all three explicit bad examples. The
+executor skipped empty sends and verification requests but would call
+`continue_or_resume(..., None)` for an empty `CONTINUE_SESSION`. A direct or claimed
+execution path could therefore represent a content-free resume as a real mutation.
+
+The durable bridge pipeline now validates the common text-bearing action set
+(`SEND_NUDGE`, `INJECT_CONTEXT`, `CONTINUE_SESSION`, `REQUEST_VERIFICATION`) after
+locally binding verification probes and before policy, intervention reservation or
+adapter dispatch. Missing/blank and non-string text fail closed to an auditable NOOP.
+The exact spec boilerplate plus the inherited `keep going`/bare `continue` family is
+also rejected when it carries no concrete filename, test node, numbered criterion,
+row/count, command quote or path anchor. Evidence-specific messages such as the
+spec's `results.jsonl` 27/30 example remain intact. `FRESH_HANDOFF` is excluded because
+its authority can be a validated structured context bundle rather than prose.
+
+The executor repeats the type/empty check before the Codex claimed-correction split,
+closing bypasses and preventing an empty resume from reaching any adapter. Negative
+tests first reproduced the missing pipeline helper and the empty-continue adapter
+attempt; the latter returned `continue_delivery_uncertain` before repair. Final
+focused evidence:
+
+- pipeline helper plus durable NOOP integration: **10 passed, 28 deselected**;
+- executor empty/invalid/bounded delivery selection: **7 passed, 35 deselected**;
+- overlapping supervisor parser, claimed Codex executor and bridge-boundary selection:
+  **32 passed, 41 deselected**;
+- Ruff on all four changed source/test files: **clean**.
+
+An attempted whole `test_event_processing_pipeline.py` run stalled after 13 tests in
+an existing long recovery scenario. Only its two owned Python processes were stopped;
+that incomplete run is not counted as evidence. No native PEX, model, worker, browser,
+cloud, build or broad suite ran. The whole-PC freeze cause and current native stability
+remain unknown. The protected `loop.py` was not edited or staged; its current diff is
+still an unreachable duplicate raise plus blank lines and its SHA256 remains
+`DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`.
+
+## Earlier offline slice: idle Cursor observer backoff
 
 The fail-open Cursor inbox observer called its bounded descriptor reader every
 250ms forever when no inbox work existed. It now backs off after consecutive empty

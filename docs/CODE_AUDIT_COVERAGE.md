@@ -2,6 +2,17 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent reviewed the supervisor proposal-to-pipeline action
+boundary, verification-action binding order, ActionExecutor worker dispatch split,
+and the new focused tests. Empty/non-string worker text and explicit Recovery Spec
+boilerplate now fail closed before durable intervention dispatch; executor defense
+also covers direct/claimed paths. Specific anchored corrections and structured
+handoffs remain valid. Focused overlapping evidence is pipeline 10, executor 7,
+supervisor/claimed correction 32, plus Ruff clean. A broader event test-file run
+stalled after 13 tests and was terminated; it grants no coverage. Protected loop.py
+was read but not edited: its empty-action allowance is now contained downstream,
+while its unreachable duplicate raise/blank diff remains a final-cleanup item.
+
 New-path addendum: tests/unit/test_cursor_observe_idle.py. Parent reviewed the full
 new delay/loop tests and Cursor observer idle-delay wiring in app.py. The fallback
 now backs off only on no valid records, resets after work, retains failure backoff

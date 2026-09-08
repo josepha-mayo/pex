@@ -2,6 +2,15 @@
 
 ## Current — 8 September WAT
 
+Worker-facing supervisor actions now fail closed at the durable bridge boundary:
+empty/non-string text and the Recovery Spec's generic boilerplate are coerced to
+NOOP before policy, persistence or dispatch. The executor independently rejects
+empty CONTINUE_SESSION and invalid text before the Codex claimed-correction route.
+Specific file/test/count evidence remains deliverable; structured handoff bundles
+remain valid without message text. Focused overlapping gates pass 10 pipeline,
+7 executor, and 32 supervisor/claimed-correction checks; Ruff passes. PEX stayed
+closed, so this is offline contract proof rather than a live recovery rerun.
+
 Empty Cursor fallback observation now backs off to a two-second cap, immediately
 resetting after valid work; 30 observer/inbox tests and Ruff pass. Durable intake
 semantics are unchanged. No live/native stability claim.

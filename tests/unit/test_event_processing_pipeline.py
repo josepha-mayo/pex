@@ -11,6 +11,7 @@ from pex_bridge.pipeline import (
     LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS,
     REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS,
     Pipeline,
+    _worker_action_text_rejection,
 )
 from pex_bridge.store import ProjectIdentityBlockedError, Store, stable_event_artifact_id
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
@@ -43,7 +44,12 @@ class _NudgeSupervisor:
                 type=InterventionType.SEND_NUDGE,
                 session_id=request.session.id,
                 goal_id=request.session.goal_id,
-                payload={"text": "Continue with the exact acceptance criteria."},
+                payload={
+                    "text": (
+                        f"Observed event {request.event.event_id} still has unresolved "
+                        "goal evidence. Inspect that event before continuing."
+                    )
+                },
                 rationale="The accepted event still has unfinished work.",
                 evidence=[request.event.event_id],
                 confidence=0.9,
@@ -184,6 +190,125 @@ def test_local_supervisor_dispatch_budget_outlives_main_agent_budget():
     assert LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS == 70.0
     assert REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS == 30.0
     assert LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS > 60.0
+
+
+@pytest.mark.parametrize(
+    ("action_type", "text", "expected"),
+    [
+        (InterventionType.SEND_NUDGE, "", "worker_action_text_empty"),
+        (InterventionType.SEND_NUDGE, 7, "worker_action_text_invalid"),
+        (
+            InterventionType.CONTINUE_SESSION,
+            "   ",
+            "worker_action_text_empty",
+        ),
+        (
+            InterventionType.SEND_NUDGE,
+            "Completion is contradicted by current state. Verify.",
+            "generic_worker_action_text",
+        ),
+        (
+            InterventionType.REQUEST_VERIFICATION,
+            "Please run tests and report actual output.",
+            "generic_worker_action_text",
+        ),
+        (
+            InterventionType.CONTINUE_SESSION,
+            "Do not stop until requirements are complete.",
+            "generic_worker_action_text",
+        ),
+        (
+            InterventionType.INJECT_CONTEXT,
+            "PEX: keep going until tests pass.",
+            "generic_worker_action_text",
+        ),
+    ],
+)
+def test_worker_action_text_rejects_empty_and_spec_boilerplate(
+    action_type, text, expected,
+):
+    action = ProposedAction(
+        type=action_type,
+        session_id="session-1",
+        goal_id="goal-1",
+        payload={"text": text},
+        rationale="test",
+        evidence=["event-1"],
+    )
+
+    assert _worker_action_text_rejection(action) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        (
+            "Completion is contradicted by current state: results.jsonl contains "
+            "27/30 rows; task IDs 11, 18, and 24 are missing. Resume those rows."
+        ),
+        (
+            "The test-backed criterion is unresolved: no terminal result exists for "
+            "tests/unit/test_api.py::test_create. Run that node and report its exit code."
+        ),
+    ],
+)
+def test_worker_action_text_preserves_evidence_specific_corrections(text):
+    action = ProposedAction(
+        type=InterventionType.SEND_NUDGE,
+        session_id="session-1",
+        goal_id="goal-1",
+        payload={"text": text},
+        rationale="test",
+        evidence=["event-1"],
+    )
+
+    assert _worker_action_text_rejection(action) is None
+
+
+def test_non_text_handoff_does_not_require_a_message():
+    action = ProposedAction(
+        type=InterventionType.FRESH_HANDOFF,
+        session_id="session-1",
+        goal_id="goal-1",
+        payload={"bundle": {"schema": "pex.context-bundle.v1"}},
+        rationale="test",
+        evidence=["event-1"],
+    )
+
+    assert _worker_action_text_rejection(action) is None
+
+
+@pytest.mark.asyncio
+async def test_durable_pipeline_coerces_generic_worker_text_to_noop(tmp_path):
+    class GenericSupervisor(_NudgeSupervisor):
+        async def decide(self, request, *, local_model):
+            result = await super().decide(request, local_model=local_model)
+            result.action.payload = {
+                "text": "Completion is contradicted by current state. Verify."
+            }
+            return result
+
+    store, adapters, session, pipeline = await _pipeline(tmp_path)
+    supervisor = GenericSupervisor()
+    pipeline.supervisor = supervisor
+    event = _event(
+        session,
+        "generic-worker-action",
+        event_type=EventType.STOP,
+        message="I am done.",
+    )
+    try:
+        intervention = await pipeline.ingest_event(event, session)
+
+        assert supervisor.calls == 1
+        assert intervention is not None
+        assert intervention.proposed_action.type == InterventionType.NOOP
+        assert intervention.proposed_action.rationale == "generic_worker_action_text"
+        assert intervention.result == "noop"
+        assert adapters.synthetic.inbox.get(session.id, []) == []
+    finally:
+        await _drain_presentations(pipeline)
+        await store.close()
 
 
 @pytest.mark.asyncio
