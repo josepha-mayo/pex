@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Hatch legacy imports, candidate receipts and image-provider response JSON now reject
+  exponent overflow; 58 durability/provider tests and Ruff pass. No provider call or
+  image generation ran, and eight-pet visual/native QA remains open.
 - Durable intervention-audit and human action/coverage reads now reject ambiguous Store
   JSON before projection or counting; 25 audit/attention tests and Ruff pass. Production
   immutable triggers also blocked ordinary mutation. Other Store paths remain under audit.

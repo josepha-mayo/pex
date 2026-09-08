@@ -102,6 +102,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Strictly decode durable intervention-audit and human action/coverage rows so
   duplicate keys cannot evade equality checks or suppress truth. Audit/attention tests
   pass 25/25 and Ruff; remaining Store reads are still audited separately.
+- [x] Reject exponent overflow across hatch legacy imports, candidate receipts and
+  bounded image-provider responses. Hatch tests pass 58/58 and Ruff; no paid call,
+  playable pet or visual approval is implied.
 - [x] Bound local notification receipt replay before parsing and reject ambiguous JSON
   idempotency rows so corruption cannot suppress a human alert. Channel tests pass 8/8
   and Ruff; cross-process append/rotation remains outside this slice.

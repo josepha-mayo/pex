@@ -529,6 +529,10 @@ def test_legacy_json_migration_is_visible_unverified_and_zero_call(tmp_path: Pat
         '{"id":"corrupt","id":"duplicate","secret":"must-not-surface"}',
         encoding="utf-8",
     )
+    (tmp_path / "overflow.json").write_text(
+        '{"id":"overflow","pet_id":"unsafe","ignored":1e9999}',
+        encoding="utf-8",
+    )
 
     registry = HatchRegistry(tmp_path, clock=lambda: BASE_TIME)
     running = registry.get("legacy_running")
@@ -539,10 +543,10 @@ def test_legacy_json_migration_is_visible_unverified_and_zero_call(tmp_path: Pat
     assert complete is not None and complete.status == "awaiting_assembly_qa"
     assert complete.jobs_total == 1
     assert complete.spritesheet is None
-    assert len(corrupt) == 1
+    assert len(corrupt) == 2
     assert "must-not-surface" not in json.dumps(corrupt[0].public())
     audit = registry.legacy_import_audit()
-    assert len(audit) == 3
+    assert len(audit) == 4
     assert {item["outcome"] for item in audit} == {
         "imported_unverified",
         "corrupt_visible",
@@ -638,6 +642,26 @@ def test_receipt_mismatch_blocks_finalize_and_reconciliation(tmp_path: Path):
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     receipt["request_fingerprint"] = "0" * 64
     receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    with pytest.raises(HatchConflictError, match="exact provenance"):
+        registry.finalize_delivered(
+            job.id, dispatch_token=claim.effect.dispatch_token
+        )
+    restarted = HatchRegistry(tmp_path, clock=lambda: BASE_TIME + timedelta(seconds=1))
+    assert restarted.get_effect(job.id).state == "dispatching"  # type: ignore[union-attr]
+
+
+def test_overflowed_candidate_receipt_blocks_finalize_and_reconciliation(tmp_path: Path):
+    registry = HatchRegistry(tmp_path, clock=lambda: BASE_TIME)
+    job = _job("receipt_overflow")
+    registry.create_or_replay(job, _authorization(job))
+    claim = registry.claim_for_dispatch(job.id, _config())
+    assert claim.claimed is True and claim.effect is not None
+    assert claim.effect.dispatch_token is not None
+    asset = write_generated(tmp_path / job.id, "base", _png_bytes())
+    receipt_path = write_candidate_receipt(registry, claim.job, claim.effect, asset)
+    raw = receipt_path.read_text(encoding="utf-8")
+    receipt_path.write_text(raw[:-1] + ',"ignored":1e9999}', encoding="utf-8")
 
     with pytest.raises(HatchConflictError, match="exact provenance"):
         registry.finalize_delivered(

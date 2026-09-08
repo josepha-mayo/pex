@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent applied the hatch-pet durability rules to legacy import,
+candidate receipt reconciliation and bounded image-provider response parsing. Each
+rejected duplicates/constants but admitted exponent overflow. Finite-float parsing now
+keeps legacy rows corrupt-visible, blocks receipt finalization/reconciliation and rejects
+provider JSON before base64 use. Hatch coverage passes 58/58 and Ruff is clean. No image,
+provider call or visual approval was produced.
+
 Changed-path addendum: parent followed durable intervention-audit rows into JSONL
 projection and human action/coverage rows into attention metrics. Permissive parsing let
 duplicate keys collapse to an exact expected dictionary. Production immutable triggers

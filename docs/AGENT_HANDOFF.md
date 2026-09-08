@@ -2,6 +2,14 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the hatch-pet pipeline now rejects exponent overflow in legacy job imports,
+candidate provenance receipts and bounded image-provider responses. A corrupt legacy job
+stays visibly unverified; a corrupt candidate cannot finalize/reconcile a potentially
+billable effect; provider JSON fails before base64 handling. Hatch durability/provider
+coverage passes 58/58 and Ruff is clean. The hatch-pet contract kept this fail-closed and
+did not permit image generation, asset replacement or visual self-approval. No provider
+call or native app ran.
+
 Latest: durable intervention-audit projection and human action/coverage integrity reads
 now use strict Store JSON. Duplicate keys could previously collapse into the exact
 expected record and evade equality checks. Production immutability triggers blocked the

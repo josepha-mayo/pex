@@ -5,6 +5,19 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: strict hatch effect and provider JSON
+
+The hatch-pet durability layer parsed legacy jobs and candidate provenance receipts with
+duplicate/non-standard-constant checks but admitted exponent overflow. The image API's
+bounded streamed/content response readers had the same gap. Finite-float hooks now cover
+all three boundaries. Negatives prove an overflowed legacy job remains visibly corrupt,
+an overflowed receipt cannot finalize or reconcile a potentially billable effect, and an
+overflowed provider response fails before base64 processing. Hatch durability/provider
+coverage passes **58/58** and scoped Ruff passes.
+
+Per the hatch-pet rules, no image was generated or replaced and no visual QA was
+self-approved. No provider/network call, native app, worker or large suite ran.
+
 ## Latest offline slice: strict audit and human-attention truth
 
 Intervention-audit projection reparsed durable SQLite JSON permissively before appending

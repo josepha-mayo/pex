@@ -492,6 +492,13 @@ def _reject_nonfinite_json(value: str) -> None:
     raise ValueError(f"invalid JSON constant {value}")
 
 
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError(f"invalid JSON number {value}")
+    return parsed
+
+
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -542,6 +549,7 @@ def _bounded_json_response(response: Any) -> dict[str, Any]:
             payload = json.loads(
                 bytes(chunks),
                 parse_constant=_reject_nonfinite_json,
+                parse_float=_finite_json_float,
                 object_pairs_hook=_unique_json_object,
             )
         except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
@@ -555,6 +563,7 @@ def _bounded_json_response(response: Any) -> dict[str, Any]:
                 payload = json.loads(
                     content,
                     parse_constant=_reject_nonfinite_json,
+                    parse_float=_finite_json_float,
                     object_pairs_hook=_unique_json_object,
                 )
             except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):

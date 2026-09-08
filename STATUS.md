@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Hatch legacy jobs, candidate provenance receipts and image-provider responses now reject
+exponent overflow. Corrupt jobs remain visible/unverified and corrupt receipts cannot
+finalize a potentially billable effect. Hatch coverage passes 58/58 with Ruff clean; no
+provider call, image generation or visual approval occurred.
+
 Durable intervention-audit projection and human action/coverage integrity checks now use
 strict Store JSON, preventing duplicate keys from collapsing into trusted dictionaries.
 Offline-corruption regressions pass in 25 audit/attention tests with Ruff clean. Whole-

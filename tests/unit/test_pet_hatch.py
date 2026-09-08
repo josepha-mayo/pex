@@ -230,7 +230,14 @@ def test_generate_png_rejects_infinite_empty_chunk_shape():
         generate_png("pet", client=Client(), config=cfg)
 
 
-def test_generate_png_rejects_nonfinite_json_and_invalid_base64_shape():
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b'{"data":[{"b64_json":123}],"cost":NaN}',
+        b'{"data":[{"b64_json":123}],"cost":1e9999}',
+    ],
+)
+def test_generate_png_rejects_nonfinite_json_and_invalid_base64_shape(payload):
     class Response:
         status_code = 200
         headers = {"content-type": "application/json"}
@@ -242,7 +249,7 @@ def test_generate_png_rejects_nonfinite_json_and_invalid_base64_shape():
             return None
 
         def iter_bytes(self):
-            yield b'{"data":[{"b64_json":123}],"cost":NaN}'
+            yield payload
 
     class Client:
         def stream(self, method, url, headers=None, json=None):
