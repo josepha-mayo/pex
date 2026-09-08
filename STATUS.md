@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Desktop refresh now batches up to 1,000 retained CAS receipts before vanished-row
+detachment instead of querying one control row at a time every eight seconds. Exact
+seen/source/status and revision/generation fencing are preserved. The negative failed
+before repair; related discovery/pet tests pass 52/52 with Ruff clean. Discovered-row
+authority/writes and native impact remain open; PEX stayed closed.
+
 Concurrent pet callers now share one cancellation-shielded build and receive isolated
 copies; event commits use one 250ms-coalesced serial refresh worker with a mid-read
 follow-up instead of task-per-event query storms. Concurrency 4/4, event/socket 11/11,

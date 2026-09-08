@@ -2,6 +2,15 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the eight-second desktop discovery refresh no longer performs one session-
+control query per retained row before deciding which vanished desktop tiles to detach.
+It now lists once, reads at most 1,000 exact CAS receipts through the existing bounded
+batch, and preserves the prior seen/prefix/source/status plus revision/generation-fenced
+detach logic. The negative made singular control reads fatal and failed before repair;
+the combined discovery/pet/CAS/coalescing gate passes 52/52 and Ruff is clean. Newly
+discovered rows still use singular authority reads and writes, so discovery is not
+fully batched and native freeze causality remains unknown. PEX remains closed.
+
 Latest: pet snapshots are now single-flight across concurrent HTTP/websocket/internal
 callers and deep-copied before return so AppState decoration cannot mutate another
 caller's payload. A cancelled waiter cannot cancel the shared build; presentation

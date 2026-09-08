@@ -2,6 +2,11 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Desktop refresh now reads retained session CAS state in one bounded batch before
+  its unchanged revision/generation-fenced detach decisions, removing up to 1,000
+  singular queries per eight-second attempt. Related tests pass 52/52 and Ruff is
+  clean. Newly discovered rows still use singular authority reads/upserts; native
+  resource impact and freeze causality remain unverified.
 - Concurrent pet snapshots now single-flight with copy/cancellation isolation, and
   committed-event bursts use one 250ms serial refresh worker plus a dirty follow-up.
   Focused 4/4, 11/11 and 60/60 selections and Ruff pass. One filtered handoff mix

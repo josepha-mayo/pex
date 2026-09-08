@@ -344,6 +344,59 @@ async def test_refresh_detaches_vanished_desktop_rows(tmp_path, monkeypatch):
     assert stored.status == SessionStatus.DETACHED
 
 
+async def test_refresh_batches_control_reads_before_detaching_vanished_rows(
+    tmp_path,
+    monkeypatch,
+):
+    from pex_bridge.adapters.desktop import DesktopProcessSnapshot
+    from pex_protocol.enums import HarnessType
+
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    registry = AdapterRegistry()
+    pipeline = Pipeline(
+        store,
+        registry,
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
+    )
+    stale = HarnessSession(
+        id="cursor:desktop-batch",
+        harness_type=HarnessType.CURSOR,
+        vendor_session_id="desktop",
+        status=SessionStatus.DISCOVERED,
+        metadata={"source": "desktop"},
+    )
+    await store.upsert_session(stale)
+    for name in ("cursor", "codex", "opencode", "hermes", "claude_code"):
+        registry.get(name).discover_sessions = AsyncMock(return_value=[])
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.capture_running_image_snapshot",
+        lambda: DesktopProcessSnapshot(frozenset(), True, 1.0),
+    )
+    batch_calls: list[list[str]] = []
+    original_batch = store.get_session_control_states
+
+    async def counted_batch(session_ids: list[str]):
+        batch_calls.append(session_ids)
+        return await original_batch(session_ids)
+
+    async def reject_singular(_session_id: str):
+        raise AssertionError("desktop cleanup must not query session controls one row at a time")
+
+    monkeypatch.setattr(store, "get_session_control_states", counted_batch)
+    monkeypatch.setattr(store, "get_session_control_state", reject_singular)
+
+    try:
+        await pipeline.refresh_desktop_sessions()
+        stored = await store.get_session(stale.id)
+    finally:
+        await store.close()
+
+    assert batch_calls == [[stale.id]]
+    assert stored is not None and stored.status == SessionStatus.DETACHED
+
+
 async def test_refresh_does_not_detach_a_working_codex_session(tmp_path, monkeypatch):
     from pex_protocol.enums import HarnessType
 

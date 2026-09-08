@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path follow-up: parent reviewed the complete desktop refresh lock/backoff,
+shared process snapshot, discovery merge, vanished-row classification and CAS detach
+path. Retained controls previously used one query per listed session; the existing
+bounded exact-ID batch now supplies one canonical receipt map before the unchanged
+checks. A singular-reader-fatal negative failed before repair; combined related tests
+pass 52/52 with Ruff clean. Newly discovered authority reads/upserts remain singular;
+this is not whole discovery, Pipeline, Store, native stability or freeze-cause approval.
+
 New-path addendum: `tests/unit/test_pet_snapshot_coalescing.py`. Parent traced all
 Pipeline/AppState/websocket/direct pet snapshot callers, event presentation scheduling,
 shutdown ownership and mutable decoration. Concurrent callers now share one shielded

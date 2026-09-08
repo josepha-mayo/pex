@@ -30,6 +30,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Single-flight concurrent pet snapshots and coalesce committed-event refresh
   bursts into one 250ms serial worker with a mid-read follow-up. Copy/cancellation/
   shutdown tests 4/4, adjacent 11/11 and 60/60; native resource proof remains open.
+- [x] Batch retained-session CAS reads in the eight-second desktop refresh before
+  vanished-tile detachment; exact revision/generation fences unchanged. Combined
+  discovery/pet gate 52/52 and Ruff pass; newly discovered-row writes remain singular.
 - [x] Pause hidden/page-background sprite and CSS animation without resetting
   dismissed messages; share and clean up the visibility listener. 223 tests/TS pass.
   Native timer/GPU/CPU measurements remain part of the open P0 verification gate.

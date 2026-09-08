@@ -6117,7 +6117,11 @@ class Pipeline:
                         session,
                         allow_goal_change=observe_tile,
                     )
-            for listed in await self.store.list_sessions():
+            listed_sessions = await self.store.list_sessions()
+            listed_controls = await self.store.get_session_control_states(
+                [listed.id for listed in listed_sessions]
+            )
+            for listed in listed_sessions:
                 prefix = listed.id.split(":", 1)[0]
                 if prefix == "claude":
                     prefix = "claude_code"
@@ -6125,7 +6129,7 @@ class Pipeline:
                     continue
                 if listed.id in seen[prefix]:
                     continue
-                control = await self.store.get_session_control_state(listed.id)
+                control = listed_controls.get(listed.id)
                 if control is None:
                     continue
                 stored = control["session"]

@@ -5,6 +5,32 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: batch desktop-refresh detachment controls
+
+`refresh_desktop_sessions()` is locked and backed off to at most one attempt every
+eight seconds, but each attempt listed up to 1,000 retained sessions and then called
+the singular control-state reader for every row belonging to a successfully scanned
+harness. Those reads only supply the already-existing revision, control revision and
+discovery generation used by the CAS-fenced detached-state mutation.
+
+The refresh now retains the ordered session list and requests all exact control
+receipts once through `get_session_control_states()`. It then performs the same harness
+prefix normalization, current-generation exclusion, desktop/stale-Codex eligibility
+checks and `mark_session_detached()` call with the same receipt fields. Missing rows
+still skip; no stale list object is used as mutation authority.
+
+The focused negative installed an actual stale desktop row, made every adapter return
+an empty discovery, and replaced the singular reader with a hard failure. Prior source
+failed there; repaired source calls the batch exactly once with the retained ID and
+detaches through the canonical CAS receipt. The combined existing-session, pet,
+projection, control-batch and coalescing selection passes **52/52** in 10.03s; Ruff is
+clean.
+
+This removes another up-to-1,000-query periodic path but does not batch authority reads
+or writes for newly discovered sessions, change the eight-second discovery cadence, or
+measure actual native resources. PEX stayed closed; no model, worker, browser, cloud,
+build or large suite ran, and the reported whole-PC freeze cause remains unknown.
+
 ## Latest offline slice: single-flight and coalesced pet snapshots
 
 The reduced pet projection still had no concurrency owner. Every committed event
