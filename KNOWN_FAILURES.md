@@ -2,6 +2,11 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Parsed Cursor dictionaries that fail deterministic adapter shape/bound validation now
+  advance without blocking later records. Only preparation HTTP 422 is classified
+  permanent; timeout, collision, authority, Store and cancellation paths remain
+  replayable. Combined inbox and Store/hook cases pass 41/41 with Ruff clean. Rejected
+  physical/semantic records still lack durable audit receipts and operator UI.
 - Newline-free Cursor records that have already exceeded the admissible record bound
   now advance once under a v2 identity/anchor-bound discard checkpoint, rather than
   rereading up to the same multi-megabyte prefix forever. The reader parses again only
@@ -102,8 +107,8 @@
   pass. They do not cover historical edits outside the small boundary. Remaining:
   earlier-history changes, non-atomic directory/replace boundaries,
   resistant cancellation/OS stalls, poison-record receipts/UI and producer-coordinated
-  retention. Invalid dictionaries can block
-  later records; malformed physical lines still lack rejection receipts. The reader
+  retention. Invalid dictionaries no longer block later records when adapter validation
+  proves them permanently malformed; rejected records still lack receipts. The reader
   does not limit disk growth. Full reliable Cursor/native operation is unproven.
 
 ## 7 September 2026 — Q17 provider timeout; unittest source defect is repaired

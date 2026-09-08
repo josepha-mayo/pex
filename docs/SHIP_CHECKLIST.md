@@ -62,9 +62,12 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Bind restart checkpoints to file identity and a small boundary checksum;
   replay/migrate legacy offsets and stop reading full backlogs for small batches.
   36 targeted checks pass; not a whole-history integrity or native proof.
-- [ ] Finish earlier-history/atomic path safety, poison-record receipts/UI and
+- [ ] Finish earlier-history/atomic path safety and poison-record receipts/UI; add
   producer-coordinated retention. Deadlines remain
   cooperative; checkpoint preserves exact limitations and development failures.
+- [x] Advance parsed Cursor records only when adapter preparation proves permanent
+  shape/bound invalidity; retain transient/collision/authority failures. Inbox plus
+  real Store/hook replay gate passes 41/41 and Ruff.
 - [x] Advance newline-free Cursor records once they irreversibly exceed the record
   limit, persisting discard-until-newline state without parsing a suffix. Inbox/
   observer coverage passes 33/33 and Ruff; producer disk retention remains open.

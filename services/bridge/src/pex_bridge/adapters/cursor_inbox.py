@@ -24,6 +24,10 @@ MAX_CHECKPOINT_BYTES = 256
 CHECKPOINT_ANCHOR_BYTES = 4096
 
 
+class PermanentInboxRecordError(ValueError):
+    """A parsed record can never become an admissible Cursor hook on retry."""
+
+
 @dataclass(frozen=True)
 class InboxCheckpoint:
     offset: int = 0
@@ -289,7 +293,13 @@ async def process_inbox(
     for payload in batch.records:
         if stop is not None and stop.is_set():
             return 0
-        await consume(payload)
+        try:
+            await consume(payload)
+        except PermanentInboxRecordError:
+            # Shape/bound failures are deterministic for these immutable source
+            # bytes. Transient authority, Store and pipeline failures still
+            # propagate and retain the complete at-least-once batch.
+            continue
     if stop is not None and stop.is_set():
         return 0
     if not await asyncio.to_thread(acknowledge_inbox, batch):

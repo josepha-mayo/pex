@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 from pex_bridge import app as bridge_app
+from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.config import Settings
 
 
@@ -56,3 +59,33 @@ async def test_cursor_observe_loop_resets_idle_backoff_after_work(monkeypatch, t
         monkeypatch.setattr(bridge_app.asyncio, "wait_for", real_wait_for)
 
     assert observed_delays == [0.25, 0.5, 1.0, 0.25, 0.25]
+
+
+@pytest.mark.asyncio
+async def test_observer_classifies_only_shape_rejections_as_permanent() -> None:
+    from pex_bridge.adapters.cursor_inbox import PermanentInboxRecordError
+
+    with pytest.raises(PermanentInboxRecordError):
+        await bridge_app._process_cursor_observation({})
+
+
+@pytest.mark.asyncio
+async def test_invalid_normalized_hook_is_rejected_before_durable_upsert(monkeypatch) -> None:
+    from pex_bridge.adapters.cursor_inbox import PermanentInboxRecordError
+
+    store = SimpleNamespace(
+        get_session_for_authority=AsyncMock(return_value=None),
+        upsert_session=AsyncMock(),
+    )
+    monkeypatch.setattr(bridge_app.state, "adapters", AdapterRegistry())
+    monkeypatch.setattr(bridge_app.state, "store", store)
+
+    with pytest.raises(PermanentInboxRecordError):
+        await bridge_app._process_cursor_observation(
+            {
+                "conversation_id": "invalid-normalized-hook",
+                "hook_event_name": {"not": "text"},
+            }
+        )
+
+    store.upsert_session.assert_not_awaited()

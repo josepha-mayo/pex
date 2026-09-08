@@ -2,14 +2,25 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: syntactically valid Cursor dictionaries can no longer poison an entire observer
+batch when their adapter shape/bounds are permanently invalid. `_prepare_cursor_hook()`
+now completes adapter normalization before the durable session upsert and consistently
+maps deterministic `TypeError`/`ValueError` validation to HTTP 422. Observer intake alone
+maps that 422 to `PermanentInboxRecordError`; `process_inbox()` skips that immutable row
+and continues before one digest/identity-bound acknowledgement. Pipeline timeouts,
+event collisions, project authority, Store failures and cancellation are deliberately
+not classified permanent and retain the complete batch. Combined unit plus real Store/
+hook replay coverage passes 41/41 and Ruff is clean. Rejection receipts/operator UI
+remain open. PEX remains closed.
+
 Latest: the Cursor observer no longer rereads the same prefix of a newline-free record
 after that record has irreversibly exceeded `MAX_RECORD_BYTES`. Checkpoint schema v2
 persists `discarding` with the existing offset, file identity and boundary anchor.
 Bounded reads advance through the poison bytes once, never parse a mid-line suffix,
 clear discard mode only at the physical newline, and preserve valid rows afterward.
 The exact negative failed with `read_inbox() is None` at offset zero before repair;
-full inbox/budget/idle-observer coverage passes 33/33 and Ruff is clean. Semantic poison
-dictionaries/rejection receipts and producer-coordinated disk retention remain open.
+full inbox/budget/idle-observer coverage passes 33/33 and Ruff is clean. Durable
+rejection receipts/UI and producer-coordinated disk retention remain open.
 PEX remains closed; this is not native freeze-cause proof.
 
 Latest: `current_projection()` now treats a mid-read `ProjectIdentityBlockedError` as

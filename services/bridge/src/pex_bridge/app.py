@@ -1353,8 +1353,11 @@ async def _prepare_cursor_hook(payload: dict) -> tuple[HarnessSession, HarnessEv
             session.cwd = existing.cwd
         if not session.project_id:
             session.project_id = existing.project_id
+    try:
+        event = adapter.normalize_hook(payload, session)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(422, str(exc)) from exc
     await state.store.upsert_session(session)
-    event = adapter.normalize_hook(payload, session)
     return session, event
 
 
@@ -1412,13 +1415,22 @@ async def _apply_cursor_hook(payload: dict) -> dict[str, Any]:
 
 async def _process_cursor_observation(payload: dict) -> None:
     """Observer admission is durable; it is not an editor's fail-open HTTP result."""
+    from pex_bridge.adapters.cursor_inbox import PermanentInboxRecordError
+
     adapter = state.adapters.cursor
     token = adapter._delivery_channel.set("observe")
     try:
         # Unlike an editor HTTP timeout, this cooperative observer deadline is a
         # failure, never a successful acknowledgement. It includes authority reads.
         async with asyncio.timeout(CURSOR_OBSERVE_PIPELINE_TIMEOUT_SECONDS):
-            session, event = await _prepare_cursor_hook(payload)
+            try:
+                session, event = await _prepare_cursor_hook(payload)
+            except HTTPException as exc:
+                if exc.status_code == 422:
+                    raise PermanentInboxRecordError(
+                        "Cursor observer record has an invalid permanent shape"
+                    ) from None
+                raise
             # Ingestion verifies semantic duplicates and durable processing receipts.
             await state.pipeline.ingest_event(event, session)
             await _observe_cursor_continuation(event.event_id)

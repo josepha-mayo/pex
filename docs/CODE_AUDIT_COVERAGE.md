@@ -2,6 +2,16 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced parsed Cursor inbox records through adapter session
+shape checks, normalization, durable Store upsert, event ingestion and acknowledgement.
+Previously any valid JSON dictionary that deterministically failed adapter validation
+replayed the complete batch forever. Normalization now precedes durable upsert, both
+adapter validation phases map to HTTP 422, and only that observer-specific permanent
+classification is skipped. Collision, timeout, authority, Store and cancellation tests
+prove replay is retained. Combined unit/contract Store-hook coverage passes 41/41 with
+Ruff clean. This is changed-path poison isolation, not durable rejection audit/UI or a
+producer retention protocol.
+
 Changed-path addendum: parent re-read the complete Cursor inbox reader, versioned
 checkpoint decoder, digest-bound acknowledgement and async consumer. A newline-free
 record above `MAX_RECORD_BYTES` previously returned no batch and replayed its same

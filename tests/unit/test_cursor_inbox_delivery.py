@@ -45,6 +45,23 @@ async def test_consumer_failure_keeps_the_batch_pending(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_permanently_invalid_record_does_not_block_later_valid_rows(tmp_path):
+    path = inbox.inbox_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b'{"kind":"invalid"}\n{"id":"valid"}\n')
+    seen: list[str] = []
+
+    async def consume(payload):
+        if payload.get("kind") == "invalid":
+            raise inbox.PermanentInboxRecordError("invalid Cursor hook shape")
+        seen.append(payload["id"])
+
+    assert await inbox.process_inbox(tmp_path, consume) == 2
+    assert seen == ["valid"]
+    assert inbox._read_offset(inbox.offset_path(tmp_path)) == path.stat().st_size
+
+
+@pytest.mark.asyncio
 async def test_cancelled_consumer_does_not_acknowledge_later_records(tmp_path):
     _seed(tmp_path, "pending", "not-started")
     started = asyncio.Event()

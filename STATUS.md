@@ -2,6 +2,13 @@
 
 ## Current — 8 September WAT
 
+Parsed Cursor records with permanently invalid hook shape/bounds no longer block every
+later observer record. Only deterministic adapter HTTP-422 preparation failures advance;
+timeouts, authority/Store failures, collisions and cancellation retain the batch for
+at-least-once replay. Valid normalization now precedes durable session upsert. Combined
+inbox and real Store/hook replay coverage passes 41/41 with Ruff clean. Durable malformed-
+record receipts/UI remain open; PEX stayed closed.
+
 Cursor observer intake now makes bounded forward progress through an irrevocably
 oversized newline-free JSONL record instead of rereading the same prefix forever.
 Checkpoint v2 persists discard-until-newline state, binds it to the existing file

@@ -5,6 +5,34 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: permanent Cursor poison isolation
+
+After JSON parsing, a Cursor observer record can still be permanently inadmissible:
+missing/invalid conversation identity, control characters, oversized adapter fields or
+an invalid normalized hook shape. Previously any such dictionary made the async
+consumer raise, retained the full batch, and replayed the same poison before every valid
+record behind it. That is correct for transient failures but creates an infinite blocker
+for immutable bytes whose shape cannot improve on retry.
+
+`_prepare_cursor_hook()` now runs both adapter session validation and event normalization
+before durable session upsert, consistently mapping deterministic `TypeError`/`ValueError`
+to HTTP 422. The observer—not the interactive fail-open HTTP route—maps only that status
+to `PermanentInboxRecordError`. `process_inbox()` skips the rejected row, continues
+through later records, and advances them together under the unchanged source identity,
+marker-state and consumed-byte digest checks.
+
+The classification is intentionally closed. Pipeline timeouts, event-ID collisions,
+project authority changes, Store failures, unexpected exceptions and cancellation still
+propagate, leave the checkpoint untouched and replay the complete batch. The negative
+first failed because no permanent-error type existed. Combined inbox/budget/idle-owner,
+real Store ingestion/replay and transient-failure coverage passes **41/41** in 13.05
+seconds; scoped Ruff is clean.
+
+Rejected records are not yet written to a durable audit receipt or shown in operator UI;
+only their safely bounded source bytes and logs explain the rejection today. Producer-
+coordinated retention/disk bounds also remain open. PEX stayed closed; no native,
+model, worker, browser, cloud, build or large-suite action ran.
+
 ## Latest offline slice: resumable oversized Cursor records
 
 Cursor's fail-open observer writes JSONL. The bounded reader correctly refused to
@@ -27,9 +55,9 @@ offset, then proved monotonic bounded offsets across the poison record and succe
 parsing of the first row after its terminator. The complete inbox budget, delivery and
 idle-observer selection passes **33/33** in 4.77 seconds; scoped Ruff is clean.
 
-This closes newline-free oversized replay churn, not all poison handling. A dictionary
-that parses but fails later semantic admission can still replay because no durable
-rejection receipt exists. The producer and consumer still have no coordinated
+This closes newline-free oversized replay churn. Deterministically invalid parsed
+dictionaries are isolated by the newer slice above, but neither class has a durable
+rejection receipt. The producer and consumer still have no coordinated
 compaction/retention protocol, so disk growth is not bounded. PEX stayed closed; no
 native, model, worker, browser, cloud, build or large-suite action ran.
 
