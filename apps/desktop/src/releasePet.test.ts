@@ -52,6 +52,23 @@ test("transparent always-on-top pet avoids a continuous compositor animation", a
   );
 });
 
+test("transparent overlay keeps its message and hide control legible on light desktops", async () => {
+  const styles = await readFile(new URL("./styles.css", import.meta.url), "utf8");
+  assert.match(
+    styles,
+    /\.pet-overlay-close\s*\{[\s\S]*?color:\s*rgba\(238, 245, 240, 0\.9\);[\s\S]*?background:\s*rgba\(12, 19, 24, 0\.92\);/u,
+  );
+  assert.match(
+    styles,
+    /\.pet-stage-overlay \.activity-bubble\s*\{[\s\S]*?background:\s*rgba\(12, 19, 24, 0\.96\);[\s\S]*?box-shadow:/u,
+  );
+  assert.match(
+    styles,
+    /\.pet-stage-overlay \.activity-bubble::before\s*\{[\s\S]*?background:\s*#0c1318;/u,
+    "the speech-tail must not reveal a mismatched light patch",
+  );
+});
+
 test("sprite consumers share one visibility listener and dispose it after the last unsubscribe", async (t) => {
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
   const page = new EventTarget();
