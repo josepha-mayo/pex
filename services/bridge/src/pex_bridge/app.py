@@ -1100,6 +1100,17 @@ def _start_event_pumps() -> None:
         starter = getattr(adapter, "start_pipeline_pump", None)
         if starter is None:
             continue
+        # Startup owns many declared harness adapters, but only configured
+        # transports can emit protocol events. Do not create polling tasks for
+        # dormant adapters. Every supported attach path calls this function
+        # again after publishing its verified transport.
+        event_sources = [
+            getattr(adapter, source)
+            for source in ("transport", "acp")
+            if hasattr(adapter, source)
+        ]
+        if event_sources and all(source is None for source in event_sources):
+            continue
         starter(state.pipeline.ingest_event)
 
 

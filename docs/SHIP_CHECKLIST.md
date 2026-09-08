@@ -26,6 +26,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   fallback retained. 16 targeted tests/Ruff pass; native resource capture still open.
 - [x] Back off empty Cursor inbox observation from 250ms to a two-second cap and
   reset immediately after valid work. 30 observer/inbox tests and Ruff pass.
+- [x] Leave eight transportless harness event pumps dormant at default startup;
+  configured startup and verified HTTP/ACP/direct Codex attach still start normally. The focused
+  attach/protocol/Codex-pump gate passes 60/60 with Ruff; native cost is unmeasured.
 - [x] Bound Cursor inbox reads/record batches and remove destructive backlog clearing.
   13 targeted checks pass; 44 deselected. No live Cursor/native run.
 - [x] Move inbox file work off-loop and checkpoint after durable observer ingestion;

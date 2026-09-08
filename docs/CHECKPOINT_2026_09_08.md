@@ -5,7 +5,36 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: hidden webview resource ownership
+## Latest offline slice: dormant adapter event pumps
+
+Bridge lifespan startup called every adapter's event-pump starter regardless of
+whether that adapter had any protocol event source. Codex, OpenCode, Qwen, Devin and
+four ACP-family adapters therefore each created an infinite task that found no
+transport and woke again after 250ms. On an unconfigured default install, eight
+tasks produced about 32 cooperative event-loop wakeups per second while being unable
+to observe a single harness event.
+
+The common starter now checks the adapter's declared `transport` and/or `acp` slots.
+When every declared source is absent it leaves the pump dormant. This does not delay
+a valid source: settings attach runs before lifespan starts the pumps; verified HTTP
+and ACP runtime attaches invoke the common starter after publishing the source, while
+isolated Codex attach starts its published candidate directly. Existing `start_pipeline_pump` methods remain
+idempotent, so later common calls cannot duplicate live tasks. An adapter exposing a
+starter without either declared source slot retains its prior always-on semantics.
+
+A focused negative first demonstrated all four representative fake adapters starting,
+including the transportless and ACP-less cases. After repair those two remain dormant;
+publishing their sources and invoking the normal post-attach call starts them. The
+combined new test, complete attach-security/protocol-safety files and complete Codex
+pump file pass **60/60** in 21.59s. Ruff and scoped whitespace checks pass.
+
+Parent review covered the registry population, eight reachable pump implementations,
+settings attachment order and all verified runtime attach callers. This removes idle
+event-loop scheduling only. It does not measure packaged/native CPU, prove a freeze
+cause, verify a live harness, or clear the P0 stability gate. PEX stayed closed; no
+model, worker, browser, cloud, build or broad suite ran.
+
+## Earlier offline slice: hidden webview resource ownership
 
 The desktop page already paused pet animation when hidden, but its state readers and
 durable-event websocket remained alive. A minimized or hidden PEX window could keep

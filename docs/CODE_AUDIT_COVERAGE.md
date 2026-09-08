@@ -2,6 +2,16 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: `tests/unit/test_idle_event_pumps.py`. Parent reviewed the adapter
+registry, all eight pump-capable default adapters, settings attachment ordering and
+each runtime attach call site before changing the common starter. Event pumps with a
+declared transport/ACP slot now remain dormant while every slot is empty; adapters
+without such a slot retain their prior always-on contract. Configured startup,
+post-verification HTTP/ACP attach and direct isolated-Codex attach still start normally; existing starters remain
+idempotent. The negative first showed four fake pumps starting; final related gate is
+60/60 with Ruff and scoped whitespace clean. This is not whole app.py/adapter approval,
+native resource proof or freeze diagnosis.
+
 Changed-path addendum: parent reviewed every changed `App.tsx` visibility guard,
 effect cleanup/dependency list, event-socket reconnection path and canonical-resource
 freshness reset, plus the full new/adjusted source-contract tests. Hidden webviews

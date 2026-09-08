@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Default bridge startup now leaves eight transportless harness event pumps dormant
+instead of waking each one every 250ms. Configured startup sources, verified HTTP/ACP
+attachments and isolated Codex attachment still start through their existing paths. The reproduced negative
+and the attach/protocol/Codex-pump gate pass 60/60; Ruff is clean. PEX stayed closed,
+so native resource impact and freeze recovery remain unverified.
+
 Hidden/minimized desktop webviews now stop all recurring UI-owned HTTP readers and
 the event websocket while bridge supervision stays independent. Visibility restore
 immediately refreshes applicable state and reconnects from the durable event cursor.

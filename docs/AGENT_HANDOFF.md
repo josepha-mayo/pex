@@ -2,6 +2,16 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: default bridge startup no longer creates event-pump tasks for eight adapters
+that have neither a transport nor ACP client. Those dormant loops each woke every
+250ms despite having no possible event source. Configured transports still start at
+lifespan startup; verified HTTP/ACP attaches recall the common starter, while isolated
+Codex attach starts its published candidate directly. A focused negative reproduced all four fake adapters being
+started before repair; transportless adapters now stay dormant and start on the next
+post-attach call. Attach/protocol/Codex-pump selection passes 60/60 and Ruff is clean.
+This is offline event-loop work removal, not native resource measurement or freeze
+diagnosis. PEX remains closed.
+
 Latest: hidden/minimized desktop webviews now release their recurring HTTP readers
 and durable-event websocket while the bridge continues supervising independently.
 Showing the page restarts immediate canonical reads and reconnects from the durable
