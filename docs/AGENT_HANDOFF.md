@@ -2,6 +2,17 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: pet projection now collapses canonical authority-safe sessions to the exact
+live/recent-promptable worker set before goal, intervention and event enrichment.
+Previously even sessions that the pet discarded afterward opened their own authority
+queries. The general command-deck projection retains its uncollapsed semantics. A
+negative with two same-goal sessions observed both artifact paths before repair and
+only the newest afterward. Projection/pet/serialization/existing-session coverage
+passes 55/55; adjacent authority/deck/pet-CAS coverage passes 26/26; Ruff is clean.
+Uncollapsed live groups and the deck can still fan out per-session artifact reads, so
+whole-projection optimization, native measurement and freeze diagnosis remain open.
+PEX stays closed.
+
 Latest: canonical pet/deck projections no longer open and configure a separate SQLite
 connection and read transaction for every retained session while filtering forensic
 history. Store now validates and deduplicates at most 1,000 exact IDs, evaluates every

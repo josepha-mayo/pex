@@ -2,6 +2,15 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path follow-up: parent re-read pet/current-projection sequencing and the
+promptable collapse contract. Artifact enrichment previously preceded the pet's
+deduplication of same-goal historical sessions. A real-Store negative observed two
+intervention/event authority calls for one returned worker; the closed pet-only mode
+now collapses the already-authoritative list first using one shared timestamp. The
+general deck/default path stays complete. Related gates pass 55/55 and 26/26 with Ruff
+clean. Distinct live groups and deck artifact fanout remain; no whole Pipeline/Store,
+native stability or freeze-cause approval follows.
+
 New-path addendum: `tests/unit/test_current_projection_session_batch.py`. Parent read
 the complete session/goal/project authority loaders, singular transaction API,
 `current_projection`, both consumers and the new tests. The projection previously

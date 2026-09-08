@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from pex_bridge.adapters import AdapterRegistry
@@ -9,6 +9,7 @@ from pex_bridge.config import Settings
 from pex_bridge.pipeline import Pipeline
 from pex_bridge.store import ProjectIdentityBlockedError, Store
 from pex_protocol.enums import HarnessType, SessionStatus
+from pex_protocol.goal import Goal
 from pex_protocol.project_identity import PathPlatform, ProjectLocator, ProjectOrigin
 from pex_protocol.session import HarnessSession
 
@@ -109,3 +110,58 @@ async def test_current_projection_uses_one_order_preserving_authority_batch(tmp_
     assert store.calls == [([first.id, second.id], True)]
     assert [session.id for session in projection["sessions"]] == [first.id, second.id]
     assert projection["sessions_truncated"] is False
+
+
+@pytest.mark.asyncio
+async def test_pet_projection_enriches_only_collapsed_promptable_sessions(tmp_path, monkeypatch):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    now = datetime.now(UTC)
+    goal = Goal(
+        id="goal:pet-collapse",
+        project_id=str(tmp_path),
+        title="Show one current worker",
+        objective="Collapse historical sessions before loading pet artifacts.",
+        created_at=now,
+        updated_at=now,
+    )
+    await store.upsert_goal(goal)
+    older = _session("codex:pet-collapse-old", project_id=str(tmp_path)).model_copy(
+        update={"goal_id": goal.id, "last_activity": now - timedelta(minutes=2)}
+    )
+    current = _session("codex:pet-collapse-current", project_id=str(tmp_path)).model_copy(
+        update={"goal_id": goal.id, "last_activity": now}
+    )
+    await store.upsert_session(older)
+    await store.upsert_session(current)
+
+    intervention_calls: list[str] = []
+    event_calls: list[str] = []
+    original_interventions = store.list_interventions_for_authority
+    original_events = store.recent_events_for_authority
+
+    async def counted_interventions(session_id: str, **kwargs):
+        intervention_calls.append(session_id)
+        return await original_interventions(session_id, **kwargs)
+
+    async def counted_events(session_id: str, **kwargs):
+        event_calls.append(session_id)
+        return await original_events(session_id, **kwargs)
+
+    monkeypatch.setattr(store, "list_interventions_for_authority", counted_interventions)
+    monkeypatch.setattr(store, "recent_events_for_authority", counted_events)
+    pipeline = Pipeline(
+        store,
+        AdapterRegistry(),
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
+    )
+
+    try:
+        snapshot = await pipeline.pet_snapshot()
+    finally:
+        await store.close()
+
+    assert [session["id"] for session in snapshot["sessions"]] == [current.id]
+    assert intervention_calls == [current.id]
+    assert event_calls == [current.id]

@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Pet projection now collapses authority-safe same-goal/history rows before opening
+goal, intervention and event readers; the command deck keeps its complete projection.
+A real-Store negative saw two artifact paths for one rendered worker before repair and
+one afterward. Related gates pass 55/55 and 26/26 with Ruff clean. Distinct live-group
+and deck fanout, native measurement and freeze causality remain open; PEX stayed closed.
+
 Pet/deck canonical projection now checks up to 1,000 forensic sessions inside one
 coherent SQLite read transaction instead of opening/configuring one connection per
 session. Bounds, exact-ID validation, recency order and strict identity failures are

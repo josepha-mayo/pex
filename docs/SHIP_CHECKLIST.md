@@ -24,6 +24,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   projection with one bounded coherent snapshot; strict identity failures remain the
   default and projection-only stale history is omitted explicitly. Related gates
   41/41 and 25/25 plus Ruff pass; per-artifact query work/native impact remain open.
+- [x] Collapse pet-only canonical sessions before artifact enrichment, preventing
+  superseded same-goal history from opening goal/intervention/event authority reads.
+  General deck semantics unchanged; 55/55 and 26/26 focused checks plus Ruff pass.
 - [x] Pause hidden/page-background sprite and CSS animation without resetting
   dismissed messages; share and clean up the visibility listener. 223 tests/TS pass.
   Native timer/GPU/CPU measurements remain part of the open P0 verification gate.

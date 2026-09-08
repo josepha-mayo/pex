@@ -5,6 +5,35 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: collapse pet sessions before artifact enrichment
+
+The one-snapshot authority batch removed per-forensic-session connection setup, but
+`current_projection()` still loaded goals, interventions and recent events before
+`pet_snapshot()` collapsed duplicate historical sessions into the live/promptable
+worker list. Multiple current rows sharing one goal could therefore open artifact
+authority transactions even though the pet returned only their newest representative.
+
+`current_projection()` now exposes a closed `promptable_only` mode rather than an
+arbitrary caller-supplied selector. It applies `collapse_promptable_agents()` only to
+the already authority-validated canonical session list and uses the pet's single
+`as_of` timestamp. `/v1/pet` opts in before enrichment; `/v1/deck` and every default
+caller retain the complete ordered projection. The later pet collapse remains as a
+defensive idempotent step. No historical object can be injected by the selector API.
+
+The negative used two exact Store sessions bound to the same goal. Before repair,
+both session IDs reached intervention and event authority readers even though only
+the newest appeared in the pet response. After repair, only that returned canonical
+session is enriched. Projection/pet/serialization/existing-session coverage passes
+**55/55** in 22.83s; adjacent authority-consumer, M0 deck, pet-CAS and new-batch
+coverage passes **26/26** in 32.43s; Ruff is clean.
+
+This materially reduces ordinary historical fanout but does not cap the number of
+distinct simultaneously live worker groups. Each selected goal-bound worker still
+uses singular goal/intervention/event authority transactions, and the command deck
+retains its wider presentation contract. Those remain optimization candidates after
+careful identity review. PEX stayed closed; no native resource capture, model, worker,
+browser, cloud, build or large suite ran, and the freeze cause remains unknown.
+
 ## Latest offline slice: one-snapshot session authority projection
 
 `Pipeline.current_projection()` first lists as many as 1,000 forensic sessions, then

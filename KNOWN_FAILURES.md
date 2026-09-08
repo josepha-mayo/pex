@@ -2,6 +2,11 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Pet-only authority projection now collapses superseded same-goal/promptable history
+  before goal/intervention/event enrichment; a negative reduced two artifact-reader
+  calls for one returned worker to one. Distinct live groups and the command deck can
+  still fan out singular artifact transactions. Native impact and freeze causality
+  remain unknown despite 55/55 plus 26/26 focused passes and clean Ruff.
 - Pet/deck projection previously opened a configured SQLite connection/transaction for
   every retained forensic session, up to 1,000 per visible pet refresh. A one-snapshot
   authority batch now preserves project/goal validation, strict default failures and

@@ -6116,6 +6116,8 @@ class Pipeline:
         session_scan_limit: int,
         intervention_limit: int,
         event_limit: int,
+        promptable_only: bool = False,
+        as_of: datetime | None = None,
     ) -> dict[str, object]:
         """Build a bounded present-tense view without promoting forensic history."""
 
@@ -6137,7 +6139,12 @@ class Pipeline:
             if session.id in current_by_id
         ]
 
-        sessions = current_sessions[:session_limit]
+        selected_sessions = (
+            collapse_promptable_agents(current_sessions, as_of)
+            if promptable_only
+            else current_sessions
+        )
+        sessions = selected_sessions[:session_limit]
         goals: dict[str, Goal] = {}
         interventions_by_id: dict[str, Intervention] = {}
         interventions_truncated = False
@@ -6213,16 +6220,18 @@ class Pipeline:
         }
 
     async def pet_snapshot(self) -> dict:
+        now = datetime.now(UTC)
         projection = await self.current_projection(
             session_limit=1_000,
             session_scan_limit=1_000,
             intervention_limit=1,
             event_limit=120,
+            promptable_only=True,
+            as_of=now,
         )
         sessions = projection["sessions"]
         interventions = projection["interventions"]
         goals = projection["goals"]
-        now = datetime.now(UTC)
         events = projection["events"]
         latest_event: dict[str, HarnessEvent] = {}
         lines_by_session: dict[str, str] = {}
