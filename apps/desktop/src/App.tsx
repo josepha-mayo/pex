@@ -1189,7 +1189,9 @@ export function App() {
         inventory: inventory ?? state.inventory,
       }));
     }
-    if (showLoading) setDetailsLoading(false);
+    // A mutation-triggered refresh can supersede the first visible read. The
+    // newest accepted response owns the loading state even when it did not set it.
+    setDetailsLoading(false);
   }, [markCanonical, projectId]);
 
   const loadProjectIdentityConflicts = useCallback(async (options: {

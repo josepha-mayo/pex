@@ -1587,3 +1587,12 @@ rejection-health failure becomes unavailable. Explicit pet import still refreshe
 The old source failed the new contract; focused coverage passed 95/95, complete desktop passed
 256/256, and TypeScript exited 0. This lowers inactive Settings scheduling from 30 to 8 endpoint
 reads per minute by source; native resource impact and freeze resolution remain open.
+
+## Inspector loading ownership
+
+The accepted newest detail response now always releases the Inspector loading indicator. This
+closes a race where a mutation-triggered non-loading refresh superseded the initial view read,
+causing the old request to discard itself while the new request never cleared loading. Stale
+responses remain blocked by the existing sequence guard. The old conditional release failed
+the new contract; focused coverage passed 26/26, complete desktop passed 257/257, and TypeScript
+exited 0. Native visual confirmation remains open because PEX stayed closed.

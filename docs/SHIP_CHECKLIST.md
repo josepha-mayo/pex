@@ -659,3 +659,8 @@ Do the next safe, highest-impact item immediately. If a required external choice
   95/95, complete desktop 256/256, and TypeScript pass.
 - [ ] Confirm idle and active-hatch Settings cadence plus catalog cache behavior in the bounded
   native profile; source scheduling is not proof that the whole-PC freeze is resolved.
+- [x] Make accepted Inspector detail reads own loading completion even when a newer non-loading
+  refresh supersedes the initial request; stale responses remain rejected. Focused 26/26,
+  complete desktop 257/257, and TypeScript pass.
+- [ ] Confirm the Inspector spinner settles under an immediate mutation/refresh race in the
+  bounded native UI run.

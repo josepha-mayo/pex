@@ -189,6 +189,20 @@ test("canonical detail reads are event-first with one slow full reconciliation",
   assert.doesNotMatch(source, /surface, pet\?\.last_action\?\.id\]\)/);
 });
 
+test("the newest detail read always releases loading even when it did not start it", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const detailStart = source.indexOf("const loadDetails =");
+  const detailEnd = source.indexOf("const loadProjectIdentityConflicts", detailStart);
+  const detail = source.slice(detailStart, detailEnd);
+  assert.ok(detailStart >= 0 && detailEnd > detailStart);
+  assert.match(
+    detail,
+    /if \(requestSequence !== detailRequestSequence\.current\) return;[\s\S]*setDetailsLoading\(false\)/,
+  );
+  assert.doesNotMatch(detail, /if \(showLoading\) setDetailsLoading\(false\)/);
+});
+
 test("settings separates slow base data from only-while-active hatch polling", async () => {
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");

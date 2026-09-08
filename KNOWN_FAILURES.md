@@ -523,3 +523,6 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   eight-second poll. Idle readers now use 30 seconds and only an active hatch job uses four;
   source tests cover independent cancellation, stale-response guards, and fail-closed state.
   No native trace yet proves actual catalog-cache behavior, request counts, or freeze impact.
+- Inspector detail loading now clears from the newest accepted request even if a non-loading
+  refresh superseded the initial read. Source regression coverage closes the ownership race,
+  but no post-freeze native UI run yet proves the spinner transition under live mutations.

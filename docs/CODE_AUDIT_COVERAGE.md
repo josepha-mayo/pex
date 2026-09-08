@@ -1346,3 +1346,14 @@ The old implementation failed both new lifecycle assertions. Focused read/view-m
 passed 95/95, complete desktop passed 256/256, and TypeScript exited 0. Inactive Settings source
 scheduling falls from 30 to 8 endpoint reads per minute. Native request counts, atlas-cache
 miss cost, and freeze impact remain unmeasured.
+
+## 8 September Inspector loading-ownership focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/App.tsx` detail request completion | REVIEWED / REPAIRED | The newest accepted response clears loading regardless of which request enabled it; sequence guards still reject stale publication. |
+| `apps/desktop/src/readBudget.test.ts` loading ownership contract | REVIEWED / EXTENDED | Rejects conditional-only loading release after a superseding non-loading refresh. |
+
+The new contract failed on the prior conditional release. Focused coverage passed 26/26,
+complete desktop passed 257/257, and TypeScript exited 0. Native visual behavior remains
+unmeasured after the freeze incident.

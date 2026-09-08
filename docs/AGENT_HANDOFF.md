@@ -8790,3 +8790,16 @@ The dirty bit is expected because the protected operator-owned file below is ret
   complete desktop coverage passed **256/256**, and TypeScript exited 0. Inactive Settings
   source scheduling falls from 30 to 8 endpoint reads per minute (73.3%); PEX remained closed,
   so native request counts and freeze impact remain unmeasured.
+
+### 8 September Inspector loading-ownership slice
+
+- `loadDetails` used one sequence guard for initial, event, interval, and mutation-triggered
+  reads, but only a request that originally enabled the loading indicator could disable it.
+  A newer non-loading mutation refresh could supersede the initial request, leaving the
+  Inspector spinner latched even after the accepted canonical response completed.
+- The newest accepted detail response now always releases the detail loading state. Older
+  responses still cannot publish data or clear a newer in-flight load; canonical freshness,
+  request sequencing, and view abort behavior are unchanged.
+- The negative contract failed on the old conditional release. Focused read-budget coverage
+  passed **26/26**, complete desktop coverage passed **257/257**, and TypeScript exited 0.
+  Native visual proof remains deferred with PEX closed after the freeze report.

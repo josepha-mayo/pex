@@ -2025,3 +2025,10 @@ truthful job rather than pretending it vanished, and unavailable rejection healt
 Explicit import remains immediate. The old source failed the new contract; focused tests passed
 95/95, complete desktop passed 256/256, and TypeScript exited 0. Inactive Settings scheduled
 endpoint reads fall from 30 to 8 per minute by source. Native freeze resolution remains open.
+
+Inspector detail loading now follows the accepted newest request rather than only the request
+that first enabled the spinner. This closes a supersession race where an immediate mutation
+refresh could make the initial request stale but never clear its loading state. The existing
+sequence guard still prevents stale data publication. The negative contract failed first;
+focused tests passed 26/26, complete desktop passed 257/257, and TypeScript exited 0. PEX stayed
+closed, so the repaired transition still needs bounded native visual confirmation.
