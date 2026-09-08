@@ -463,9 +463,10 @@ These are immediate steps within stage 1, not another competing product plan. Pr
 
 ### 5. Verify normal release build, then all eight pets
 
-- [ ] Pass normal release configuration with all required sidecars. All three frozen executables,
-  including cursor-observe, now exist and match their 6 September stamp, but current source is
-  newer; no stale artifact or test-only override counts as release proof.
+- [x] Pass normal release configuration with all required sidecars. Exact clean source `d66e6a1`
+  produced MSI and NSIS bundles; both extracted inventories and the desktop/helper marker
+  contract pass with `release_ready: true` and no blockers. The rebuilt bridge then passed its
+  3/3 frozen lifecycle gate. Exact hashes are in `PACKAGE_RECEIPT_D66E6A1.json` and the handoff.
 - [ ] Verify isolated clean-profile startup, setup, retry, crash/reconnect and packaged assets; retain exact source/artifact hashes.
 - [ ] After core/primary flows work, use applicable pet/desktop skills to inspect pex, ledger, mesh, nudge, drift, quiet, ember and von.
 - [ ] Check actual desktop-size animation, transparency/cropping, placement/drag, click-through, compact/expanded and offline/pause behavior.

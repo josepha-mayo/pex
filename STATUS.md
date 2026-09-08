@@ -2,7 +2,26 @@
 
 ## Current — 8 September WAT
 
-Latest pushed HEAD is `e591bd3`. Store connections now explicitly cap retained SQLite
+Latest pushed product source is `d66e6a1`. A detached clean release worktree at that
+exact commit produced the normal Tauri MSI and NSIS installers, and the repository package
+verifier reported `release_ready: true` with no blockers. Both extracted inventories contain
+the expected desktop executable, frozen bridge, Cursor hook, Cursor observer, and exactly
+the release pet assets. The final frozen bridge bytes passed all 3 lifecycle tests. The MSI
+is 125,476,864 bytes with SHA-256
+`A03203B677FD0E4EB13800C6E961690E8287B39DB9EAB0D492EAA8BC8FA5241A`; the NSIS installer
+is 124,208,257 bytes with SHA-256
+`DE5767D0040400FD48A74AC67F898ED4CB157302C1955B35D435EECB9C7F7B48`. The retained package
+receipt is `docs/PACKAGE_RECEIPT_D66E6A1.json`. PEX was not launched because the previous
+native run froze the user's machine; startup/idle resource measurement and fresh native pet
+playback/transparency remain open and must not be inferred from package integrity.
+
+Commit `d66e6a1` also makes pet-message dismissal persistent across restart with a versioned,
+bounded local key derived from status kind and intervention identity. It stores no message
+text or credentials, fails safely when browser storage is unavailable, reopens for a genuinely
+new intervention, and remains distinct from hiding/restoring the pet. Focused coverage passed
+70/70, the complete desktop gate passed 259/259, and the production frontend build passed.
+
+Store connections now explicitly cap retained SQLite
 WAL allocation at 16 MiB after successful checkpoints and retain the 1,000-page automatic
 checkpoint threshold. This addresses a measured 237,406,792-byte retained contest WAL
 whose current index held only 2,195 live frames; it does not establish the cause or repair
