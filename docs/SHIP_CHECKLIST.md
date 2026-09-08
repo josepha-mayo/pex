@@ -16,6 +16,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Bound native bootstrap UI waiting without multiplying uncancellable IPC;
   reject retired late observations and cancel poll publication on cleanup.
   220 focused desktop tests and TypeScript pass; raw native recovery remains unproven.
+- [x] Pause hidden/page-background sprite and CSS animation without resetting
+  dismissed messages; share and clean up the visibility listener. 223 tests/TS pass.
+  Native timer/GPU/CPU measurements remain part of the open P0 verification gate.
 - [x] Bound Cursor inbox reads/record batches and remove destructive backlog clearing.
   13 targeted checks pass; 44 deselected. No live Cursor/native run.
 - [x] Move inbox file work off-loop and checkpoint after durable observer ingestion;

@@ -2146,6 +2146,7 @@ export function App() {
       <main className={`pet-desktop tone-${status.tone}`}>
         <PetStage
           overlay
+          active={petVisible}
           name={petName}
           sheet={sheet}
           mood={mood}

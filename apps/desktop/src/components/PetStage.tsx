@@ -1,6 +1,7 @@
 import { type MouseEvent, type PointerEvent, useEffect, useRef, useState } from "react";
 
 import { CodexSprite, lookIndex, type PetMood } from "../pets/atlas";
+import { usePageVisibility } from "../pageVisibility";
 import { statusBubbleMaterialKey, statusBubbleShouldReopen } from "../petBubble";
 import { petDragThresholdReached, petPointerShouldActivate } from "../petInteraction";
 import { startPetDrag } from "../releasePet";
@@ -16,6 +17,7 @@ export function PetStage({
   scale,
   reducedMotion,
   overlay = false,
+  active = true,
   status,
   onActivate,
   onDismiss,
@@ -26,10 +28,13 @@ export function PetStage({
   scale: number;
   reducedMotion: boolean;
   overlay?: boolean;
+  active?: boolean;
   status?: StatusCopy;
   onActivate: () => void;
   onDismiss?: () => void;
 }) {
+  const pageVisible = usePageVisibility();
+  const interactive = active && pageVisible;
   const [hop, setHop] = useState(false);
   const [bubbleVisible, setBubbleVisible] = useState(true);
   const [dismissedMaterialKey, setDismissedMaterialKey] = useState<string | null>(null);
@@ -54,6 +59,16 @@ export function PetStage({
   useEffect(() => clearTimers, []);
 
   useEffect(() => {
+    if (interactive && !reducedMotion) return;
+    clearTimers();
+    setHop(false);
+    setLook(null);
+    setDragDir(0);
+    dragStart.current = null;
+    dragged.current = false;
+  }, [interactive, reducedMotion]);
+
+  useEffect(() => {
     if (!bubbleVisible && statusBubbleShouldReopen(false, dismissedMaterialKey, status)) {
       setBubbleVisible(true);
     }
@@ -69,6 +84,7 @@ export function PetStage({
   }, [onDismiss, overlay]);
 
   function onPointerEnter() {
+    if (!interactive || reducedMotion) return;
     clearTimers();
     hopDwell.current = window.setTimeout(() => {
       setHop(true);
@@ -85,14 +101,15 @@ export function PetStage({
   }
 
   function onPointerDown(event: PointerEvent<HTMLButtonElement>) {
-    if (event.button !== 0) return;
+    if (!interactive || event.button !== 0) return;
     dragStart.current = { x: event.clientX, y: event.clientY };
     dragged.current = false;
   }
 
   function onPointerMove(event: PointerEvent<HTMLButtonElement>) {
+    if (!interactive) return;
     const box = actor.current?.getBoundingClientRect();
-    if (box) {
+    if (box && !reducedMotion) {
       const next = lookIndex(
         event.clientX - (box.left + box.width / 2),
         event.clientY - (box.top + box.height / 2),
@@ -148,6 +165,7 @@ export function PetStage({
       >
         {sheet ? (
           <CodexSprite
+            active={active}
             src={sheet}
             mood={mood}
             hop={hop}

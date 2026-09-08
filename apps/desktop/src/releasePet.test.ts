@@ -12,6 +12,94 @@ test("pet overlay keeps a light native scheme against the shared dark root", asy
   assert.match(petHtml, /html\.pet-shell\s*\{\s*color-scheme:\s*only light;\s*\}/u);
 });
 
+test("inactive pet rendering pauses CSS motion and releases its transform hint", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createServer } = await import("vite");
+  const vite = await createServer({
+    root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom",
+  });
+  try {
+    const { CodexSprite } = await vite.ssrLoadModule("/src/pets/atlas.tsx");
+    const props = { src: "/pet.webp", mood: "idle", scale: 1 };
+    const paused = renderToStaticMarkup(createElement(CodexSprite, { ...props, active: false }));
+    assert.match(paused, /animation-play-state:paused/u);
+    assert.match(paused, /will-change:auto/u);
+    const visible = renderToStaticMarkup(createElement(CodexSprite, { ...props, active: true }));
+    assert.doesNotMatch(visible, /animation-play-state:paused/u);
+    const reduced = renderToStaticMarkup(createElement(CodexSprite, { ...props, reducedMotion: true }));
+    assert.match(reduced, /animation-play-state:paused/u);
+    assert.match(reduced, /will-change:auto/u);
+  } finally {
+    await vite.close();
+  }
+});
+
+test("sprite consumers share one visibility listener and dispose it after the last unsubscribe", async (t) => {
+  const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+  const page = new EventTarget();
+  let state = "visible";
+  let attached = 0;
+  let detached = 0;
+  Object.defineProperty(globalThis, "document", { configurable: true, value: {
+    get visibilityState() { return state; },
+    addEventListener: (type: string, listener: EventListener) => {
+      attached += 1;
+      page.addEventListener(type, listener);
+    },
+    removeEventListener: (type: string, listener: EventListener) => {
+      detached += 1;
+      page.removeEventListener(type, listener);
+    },
+  } });
+  const { pageVisibleSnapshot, subscribePageVisibility } = await import("./pageVisibility.ts");
+  const stops: (() => void)[] = [];
+  t.after(() => {
+    for (const stop of stops) stop();
+    if (previousDocument) Object.defineProperty(globalThis, "document", previousDocument);
+    else Reflect.deleteProperty(globalThis, "document");
+  });
+  const seen: boolean[][] = Array.from({ length: 9 }, () => []);
+  for (const observations of seen) {
+    stops.push(subscribePageVisibility(() => observations.push(pageVisibleSnapshot())));
+  }
+  assert.equal(attached, 1);
+  assert.equal(pageVisibleSnapshot(), true);
+  state = "hidden";
+  page.dispatchEvent(new Event("visibilitychange"));
+  assert.ok(seen.every((observations) => observations.length === 1 && observations[0] === false));
+  stops[0]();
+  assert.equal(detached, 0);
+  state = "visible";
+  page.dispatchEvent(new Event("visibilitychange"));
+  assert.deepEqual(seen[0], [false]);
+  assert.ok(seen.slice(1).every((observations) => observations.join(",") === "false,true"));
+  for (const stop of stops) stop();
+  assert.equal(detached, 1);
+  const nextStop = subscribePageVisibility(() => {});
+  stops.push(nextStop);
+  assert.equal(attached, 2, "StrictMode/remount must reattach after complete cleanup");
+  nextStop();
+  assert.equal(detached, 2);
+});
+
+test("hidden pets retain bubble state while sprite and pointer timers use the visibility gate", async () => {
+  const [app, stage, atlas] = await Promise.all([
+    readFile(new URL("./App.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/PetStage.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./pets/atlas.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(app, /<PetStage\s+overlay\s+active=\{petVisible\}/u);
+  assert.doesNotMatch(app, /if \(!petVisible\) return null/u);
+  assert.match(stage, /<CodexSprite\s+active=\{active\}/u);
+  assert.match(stage, /const interactive = active && pageVisible/u);
+  assert.match(stage, /if \(interactive && !reducedMotion\) return;\s*clearTimers\(\);/u);
+  assert.doesNotMatch(stage, /if \(interactive && !reducedMotion\) return;[\s\S]*?setBubbleVisible[\s\S]*?\}, \[interactive, reducedMotion\]/u);
+  assert.match(atlas, /const motionPaused = !active \|\| !pageVisible \|\| reducedMotion/u);
+  assert.match(atlas, /if \(looking \|\| motionPaused \|\| !src\) return;/u);
+  assert.match(atlas, /return \(\) => window.clearTimeout\(id\);\s*\}, \[animationFrame, durations, looking, motionPaused, rowName, src\]\)/u);
+});
+
 for (const [newIntent, delayedCommand] of [
   ["hide", "plugin:window|set_position"],
   ["hide", "plugin:window|show"],

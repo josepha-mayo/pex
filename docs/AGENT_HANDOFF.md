@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Hidden-pet follow-up: frame and CSS animation now pause for hidden overlays and
+hidden pages; visibility subscription is shared per webview and cleans up on the
+last subscriber. The PetStage stays mounted to preserve dismissed-message state.
+No atlas/timing/supervision changes. Parent-only review; 223 serial desktop tests
+and TypeScript pass. SSR/helper/source tests are not native/GPU stability proof.
+See the newest checkpoint section before continuing; PEX remains closed.
+
 Latest source slice bounds native bootstrap status waiting without duplicating
 uncancellable IPC. Timeout/cleanup retires shared late results; the next observation
 must be fresh after the raw operation settles. Six new helper regressions and one

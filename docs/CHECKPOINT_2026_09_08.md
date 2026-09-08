@@ -5,6 +5,38 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: hidden-pet animation lifetime
+
+The renderer did not consume overlay visibility or page visibility. Hidden pets
+could retain their frame timer, and CSS breathing/listening loops were not explicitly
+paused by hiding. `PetStage` now receives the existing pet visibility intent without
+unmounting it, preserving dismissed-message state. The sprite stops scheduling
+frames when inactive, page-hidden, reduced-motion or missing its source; hidden/
+reduced-motion sprites also pause CSS animation and remove their transform promotion
+hint. Pointer hover/look timers clear when inactive, hidden or reduced-motion.
+Explicit reduced-motion still allows deliberate dragging/keyboard activation.
+
+New `pageVisibility.ts` uses React's external-store subscription and shares one
+browser visibility listener per webview across all mounted consumers. Last cleanup
+detaches it; remount reattaches it. This does not use focus loss as visibility, stop
+backend supervision, change polling, destroy a pet or modify any of the eight
+atlases, state mappings or frame durations. Hidden-to-visible resumes normal cadence
+without a catch-up loop. Native WebView visibility reporting is not yet measured.
+
+One SSR inactive-render regression failed on 2edcb4e and passes after the fix. A
+fake-document test verifies nine consumers share a listener, hidden/restored
+snapshots, subscriber isolation, last cleanup and remount. A source-wiring check
+verifies the timer guards/cleanup and that visibility cleanup does not reset bubble
+state. Final nine-file desktop selection: **223 passed, zero skipped, 9.93s**;
+TypeScript no-emit exited **0**. These are SSR, helper and source tests, not mounted
+browser/native timer or GPU measurements. Parent reviewed the complete visibility
+helper, atlas/PetStage runtime changes and tests using the React review checklist;
+no additional subagent or image-generation job was used for this slice.
+
+Protected loop.py retains its recorded hash. PEX remains closed; no build, native
+input, paid/cloud operation or live benchmark ran. Reported whole-PC freeze remains
+unexplained. Do not infer current installer quality from these source-only tests.
+
 ## Latest offline slice: native bootstrap read lifetime
 
 The bootstrap UI awaited native `bridge_bootstrap_status` without a deadline. A

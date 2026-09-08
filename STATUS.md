@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Hidden-overlay and page-background pet motion now pauses without resetting dismissed
+messages; visibility listeners are shared and cleaned up. 223 focused desktop tests
+and TypeScript pass, parent-reviewed. Native resource use and freeze recovery remain
+unverified; no app relaunch or build. Eight atlases and timings are unchanged.
+
 Latest offline repair bounds bootstrap UI waiting and retires late native-status
 results without issuing duplicate pending IPC. 220 focused desktop tests and
 TypeScript pass. The underlying native call is not cancelled or proven recoverable;

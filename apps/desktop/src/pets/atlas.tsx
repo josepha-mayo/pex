@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePageVisibility } from "../pageVisibility";
 import { animationFrameIndex } from "./atlasMath";
 import type { PetMood } from "./types";
 
@@ -64,6 +65,7 @@ export function CodexSprite({
   look = null,
   scale = 1,
   reducedMotion = false,
+  active = true,
 }: {
   src: string;
   mood: PetMood;
@@ -73,7 +75,10 @@ export function CodexSprite({
   look?: number | null;
   scale?: number;
   reducedMotion?: boolean;
+  active?: boolean;
 }) {
+  const pageVisible = usePageVisibility();
+  const motionPaused = !active || !pageVisible || reducedMotion;
   const underlying: CodexRow = PEX_TO_CODEX_ROW[mood];
   let rowName: CodexRow = underlying;
   if (hop) rowName = "jumping";
@@ -93,13 +98,13 @@ export function CodexSprite({
   }, [rowName, looking]);
 
   useEffect(() => {
-    if (looking || reducedMotion) return;
+    if (looking || motionPaused || !src) return;
     const ms = durations[animationFrame];
     const id = window.setTimeout(() => {
       setFrame((current) => animationFrameIndex(current + 1, durations.length));
     }, ms);
     return () => window.clearTimeout(id);
-  }, [animationFrame, durations, looking, reducedMotion, rowName]);
+  }, [animationFrame, durations, looking, motionPaused, rowName, src]);
 
   const displayW = Math.round(112 * scale);
   const displayH = Math.round(displayW * (CELL_H / CELL_W));
@@ -107,7 +112,11 @@ export function CodexSprite({
   const sheetW = displayW * SHEET_COLS;
   const sheetH = displayH * SHEET_ROWS;
   return (
-    <div className="sprite-3d" style={{ width: displayW, height: displayH }}>
+    <div className="sprite-3d" style={{
+      width: displayW,
+      height: displayH,
+      animationPlayState: motionPaused ? "paused" : undefined,
+    }}>
       <div className="sprite-clip" style={{ width: displayW, height: displayH }}>
         {src ? (
           <img
@@ -120,6 +129,7 @@ export function CodexSprite({
             style={{
               width: sheetW,
               height: sheetH,
+              willChange: motionPaused ? "auto" : undefined,
               transform: `translate(${-shownFrame * displayW}px, ${-row * displayH}px)`,
             }}
           />

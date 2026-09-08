@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+New-path addendum: apps/desktop/src/pageVisibility.ts. Parent reviewed the complete
+visibility store, CodexSprite motion guard/CSS hints, PetStage pointer cleanup and
+App visibility forwarding. One SSR negative failed before repair; helper/source
+coverage verifies listener sharing/cleanup and mounted-state preservation wiring.
+Final focused desktop: 223 pass/zero skip, TS exit 0. React review checklist used;
+no independent reviewer added on this slice. Native visibility/timers, GPU/CPU and
+full App/source audit remain unverified; eight atlas assets and timings unchanged.
+
 Parent reviewed the full boundedSingleFlightRead helper, six new functional cases,
 the App bootstrap callback and source-wiring test. Terra's bounded read-only review
 found no concrete regression and suggested shared-caller cancellation coverage;

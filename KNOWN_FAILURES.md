@@ -2,6 +2,11 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Hidden-overlay/page-background sprite scheduling and CSS animations now pause;
+  the shared visibility listener cleans up and bubble state stays mounted. SSR/
+  helper/source coverage passes (223 desktop, TS), but native visibility reporting,
+  actual timer/GPU/CPU behavior and the freeze cause remain unverified. This does
+  not suspend the bridge, stop background supervision or rebuild the installed app.
 - Native bootstrap UI waiting now has a five-second, single-flight budget; timeout/
   cleanup discards the old observation and prevents duplicate pending IPC. This
   cannot cancel an underlying native call: if it never settles, reads remain
