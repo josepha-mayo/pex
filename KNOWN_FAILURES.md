@@ -2,6 +2,11 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Native bootstrap UI waiting now has a five-second, single-flight budget; timeout/
+  cleanup discards the old observation and prevents duplicate pending IPC. This
+  cannot cancel an underlying native call: if it never settles, reads remain
+  unavailable. Per-webview source tests (220 desktop plus TS) are not native recovery
+  or proof of the reported whole-PC freeze's cause. Current installers remain older.
 - The user reports a whole-PC freeze while doing nothing in PEX. Cause unknown.
   PEX was already absent at inspection; the exact assistant-owned large regression
   process was stopped. Other apps/model servers were left untouched. The interrupted

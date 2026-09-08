@@ -5,6 +5,38 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: native bootstrap read lifetime
+
+The bootstrap UI awaited native `bridge_bootstrap_status` without a deadline. A
+never-settling IPC left that poll pending indefinitely. It now uses a module-scoped
+single-flight read with a five-second caller budget. Timeout/cancellation retires
+the shared observation; while the underlying IPC remains pending, later reads fail
+unavailable without dispatching duplicate native calls. After the raw call settles,
+the next read observes fresh state, never a cached late ready result. Native IPC
+itself is not cancellable by this helper; a permanently stuck native call remains
+unavailable until native/application recovery. This is NOT a whole-PC freeze fix.
+
+The main/settings bootstrap poll passes its cleanup AbortSignal and checks it
+before publishing. The pet still does not poll native bootstrap. Native generation
+ordering, token checks, bridge launch/retry mutation and unknown-mutation handling
+are unchanged. An unavailable read gates UI without overwriting canonical native
+generation state. Sharing is per JavaScript webview, not a cross-window global cap.
+
+Parent reviewed the complete helper, its six new functional tests, bootstrap App
+wiring and the new source-wiring regression. Terra's bounded read-only review found
+no concrete regression and suggested the two-caller cancellation case; it was added
+and parent-verified. Additional cases cover pre-start cancellation and synchronous
+raw failure. The first development run failed import before the new helper existed;
+that is not an old-runtime behavioral reproduction. Final serial nine-file desktop
+selection (same command below): **220 passed, zero skipped, 6.83s**. TypeScript
+no-emit subsequently exited **0**. Source-wiring tests are not rendered/native proof.
+
+No native launch, Computer Use, large regression/build, live inference or worker
+benchmark ran. Protected loop.py retains its recorded hash. Existing de83153
+installers do not contain this or the preceding offline repairs. Primary remaining
+work is current-source native stability/eight-pet/human workflow, genuine quiet and
+recovery proof, full audit/comparisons, no-bill AgentCore and truthful submission.
+
 ## P0: reported whole-PC freeze while PEX was idle
 
 The user reported that PEX froze the whole PC, and answered "nothing rly" when

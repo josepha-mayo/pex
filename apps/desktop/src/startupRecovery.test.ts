@@ -258,6 +258,14 @@ test("only main desktop surfaces poll or mutate bridge bootstrap state", () => {
   assert.equal(shouldPollBridgeBootstrap(false, "main"), false);
 });
 
+test("native bootstrap reads use the shared budget and retire with their owning poll", async () => {
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.match(source, /const readNativeBridgeBootstrap = boundedSingleFlightRead\(/u);
+  assert.match(source, /normalizeBridgeBootstrapStatus\(await readNativeBridgeBootstrap\(signal\)\)/u);
+  assert.match(source, /if \(!shouldPollBridgeBootstrap\(TAURI, shell\)\) return;\s*const stopPolling = startSerialPolling\(async \(signal\) => \{\s*const next = await readBridgeBootstrapStatus\(signal\);\s*if \(signal.aborted\) return;/u);
+  assert.match(source, /if \(next\) acceptBridgeStartupStatus\(next\);\s*\}, 750\);\s*return stopPolling;/u);
+});
+
 test("control-read availability gates ready UI without corrupting native generation state", () => {
   const ready = normalizeBridgeBootstrapStatus({
     phase: "ready",

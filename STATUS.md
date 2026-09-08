@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Latest offline repair bounds bootstrap UI waiting and retires late native-status
+results without issuing duplicate pending IPC. 220 focused desktop tests and
+TypeScript pass. The underlying native call is not cancelled or proven recoverable;
+no app launch/build/live call occurred. See the checkpoint's latest section.
+
 **P0: reported whole-PC freeze while PEX was idle; root cause unknown.** The app is
 no longer running and the assistant stopped the clean full-test workload. No native
 relaunch/large gates without fresh bounded-run confirmation. Offline repairs now

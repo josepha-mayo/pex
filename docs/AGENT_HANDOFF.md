@@ -2,6 +2,15 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest source slice bounds native bootstrap status waiting without duplicating
+uncancellable IPC. Timeout/cleanup retires shared late results; the next observation
+must be fresh after the raw operation settles. Six new helper regressions and one
+wiring test bring the serial desktop selection to 220 passing; TypeScript exits 0.
+Bounded Terra review found no concrete regression and its suggested shared-caller
+cancellation test was added. This does not cancel a stuck native operation or prove
+freeze recovery. See the checkpoint's latest section. No app/build/live run occurred;
+the installed/package candidate is still older than these source repairs.
+
 **P0 override: the user reports a whole-PC freeze while PEX was idle.** PEX is now
 absent and the assistant's large test workload was stopped. Do not relaunch native
 PEX, resume Computer Use/live benchmarks, or run large gates until a fresh bounded

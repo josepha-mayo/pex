@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Parent reviewed the full boundedSingleFlightRead helper, six new functional cases,
+the App bootstrap callback and source-wiring test. Terra's bounded read-only review
+found no concrete regression and suggested shared-caller cancellation coverage;
+parent added and verified it. Final nine-file serial desktop selection: 220 pass,
+zero skip; TypeScript no-emit exit 0. No whole-file App/native audit approval is
+implied. The native call itself remains uncancellable, and the cap is per webview.
+
 Parent-only follow-up review covers the complete versioned checkpoint parser,
 device/inode/boundary validation, legacy replay migration and incremental line
 reader, plus nine new tests and changed format expectations. Three restart negatives

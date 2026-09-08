@@ -69,6 +69,41 @@ const scheduleTimer: Schedule = (callback, delayMs) => {
   return () => clearTimeout(timer);
 };
 
+/** Bound a non-cancellable read without multiplying its underlying native work. */
+export function boundedSingleFlightRead<T>(
+  read: () => Promise<T>,
+  timeoutMs = 5_000,
+): (parentSignal?: AbortSignal) => Promise<T> {
+  type Pending = { promise: Promise<T>; invalidated: boolean };
+  let active: Pending | null = null;
+  return (parentSignal) => boundedRead(async (signal) => {
+    if (active?.invalidated) throw new Error("Prior local state read is still pending.");
+    if (!active) {
+      const pending: Pending = {
+        invalidated: false,
+        promise: Promise.resolve().then(() => {
+          if (pending.invalidated) throw new Error("Local state read cancelled before start.");
+          return read();
+        }),
+      };
+      active = pending;
+      const release = () => { if (active === pending) active = null; };
+      // Reap success and rejection even after all callers have stopped waiting.
+      void pending.promise.then(release, release);
+    }
+    const pending = active;
+    const invalidate = () => { pending.invalidated = true; };
+    signal.addEventListener("abort", invalidate, { once: true });
+    try {
+      const value = await pending.promise;
+      if (pending.invalidated) throw new Error("Local state read was superseded.");
+      return value;
+    } finally {
+      signal.removeEventListener("abort", invalidate);
+    }
+  }, parentSignal, timeoutMs);
+}
+
 /** Share a pending background read, without caching a completed observation. */
 export function coalesceBackgroundRead<T>(read: () => Promise<T>): () => Promise<T> {
   let active: Promise<T> | null = null;

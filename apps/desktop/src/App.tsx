@@ -22,7 +22,10 @@ import { PetStage } from "./components/PetStage";
 import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
 import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { createOperatorRequest } from "./operatorRequest";
-import { boundedRead, boundedReadBatch, coalesceBackgroundRead, startSerialPolling } from "./readBudget";
+import {
+  boundedRead, boundedReadBatch, boundedSingleFlightRead, coalesceBackgroundRead,
+  startSerialPolling,
+} from "./readBudget";
 import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
@@ -191,11 +194,17 @@ const HOOK_ENVIRONMENT: Record<HookHarness, string> = {
 };
 let bridgeTokenRequest: Promise<string> | null = null;
 
-async function readBridgeBootstrapStatus(): Promise<BridgeBootstrapStatus | null> {
+// Native IPC reads cannot be aborted by fetch's signal. Share one pending call,
+// retire a timed-out result, and require a fresh observation after it settles.
+const readNativeBridgeBootstrap = boundedSingleFlightRead(async () => {
+  const { invoke: call } = await import("@tauri-apps/api/core");
+  return call<unknown>("bridge_bootstrap_status");
+});
+
+async function readBridgeBootstrapStatus(signal?: AbortSignal): Promise<BridgeBootstrapStatus | null> {
   if (!TAURI) return browserDevelopmentBridgeStatus;
   try {
-    const { invoke: call } = await import("@tauri-apps/api/core");
-    const status = normalizeBridgeBootstrapStatus(await call<unknown>("bridge_bootstrap_status"));
+    const status = normalizeBridgeBootstrapStatus(await readNativeBridgeBootstrap(signal));
     return status.code === "desktop_control_unavailable" || status.code === "desktop_state_unavailable"
       ? null
       : status;
@@ -472,22 +481,13 @@ export function App() {
 
   useEffect(() => {
     if (!shouldPollBridgeBootstrap(TAURI, shell)) return;
-    let cancelled = false;
-    let inFlight = false;
-    const refresh = async () => {
-      if (inFlight) return;
-      inFlight = true;
-      const next = await readBridgeBootstrapStatus();
-      inFlight = false;
-      if (cancelled) return;
+    const stopPolling = startSerialPolling(async (signal) => {
+      const next = await readBridgeBootstrapStatus(signal);
+      if (signal.aborted) return;
       setBridgeControlAvailable(next !== null);
       if (next) acceptBridgeStartupStatus(next);
-    };
-    const stopPolling = startSerialPolling(refresh, 750);
-    return () => {
-      cancelled = true;
-      stopPolling();
-    };
+    }, 750);
+    return stopPolling;
   }, [acceptBridgeStartupStatus, shell]);
 
   const retryBridgeBootstrap = useCallback(async () => {

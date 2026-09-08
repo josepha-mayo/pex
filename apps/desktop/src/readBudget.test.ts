@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { boundedRead, boundedReadBatch, coalesceBackgroundRead, startSerialPolling } from "./readBudget.ts";
+import {
+  boundedRead, boundedReadBatch, boundedSingleFlightRead, coalesceBackgroundRead,
+  startSerialPolling,
+} from "./readBudget.ts";
 
 test("a stalled complete read times out and aborts even if its implementation ignores abort", async () => {
   let signal: AbortSignal | undefined;
@@ -259,4 +262,115 @@ test("empty and already-cancelled batches perform no read", async () => {
   const cancelled = await boundedReadBatch([1, 2], never, controller.signal);
   assert.equal(cancelled.length, 2);
   assert.ok(cancelled.every((result) => result.status === "rejected"));
+});
+
+test("a timed-out native read cannot multiply calls or later publish its old result", async () => {
+  let calls = 0;
+  let release: (value: string) => void = () => {};
+  const read = boundedSingleFlightRead(() => {
+    calls += 1;
+    return calls === 1
+      ? new Promise<string>((resolve) => { release = resolve; })
+      : Promise.resolve("fresh status");
+  }, 5);
+  await assert.rejects(read(), /timed out/);
+  for (let index = 0; index < 20; index += 1) {
+    await assert.rejects(read(), /still pending/);
+  }
+  assert.equal(calls, 1);
+  release("stale ready status");
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(await read(), "fresh status");
+  assert.equal(calls, 2);
+});
+
+test("native reads share a pending call but do not cache completed observations", async () => {
+  let calls = 0;
+  let release: (value: number) => void = () => {};
+  const read = boundedSingleFlightRead(() => {
+    calls += 1;
+    return new Promise<number>((resolve) => { release = resolve; });
+  });
+  const first = read();
+  const second = read();
+  await Promise.resolve();
+  assert.equal(calls, 1);
+  release(1);
+  assert.deepEqual(await Promise.all([first, second]), [1, 1]);
+  const fresh = read();
+  await Promise.resolve();
+  assert.equal(calls, 2);
+  release(2);
+  assert.equal(await fresh, 2);
+});
+
+test("cancelled native reads reject stale results without duplicating uncancellable work", async () => {
+  const caller = new AbortController();
+  let calls = 0;
+  let reject: (error: Error) => void = () => {};
+  const read = boundedSingleFlightRead(() => {
+    calls += 1;
+    return calls === 1
+      ? new Promise<string>((_resolve, fail) => { reject = fail; })
+      : Promise.resolve("fresh");
+  });
+  const pending = read(caller.signal);
+  await Promise.resolve();
+  caller.abort();
+  await assert.rejects(pending, /cancelled/);
+  await assert.rejects(read(), /still pending/);
+  assert.equal(calls, 1);
+  reject(new Error("late native rejection"));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(await read(), "fresh");
+  await assert.rejects(read(caller.signal), /cancelled/);
+  assert.equal(calls, 2);
+});
+
+test("cancelling one native reader also retires the observation shared with another", async () => {
+  const caller = new AbortController();
+  let calls = 0;
+  let release: (value: string) => void = () => {};
+  const read = boundedSingleFlightRead(() => {
+    calls += 1;
+    return calls === 1
+      ? new Promise<string>((resolve) => { release = resolve; })
+      : Promise.resolve("fresh");
+  });
+  const first = read(caller.signal);
+  const second = read();
+  await Promise.resolve();
+  caller.abort();
+  await assert.rejects(first, /cancelled/);
+  release("retired ready status");
+  await assert.rejects(second, /superseded/);
+  assert.equal(calls, 1);
+  assert.equal(await read(), "fresh");
+  assert.equal(calls, 2);
+});
+
+test("native read cancellation before scheduled entry avoids starting the operation", async () => {
+  const caller = new AbortController();
+  let calls = 0;
+  const read = boundedSingleFlightRead(async () => { calls += 1; return "fresh"; });
+  const pending = read(caller.signal);
+  caller.abort();
+  await assert.rejects(pending, /cancelled/);
+  assert.equal(calls, 0);
+  assert.equal(await read(), "fresh");
+  assert.equal(calls, 1);
+});
+
+test("synchronous native read failures release the slot for a later observation", async () => {
+  let calls = 0;
+  const read = boundedSingleFlightRead(() => {
+    calls += 1;
+    if (calls === 1) throw new Error("native bridge unavailable");
+    return Promise.resolve("fresh");
+  });
+  await assert.rejects(read(), /native bridge unavailable/);
+  assert.equal(await read(), "fresh");
+  assert.equal(calls, 2);
 });
