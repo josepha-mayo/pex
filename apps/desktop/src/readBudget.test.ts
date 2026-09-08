@@ -189,13 +189,31 @@ test("canonical detail reads are event-first with one slow full reconciliation",
   assert.doesNotMatch(source, /surface, pet\?\.last_action\?\.id\]\)/);
 });
 
+test("settings separates slow base data from only-while-active hatch polling", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.match(source, /const BASE_STATE_RECONCILIATION_INTERVAL_MS = 30_000/);
+  assert.match(source, /const ACTIVE_HATCH_RECONCILIATION_INTERVAL_MS = 4_000/);
+  assert.match(source, /const SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS = 30_000/);
+  assert.match(source, /const hatchJobsActive = hatchJobs\.some\(\(job\) => ACTIVE_HATCH_STATUSES\.has\(job\.status\)\)/);
+  assert.match(source, /loadHatchJobs\(signal\),\s*hatchJobsActive\s*\? ACTIVE_HATCH_RECONCILIATION_INTERVAL_MS\s*: SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS/);
+  assert.match(source, /loadCursorRejections\(signal\),\s*SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS/);
+  const baseStart = source.indexOf("const loadBaseState =");
+  const baseEnd = source.indexOf("const loadHatchJobs", baseStart);
+  const base = source.slice(baseStart, baseEnd);
+  assert.doesNotMatch(base, /\/v1\/pets\/hatch(?:"|\?)/);
+  assert.doesNotMatch(base, /\/v1\/hooks\/cursor\/rejections/);
+});
+
 test("view-owned background reads propagate cancellation and handoff reads use a bounded batch", async () => {
   // Source wiring only; native/UI lifecycle checks are a separate release gate.
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
   for (const call of [
     "refreshPet(controller.signal)",
-    "loadBaseState(includeHatch, includeCapability, signal)",
+    "loadBaseState(includeCapability, signal)",
+    "loadHatchJobs(signal)",
+    "loadCursorRejections(signal)",
     "refreshPetGoals(signal)",
     "loadDetails(includeSlowDetails, showLoading, controller.signal)",
     "loadProjectIdentityConflicts({ showLoading, signal: controller.signal })",

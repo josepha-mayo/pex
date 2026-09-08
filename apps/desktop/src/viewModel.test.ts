@@ -107,7 +107,10 @@ test("Connections surfaces durable Cursor rejection health without payload conte
     readFile(new URL("./components/SettingsPage.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(app, /\/v1\/hooks\/cursor\/rejections\?limit=20/u);
-  assert.match(app, /else if \(includeHatch\) \{\s*setCursorRejections\(null\)/u);
+  const rejectionStart = app.indexOf("const loadCursorRejections");
+  const rejectionEnd = app.indexOf("const refreshPetGoals", rejectionStart);
+  assert.ok(rejectionStart >= 0 && rejectionEnd > rejectionStart);
+  assert.match(app.slice(rejectionStart, rejectionEnd), /catch \{[\s\S]*?setCursorRejections\(null\)/u);
   assert.match(settings, /PEX safely rejected \{cursorRejections\.total\}/u);
   assert.match(settings, /Receipts retain offsets and hashes, never rejected payload content/u);
   assert.doesNotMatch(settings, /receipt\.record_sha256/u);

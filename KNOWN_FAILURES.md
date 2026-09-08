@@ -519,3 +519,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
 - Caught-up event sockets now poll durable publication state every 15 seconds rather than five,
   while committed writes retain immediate wake. Socket/publication tests cover the contract,
   but no native multi-window trace proves missed-hint latency, SQLite load, or freeze impact.
+- Settings no longer couples goals/catalog, hatch jobs, and Cursor rejection receipts into one
+  eight-second poll. Idle readers now use 30 seconds and only an active hatch job uses four;
+  source tests cover independent cancellation, stale-response guards, and fail-closed state.
+  No native trace yet proves actual catalog-cache behavior, request counts, or freeze impact.

@@ -1333,3 +1333,16 @@ read/view-model coverage passed 94/94, complete desktop passed 255/255, and Type
 The old 5-second recovery constant failed the new contract. Focused socket tests passed 5/5,
 adjacent publication coverage passed 17/17, and scoped Ruff passed. Native SQLite timing and
 multi-window resource behavior are unmeasured.
+
+## 8 September Settings activity-poll focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/App.tsx` base/settings readers | REVIEWED / REPAIRED | Expensive goals/catalog reads are independent from rejection health and hatch progress; all have view cancellation and request-generation guards. |
+| `apps/desktop/src/readBudget.test.ts` Settings cadence contract | REVIEWED / EXTENDED | Rejects the coupled eight-second base loop and binds idle/active intervals plus independent reader lifetime. |
+| `apps/desktop/src/viewModel.test.ts` rejection-health contract | REVIEWED / EXTENDED | Scopes fail-closed rejection state to its dedicated reader instead of matching an unrelated catch block. |
+
+The old implementation failed both new lifecycle assertions. Focused read/view-model coverage
+passed 95/95, complete desktop passed 256/256, and TypeScript exited 0. Inactive Settings source
+scheduling falls from 30 to 8 endpoint reads per minute. Native request counts, atlas-cache
+miss cost, and freeze impact remain unmeasured.

@@ -138,10 +138,14 @@ import {
 const BRIDGE = "http://127.0.0.1:7420";
 const EVENT_CURSOR_STORAGE_KEY = "pex.event_cursor.v1";
 const PET_RECONCILIATION_INTERVAL_MS = 30_000;
+const BASE_STATE_RECONCILIATION_INTERVAL_MS = 30_000;
+const SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS = 30_000;
+const ACTIVE_HATCH_RECONCILIATION_INTERVAL_MS = 4_000;
 const GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS = 30_000;
 const HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS = 30_000;
 const PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS = 30_000;
 const DETAIL_RECONCILIATION_INTERVAL_MS = 32_000;
+const ACTIVE_HATCH_STATUSES = new Set(["queued", "probing", "running"]);
 
 function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
   if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return "local";
@@ -470,6 +474,8 @@ export function App() {
   const askInput = useRef<HTMLInputElement>(null);
   const petRequestSequence = useRef(0);
   const baseRequestSequence = useRef(0);
+  const hatchRequestSequence = useRef(0);
+  const cursorRejectionRequestSequence = useRef(0);
   const detailRequestSequence = useRef(0);
   const identityConflictRequestSequence = useRef(0);
   const identityStatusRequestSequence = useRef(0);
@@ -568,20 +574,14 @@ export function App() {
     }
   }, [markCanonical]);
 
-  const loadBaseState = useCallback(async (includeHatch = false, includeCapability = includeHatch, signal?: AbortSignal) => {
+  const loadBaseState = useCallback(async (includeCapability = false, signal?: AbortSignal) => {
     const requestSequence = ++baseRequestSequence.current;
-    const [goalsResult, petsResult, hatchResult, capResult, rejectionsResult] = await Promise.allSettled([
+    const [goalsResult, petsResult, capResult] = await Promise.allSettled([
       bridgeJson<Goal[]>("/v1/goals", { signal }),
       bridgeJson<{ catalog?: CatalogPet[]; starters?: CatalogPet[] }>("/v1/pets", { signal }),
-      includeHatch
-        ? bridgeJson<{ jobs?: HatchJobRow[] }>("/v1/pets/hatch", { signal })
-        : Promise.resolve<{ jobs?: HatchJobRow[] } | null>(null),
       includeCapability
         ? bridgeJson<HatchCap>("/v1/pets/hatch/capability", { signal })
         : Promise.resolve<HatchCap | null>(null),
-      includeHatch
-        ? bridgeJson<CursorInboxRejectionPage>("/v1/hooks/cursor/rejections?limit=20", { signal })
-        : Promise.resolve<CursorInboxRejectionPage | null>(null),
     ]);
     if (requestSequence !== baseRequestSequence.current) return;
     if (goalsResult.status === "fulfilled" && Array.isArray(goalsResult.value)) {
@@ -602,14 +602,35 @@ export function App() {
     } else {
       markCanonical("pets", "failed", "Pet catalog could not be refreshed.");
     }
-    if (hatchResult.status === "fulfilled" && hatchResult.value) setHatchJobs(hatchResult.value.jobs || []);
     if (capResult.status === "fulfilled" && capResult.value) setHatchCap(capResult.value);
-    if (rejectionsResult.status === "fulfilled" && rejectionsResult.value) {
-      setCursorRejections(rejectionsResult.value);
-    } else if (includeHatch) {
+  }, [markCanonical]);
+
+  const loadHatchJobs = useCallback(async (signal?: AbortSignal) => {
+    const requestSequence = ++hatchRequestSequence.current;
+    try {
+      const data = await bridgeJson<{ jobs?: HatchJobRow[] }>("/v1/pets/hatch", { signal });
+      if (requestSequence !== hatchRequestSequence.current) return;
+      setHatchJobs(data.jobs || []);
+    } catch {
+      // Keep the last observed jobs. A missing row could otherwise masquerade as
+      // completion while the local bridge is briefly unavailable.
+    }
+  }, []);
+
+  const loadCursorRejections = useCallback(async (signal?: AbortSignal) => {
+    const requestSequence = ++cursorRejectionRequestSequence.current;
+    try {
+      const data = await bridgeJson<CursorInboxRejectionPage>(
+        "/v1/hooks/cursor/rejections?limit=20",
+        { signal },
+      );
+      if (requestSequence !== cursorRejectionRequestSequence.current) return;
+      setCursorRejections(data);
+    } catch {
+      if (requestSequence !== cursorRejectionRequestSequence.current) return;
       setCursorRejections(null);
     }
-  }, [markCanonical]);
+  }, []);
 
   const refreshPetGoals = useCallback(async (signal?: AbortSignal) => {
     const requestSequence = ++baseRequestSequence.current;
@@ -742,21 +763,48 @@ export function App() {
 
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || shell === "pet") return;
-    const includeHatch = shell === "settings";
     let firstRefresh = true;
     const stopPolling = startSerialPolling(
       (signal) => {
-        const includeCapability = firstRefresh && includeHatch;
+        const includeCapability = firstRefresh && shell === "settings";
         firstRefresh = false;
-        return loadBaseState(includeHatch, includeCapability, signal);
+        return loadBaseState(includeCapability, signal);
       },
-      includeHatch ? 8000 : 30000,
+      BASE_STATE_RECONCILIATION_INTERVAL_MS,
     );
     return () => {
       baseRequestSequence.current += 1;
       stopPolling();
     };
   }, [bridgeAvailable, loadBaseState, pageVisible, shell]);
+
+  const hatchJobsActive = hatchJobs.some((job) => ACTIVE_HATCH_STATUSES.has(job.status));
+
+  useEffect(() => {
+    if (!bridgeAvailable || !pageVisible || shell !== "settings") return;
+    const stopPolling = startSerialPolling(
+      (signal) => loadHatchJobs(signal),
+      hatchJobsActive
+        ? ACTIVE_HATCH_RECONCILIATION_INTERVAL_MS
+        : SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS,
+    );
+    return () => {
+      hatchRequestSequence.current += 1;
+      stopPolling();
+    };
+  }, [bridgeAvailable, hatchJobsActive, loadHatchJobs, pageVisible, shell]);
+
+  useEffect(() => {
+    if (!bridgeAvailable || !pageVisible || shell !== "settings") return;
+    const stopPolling = startSerialPolling(
+      (signal) => loadCursorRejections(signal),
+      SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS,
+    );
+    return () => {
+      cursorRejectionRequestSequence.current += 1;
+      stopPolling();
+    };
+  }, [bridgeAvailable, loadCursorRejections, pageVisible, shell]);
 
   useEffect(() => {
     if (!bridgeAvailable || !observationActive || shell !== "pet") return;
@@ -2261,7 +2309,7 @@ export function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ directory: importDir.trim() }),
       });
-      await Promise.all([refreshPet(), loadBaseState(true, false)]);
+      await Promise.all([refreshPet(), loadBaseState(false)]);
       setNote("Pet imported and selected.");
     } catch (error) {
       setNote(operationError(error, "Could not import that Codex v2 pet folder."));

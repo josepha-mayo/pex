@@ -2016,3 +2016,12 @@ bounded queues, and disconnect cleanup remain. Three visible PEX shells fall fro
 maximum of 36 to 12 idle page reads per minute. The old cadence failed the new test; focused
 socket coverage passed 5/5, adjacent publication/serialization passed 17/17, and Ruff passed.
 Native SQLite/resource impact and freeze resolution remain open.
+
+Settings base state is no longer tied to an eight-second activity loop. Goals and the complete
+pet catalog now reconcile every 30 seconds, Cursor rejection health has a separate 30-second
+reader, and hatch jobs use four seconds only while exactly queued/probing/running (30 seconds
+otherwise). Late responses cannot replace newer observations; hatch failures retain the last
+truthful job rather than pretending it vanished, and unavailable rejection health fails closed.
+Explicit import remains immediate. The old source failed the new contract; focused tests passed
+95/95, complete desktop passed 256/256, and TypeScript exited 0. Inactive Settings scheduled
+endpoint reads fall from 30 to 8 per minute by source. Native freeze resolution remains open.

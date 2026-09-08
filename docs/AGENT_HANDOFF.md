@@ -8773,3 +8773,20 @@ The dirty bit is expected because the protected operator-owned file below is ret
   **5/5**. Adjacent socket/publication/serialization coverage passed **17/17** and scoped Ruff
   passed. PEX remained closed, so missed-hint latency and native SQLite/resource impact remain
   unmeasured.
+
+### 8 September Settings activity-poll isolation slice
+
+- Settings previously coupled goals, the complete pet catalog, hatch jobs, and Cursor rejection
+  receipts into one eight-second loop. The catalog path stats every built-in/import and can
+  decode a complete atlas on a cache miss, even though only an active hatch job needs a fast
+  visible progress cadence.
+- Goals/catalog now reconcile every 30 seconds. Cursor rejection health has its own 30-second
+  cancellable reader. Hatch jobs reconcile every 30 seconds while idle and every four seconds
+  only while a job is exactly `queued`, `probing`, or `running`. Each reader has an independent
+  request-generation guard; a hatch-read failure retains the last truthful job instead of
+  inventing completion, while unavailable rejection health becomes explicit. Import still
+  refreshes pet and catalog immediately, and capability is still fetched on Settings entry.
+- The new contracts failed on the old wiring. Focused read/view-model coverage passed **95/95**,
+  complete desktop coverage passed **256/256**, and TypeScript exited 0. Inactive Settings
+  source scheduling falls from 30 to 8 endpoint reads per minute (73.3%); PEX remained closed,
+  so native request counts and freeze impact remain unmeasured.

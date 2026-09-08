@@ -1575,3 +1575,15 @@ queues, and cancellation are unchanged. With three PEX shells, the source idle m
 from 36 to 12 ledger page reads per minute. The old cadence failed the new contract; focused
 socket tests passed 5/5, adjacent publication/serialization coverage passed 17/17, and Ruff
 passed. Native SQLite cost and freeze impact remain unmeasured.
+
+## Settings activity-poll isolation
+
+Settings no longer reloads goals and the complete pet catalog every eight seconds merely to
+observe hatch activity and Cursor rejection receipts. Goals/catalog, rejection health, and
+idle hatch jobs now reconcile independently every 30 seconds; only an exactly queued, probing,
+or running hatch job uses a four-second reader. All readers are view-cancelled and generation
+guarded. Hatch read failure retains the last observed job rather than implying completion;
+rejection-health failure becomes unavailable. Explicit pet import still refreshes immediately.
+The old source failed the new contract; focused coverage passed 95/95, complete desktop passed
+256/256, and TypeScript exited 0. This lowers inactive Settings scheduling from 30 to 8 endpoint
+reads per minute by source; native resource impact and freeze resolution remain open.

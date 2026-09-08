@@ -653,3 +653,9 @@ Do the next safe, highest-impact item immediately. If a required external choice
   remain. Focused 5/5, adjacent socket/publication 17/17, and Ruff pass.
 - [ ] Confirm immediate socket commit wake, 15-second missed-hint recovery, and multi-window
   idle SQLite load in the bounded native profile.
+- [x] Split Settings activity from expensive base refresh: goals/catalog and Cursor rejection
+  health reconcile every 30 seconds; hatch jobs use four seconds only while queued/probing/
+  running and 30 seconds otherwise, with cancellation and stale-response guards. Focused
+  95/95, complete desktop 256/256, and TypeScript pass.
+- [ ] Confirm idle and active-hatch Settings cadence plus catalog cache behavior in the bounded
+  native profile; source scheduling is not proof that the whole-PC freeze is resolved.
