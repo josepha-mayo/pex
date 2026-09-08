@@ -5,7 +5,30 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: strict Cursor JSON authority
+## Latest offline slice: durable poison receipts and operator visibility
+
+Cursor inbox acknowledgement can now pass permanently invalid input only after a
+content-free rejection receipt commits to SQLite. Receipts bind file identity, exact byte
+offsets, raw-record SHA256 and one bounded reason; the unique constraint makes replay and
+restart idempotent. A receipt-write failure leaves the complete source batch pending.
+Malformed/ambiguous JSON, non-object JSON, complete/partial oversized records and permanent
+hook-shape rejection all enter this path. The authenticated read endpoint returns one
+coherent bounded snapshot.
+
+Settings → Connections now shows a calm rejected-input count plus human-readable reason
+and time for at most three latest receipts. It explicitly says worker execution was not
+blocked and never renders payload text, raw hashes or file identities. Failed refreshes
+clear the projection instead of presenting stale health as current. Focused backend
+coverage passes **61/61**; frontend view-model coverage passes **70/70**; TypeScript and
+Ruff pass. The React checklist found no waterfall, unbounded list, unstable key, hook or
+accessibility regression.
+
+This closes the poison receipt/UI portion only. Producer-coordinated disk retention and
+earlier-history/path atomicity remain open. PEX stayed closed; no model, worker, native
+app, large suite or external process was launched. The protected supervisor loop remains
+untouched at its recorded hash.
+
+## Earlier offline slice: strict Cursor JSON authority
 
 The raw Cursor JSONL event reader used Python's permissive decoder even though its
 checkpoint format already used PEX's strict JSON boundary. A duplicate key therefore

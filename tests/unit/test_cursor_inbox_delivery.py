@@ -56,8 +56,58 @@ async def test_permanently_invalid_record_does_not_block_later_valid_rows(tmp_pa
             raise inbox.PermanentInboxRecordError("invalid Cursor hook shape")
         seen.append(payload["id"])
 
-    assert await inbox.process_inbox(tmp_path, consume) == 2
+    rejected = []
+
+    async def retain_rejection(receipt):
+        rejected.append(receipt)
+
+    assert await inbox.process_inbox(tmp_path, consume, reject=retain_rejection) == 2
     assert seen == ["valid"]
+    assert len(rejected) == 1
+    assert rejected[0].reason == "invalid_hook_shape"
+    assert rejected[0].start == 0
+    assert rejected[0].end == len(b'{"kind":"invalid"}\n')
+    assert len(rejected[0].record_sha256) == 64
+    assert inbox._read_offset(inbox.offset_path(tmp_path)) == path.stat().st_size
+
+
+@pytest.mark.asyncio
+async def test_rejection_receipt_failure_keeps_complete_batch_pending(tmp_path):
+    path = _seed(tmp_path, "invalid", "valid")
+
+    async def consume(payload):
+        if payload["id"] == "invalid":
+            raise inbox.PermanentInboxRecordError("invalid Cursor hook shape")
+
+    async def failed_receipt(_receipt):
+        raise RuntimeError("receipt store unavailable")
+
+    with pytest.raises(RuntimeError, match="receipt store unavailable"):
+        await inbox.process_inbox(tmp_path, consume, reject=failed_receipt)
+    assert inbox._read_offset(inbox.offset_path(tmp_path)) == 0
+    assert path.exists()
+
+
+@pytest.mark.asyncio
+async def test_malformed_records_require_receipts_before_later_delivery(tmp_path):
+    path = inbox.inbox_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b'{"duplicate":1,"duplicate":2}\n[]\n{"id":"valid"}\n')
+    rejected = []
+    seen = []
+
+    async def retain_rejection(receipt):
+        rejected.append(receipt)
+
+    async def consume(payload):
+        seen.append(payload["id"])
+
+    assert await inbox.process_inbox(tmp_path, consume, reject=retain_rejection) == 1
+    assert seen == ["valid"]
+    assert [receipt.reason for receipt in rejected] == [
+        "malformed_json", "non_object_json",
+    ]
+    assert rejected[0].end == rejected[1].start
     assert inbox._read_offset(inbox.offset_path(tmp_path)) == path.stat().st_size
 
 

@@ -62,8 +62,11 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Bind restart checkpoints to file identity and a small boundary checksum;
   replay/migrate legacy offsets and stop reading full backlogs for small batches.
   36 targeted checks pass; not a whole-history integrity or native proof.
-- [ ] Finish earlier-history/atomic path safety and poison-record receipts/UI; add
-  producer-coordinated retention. Deadlines remain
+- [x] Require durable, content-free receipts before Cursor poison records advance;
+  deduplicate them across replay/restart and show a bounded human-readable summary
+  under Connections without rendering payloads. Backend 61/61, frontend 70/70 and TS pass.
+- [ ] Finish earlier-history/atomic path safety and add producer-coordinated retention.
+  Deadlines remain
   cooperative; checkpoint preserves exact limitations and development failures.
 - [x] Advance parsed Cursor records only when adapter preparation proves permanent
   shape/bound invalidity; retain transient/collision/authority failures. Inbox plus

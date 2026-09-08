@@ -21,6 +21,16 @@ import type { PetMood } from "./pets/atlas";
 
 const LIFECYCLE_ACTIONS = new Set(["START_AGENT", "STOP_AGENT", "FORK_PROBE", "CLEANUP"]);
 
+export function cursorRejectionReasonCopy(reason: string): string {
+  return ({
+    malformed_json: "Malformed or ambiguous JSON",
+    non_object_json: "JSON was not an event object",
+    oversized_record: "Event record exceeded the size limit",
+    oversized_record_prefix: "Event record exceeded the size limit before its newline",
+    invalid_hook_shape: "Event fields did not match the Cursor hook contract",
+  } as Record<string, string>)[reason] ?? "Unknown rejected input";
+}
+
 export function mergeSessionObservation(previous: SessionRow | undefined, incoming: SessionRow): SessionRow {
   if (!previous || previous.id !== incoming.id) return incoming;
   const merged = { ...previous, ...incoming };

@@ -128,6 +128,27 @@ CREATE TABLE IF NOT EXISTS events (
   ts TEXT,
   json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS cursor_inbox_rejections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_device TEXT NOT NULL,
+  source_inode TEXT NOT NULL,
+  start_offset INTEGER NOT NULL CHECK(start_offset >= 0),
+  end_offset INTEGER NOT NULL CHECK(end_offset > start_offset),
+  record_sha256 TEXT NOT NULL CHECK(
+    length(record_sha256) = 64 AND record_sha256 = lower(record_sha256)
+  ),
+  reason TEXT NOT NULL CHECK(reason IN (
+    'malformed_json',
+    'non_object_json',
+    'oversized_record',
+    'oversized_record_prefix',
+    'invalid_hook_shape'
+  )),
+  rejected_at TEXT NOT NULL,
+  UNIQUE(
+    source_device, source_inode, start_offset, end_offset, record_sha256, reason
+  )
+);
 CREATE TABLE IF NOT EXISTS observer_workspace_authorities (
   session_id TEXT PRIMARY KEY REFERENCES sessions(id),
   subscription_id TEXT NOT NULL,
@@ -10309,6 +10330,126 @@ class Store:
         if self._db is None:
             raise RuntimeError("store is not connected")
         return self._db
+
+    async def record_cursor_inbox_rejection(
+        self,
+        *,
+        file_identity: tuple[int, int],
+        start: int,
+        end: int,
+        record_sha256: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Durably acknowledge one immutable poison record without retaining content."""
+
+        if (
+            not isinstance(file_identity, tuple)
+            or len(file_identity) != 2
+            or any(type(value) is not int or not 0 <= value < 2**128 for value in file_identity)
+        ):
+            raise ValueError("Cursor rejection file identity is invalid")
+        if type(start) is not int or type(end) is not int or not 0 <= start < end < 2**63:
+            raise ValueError("Cursor rejection offsets are invalid")
+        if (
+            not isinstance(record_sha256, str)
+            or len(record_sha256) != 64
+            or set(record_sha256) - set("0123456789abcdef")
+        ):
+            raise ValueError("Cursor rejection digest is invalid")
+        if reason not in {
+            "malformed_json",
+            "non_object_json",
+            "oversized_record",
+            "oversized_record_prefix",
+            "invalid_hook_shape",
+        }:
+            raise ValueError("Cursor rejection reason is invalid")
+        source_device, source_inode = (str(value) for value in file_identity)
+        async with self._write_lock:
+            await self.db.execute("BEGIN IMMEDIATE")
+            try:
+                await self.db.execute(
+                    "INSERT OR IGNORE INTO cursor_inbox_rejections("
+                    "source_device, source_inode, start_offset, end_offset, "
+                    "record_sha256, reason, rejected_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        source_device,
+                        source_inode,
+                        start,
+                        end,
+                        record_sha256,
+                        reason,
+                        utcnow().isoformat(),
+                    ),
+                )
+                cursor = await self.db.execute(
+                    "SELECT * FROM cursor_inbox_rejections WHERE source_device = ? "
+                    "AND source_inode = ? AND start_offset = ? AND end_offset = ? "
+                    "AND record_sha256 = ? AND reason = ?",
+                    (source_device, source_inode, start, end, record_sha256, reason),
+                )
+                row = await cursor.fetchone()
+                await cursor.close()
+                if row is None:
+                    raise RuntimeError("Cursor rejection receipt was not persisted")
+                await self.db.commit()
+            except Exception:
+                await self.db.rollback()
+                raise
+        return self._cursor_inbox_rejection_receipt(row)
+
+    async def list_cursor_inbox_rejections(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        if type(limit) is not int or not 1 <= limit <= 200:
+            raise ValueError("Cursor rejection limit is invalid")
+        if type(offset) is not int or not 0 <= offset <= 1_000_000:
+            raise ValueError("Cursor rejection offset is invalid")
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN")
+            try:
+                count_cursor = await transaction.execute(
+                    "SELECT COUNT(*) FROM cursor_inbox_rejections"
+                )
+                total_row = await count_cursor.fetchone()
+                await count_cursor.close()
+                cursor = await transaction.execute(
+                    "SELECT * FROM cursor_inbox_rejections ORDER BY id DESC LIMIT ? OFFSET ?",
+                    (limit, offset),
+                )
+                rows = await cursor.fetchall()
+                await cursor.close()
+                await transaction.commit()
+            except Exception:
+                await transaction.rollback()
+                raise
+        return {
+            "schema": "pex.cursor-inbox-rejections.v1",
+            "total": int(total_row[0]) if total_row is not None else 0,
+            "limit": limit,
+            "offset": offset,
+            "items": [self._cursor_inbox_rejection_receipt(row) for row in rows],
+        }
+
+    @staticmethod
+    def _cursor_inbox_rejection_receipt(row: aiosqlite.Row) -> dict[str, Any]:
+        return {
+            "schema": "pex.cursor-inbox-rejection.v1",
+            "receipt_id": int(row["id"]),
+            "file_identity": {
+                "device": str(row["source_device"]),
+                "inode": str(row["source_inode"]),
+            },
+            "start": int(row["start_offset"]),
+            "end": int(row["end_offset"]),
+            "record_sha256": str(row["record_sha256"]),
+            "reason": str(row["reason"]),
+            "rejected_at": str(row["rejected_at"]),
+        }
 
     async def get_goal_control_operation_replay(
         self,

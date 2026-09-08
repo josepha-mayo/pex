@@ -672,6 +672,25 @@ export type AdapterRow = {
   };
 };
 
+export type CursorInboxRejection = {
+  schema: "pex.cursor-inbox-rejection.v1";
+  receipt_id: number;
+  file_identity: { device: string; inode: string };
+  start: number;
+  end: number;
+  record_sha256: string;
+  reason: string;
+  rejected_at: string;
+};
+
+export type CursorInboxRejectionPage = {
+  schema: "pex.cursor-inbox-rejections.v1";
+  total: number;
+  limit: number;
+  offset: number;
+  items: CursorInboxRejection[];
+};
+
 export type Fingerprint = {
   harness: string;
   observed_sessions: number;

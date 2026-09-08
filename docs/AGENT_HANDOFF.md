@@ -2,6 +2,17 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: Cursor inbox checkpoints may now advance past malformed or permanently invalid
+input only after a content-free SQLite rejection receipt is durable. Receipts bind the
+source file identity, exact byte range, raw-record SHA256 and one bounded reason; replay
+and Store restart deduplicate to the original receipt, while persistence failure keeps
+the complete batch pending. An authenticated bounded endpoint projects one coherent
+snapshot. Settings → Connections shows only human-readable count/reason/time, says the
+worker was not blocked and never renders payloads, raw hashes or file identity. Backend
+focused coverage passes 61/61; frontend view-model coverage passes 70/70; TypeScript,
+Ruff and React review pass. Producer-coordinated retention and earlier-history/path
+atomicity remain open. PEX stayed closed; this is not native stability proof.
+
 Latest: raw Cursor JSONL events now use the existing strict JSON decoder at the
 observation authority boundary. The inherited reader used Python's permissive decoder,
 so duplicate keys silently became last-key-wins values and `NaN` entered an RFC-JSON

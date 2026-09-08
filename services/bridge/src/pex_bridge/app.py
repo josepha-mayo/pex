@@ -39,6 +39,7 @@ from starlette.concurrency import run_in_threadpool
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.acp_client import AcpRpcError
 from pex_bridge.adapters.base import resolve_adapter_message_result
+from pex_bridge.adapters.cursor_inbox import InboxRejection
 from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings, validate_bridge_token
 from pex_bridge.fingerprints import decorate_agent_fingerprints
@@ -1438,6 +1439,18 @@ async def _process_cursor_observation(payload: dict) -> None:
         adapter._delivery_channel.reset(token)
 
 
+async def _record_cursor_observation_rejection(rejection: InboxRejection) -> None:
+    """Make poison-row advancement depend on a durable, content-free receipt."""
+
+    await state.store.record_cursor_inbox_rejection(
+        file_identity=rejection.file_identity,
+        start=rejection.start,
+        end=rejection.end,
+        record_sha256=rejection.record_sha256,
+        reason=rejection.reason,
+    )
+
+
 def _cursor_observe_delay(*, idle_passes: int, failures: int) -> float:
     if failures:
         return min(30.0, 0.25 * 2 ** min(failures, 7))
@@ -1455,6 +1468,7 @@ async def _cursor_observe_loop(stop: asyncio.Event) -> None:
                 state.settings.data_dir,
                 _process_cursor_observation,
                 stop,
+                reject=_record_cursor_observation_rejection,
             )
             failures = 0
             idle_passes = 0 if processed else min(idle_passes + 1, 4)
@@ -6159,6 +6173,14 @@ def create_app() -> FastAPI:
         if payload.get("hook_event_name") == "pexDeliveryReceipt":
             return await _record_cursor_delivery_ack(payload)
         return await apply_cursor_hook(payload)
+
+    @app.get("/v1/hooks/cursor/rejections")
+    async def list_cursor_observer_rejections(
+        limit: int = Query(default=100, ge=1, le=200),
+        offset: int = Query(default=0, ge=0, le=1_000_000),
+        _: None = Depends(_require_token),
+    ):
+        return await state.store.list_cursor_inbox_rejections(limit=limit, offset=offset)
 
     @app.post("/v1/hooks/{harness}")
     async def named_hook(

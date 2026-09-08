@@ -63,6 +63,7 @@ import type {
   CanonicalResourceKey,
   ChannelHubStatus,
   ContextItem,
+  CursorInboxRejectionPage,
   DecisionFeedback,
   DeckData,
   DeckView,
@@ -421,6 +422,7 @@ export function App() {
   const [hookHarness, setHookHarness] = useState<HookHarness>("cursor");
   const [hookProject, setHookProject] = useState("");
   const [hookBootstrap, setHookBootstrap] = useState<HookBootstrapReceipt | null>(null);
+  const [cursorRejections, setCursorRejections] = useState<CursorInboxRejectionPage | null>(null);
   const [provisioningHook, setProvisioningHook] = useState(false);
   const [hatchCap, setHatchCap] = useState<HatchCap | null>(null);
   const [hatchJobs, setHatchJobs] = useState<HatchJobRow[]>([]);
@@ -547,7 +549,7 @@ export function App() {
 
   const loadBaseState = useCallback(async (includeHatch = false, includeCapability = includeHatch, signal?: AbortSignal) => {
     const requestSequence = ++baseRequestSequence.current;
-    const [goalsResult, petsResult, hatchResult, capResult] = await Promise.allSettled([
+    const [goalsResult, petsResult, hatchResult, capResult, rejectionsResult] = await Promise.allSettled([
       bridgeJson<Goal[]>("/v1/goals", { signal }),
       bridgeJson<{ catalog?: CatalogPet[]; starters?: CatalogPet[] }>("/v1/pets", { signal }),
       includeHatch
@@ -556,6 +558,9 @@ export function App() {
       includeCapability
         ? bridgeJson<HatchCap>("/v1/pets/hatch/capability", { signal })
         : Promise.resolve<HatchCap | null>(null),
+      includeHatch
+        ? bridgeJson<CursorInboxRejectionPage>("/v1/hooks/cursor/rejections?limit=20", { signal })
+        : Promise.resolve<CursorInboxRejectionPage | null>(null),
     ]);
     if (requestSequence !== baseRequestSequence.current) return;
     if (goalsResult.status === "fulfilled" && Array.isArray(goalsResult.value)) {
@@ -578,6 +583,11 @@ export function App() {
     }
     if (hatchResult.status === "fulfilled" && hatchResult.value) setHatchJobs(hatchResult.value.jobs || []);
     if (capResult.status === "fulfilled" && capResult.value) setHatchCap(capResult.value);
+    if (rejectionsResult.status === "fulfilled" && rejectionsResult.value) {
+      setCursorRejections(rejectionsResult.value);
+    } else if (includeHatch) {
+      setCursorRejections(null);
+    }
   }, [markCanonical]);
 
   const refreshPetGoals = useCallback(async (signal?: AbortSignal) => {
@@ -2203,6 +2213,7 @@ export function App() {
         supervisorDispatchLimit={supervisorDispatchLimit}
         supervisorApiKey={supervisorApiKey}
         supervisorCredentialAction={supervisorCredentialAction}
+        cursorRejections={cursorRejections}
         channels={channels}
         settingsAvailable={settingsAvailable}
         settingsIssue={settingsIssue}

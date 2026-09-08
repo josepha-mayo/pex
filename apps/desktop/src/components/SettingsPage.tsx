@@ -6,10 +6,12 @@ import type {
   HatchCap,
   HatchJobRow,
   ChannelHubStatus,
+  CursorInboxRejectionPage,
   SupervisorInfo,
 } from "../types";
 import {
   channelStatusCopy,
+  cursorRejectionReasonCopy,
   HATCH_BASE_CANDIDATE_CONFIRMATION,
   HATCH_BASE_CANDIDATE_DISCLOSURE,
   HATCH_EXTERNAL_IMPORT_DISCLOSURE,
@@ -36,6 +38,7 @@ export function SettingsPage({
   supervisorDispatchLimit,
   supervisorApiKey,
   supervisorCredentialAction,
+  cursorRejections,
   channels,
   settingsAvailable,
   settingsIssue,
@@ -103,6 +106,7 @@ export function SettingsPage({
   supervisorDispatchLimit?: string;
   supervisorApiKey: string;
   supervisorCredentialAction: SupervisorCredentialAction;
+  cursorRejections: CursorInboxRejectionPage | null;
   channels: ChannelHubStatus | null;
   settingsAvailable: boolean;
   settingsIssue?: string | null;
@@ -240,6 +244,33 @@ export function SettingsPage({
           aria-labelledby={`settings-tab-${section}`}
         >
           {section === "connections" ? workerConnection : null}
+          {section === "connections" ? (
+          <section className="settings-card settings-wide">
+            <p className="eyebrow">Cursor observer</p>
+            <h2>Rejected input</h2>
+            {cursorRejections === null ? (
+              <p className="settings-note">Rejection audit is unavailable until local state refreshes.</p>
+            ) : cursorRejections.total === 0 ? (
+              <p className="settings-note">No rejected Cursor observer records.</p>
+            ) : (
+              <div role="status" aria-live="polite">
+                <p className="settings-note">
+                  PEX safely rejected {cursorRejections.total} malformed or incompatible local
+                  {cursorRejections.total === 1 ? " record" : " records"}. Worker execution was not blocked.
+                </p>
+                <ul className="settings-list">
+                  {cursorRejections.items.slice(0, 3).map((receipt) => (
+                    <li key={receipt.receipt_id}>
+                      <strong>{cursorRejectionReasonCopy(receipt.reason)}</strong>
+                      <span>{new Date(receipt.rejected_at).toLocaleString()}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="settings-note">Receipts retain offsets and hashes, never rejected payload content.</p>
+              </div>
+            )}
+          </section>
+          ) : null}
           {section === "companion" ? (
           <section className="settings-card">
             <p className="eyebrow">Companion</p>

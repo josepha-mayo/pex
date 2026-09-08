@@ -2,6 +2,18 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent followed every malformed/permanent Cursor row from its
+immutable source offsets through observer acknowledgement, SQLite persistence, authenticated
+read projection and the Connections UI. Checkpoint advancement now depends on a durable
+content-free rejection receipt; write failure keeps the complete batch replayable. Receipts
+are unique by file identity, offsets, raw-record SHA256 and bounded reason, so replay and
+restart return the original receipt rather than multiplying alerts. The operator sees a
+bounded human-readable count/reason/time summary; payloads, raw hashes and file identities
+are not rendered. Backend focused coverage passes 61/61, the frontend view-model gate
+passes 70/70, TypeScript and Ruff pass. React review confirmed parallel fetching, bounded
+rendering, stable keys, accessible status copy and stale-failure clearing. Earlier-history
+atomicity and producer-coordinated disk retention remain open.
+
 Changed-path addendum: parent traced raw Cursor JSONL decoding through immutable batch
 admission and permanent semantic rejection. The event reader still used Python's
 permissive `json.loads`, so duplicate keys silently became last-key-wins values and

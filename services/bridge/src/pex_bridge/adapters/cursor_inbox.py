@@ -37,6 +37,22 @@ class InboxCheckpoint:
 
 
 @dataclass(frozen=True)
+class InboxRecordAuthority:
+    start: int
+    end: int
+    record_sha256: str
+
+
+@dataclass(frozen=True)
+class InboxRejection:
+    file_identity: tuple[int, int]
+    start: int
+    end: int
+    record_sha256: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class InboxBatch:
     source: Path
     marker: Path
@@ -46,6 +62,8 @@ class InboxBatch:
     end: int
     digest: str
     records: tuple[dict, ...]
+    record_authorities: tuple[InboxRecordAuthority, ...]
+    rejections: tuple[InboxRejection, ...]
     discarding_line: bool
 
 
@@ -152,6 +170,8 @@ def read_inbox(home: Path) -> InboxBatch | None:
     path = inbox_path(home)
     marker = offset_path(home)
     records: list[dict] = []
+    record_authorities: list[InboxRecordAuthority] = []
+    rejections: list[InboxRejection] = []
     consumed = 0
     digest = hashlib.sha256()
     discarding_line = False
@@ -183,9 +203,12 @@ def read_inbox(home: Path) -> InboxBatch | None:
                 remaining = MAX_INBOX_BYTES - consumed
                 if remaining <= 0:
                     break
+                line_start = offset + consumed
                 line = handle.readline(min(remaining, MAX_RECORD_BYTES + 2))
                 if not line:
                     break
+                line_end = line_start + len(line)
+                line_sha256 = hashlib.sha256(line).hexdigest()
                 terminated = line.endswith(b"\n")
                 if not terminated and not discarding_line and len(line) <= MAX_RECORD_BYTES:
                     break
@@ -201,10 +224,20 @@ def read_inbox(home: Path) -> InboxBatch | None:
                     # can never become admissible JSON. Persist discard mode so
                     # later reads advance to its newline without parsing a suffix.
                     discarding_line = True
+                    rejections.append(InboxRejection(
+                        file_identity=_identity(info), start=line_start, end=line_end,
+                        record_sha256=line_sha256, reason="oversized_record_prefix",
+                    ))
                     continue
                 record_count += 1
                 content = line[:-1]
-                if not content.strip() or len(content) > MAX_RECORD_BYTES:
+                if not content.strip():
+                    continue
+                if len(content) > MAX_RECORD_BYTES:
+                    rejections.append(InboxRejection(
+                        file_identity=_identity(info), start=line_start, end=line_end,
+                        record_sha256=line_sha256, reason="oversized_record",
+                    ))
                     continue
                 try:
                     # Hook records are an authority boundary. Python's default
@@ -212,9 +245,21 @@ def read_inbox(home: Path) -> InboxBatch | None:
                     # Infinity, making the observed event ambiguous or non-RFC.
                     payload = strict_json_loads(content)
                 except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
+                    rejections.append(InboxRejection(
+                        file_identity=_identity(info), start=line_start, end=line_end,
+                        record_sha256=line_sha256, reason="malformed_json",
+                    ))
                     continue
                 if isinstance(payload, dict):
                     records.append(payload)
+                    record_authorities.append(InboxRecordAuthority(
+                        start=line_start, end=line_end, record_sha256=line_sha256,
+                    ))
+                else:
+                    rejections.append(InboxRejection(
+                        file_identity=_identity(info), start=line_start, end=line_end,
+                        record_sha256=line_sha256, reason="non_object_json",
+                    ))
             current = path.lstat()
             if not _ordinary(current) or _identity(info) != _identity(current):
                 raise ValueError("Cursor inbox changed during read")
@@ -226,6 +271,7 @@ def read_inbox(home: Path) -> InboxBatch | None:
         source=path, marker=marker, file_identity=_identity(info),
         marker_state=marker_state, start=offset, end=offset + consumed,
         digest=digest.hexdigest(), records=tuple(records),
+        record_authorities=tuple(record_authorities), rejections=tuple(rejections),
         discarding_line=discarding_line,
     )
 
@@ -286,6 +332,8 @@ async def process_inbox(
     home: Path,
     consume: Callable[[dict], Awaitable[None]],
     stop: asyncio.Event | None = None,
+    *,
+    reject: Callable[[InboxRejection], Awaitable[None]] | None = None,
 ) -> int:
     """Serial, at-least-once delivery; failed/cancelled batches remain replayable."""
     if stop is not None and stop.is_set():
@@ -293,7 +341,13 @@ async def process_inbox(
     batch = await asyncio.to_thread(read_inbox, home)
     if batch is None:
         return 0
-    for payload in batch.records:
+    if batch.rejections and reject is None:
+        raise RuntimeError("Cursor inbox rejection sink is unavailable")
+    for rejection in batch.rejections:
+        if stop is not None and stop.is_set():
+            return 0
+        await reject(rejection)
+    for payload, authority in zip(batch.records, batch.record_authorities, strict=True):
         if stop is not None and stop.is_set():
             return 0
         try:
@@ -302,7 +356,15 @@ async def process_inbox(
             # Shape/bound failures are deterministic for these immutable source
             # bytes. Transient authority, Store and pipeline failures still
             # propagate and retain the complete at-least-once batch.
-            continue
+            if reject is None:
+                raise RuntimeError("Cursor inbox rejection sink is unavailable") from None
+            await reject(InboxRejection(
+                file_identity=batch.file_identity,
+                start=authority.start,
+                end=authority.end,
+                record_sha256=authority.record_sha256,
+                reason="invalid_hook_shape",
+            ))
     if stop is not None and stop.is_set():
         return 0
     if not await asyncio.to_thread(acknowledge_inbox, batch):

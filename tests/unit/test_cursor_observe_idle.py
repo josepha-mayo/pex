@@ -30,7 +30,8 @@ async def test_cursor_observe_loop_resets_idle_backoff_after_work(monkeypatch, t
     results = iter([0, 0, 0, 1, 0])
     observed_delays: list[float] = []
 
-    async def process_inbox(_home, _consume, _stop):
+    async def process_inbox(_home, _consume, _stop, *, reject):
+        assert callable(reject)
         try:
             return next(results)
         except StopIteration:

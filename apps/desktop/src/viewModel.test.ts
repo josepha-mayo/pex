@@ -28,6 +28,7 @@ import {
   hatchResponseMatchesCurrentAttempt,
   updateGoalPayload,
   currentGoals,
+  cursorRejectionReasonCopy,
   canonicalEventCursor,
   encodeWebSocketTokenProtocol,
   eventPageResumeCursor,
@@ -89,6 +90,29 @@ import type {
   ProjectIdentityResolutionResponse,
   ProjectIdentityStatusView,
 } from "./types.ts";
+
+test("Cursor rejection reasons are human-readable and fail closed", () => {
+  assert.equal(cursorRejectionReasonCopy("malformed_json"), "Malformed or ambiguous JSON");
+  assert.equal(
+    cursorRejectionReasonCopy("invalid_hook_shape"),
+    "Event fields did not match the Cursor hook contract",
+  );
+  assert.equal(cursorRejectionReasonCopy("future_reason"), "Unknown rejected input");
+});
+
+test("Connections surfaces durable Cursor rejection health without payload content", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const [app, settings] = await Promise.all([
+    readFile(new URL("./App.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/SettingsPage.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(app, /\/v1\/hooks\/cursor\/rejections\?limit=20/u);
+  assert.match(app, /else if \(includeHatch\) \{\s*setCursorRejections\(null\)/u);
+  assert.match(settings, /PEX safely rejected \{cursorRejections\.total\}/u);
+  assert.match(settings, /Receipts retain offsets and hashes, never rejected payload content/u);
+  assert.doesNotMatch(settings, /receipt\.record_sha256/u);
+  assert.doesNotMatch(settings, /receipt\.file_identity/u);
+});
 
 test("review allowance is a fresh reservation snapshot, not model usage or spending", () => {
   const now = Date.parse("2026-09-07T12:00:00Z");

@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import os
 from types import SimpleNamespace
@@ -1321,6 +1322,34 @@ async def test_observe_inbox_failed_admission_is_not_acknowledged(
     assert channels == ["observe"]
     assert _read_offset(offset_path(tmp_path)) == 0
     assert state.adapters.cursor._delivery_channel.get() != "observe"
+
+
+@pytest.mark.asyncio
+async def test_observe_inbox_rejection_is_durable_before_checkpoint(
+    client: AsyncClient, tmp_path,
+):
+    import pex_bridge.app as bridge_app
+    from pex_bridge.adapters.cursor_inbox import inbox_path, offset_path, process_inbox
+
+    raw = b'{"hook_event_name":"afterFileEdit"}\n'
+    path = inbox_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(raw)
+
+    assert await process_inbox(
+        tmp_path,
+        bridge_app._process_cursor_observation,
+        reject=bridge_app._record_cursor_observation_rejection,
+    ) == 1
+    assert offset_path(tmp_path).exists()
+    response = await client.get("/v1/hooks/cursor/rejections")
+    assert response.status_code == 200, response.text
+    page = response.json()
+    assert page["schema"] == "pex.cursor-inbox-rejections.v1"
+    assert page["total"] == 1
+    assert page["items"][0]["reason"] == "invalid_hook_shape"
+    assert page["items"][0]["record_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert "hook_event_name" not in json.dumps(page)
 
 
 def test_observe_inbox_does_not_lose_a_record_split_across_drains(tmp_path):
