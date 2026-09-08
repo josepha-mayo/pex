@@ -1,10 +1,10 @@
 # Demo assets
 
-**Current evidence, 8 September:** clean product source `af35707` has a normal verified MSI
+**Current evidence, 8 September:** clean product source `b0438bd` has a normal verified MSI
 and NSIS package. Both extracted inventories contain the desktop, frozen bridge, Cursor hook,
 Cursor observer, and packaged pet assets; the package verifier reports `release_ready: true`
 with zero blockers. The final frozen bridge passes 3/3 lifecycle tests. Exact hashes and the
-receipt are in [`PACKAGE_RECEIPT_AF35707.json`](../PACKAGE_RECEIPT_AF35707.json).
+receipt are in [`PACKAGE_RECEIPT_B0438BD.json`](../PACKAGE_RECEIPT_B0438BD.json).
 Both installers are currently `NotSigned`, so filming should account for a possible Windows
 reputation prompt rather than treating package verification as publisher signing.
 

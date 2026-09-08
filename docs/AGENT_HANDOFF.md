@@ -2,26 +2,26 @@
 
 ### Current checkpoint — 8 September WAT
 
-Current packaged product source is `af35707`; `origin/main` may include later documentation-only
-checkpoints. That product revision repairs a live Codex event-pump starvation defect described
-below. A detached clean worktree at
+Current packaged product source is `b0438bd`; `origin/main` may include later documentation-only
+checkpoints. Its backend includes the `af35707` live Codex event-pump repair described below,
+and its only later product-code change is the tested overlay-contrast repair. A detached clean worktree at
 `C:\Users\JosephMayo\Projects\pex-release-9329a67` built the normal Tauri release at exact
-commit `af3570726923b9d233723de950c9d33e4606e033`. The build produced:
+commit `b0438bd4e01b9f930c152960cbd33b1a86cfefb5`. The build produced:
 
 - MSI: `apps/desktop/src-tauri/target/release/bundle/msi/PEX_0.1.0_x64_en-US.msi`,
-  125,472,768 bytes, SHA-256
-  `4DE3CEED5A92D301456BD98B6721E3052DECBB99A311D154B85D6558E4722525`.
+  125,468,672 bytes, SHA-256
+  `21E2D8F2A45A76DCB6F40820FCFE6CD75B63AEEF6DA1CD4B4237D671C48DB967`.
 - NSIS: `apps/desktop/src-tauri/target/release/bundle/nsis/PEX_0.1.0_x64-setup.exe`,
-  124,200,807 bytes, SHA-256
-  `62B33193D9618FA88C8A37CC405D92D6B95E9E2F7EF73BCD697040E7F6C3C78B`.
+  124,199,647 bytes, SHA-256
+  `D06DF0F1A065C46C6908179F19DA385CF1BDC32446E2F38110109411CD4C06E3`.
 
 `npm run verify:package` exited 0 and reported `release_ready: true`, no blockers, and
 verified both extracted inventories. The packaged frozen helpers are bridge
-`46D6266A03861B9F69DAC84B52865FE7B28F0C1CD582A8BD89BDA6D02136CB93`, Cursor hook
-`3431A7F540334EE0F3DA90119EEA0E31F7C1A0E717F05A78D283C0EF2075AC16`, and Cursor observer
-`0BEA583EE984EA2C7BF9312CD3C81A51B32D0299C6C447CA79D62CE74C322A01`. The exact receipt is
-retained at `docs/PACKAGE_RECEIPT_AF35707.json`. The final sidecar bytes then passed
-`tests/contract/test_frozen_bridge_lifetime.py` **3/3** in 55.58 seconds. Both installers are
+`7D8272FE277164BEEB2B27995EC740A63EC81E4AFF25563B44929850FB087F19`, Cursor hook
+`F1C86B75E6E6652132F456ECBDD7C436A093727BE4B04FC2415344BB33FB587A`, and Cursor observer
+`45B8C0585687FE485F74CAC8111832C6BF1D80335D3E3D176B78707FD5444687`. The exact receipt is
+retained at `docs/PACKAGE_RECEIPT_B0438BD.json`. The final sidecar bytes then passed
+`tests/contract/test_frozen_bridge_lifetime.py` **3/3** in 52.48 seconds. Both installers are
 `NotSigned`; this is package integrity, not publisher trust or native stability proof.
 
 The source preflight independently passed source cleanliness, exact eight-pet inventory,
@@ -35,12 +35,15 @@ Commit `d66e6a1` makes pet-message dismissal persist across restart without hidi
 The versioned local key contains only a bounded status/intervention identity, not message text
 or credentials; a new intervention reopens the bubble, storage failures fall back safely, and
 the main/pet webviews synchronize through storage events. Focused tests pass 70/70, the full
-desktop gate passes 259/259, and TypeScript/Vite production compilation passes.
+desktop gate passes 260/260, and TypeScript/Vite production compilation passes.
 
-After packaging, an isolated localhost build was inspected through current Home, Inspector,
+An isolated localhost build was inspected through current Home, Inspector,
 Deck, Settings/Companion, and `pet.html` surfaces. The old large centered speech card is gone;
 the compact hierarchy is readable, the Pex owl has no opaque card behind it, and the distinct
-message dismiss control visibly removes the bubble while leaving the pet present. The browser
+message dismiss control visibly removes the bubble while leaving the pet present. Commit
+`b0438bd` additionally gives the status bubble and separate hide control a dark high-contrast
+surface on light desktops; its new regression plus the full desktop gate pass 260/260 and the
+production build passes. The browser
 sandbox does not expose localStorage, so it cannot prove restart persistence; it also does not
 prove native window transparency, Tauri hide/restore, click-through, drag, or resource safety.
 Do not upgrade this bounded browser render to native proof.
@@ -82,10 +85,10 @@ no broken seam band. This is strong static visual evidence, not native playback 
 artifacts are under `C:\Users\JosephMayo\Documents\Codex\pex-pet-qa-5530938`.
 
 A post-freeze native stability harness is prepared at
-`C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-af35707.ps1` (SHA-256
-`3F26065E410C8D65E254BE085181DEEF3505DDB8C0117195017E30630CA32FF8`) but was **not
-executed**. It parses with zero errors and is pinned to exact source `af35707` and desktop hash
-`6AA1E294E27E2ACB51B9F6D53B5E42D8D78EB924CCE8FC2AD4E698396DC505ED`. It refuses an existing
+`C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-b0438bd.ps1` (SHA-256
+`608C2692E2ABA803B33A29376D4614E847FF5EBFFD2FE1D7AD5673DC45E4D6C3`) but was **not
+executed**. It parses with zero errors and is pinned to exact source `b0438bd` and desktop hash
+`DF80E4CD4630DF3D0EA1829CC01F11E7554947B9B9217ACDDE78E9AA7BD84A3D`. It refuses an existing
 PEX process or occupied port 7420, creates a new isolated profile, disables the supervisor
 and Cursor/Codex auto-attach, bounds startup and idle capture, samples only the owned process
 tree, enforces CPU/memory/handle/thread stops, and starts a separate hidden timeout watchdog.
@@ -124,7 +127,7 @@ package verification. Release mode now checks complete porcelain status before a
 PyInstaller invocation and refuses staged, modified, or untracked paths; development
 mode remains usable. The real command failed fast against the protected `loop.py` edit
 without changing any sidecar binary. Release-contract coverage passes 12/12, the complete
-desktop gate passes 259/259, and the production TypeScript/Vite build succeeds. Final
+desktop gate passes 260/260, and the production TypeScript/Vite build succeeds. Final
 sidecar/package rebuild remains open until the worktree is intentionally clean; PEX did
 not launch. The protected file remains unstaged with SHA-256
 `DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`.

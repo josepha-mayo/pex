@@ -6,22 +6,23 @@
 > native stability. PEX has stayed closed since the incident; a fresh bounded native run still
 > requires explicit user approval. Submission remains NO-GO until that run and the video pass.
 
-> **Current, 8 September WAT:** product source `af35707` fixes a live Codex event-pump
+> **Current, 8 September WAT:** backend source `af35707` fixes a live Codex event-pump
 > starvation found during final recapture. Its clean quiet and same-thread recovery contracts
 > now pass with real Codex Spark and the free Muse/Strands supervisor. A detached
 > clean worktree produced normal MSI and NSIS installers. `npm run verify:package` reports
 > `release_ready: true`, zero blockers, and verified desktop/bridge/Cursor-helper inventories
 > in both installers. Both artifacts are currently `NotSigned`; package integrity does not
 > imply publisher identity or suppress Windows reputation prompts. The final frozen bridge
-> passed 3/3 lifecycle tests. The complete desktop contract gate passes 259/259; Rust passes
+> passed 3/3 lifecycle tests. The complete desktop contract gate passes 260/260; Rust passes
 > 18/18; TypeScript/Vite production compilation and
 > the 184-test Strands/AgentCore offline gate pass. A bounded live Codex App Server check now
 > proves the truthful `basic` handshake -> `deep` healthy-event-pump transition without a model
 > call. The current Home, Inspector, Deck, Settings, and Pex overlay were inspected in an
 > isolated browser render; message dismissal visibly left the pet present. This is not native
 > transparency, click-through, hide/restore, restart-persistence, or freeze-resolution proof.
-> The rebuilt `af35707` MSI/NSIS package now contains that repair and passes extracted-payload
-> verification; exact hashes are in `PACKAGE_RECEIPT_AF35707.json`. The bounded native run,
+> Product source `b0438bd` adds the reviewed overlay-contrast repair and has rebuilt MSI/NSIS
+> packages that pass extracted-payload verification; exact hashes are in
+> `PACKAGE_RECEIPT_B0438BD.json`. The bounded native run,
 > packaged-app interaction capture, demo video, and authorized submission remain open.
 > Follow
 > [the detailed checkpoint](CHECKPOINT_2026_09_08.md), [handoff](AGENT_HANDOFF.md), and
@@ -145,9 +146,9 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 ## Checklist before clicking Submit
 
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
-- [x] Build all three sidecars/installers from clean product source `af35707`; both installer
-  inventories and the retained `PACKAGE_RECEIPT_AF35707.json` pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `af35707`;
+- [x] Build all three sidecars/installers from clean product source `b0438bd`; both installer
+  inventories and the retained `PACKAGE_RECEIPT_B0438BD.json` pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `b0438bd`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run 362 focused Cursor/Codex/OpenCode integration tests plus all 259 desktop/UI
   contracts and a production TypeScript/Vite build; no worker, model, native app or paid call ran
@@ -157,7 +158,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [ ] AWS Builder ID email on the Devpost form
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)
 - [x] Recapture the validated semantic pair on clean product source `af35707`
-- [x] Rebuild/package `af35707` and retain the validated final-source semantic pair
+- [x] Rebuild/package the overlay-fixed descendant `b0438bd` and retain the validated `af35707`
+  backend semantic pair
 - [ ] Pass bounded native stability and record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence is contract-only, while controlled local Codex + provider-live Strands evidence now exists
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)

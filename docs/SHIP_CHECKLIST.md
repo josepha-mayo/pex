@@ -6,9 +6,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.
-  The prior `d66e6a1` harness is superseded. The exact `af35707` harness is
-  `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-af35707.ps1`, SHA-256
-  `3F26065E410C8D65E254BE085181DEEF3505DDB8C0117195017E30630CA32FF8`; it parses with zero
+  The prior harnesses are superseded. The exact `b0438bd` harness is
+  `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-b0438bd.ps1`, SHA-256
+  `608C2692E2ABA803B33A29376D4614E847FF5EBFFD2FE1D7AD5673DC45E4D6C3`; it parses with zero
   errors and was not executed. It must not run without fresh explicit operator authorization
   while the shared PC is otherwise idle.
 - [x] Bound retained SQLite WAL allocation after checkpoints. The contest profile had a
@@ -33,7 +33,7 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   model, native app or paid call ran.
 - [x] Refuse production sidecar builds before PyInstaller when any staged, modified, or
   untracked path exists. The actual command failed fast on the protected concurrent edit
-  without rewriting the helpers; release tests pass 12/12, desktop passes 259/259, and
+  without rewriting the helpers; release tests pass 12/12, desktop passes 260/260, and
   the production frontend build succeeds. Final rebuild still requires a clean worktree.
 - [x] Replace the attached shared-Codex observer's 25ms empty-buffer poll with a
   notification/revocation wake signal. Five focused files pass 174/174 and Ruff;
@@ -476,10 +476,10 @@ These are immediate steps within stage 1, not another competing product plan. Pr
 
 ### 5. Verify normal release build, then all eight pets
 
-- [x] Pass normal release configuration with all required sidecars. Exact clean source `af35707`
+- [x] Pass normal release configuration with all required sidecars. Exact clean source `b0438bd`
   produced MSI and NSIS bundles; both extracted inventories and the desktop/helper marker
   contract pass with `release_ready: true` and no blockers. The rebuilt bridge then passed its
-  3/3 frozen lifecycle gate. Exact hashes are in `PACKAGE_RECEIPT_AF35707.json` and the handoff.
+  3/3 frozen lifecycle gate. Exact hashes are in `PACKAGE_RECEIPT_B0438BD.json` and the handoff.
 - [ ] Verify isolated clean-profile startup, setup, retry, crash/reconnect and packaged assets; retain exact source/artifact hashes.
 - [ ] After core/primary flows work, use applicable pet/desktop skills to inspect pex, ledger, mesh, nudge, drift, quiet, ember and von.
 - [ ] Check actual desktop-size animation, transparency/cropping, placement/drag, click-through, compact/expanded and offline/pause behavior.
