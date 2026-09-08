@@ -103,6 +103,17 @@ def test_load_rejects_duplicate_keys_oversize_and_symlink(tmp_path):
         load_supervisor_choice(linked)
 
 
+def test_load_rejects_exponent_overflow_before_schema_validation(tmp_path):
+    path = tmp_path / "nonfinite.json"
+    path.write_text(
+        '{"version":1,"revision":1,"ignored":1e9999}',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="non-finite JSON number"):
+        load_supervisor_choice(path)
+
+
 def test_keyring_envelope_is_versioned_bounded_and_audience_bound(monkeypatch):
     values: dict[tuple[str, str], str] = {}
 

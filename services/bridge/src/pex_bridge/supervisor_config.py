@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -230,6 +231,13 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
+def _finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError(f"non-finite JSON number {value!r} is not allowed")
+    return parsed
+
+
 def load_supervisor_choice(path: Path) -> SupervisorChoice | None:
     if not path.is_file():
         return None
@@ -244,6 +252,7 @@ def load_supervisor_choice(path: Path) -> SupervisorChoice | None:
         payload = json.loads(
             text,
             object_pairs_hook=_unique_object,
+            parse_float=_finite_json_float,
             parse_constant=lambda value: (_ for _ in ()).throw(
                 ValueError(f"non-finite JSON constant {value!r} is not allowed")
             ),
