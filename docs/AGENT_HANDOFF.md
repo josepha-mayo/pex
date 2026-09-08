@@ -9105,8 +9105,9 @@ The dirty bit is expected because the protected operator-owned file below is ret
   attachment refusal, and the complete real-stdio runner lifecycle through a test-owned fake App
   Server. The fake process emits Windows CRLF on stdout and the journal preserves those exact
   bytes rather than normalizing them.
-- Final scoped Ruff passed. After descriptor-hash hardening, the broad benchmark plus Codex
-  adapter/pump/deep-audit gate passed **290/290 with 3 intentional skips in 272.57 seconds**. No
+- Final scoped Ruff passed. After the later controller-fingerprint correction, the broad
+  benchmark plus Codex adapter/pump/deep-audit gate passed **291/291 with 3 intentional skips in
+  316.45 seconds**. No
   real Codex model, Cursor, native PEX,
   Docker, AWS resource or paid call ran.
 - Do **not** mark `raw_harness_event_log_status` satisfied. Codex stdio now meets the intended
@@ -9118,3 +9119,20 @@ The dirty bit is expected because the protected operator-owned file below is ret
   protected loop tail`; its expected SHA-256 remains
   `DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`. Keep PEX closed unless
   the user says exactly `run bounded native smoke`.
+
+### 8 September controller-fingerprint correction after journal self-audit
+
+- A post-push audit found `benchmarks/runner.py::_CONTROLLER_FILES` did not yet include the new
+  `codex_protocol_journal.py`. Because `controller_sha256` is the benchmark identity for code
+  capable of seeding, supervising, recording or scoring, this omission would have allowed capture
+  semantics to change without changing controller/benchmark provenance.
+- The journal module is now part of `_CONTROLLER_FILES`. A focused regression replaces only the
+  journal file's computed digest and proves `controller_sha256()` changes. This correction
+  deliberately invalidates old controller fingerprints; historical rows remain non-citeable and
+  must not be patched or merged. The final broad gate is the **291/291** result above.
+- The follow-on natural-task source review identified QuixBugs as an MIT-licensed public program
+  repair benchmark and pinned a read-only audit clone at commit
+  `4257f44b0ff1181dedaedee6a447e133219fcebf`. Candidate tasks are `wrap`, `next_permutation`, and
+  `kth`, but **no task-package or manifest change has been accepted yet**. Do not call the natural
+  source gate satisfied until exact source metadata, package hashes, evaluator contracts and the
+  still-missing isolated untrusted execution boundary all pass.

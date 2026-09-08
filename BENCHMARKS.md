@@ -121,7 +121,9 @@ transport, direction counts, and completion time. Before a result row can append
 controller independently reopens the stable bounded file and verifies the hash, contiguous
 sequence, request/response closure, initialize/thread/start/turn/start receipts, and every
 bound turn start/completion event. Capture, bound, identity, or validation failure aborts the
-row; test doubles retain the older diagnostic-only normalized-event path.
+row; test doubles retain the older diagnostic-only normalized-event path. The journal module
+itself is included in `controller_sha256`, so changing capture semantics invalidates the
+controller/benchmark identity rather than inheriting an old provenance hash.
 
 This closes the implementation gap only for Codex stdio. Cursor still exposes ordered local
 hook receipts with explicitly partial coverage rather than a complete vendor transcript, so

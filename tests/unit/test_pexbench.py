@@ -898,6 +898,21 @@ def test_benchmark_boundary_hashing_streams_files(tmp_path, monkeypatch):
     assert boundary.workspace_manifest_sha256(tmp_path) == expected
 
 
+def test_controller_fingerprint_binds_exact_codex_protocol_journal(monkeypatch):
+    runner = _runner()
+    assert "codex_protocol_journal.py" in runner._CONTROLLER_FILES
+    original = runner.controller_sha256()
+    real_hash = runner._bounded_file_sha256
+
+    def changed_journal(path, limit, label):
+        if path.name == "codex_protocol_journal.py":
+            return "0" * 64
+        return real_hash(path, limit, label)
+
+    monkeypatch.setattr(runner, "_bounded_file_sha256", changed_journal)
+    assert runner.controller_sha256() != original
+
+
 def test_out_of_process_supervisor_receives_prefetched_public_evidence(monkeypatch):
     from pex_protocol.actions import InterventionType, ProposedAction
     from pex_protocol.enums import HarnessType
