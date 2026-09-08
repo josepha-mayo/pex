@@ -165,6 +165,7 @@ class StdioAcpTransport:
         self.on_permission: PermissionHandler | None = None
         self.events: deque[dict[str, Any]] = deque(maxlen=MAX_ACP_EVENTS)
         self._event_cursor = 0
+        self._events_ready = asyncio.Event()
 
     async def start(self) -> None:
         async with self._start_lock:
@@ -298,12 +299,10 @@ class StdioAcpTransport:
                         method = bounded_adapter_id(method, field="ACP event method")
                     except ValueError:
                         continue
-                    self.events.append(
-                        {"jsonrpc": "2.0", "method": method, "params": params}
-                    )
-                    self._event_cursor += 1
+                    self._record_event({"jsonrpc": "2.0", "method": method, "params": params})
         finally:
             self._fail_pending(RuntimeError("ACP process closed its stdout"))
+            self._events_ready.set()
 
     async def _write(self, payload: dict[str, Any]) -> None:
         if self._proc is None:
@@ -416,6 +415,22 @@ class StdioAcpTransport:
         start = max(cursor, earliest) - earliest
         return latest, list(self.events)[start:], dropped
 
+    def _record_event(self, payload: dict[str, Any]) -> None:
+        self.events.append(payload)
+        self._event_cursor += 1
+        self._events_ready.set()
+
+    async def wait_for_events(self, cursor: int) -> None:
+        if not isinstance(cursor, int) or isinstance(cursor, bool) or cursor < 0:
+            raise ValueError("ACP event cursor must be a non-negative integer")
+        if cursor != self._event_cursor:
+            self._events_ready.clear()
+            return
+        try:
+            await self._events_ready.wait()
+        finally:
+            self._events_ready.clear()
+
     async def close(self) -> None:
         tasks = [task for task in (self._reader_task, self._stderr_task) if task]
         for task in tasks:
@@ -435,6 +450,7 @@ class StdioAcpTransport:
         self._reader_task = None
         self._stderr_task = None
         self._fail_pending(RuntimeError("ACP transport closed"))
+        self._events_ready.set()
 
 
 class AcpClient:

@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: attached ACP adapters (Kimi, Hermes and OMP) no longer rescan a quiet transport
+every 50ms. The stdio reader signals retained events and EOF/close; the adapter races
+that signal against its local permission and prompt-result queues, cancelling the losing
+waiter cleanly. Deterministic fake transports retain a bounded fallback. Transport,
+protocol and adapter gates pass 74/74 plus fleet/capability gates 83/83; Ruff is clean.
+No ACP child or native app ran, so live resource/freeze proof remains open.
+
 Latest: the isolated Codex App Server pump no longer rescans approvals and notifications
 every 50ms. Its blocking stdout reader now signals notification/approval/EOF activity;
 the adapter sleeps on that signal with a one-second deadline for session discovery, and

@@ -2,6 +2,11 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced the shared ACP pump's 50ms scan across Kimi, Hermes
+and OMP. Stdio event/EOF/close and adapter-local prompt/permission queues now wake a
+combined first-completer wait; the losing task is cancelled and joined. Two focused gates
+pass 74/74 and 83/83 with Ruff clean. No child process/native resource run occurred.
+
 Changed-path addendum: parent traced isolated Codex's 50ms approval/notification scans
 into its already-blocking stdout reader. Production transport activity now wakes the
 pump, with a one-second deadline retained for discovery and EOF/close wakeups for cleanup.

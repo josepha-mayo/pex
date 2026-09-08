@@ -15,6 +15,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Replace isolated Codex 50ms approval/notification scans with stdout activity wakes
   while retaining its one-second discovery deadline. Related coverage passes 109/109
   and Ruff; no worker/native process ran.
+- [x] Replace shared ACP 50ms scans with combined stdio and local prompt/permission queue
+  wakes, cancelling and joining the losing waiter. Focused gates pass 74/74 and 83/83
+  with Ruff; no ACP/native process ran.
 - [x] Repair the stale unknown-capability test fixture so its specific mock nudge reaches
   the intended gate; the original proposal is retained beside fail-closed NOOP execution.
   The complete capability file passes 24/24 and Ruff.

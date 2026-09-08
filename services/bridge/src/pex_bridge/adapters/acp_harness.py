@@ -93,6 +93,7 @@ class AcpHarnessAdapter(HarnessAdapter):
         self._permission_requests: dict[str, _PendingAcpPermission] = {}
         self._permission_handler_installed = False
         self._last_pump_error: str | None = None
+        self._pump_ready = asyncio.Event()
         self._active_hook: ContextVar[tuple[str, str] | None] = ContextVar(
             f"pex_{self.name}_active_hook_{id(self)}", default=None
         )
@@ -185,6 +186,7 @@ class AcpHarnessAdapter(HarnessAdapter):
         event = self._permission_event(session, request_id, params, tool_call, options)
         try:
             self._permission_events.put_nowait((session, event))
+            self._pump_ready.set()
         except asyncio.QueueFull:
             self._permission_requests.pop(request_id, None)
             return cancelled
@@ -488,12 +490,14 @@ class AcpHarnessAdapter(HarnessAdapter):
                 raise
             try:
                 self._prompt_results.put_nowait((session, dispatch_id, exc))
+                self._pump_ready.set()
             except asyncio.QueueFull:
                 self._last_pump_error = "PromptResultQueueFull"
             return False
         else:
             try:
                 self._prompt_results.put_nowait((session, dispatch_id, result))
+                self._pump_ready.set()
             except asyncio.QueueFull:
                 self._last_pump_error = "PromptResultQueueFull"
             return True
@@ -776,7 +780,26 @@ class AcpHarnessAdapter(HarnessAdapter):
                     session, event = self._permission_events.get_nowait()
                     await ingest(event, session)
                 self._last_pump_error = None
-                await asyncio.sleep(0.05)
+                local_activity = asyncio.create_task(self._pump_ready.wait())
+                wait_for_events = getattr(transport, "wait_for_events", None)
+                remote_activity = asyncio.create_task(
+                    wait_for_events(seen)
+                    if callable(wait_for_events)
+                    else asyncio.sleep(0.05)
+                )
+                try:
+                    done, _ = await asyncio.wait(
+                        (local_activity, remote_activity),
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                    for task in done:
+                        task.result()
+                finally:
+                    for task in (local_activity, remote_activity):
+                        if not task.done():
+                            task.cancel()
+                    await asyncio.gather(local_activity, remote_activity, return_exceptions=True)
+                    self._pump_ready.clear()
             except asyncio.CancelledError:
                 raise
             except Exception as exc:

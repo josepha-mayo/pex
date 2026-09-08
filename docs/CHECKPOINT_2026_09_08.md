@@ -5,6 +5,16 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: event-driven ACP observation
+
+Kimi, Hermes and OMP share an ACP pump that previously woke every 50ms even when its
+stdio transport and local prompt/permission queues were quiet. Stdio event/EOF/close now
+signals one waiter, while local prompt-result and permission receipt publication signals
+another; the pump waits for the first and cancels/joins the loser. Fake transports keep a
+bounded deterministic fallback. Transport/protocol/adapter coverage passes **74/74** and
+fleet/capability coverage passes **83/83**; scoped Ruff passes. No ACP process or native
+app ran, so the freeze and live resource gates remain open.
+
 ## Latest offline slice: event-driven isolated-Codex observation
 
 The isolated Codex adapter previously woke every 50ms to rescan unchanged approvals and

@@ -2,6 +2,10 @@
 
 ## Current — 8 September WAT
 
+Kimi/Hermes/OMP ACP observation now waits for stdio or local prompt/permission activity
+instead of scanning every 50ms. Focused gates pass 74/74 and 83/83 with Ruff clean. No
+ACP/native process ran; the freeze gate remains open.
+
 Isolated Codex observation now waits for stdout notification/approval/EOF activity rather
 than rescanning every 50ms, while retaining a one-second discovery deadline. Relevant
 tests pass 109/109 with Ruff clean. No worker/native process ran, so the freeze gate stays

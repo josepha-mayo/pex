@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Kimi/Hermes/OMP ACP observation no longer scans every 50ms; stdio and local prompt/
+  permission activity now wake the pump. Focused gates pass 74/74 and 83/83 with Ruff.
+  No live ACP/native resource evidence exists yet.
 - Isolated Codex observation no longer rescans approvals/notifications every 50ms; its
   stdout reader now wakes the pump and discovery retains a one-second deadline. Related
   tests pass 109/109 and Ruff. No live worker/native resource proof exists yet.
