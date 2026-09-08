@@ -9043,3 +9043,28 @@ The dirty bit is expected because the protected operator-owned file below is ret
   receipt-to-row binding plus the second-review regression). Local and remote `main` both
   resolved to `e6968998736e0362f7a41100e5129d23cfc91d79` immediately after the second push.
   The shared checkout then contained only the protected `loop.py` change.
+
+### 8 September Codex exact-protocol capture primitive
+
+- Raw-log review confirmed the global blocker is real. `_try_write_codex_raw_log` currently
+  derives only normalized `turn/started` and `turn/completed` events from `raw_capture`, while
+  `CursorCapture` explicitly labels its ordered local hook receipts partial. Do not mark
+  `raw_harness_event_log_status` satisfied or cite these as complete vendor logs.
+- `CodexStdioTransport` now accepts an optional keyword-only `protocol_observer`. After a
+  successful stdin drain it receives the exact encoded request line; immediately after each
+  stdout read it receives the exact raw line before UTF-8/JSON/shape validation. Normal PEX
+  construction passes no observer and is unchanged. The callback is synchronous and
+  controller-owned so ordering is identical to transport observation.
+- If the callback fails on stdout, the read loop terminates and fails pending requests. If it
+  fails after a successful stdin drain, the request follows the existing delivery-uncertain
+  path. Capture failure therefore cannot silently produce a supposedly complete benchmark
+  row. A fake App Server test proves both directions, request and completion lines, and a
+  deliberately malformed raw line are observed; a separate negative proves observer failure
+  is fail-closed.
+- Focused tests passed 3/3; the adjacent fleet/Codex-pump/deep-audit gate passed **150/150 in
+  59.44 seconds** and scoped Ruff passed. No process beyond the test-owned fake Python App
+  Server ran; no Codex model, native PEX, Cursor, Docker, AWS or paid call ran.
+- This is a prerequisite, not blocker closure. Next code slice: create a controller-owned,
+  bounded, exclusive immutable protocol journal; wire it only for benchmark-owned Codex
+  transports; bind its header/footer/hash to run, arm, task, thread and row; validate complete
+  request/response/turn coverage. Cursor needs a separate honest hook-surface strategy.

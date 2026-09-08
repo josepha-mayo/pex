@@ -14,6 +14,10 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   immutable row, and compare receipt-to-row again at freeze. Tampered-HEAD, receipt-tamper,
   descendant-commit, and paired-repeatability contracts pass. This removes only
   the source-revision-capture blocker; the benchmark remains unfrozen and no live arm ran.
+- [x] Add an optional fail-closed Codex stdio protocol observer that receives every exact
+  bounded stdin/stdout line before normalization. Adjacent adapter/pump/deep-audit coverage
+  passes 150/150. The benchmark journal is not wired yet and Cursor receipts remain partial,
+  so complete immutable raw harness logs are still an open freeze blocker.
 
 - [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.

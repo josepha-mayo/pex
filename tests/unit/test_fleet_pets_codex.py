@@ -469,6 +469,7 @@ async def test_codex_stdio_jsonl_fake_process(tmp_path):
         "    msg = json.loads(line)\n"
         "    method = msg.get('method')\n"
         "    if method == 'initialize':\n"
+        "        print('not-json', flush=True)\n"
         "        print(json.dumps({'id': msg['id'], 'result': {"
         "'userAgent': 'fake', 'codexHome': '/', 'platformFamily': 'test', "
         "'platformOs': 'test'}}), flush=True)\n"
@@ -490,7 +491,11 @@ async def test_codex_stdio_jsonl_fake_process(tmp_path):
         " 'params': {'command': 'pytest', 'threadId': 'thr_jsonl'}}), flush=True)\n",
         encoding="utf-8",
     )
-    transport = CodexStdioTransport([sys.executable, "-u", str(script)])
+    protocol: list[tuple[str, bytes]] = []
+    transport = CodexStdioTransport(
+        [sys.executable, "-u", str(script)],
+        protocol_observer=lambda direction, payload: protocol.append((direction, payload)),
+    )
     adapter = CodexAdapter(transport)
     pump = None
     try:
@@ -521,11 +526,56 @@ async def test_codex_stdio_jsonl_fake_process(tmp_path):
         assert await adapter.respond_permission(sessions[0], "appr_1", "allow") is False
         assert await adapter.respond_permission(sessions[0], "appr_1", "deny")
         assert transport.approvals[0]["result"]["decision"] == "decline"
+        assert {direction for direction, _ in protocol} == {"stdin", "stdout"}
+        assert all(payload.endswith(b"\n") for _, payload in protocol)
+        assert any(
+            direction == "stdin" and b'"method":"turn/start"' in payload
+            for direction, payload in protocol
+        )
+        assert any(
+            direction == "stdout" and b'"method": "turn/completed"' in payload
+            for direction, payload in protocol
+        )
+        assert any(
+            direction == "stdout" and payload.strip() == b"not-json"
+            for direction, payload in protocol
+        )
     finally:
         if pump is not None:
             pump.cancel()
             with pytest.raises(asyncio.CancelledError):
                 await pump
+        await transport.close()
+
+
+async def test_codex_stdio_protocol_observer_failure_is_fail_closed(tmp_path):
+    import sys
+
+    from pex_bridge.adapters.base import DeliveryUncertainError
+    from pex_bridge.adapters.codex import CodexStdioTransport
+
+    script = tmp_path / "fake_appserver.py"
+    script.write_text(
+        "import json, sys\n"
+        "message = json.loads(sys.stdin.readline())\n"
+        "print(json.dumps({'id': message['id'], 'result': {"
+        "'userAgent': 'fake', 'codexHome': '/', 'platformFamily': 'test', "
+        "'platformOs': 'test'}}), flush=True)\n",
+        encoding="utf-8",
+    )
+
+    def reject_stdout(direction, _payload):
+        if direction == "stdout":
+            raise RuntimeError("journal unavailable")
+
+    transport = CodexStdioTransport(
+        [sys.executable, "-u", str(script)],
+        protocol_observer=reject_stdout,
+    )
+    try:
+        with pytest.raises(DeliveryUncertainError):
+            await transport.ensure_ready()
+    finally:
         await transport.close()
 
 

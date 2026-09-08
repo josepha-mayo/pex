@@ -118,6 +118,12 @@ controller, but it does not yet retain and bind a complete vendor raw event
 log. That §34.12 integrity requirement is an explicit preflight blocker, not a
 null field that can silently pass a presentation freeze.
 
+The live Codex stdio transport now offers an optional controller callback for every
+exact bounded stdin/stdout protocol line. It observes malformed stdout before parsing and
+fails a delivered request closed if the callback cannot retain the line. The benchmark has
+not yet wired that callback into an immutable, session-bound journal, and Cursor still has
+only partial local hook receipts; therefore the global raw-log blocker remains open.
+
 `frozen: false` until one result file contains all 20 live rows (5 tasks × 4
 arms) with an intact record chain, exact suite/controller fingerprints, paired
 models/settings, fresh-workspace receipts, and real treatment audits. Coverage

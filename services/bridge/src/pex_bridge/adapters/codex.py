@@ -13,9 +13,10 @@ import os
 import subprocess
 import sys
 from collections import deque
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 from uuid import uuid4
 
 from pex_protocol.capabilities import (
@@ -262,10 +263,18 @@ class CodexAppServerTransport:
         self.initialized = False
 
 
+CodexProtocolObserver = Callable[[Literal["stdin", "stdout"], bytes], None]
+
+
 class CodexStdioTransport:
     """Live `codex app-server --listen stdio://` child process."""
 
-    def __init__(self, command: str | list[str]) -> None:
+    def __init__(
+        self,
+        command: str | list[str],
+        *,
+        protocol_observer: CodexProtocolObserver | None = None,
+    ) -> None:
         if isinstance(command, str):
             self.command = app_server_command(command)
         else:
@@ -297,6 +306,14 @@ class CodexStdioTransport:
         self._start_lock = asyncio.Lock()
         self._write_lock = asyncio.Lock()
         self._initialize_lock = asyncio.Lock()
+        self._protocol_observer = protocol_observer
+
+    def _observe_protocol(
+        self, direction: Literal["stdin", "stdout"], payload: bytes
+    ) -> None:
+        """Expose exact bounded protocol lines to an optional controller journal."""
+        if self._protocol_observer is not None:
+            self._protocol_observer(direction, bytes(payload))
 
     def _append_notification(self, message: dict[str, Any]) -> None:
         if len(self.notifications) >= MAX_CODEX_RECORDS:
@@ -346,6 +363,7 @@ class CodexStdioTransport:
                 line = await self._proc.stdout.readline()
                 if not line:
                     break
+                self._observe_protocol("stdout", line)
                 try:
                     msg = strict_json_loads(line.decode("utf-8"))
                 except (UnicodeDecodeError, ValueError, RecursionError):
@@ -419,6 +437,7 @@ class CodexStdioTransport:
         async with self._write_lock:
             self._proc.stdin.write(encoded)
             await self._proc.stdin.drain()
+            self._observe_protocol("stdin", encoded)
 
     async def ensure_ready(self) -> dict[str, Any]:
         if self.initialized and self.init_result is not None:
