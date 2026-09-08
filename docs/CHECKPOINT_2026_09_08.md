@@ -5,6 +5,16 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: bound retained Devin discovery state
+
+Devin pagination capped each response at 1,024 sessions but merged successive rotating
+inventories into one permanent dictionary. Different IDs across polls could therefore
+grow runtime sessions and their marker maps beyond that advertised limit. Discovery now
+stages the whole update, checks the union against the retained-state cap, and commits
+nothing if the cap would be crossed. The rotating-list negative preserves the complete
+prior state. The full adapter-capability/fleet gate passes **84/84** and scoped Ruff
+passes. No live Devin endpoint, provider, worker or native app ran.
+
 ## Latest offline slice: retire inactive Pipeline session locks
 
 The bridge serialized all event/observer operations for a worker through a per-session

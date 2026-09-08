@@ -133,6 +133,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Retire inactive Pipeline per-session locks instead of retaining every historical
   worker ID for the bridge lifetime. Same-session serialization and cross-session
   parallelism remain intact; the shared-observer/continuity gate passes 64/64 and Ruff.
+- [x] Bound cumulative Devin discovery state across rotating API inventories and commit
+  no partial merge on over-cap refusal. The complete adapter/fleet gate passes 84/84
+  with Ruff; live Devin behavior remains unproven.
 - [ ] Resolve remaining observation lifetime limits: non-atomic directory enumeration,
   and blocked OS calls. Do not claim a hard deadline.
   Incremental supervisor inventory now has entry/file/time caps plus directory and exact

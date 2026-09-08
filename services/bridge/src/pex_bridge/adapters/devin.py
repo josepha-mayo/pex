@@ -132,6 +132,10 @@ class DevinAdapter(HarnessAdapter):
             )
             return list(self.sessions.values())
         listed = await self._paginate(self._sessions_path())
+        if len(self.sessions) > _MAX_SESSIONS:
+            raise RuntimeError("Devin retained session state exceeded the safety bound")
+        updates: dict[str, HarnessSession] = {}
+        new_session_ids: set[str] = set()
         for item in listed or []:
             if not isinstance(item, dict):
                 continue
@@ -143,7 +147,11 @@ class DevinAdapter(HarnessAdapter):
             except ValueError:
                 continue
             session_id = f"devin:{vendor_id}"
-            existing = self.sessions.get(session_id)
+            existing = updates.get(session_id) or self.sessions.get(session_id)
+            if existing is None and session_id not in new_session_ids:
+                if len(self.sessions) + len(new_session_ids) >= _MAX_SESSIONS:
+                    raise ValueError("Devin retained session state reached the safety bound")
+                new_session_ids.add(session_id)
             status = bounded_observed_text(
                 item.get("status"), field="Devin status", max_chars=512
             ) or ""
@@ -169,7 +177,7 @@ class DevinAdapter(HarnessAdapter):
                 if isinstance(raw, str) and raw.strip():
                     provided_url = raw
                     break
-            self.sessions[session_id] = HarnessSession(
+            updates[session_id] = HarnessSession(
                 id=session_id,
                 harness_type=HarnessType.DEVIN,
                 vendor_session_id=vendor_id,
@@ -188,6 +196,9 @@ class DevinAdapter(HarnessAdapter):
                     "is_archived": bool(item.get("is_archived", False)),
                 },
             )
+        # Commit only after the complete page set is valid. A rotating remote
+        # inventory cannot partially replace state and then fail at the bound.
+        self.sessions.update(updates)
         return list(self.sessions.values())
 
     async def _paginate(self, path: str) -> list[dict]:

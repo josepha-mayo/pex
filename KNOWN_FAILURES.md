@@ -2,6 +2,9 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Devin discovery now bounds cumulative retained sessions across rotating inventories
+  and fails without a partial merge. The adapter/fleet gate passes 84/84 and Ruff. No
+  live Devin/native evidence was collected.
 - Pipeline event serialization no longer keeps one lock for every historical session
   ID. Active owners/waiters keep weakly registered locks alive; inactive entries retire.
   The affected gate passes 64/64 and Ruff. This is not native freeze proof.

@@ -2,6 +2,12 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent found Devin's page-size guard did not bound cumulative
+runtime state across rotating API inventories. Discovery now stages updates, rejects a
+union beyond 1,024 retained sessions and cannot partially mutate the prior state on
+refusal. The complete adapter-capability/fleet gate passes 84/84; Ruff is clean. This is
+offline contract evidence, not live Devin or native proof.
+
 Changed-path addendum: parent found that `Pipeline._session_locks` retained every
 historical session ID for the life of the bridge. Weakly retained locks now preserve one
 shared lock while any operation owns or waits for it and disappear when inactive. The

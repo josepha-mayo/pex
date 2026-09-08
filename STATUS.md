@@ -2,6 +2,11 @@
 
 ## Current — 8 September WAT
 
+Devin's 1,024-session limit now bounds cumulative retained runtime state, not merely one
+API response. Rotating inventories fail before partial mutation instead of growing the
+session and marker maps indefinitely. The adapter/fleet gate passes 84/84 with Ruff;
+live Devin behavior remains unverified.
+
 Inactive Pipeline session locks no longer accumulate for the bridge process lifetime.
 Weak retention preserves exact serialization while owners/waiters exist and releases
 historical worker IDs afterwards. The serialization/shared-observer gate passes 64/64

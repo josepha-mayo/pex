@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: Devin discovery no longer treats the 1,024-row per-response bound as a lifetime
+state bound while merging every newly rotated vendor ID forever. Discovery stages a
+complete update, refuses a union beyond 1,024 retained sessions, and leaves the prior
+runtime state untouched on refusal. This also bounds the per-session marker registries
+keyed by retained Devin sessions. The full adapter-capability/fleet gate passes 84/84 and
+Ruff is clean. No Devin API or native process ran.
+
 Latest: `Pipeline._session_locks` no longer retains one `asyncio.Lock` for every session
 ID seen during the bridge process lifetime. Locks are weakly retained while an ingest,
 observer lifecycle, shared-event or retention operation owns/waits for them, then retire

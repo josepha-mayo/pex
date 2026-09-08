@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 from pex_bridge.adapters import AdapterRegistry
+from pex_bridge.adapters import devin as devin_module
 from pex_bridge.adapters.base import (
     AdapterMessageResult,
     HarnessAdapter,
@@ -448,6 +449,44 @@ async def test_devin_v3_cursor_pages_and_message_events_match_current_contract()
         "/v3/organizations/org/sessions/devin-1/messages",
         {"message": "Continue in the same session."},
     )
+
+
+@pytest.mark.asyncio
+async def test_devin_rotating_discovery_cannot_grow_or_partially_mutate_retained_state(
+    monkeypatch,
+):
+    class RotatingDevinTransport:
+        def __init__(self) -> None:
+            self.vendor_ids = ["devin-1"]
+
+        async def request(self, method: str, path: str, *, json=None):
+            del method, json
+            assert path.endswith("/sessions?first=200")
+            return {
+                "items": [
+                    {
+                        "session_id": vendor_id,
+                        "project_id": "project-1",
+                        "status": "running",
+                    }
+                    for vendor_id in self.vendor_ids
+                ],
+                "has_next_page": False,
+                "end_cursor": None,
+            }
+
+    monkeypatch.setattr(devin_module, "_MAX_SESSIONS", 2)
+    transport = RotatingDevinTransport()
+    adapter = DevinAdapter(transport)  # type: ignore[arg-type]
+    assert [
+        session.vendor_session_id for session in await adapter.discover_sessions()
+    ] == ["devin-1"]
+
+    transport.vendor_ids = ["devin-2", "devin-3"]
+    with pytest.raises(ValueError, match="retained session state reached"):
+        await adapter.discover_sessions()
+
+    assert list(adapter.sessions) == ["devin:devin-1"]
 
 
 @pytest.mark.asyncio
