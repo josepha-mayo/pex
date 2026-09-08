@@ -2,6 +2,13 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Parent reviewed AppState event-socket registration/broadcast cleanup and the full
+wake-driven websocket tail change. The new TestClient test covers caught-up sleep,
+post-commit wake, durable page delivery and no resumed fixed polling; broadcast and
+detach coverage prove a raw hint is not delivery. 16 targeted socket/publication/
+broadcast tests and Ruff pass. No independent review on this follow-up, full app.py
+approval, native resource proof or freeze-cause claim. Five-second fallback remains.
+
 Parent reviewed the event socket tail/queue and the event_publication_page bounds
 query plus relevant table/trigger/index definitions. Only the bounds query/cursor
 lifetime was changed; two VM-work negatives reproduced a linear idle-history scan.

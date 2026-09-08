@@ -2,6 +2,13 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the desktop durable event tail is wake-driven instead of polling SQLite at
+4Hz while caught up. Post-commit events only set a per-socket hint; delivery still
+comes from the canonical ledger. Five-second recovery polling covers missed hints;
+initial/reconnect catch-up, frozen watermark, gaps and caps remain. New TestClient
+regression proves sleep/wake/durable delivery/no resumed spin; queue/detach coverage
+also added. 16 targeted tests and Ruff pass. Parent-reviewed, no native causal claim.
+
 Latest: idle event socket reads no longer scan full publication history for ledger
 bounds. Two negative work-count tests reproduced 1,100/18,400 SQLite steps on small
 128/2,048-record fixtures; indexed endpoints now meet <=500 steps. Same joined

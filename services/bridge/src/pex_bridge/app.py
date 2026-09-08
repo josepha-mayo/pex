@@ -144,7 +144,9 @@ EVENT_SOCKET_QUEUE_SIZE = 128
 EVENT_SOCKET_CATCHUP_PAGE = 100
 EVENT_SOCKET_MAX_CATCHUP = 1000
 EVENT_SOCKET_HEARTBEAT_SECONDS = 15.0
-EVENT_SOCKET_POLL_SECONDS = 0.25
+# Durable commit hints drive the normal tail. This fallback recovers a missed
+# process-local hint without returning to fixed high-frequency SQLite polling.
+EVENT_SOCKET_RECOVERY_POLL_SECONDS = 5.0
 MAX_ID_CHARS = 512
 MAX_PATH_CHARS = 4096
 MAX_CONTROL_TEXT_CHARS = 65_536
@@ -738,6 +740,7 @@ class AppState:
         self.sockets: list[WebSocket] = []
         self._socket_send_locks: dict[WebSocket, asyncio.Lock] = {}
         self._socket_queues: dict[WebSocket, asyncio.Queue[dict[str, Any]]] = {}
+        self._socket_wakes: dict[WebSocket, asyncio.Event] = {}
         self._socket_registry_lock = threading.Lock()
         self.pet_settings = PetSettings()
         self.pet_path = self.settings.data_dir / "pet.json"
@@ -761,6 +764,7 @@ class AppState:
         self,
         socket: WebSocket,
         queue: asyncio.Queue[dict[str, Any]],
+        wake: asyncio.Event,
     ) -> bool:
         """Register one accepted socket without crossing a cancellation point."""
 
@@ -769,6 +773,7 @@ class AppState:
                 return False
             self.sockets.append(socket)
             self._socket_queues[socket] = queue
+            self._socket_wakes[socket] = wake
             return True
 
     def detach_event_socket(self, socket: WebSocket) -> None:
@@ -778,6 +783,7 @@ class AppState:
             if socket in self.sockets:
                 self.sockets.remove(socket)
             self._socket_queues.pop(socket, None)
+            self._socket_wakes.pop(socket, None)
             self._socket_send_locks.pop(socket, None)
 
     def detach_all_event_sockets(self) -> list[WebSocket]:
@@ -787,12 +793,17 @@ class AppState:
             sockets = list(self.sockets)
             self.sockets.clear()
             self._socket_queues.clear()
+            self._socket_wakes.clear()
             self._socket_send_locks.clear()
             return sockets
 
     def event_socket_snapshot(self) -> list[WebSocket]:
         with self._socket_registry_lock:
             return list(self.sockets)
+
+    def event_socket_wake_snapshot(self) -> list[asyncio.Event]:
+        with self._socket_registry_lock:
+            return list(self._socket_wakes.values())
 
     def track_background(self, task: asyncio.Task[Any]) -> None:
         """Retain a task and consume failures so background work cannot disappear silently."""
@@ -836,7 +847,10 @@ class AppState:
     async def broadcast(self, topic: str, payload: dict[str, Any]) -> None:
         if topic == "event":
             # Canonical event sockets tail the durable acceptance ledger. A
-            # process-local wake/broadcast is never an event delivery receipt.
+            # process-local wake is never an event delivery receipt; it only
+            # tells each socket to read its next durable ledger page now.
+            for wake in self.event_socket_wake_snapshot():
+                wake.set()
             return
         if topic == "pet":
             payload = await run_in_threadpool(self.decorate_pet, payload)
@@ -6262,6 +6276,7 @@ def create_app() -> FastAPI:
         outbound: asyncio.Queue[dict[str, Any]] = asyncio.Queue(
             maxsize=EVENT_SOCKET_QUEUE_SIZE
         )
+        event_wake = asyncio.Event()
         selected_protocol = "pex-v1" if "pex-v1" in offered_protocols else None
         try:
             await ws.accept(subprotocol=selected_protocol)
@@ -6271,7 +6286,7 @@ def create_app() -> FastAPI:
         # so they are one cooperative-event-loop step.  Registering only after
         # accept also prevents cancellation during the handshake from leaking
         # an unreachable socket into the capacity ledger.
-        if not state.register_event_socket(ws, outbound):
+        if not state.register_event_socket(ws, outbound, event_wake):
             await ws.close(code=1013, reason="event socket capacity reached")
             return
 
@@ -6326,6 +6341,12 @@ def create_app() -> FastAPI:
                 if receiver.done():
                     await receiver
                     return
+                # Clearing before a fresh-watermark read is race-safe: an
+                # earlier hint is already durable and included by the query;
+                # a concurrent/later commit sets the event again. Keep hints
+                # set while consuming a frozen multipage backlog.
+                if frozen_through is None:
+                    event_wake.clear()
                 page = await state.store.event_publication_page(
                     after=cursor,
                     through=frozen_through,
@@ -6367,13 +6388,21 @@ def create_app() -> FastAPI:
                         {"schema": "pex.event-heartbeat.v1", "cursor": str(cursor)},
                     )
                     last_send_at = asyncio.get_running_loop().time()
+                if event_wake.is_set():
+                    continue
+                wake_wait = asyncio.create_task(event_wake.wait())
                 try:
-                    await asyncio.wait_for(
-                        asyncio.shield(receiver),
-                        timeout=EVENT_SOCKET_POLL_SECONDS,
+                    done, _ = await asyncio.wait(
+                        {receiver, wake_wait},
+                        timeout=EVENT_SOCKET_RECOVERY_POLL_SECONDS,
+                        return_when=asyncio.FIRST_COMPLETED,
                     )
-                except TimeoutError:
-                    pass
+                    if receiver in done:
+                        await receiver
+                        return
+                finally:
+                    if not wake_wait.done():
+                        wake_wait.cancel()
         except WebSocketDisconnect:
             pass
         except asyncio.CancelledError:

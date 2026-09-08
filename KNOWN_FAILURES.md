@@ -2,6 +2,10 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Caught-up desktop event sockets are now post-commit wake-driven instead of querying
+  SQLite every 250ms. Durable pages remain delivery authority; missed hints recover
+  within five seconds. 16 focused tests/Ruff pass. Actual native idle CPU/GPU/memory,
+  all other background loops and the user's freeze remain unmeasured/unexplained.
 - Event socket idle polling used a joined MIN/MAX full-ledger scan; two SQLite
   work-count negatives reproduced growth. Indexed endpoint reads now meet the
   fixture's <=500-step bound with unchanged cursor semantics; 15 backend checks

@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import threading
+import time
 
 from fastapi.testclient import TestClient
 from pex_bridge.app import create_app, state
@@ -79,6 +80,7 @@ def test_websocket_requires_token_even_for_tauri_origin(tmp_path, monkeypatch):
     assert state.sockets == []
     assert state._socket_queues == {}
     assert state._socket_send_locks == {}
+    assert state._socket_wakes == {}
     client.close()
 
 
@@ -186,4 +188,60 @@ def test_websocket_cancellation_detaches_before_blocked_tail_cleanup(tmp_path, m
     assert state.sockets == []
     assert state._socket_queues == {}
     assert state._socket_send_locks == {}
+    client.close()
+
+
+def test_event_socket_sleeps_when_caught_up_and_wakes_from_committed_hint(tmp_path, monkeypatch):
+    state.settings = Settings.for_test(
+        require_auth=False,
+        home=tmp_path,
+        codex_attach=False,
+    )
+    state.sockets.clear()
+    state._socket_queues.clear()
+    state._socket_wakes.clear()
+    calls: list[dict] = []
+    first_call = threading.Event()
+    second_call = threading.Event()
+
+    async def live_pet():
+        return {"headline": "wake-driven"}
+
+    async def event_page(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            first_call.set()
+            return {
+                "through": "0", "next": "0", "watermark": "0", "items": [],
+                "has_more": False, "gap": {"detected": False},
+            }
+        second_call.set()
+        return {
+            "through": "1", "next": "1", "watermark": "1",
+            "items": [{"cursor": "1", "event": {"event_id": "evt-wake"}}],
+            "has_more": False, "gap": {"detected": False},
+        }
+
+    monkeypatch.setattr(state, "live_pet", live_pet)
+    monkeypatch.setattr(state.store, "event_publication_page", event_page)
+    client = TestClient(create_app(), base_url="http://127.0.0.1")
+
+    with client.websocket_connect(
+        "/v1/events",
+        headers={"origin": "tauri://localhost", "host": "127.0.0.1"},
+        subprotocols=["pex-v1"],
+    ) as socket:
+        assert socket.receive_json()["payload"]["headline"] == "wake-driven"
+        assert first_call.wait(timeout=1.0)
+        time.sleep(0.05)
+        assert len(calls) == 1
+        socket.portal.call(state.broadcast, "event", {"event_id": "evt-wake"})
+        assert second_call.wait(timeout=0.1), "committed hint did not wake the ledger tail"
+        page = socket.receive_json()
+        assert page["topic"] == "event_page"
+        assert page["payload"]["items"][0]["event"]["event_id"] == "evt-wake"
+        time.sleep(0.35)
+        assert len(calls) == 2, "caught-up event socket resumed fixed-interval polling"
+
+    assert state._socket_wakes == {}
     client.close()

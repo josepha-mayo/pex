@@ -79,11 +79,17 @@ async def test_failed_websocket_is_removed_from_future_broadcasts():
 async def test_event_broadcast_is_only_a_wake_hint_not_a_delivery_path():
     state = AppState()
     socket = _Socket()
-    state.sockets.append(socket)  # type: ignore[arg-type]
+    queue: asyncio.Queue[dict] = asyncio.Queue(maxsize=1)
+    wake = asyncio.Event()
+    assert state.register_event_socket(socket, queue, wake)  # type: ignore[arg-type]
 
     await state.broadcast("event", {"event_id": "evt-not-authoritative"})
 
     assert socket.messages == []
+    assert queue.empty()
+    assert wake.is_set()
+    state.detach_event_socket(socket)  # type: ignore[arg-type]
+    assert state.event_socket_wake_snapshot() == []
 
 
 @pytest.mark.asyncio

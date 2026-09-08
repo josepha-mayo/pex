@@ -5,7 +5,41 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: idle event-ledger scan
+## Latest offline slice: wake-driven durable event tail
+
+After the indexed-bounds repair, a caught-up desktop socket still queried the
+ledger every 250ms. Normal accepted events already emit a process-local post-commit
+bus publication. AppState now gives each registered event socket an asyncio.Event;
+the `event` broadcast sets this wake hint but never queues or sends the untrusted
+payload. The socket wakes, reads the canonical durable page and sends only that
+result. The hint remains presentation-only and cannot become a delivery receipt.
+
+Missed/cancelled presentation hints recover through one bounded five-second poll.
+Heartbeats remain every 15 seconds. Initial and reconnect catch-up still query
+immediately, retain the frozen watermark/page cap/gap close, and reject oversized
+backlogs as before. The wake is cleared before a fresh-watermark query: commits
+before the clear are already durable for that query; commits racing or following it
+set the event again. Hints stay set across a frozen multipage backlog so a later
+commit forces the next fresh-watermark read rather than being lost. Disconnect and
+shutdown detach the wake synchronously with socket queue/capacity cleanup.
+
+A new TestClient regression verifies one caught-up query remains sleeping, a
+committed hint wakes and delivers the next durable page within 100ms, then no fixed-
+interval query resumes over 350ms. Prior source first failed because no wake registry
+existed. The broadcast unit proves the raw event payload is neither sent nor queued,
+only the wake is set, and detach removes it. Final socket/publication/broadcast
+selection: **16 passed in 6.43s**; Ruff passed all five selected source/test files.
+Parent reviewed the complete AppState registry/broadcast and websocket wait/race/
+cleanup diff; no independent reviewer was added for this small follow-up.
+
+This reduces known idle DB activity; it is not a native CPU/GPU measurement, a
+whole-PC freeze explanation or proof that all background loops are low-cost. It
+does not alter event persistence, ordering, semantic processing, worker control,
+inference or any pet asset. PEX remains closed. No native app, external listener,
+model, worker, cloud, large suite or build ran; local websocket tests use TestClient.
+Protected loop.py hash remains unchanged, and installers remain older than source.
+
+## Earlier offline slice: idle event-ledger scan
 
 Each desktop event socket tails event_publication_page every 250ms when caught up.
 Its combined joined MIN/MAX bounds query scanned the entire publication history on

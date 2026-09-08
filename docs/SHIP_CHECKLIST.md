@@ -21,6 +21,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   Native timer/GPU/CPU measurements remain part of the open P0 verification gate.
 - [x] Replace idle event-ledger full scans with indexed endpoint reads; two negative
   SQLite work-count tests then 15 targeted backend passes and Ruff. Native cost unmeasured.
+- [x] Make caught-up desktop event streams wake from post-commit hints instead of
+  fixed 4Hz DB polling; durable pages remain authoritative, five-second recovery
+  fallback retained. 16 targeted tests/Ruff pass; native resource capture still open.
 - [x] Bound Cursor inbox reads/record batches and remove destructive backlog clearing.
   13 targeted checks pass; 44 deselected. No live Cursor/native run.
 - [x] Move inbox file work off-loop and checkpoint after durable observer ingestion;

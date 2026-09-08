@@ -2,6 +2,10 @@
 
 ## Current — 8 September WAT
 
+Caught-up event sockets now sleep until a post-commit hint instead of polling SQLite
+at 4Hz; delivery still reads the durable ledger and a five-second fallback covers a
+missed hint. 16 targeted tests and Ruff pass. No native stability/freeze claim.
+
 Idle event-ledger bounds now use indexed endpoint lookups instead of full-history
 scans. Two negative SQLite work-count tests reproduced the defect; 15 targeted
 backend tests and Ruff pass, independently reviewed. No native measurement or
