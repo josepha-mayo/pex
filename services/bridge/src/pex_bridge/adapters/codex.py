@@ -1412,10 +1412,13 @@ class CodexAdapter(HarnessAdapter):
             self.sessions.pop(session_id, None)
             self._loaded_thread_bindings.pop(session.vendor_session_id, None)
 
-    async def discover_sessions(self) -> list[HarnessSession]:
+    async def discover_sessions(
+        self, *, observe_desktop: bool = True
+    ) -> list[HarnessSession]:
         if not await self._ready():
             self._drop_unconfirmed_app_server_sessions()
-            self._observe_desktop_session()
+            if observe_desktop:
+                self._observe_desktop_session()
             return list(self.sessions.values())
         assert self.transport is not None
         listed = await self.transport.request("thread/list", {"limit": 50})
@@ -1486,7 +1489,8 @@ class CodexAdapter(HarnessAdapter):
                 },
             )
         self.sessions.update(updates)
-        self._observe_desktop_session()
+        if observe_desktop:
+            self._observe_desktop_session()
         return list(self.sessions.values())
 
     async def send_message(
@@ -1851,6 +1855,11 @@ class CodexAdapter(HarnessAdapter):
                     seen_items.clear()
                     seen_item_order.clear()
                     last_discover = None
+                    if transport is not None:
+                        # Preserve the existing ChatGPT desktop observe tile once
+                        # per attachment. Recurring App Server discovery below must
+                        # not spawn Windows process inventory on every idle pass.
+                        self._observe_desktop_session()
                 if transport is None:
                     # Desktop process inventory is refreshed centrally with one
                     # shared snapshot. This pump owns App Server events only; a
@@ -1863,7 +1872,10 @@ class CodexAdapter(HarnessAdapter):
                     last_discover is None
                     or now - last_discover >= CODEX_DISCOVERY_INTERVAL_SECONDS
                 ):
-                    await self.discover_sessions()
+                    # The central desktop refresh owns one shared process snapshot.
+                    # This event pump needs App Server threads only; asking it to
+                    # inventory ChatGPT.exe would spawn Windows `tasklist` while idle.
+                    await self.discover_sessions(observe_desktop=False)
                     last_discover = now
                 pending = getattr(transport, "pending_approvals", {}) if transport else {}
                 if not isinstance(pending, dict) or len(pending) > MAX_CODEX_PENDING:

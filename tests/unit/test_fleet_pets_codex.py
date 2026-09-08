@@ -288,6 +288,48 @@ async def test_codex_pump_ingests_stop_permission_and_agent_message():
     assert session.cwd == "C:/proj"
 
 
+async def test_codex_event_pump_inventories_desktop_once_not_on_each_list_refresh(monkeypatch):
+    calls = 0
+    thread_lists = 0
+
+    def inventory():
+        nonlocal calls
+        calls += 1
+        return set()
+
+    monkeypatch.setattr("pex_bridge.adapters.desktop.running_image_names", inventory)
+    monkeypatch.setattr("pex_bridge.adapters.codex.CODEX_DISCOVERY_INTERVAL_SECONDS", 0.0)
+    transport = CodexAppServerTransport()
+    transport.threads = [{"id": "thr_idle", "cwd": "C:/proj"}]
+    request = transport.request
+
+    async def counted_request(method, params=None):
+        nonlocal thread_lists
+        if method == "thread/list":
+            thread_lists += 1
+        return await request(method, params)
+
+    transport.request = counted_request
+    adapter = CodexAdapter(transport)
+
+    async def ingest(*_):
+        return None
+
+    task = adapter.start_pipeline_pump(ingest)
+    try:
+        for _ in range(50):
+            if thread_lists >= 3:
+                break
+            await asyncio.sleep(0.01)
+        assert "codex:thr_idle" in adapter.sessions
+        assert thread_lists >= 3
+        assert calls == 1
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+
 async def test_codex_pump_does_not_ingest_chatgpt_desktop_thread_ids(monkeypatch):
     from pex_protocol.enums import EventType
 

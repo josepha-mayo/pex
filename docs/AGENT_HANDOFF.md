@@ -8610,3 +8610,18 @@ The dirty bit is expected because the protected operator-owned file below is ret
   as test-harness noise, not hidden.
 - The scheduled steady HTTP frequency is reduced by 86.7% by source contract. This remains
   unmeasured in the native app and does not close the idle-freeze incident.
+
+### 8 September Codex process-inventory de-duplication
+
+- The first Codex cadence repair still called `_observe_desktop_session()` after every
+  recurring App Server `thread/list`, which can spawn Windows `tasklist` outside the central
+  scoped snapshot. That defeated part of the intended idle-load reduction.
+- The event pump now performs desktop process inventory exactly once when a transport is
+  attached. Recurring App Server discovery requests only thread state; the central desktop
+  refresh remains responsible for later process presence/removal with one shared snapshot.
+- An initial zero-inventory test was rejected as too aggressive. The broader gate correctly
+  caught that it removed the required ChatGPT observe tile. The final hostile test forces at
+  least three list refreshes and requires exactly one inventory call, while the existing
+  desktop-thread isolation test still passes.
+- Final Codex/discovery gate: **117/117 passed in 32.26 seconds**; scoped Ruff and diff checks
+  passed. This proves call-count behavior in tests, not native `tasklist` duration or CPU.

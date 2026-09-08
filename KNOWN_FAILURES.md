@@ -478,3 +478,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   authenticated WebSocket snapshots carry current state; malformed frames and closure still
   refresh immediately. This passed desktop source/tests but has not been observed in the
   native app. The idle-freeze failure remains open pending bounded resource measurement.
+- Codex recurring list refresh no longer invokes Windows process inventory; one inventory is
+  retained at transport attachment so the ChatGPT observe tile remains truthful. This is
+  contract-tested across forced repeated refreshes, but native `tasklist`, App Server, bridge,
+  and WebView resource use still need a joint bounded profile before closing the freeze.

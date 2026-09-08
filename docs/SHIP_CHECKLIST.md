@@ -600,3 +600,6 @@ Do the next safe, highest-impact item immediately. If a required external choice
   malformed/closed sockets refresh immediately, and steady HTTP reconciliation is 30 seconds
   instead of four. Full desktop 251/251 and TypeScript pass.
 - [ ] Confirm the lower pet-read cadence and error recovery in a bounded native profile.
+- [x] Remove repeated Windows process inventory from the Codex event pump: one inventory per
+  transport attachment, then thread-only refreshes; forced multi-refresh and observe-tile
+  compatibility tests pass within a 117-test adapter gate.

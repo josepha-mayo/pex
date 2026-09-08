@@ -1210,3 +1210,13 @@ establish measured runtime CPU or complete review of Codex adapter behavior.
 
 Complete desktop tests passed 251/251 and TypeScript passed. Native CPU and failure recovery
 remain unmeasured after this source change.
+
+## 8 September Codex process-inventory focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `services/bridge/src/pex_bridge/adapters/codex.py` desktop observation | REVIEWED / REPAIRED | Observe tile is created once at transport attachment; recurring `thread/list` calls opt out of process inventory. |
+| `tests/unit/test_fleet_pets_codex.py` repeated-refresh contract | REVIEWED / EXTENDED | Forced at least three list refreshes and required exactly one inventory call; existing desktop-thread isolation remained green. |
+
+The first zero-inventory draft failed broader compatibility and was corrected before commit.
+Final three-file adapter gate passed 117/117; this is not native CPU evidence.

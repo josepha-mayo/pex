@@ -1934,3 +1934,9 @@ fresh, parse failure or socket closure triggers immediate coalesced HTTP recover
 steady reconciliation interval is 30 seconds rather than four. The updated negative contract,
 all 251 desktop tests, and TypeScript pass. This establishes scheduling semantics and an
 86.7% reduction in scheduled pet reads, not measured native CPU or freeze resolution.
+
+Codex App Server list refreshes also no longer repeat Windows process inventory. The pump
+creates the required ChatGPT observe tile once per transport attachment, then leaves process
+presence/removal to the central shared snapshot. A first zero-inventory draft was rejected
+by the existing compatibility test; the corrected forced-multi-refresh contract and full
+117-test adapter gate pass. Native resource impact remains unmeasured.

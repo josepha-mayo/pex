@@ -1466,3 +1466,12 @@ canonical state fresh, while malformed frames and socket closure request immedia
 HTTP recovery. The old wiring failed the updated contract. All 251 desktop tests and
 TypeScript passed after the repair. This is an 86.7% source-level reduction in scheduled
 steady pet reads, not native CPU evidence; the freeze gate stays open.
+
+## Codex process inventory de-duplication
+
+The attached Codex pump now inventories the ChatGPT desktop process once per transport
+attachment, not after every App Server list refresh. A too-aggressive zero-inventory draft
+failed the broader compatibility test because it removed the observe tile; the final design
+preserves that tile and delegates later process refresh/removal to the central shared snapshot.
+A forced multi-refresh regression requires one inventory call across at least three list
+refreshes. The complete adapter gate passed 117/117 with Ruff clean.
