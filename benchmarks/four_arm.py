@@ -21,6 +21,7 @@ import platform
 import secrets
 import shutil
 import stat
+import subprocess
 import sys
 import time
 from datetime import UTC, datetime
@@ -61,6 +62,8 @@ _MAX_RECORDED_JSON_BYTES = 256_000
 _MAX_RAW_LOG_BYTES = 64 * 1024 * 1024
 _MAX_RAW_LOG_RECORD_BYTES = 1024 * 1024
 _MAX_RAW_LOG_RECORDS = 10_000
+_MAX_GIT_OUTPUT_BYTES = 8_192
+_GIT_TIMEOUT_SECONDS = 20
 
 
 def _is_sha256(value: object) -> bool:
@@ -106,6 +109,96 @@ def _write_text_fsync(path: Path, text: str) -> None:
         handle.write(text)
         handle.flush()
         os.fsync(handle.fileno())
+
+
+def _git_output(workspace: Path, *args: str) -> str:
+    """Run bounded Git plumbing without inheriting hooks or signing behavior."""
+    git = shutil.which("git")
+    if not git:
+        raise RuntimeError("Git is required to bind the benchmark source revision")
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.upper().startswith("GIT_")
+    }
+    env.update(
+        {
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_AUTHOR_NAME": "PEX Benchmark",
+            "GIT_AUTHOR_EMAIL": "benchmark@pex.invalid",
+            "GIT_COMMITTER_NAME": "PEX Benchmark",
+            "GIT_COMMITTER_EMAIL": "benchmark@pex.invalid",
+            "GIT_AUTHOR_DATE": "2000-01-01T00:00:00+00:00",
+            "GIT_COMMITTER_DATE": "2000-01-01T00:00:00+00:00",
+        }
+    )
+    try:
+        completed = subprocess.run(
+            [git, "-c", "core.hooksPath=NUL", "-c", "commit.gpgSign=false", *args],
+            cwd=workspace,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError("bounded benchmark Git operation failed") from exc
+    if (
+        completed.returncode != 0
+        or len(completed.stdout) > _MAX_GIT_OUTPUT_BYTES
+        or len(completed.stderr) > _MAX_GIT_OUTPUT_BYTES
+    ):
+        raise RuntimeError("bounded benchmark Git operation failed")
+    try:
+        return completed.stdout.decode("utf-8").strip()
+    except UnicodeError as exc:
+        raise RuntimeError("benchmark Git output is not UTF-8") from exc
+
+
+def _canonical_source_commit(workspace: Path) -> str:
+    """Create one deterministic root commit for the exact public seed."""
+    _git_output(workspace, "init", "--quiet")
+    _git_output(workspace, "add", "--all")
+    tree = _git_output(workspace, "write-tree")
+    if len(tree) not in {40, 64} or any(
+        character not in "0123456789abcdef" for character in tree
+    ):
+        raise RuntimeError("benchmark seed tree has an invalid Git object id")
+    commit = _git_output(
+        workspace,
+        "commit-tree",
+        tree,
+        "-m",
+        "PEX benchmark canonical seed",
+    )
+    if len(commit) not in {40, 64} or any(
+        character not in "0123456789abcdef" for character in commit
+    ):
+        raise RuntimeError("benchmark seed commit has an invalid Git object id")
+    _git_output(workspace, "update-ref", "HEAD", commit)
+    if _git_output(workspace, "rev-parse", "HEAD") != commit:
+        raise RuntimeError("benchmark seed commit could not be verified")
+    return commit
+
+
+def _verify_source_commit(workspace: Path, expected: object) -> str:
+    commit = str(expected or "")
+    if len(commit) not in {40, 64} or any(
+        character not in "0123456789abcdef" for character in commit
+    ):
+        raise RuntimeError("benchmark seed receipt source commit is invalid")
+    if _git_output(workspace, "cat-file", "-t", commit) != "commit":
+        raise RuntimeError("benchmark source commit is not a commit object")
+    roots = _git_output(workspace, "rev-list", "--max-parents=0", "HEAD").splitlines()
+    if commit not in roots:
+        raise RuntimeError(
+            "benchmark source commit is not retained in the current HEAD history"
+        )
+    return commit
 
 
 def _bounded_texts(values: object, *, label: str) -> list[str]:
@@ -1545,6 +1638,7 @@ def prepare_isolated_workspace(
     seed = evaluator.seed_workspace(task_id, workspace)
     prompt = (workspace / "TASK.md").read_text(encoding="utf-8")
     boundary.assert_public_prompt(task_id, prompt)
+    source_repo_commit = _canonical_source_commit(workspace)
     receipt = {
         "schema_version": 1,
         "run_id": run_id,
@@ -1555,6 +1649,7 @@ def prepare_isolated_workspace(
         "prepared_at": datetime.now(UTC).isoformat(),
         "prepared_before_worker": True,
         "seed_manifest_sha256": boundary.workspace_manifest_sha256(workspace),
+        "source_repo_commit": source_repo_commit,
         "prompt_sha256": boundary.sha256_text(prompt),
         "task_package_sha256": runner.task_package_sha256(),
         "benchmark_sha256": runner.benchmark_sha256(),
@@ -1731,6 +1826,7 @@ def _load_seed_receipt(
         raise RuntimeError("benchmark seed receipt has a stale seed fingerprint")
     if receipt.get("prompt_sha256") != boundary.sha256_text(evaluator.prompt_text(task_id)):
         raise RuntimeError("benchmark seed receipt has a stale prompt fingerprint")
+    _verify_source_commit(workspace, receipt.get("source_repo_commit"))
     nonce = str(receipt.get("nonce") or "")
     if len(nonce) != 32 or any(character not in "0123456789abcdef" for character in nonce):
         raise RuntimeError("benchmark seed receipt nonce is invalid")
@@ -2132,6 +2228,7 @@ def _runtime_record_fields(
     item_types: list[str] | None = None,
     captured_events: object = None,
     raw_log_sha256: str | None = None,
+    source_repo_commit: str,
 ) -> dict[str, Any]:
     """Build one honest §58 record: unknown measurements stay explicitly null."""
     audits = [
@@ -2185,7 +2282,7 @@ def _runtime_record_fields(
         "controller_environment": controller_environment,
         "controller_environment_sha256": runner.json_sha256(controller_environment),
         "pex_version": pex_config_sha256 if pex_enabled else None,
-        "repo_commit": None,
+        "repo_commit": source_repo_commit,
         "repo_revision": seed_manifest_sha256,
         "started_at": started_at,
         "ended_at": ended_at,
@@ -2238,7 +2335,7 @@ def _runtime_record_fields(
             "human_active_seconds": False,
             "cost_usd": False,
             "raw_log_hash": raw_log_sha256 is not None,
-            "repo_commit": False,
+            "repo_commit": True,
         },
     }
 
@@ -2507,6 +2604,9 @@ async def _collect_live_this_cursor(
             "conversation_id": conversation_id,
             "completion": text,
         },
+        source_repo_commit=_verify_source_commit(
+            workspace, receipt.get("source_repo_commit")
+        ),
     )
     # The observed prompt-to-stop interval already includes PEX and waiting.
     # Worker-only duration and total task-to-finalization duration are unmeasured.
@@ -2862,6 +2962,9 @@ async def run_live(
             item_types=recorded_item_types,
             captured_events=captured_events,
             raw_log_sha256=raw_log_sha256,
+            source_repo_commit=_verify_source_commit(
+                workspace, receipt.get("source_repo_commit")
+            ),
         )
         record = {
             **runtime_fields,

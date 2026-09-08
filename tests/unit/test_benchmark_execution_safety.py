@@ -43,8 +43,9 @@ def test_post_run_evidence_does_not_make_execution_gate_circular(monkeypatch):
     monkeypatch.setattr(four.boundary, "execution_runtime_blockers", lambda arm=None: [])
     assert four._execution_preflight_blockers("codex") == []
     report = four._report_readiness_blockers()
-    for missing in ("natural-task", "raw harness", "same-session", "repository commits"):
+    for missing in ("natural-task", "raw harness", "same-session"):
         assert any(missing in item for item in report)
+    assert not any("repository commits" in item for item in report)
 
 
 @pytest.mark.parametrize("defect", ["suffix", "task_branch", "evaluator_import", "missing_source"])

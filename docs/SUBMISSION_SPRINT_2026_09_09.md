@@ -124,6 +124,12 @@ drop requirements or declare an unverified product ready.
   Acceptance: equivalent prompts/environments, no evaluator leakage, failed
   runs and PEX overhead retained; full spec/audit coverage checked, not inferred
   from counts. No fixture-derived productivity headline or invented ranking.
+  Current 8 September 22:09 WAT: fresh benchmark seeds now receive deterministic
+  Git root commits; external receipts bind them, scoring rejects unrelated replacement history, and
+  rows report the verified revision. Source-revision capture is satisfied. Read-only
+  plan/readiness still blocks execution/freeze on OS isolation, Cursor network
+  enforcement, natural public-repo tasks, complete raw logs, and synchronous
+  Cursor+PEX continuation. No quota-consuming arm ran.
 - [ ] **I. Produce the judge-facing demo and exact submission package.**
   Acceptance: reproducible setup, truthful support matrix, architecture and
   curated real recovery trace; <=5-minute video; rules/bonus evidence rechecked.

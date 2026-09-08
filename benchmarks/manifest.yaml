@@ -29,7 +29,7 @@ include_pex_overhead: true
 integrity:
   raw_harness_event_log_status: not_yet_satisfied
   cursor_same_session_treatment_status: not_yet_satisfied
-  source_repo_commit_capture_status: not_yet_satisfied
+  source_repo_commit_capture_status: satisfied
   note: >-
     The controller hashes its captured event subset, but it does not yet retain and bind a
     complete vendor raw event log. A final presentation freeze must fail closed until that

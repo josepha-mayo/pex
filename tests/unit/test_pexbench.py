@@ -1587,7 +1587,11 @@ def test_authoritative_manifest_preflight_remains_honestly_no_go():
     assert any("network policy" in blocker for blocker in blockers)
     assert any("raw harness event logs" in blocker for blocker in blockers)
     assert any("same-session treatment" in blocker for blocker in blockers)
-    assert any("repository commits" in blocker for blocker in blockers)
+    assert not any("repository commits" in blocker for blocker in blockers)
+    assert (
+        four.runner.load_manifest()["integrity"]["source_repo_commit_capture_status"]
+        == "satisfied"
+    )
 
 
 def test_invalid_suite_blocks_execution_and_report_readiness(monkeypatch):
@@ -2201,7 +2205,7 @@ def test_freeze_accepts_one_coherent_fingerprinted_run(tmp_path, monkeypatch):
         "analysis_manifest.json",
     }
     frozen = four.try_freeze()
-    assert frozen["frozen"] is True
+    assert frozen["frozen"] is True, frozen
     assert frozen["run_id"] == "coherent"
     assert four.runner.load_manifest()["frozen_run_id"] == "coherent"
     summary = json.loads((results / "frozen_summary.json").read_text(encoding="utf-8"))
@@ -2725,6 +2729,93 @@ async def test_isolated_cursor_stop_persists_process_isolated_receipt(tmp_path, 
     assert meta["followups"] == 1
     assert meta["used_llm"] is True
     assert meta["audits"][0]["actual_action_sent"] == "SEND_NUDGE"
+
+
+def test_prepared_pairs_bind_the_same_deterministic_source_commit(tmp_path, monkeypatch):
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    baseline, _, baseline_receipt = four.prepare_isolated_workspace(
+        "source_pair",
+        "codex",
+        "pexbench_001_premature_stop",
+        tmp_path / "ws",
+    )
+    treatment, _, treatment_receipt = four.prepare_isolated_workspace(
+        "source_pair",
+        "codex_pex",
+        "pexbench_001_premature_stop",
+        tmp_path / "ws",
+    )
+
+    commit = baseline_receipt["source_repo_commit"]
+    assert commit == treatment_receipt["source_repo_commit"]
+    assert len(commit) in {40, 64}
+    assert four._verify_source_commit(baseline, commit) == commit
+    assert four._verify_source_commit(treatment, commit) == commit
+    assert baseline_receipt["seed_manifest_sha256"] == (
+        treatment_receipt["seed_manifest_sha256"]
+    )
+
+
+def test_seed_receipt_rejects_a_rewritten_source_head(tmp_path, monkeypatch):
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    workspace, _, receipt = four.prepare_isolated_workspace(
+        "source_tamper",
+        "codex",
+        "pexbench_001_premature_stop",
+        tmp_path / "ws",
+    )
+    tree = four._git_output(workspace, "write-tree")
+    replacement = four._git_output(
+        workspace,
+        "commit-tree",
+        tree,
+        "-m",
+        "rewritten seed",
+    )
+    assert replacement != receipt["source_repo_commit"]
+    four._git_output(workspace, "update-ref", "HEAD", replacement)
+
+    with pytest.raises(RuntimeError, match="not retained"):
+        four._load_seed_receipt(
+            workspace,
+            "source_tamper",
+            "codex",
+            "pexbench_001_premature_stop",
+        )
+
+
+def test_source_receipt_allows_worker_commit_descended_from_seed(tmp_path, monkeypatch):
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    workspace, _, receipt = four.prepare_isolated_workspace(
+        "source_descendant",
+        "codex",
+        "pexbench_001_premature_stop",
+        tmp_path / "ws",
+    )
+    (workspace / "worker-result.txt").write_text("done\n", encoding="utf-8")
+    four._git_output(workspace, "add", "--all")
+    tree = four._git_output(workspace, "write-tree")
+    descendant = four._git_output(
+        workspace,
+        "commit-tree",
+        tree,
+        "-p",
+        receipt["source_repo_commit"],
+        "-m",
+        "worker result",
+    )
+    four._git_output(workspace, "update-ref", "HEAD", descendant)
+
+    loaded = four._load_seed_receipt(
+        workspace,
+        "source_descendant",
+        "codex",
+        "pexbench_001_premature_stop",
+    )
+    assert loaded["source_repo_commit"] == receipt["source_repo_commit"]
 
 
 def test_isolated_cursor_stop_cli_spawns_out_of_process_supervisor(tmp_path, monkeypatch):

@@ -5,6 +5,23 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## 22:09 WAT benchmark provenance slice
+
+The benchmark no longer leaves `repo_commit` null. Every fresh controlled workspace is
+initialized with a deterministic, hook-free Git plumbing commit for the exact public seed.
+The commit is stored in the controller-owned external preparation receipt, reverified
+as a root of HEAD history before scoring, and written into the immutable result row with availability
+true. Paired workspaces for the same task produce the same commit; unrelated replacement HEAD history fails
+closed. This satisfies the source-revision-capture capability without changing any result
+file or inventing a score.
+
+The read-only plan still refuses real arms because OS isolation and controller-enforced
+Cursor networking are absent. Presentation freeze also still requires natural public-repo
+tasks, complete raw harness logs, and synchronous same-session Cursor+PEX continuation.
+AgentCore preflight remains NO-GO with inactive CLI credentials, missing AgentCore/CDK
+tools, stopped Docker, no ARM64 image and no Runtime ARN. No worker, model, native PEX,
+AWS resource, or paid call ran in this slice.
+
 ## Latest offline slice: bound retained SQLite WAL allocation and recheck cloud path
 
 The contest profile retained a **237,406,792-byte** WAL file even though its current

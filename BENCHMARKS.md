@@ -18,8 +18,10 @@ Headline secondary metric: human interventions per successful task.
 
 The shared task wall budget includes worker and PEX time. PEX wall time,
 interventions, and supervisor tokens are recorded when exposed; unavailable
-worker tokens, cost, human active time, vendor raw logs, or repo commits remain
-explicitly null with availability flags. PEX must not have benchmark-only
+worker tokens, cost, human active time, or unavailable vendor raw logs remain
+explicitly null with availability flags. Every newly prepared workspace now has a
+deterministic root commit for its exact public seed; the external preparation receipt
+binds that commit, scoring re-verifies it in HEAD history, and each result row records it. PEX must not have benchmark-only
 privileges.
 
 **Same prompt rule:** baseline and treatment receive identical `TASK.md`. Treatment extra is an attached supervisor with tools, not a better prompt and not an oracle fact.
@@ -34,7 +36,7 @@ Runtime gates reject
 prompt drift, hidden-evaluator markers, treatment-only instructions, workspace
 seed mismatches, worker-configuration mismatches, harness-version mismatches,
 stale task packages, changed controller code, and missing fresh-workspace
-receipts.
+receipts. Missing or unrelated replacement seed history fails before a row can be scored.
 
 `live: true` is accepted only with transport evidence. Codex requires a running
 `codex app-server` stdio process, an explicit worker model, and process-isolated

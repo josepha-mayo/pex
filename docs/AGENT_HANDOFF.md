@@ -8991,3 +8991,46 @@ The dirty bit is expected because the protected operator-owned file below is ret
   all Rust tests passed **18/18**, complete desktop contracts passed **258/258**, TypeScript
   exited 0, and Rust formatting passed. PEX was not launched; current-source sidecars still
   require rebuild and this slice still needs a bounded native profile before freeze closure.
+
+### 8 September 22:09 WAT benchmark source-provenance slice
+
+- User priority remains: preserve real Strands and AgentCore work and obtain a benchmark result
+  soon. The current live Codex + Strands evidence remains valid and untouched. AgentCore remains
+  packaged/offline-tested but not deployed; its fresh read-only preflight still exits 2 because
+  CLI AWS authentication is inactive, the current AgentCore CLI and CDK are missing, Docker's
+  engine is stopped, no ARM64 runtime image is verified, and no Runtime ARN is configured. The
+  user's no-card-charge boundary still prohibits guessing past those facts. No AWS write, model
+  invocation, browser operation, native PEX process, or paid action ran in this slice.
+- The read-only benchmark plan exposed seven concrete blockers before any quota-consuming row:
+  OS-isolated execution, controller-enforced Cursor network policy, natural public-repository
+  tasks, complete raw harness logs, synchronous same-session Cursor+PEX continuation, source
+  repository commit capture, and one coherent 20-row run. Existing historical rows are not a
+  coherent run and remain non-citeable; do not merge them or invent a leaderboard claim.
+- This slice closes only source repository commit capture. `prepare_isolated_workspace` now
+  initializes each exact public seed through bounded Git plumbing, with hooks and commit signing
+  disabled and deterministic author/committer identity and timestamp. It creates a parentless
+  root commit from the public seed, stores the exact 40/64-hex object ID in the controller-owned
+  external seed receipt, and leaves `.git` excluded from the public seed fingerprint.
+- Receipt loading and final row construction require the externally bound commit to remain a
+  real Git commit and a root of current HEAD history. Normal worker commits remain valid, while
+  unrelated replacement history cannot receive a scored row. Every new Cursor/Codex row now emits `repo_commit` with
+  `measurement_availability.repo_commit=true`; `repo_revision` remains the independent canonical
+  byte fingerprint. Baseline and treatment therefore bind both identical bytes and an identical
+  deterministic source revision.
+- Added explicit tests prove (1) paired baseline/treatment seeds for the same task create the
+  same commit and same seed hash, and (2) replacing HEAD with another valid commit is rejected.
+  Scoped Ruff passed. The exact final benchmark/unit safety gate passed **151/151 in
+  228.71 seconds**.
+  One earlier 147/148 run is not a product failure: `four_arm.py` was patched for Ruff while that
+  process was still computing source hashes, so the run correctly detected a mid-run controller
+  fingerprint change. The stable rerun after edits passed completely.
+- `benchmarks/manifest.yaml` now marks only `source_repo_commit_capture_status: satisfied`.
+  Do not mark any other integrity field satisfied. The benchmark remains `frozen: false`, has no
+  valid presentation score, and should still refuse real arms until the remaining preflight
+  capabilities are implemented. Next benchmark work should target enforced execution isolation
+  first; do not spend Codex/Cursor quota while the current preflight guarantees rejection.
+- Main checkout safety boundary remains unchanged: the protected concurrent
+  `services/supervisor/src/pex_supervisor/loop.py` tail is unstaged and must not be edited,
+  formatted, restored, or committed without the exact user phrase `remove the protected loop
+  tail`. PEX remains closed after the user's whole-PC freeze report; do not run the prepared
+  native harness unless the user gives the exact phrase `run bounded native smoke`.
