@@ -2,6 +2,16 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent traced raw Cursor JSONL decoding through immutable batch
+admission and permanent semantic rejection. The event reader still used Python's
+permissive `json.loads`, so duplicate keys silently became last-key-wins values and
+non-finite `NaN` entered an RFC-JSON protocol boundary. A negative reproduced both
+admissions. Event rows now use the existing strict decoder already required by the
+checkpoint format; ambiguous/non-standard rows are skipped within the bounded physical
+batch and a later valid row remains deliverable. Focused inbox/observer coverage passes
+42/42 and Ruff is clean. This does not add the still-open durable rejection receipt/UI
+or producer-coordinated retention.
+
 Changed-path addendum: parent traced parsed Cursor inbox records through adapter session
 shape checks, normalization, durable Store upsert, event ingestion and acknowledgement.
 Previously any valid JSON dictionary that deterministically failed adapter validation

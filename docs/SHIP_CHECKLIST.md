@@ -68,6 +68,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Advance parsed Cursor records only when adapter preparation proves permanent
   shape/bound invalidity; retain transient/collision/authority failures. Inbox plus
   real Store/hook replay gate passes 41/41 and Ruff.
+- [x] Reject duplicate-key and non-finite Cursor inbox JSON at the raw authority
+  boundary instead of accepting Python's last-key-wins/NaN extensions. The negative
+  reproduced both admissions; the focused inbox/observer gate passes 42/42 and Ruff.
 - [x] Advance newline-free Cursor records once they irreversibly exceed the record
   limit, persisting discard-until-newline state without parsing a suffix. Inbox/
   observer coverage passes 33/33 and Ruff; producer disk retention remains open.

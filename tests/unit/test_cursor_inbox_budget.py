@@ -135,6 +135,17 @@ def test_batch_limit_counts_malformed_lines_and_preserves_partial_json(tmp_path,
     assert _drain_fixture(tmp_path) == [{"conversation_id": "split"}]
 
 
+def test_inbox_rejects_ambiguous_or_nonstandard_json_records(tmp_path):
+    path = _write_rows(tmp_path, 0)
+    path.write_bytes(
+        b'{"conversation_id":"first","conversation_id":"second"}\n'
+        b'{"conversation_id":"nan","score":NaN}\n'
+        b'{"conversation_id":"valid"}\n'
+    )
+
+    assert _drain_fixture(tmp_path) == [{"conversation_id": "valid"}]
+
+
 def test_newline_free_oversized_record_advances_once_and_preserves_next_row(
     tmp_path, monkeypatch,
 ):

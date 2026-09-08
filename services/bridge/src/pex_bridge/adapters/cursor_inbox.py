@@ -207,7 +207,10 @@ def read_inbox(home: Path) -> InboxBatch | None:
                 if not content.strip() or len(content) > MAX_RECORD_BYTES:
                     continue
                 try:
-                    payload = json.loads(content)
+                    # Hook records are an authority boundary. Python's default
+                    # decoder accepts duplicate keys (last one wins) and NaN /
+                    # Infinity, making the observed event ambiguous or non-RFC.
+                    payload = strict_json_loads(content)
                 except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
                     continue
                 if isinstance(payload, dict):

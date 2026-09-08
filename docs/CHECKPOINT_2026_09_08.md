@@ -5,7 +5,22 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: permanent Cursor poison isolation
+## Latest offline slice: strict Cursor JSON authority
+
+The raw Cursor JSONL event reader used Python's permissive decoder even though its
+checkpoint format already used PEX's strict JSON boundary. A duplicate key therefore
+silently selected the last value, and non-finite `NaN` was accepted into an otherwise
+RFC-JSON protocol. A focused negative reproduced both admissions. Event rows now use
+`strict_json_loads`; ambiguous/non-standard records are consumed as malformed physical
+input while a following valid record is still delivered. The focused inbox, observer
+and Cursor hook selection passes **42/42**; scoped Ruff and diff checks pass.
+
+This is a raw admission repair, not the still-open durable rejection receipt/UI or a
+producer-coordinated retention protocol. No native app, model, worker, large suite or
+external process was launched. The protected operator-owned supervisor loop remains
+untouched at its recorded hash.
+
+## Earlier offline slice: permanent Cursor poison isolation
 
 After JSON parsing, a Cursor observer record can still be permanently inadmissible:
 missing/invalid conversation identity, control characters, oversized adapter fields or

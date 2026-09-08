@@ -2,6 +2,15 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: raw Cursor JSONL events now use the existing strict JSON decoder at the
+observation authority boundary. The inherited reader used Python's permissive decoder,
+so duplicate keys silently became last-key-wins values and `NaN` entered an RFC-JSON
+protocol. A focused negative reproduced both admissions. Ambiguous/non-standard rows
+are now consumed as malformed physical input while a later valid row remains
+deliverable. Focused inbox/observer/hook coverage passes 42/42; Ruff and diff checks
+are clean. Durable rejection receipts/operator UI and producer-coordinated retention
+remain open. PEX stayed closed; this is not native stability proof.
+
 Latest: syntactically valid Cursor dictionaries can no longer poison an entire observer
 batch when their adapter shape/bounds are permanently invalid. `_prepare_cursor_hook()`
 now completes adapter normalization before the durable session upsert and consistently
