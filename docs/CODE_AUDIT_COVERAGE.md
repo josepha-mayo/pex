@@ -1251,3 +1251,13 @@ Focused pet lifecycle/resource coverage passed 10/10; complete desktop coverage 
 One stale adjacent source assertion failed the first complete run and was corrected to bind
 the stronger lifecycle boundary. Final adjacent coverage passed 43/43, complete desktop
 coverage passed 252/252, and TypeScript exited 0. Native Tauri lifecycle is unmeasured.
+
+## 8 September native identity-monitor focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src-tauri/src/main.rs` verified identity monitor | REVIEWED / REPAIRED | Fallback cadence is two seconds and five misses; nominal 10-second loss boundary, token proof, loopback restriction, timeout, and fail-closed transition remain. |
+| `apps/desktop/src/startupRecovery.test.ts` cross-language cadence contract | REVIEWED / EXTENDED | Negative contract rejected the prior one-second loop and binds interval, threshold, nominal boundary, and exact monitor use. |
+
+The first Rust compile caught a missing test-module import and was repaired. Named native test
+and all 17 Rust tests passed; complete desktop 253/253 and TypeScript passed. Runtime unmeasured.

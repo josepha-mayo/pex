@@ -617,3 +617,7 @@ Do the next safe, highest-impact item immediately. If a required external choice
   as page visibility; hide clears authority/aborts work and show refreshes immediately.
   Adjacent 43/43, complete desktop 252/252, and TypeScript pass.
 - [ ] Verify Tauri hide/show releases the overlay's socket/readers in the bounded native trace.
+- [x] Halve fallback native bridge-identity health traffic: two-second probe cadence and five
+  misses retain the nominal 10-second loss boundary; 17/17 Rust, 253/253 desktop and TypeScript
+  pass after a negative source contract and corrected compile failure.
+- [ ] Confirm the identity probe cadence and failure transition in a bounded native trace.

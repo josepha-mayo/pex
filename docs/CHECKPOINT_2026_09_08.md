@@ -1506,3 +1506,13 @@ A complete run then caught one stale adjacent source assertion; it was updated t
 stronger lifecycle boundary. Final adjacent coverage passed 43/43, complete desktop coverage
 passed 252/252, and TypeScript exited 0. Actual Tauri hide/show behavior remains a bounded
 native verification item.
+
+## Native bridge identity cadence
+
+The post-bootloader authenticated identity monitor now probes every two seconds with a
+five-miss threshold rather than every second with ten misses. The ordinary process-event path
+still handles exits immediately, and the nominal persistent identity-loss boundary remains
+10 seconds while steady fallback HTTP traffic is halved. The negative source contract failed
+before the repair. A first native compile exposed a missing test import and was corrected;
+the named test and all 17 Rust tests then passed. Complete desktop tests passed 253/253 and
+TypeScript exited 0. Runtime cadence and freeze impact are still unmeasured.

@@ -26,7 +26,10 @@ const BRIDGE_STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
 const BRIDGE_PROBE_TIMEOUT: Duration = Duration::from_millis(1_500);
 const BRIDGE_RETRY_INTERVAL: Duration = Duration::from_millis(100);
 const BRIDGE_IDENTITY_RETRY_ATTEMPTS: usize = 6;
-const BRIDGE_IDENTITY_MISS_LIMIT: u8 = 10;
+// The process event channel handles ordinary exits immediately. This lower-rate
+// authenticated probe covers bootloader handoff and lost/stale port identity.
+const BRIDGE_IDENTITY_MONITOR_INTERVAL: Duration = Duration::from_secs(2);
+const BRIDGE_IDENTITY_MISS_LIMIT: u8 = 5;
 const PET_NATIVE_DISMISSED_EVENT: &str = "pex-pet-native-dismissed";
 type HmacSha256 = Hmac<Sha256>;
 
@@ -682,7 +685,7 @@ fn monitor_owned_bridge(
 fn monitor_verified_bridge_identity(app: tauri::AppHandle, attempt: u64, token: String) {
     let mut consecutive_misses = 0_u8;
     loop {
-        std::thread::sleep(Duration::from_secs(1));
+        std::thread::sleep(BRIDGE_IDENTITY_MONITOR_INTERVAL);
         let current = app.state::<BridgeRuntime>().status();
         if current.attempt != attempt || current.phase != BridgeBootstrapPhase::Ready {
             return;
@@ -1029,7 +1032,8 @@ mod tests {
         bridge_port_state_at, bridge_sidecar_args, command_event_is_terminal,
         is_pex_identity_response, normalize_bridge_token, remaining_timeout,
         trusted_webview_navigation, window_close_action, BridgeAuth, BridgeBootstrapPhase,
-        BridgePortState, BridgeRuntime, BridgeSource, WindowCloseAction, MAX_BRIDGE_TOKEN_CHARS,
+        BridgePortState, BridgeRuntime, BridgeSource, WindowCloseAction,
+        BRIDGE_IDENTITY_MISS_LIMIT, BRIDGE_IDENTITY_MONITOR_INTERVAL, MAX_BRIDGE_TOKEN_CHARS,
     };
 
     #[test]
@@ -1340,6 +1344,17 @@ mod tests {
         assert!(!command_event_is_terminal(&CommandEvent::Stdout(
             b"private output is discarded".to_vec()
         )));
+    }
+
+    #[test]
+    fn identity_monitor_halves_idle_probes_without_widening_nominal_failure_bound() {
+        assert_eq!(BRIDGE_IDENTITY_MONITOR_INTERVAL, Duration::from_secs(2));
+        assert_eq!(BRIDGE_IDENTITY_MISS_LIMIT, 5);
+        assert_eq!(
+            BRIDGE_IDENTITY_MONITOR_INTERVAL.as_secs()
+                * u64::from(BRIDGE_IDENTITY_MISS_LIMIT),
+            10
+        );
     }
 
     #[test]

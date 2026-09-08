@@ -155,6 +155,21 @@ test("initial startup is explicitly pending and matches the native bounded cold-
   assert.ok(copy.guidance?.includes(`${seconds}-second deadline`));
 });
 
+test("native bridge identity monitoring limits idle probes without widening its failure window", async () => {
+  const rust = await readFile(new URL("../src-tauri/src/main.rs", import.meta.url), "utf8");
+  const interval = Number(rust.match(
+    /BRIDGE_IDENTITY_MONITOR_INTERVAL: Duration = Duration::from_secs\((\d+)\)/u,
+  )?.[1]);
+  const misses = Number(rust.match(/BRIDGE_IDENTITY_MISS_LIMIT: u8 = (\d+)/u)?.[1]);
+  assert.equal(interval, 2, "the owned bridge should not receive a health request every second");
+  assert.equal(misses, 5);
+  assert.equal(interval * misses, 10, "persistent identity loss must remain nominally bounded");
+  assert.match(
+    rust,
+    /monitor_verified_bridge_identity[\s\S]*?std::thread::sleep\(BRIDGE_IDENTITY_MONITOR_INTERVAL\)/u,
+  );
+});
+
 test("unverified port ownership remains explicit and never suggests automatic takeover", () => {
   const status = normalizeBridgeBootstrapStatus({
     phase: "failed",

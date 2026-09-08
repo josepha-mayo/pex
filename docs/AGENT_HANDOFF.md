@@ -8667,3 +8667,19 @@ The dirty bit is expected because the protected operator-owned file below is ret
   assertion. Final focused coverage passed **43/43**, the complete desktop gate passed
   **252/252**, and TypeScript exited 0. Native Tauri hide/show and resource behavior still
   need the later bounded live profile.
+
+### 8 September native bridge identity cadence slice
+
+- After a PyInstaller bootloader handoff, Tauri's fallback identity monitor sent an
+  authenticated `/health/identity` probe every second. Ordinary owned-process exits still
+  arrive immediately through the shell event channel; the probe covers handoff, stale port
+  ownership, and identity loss.
+- The monitor now probes every two seconds and requires five consecutive misses instead of
+  ten. This halves steady fallback health traffic while keeping the nominal persistent-loss
+  threshold at 10 seconds. Authentication, loopback pinning, per-probe timeout, and fail-closed
+  behavior are unchanged.
+- The TypeScript source contract failed before implementation and passed afterward. The first
+  named Rust compile caught a missing test-module constant import; that was fixed rather than
+  bypassed. The named native test passed, then all **17/17** Rust tests passed. Complete desktop
+  tests passed **253/253** and TypeScript exited 0. PEX itself was not launched, so real cadence,
+  resource impact, and freeze resolution remain unverified.

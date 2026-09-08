@@ -492,3 +492,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
 - Hidden-overlay network release now uses durable pet visibility rather than assuming native
   hide always changes `document.visibilityState`. The source contract proves cleanup wiring,
   but no post-change Tauri socket/reader trace exists; retain this native verification gap.
+- The fallback native identity monitor now sends one authenticated health probe every two
+  seconds and fails after five consecutive misses, preserving its nominal 10-second boundary
+  while halving steady probes. Rust/source tests pass, but the packaged runtime cadence and
+  whole-machine resource effect have not been observed; the freeze incident remains open.

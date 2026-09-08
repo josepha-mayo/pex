@@ -1962,3 +1962,10 @@ the expanded contract and the repaired focused gate passed 10/10. Tauri hide/sho
 still needs a bounded live trace; this is not freeze closure. The first complete run caught
 one stale adjacent source assertion, which was corrected; final adjacent coverage passed
 43/43, complete desktop coverage passed 252/252, and TypeScript exited 0.
+
+Tauri's post-bootloader authenticated bridge identity fallback now probes every two seconds
+with five misses rather than every second with ten. This halves its steady HTTP traffic while
+retaining the nominal 10-second persistent-loss threshold; the immediate process-event path
+is unchanged. The source contract failed first, and the first Rust compile caught a missing
+test import that was corrected. The named test and all 17 Rust tests passed, followed by
+desktop 253/253 and TypeScript. Runtime resource impact and freeze resolution remain open.
