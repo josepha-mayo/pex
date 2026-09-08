@@ -124,6 +124,7 @@ from pex_bridge.speculative import (
 from pex_bridge.store import (
     EVENT_EFFECT_TERMINAL_STATES,
     EVENT_PROCESSING_TERMINAL_STATES,
+    MAX_LIST_QUERY_LIMIT,
     MCP_REPORT_PROGRESS_TOOL,
     MCP_REQUEST_DECISION_TOOL,
     MCP_VERIFY_CLAIM_TOOL,
@@ -6094,11 +6095,19 @@ class Pipeline:
             for name, discovered in discoveries:
                 if discovered is None:
                     continue
+                discovered_ids = [session.id for session in discovered]
+                existing_by_id: dict[str, HarnessSession] = {}
+                for start in range(0, len(discovered_ids), MAX_LIST_QUERY_LIMIT):
+                    existing_by_id.update(
+                        await self.store.get_sessions_for_authority(
+                            discovered_ids[start : start + MAX_LIST_QUERY_LIMIT]
+                        )
+                    )
                 discovery_generation = f"{name}:{uuid4().hex}"
-                seen[name] = {session.id for session in discovered}
+                seen[name] = set(discovered_ids)
                 for session in discovered:
                     session.metadata["discovery_generation"] = discovery_generation
-                    existing = await self.store.get_session_for_authority(session.id)
+                    existing = existing_by_id.get(session.id)
                     observe_tile = is_desktop_observe_session(session)
                     if existing:
                         session.goal_id = None if observe_tile else existing.goal_id

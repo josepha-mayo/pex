@@ -2,6 +2,15 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: desktop discovery now resolves existing canonical sessions through strict
+authority batches per adapter, chunked at 1,000 IDs, instead of opening one configured
+SQLite transaction for each discovered worker. Missing rows remain new; blocked project/
+goal identity still aborts rather than becoming writable, and sequential Store upserts
+remain unchanged. The singular-loader-fatal negative failed before repair. Combined
+discovery/pet/projection/coalescing coverage passes 53/53, the focused refresh rerun
+passes 3/3, and Ruff is clean. Writes are deliberately not bulked; adapter discovery
+volume/native cost and freeze causality remain open. PEX remains closed.
+
 Latest: the eight-second desktop discovery refresh no longer performs one session-
 control query per retained row before deciding which vanished desktop tiles to detach.
 It now lists once, reads at most 1,000 exact CAS receipts through the existing bounded

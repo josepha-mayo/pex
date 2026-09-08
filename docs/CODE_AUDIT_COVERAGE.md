@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path follow-up: parent traced discovered-session merge authority from all five
+desktop adapters through Store binding checks and upsert. Existing rows now resolve in
+strict per-adapter chunks of at most 1,000 instead of singular connection/transactions;
+missing rows, goal/pause/status merge and ordered writes are unchanged. The negative
+failed before repair; combined related coverage passes 53/53, focused refresh 3/3 and
+Ruff is clean. Sequential writes, total adapter volume, whole Pipeline/Store and native
+stability/freeze causality remain outside this approval.
+
 Changed-path follow-up: parent reviewed the complete desktop refresh lock/backoff,
 shared process snapshot, discovery merge, vanished-row classification and CAS detach
 path. Retained controls previously used one query per listed session; the existing

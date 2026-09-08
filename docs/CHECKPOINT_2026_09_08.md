@@ -5,6 +5,32 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
+## Latest offline slice: batch discovered-session authority reads
+
+After each adapter's bounded discovery returned, `refresh_desktop_sessions()` still
+called `get_session_for_authority()` once per discovered worker before merging durable
+goal, pause and live-status fields. Each call configured a separate SQLite connection
+and read transaction. This repeated the connection-storm pattern on the write-facing
+side of the same eight-second refresh.
+
+Discovery now collects each adapter's exact ordered IDs and resolves existing rows
+through `get_sessions_for_authority()` in chunks of at most 1,000. The strict batch
+default is retained: a stale/quarantined project or goal identity aborts the refresh
+instead of being mistaken for a missing session and upserted as new. Missing IDs still
+follow the original new-row path; merge order, generation stamping, observe-tile goal
+handling, live-over-idle preservation and each subsequent Store upsert are unchanged.
+
+The negative stored a working Cursor row, returned an idle discovery of that exact ID,
+and made the singular authority API fatal. Prior source failed there. Repaired source
+calls one strict batch and preserves the durable working status. The combined discovery,
+pet, projection, CAS and coalescing selection passes **53/53** in 20.27s; the focused
+refresh selection passes **3/3** in 4.88s; Ruff is clean.
+
+Writes remain sequential because each Store upsert owns binding/migration semantics;
+this slice does not claim atomic multi-session mutation or bounded total adapter output.
+PEX stayed closed; no native resource capture, model, worker, browser, cloud, build or
+large suite ran, and the reported whole-PC freeze cause remains unknown.
+
 ## Latest offline slice: batch desktop-refresh detachment controls
 
 `refresh_desktop_sessions()` is locked and backed off to at most one attempt every

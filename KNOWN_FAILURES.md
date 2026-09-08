@@ -2,6 +2,10 @@
 
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
+- Existing discovered sessions now resolve through strict <=1,000-ID authority batches
+  per adapter, removing per-worker configured read transactions while retaining blocked
+  identity failure and sequential writes. Related 53/53 plus focused 3/3 and Ruff pass.
+  Total adapter output, write cost, native impact and freeze causality remain unverified.
 - Desktop refresh now reads retained session CAS state in one bounded batch before
   its unchanged revision/generation-fenced detach decisions, removing up to 1,000
   singular queries per eight-second attempt. Related tests pass 52/52 and Ruff is

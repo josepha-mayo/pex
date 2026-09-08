@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Discovered workers now resolve existing authority state in strict per-adapter batches
+of at most 1,000 rather than one SQLite connection/transaction each. Missing/new rows,
+identity failure, merge order and sequential upserts are preserved. Related tests pass
+53/53 plus focused 3/3 with Ruff clean. Adapter volume/native impact remain open; PEX
+stayed closed.
+
 Desktop refresh now batches up to 1,000 retained CAS receipts before vanished-row
 detachment instead of querying one control row at a time every eight seconds. Exact
 seen/source/status and revision/generation fencing are preserved. The negative failed

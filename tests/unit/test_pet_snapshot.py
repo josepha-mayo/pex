@@ -1,5 +1,6 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -362,6 +363,58 @@ async def test_refresh_keeps_hook_working_over_idle_discover(tmp_path):
     await store.close()
     assert kept is not None
     assert kept.status == SessionStatus.WORKING
+
+
+@pytest.mark.asyncio
+async def test_refresh_batches_authority_reads_for_discovered_sessions(tmp_path, monkeypatch):
+    from pex_bridge.adapters.desktop import DesktopProcessSnapshot
+
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    existing = HarnessSession(
+        id="cursor:discovered-batch",
+        harness_type=HarnessType.CURSOR,
+        vendor_session_id="discovered-batch",
+        status=SessionStatus.WORKING,
+    )
+    await store.upsert_session(existing)
+    discovered = existing.model_copy(update={"status": SessionStatus.IDLE})
+    registry = AdapterRegistry()
+    for name in ("cursor", "codex", "opencode", "hermes", "claude_code"):
+        registry.get(name).discover_sessions = AsyncMock(
+            return_value=[discovered] if name == "cursor" else []
+        )
+    pipeline = Pipeline(
+        store,
+        registry,
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
+    )
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.capture_running_image_snapshot",
+        lambda: DesktopProcessSnapshot(frozenset(), True, 1.0),
+    )
+    batch_calls: list[list[str]] = []
+    original_batch = store.get_sessions_for_authority
+
+    async def counted_batch(session_ids: list[str], **kwargs):
+        batch_calls.append(session_ids)
+        return await original_batch(session_ids, **kwargs)
+
+    async def reject_singular(_session_id: str):
+        raise AssertionError("desktop discovery must not open one authority read per row")
+
+    monkeypatch.setattr(store, "get_sessions_for_authority", counted_batch)
+    monkeypatch.setattr(store, "get_session_for_authority", reject_singular)
+
+    try:
+        await pipeline.refresh_desktop_sessions()
+        stored = await store.get_session(existing.id)
+    finally:
+        await store.close()
+
+    assert batch_calls == [[existing.id]]
+    assert stored is not None and stored.status == SessionStatus.WORKING
 
 
 @pytest.mark.asyncio
