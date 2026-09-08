@@ -1,22 +1,31 @@
 # INTEGRATIONS
 
-Production shared inspection now supplies the local received-byte journal (`db98481`) before connector reads. Internal dispatch requires a settled healthy journal and both raw-chunk and complete-envelope snapshots; no production dispatch caller or enabled shared control yet. Main final 456 tests/23 files, independent review/push verified. Local raw data is not an HTTP/model/export or replay surface; full recovery and installed-worker compatibility remain open. [`Current evidence`](docs/RECEIVED_JOURNAL_REVIEW.md). Fresh input/turn/PEX-origin and durable goal/policy/effect integration are next, superseding the raw-journal absence below.
+# Worker integrations
 
-Current connection UI source `cd39913` provides explicit origin/inspect/confirm/status/detach in Settings with independently reviewed recovery. Browser evidence is a labeled fake-API component test, not installed-worker compatibility. Internal transport `03045b5` has framed start/steer tests but **no production caller**; shared Codex remains observe-only. Durable raw receipt retention and current goal/policy/input/turn/effect integration are activation prerequisites. Main backend gate 406 passed/18 files. [`Exact scope and next actions`](docs/CONNECTION_CONTROL_REVIEW.md). This supersedes older statements that no desktop caller exists; it does not upgrade live support labels.
+PEX negotiates support from evidence observed in the current connection. A registered
+worker, installed binary, open port, initialize response, or injected test transport is
+not by itself proof that PEX can observe or control that worker.
 
-Latest source `c15a2fc` repairs owned failed-subscription close settlement through repeated cancellation (main 355 passed/17 files, independently reviewed and pushed). No live capability changes. This supersedes pending-close wording in historical checkpoint paragraphs below, not the remaining durable/raw observation, installed-runtime or same-worker delivery gates. A settled failed/cancelled close is not successful termination proof. See [the exact review](docs/WORKSPACE_CONTINUITY_REVIEW.md).
+The verified release candidate at product source `d66e6a1` includes the bridge and Cursor
+helpers. Its extracted package inventories pass, but the installers are unsigned and a
+fresh native smoke run remains outstanding after the reported machine freeze. The current
+tree also has a bounded live Codex App Server handshake test: support begins at Basic and
+becomes Deep only while the structured event pump is alive. That check did not send a model
+prompt or prove the packaged native app. See [the submission evidence](docs/SUBMISSION.md)
+and [package receipt](docs/PACKAGE_RECEIPT_D66E6A1.json).
 
-Live capability matrix. Labels are negotiated at runtime. Registration, a binary,
-an open port, an initialize response, or an injected test transport alone is never
-proof of observation or control.
+Shared Codex is deliberately different from isolated Codex. The shared route can observe a
+separately confirmed existing workspace through bounded, durable receipts, but sending,
+steering, approvals, and configuration changes remain disabled. The isolated App Server
+route may provide Deep support after attach and event-pump verification, but it starts or
+attaches to an isolated Codex transport; it must never be presented as control of an
+arbitrary ChatGPT/Codex desktop task. Workspace recovery details live in
+[the local workspace-origin guide](docs/adapters/local-workspace-origin.md).
 
-Continuous workspace authority is reviewed/pushed as **`c0db453`**, through Store, evidence/planning, scheduled adapter entry and Ask review lifetime checks. Final main gate: **1,016 passed/3 skipped across 56 files**; [the continuity review](docs/WORKSPACE_CONTINUITY_REVIEW.md) records exact scope and migration. This does **not** enable shared Codex delivery: its messaging methods are still unavailable, and current raw input/turn/epoch and installed-runtime proof remain required. No new harness capability label or live support claim is earned. Old workspace-bound sessions missing the server witness need explicit detach/reinspection. A separate failed-subscription close-ownership defect has just been reproduced and remains outside this checkpoint.
-
-Shared Codex workspace setup is now source-integrated in `f08ad80`: explicit operator origin, measured directory/locator receipt, pre-subscription and transactional publication checks, authenticated origin/status APIs and reload-safe detach IDs. Final combined local gate: 545 passed, 2 environment skips; see the current handoff. The desktop caller and installed-runtime proof are still absent. No same-worker delivery is enabled and no production origin was selected. Later evidence/actions still need continuous workspace/epoch/input authority. API/recovery guide: [local workspace origin](docs/adapters/local-workspace-origin.md). Older statements below that origin binding is entirely unimplemented are superseded only for this bounded attachment path.
-
-Current shared Codex source is a separately confirmed existing-thread observer, with bounded raw proxy transport, read/resume/read reconciliation, attachment recovery and canonical Pipeline/Store observation receipts. Validated prefixes now have bounded record-only recovery when later records fail; pending/retained counts and failure remain explicit. It has local fake-vendor/real-Store regression evidence, not installed-runtime proof. Sending, steering, approvals and configuration changes remain disabled. The isolated App Server route is explicitly labeled `isolated=true, existing_worker=false` and cannot replace an active shared connection. Named-project origin, durable/full coverage, owned close cleanup and installed protected-path prerequisites remain open; see the current handoff. Historical matrix labels below must not be applied to the shared path.
-
-There is **no single connect method**. Cursor is this desktop via hooks. Isolated Codex is App Server JSON-RPC. ChatGPT.exe is observe/focus only. Grok Bot is observe-only. Grok Build is `grok agent stdio`. OpenCode/Qwen are HTTP. Hermes/Kimi/OMP are ACP stdio. Devin is the Organization API. Tailscale is a network overlay for HTTP loopback, not a harness protocol, and is **not installed** on this machine.
+There is no single connect method. Cursor uses desktop hooks. Isolated Codex uses App
+Server JSON-RPC. ChatGPT.exe is observe/focus only. OpenCode and Qwen use HTTP. Hermes,
+Kimi, OMP, and Grok Build use ACP stdio. Devin uses the Organization API. Tailscale is
+only a network overlay for loopback HTTP and is not a harness protocol.
 
 Supervisor-model routing is a separate layer from worker harness integration. Settings
 persists a versioned provider/model/auth/protocol/base URL snapshot plus an opaque native
