@@ -1240,3 +1240,14 @@ resource use remain unmeasured after this source change.
 
 Focused pet lifecycle/resource coverage passed 10/10; complete desktop coverage passed
 252/252 and TypeScript exited 0. No native GPU/CPU measurement exists.
+
+## 8 September hidden pet reader lifecycle focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/App.tsx` overlay activity boundary | REVIEWED / REPAIRED | Durable pet visibility now joins page visibility in gating the socket and pet/goal readers; inactive state resets canonical authority. |
+| `apps/desktop/src/releasePet.test.ts` hidden reader contract | REVIEWED / EXTENDED | Negative contract rejected visibility-only gating and binds socket, poll, reset, and reactivation wiring. |
+
+One stale adjacent source assertion failed the first complete run and was corrected to bind
+the stronger lifecycle boundary. Final adjacent coverage passed 43/43, complete desktop
+coverage passed 252/252, and TypeScript exited 0. Native Tauri lifecycle is unmeasured.

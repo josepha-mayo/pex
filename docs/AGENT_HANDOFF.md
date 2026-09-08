@@ -8652,3 +8652,18 @@ The dirty bit is expected because the protected operator-owned file below is ret
   focused pet lifecycle/resource gate passed **10/10**, the complete desktop gate passed
   **252/252**, and TypeScript exited 0. This is source behavior, not measured GPU/CPU proof,
   and PEX remained closed after the reported machine freeze.
+
+### 8 September hidden-pet reader lifecycle slice
+
+- The pet transport previously trusted only `document.visibilityState`. Native Tauri hide can
+  make the overlay non-visible without guaranteeing that WebView visibility changes, leaving
+  its authenticated event socket and 30-second pet/goal readers alive unnecessarily.
+- A single `observationActive` boundary now combines page visibility with the durable native
+  pet-visible setting. Hiding the overlay clears canonical authority, aborts its readers and
+  closes its socket; showing it immediately establishes a new connection and fresh reads.
+  Main and Settings remain active based on page visibility alone.
+- The expanded source contract failed on the old visibility-only implementation and passed
+  after the repair. A broader run then exposed and corrected one stale adjacent source
+  assertion. Final focused coverage passed **43/43**, the complete desktop gate passed
+  **252/252**, and TypeScript exited 0. Native Tauri hide/show and resource behavior still
+  need the later bounded live profile.

@@ -613,3 +613,7 @@ Do the next safe, highest-impact item immediately. If a required external choice
   complete desktop 252/252 and TypeScript pass.
 - [ ] Measure overlay WebView GPU/CPU at idle in the bounded native profile; source CSS is not
   evidence that the whole-PC freeze is resolved.
+- [x] Gate pet WebSocket and reconciliation readers on durable native pet visibility as well
+  as page visibility; hide clears authority/aborts work and show refreshes immediately.
+  Adjacent 43/43, complete desktop 252/252, and TypeScript pass.
+- [ ] Verify Tauri hide/show releases the overlay's socket/readers in the bounded native trace.

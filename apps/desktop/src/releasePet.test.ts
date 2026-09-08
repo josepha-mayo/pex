@@ -124,14 +124,23 @@ test("hidden webviews release background polling and event sockets", async () =>
   assert.match(app, /const pageVisible = usePageVisibility\(\);/u);
   assert.match(
     app,
-    /if \(pageVisible\) return;[\s\S]*?setCanonicalResources\(initialCanonicalResources\(\)\);/u,
+    /const observationActive = pageVisible && \(shell !== "pet" \|\| petVisible\);/u,
+    "native pet visibility must gate readers even if a hidden WebView reports visible",
   );
   assert.match(
     app,
-    /const PET_RECONCILIATION_INTERVAL_MS = 30_000;[\s\S]*?if \(!bridgeAvailable \|\| !pageVisible\) return;[\s\S]*?const stopPolling = startSerialPolling\(\s*refreshBackgroundPet,\s*PET_RECONCILIATION_INTERVAL_MS,?\s*\);[\s\S]*?message\.topic === "pet"[\s\S]*?markCanonical\("pet", "fresh"\);[\s\S]*?catch \{[\s\S]*?void refreshBackgroundPet\(\);[\s\S]*?socket\?\.close\(\);[\s\S]*?\}, \[bridgeAvailable, markCanonical, pageVisible, refreshPet\]\);/u,
+    /if \(observationActive\) return;[\s\S]*?setCanonicalResources\(initialCanonicalResources\(\)\);/u,
+  );
+  assert.match(
+    app,
+    /const PET_RECONCILIATION_INTERVAL_MS = 30_000;[\s\S]*?if \(!bridgeAvailable \|\| !observationActive\) return;[\s\S]*?const stopPolling = startSerialPolling\(\s*refreshBackgroundPet,\s*PET_RECONCILIATION_INTERVAL_MS,?\s*\);[\s\S]*?message\.topic === "pet"[\s\S]*?markCanonical\("pet", "fresh"\);[\s\S]*?catch \{[\s\S]*?void refreshBackgroundPet\(\);[\s\S]*?socket\?\.close\(\);[\s\S]*?\}, \[bridgeAvailable, markCanonical, observationActive, refreshPet\]\);/u,
+  );
+  assert.match(
+    app,
+    /if \(!bridgeAvailable \|\| !observationActive \|\| shell !== "pet"\) return;[\s\S]*?refreshPetGoals\(signal\)/u,
   );
   const visibilityStops = app.match(/if \([^\n]*!pageVisible[^\n]*\) return;/gu) ?? [];
-  assert.ok(visibilityStops.length >= 7, "every recurring state poll must stop while hidden");
+  assert.ok(visibilityStops.length >= 5, "main/settings recurring state polls must stop while hidden");
 });
 
 for (const [newIntent, delayedCommand] of [

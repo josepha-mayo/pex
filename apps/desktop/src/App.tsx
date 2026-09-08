@@ -401,6 +401,7 @@ export function App() {
   const [clickThrough, setClickThrough] = useState(false);
   const [petVisible, setPetVisible] = useState(petOverlayVisible);
   const pageVisible = usePageVisibility();
+  const observationActive = pageVisible && (shell !== "pet" || petVisible);
 
   useEffect(() => {
     const syncVisibility = () => setPetVisible(petOverlayVisible());
@@ -414,12 +415,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (pageVisible) return;
-    // Hidden webviews release their readers below. Their last snapshots remain
-    // useful for rendering, but cannot retain mutation authority until every
-    // relevant canonical resource has refreshed after visibility returns.
+    if (observationActive) return;
+    // Hidden webviews and a user-hidden native pet release their readers below.
+    // Their last snapshots remain useful for rendering, but cannot retain mutation
+    // authority until every relevant canonical resource refreshes after reactivation.
     setCanonicalResources(initialCanonicalResources());
-  }, [pageVisible]);
+  }, [observationActive]);
   const [importDir, setImportDir] = useState("");
   const [hookHarness, setHookHarness] = useState<HookHarness>("cursor");
   const [hookProject, setHookProject] = useState("");
@@ -608,7 +609,7 @@ export function App() {
   }, [markCanonical]);
 
   useEffect(() => {
-    if (!bridgeAvailable || !pageVisible) return;
+    if (!bridgeAvailable || !observationActive) return;
     let cancelled = false;
     const controller = new AbortController();
     // Event bursts share the pending background read; explicit post-mutation
@@ -716,7 +717,7 @@ export function App() {
       if (retryTimer != null) window.clearTimeout(retryTimer);
       socket?.close();
     };
-  }, [bridgeAvailable, markCanonical, pageVisible, refreshPet]);
+  }, [bridgeAvailable, markCanonical, observationActive, refreshPet]);
 
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || shell === "pet") return;
@@ -737,13 +738,13 @@ export function App() {
   }, [bridgeAvailable, loadBaseState, pageVisible, shell]);
 
   useEffect(() => {
-    if (!bridgeAvailable || !pageVisible || shell !== "pet") return;
+    if (!bridgeAvailable || !observationActive || shell !== "pet") return;
     const stopPolling = startSerialPolling((signal) => refreshPetGoals(signal), 30000);
     return () => {
       baseRequestSequence.current += 1;
       stopPolling();
     };
-  }, [bridgeAvailable, pageVisible, refreshPetGoals, shell]);
+  }, [bridgeAvailable, observationActive, refreshPetGoals, shell]);
 
   useEffect(() => {
     const route = () => {

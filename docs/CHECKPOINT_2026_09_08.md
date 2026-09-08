@@ -1494,3 +1494,15 @@ hover/hop/drag behavior and Home motion remain. The negative source contract fai
 old CSS and the focused pet lifecycle/resource gate passed 10/10 after the change. Native
 GPU/CPU impact remains unmeasured and the freeze incident remains open. The complete desktop
 gate subsequently passed 252/252 and TypeScript exited 0.
+
+## Hidden pet reader lifecycle
+
+The user-hidden native pet no longer relies only on browser page visibility to release work.
+Its durable visible state now gates the event socket plus pet and goal reconciliation readers;
+hide clears canonical authority and aborts work, while show starts immediate fresh reads. Main
+and Settings retain their normal page-visibility behavior. The old implementation failed the
+expanded contract and the focused pet lifecycle/resource gate passed 10/10 after repair.
+A complete run then caught one stale adjacent source assertion; it was updated to require the
+stronger lifecycle boundary. Final adjacent coverage passed 43/43, complete desktop coverage
+passed 252/252, and TypeScript exited 0. Actual Tauri hide/show behavior remains a bounded
+native verification item.

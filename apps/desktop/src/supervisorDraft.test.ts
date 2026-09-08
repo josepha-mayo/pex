@@ -111,7 +111,7 @@ test("floating pet refreshes canonical goals without loading heavy settings stat
   );
   assert.match(
     app,
-    /if \(!bridgeAvailable \|\| !pageVisible \|\| shell !== "pet"\) return;[\s\S]*?refreshPetGoals\(signal\)[\s\S]*?baseRequestSequence\.current \+= 1/u,
+    /if \(!bridgeAvailable \|\| !observationActive \|\| shell !== "pet"\) return;[\s\S]*?refreshPetGoals\(signal\)[\s\S]*?baseRequestSequence\.current \+= 1/u,
   );
 });
 

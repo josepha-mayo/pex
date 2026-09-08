@@ -489,3 +489,6 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
 - The transparent always-on-top pet no longer applies an infinite CSS transform in addition
   to its bounded atlas timer. Source tests retain actual pet motion, but no post-change native
   GPU/CPU profile exists; do not claim the reported whole-PC freeze is fixed from CSS alone.
+- Hidden-overlay network release now uses durable pet visibility rather than assuming native
+  hide always changes `document.visibilityState`. The source contract proves cleanup wiring,
+  but no post-change Tauri socket/reader trace exists; retain this native verification gap.

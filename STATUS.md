@@ -1954,3 +1954,11 @@ and compact Home keeps its richer motion. The old CSS failed the new resource co
 focused pet lifecycle gate passed 10/10 after the scoped override, then the complete desktop
 gate passed 252/252 and TypeScript exited 0. Native GPU/CPU impact and freeze resolution remain
 unverified because PEX stayed closed.
+
+The hidden native pet now explicitly releases its event socket and pet/goal readers using the
+durable pet-visible state as well as browser page visibility. It also clears stale canonical
+authority and refreshes immediately when shown. The previous visibility-only wiring failed
+the expanded contract and the repaired focused gate passed 10/10. Tauri hide/show behavior
+still needs a bounded live trace; this is not freeze closure. The first complete run caught
+one stale adjacent source assertion, which was corrected; final adjacent coverage passed
+43/43, complete desktop coverage passed 252/252, and TypeScript exited 0.
