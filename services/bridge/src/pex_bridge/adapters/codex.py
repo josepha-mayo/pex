@@ -1868,9 +1868,29 @@ class CodexAdapter(HarnessAdapter):
                     await asyncio.sleep(0.25)
                     continue
                 now = asyncio.get_running_loop().time()
+                buffered_notifications = getattr(transport, "notifications", [])
+                if not isinstance(buffered_notifications, list):
+                    raise RuntimeError("Codex notifications are malformed")
+                # An isolated thread is bound by thread/start before its first event.
+                # Drain such known-session work before a potentially slow account-wide
+                # thread/list walk; otherwise a large history can hide a completed turn
+                # until discovery finishes. Unknown sessions still require discovery.
+                known_session_work_pending = any(
+                    isinstance(message, dict)
+                    and self._session_for(
+                        message.get("params")
+                        if isinstance(message.get("params"), dict)
+                        else {}
+                    )
+                    is not None
+                    for message in buffered_notifications[:MAX_CODEX_RECORDS]
+                )
                 if (
-                    last_discover is None
-                    or now - last_discover >= CODEX_DISCOVERY_INTERVAL_SECONDS
+                    not known_session_work_pending
+                    and (
+                        last_discover is None
+                        or now - last_discover >= CODEX_DISCOVERY_INTERVAL_SECONDS
+                    )
                 ):
                     # The central desktop refresh owns one shared process snapshot.
                     # This event pump needs App Server threads only; asking it to
@@ -1927,7 +1947,7 @@ class CodexAdapter(HarnessAdapter):
                     # Do not acknowledge an approval until its audit event has been
                     # ingested. A transient store failure must retry this exact request.
                     seen_approvals[key] = receipt_key
-                notifications = getattr(transport, "notifications", []) if transport else []
+                notifications = buffered_notifications
                 if not isinstance(notifications, list) or len(notifications) > MAX_CODEX_RECORDS:
                     raise RuntimeError("Codex notifications exceeded the safety bound")
                 # Consume only the stable prefix visible at the start of this pass.

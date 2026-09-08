@@ -108,6 +108,56 @@ async def test_codex_pump_ingests_stop_permission_and_agent_message():
     assert session.cwd == "C:/proj"
 
 
+async def test_codex_pump_drains_bound_turn_before_blocked_discovery():
+    transport = CodexAppServerTransport()
+    adapter = CodexAdapter(transport)
+    session = HarnessSession(
+        id="codex:thr_owned",
+        harness_type=HarnessType.CODEX,
+        vendor_session_id="thr_owned",
+        project_id="C:/proj",
+        cwd="C:/proj",
+        status="working",
+    )
+    adapter.sessions[session.id] = session
+    transport.notifications.extend(
+        [
+            {"method": "remoteControl/status/changed", "params": {"status": "ready"}},
+            {
+                "method": "turn/completed",
+                "params": {
+                    "threadId": "thr_owned",
+                    "turn": {"id": "turn_owned", "status": "completed", "items": []},
+                },
+            },
+        ]
+    )
+    discovery_entered = asyncio.Event()
+
+    async def blocked_discovery(*, observe_desktop=True):
+        assert observe_desktop is False
+        discovery_entered.set()
+        await asyncio.Event().wait()
+
+    ingested: list[HarnessEvent] = []
+
+    async def ingest(event, _session):
+        ingested.append(event)
+
+    adapter.discover_sessions = blocked_discovery
+    task = adapter.start_pipeline_pump(ingest)
+    try:
+        for _ in range(40):
+            if ingested:
+                break
+            await asyncio.sleep(0.01)
+        assert [event.event_type for event in ingested] == [EventType.STOP]
+        await asyncio.wait_for(discovery_entered.wait(), timeout=1)
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+
 @pytest.mark.parametrize(
     "command",
     [
