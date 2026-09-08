@@ -14,7 +14,12 @@ from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.acp_client import FakeAcpTransport
 from pex_bridge.adapters.acp_harness import HermesAdapter, KimiAdapter, OmpAdapter
 from pex_bridge.adapters.claude_code import ClaudeCodeAdapter
-from pex_bridge.adapters.codex import CodexAdapter, CodexAppServerTransport
+from pex_bridge.adapters.codex import (
+    CODEX_DISCOVERY_INTERVAL_SECONDS,
+    CodexAdapter,
+    CodexAppServerTransport,
+    _codex_discovery_delay,
+)
 from pex_bridge.adapters.codex_bin import resolve_codex_bin
 from pex_bridge.adapters.cursor import CursorAdapter
 from pex_bridge.adapters.cursor_bin import resolve_cursor_agent
@@ -58,6 +63,13 @@ def test_desktop_detection_uses_running_apps():
     assert by_name["hermes"]["connect"] == "observe-process"
     assert by_name["claude_code"]["connect"] == "hooks"
     assert all(item["kind"] == "desktop" for item in found)
+
+
+def test_codex_discovery_cadence_is_event_first_and_idle_bounded():
+    assert CODEX_DISCOVERY_INTERVAL_SECONDS >= 5.0
+    assert _codex_discovery_delay(None, now=20.0) == 0.0
+    assert _codex_discovery_delay(20.0, now=21.5) == 3.5
+    assert _codex_discovery_delay(20.0, now=30.0) == 0.0
 
 
 async def test_discover_keeps_chatgpt_and_isolated_appserver_apart(monkeypatch):

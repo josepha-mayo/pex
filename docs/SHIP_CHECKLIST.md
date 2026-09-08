@@ -592,3 +592,7 @@ Do the next safe, highest-impact item immediately. If a required external choice
   review passed. Two transient Vite port diagnostics did not leave a listener.
 - [ ] Re-capture and inspect the changed Home in the native app after bounded-run authority
   is renewed following the idle whole-PC freeze. This source slice is not visual proof.
+- [x] Back off attached Codex idle `thread/list` discovery from one to five seconds while
+  preserving immediate event/approval wakes; negative contract and 116-test adapter gate pass.
+- [ ] Measure native bridge/desktop CPU after this backoff; source cadence is not proof that
+  the reported whole-PC freeze is fixed.

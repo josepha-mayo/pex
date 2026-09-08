@@ -1448,3 +1448,12 @@ wiring; the post-change adjacent UI gate passed 110/110, the complete desktop co
 passed 251/251, and TypeScript passed. The full run printed transient Vite WebSocket
 port-24678 diagnostics but left no listener afterward. Native visual proof is still pending
 because PEX stayed closed following the idle machine freeze report.
+
+## Codex idle discovery backoff
+
+The attached Codex event pump previously issued `thread/list` every second even without
+activity. Event delivery already has an immediate activity wake, so the idle/new-session
+list cadence is now a named, tested 5-second interval. The negative cadence test failed
+before implementation; the post-change Codex/discovery gate passed 116/116 with Ruff clean.
+This is a source-level four-fifths reduction in scheduled list RPCs, not live CPU proof and
+not a claim that the reported freeze is resolved. PEX remained closed.

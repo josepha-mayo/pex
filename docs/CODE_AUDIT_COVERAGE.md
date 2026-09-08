@@ -1190,3 +1190,13 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 The complete desktop command also passed 251/251 and TypeScript passed. Two transient Vite
 port-24678 diagnostics left no listener immediately after the run. This is not a review of
 all desktop code and is not current native visual evidence.
+
+## 8 September Codex idle discovery focused review
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `services/bridge/src/pex_bridge/adapters/codex.py` pump cadence | REVIEWED / REPAIRED | Event wake remains immediate; idle `thread/list` refresh uses a tested 5-second delay instead of an inline 1-second loop. |
+| `tests/unit/test_fleet_pets_codex.py` cadence contract | REVIEWED / EXTENDED | Import/contract failed before implementation; focused test and complete three-file adapter gate passed. |
+
+The three-file gate passed 116/116 in 30.86 seconds and Ruff was clean. This does not
+establish measured runtime CPU or complete review of Codex adapter behavior.

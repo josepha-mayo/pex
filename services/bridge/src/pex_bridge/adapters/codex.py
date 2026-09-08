@@ -55,6 +55,15 @@ MAX_CODEX_NOTIFICATIONS_PER_PASS = 256
 MAX_CODEX_SESSIONS = 10_000
 MAX_INBOX_MESSAGES = 1_000
 MAX_PATH_CHARS = 4_096
+CODEX_DISCOVERY_INTERVAL_SECONDS = 5.0
+
+
+def _codex_discovery_delay(last_discover: float | None, *, now: float) -> float:
+    """Return the idle wait until the next App Server session-list refresh."""
+
+    if last_discover is None:
+        return 0.0
+    return max(0.0, last_discover + CODEX_DISCOVERY_INTERVAL_SECONDS - now)
 
 
 class _CodexRemoteError(RuntimeError):
@@ -1850,7 +1859,10 @@ class CodexAdapter(HarnessAdapter):
                     await asyncio.sleep(0.25)
                     continue
                 now = asyncio.get_running_loop().time()
-                if last_discover is None or now - last_discover >= 1.0:
+                if (
+                    last_discover is None
+                    or now - last_discover >= CODEX_DISCOVERY_INTERVAL_SECONDS
+                ):
                     await self.discover_sessions()
                     last_discover = now
                 pending = getattr(transport, "pending_approvals", {}) if transport else {}
@@ -2023,10 +2035,9 @@ class CodexAdapter(HarnessAdapter):
                 self.last_pump_error = None
                 wait_for_activity = getattr(transport, "wait_for_activity", None)
                 if callable(wait_for_activity):
-                    discovery_due = (
-                        1.0
-                        if last_discover is None
-                        else max(0.0, last_discover + 1.0 - asyncio.get_running_loop().time())
+                    discovery_due = _codex_discovery_delay(
+                        last_discover,
+                        now=asyncio.get_running_loop().time(),
                     )
                     await wait_for_activity(timeout=discovery_due)
                 else:

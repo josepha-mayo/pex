@@ -470,3 +470,7 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   change. Source and adjacent tests prove the new conditional wiring, not its native visual
   result. Do not use that older capture as evidence of the changed Home, and do not reopen
   PEX for visual proof until the post-freeze bounded native run is authorized.
+- The Codex App Server pump's idle `thread/list` cadence was reduced from one second to five
+  seconds with immediate notification wakes preserved. This removes scheduled RPC frequency
+  by contract but has not been live-profiled. The prior idle freeze remains unresolved until
+  a bounded native run measures desktop, bridge, and App Server process CPU/memory together.

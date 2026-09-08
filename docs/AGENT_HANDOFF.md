@@ -8577,3 +8577,20 @@ The dirty bit is expected because the protected operator-owned file below is ret
   Preserve that distinction when filming or declaring release readiness.
 - The protected `services/supervisor/src/pex_supervisor/loop.py` remained unstaged and
   has SHA-256 `DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`.
+
+### 8 September Codex idle-discovery resource slice
+
+- An attached Codex App Server pump handled notifications through its event wake, but
+  independently sent `thread/list` every second while idle. This is unnecessary continuous
+  RPC load and a plausible contributor to the earlier measured bridge CPU, though it is not
+  claimed as the sole cause of the whole-PC freeze.
+- `CODEX_DISCOVERY_INTERVAL_SECONDS` is now 5 seconds and
+  `_codex_discovery_delay()` is the one tested cadence calculation. Notifications and
+  approvals still wake the pump immediately; only idle/new-session list refresh is slower.
+- The new cadence test failed at collection before the implementation, then passed. Full
+  Codex/discovery coverage (`test_adapter_capabilities.py`, `test_existing_sessions.py`,
+  `test_fleet_pets_codex.py`) passed **116/116** in 30.86 seconds; scoped Ruff and diff
+  checks passed.
+- This proves a four-fifths reduction in scheduled idle list-RPC frequency by contract,
+  not a measured CPU reduction. Native PEX remained closed; re-profile during a later
+  bounded run before calling the freeze fixed.

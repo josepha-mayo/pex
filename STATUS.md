@@ -1922,3 +1922,9 @@ remain in Inspector/Settings. The old implementation failed the new regression; 
 implementation passed 110 adjacent UI tests, all 251 desktop tests, and TypeScript. The full
 run emitted transient Vite WebSocket port diagnostics but left no listener. PEX was not
 reopened, so current native visual behavior and freeze resolution remain unverified.
+
+The attached Codex event pump also no longer sends an idle `thread/list` RPC every second.
+Its list refresh is now every five seconds while App Server events/approvals still wake
+immediately. The cadence regression failed before the implementation and the three-file
+Codex/discovery gate passed 116/116 afterward. This is verified scheduling behavior, not a
+measured CPU improvement; PEX stayed closed and the machine-freeze report remains open.
