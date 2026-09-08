@@ -5,7 +5,36 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: dormant adapter event pumps
+## Latest offline slice: bootstrap observer cadence and visibility
+
+The main/settings webview observed the native bridge bootstrap command every 750ms
+for its entire lifetime. That cadence was useful while a sidecar was starting or a
+failed state needed to expose Retry, but it continued after authenticated readiness
+and while the page was hidden. The native Rust identity monitor already owns liveness;
+the webview observer only projects that canonical native status into UI state.
+
+Bootstrap polling now shares the page visibility lifecycle: a hidden page aborts and
+retires its current bounded read, cancels the timer and performs no further bootstrap
+IPC. Showing the page starts the serial poll immediately, so a hidden-time failure or
+completed startup is observed before the next delay. Starting and failed phases retain
+the 750ms cadence. Ready state uses a five-second cadence, adding at most five seconds
+after the native monitor's own detection while reducing steady visible IPC from about
+1.33 calls/second to 0.2. Pet webviews still never own bootstrap polling.
+
+The source-contract negative first failed because the effect lacked both the visibility
+guard and ready-state cadence. Final focused startup/visibility tests pass **22/22**;
+the complete desktop suite passes **248/248** in 4.84s; TypeScript no-emit exits 0.
+One focused SSR run emitted `WebSocket server error: Port 24678 is already in use` from
+Vite HMR, but all 22 assertions completed successfully. The occupant was not identified
+or killed because the user is running other work on this PC.
+
+Parent review covered phase transitions, effect cleanup/dependencies, immediate serial
+poll startup, the native status command and native liveness ownership. This does not
+alter token verification, retry authority, native monitoring or sidecar lifetime. It
+does not measure native resources, prove the whole-PC freeze cause or clear stability.
+PEX stayed closed; no model, worker, browser, cloud, build or native run occurred.
+
+## Earlier offline slice: dormant adapter event pumps
 
 Bridge lifespan startup called every adapter's event-pump starter regardless of
 whether that adapter had any protocol event source. Codex, OpenCode, Qwen, Devin and
@@ -48,9 +77,9 @@ reader. When the webview becomes hidden, React cleanup aborts active reads, stop
 serial pollers, clears the reconnect timer and closes the event socket. When visible
 again, each applicable view performs its normal immediate refresh and the socket
 resumes through its durable cursor, preserving ledger catch-up rather than treating
-visibility as acknowledgement. The native bootstrap observer is intentionally not
-gated because it owns the bounded startup/bridge transition rather than normal UI
-state. Bridge supervision, adapters and the durable ledger are unchanged.
+visibility as acknowledgement. At this slice the native bootstrap observer was left
+unchanged; the follow-up above now gates that observer while hidden and lowers its
+ready-state cadence. Bridge supervision, adapters and the durable ledger are unchanged.
 
 Hiding also resets all canonical-resource freshness markers. Cached snapshots remain
 available for stable rendering, but no stale settings, goal, completion or identity

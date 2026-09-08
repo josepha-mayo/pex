@@ -101,6 +101,12 @@ export function shouldPollBridgeBootstrap(isTauri: boolean, shell: "main" | "set
   return isTauri && shell !== "pet";
 }
 
+export function bridgeBootstrapPollInterval(phase: BridgeBootstrapStatus["phase"]): number {
+  // Startup and recovery should feel immediate. Once ready, the native monitor
+  // owns liveness; the webview only needs a low-frequency status observation.
+  return phase === "ready" ? 5_000 : 750;
+}
+
 export function bridgeBootstrapAvailable(
   isTauri: boolean,
   shell: "main" | "settings" | "pet",

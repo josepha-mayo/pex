@@ -2,6 +2,12 @@
 
 ## Current — 8 September WAT
 
+Native bootstrap observation now stops with a hidden page and backs off from 750ms
+to five seconds once ready; startup and failed recovery retain 750ms, and showing the
+page performs an immediate read. The native identity monitor still owns liveness.
+Focused tests pass 22/22, all desktop tests pass 248/248, and TypeScript exits 0.
+PEX stayed closed; this is not a native stability or freeze-recovery result.
+
 Default bridge startup now leaves eight transportless harness event pumps dormant
 instead of waking each one every 250ms. Configured startup sources, verified HTTP/ACP
 attachments and isolated Codex attachment still start through their existing paths. The reproduced negative

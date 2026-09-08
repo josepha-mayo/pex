@@ -9,6 +9,7 @@ import {
   KNOWN_BRIDGE_FAILURE_CODES,
   advanceBridgeBootstrapStatus,
   bridgeBootstrapAvailable,
+  bridgeBootstrapPollInterval,
   initialBridgeBootstrapStatus,
   normalizeBridgeBootstrapStatus,
   shouldPollBridgeBootstrap,
@@ -258,12 +259,19 @@ test("only main desktop surfaces poll or mutate bridge bootstrap state", () => {
   assert.equal(shouldPollBridgeBootstrap(false, "main"), false);
 });
 
-test("native bootstrap reads use the shared budget and retire with their owning poll", async () => {
+test("ready bootstrap observation uses a low-frequency recovery cadence", () => {
+  assert.equal(bridgeBootstrapPollInterval("starting"), 750);
+  assert.equal(bridgeBootstrapPollInterval("failed"), 750);
+  assert.equal(bridgeBootstrapPollInterval("ready"), 5_000);
+});
+
+test("native bootstrap reads pause while hidden and back off after readiness", async () => {
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
   assert.match(source, /const readNativeBridgeBootstrap = boundedSingleFlightRead\(/u);
   assert.match(source, /normalizeBridgeBootstrapStatus\(await readNativeBridgeBootstrap\(signal\)\)/u);
-  assert.match(source, /if \(!shouldPollBridgeBootstrap\(TAURI, shell\)\) return;\s*const stopPolling = startSerialPolling\(async \(signal\) => \{\s*const next = await readBridgeBootstrapStatus\(signal\);\s*if \(signal.aborted\) return;/u);
-  assert.match(source, /if \(next\) acceptBridgeStartupStatus\(next\);\s*\}, 750\);\s*return stopPolling;/u);
+  assert.match(source, /if \(!pageVisible \|\| !shouldPollBridgeBootstrap\(TAURI, shell\)\) return;\s*const stopPolling = startSerialPolling\(async \(signal\) => \{\s*const next = await readBridgeBootstrapStatus\(signal\);\s*if \(signal.aborted\) return;/u);
+  assert.match(source, /if \(next\) acceptBridgeStartupStatus\(next\);\s*\}, bridgeBootstrapPollInterval\(bridgeStartup\.phase\)\);\s*return stopPolling;/u);
+  assert.match(source, /\[acceptBridgeStartupStatus, bridgeStartup\.phase, pageVisible, shell\]/u);
 });
 
 test("control-read availability gates ready UI without corrupting native generation state", () => {

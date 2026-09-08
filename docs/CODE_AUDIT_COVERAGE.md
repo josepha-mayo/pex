@@ -2,6 +2,14 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent reviewed bootstrap-status ownership across App,
+`startupRecovery.ts`, the native status command/identity monitor and visibility store.
+Main/settings pages now stop bootstrap IPC when hidden, poll startup/failure at 750ms,
+and back ready observation off to five seconds; re-show immediately reads current
+native state. Focused startup/visibility 22/22, all desktop 248/248 and TypeScript
+no-emit pass. One focused SSR run warned that Vite HMR port 24678 was occupied but
+passed; no unknown process was touched. This is not native monitor, CPU or freeze proof.
+
 New-path addendum: `tests/unit/test_idle_event_pumps.py`. Parent reviewed the adapter
 registry, all eight pump-capable default adapters, settings attachment ordering and
 each runtime attach call site before changing the common starter. Event pumps with a

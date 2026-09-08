@@ -35,6 +35,7 @@ import { applyPetClickThrough, expandMainSurface, hidePetOverlay, nextPetExpansi
 import {
   advanceBridgeBootstrapStatus,
   bridgeBootstrapAvailable,
+  bridgeBootstrapPollInterval,
   browserDevelopmentBridgeStatus,
   initialBridgeBootstrapStatus,
   normalizeBridgeBootstrapStatus,
@@ -490,15 +491,15 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!shouldPollBridgeBootstrap(TAURI, shell)) return;
+    if (!pageVisible || !shouldPollBridgeBootstrap(TAURI, shell)) return;
     const stopPolling = startSerialPolling(async (signal) => {
       const next = await readBridgeBootstrapStatus(signal);
       if (signal.aborted) return;
       setBridgeControlAvailable(next !== null);
       if (next) acceptBridgeStartupStatus(next);
-    }, 750);
+    }, bridgeBootstrapPollInterval(bridgeStartup.phase));
     return stopPolling;
-  }, [acceptBridgeStartupStatus, shell]);
+  }, [acceptBridgeStartupStatus, bridgeStartup.phase, pageVisible, shell]);
 
   const retryBridgeBootstrap = useCallback(async () => {
     if (!bridgeStartup.retryable || bridgeRetrying) return;

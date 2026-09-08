@@ -2,6 +2,15 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: the main/settings webview no longer polls native bootstrap state every 750ms
+forever. Startup/failure still use 750ms for responsive recovery; verified ready state
+uses five seconds, and hidden pages stop the observer entirely. Visibility return is
+an immediate serial-poll read, while the native identity monitor remains the liveness
+owner. Focused startup/visibility tests pass 22/22, all desktop tests pass 248/248,
+and TypeScript no-emit exits 0. One focused SSR run emitted a non-fatal Vite HMR
+port-24678 collision warning; its assertions passed and no unknown process was killed.
+Source lifecycle proof only: PEX remains closed and native resource impact is unknown.
+
 Latest: default bridge startup no longer creates event-pump tasks for eight adapters
 that have neither a transport nor ACP client. Those dormant loops each woke every
 250ms despite having no possible event source. Configured transports still start at
@@ -17,8 +26,8 @@ and durable-event websocket while the bridge continues supervising independently
 Showing the page restarts immediate canonical reads and reconnects from the durable
 event cursor. Hiding also clears canonical freshness, so cached render snapshots
 cannot authorize Settings, goal, completion or identity mutations before refresh.
-The startup-owned native bootstrap observer is intentionally unchanged. Focused
-visibility/settings tests pass 41/41, the complete desktop suite passes 247/247, and
+The then-unchanged bootstrap observer is bounded by the follow-up above. Focused
+visibility/settings tests passed 41/41, the complete desktop suite passed 247/247, and
 TypeScript no-emit exits 0. This is source-level lifecycle proof only: PEX remained
 closed, no native CPU/GPU measurement or freeze-cause claim was made, and installers
 still predate the repair.

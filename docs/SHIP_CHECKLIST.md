@@ -16,6 +16,8 @@ historical. Overall submission remains NO-GO and the full steps below remain req
 - [x] Bound native bootstrap UI waiting without multiplying uncancellable IPC;
   reject retired late observations and cancel poll publication on cleanup.
   220 focused desktop tests and TypeScript pass; raw native recovery remains unproven.
+- [x] Stop hidden bootstrap-status IPC and back ready observation from 750ms to five
+  seconds while retaining fast startup/failure recovery. Desktop 248/248 and TS pass.
 - [x] Pause hidden/page-background sprite and CSS animation without resetting
   dismissed messages; share and clean up the visibility listener. 223 tests/TS pass.
   Native timer/GPU/CPU measurements remain part of the open P0 verification gate.
