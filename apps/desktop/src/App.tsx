@@ -22,6 +22,7 @@ import { PetStage } from "./components/PetStage";
 import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
 import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { createOperatorRequest } from "./operatorRequest";
+import { usePageVisibility } from "./pageVisibility";
 import {
   boundedRead, boundedReadBatch, boundedSingleFlightRead, coalesceBackgroundRead,
   startSerialPolling,
@@ -395,6 +396,7 @@ export function App() {
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
   const [petVisible, setPetVisible] = useState(petOverlayVisible);
+  const pageVisible = usePageVisibility();
 
   useEffect(() => {
     const syncVisibility = () => setPetVisible(petOverlayVisible());
@@ -406,6 +408,14 @@ export function App() {
       window.removeEventListener(PET_VISIBILITY_EVENT, syncDirectVisibility);
     };
   }, []);
+
+  useEffect(() => {
+    if (pageVisible) return;
+    // Hidden webviews release their readers below. Their last snapshots remain
+    // useful for rendering, but cannot retain mutation authority until every
+    // relevant canonical resource has refreshed after visibility returns.
+    setCanonicalResources(initialCanonicalResources());
+  }, [pageVisible]);
   const [importDir, setImportDir] = useState("");
   const [hookHarness, setHookHarness] = useState<HookHarness>("cursor");
   const [hookProject, setHookProject] = useState("");
@@ -584,7 +594,7 @@ export function App() {
   }, [markCanonical]);
 
   useEffect(() => {
-    if (!bridgeAvailable) return;
+    if (!bridgeAvailable || !pageVisible) return;
     let cancelled = false;
     const controller = new AbortController();
     // Event bursts share the pending background read; explicit post-mutation
@@ -683,10 +693,10 @@ export function App() {
       if (retryTimer != null) window.clearTimeout(retryTimer);
       socket?.close();
     };
-  }, [bridgeAvailable, refreshPet]);
+  }, [bridgeAvailable, pageVisible, refreshPet]);
 
   useEffect(() => {
-    if (!bridgeAvailable || shell === "pet") return;
+    if (!bridgeAvailable || !pageVisible || shell === "pet") return;
     const includeHatch = shell === "settings";
     let firstRefresh = true;
     const stopPolling = startSerialPolling(
@@ -701,16 +711,16 @@ export function App() {
       baseRequestSequence.current += 1;
       stopPolling();
     };
-  }, [bridgeAvailable, loadBaseState, shell]);
+  }, [bridgeAvailable, loadBaseState, pageVisible, shell]);
 
   useEffect(() => {
-    if (!bridgeAvailable || shell !== "pet") return;
+    if (!bridgeAvailable || !pageVisible || shell !== "pet") return;
     const stopPolling = startSerialPolling((signal) => refreshPetGoals(signal), 30000);
     return () => {
       baseRequestSequence.current += 1;
       stopPolling();
     };
-  }, [bridgeAvailable, refreshPetGoals, shell]);
+  }, [bridgeAvailable, pageVisible, refreshPetGoals, shell]);
 
   useEffect(() => {
     const route = () => {
@@ -858,16 +868,16 @@ export function App() {
   }, [markCanonical]);
 
   useEffect(() => {
-    if (!bridgeAvailable || shell === "pet") return;
+    if (!bridgeAvailable || !pageVisible || shell === "pet") return;
     void loadSettings();
     return () => {
       settingsRequestSequence.current += 1;
     };
-  }, [bridgeAvailable, loadSettings, shell]);
+  }, [bridgeAvailable, loadSettings, pageVisible, shell]);
 
   useEffect(() => {
     const loadingRevision = supervisor?.revision;
-    if (!bridgeAvailable || shell === "pet" || !settingsAvailable || savingSupervisor
+    if (!bridgeAvailable || !pageVisible || shell === "pet" || !settingsAvailable || savingSupervisor
       || supervisor?.activation_status !== "loading" || !isSupervisorRevision(loadingRevision)) return;
     let cancelled = false;
     const stopPolling = startSerialPolling(async (signal) => {
@@ -900,7 +910,7 @@ export function App() {
       cancelled = true;
       stopPolling();
     };
-  }, [bridgeAvailable, markCanonical, savingSupervisor, settingsAvailable, shell,
+  }, [bridgeAvailable, markCanonical, pageVisible, savingSupervisor, settingsAvailable, shell,
     supervisor?.activation_status, supervisor?.revision]);
 
   const sessions = useMemo(() => {
@@ -946,6 +956,7 @@ export function App() {
       markCanonical("completion", "reset");
       return;
     }
+    if (!pageVisible) return;
     if (!attachedGoal?.id) {
       goalEvidenceKey.current = null;
       setLedgerDecisions([]);
@@ -989,7 +1000,7 @@ export function App() {
       cancelled = true;
       stopPolling();
     };
-  }, [attachedGoal?.id, attachedGoal?.intent_revision, bridgeAvailable, markCanonical]);
+  }, [attachedGoal?.id, attachedGoal?.intent_revision, bridgeAvailable, markCanonical, pageVisible]);
 
   const loadDetails = useCallback(async (includeDeck = false, showLoading = false, signal?: AbortSignal) => {
     const requestSequence = ++detailRequestSequence.current;
@@ -1176,7 +1187,7 @@ export function App() {
   }, [identitySelectedProjectId]);
 
   useEffect(() => {
-    if (!bridgeAvailable || surface === "compact" || shell !== "main") return;
+    if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;
     setBench((state) => ({ ...state, loading: state.runs.length === 0 && !state.message }));
     let ticks = 0;
     const stopPolling = startSerialPolling((signal) => {
@@ -1188,10 +1199,10 @@ export function App() {
       detailRequestSequence.current += 1;
       stopPolling();
     };
-  }, [bridgeAvailable, loadDetails, shell, surface, pet?.last_action?.id]);
+  }, [bridgeAvailable, loadDetails, pageVisible, shell, surface, pet?.last_action?.id]);
 
   useEffect(() => {
-    if (!bridgeAvailable || surface === "compact" || shell !== "main") return;
+    if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;
     let firstRefresh = true;
     const stopPolling = startSerialPolling((signal) => {
       const pending = loadProjectIdentityConflicts({ showLoading: firstRefresh, signal });
@@ -1203,10 +1214,10 @@ export function App() {
       setIdentityConflictLoading(false);
       stopPolling();
     };
-  }, [bridgeAvailable, loadProjectIdentityConflicts, shell, surface]);
+  }, [bridgeAvailable, loadProjectIdentityConflicts, pageVisible, shell, surface]);
 
   useEffect(() => {
-    if (!bridgeAvailable || surface !== "deck" || shell !== "main" || activeView !== "decisions") return;
+    if (!bridgeAvailable || !pageVisible || surface !== "deck" || shell !== "main" || activeView !== "decisions") return;
     let firstRefresh = true;
     const stopPolling = startSerialPolling((signal) => {
       const pending = loadProjectIdentityStatus({ showLoading: firstRefresh, signal });
@@ -1218,7 +1229,7 @@ export function App() {
       setIdentityStatusLoading(false);
       stopPolling();
     };
-  }, [activeView, bridgeAvailable, loadProjectIdentityStatus, shell, surface]);
+  }, [activeView, bridgeAvailable, loadProjectIdentityStatus, pageVisible, shell, surface]);
 
   const petState = canonicalResources.pet;
   const sessionStateFresh = !bridgeError

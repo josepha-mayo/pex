@@ -2,6 +2,15 @@
 
 ## 8 September — idle-freeze report and bounded resource review
 
+Changed-path addendum: parent reviewed every changed `App.tsx` visibility guard,
+effect cleanup/dependency list, event-socket reconnection path and canonical-resource
+freshness reset, plus the full new/adjusted source-contract tests. Hidden webviews
+now release UI pollers/readers and their socket; visible views immediately resume
+canonical reads and durable-cursor catch-up. Cached state loses mutation authority
+while hidden. Focused visibility/settings tests pass 41/41, all desktop tests pass
+247/247, and TypeScript no-emit exits 0. This grants no whole-App audit, rendered or
+packaged proof, native resource measurement, bridge-loop approval or freeze diagnosis.
+
 Changed-path addendum: parent reviewed the full Codex pump's transport transition,
 discovery and event-loop ordering plus the central shared-snapshot discovery owner.
 Transportless pumping no longer calls the `tasklist`-capable desktop fallback every

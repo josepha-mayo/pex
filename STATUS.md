@@ -2,6 +2,14 @@
 
 ## Current — 8 September WAT
 
+Hidden/minimized desktop webviews now stop all recurring UI-owned HTTP readers and
+the event websocket while bridge supervision stays independent. Visibility restore
+immediately refreshes applicable state and reconnects from the durable event cursor.
+Canonical freshness is cleared on hide so cached snapshots cannot authorize a stale
+mutation before those reads finish. Focused tests pass 41/41, the complete desktop
+suite passes 247/247, and TypeScript no-emit exits 0. PEX stayed closed; native
+resource impact and freeze recovery remain unverified.
+
 The Codex event pump no longer launches redundant desktop process discovery while
 it has no App Server transport. A deterministic negative reproduced the prior call;
 all 33 Codex pump tests plus 42 central discovery/pet tests and Ruff pass. Central

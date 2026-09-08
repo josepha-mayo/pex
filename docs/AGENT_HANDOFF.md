@@ -2,6 +2,17 @@
 
 ### Current checkpoint — 8 September WAT
 
+Latest: hidden/minimized desktop webviews now release their recurring HTTP readers
+and durable-event websocket while the bridge continues supervising independently.
+Showing the page restarts immediate canonical reads and reconnects from the durable
+event cursor. Hiding also clears canonical freshness, so cached render snapshots
+cannot authorize Settings, goal, completion or identity mutations before refresh.
+The startup-owned native bootstrap observer is intentionally unchanged. Focused
+visibility/settings tests pass 41/41, the complete desktop suite passes 247/247, and
+TypeScript no-emit exits 0. This is source-level lifecycle proof only: PEX remained
+closed, no native CPU/GPU measurement or freeze-cause claim was made, and installers
+still predate the repair.
+
 Latest: the always-on Codex pump no longer invokes desktop discovery every second
 while no App Server transport exists. That path could spawn Windows `tasklist` and
 duplicated the central shared process snapshot. The pump now sleeps until transport

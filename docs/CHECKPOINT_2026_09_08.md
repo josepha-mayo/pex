@@ -5,7 +5,42 @@ target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work
 remains. Do not substitute packaging success or a synthetic test for product proof.
 
-## Latest offline slice: transportless Codex pump discovery
+## Latest offline slice: hidden webview resource ownership
+
+The desktop page already paused pet animation when hidden, but its state readers and
+durable-event websocket remained alive. A minimized or hidden PEX window could keep
+polling pet, goal, settings, activation, completion, inspector and identity state,
+and could reconnect its event socket indefinitely even though no UI was observable.
+That duplicated background work while the bridge process continued its independent
+supervision duties.
+
+`App` now shares the existing page-visibility signal with every recurring UI-owned
+reader. When the webview becomes hidden, React cleanup aborts active reads, stops the
+serial pollers, clears the reconnect timer and closes the event socket. When visible
+again, each applicable view performs its normal immediate refresh and the socket
+resumes through its durable cursor, preserving ledger catch-up rather than treating
+visibility as acknowledgement. The native bootstrap observer is intentionally not
+gated because it owns the bounded startup/bridge transition rather than normal UI
+state. Bridge supervision, adapters and the durable ledger are unchanged.
+
+Hiding also resets all canonical-resource freshness markers. Cached snapshots remain
+available for stable rendering, but no stale settings, goal, completion or identity
+snapshot can retain mutation authority during the gap before the visible refresh
+finishes. A source-contract negative failed before the lifecycle wiring existed. An
+existing pet-goal wiring expectation then caught the added visibility precondition
+and was updated without weakening its canonical-goal assertion. Final evidence:
+
+- visibility/settings focused selection: **41/41 passed**;
+- complete desktop test command: **247/247 passed** in 5.46s;
+- `npm exec tsc -- --noEmit`: **exit 0**.
+
+Parent review covered every changed effect, cleanup, dependency list and the
+fail-closed freshness transition. These tests establish source-level cleanup and
+resume wiring; they do not measure native CPU/GPU/memory, identify the reported
+whole-PC freeze cause, validate a packaged binary, or clear the native stability
+gate. PEX remained closed and no model, worker, browser, cloud or build ran.
+
+## Earlier offline slice: transportless Codex pump discovery
 
 The always-on Codex event pump called `discover_sessions()` once per second even when
 it had no App Server transport. In that state Codex discovery falls back to the

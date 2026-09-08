@@ -100,6 +100,23 @@ test("hidden pets retain bubble state while sprite and pointer timers use the vi
   assert.match(atlas, /return \(\) => window.clearTimeout\(id\);\s*\}, \[animationFrame, durations, looking, motionPaused, rowName, src\]\)/u);
 });
 
+test("hidden webviews release background polling and event sockets", async () => {
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+
+  assert.match(app, /import \{ usePageVisibility \} from "\.\/pageVisibility";/u);
+  assert.match(app, /const pageVisible = usePageVisibility\(\);/u);
+  assert.match(
+    app,
+    /if \(pageVisible\) return;[\s\S]*?setCanonicalResources\(initialCanonicalResources\(\)\);/u,
+  );
+  assert.match(
+    app,
+    /if \(!bridgeAvailable \|\| !pageVisible\) return;[\s\S]*?const stopPolling = startSerialPolling\(refreshBackgroundPet, 4000\);[\s\S]*?socket\?\.close\(\);[\s\S]*?\}, \[bridgeAvailable, pageVisible, refreshPet\]\);/u,
+  );
+  const visibilityStops = app.match(/if \([^\n]*!pageVisible[^\n]*\) return;/gu) ?? [];
+  assert.ok(visibilityStops.length >= 7, "every recurring state poll must stop while hidden");
+});
+
 for (const [newIntent, delayedCommand] of [
   ["hide", "plugin:window|set_position"],
   ["hide", "plugin:window|show"],
