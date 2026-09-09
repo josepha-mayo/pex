@@ -89,6 +89,9 @@ Professionals who already run Cursor, Codex, Claude Code, OpenCode, or similar h
 
 If agents keep multiplying, humans become full-time dispatchers. PEX attacks that job directly: attach to the sessions you already have, do the mechanical supervision, and only interrupt for real decisions.
 
+The concise judge comparison and its evidence boundaries are in
+[`DIFFERENTIATION.md`](DIFFERENTIATION.md).
+
 ## What PEX does
 
 - Connects through each harness's supported surface and labels the resulting capability at
