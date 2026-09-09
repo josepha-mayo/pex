@@ -24,11 +24,11 @@ Backend changes: `367b759`, including `5d2b717`, enforce goal/session pause
 at the inference and deterministic routing boundaries. The planner/router/loop/
 trajectory gate passes 165 tests; scoped lint passes. No billable calls occurred.
 
-Latest package-verified source: `493aec0`, BEFORE those two pause fixes. It includes
-the current UI/pet repairs and event-stream/adapter responsiveness changes.
+Latest package-verified source: `2966259`, including the pause, BYOK confirmation,
+trajectory-order, UI/pet and event-stream/adapter responsiveness repairs.
 Both installers passed extracted payload/inventory checks. Exact receipt:
-`build/pex-package-receipt-493aec0.json`; durable hashes:
-[package checkpoint](demo/evidence/PACKAGE_493AEC0_2026-09-09.md).
+`build/pex-package-receipt-2966259.json`; durable hashes and warnings:
+[package checkpoint](demo/evidence/PACKAGE_2966259_2026-09-09.md).
 Package readiness is not product readiness. Earlier full-suite totals are
 historical, not a test run against current HEAD.
 

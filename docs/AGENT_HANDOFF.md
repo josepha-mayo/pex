@@ -1,5 +1,18 @@
 # PEX agent handoff
 
+### Latest package checkpoint — 2966259
+
+Clean source `2966259676113bb05638b501188d53e65f83e66e` now has rebuilt MSI/NSIS
+packages, including the pause safeguards, BYOK confirmation and trajectory repair.
+Full Tauri build and extracted package verifier both exited zero. Both installer
+inventories verified with zero blockers. Receipt:
+`build/pex-package-receipt-2966259.json`; durable hashes and warnings:
+[package evidence](demo/evidence/PACKAGE_2966259_2026-09-09.md).
+
+This supersedes older statements below that 493aec0 is the latest candidate.
+No desktop UI was launched or installed. Native safety hold remains in force;
+package success does not prove live behavior or submission readiness.
+
 ### Benchmark outcome credit repaired (offline audit)
 
 `benchmarks/pex_attach.py::_observed_outcome` previously treated any baseline
