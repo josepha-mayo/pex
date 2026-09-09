@@ -22,6 +22,8 @@ reviewed, scoped updates.
   Strands Agents 1.53.0 without exposing the secret or using a paid fallback.
 - [x] Re-run the Strands/AgentCore gate: 200/200.
 - [x] Build and verify current MSI/NSIS: `release_ready:true`, zero package blockers.
+- [x] Run the final clean repository-wide Python gate with the pinned release toolchain:
+  4,178 passed, 32 skipped, zero failures in 1,949.92 seconds.
 - [ ] Run the guarded native stability smoke only with its explicit authorization.
 - [ ] Record the demo and submit.
 - [ ] Keep PexBench unfrozen until OS-isolated hidden evaluation and the Cursor network receipt
@@ -157,9 +159,9 @@ drop requirements or declare an unverified product ready.
   Packaged ancestor `9357bb8` passes the complete real quiet and same-thread recovery Codex +
   free Muse/Strands pair; exact `9966a60` separately passes quiet while its recovery attempt
   failed closed on verifier timeout and must not be presented as a pass.
-  Full current Python and the guarded
-  installed/fresh-profile native smoke stay open; the protected concurrent `loop.py` edit
-  intentionally keeps the primary checkout non-clean.
+  Final current Python passes 4,178 tests with 32 intentional skips and zero failures under the
+  pinned Rust/Cargo 1.97.1 release environment. The guarded installed/fresh-profile native smoke
+  stays open.
 - [ ] **H. Finish honest benchmark and code-audit closure.**
   Acceptance: equivalent prompts/environments, no evaluator leakage, failed
   runs and PEX overhead retained; full spec/audit coverage checked, not inferred

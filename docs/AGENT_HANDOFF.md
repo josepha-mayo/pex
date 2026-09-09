@@ -9512,6 +9512,11 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - Regression/integration evidence: 58 passed plus one live deselection for the focused adapter
   gate; 361 passed plus three live deselections across supervisor/OpenCode/Codex/Cursor; desktop
   260/260; Rust 18/18; Strands/AgentCore 200/200; production TypeScript/Vite build passed.
+- Final clean repository-wide Python gate, with the pinned Rust/Cargo 1.97.1 toolchain available
+  to release-preflight tests: 4,178 passed, 32 skipped, zero failures in 1,949.92 seconds (32:29),
+  exit code 0. The immediately preceding environment-only run had 4,177 passed, 32 skipped and
+  one release-preflight failure because `rustc` was missing from `PATH`; the exact node then
+  passed and the full clean rerun is the accepted result.
 - Exact frozen release bridge plus installed OpenCode 1.18.29 passed 20 authenticated adapter
   polls: all `Deep`, 492.1 ms minimum, 506.7 ms median, 707.7 ms maximum. Owned processes,
   ports 4097/17423, and the isolated profile were removed afterward.

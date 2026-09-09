@@ -2,8 +2,7 @@
 
 **Current checkpoint: 9 September WAT.** Exact clean source `933239a` has a verified MSI and
 NSIS package receipt (`build/pex-package-receipt.json`) and a sealed local submission bundle.
-The prior complete repository gate passes
-4,175 tests with 34 intentional skips, the eight-task benchmark package passes its 201-test
+The current clean repository gate passes 4,178 tests with 32 intentional skips, the eight-task benchmark package passes its 201-test
 contract gate, and the offline Strands/AgentCore gate passes all 200 collected tests with the
 locked AgentCore runtime installed. Packaged ancestor `9357bb8` has fresh real Codex Spark plus
 free-Muse Strands quiet/recovery evidence. This does not close native stability,
@@ -19,6 +18,8 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   source-pinned QuixBugs tasks; retain `frozen:false` and refuse presentation execution while
   OS isolation and complete Cursor evidence are missing.
 - [x] Re-run the complete offline Strands/AgentCore gate: 200/200 passed.
+- [x] Re-run the complete clean Python gate with the pinned release toolchain: 4,178 passed,
+  32 skipped, zero failures in 1,949.92 seconds.
 - [x] Recapture verified-completion `NOOP` and incomplete-work same-thread recovery through real
   Codex Spark and real free-Muse Strands on exact clean package source `9357bb8`; retain the
   preceding account-level `thread/list` timeout as a failed attempt.

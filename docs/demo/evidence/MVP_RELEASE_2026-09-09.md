@@ -21,6 +21,12 @@ Focused verification passed:
 - Strands and AgentCore contracts: **200/200**;
 - production TypeScript/Vite build: passed.
 
+The final clean repository-wide Python gate was then run with the pinned Rust/Cargo 1.97.1
+toolchain available to release-preflight tests: **4,178 passed, 32 skipped, zero failures** in
+1,949.92 seconds (32:29), exit code 0. An earlier environment-only attempt produced one failure
+because `rustc` was absent from `PATH`; the exact failed release-preflight node passed after the
+pinned toolchain was restored, and the complete clean rerun above is the accepted gate.
+
 ## Exact frozen bridge + OpenCode
 
 Installed OpenCode 1.18.29 was started only on loopback port 4097. The exact frozen bridge later
