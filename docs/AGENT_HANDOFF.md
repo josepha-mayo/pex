@@ -48,6 +48,24 @@ attempt omitted Cargo from that shell's PATH and failed before receipt generatio
 run used the already installed pinned Rust toolchain and passed. Package integrity is not native
 stability evidence. PEX remained closed throughout.
 
+Exact clean-source desktop and native-shell contracts also pass: **260/260 Node tests** and
+**18/18 locked Rust tests**. The Node command emitted non-fatal Vite dependency-scan shutdown
+noise because port 24678 was already occupied by another user process; its authoritative TAP
+summary was zero failures. Do not kill or steal that unrelated process. Production Vite had
+already passed inside the release build.
+
+A bounded exact-source live check then ran with Codex Spark and the saved free Muse/Strands
+configuration. Quiet completion passed and produced a validated one-call Strands `NOOP`; its
+stable proof SHA-256 is
+`B7CEE65EFBF3259123C1D966F4618D91CF0F0912345DFAAC41033197CAC3B293`. Recovery did **not**
+pass: the main Strands agent gathered the correct acceptance-gap evidence and proposed a specific
+correction, but the mandatory independent verifier timed out before its first evidence-tool call.
+The default 15-second attempt and one changed-condition retry at the supported 25-second maximum
+both failed closed to `NOOP`; no continuation was delivered. Live retries stopped. Exact JUnit
+hashes and the sanitized audit diagnosis are in
+`docs/demo/evidence/LIVE_CODEX_STRANDS_2026-09-09.md`. Do not claim an exact-`9966a60` live pair;
+the complete recovery proof remains the earlier `9357bb8` ancestor evidence.
+
 The benchmark manifest remains `frozen:false`: the development contract is green, but the
 installed Codex 0.153.4 Windows sandbox was adversarially tested and still allowed the worker
 identity to read the hidden evaluator through inherited `CodexSandboxUsers` ACLs. Network denial
