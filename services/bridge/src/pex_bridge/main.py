@@ -209,7 +209,12 @@ def main() -> None:
     port = args.port if args.port is not None else state.settings.port
     if not 1 <= port <= 65_535:
         parser.error("PEX bridge port must be between 1 and 65535")
-    uvicorn.run(create_app(), host=host, port=port, log_level="info")
+    # The authenticated event stream is loopback-only. Compressing historical
+    # pages consumes bridge CPU without saving a remote network transfer.
+    uvicorn.run(
+        create_app(), host=host, port=port, log_level="info",
+        ws_per_message_deflate=False,
+    )
 
 
 if __name__ == "__main__":

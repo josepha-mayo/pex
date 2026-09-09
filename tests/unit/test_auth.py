@@ -93,8 +93,9 @@ def test_release_main_scrubs_operator_token_before_worker_spawns(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["pex-bridge", "--host", "127.0.0.1", "--port", "7420"])
     launched: dict[str, object] = {}
 
-    def fake_run(app, *, host, port, log_level):
-        launched.update(app=app, host=host, port=port, log_level=log_level)
+    def fake_run(app, *, host, port, log_level, ws_per_message_deflate):
+        launched.update(app=app, host=host, port=port, log_level=log_level,
+                        ws_per_message_deflate=ws_per_message_deflate)
 
     monkeypatch.setattr(uvicorn, "run", fake_run)
     bridge_main.main()
@@ -103,6 +104,7 @@ def test_release_main_scrubs_operator_token_before_worker_spawns(monkeypatch):
     assert _bridge_token() == operator
     assert launched["host"] == "127.0.0.1"
     assert launched["port"] == 7420
+    assert launched["ws_per_message_deflate"] is False
 
 
 def test_direct_asgi_import_consumes_operator_env_before_any_child_spawn(tmp_path):

@@ -131,10 +131,12 @@ export function PetStage({
   function onPointerEnter() {
     if (!interactive || reducedMotion) return;
     clearTimers();
-    hopDwell.current = window.setTimeout(() => {
-      setHop(true);
-      hopPlay.current = window.setTimeout(() => setHop(false), HOP_PLAY_MS);
-    }, HOP_DWELL_MS);
+    if (!overlay) {
+      hopDwell.current = window.setTimeout(() => {
+        setHop(true);
+        hopPlay.current = window.setTimeout(() => setHop(false), HOP_PLAY_MS * 2);
+      }, HOP_DWELL_MS * 2);
+    }
   }
 
   function resetPointer() {

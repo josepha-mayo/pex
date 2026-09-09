@@ -470,23 +470,39 @@ p {
   min-height: 0;
   overflow: auto;
   display: grid;
-  align-content: center;
-  padding: 28px clamp(24px, 6vw, 68px);
+  grid-template-columns: 190px minmax(0, 1fr);
+  align-content: start;
+  gap: 24px;
+  padding: 28px;
 }
 
 .compact-companion {
-  width: min(620px, 100%);
+  width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 16px 20px;
   margin: 0 auto;
-  padding: 30px 32px;
+  padding: 24px;
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: #121d22;
-  box-shadow: 0 20px 54px rgba(0, 0, 0, 0.22);
+  background: #111a20;
+  box-shadow: none;
 }
+
+.worker-rail { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.worker-rail > .eyebrow { margin: 4px 0 12px; }
+.worker-choice { display: grid; gap: 6px; padding: 12px; border: 1px solid transparent;
+  border-radius: 10px; background: transparent; color: var(--paper); text-align: left; }
+.worker-choice[aria-pressed="true"] { background: var(--panel); border-color: var(--line-strong); }
+.worker-choice:hover { background: var(--panel-soft); }
+.worker-choice small, .workspace-heading p { color: var(--muted); overflow-wrap: anywhere; }
+.worker-choice small { font-size: 11px; }
+.workspace-heading { border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.workspace-heading h1 { font-size: 23px; margin: 4px 0 8px; letter-spacing: -0.5px; }
+.workspace-heading p { font-size: 12px; margin: 0; line-height: 1.6; }
+.compact-companion .pet-stage { justify-content: flex-start; }
+.compact-companion .pet-actor { width: 96px; min-height: 116px; }
 
 .compact-companion .pet-stage {
   flex-direction: row;
@@ -2391,6 +2407,8 @@ textarea::placeholder {
 
 /* Transparent desktop overlay */
 
+html.pet-shell { color-scheme: normal; }
+
 html.pet-shell,
 html.pet-shell body,
 html.pet-shell #root {
@@ -2412,6 +2430,8 @@ html.pet-shell #root {
   width: 100%;
   justify-content: flex-start;
   gap: 0;
+  height: 180px;
+  align-items: flex-end;
   -webkit-app-region: drag;
 }
 
@@ -2431,8 +2451,9 @@ html.pet-shell #root {
 
 .pet-stage-overlay > .pet-overlay-close {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 8px;
+  left: 94px;
+  right: auto;
   z-index: 2;
 }
 

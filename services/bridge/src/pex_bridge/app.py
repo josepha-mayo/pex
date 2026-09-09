@@ -142,7 +142,7 @@ ASK_MODEL_TIMEOUT_SECONDS = 25.0
 MAX_WEBSOCKET_MESSAGE_CHARS = 4096
 WEBSOCKET_TOKEN_PROTOCOL_PREFIX = "pex-token."
 MAX_EVENT_SOCKETS = 16
-EVENT_SOCKET_QUEUE_SIZE = 128
+EVENT_SOCKET_QUEUE_SIZE = 8
 EVENT_SOCKET_CATCHUP_PAGE = 100
 EVENT_SOCKET_MAX_CATCHUP = 1000
 EVENT_SOCKET_HEARTBEAT_SECONDS = 15.0
@@ -6424,8 +6424,13 @@ def create_app() -> FastAPI:
 
         async def enqueue(topic: str, payload: dict[str, Any]) -> None:
             try:
-                outbound.put_nowait({"topic": topic, "payload": payload})
-            except asyncio.QueueFull:
+                # Catch-up is a producer: wait for the bounded sender instead
+                # of accumulating pages or reconnecting a healthy consumer.
+                await asyncio.wait_for(
+                    outbound.put({"topic": topic, "payload": payload}),
+                    timeout=SOCKET_SEND_TIMEOUT_SECONDS,
+                )
+            except TimeoutError:
                 await ws.close(code=1013, reason="event socket queue full")
                 raise RuntimeError("event socket queue full") from None
 

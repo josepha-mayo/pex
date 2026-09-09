@@ -2,14 +2,19 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("pet overlay keeps a light native scheme against the shared dark root", async () => {
+test("pet overlay opts out of an opaque themed canvas", async () => {
   const [petHtml, sharedStyles] = await Promise.all([
     readFile(new URL("../pet.html", import.meta.url), "utf8"),
     readFile(new URL("./styles.css", import.meta.url), "utf8"),
   ]);
 
   assert.match(sharedStyles, /^:root\s*\{\s*color-scheme:\s*dark;/mu);
-  assert.match(petHtml, /html\.pet-shell\s*\{\s*color-scheme:\s*only light;\s*\}/u);
+  assert.match(petHtml, /html\.pet-shell\s*\{\s*color-scheme:\s*normal;\s*\}/u);
+});
+
+test("showing the pet never changes the main window background", async () => {
+  const source = await readFile(new URL("./releasePet.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /await pet\.setBackgroundColor\(/u);
 });
 
 test("inactive pet rendering pauses CSS motion and releases its transform hint", async () => {

@@ -2540,12 +2540,30 @@ export function App() {
           aria-label="PEX compact companion"
           tabIndex={-1}
         >
+          <aside className="worker-rail" aria-label="Your workers">
+            <p className="eyebrow">Your workers</p>
+            {sessions.slice(0, 8).map((session) => (
+              <button key={session.id} type="button" className="worker-choice"
+                aria-pressed={current?.id === session.id}
+                onClick={() => setSelectedId(session.id)}>
+                <strong>{titleCase(session.harness_type)}</strong>
+                <small>{session.label || session.cwd?.split(/[\\/]/).filter(Boolean).pop() || "Existing session"}</small>
+                <small>{titleCase(session.status)}</small>
+              </button>
+            ))}
+            <button type="button" className="ghost" onClick={() => openSettings("connections")}>Connect a worker</button>
+          </aside>
           <div className="compact-companion">
+            <div className="workspace-heading">
+              <p className="eyebrow">{current ? `${titleCase(current.harness_type)} workspace` : "Your workspace"}</p>
+              <h1>{attachedGoal?.title || "What are we working toward?"}</h1>
+              <p>{current?.cwd || "Connect OpenCode or Codex, then give PEX a goal to supervise."}</p>
+            </div>
             <PetStage
               name={petName}
               sheet={sheet}
               mood={mood}
-              scale={Math.max(scale, 1.08)}
+              scale={0.78}
               reducedMotion={reducedMotion}
               status={setup ? undefined : homeStatus}
               statusIdentity={pet?.last_action?.id}

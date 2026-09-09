@@ -1,6 +1,5 @@
 const TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-const CLEAR = { red: 0, green: 0, blue: 0, alpha: 0 };
 const PET_VISIBLE_KEY = "pex.pet.overlay.visible";
 export const PET_VISIBILITY_EVENT = "pex-pet-visibility";
 export const PET_NATIVE_DISMISSED_EVENT = "pex-pet-native-dismissed";
@@ -25,11 +24,9 @@ export async function releasePetOverlay() {
   if (main.label === "pet") return;
   const pet = await WebviewWindow.getByLabel("pet");
   if (!pet) return;
-  try {
-    await pet.setBackgroundColor(CLEAR);
-  } catch {
-    /* older webview; CSS still clears the page */
-  }
+  // Background initialization belongs to native setup and the pet webview.
+  // This SDK's setBackgroundColor command targets the invoking webview, not
+  // the looked-up label; invoking it here would clear the main window instead.
   try {
     const pos = await main.outerPosition();
     const size = await main.outerSize();

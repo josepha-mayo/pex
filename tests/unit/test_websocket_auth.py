@@ -18,6 +18,39 @@ def test_event_socket_recovery_poll_does_not_outpace_heartbeat():
     assert EVENT_SOCKET_RECOVERY_POLL_SECONDS >= EVENT_SOCKET_HEARTBEAT_SECONDS
 
 
+def test_catchup_waits_for_tiny_outbound_queue_instead_of_disconnect(tmp_path, monkeypatch):
+    import importlib
+    app_module = importlib.import_module("pex_bridge.app")
+    monkeypatch.setattr(app_module, "EVENT_SOCKET_QUEUE_SIZE", 1)
+    state.settings = Settings.for_test(require_auth=False, home=tmp_path, codex_attach=False)
+
+    async def live_pet():
+        return {"headline": "ready"}
+
+    async def event_page(*, after, **_kwargs):
+        return {
+            "through": "20", "next": str(min(after + 1, 20)),
+            "items": [{"sequence": after + 1}] if after < 20 else [],
+            "has_more": after + 1 < 20, "gap": {"detected": False},
+        }
+
+    monkeypatch.setattr(state, "live_pet", live_pet)
+    monkeypatch.setattr(state.store, "event_publication_page", event_page)
+    # No lifespan: this is an isolated route/transport test, not Store recovery.
+    client = TestClient(create_app(), base_url="http://127.0.0.1")
+    try:
+        with client.websocket_connect(
+            "/v1/events", headers={"origin": "tauri://localhost", "host": "127.0.0.1"},
+        ) as socket:
+            assert socket.receive_json()["topic"] == "pet"
+            for sequence in range(1, 21):
+                page = socket.receive_json()
+                assert page["topic"] == "event_page"
+                assert page["payload"]["items"] == [{"sequence": sequence}]
+    finally:
+        client.close()
+
+
 def test_websocket_requires_token_even_for_tauri_origin(tmp_path, monkeypatch):
     state.settings = Settings(require_auth=True, home=tmp_path, codex_attach=False)
     state.token = f"{'x' * 31},"

@@ -1,5 +1,57 @@
 # PEX agent handoff
 
+### User-directed UI rework and measured event-stream fix — in progress
+
+The user rejected the white pet rectangle, fast motion, moving close controls,
+dashboard-like Home and high usage. Do not interpret old green tests as UI approval.
+Home now has a worker rail and task/workspace heading, with a smaller companion.
+Sprite frame durations are doubled, overlay hover-jumping is disabled, and the
+overlay has a fixed-height control anchor. TypeScript/Vite and the 260-test desktop
+suite passed after the layout/motion changes; the later pet-specific gate passes
+12/12 after background-call cleanup.
+
+A native preview confirmed the changed layout but STILL showed the white pet
+rectangle. Switching `color-scheme: only light` to `normal` was insufficient.
+Inspection of the installed Tauri JS SDK then found that setBackgroundColor
+invokes a current-window command without a target label: calling it on a looked-up
+pet from main can clear the MAIN window. That call is removed; native setup and
+the pet's own webview retain background initialization. This last removal has
+not yet been recaptured natively. Transparency and actual pet-hide interaction
+remain unproven. Do not mark them done.
+
+Native preview executable SHA was
+`9678d51e393d1915e7f2f73d5411f6eb57f001d9dcbeb4d4656f14163dcf3380`.
+It contained the new frontend but reused the old `1985caa` frozen bridge. The local
+smoke script pins that preview hash and explicitly labels this mixed diagnostic
+scope. It is not a release receipt; the previously verified installers remain
+separate from the overwritten canonical preview executable. The run ended and
+closed its owned processes. Never call its temporary environment a clean profile.
+
+Backend profiling: py-spy 0.4.2 was downloaded only into ignored
+`build/tools/pyspy` (not project dependencies). One 20-second, 50-Hz sample of the
+owned frozen bridge produced 679 stack samples with zero sampling errors.
+146 samples were WebSocket deflate compression, 73 JSON serialization, and 71
+event-page model validation/dumping. Raw stacks remain at
+`build/native-idle-1985caa-stacks.txt`, SHA-256
+`ae3bfa42f6da51af1dd6e609efddc35ceb146cb0b4eeeef8dfc300cc88030d31`.
+This is catch-up traffic, not evidence of quiet pet animation causing CPU load.
+
+The production launcher now disables loopback WebSocket per-message deflate.
+Catch-up now awaits bounded queue capacity instead of filling 128 pages and
+disconnecting: queue size is 8, wait retains the existing two-second bound.
+A one-slot, twenty-page regression failed before the queue fix and passes after.
+WebSocket, broadcast, auth, watchdog and publication suites pass 52 tests with two
+platform skips; Ruff passes. The first regression attempt incorrectly entered
+TestClient lifespan (normal Store startup); it now avoids lifespan entirely.
+Do not repeat that test setup mistake. Live CPU improvement is not yet measured.
+
+A read-only SQLite backup diagnostic retained timings under ignored
+`build/pex-read-profile-mfsyi8yk`: projection roughly 100–120 ms, decoration about
+783 ms cold then 4–7 ms warm. No provider or worker ran in that diagnostic.
+The temporary ~118 MiB SQLite backup is still there; original data was not deleted.
+Next: native transparency/control verification, current-source final build and
+resource recapture, then actual worker/goal/BYOK workflow—not more cosmetic claims.
+
 ### Native evidence update — bounded launch succeeded, isolation assumption disproved
 
 Two 30-second idle runs of the exact verified `1985caa` desktop completed under

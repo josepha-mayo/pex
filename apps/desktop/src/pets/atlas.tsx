@@ -99,7 +99,8 @@ export function CodexSprite({
 
   useEffect(() => {
     if (looking || motionPaused || !src) return;
-    const ms = durations[animationFrame];
+    // A companion should feel calm beside real work, not play like a spinner.
+    const ms = durations[animationFrame] * 2;
     const id = window.setTimeout(() => {
       setFrame((current) => animationFrameIndex(current + 1, durations.length));
     }, ms);
