@@ -724,6 +724,31 @@ test("canonical resource failures stay independent and preserve only same-resour
   assert.equal(canonicalResourceIsFreshForScope(contextFresh, "context", "project-a", "project-b"), false);
 });
 
+test("ledger edits require valid decisions for the exact goal revision", async () => {
+  const { canEditGoalLedger, goalLedgerKey, readGoalDecisions } = await import("./goalLedger.ts");
+  const goal = { id: "g1", title: "Goal", objective: "Keep intent", intent_revision: 2 };
+  const key = goalLedgerKey(goal);
+  assert.equal(canEditGoalLedger(goal, key, true), true);
+  assert.equal(canEditGoalLedger(goal, key, false), false);
+  assert.equal(canEditGoalLedger(goal, null, true), false);
+  assert.equal(canEditGoalLedger({ ...goal, id: "g2" }, key, true), false);
+  assert.equal(canEditGoalLedger({ ...goal, intent_revision: 3 }, key, true), false);
+  assert.equal(canEditGoalLedger({ ...goal, intent_revision: undefined }, "g1:unknown", true), false);
+  const rows = [{ id: "d1", goal_id: "g1", statement: "Preserve user files" }];
+  assert.deepEqual(readGoalDecisions(rows, "g1"), rows);
+  assert.deepEqual(readGoalDecisions([], "g1"), []);
+  for (const value of [null, {}, [null], [{ ...rows[0], goal_id: "g2" }],
+    [{ ...rows[0], statement: null }], [{ ...rows[0], metadata: [] }]]) {
+    assert.throws(() => readGoalDecisions(value, "g1"));
+  }
+  const { readFile } = await import("node:fs/promises");
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.match(app, /if \(!goalLedgerEditable\)/u);
+  assert.match(app, /editingGoalLedgerKey.current !== goalLedgerKey\(attachedGoal\)/u);
+  assert.match(app, /readGoalDecisions\(value, attachedGoal.id\)/u);
+  assert.doesNotMatch(app, /setLedgerDecisions\(Array.isArray/u);
+});
+
 test("stale goal and settings authority disable revision-dependent controls", async () => {
   const { readFile } = await import("node:fs/promises");
   const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
@@ -1600,7 +1625,8 @@ test("goal mutations preserve committed success across refresh failures", async 
   assert.match(app, /goalControlAttempts\.current\.delete\(attemptKey\)/);
   assert.match(app, /updated\.goal_mutation_receipt\.changed/);
   assert.match(app, /Persistent ledger already matched; no change was needed\./);
-  assert.match(app, /setNote\(`\$\{ledgerNote\} Its decision view could not refresh yet\.`\)/);
+  assert.match(app, /setNote\(ledgerNote\);[\s\S]*?markCanonical\("decisions", "reset"\);/);
+  assert.doesNotMatch(app, /encodeURIComponent\(updated.id\)\}\/decisions/);
   assert.match(app, /The live view could not refresh yet\./);
   assert.match(
     app,

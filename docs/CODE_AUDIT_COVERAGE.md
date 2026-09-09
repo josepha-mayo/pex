@@ -1,5 +1,20 @@
 # PEX code audit coverage — 5 September 2026
 
+## 9 September — goal ledger edit integrity
+
+Reviewed App goal-evidence loading, draft initialization and save flow against core
+section 5 (durable decisions and intentional updates). Edit previously accepted an
+empty fallback while decisions were unavailable; malformed successful reads were
+also marked fresh. `goalLedger.ts` now validates decision rows and goal identity;
+editing requires the loaded goal/revision and fresh decisions. The draft's starting
+revision must still match before save. Removed the unscoped post-save read that
+could replace another selected goal's view; scoped polling handles refresh.
+The new pure-function and source-wiring regression plus the full desktop suite
+pass: 268 tests, zero skipped (6.82 seconds). TypeScript/Vite build exits 0.
+The first suite run exposed an obsolete assertion for the removed refresh; it was
+updated to require scoped refresh instead. No native UI, model or worker was run.
+This is a changed-path audit, not completion of the full source or live audit.
+
 ## 8 September — idle-freeze report and bounded resource review
 
 Changed-path addendum: read-only contest-profile inspection found a 237,406,792-byte

@@ -22,6 +22,7 @@ import { PetStage } from "./components/PetStage";
 import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
 import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { createOperatorRequest } from "./operatorRequest";
+import { canEditGoalLedger, goalLedgerKey, readGoalDecisions } from "./goalLedger";
 import { usePageVisibility } from "./pageVisibility";
 import {
   boundedRead, boundedReadBatch, boundedSingleFlightRead, coalesceBackgroundRead,
@@ -387,6 +388,8 @@ export function App() {
   const [settingsDestination, setSettingsDestination] = useState<SettingsSection | undefined>();
   const [goalFocusRequest, setGoalFocusRequest] = useState(0);
   const [ledgerDecisions, setLedgerDecisions] = useState<LedgerDecision[]>([]);
+  const loadedGoalLedgerKey = useRef<string | null>(null);
+  const editingGoalLedgerKey = useRef<string | null>(null);
   const [goalCompletion, setGoalCompletion] = useState<GoalCompletion | null>(null);
   const [savingGoal, setSavingGoal] = useState(false);
   const [question, setQuestion] = useState("");
@@ -1051,6 +1054,7 @@ export function App() {
   useEffect(() => {
     if (!bridgeAvailable) {
       goalEvidenceKey.current = null;
+      loadedGoalLedgerKey.current = null;
       goalEvidenceRefresh.current = null;
       markCanonical("decisions", "reset");
       markCanonical("completion", "reset");
@@ -1059,6 +1063,7 @@ export function App() {
     if (!pageVisible) return;
     if (!attachedGoal?.id) {
       goalEvidenceKey.current = null;
+      loadedGoalLedgerKey.current = null;
       goalEvidenceRefresh.current = null;
       setLedgerDecisions([]);
       setGoalCompletion(null);
@@ -1066,9 +1071,10 @@ export function App() {
       markCanonical("completion", "fresh");
       return;
     }
-    const evidenceKey = `${attachedGoal.id}:${attachedGoal.intent_revision ?? "unknown"}`;
+    const evidenceKey = goalLedgerKey(attachedGoal);
     if (goalEvidenceKey.current !== evidenceKey) {
       goalEvidenceKey.current = evidenceKey;
+      loadedGoalLedgerKey.current = null;
       setLedgerDecisions([]);
       setGoalCompletion(null);
       markCanonical("decisions", "reset");
@@ -1080,12 +1086,14 @@ export function App() {
     const refreshGoalEvidence = coalesceBackgroundRead(async () => {
       const signal = controller.signal;
       const [decisionsResult, completionResult] = await Promise.allSettled([
-        bridgeJson<LedgerDecision[]>(`/v1/goals/${goalId}/decisions`, { signal }),
+        bridgeJson<unknown>(`/v1/goals/${goalId}/decisions`, { signal })
+          .then((value) => readGoalDecisions(value, attachedGoal.id)),
         bridgeJson<GoalCompletion>(`/v1/goals/${goalId}/completion`, { signal }),
       ]);
       if (cancelled) return;
       if (decisionsResult.status === "fulfilled") {
-        setLedgerDecisions(Array.isArray(decisionsResult.value) ? decisionsResult.value : []);
+        loadedGoalLedgerKey.current = evidenceKey;
+        setLedgerDecisions(decisionsResult.value);
       }
       markCanonical(
         "decisions",
@@ -1429,6 +1437,10 @@ export function App() {
     && canonicalResourcesAreFresh(canonicalResources, ["pet"]);
   const goalStateFresh = canonicalResourcesAreFresh(canonicalResources, ["goals"]);
   const goalMutationAvailable = goalStateFresh && (!current || sessionStateFresh);
+  const goalLedgerEditable = goalMutationAvailable && canEditGoalLedger(
+    attachedGoal, loadedGoalLedgerKey.current,
+    canonicalResourcesAreFresh(canonicalResources, ["decisions"]),
+  );
   const goalEvidenceFresh = !attachedGoal || canonicalResourcesAreFresh(
     canonicalResources,
     ["decisions", "completion"],
@@ -1640,6 +1652,11 @@ export function App() {
       setNote("Canonical goal state is unavailable. Refresh before saving changes.");
       return;
     }
+    if (editingGoalId && (!goalLedgerEditable || attachedGoal?.id !== editingGoalId
+      || editingGoalLedgerKey.current !== goalLedgerKey(attachedGoal))) {
+      setNote("The ledger is unavailable or changed since editing began. Your draft is kept; reopen the current ledger before saving.");
+      return;
+    }
     const goalProjectId = current?.project_id || current?.cwd || goalDraft.projectId.trim();
     if (
       !goalDraft.title.trim() ||
@@ -1687,16 +1704,9 @@ export function App() {
           ? "Persistent ledger updated."
           : "Persistent ledger already matched; no change was needed.";
         setNote(ledgerNote);
-        try {
-          const rows = await bridgeJson<LedgerDecision[]>(
-            `/v1/goals/${encodeURIComponent(updated.id)}/decisions`,
-          );
-          setLedgerDecisions(Array.isArray(rows) ? rows : []);
-          markCanonical("decisions", "fresh");
-        } catch {
-          markCanonical("decisions", "failed", "Goal decisions could not be refreshed.");
-          setNote(`${ledgerNote} Its decision view could not refresh yet.`);
-        }
+        // The scoped goal-evidence effect refreshes this revision. An unscoped
+        // post-save read could overwrite a newly selected goal's decision view.
+        markCanonical("decisions", "reset");
         return;
       }
       const attemptKey = "create:new-goal";
@@ -2661,6 +2671,11 @@ export function App() {
           onEditGoal={
             attachedGoal
               ? () => {
+                  if (!goalLedgerEditable) {
+                    setNote("The decision ledger is still loading or unavailable. Refresh before editing.");
+                    return;
+                  }
+                  editingGoalLedgerKey.current = goalLedgerKey(attachedGoal);
                   setEditingGoalId(attachedGoal.id);
                   setGoalDraft(
                     goalToDraft(

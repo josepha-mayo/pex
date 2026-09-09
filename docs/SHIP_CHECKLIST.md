@@ -15,8 +15,10 @@ behavior have not been observed. A read-only observer is prepared and tested onl
 with synthetic records. Fresh permission for PEX-only visual checks was requested;
 no permission response has been received yet.
 
-Latest desktop checkpoint: `a988748`, complete suite 267 passed and frontend
-production build passed. At `157b119`, the combined supervisor/trajectory/event-
+Latest desktop checkpoint: goal-ledger freshness repair, complete suite 268 passed
+and frontend production build passed. Editing now requires validated decisions for
+the selected goal revision; stale drafts cannot overwrite newer intent. No native
+app was launched for this verification. At `157b119`, the combined supervisor/trajectory/event-
 processing/AgentCore-routing/mocked Windows-ownership gate passed 107 tests.
 This is not the complete Python suite or live UI
 acceptance. Saving BYOK still explicitly does not claim tested credentials.

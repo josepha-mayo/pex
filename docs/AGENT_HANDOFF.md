@@ -1,6 +1,6 @@
 # PEX active handoff
 
-Maintained checkpoint: 9 September 2026; product source `a988748`.
+Maintained checkpoint: 9 September 2026; includes the goal-ledger freshness repair.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files before relying on this checkpoint. No prior build/test
 session remains running. This is the active entry point, not another historical log.
@@ -81,6 +81,7 @@ Post-package fixes awaiting the next collected rebuild:
 | `157b119` | Bound Retry response to 5 seconds without duplicating unresolved native IPC | 42 recovery/read-budget tests; frontend build |
 | `4fc703c` | Count scope in the 18,000-character decision-text budget | Regression formerly admitted 27,000 characters; 15 context/integration tests; Ruff |
 | `a988748` | Lock goal fields while saving to prevent loss of concurrent edits | 267 desktop tests; frontend build |
+| This checkpoint | Require validated decisions for the selected goal revision before editing; reject stale drafts and remove unscoped post-save decision reads | 268 desktop tests; frontend build |
 
 Collect verified fixes instead of rebuilding after every tiny change. Keep source
 clean and unchanged during build/verification. Never claim current native behavior
@@ -110,7 +111,7 @@ from an older installer.
 
 | Source/scope | Result | Not proven |
 | --- | --- | --- |
-| `a988748` full desktop suite | 267 passed, zero skipped; TypeScript/Vite build exit 0 | Native rendering, interaction, resource use |
+| Goal-ledger freshness repair full desktop suite | 268 passed, zero skipped; TypeScript/Vite build exit 0 | Native rendering, interaction, resource use |
 | `157b119` combined backend gate | 107 passed in 110.29 seconds | Full Python suite; live worker/provider/AgentCore |
 | `4fc703c` context gate | 15 passed | Measured token/cost savings |
 | `2966259` installers | Both extracted inventories verified; zero package blockers | Latest source; end-to-end product acceptance |
