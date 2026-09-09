@@ -27,13 +27,19 @@ worktree. The final receipt has `release_ready:true`, no blockers, and SHA-256
 The first verifier attempt is retained as
 `build/pex-package-receipt.nsis-extractor-missing.json`; the second as
 `build/pex-package-receipt.nsis-7za-unsupported.json`. Neither is a pass. Stable, uninstalled
-artifacts are copied to `C:\Users\JosephMayo\Documents\Codex\PEX-submission-0450dda`.
+artifacts from that checkpoint were copied to
+`C:\Users\JosephMayo\Documents\Codex\PEX-submission-0450dda`.
 
-The offline Strands/AgentCore gate passed **200/200 in 17.34 seconds**. Exact clean package
-source `0450dda` then passed the real Codex Spark plus free-Muse Strands quiet/recovery pair.
-The restraint retry passed in 111.54 seconds; the recovery case passed in the first combined
-236.46-second run. A preceding restraint attempt failed before thread creation because Codex
-`thread/list` timed out at 45 seconds and is retained rather than erased. Read-only AgentCore preflight remains NO-GO,
+The offline Strands/AgentCore gate passed **200/200 in 17.34 seconds**. A first `0450dda`
+restraint attempt failed before thread creation because Codex `thread/list` timed out at 45
+seconds and is retained rather than erased. Commit `9357bb8` switched identity-only enumeration
+to the current App Server's state-database-only path; focused coverage passed 4/4 and the full
+benchmark/Cursor gate passed **201/201 in 367.87 seconds**. Exact clean package source `9357bb8`
+then passed the real Codex Spark plus free-Muse Strands pair **2/2 in 192.03 seconds**, with
+one-turn `NOOP` restraint and two-turn same-thread `SEND_NUDGE` recovery to
+`report.txt=shipped`. Its rebuilt MSI/NSIS receipt is `PACKAGE_RECEIPT_9357BB8.json`, SHA-256
+`B6EE2CBD8E1CC2FA5C1E1707604AB5768AF6742DE76AFCDCF598C002B35841A3`; stable artifacts are
+in `C:\Users\JosephMayo\Documents\Codex\PEX-submission-9357bb8`. Read-only AgentCore preflight remains NO-GO,
 and no AWS resource or paid call ran. PEX was not installed or launched, so the prior freeze and
 all native UX/resource checks remain open. Overall submission remains NO-GO.
 

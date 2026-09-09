@@ -6,12 +6,12 @@
 > native stability. PEX has stayed closed since the incident; a fresh bounded native run still
 > requires explicit user approval. Submission remains NO-GO until that run and the video pass.
 
-> **Current, 9 September WAT:** exact clean product source `0450dda` produced normal MSI and
+> **Current, 9 September WAT:** exact clean product source `9357bb8` produced normal MSI and
 > NSIS installers whose extracted desktop, frozen bridge, Cursor helpers, and eight-pet
 > inventories pass with `release_ready:true` and zero package blockers. The exact receipt is
-> `PACKAGE_RECEIPT_0450DDA.json`. Complete desktop contracts pass 260/260, production
-> TypeScript/Vite compilation passes, the eight-task benchmark/Cursor-hook gate passes 200/200,
-> and the offline Strands/AgentCore gate passes 200/200. Exact package source `0450dda` now
+> `PACKAGE_RECEIPT_9357BB8.json`. Complete desktop contracts pass 260/260, production
+> TypeScript/Vite compilation passes, the eight-task benchmark/Cursor-hook gate passes 201/201,
+> and the offline Strands/AgentCore gate passes 200/200. Exact package source `9357bb8` now
 > retains real Codex Spark plus free Muse/Strands quiet and same-thread recovery evidence. The
 > benchmark remains unfrozen, AgentCore remains undeployed,
 > and PEX has not been installed or launched after the reported idle whole-PC freeze. Native
@@ -96,7 +96,7 @@ If agents keep multiplying, humans become full-time dispatchers. PEX attacks tha
 - Keeps a local policy guard. Cloud can propose; it cannot bypass allow/deny/ask.
 - Surfaces attention as a desktop pet, not another chat transcript.
 
-On September 9, exact packaged source `0450dda` completed both prepared live contracts with an isolated
+On September 9, exact packaged source `9357bb8` completed both prepared live contracts with an isolated
 Codex worker and a real Strands supervisor: it stayed quiet after evidence-supported completion,
 then detected incomplete work, sent a specific nudge to the same Codex thread, observed the
 resulting artifact, marked the intervention helped, and ended with a verified NOOP. The
@@ -139,20 +139,20 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 ## Checklist before clicking Submit
 
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
-- [x] Build all three sidecars/installers from clean product source `0450dda`; both installer
-  inventories and the retained `PACKAGE_RECEIPT_0450DDA.json` pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `0450dda`;
+- [x] Build all three sidecars/installers from clean product source `9357bb8`; both installer
+  inventories and the retained `PACKAGE_RECEIPT_9357BB8.json` pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `9357bb8`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
-- [x] Re-run the clean 200-test benchmark/Cursor-hook gate, 200-test offline Strands/AgentCore
+- [x] Re-run the clean 201-test benchmark/Cursor-hook gate, 200-test offline Strands/AgentCore
   gate, all 260 desktop/UI contracts, and a production TypeScript/Vite build; no benchmark arm,
   native app, AWS resource, or paid call ran
 - [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases and review their full contact and
   direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
-- [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `0450dda`
+- [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
-- [x] Rebuild/package `0450dda` and recapture the semantic quiet/recovery pair on that exact source
+- [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source
 - [ ] Pass bounded native stability and record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence is contract-only, while controlled local Codex + provider-live Strands evidence now exists
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)

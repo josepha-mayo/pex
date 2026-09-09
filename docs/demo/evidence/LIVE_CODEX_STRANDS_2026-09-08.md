@@ -2,31 +2,31 @@
 
 ## 9 September current-package recapture
 
-The same two contracts were recaptured against exact clean packaged source
-`0450ddaececbd3a9eee6f757591626f36c6f86c9`. The worker remained pinned to
+The final two-case recapture passed **2/2 in 192.03 seconds** against exact clean packaged
+source `9357bb8ccd70dbec77d8fed126a59d03decc29fe`. The worker remained pinned to
 `gpt-5.3-codex-spark`; the supervisor used Strands Agents 1.53.0 with Zen's free
 `muse-spark-1.3-contributor-free`. Both validated receipts report `used_llm=true`,
 `runtime=strands-agents`, `provider=zen`, `auth_mode=api_key`, and completed inference. No
 native PEX desktop, Cursor, Docker, AgentCore deployment, AWS resource, or paid model ran.
 
-- Verified-completion restraint: **1 passed in 111.54 seconds**. One Codex turn produced
-  `ping.txt = pong`; one Strands model call returned `NOOP`. The validated proof itself spans
-  100.11 seconds and has SHA-256
-  `1EB6F888264226EDF1877E8F00939B25AF62581D6A5550D89BC040C3DA882255`.
-- Same-thread recovery: the combined first attempt reported this case as passed within the
-  two-case **1 passed / 1 failed in 236.46 seconds** run. One Codex thread had exactly two
-  turns. The first stopped with empty `report.txt`; PEX made four bounded Strands calls with
-  three public evidence observations, sent `CONTINUE_SESSION`, observed `report.txt = shipped`,
-  recorded `helped=true` / `goal_evidence_supported`, and made a final one-call Strands
-  `NOOP`. The validated proof spans 162.94 seconds and has SHA-256
-  `25136FDC19D22D86B9F871913A673E086D722CE8896014AF880CE872F6C17250`.
+- Verified-completion restraint: one Codex turn produced `ping.txt = pong`; one Strands model
+  call returned `NOOP`. The validated proof spans 56.45 seconds and has SHA-256
+  `903E24AFF0A0D2E3998CA6406052DBE044C1F5C98B56D82FDC06E33068A21649`.
+- Same-thread recovery: one Codex thread had exactly two turns. The first stopped with empty
+  `report.txt`; PEX made four bounded Strands calls with three public evidence observations,
+  sent `SEND_NUDGE`, observed `report.txt = shipped`, recorded `helped=true` /
+  `goal_evidence_supported`, and made a final one-call Strands `NOOP`. The validated proof
+  spans 118.15 seconds and has SHA-256
+  `93AC026FE2C3B180F5485EC37D28BC5A6EE978983E5E6E0B4558162EACE0ECD5`.
 
-The first restraint attempt is deliberately retained as
+An earlier `0450dda` restraint attempt is deliberately retained as
 `codex_inspect_proof.failed-thread-list-timeout.json`, SHA-256
 `4CA459461058250EFF0B89AB5AE4FF1D5E680AF7C464256C81F79361DCBD85AD`. It failed before
 thread creation or supervisor inference because an account-level Codex App Server
-`thread/list` request had no verified response within 45 seconds. The immediately following
-recovery case passed, and one bounded restraint retry passed; no further retry loop ran.
+`thread/list` request had no verified response within 45 seconds. Source `9357bb8` now asks
+the current App Server to read authoritative state-database IDs without scanning rollouts for
+optional metadata repair; its focused 4-test gate and complete 201-test benchmark/Cursor gate
+pass, and the final live pair above completed without the timeout.
 
 This closes current-package source-level Strands quiet/recovery evidence. It does not turn the
 unfrozen benchmark into a score, prove the unsigned native desktop, provide ten-case quiet-rate

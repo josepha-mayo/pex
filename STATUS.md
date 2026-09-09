@@ -2,18 +2,18 @@
 
 ## Current — 9 September WAT, verified eight-task package checkpoint
 
-Current packaged product source is `0450ddaececbd3a9eee6f757591626f36c6f86c9`.
+Current packaged product source is `9357bb8ccd70dbec77d8fed126a59d03decc29fe`.
 A detached clean worktree with its own `.venv` built all three frozen sidecars and the normal
 Tauri MSI and NSIS installers. Source preflight was green for all 270 tracked release inputs,
 the eight-pet inventory, toolchain pins, clean Git state, current sidecars, and the frozen
 inventory. `npm run verify:package` then reported `release_ready: true` with no blockers and
 verified both extracted installer payloads. The exact receipt is
-`docs/PACKAGE_RECEIPT_0450DDA.json`, SHA-256
-`A79F9D010C76A9C4EBB03C8360F4ABE749D78FC765EC61DD606239A054C04A9B`.
+`docs/PACKAGE_RECEIPT_9357BB8.json`, SHA-256
+`B6EE2CBD8E1CC2FA5C1E1707604AB5768AF6742DE76AFCDCF598C002B35841A3`.
 
-- MSI SHA-256: `933C86D684DC2260B2F56E5CAFD26EAED5404DA405627757DEFCEA4772F5F61E`.
-- NSIS SHA-256: `C790B8443C7ED648276BB2F245F96A51680473DD8C1A62C331545423B35713E1`.
-- Canonical desktop SHA-256: `1DB3B0F774AEB432E5DF040451B29ABFFF10C2EAEF29525B39711A84234E626F`.
+- MSI SHA-256: `ECA297E16A7C156C17FAE9827A21821A8F02A832787DC02168988B20D6EB7D2D`.
+- NSIS SHA-256: `6A02F78119A4D3395D53D7FC6D59141965685B7EC9D3A14D29A4F1F483F22DC0`.
+- Canonical desktop SHA-256: `E0776B3DAF21776F1DBB7BF8C27C50F66B353BAD296B5ACD8B6A91DD0559B822`.
 - Complete desktop contracts: **260/260 passed**; production TypeScript/Vite build passed.
 
 Package verification was fail-closed. The first attempt retained
@@ -25,11 +25,11 @@ This was not a system-wide install and PEX itself was not installed or launched.
 
 The development benchmark now has the required eight predeclared tasks: five PEX recovery
 stressors and three source/license/hash-pinned QuixBugs repairs, producing a 32-row four-arm
-plan. Its clean benchmark/Cursor-hook gate passes **200/200** and scoped Ruff passes. The
+plan. Its clean benchmark/Cursor-hook gate passes **201/201** and scoped Ruff passes. The
 manifest remains `frozen: false`: OS-enforced hidden-evaluator/no-network isolation and complete
 Cursor raw/same-session evidence remain missing, so no quota-consuming presentation row or
 score ran. The offline Strands/AgentCore gate also passes **200/200**. Exact clean packaged
-source `0450dda` now has a fresh real Codex Spark plus free-Muse Strands pair: verified
+source `9357bb8` now has a fresh real Codex Spark plus free-Muse Strands pair: verified
 completion produced `NOOP`; incomplete work received a specific same-thread continuation,
 reached `report.txt=shipped`, recorded `helped=true`, then produced final `NOOP`. One earlier
 restraint attempt failed before thread creation on a 45-second Codex `thread/list` timeout and
@@ -39,7 +39,7 @@ zero-card-spend authority is not established.
 Overall submission remains **NO-GO** pending the explicitly authorized bounded native
 stability/interaction run, current live demonstration evidence, benchmark execution-boundary
 proof, demo video, and final submission authorization. The stable uninstalled artifacts are in
-`C:\Users\JosephMayo\Documents\Codex\PEX-submission-0450dda`. Older current blocks below are
+`C:\Users\JosephMayo\Documents\Codex\PEX-submission-9357bb8`. Older current blocks below are
 historical.
 
 ## Historical checkpoint — superseded by the 9 September block above

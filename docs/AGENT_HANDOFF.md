@@ -2,43 +2,47 @@
 
 ### Current checkpoint — 9 September WAT
 
-The exact clean package source is `0450ddaececbd3a9eee6f757591626f36c6f86c9`.
+The exact clean package source is `9357bb8ccd70dbec77d8fed126a59d03decc29fe`.
 Commit `18e620e5d939904b4633df4bd53c0023a1c8f2d0` added three pinned QuixBugs repairs to the
 five PEX recovery stressors, reaching the required eight-task development-smoke floor and a
 32-row four-arm plan. Its clean benchmark/Cursor-hook gate passed **200/200 in 441.54s** with
 Ruff clean. Commit `0450dda` then repaired a brittle desktop source-contract assertion; the
 complete desktop suite passed **260/260** and production TypeScript/Vite compilation passed.
 Both commits were pushed with local `HEAD == origin/main` verified at their checkpoints.
+Commit `9357bb8` then made isolated Codex thread enumeration use the current App Server's
+`useStateDbOnly` path, avoiding optional rollout metadata repair that caused a retained live
+45-second timeout. Its focused gate passed 4/4, the complete benchmark/Cursor gate passed
+201/201 in 367.87s, and the commit was pushed with remote equality.
 
 A detached clean worktree at
 `C:\Users\JosephMayo\Documents\Codex\pex-release-18e620e-localenv` was advanced to exact
-`0450dda`, given an independent `.venv`, and verified not to import editable PEX packages from
+`9357bb8`, given an independent `.venv`, and verified not to import editable PEX packages from
 the shared checkout. Source preflight passed all 270 tracked release inputs, exact eight-pet
 inventory, clean Git state, current frozen sidecars, and frozen inventory. The full Tauri release
-built in 6m26s. The final verifier passed both extracted installer payloads with
+completed the normal Tauri release. The final verifier passed both extracted installer payloads with
 `release_ready:true` and no blockers. Receipt:
-`docs/PACKAGE_RECEIPT_0450DDA.json`, SHA-256
-`A79F9D010C76A9C4EBB03C8360F4ABE749D78FC765EC61DD606239A054C04A9B`.
+`docs/PACKAGE_RECEIPT_9357BB8.json`, SHA-256
+`B6EE2CBD8E1CC2FA5C1E1707604AB5768AF6742DE76AFCDCF598C002B35841A3`.
 
-- MSI SHA-256: `933C86D684DC2260B2F56E5CAFD26EAED5404DA405627757DEFCEA4772F5F61E`.
-- NSIS SHA-256: `C790B8443C7ED648276BB2F245F96A51680473DD8C1A62C331545423B35713E1`.
-- Canonical desktop SHA-256: `1DB3B0F774AEB432E5DF040451B29ABFFF10C2EAEF29525B39711A84234E626F`.
-- Release-input SHA-256: `DD81D0E9807065506DE373D7E78377E6A4DCA3D3CF18BD11E197B8134466B94B`.
-- Sidecar-input SHA-256: `84016B78FF9105B973203A5F5D0F4C107C5048CB63E70F0BC1D049B1A6E0F2E8`.
+- MSI SHA-256: `ECA297E16A7C156C17FAE9827A21821A8F02A832787DC02168988B20D6EB7D2D`.
+- NSIS SHA-256: `6A02F78119A4D3395D53D7FC6D59141965685B7EC9D3A14D29A4F1F483F22DC0`.
+- Canonical desktop SHA-256: `E0776B3DAF21776F1DBB7BF8C27C50F66B353BAD296B5ACD8B6A91DD0559B822`.
+- Release-input SHA-256: `8A12C3F339E0B6C673D04E0922BCCD89E333ED2C191EB75DC156C0D7FE6084E4`.
+- Sidecar-input SHA-256: `4946B90EFBA224CBA1C1D54335EA49237FBC9B9F159199CD39595AA908DC724C`.
 
 The first package check retained an extractor-missing failure receipt; the second retained a
 reduced-7za status-2 failure receipt. Only a checksum-verified official 7-Zip 26.03 x64 tool,
 installed inside the detached worktree's build-tools directory, produced the passing check.
 Stable uninstalled artifacts are copied to
-`C:\Users\JosephMayo\Documents\Codex\PEX-submission-0450dda` with a README and exact receipt.
+`C:\Users\JosephMayo\Documents\Codex\PEX-submission-9357bb8` with a README and exact receipt.
 
 The offline Strands runtime/supervisor and AgentCore client/pipeline/runtime/preflight gate
-passed **200/200 in 17.34s**. Exact clean package source `0450dda` then produced a fresh real
-Codex Spark plus free-Muse/Strands pair. Restraint passed in 111.54s with `ping.txt=pong` and a
-one-call `NOOP`; recovery used one thread/two turns, sent `CONTINUE_SESSION`, observed
+passed **200/200 in 17.34s**. Exact clean package source `9357bb8` then produced a fresh real
+Codex Spark plus free-Muse/Strands pair: **2/2 passed in 192.03s**. Restraint used one turn,
+produced `ping.txt=pong`, and returned a one-call `NOOP`; recovery used one thread/two turns, sent `SEND_NUDGE`, observed
 `report.txt=shipped`, recorded `helped=true`, and ended in `NOOP`. Validated proof hashes are
-`1EB6F888264226EDF1877E8F00939B25AF62581D6A5550D89BC040C3DA882255` and
-`25136FDC19D22D86B9F871913A673E086D722CE8896014AF880CE872F6C17250`. A preceding restraint
+`903E24AFF0A0D2E3998CA6406052DBE044C1F5C98B56D82FDC06E33068A21649` and
+`93AC026FE2C3B180F5485EC37D28BC5A6EE978983E5E6E0B4558162EACE0ECD5`. A preceding `0450dda` restraint
 attempt failed before thread creation on a 45-second account-level `thread/list` timeout; its
 retained receipt hash is
 `4CA459461058250EFF0B89AB5AE4FF1D5E680AF7C464256C81F79361DCBD85AD`.

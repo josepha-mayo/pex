@@ -1,0 +1,69 @@
+{
+  "schema": "pex.package-receipt.v1",
+  "stage": "package",
+  "source": {
+    "commit": "9357bb8ccd70dbec77d8fed126a59d03decc29fe",
+    "release_input_sha256": "8a12c3f339e0b6c673d04e0922bccd89e333ed2c191eb75dc156c0d7fe6084e4",
+    "sidecar_input_sha256": "4946b90efba224cba1c1d54335ea49237fbc9b9f159199cd39595aa908dc724c",
+    "preflight_sha256": "6f702708e415af5b67170f2073e3a733a34a7663ffc898479ab4e8efb37e22fc",
+    "canonical_desktop_sha256": "e0776b3daf21776f1dbb7bf8c27c50f66b353bad296b5acd8b6a91dd0559b822"
+  },
+  "installers": {
+    "msi_sha256": "eca297e16a7c156c17fae9827a21821a8f02a832787dc02168988b20d6eb7d2d",
+    "nsis_sha256": "6a02f78119a4d3395d53d7fc6d59141965685b7ec9d3a14d29a4f1f483f22dc0"
+  },
+  "desktop_bundle_marker": {
+    "offset": 11222826,
+    "width": 4,
+    "canonical_marker_hex": "554e4bc0",
+    "msi_marker_hex": "4d5349c0",
+    "nsis_marker_hex": "4e5353c0",
+    "normalized_sha256": "9e747d9a596d1793043c147edd851f02532f6ffdb3683249951a0ee965b17249"
+  },
+  "msi": {
+    "status": "verified",
+    "embedded": {
+      "pex-desktop.exe": {
+        "bytes": 14381056,
+        "sha256": "f40936abbd0ef78d62ea24b8f3eb051443c276e90c1848fce0a5e5fb4dd0f74a"
+      },
+      "pex-bridge.exe": {
+        "bytes": 102181390,
+        "sha256": "ff3b9de6c1d345e8378e29f61344e8abaf5968437375f8e6555929776fd27b32"
+      },
+      "pex-cursor-hook.exe": {
+        "bytes": 9277407,
+        "sha256": "ab01f4da3d576a5d129b77766756b1f9579f4cfc7062051ba2b0e48bd3030a2f"
+      },
+      "pex-cursor-observe.exe": {
+        "bytes": 8488477,
+        "sha256": "9e41362f9a2bce34412bb5e970f28591aa975793151bf0ba96aa50f4fed9023f"
+      }
+    },
+    "inventory_verified": true
+  },
+  "nsis": {
+    "status": "verified",
+    "embedded": {
+      "pex-desktop.exe": {
+        "bytes": 14381056,
+        "sha256": "a9c30841606552481cf7eafe587ffe6e2460fdffd704e6ef81663457a37f1e7f"
+      },
+      "pex-bridge.exe": {
+        "bytes": 102181390,
+        "sha256": "ff3b9de6c1d345e8378e29f61344e8abaf5968437375f8e6555929776fd27b32"
+      },
+      "pex-cursor-hook.exe": {
+        "bytes": 9277407,
+        "sha256": "ab01f4da3d576a5d129b77766756b1f9579f4cfc7062051ba2b0e48bd3030a2f"
+      },
+      "pex-cursor-observe.exe": {
+        "bytes": 8488477,
+        "sha256": "9e41362f9a2bce34412bb5e970f28591aa975793151bf0ba96aa50f4fed9023f"
+      }
+    },
+    "inventory_verified": true
+  },
+  "release_ready": true,
+  "blockers": []
+}

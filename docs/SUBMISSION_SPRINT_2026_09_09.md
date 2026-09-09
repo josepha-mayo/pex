@@ -96,9 +96,10 @@ drop requirements or declare an unverified product ready.
   runtime/Strands integration gate passes 184/184. Read-only preflight still finds no
   active AWS credentials, required CLIs, running Docker engine, image or runtime ARN,
   so deployed proof remains open. No mock is live integration proof.
-  Exact clean package source `0450dda` now passes one real verified-completion `NOOP` and one
+  Exact clean package source `9357bb8` now passes one real verified-completion `NOOP` and one
   real same-thread incomplete-work recovery with Codex Spark plus free Muse/Strands. A preceding
-  account-level `thread/list` timeout is retained. Ten-case quiet-rate coverage and deployed
+  `0450dda` account-level `thread/list` timeout is retained; `9357bb8` repairs its optional
+  rollout-scan latency and the final pair passes 2/2. Ten-case quiet-rate coverage and deployed
   AgentCore remain open, so F stays unchecked.
 
 ### Day 3 — freeze, demonstrate, review submission

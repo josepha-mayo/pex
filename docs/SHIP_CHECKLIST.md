@@ -1,9 +1,9 @@
 # PEX shipping checklist — 5 September 2026
 
-**Current checkpoint: 9 September WAT.** Exact clean source `0450dda` has a verified MSI and
-NSIS package receipt (`PACKAGE_RECEIPT_0450DDA.json`), the complete desktop gate passes
-260/260, the eight-task benchmark package passes its 200-test contract gate, and the offline
-Strands/AgentCore gate passes 200/200, and exact package source `0450dda` has fresh real Codex
+**Current checkpoint: 9 September WAT.** Exact clean source `9357bb8` has a verified MSI and
+NSIS package receipt (`PACKAGE_RECEIPT_9357BB8.json`), the complete desktop gate passes
+260/260, the eight-task benchmark package passes its 201-test contract gate, and the offline
+Strands/AgentCore gate passes 200/200. Exact package source `9357bb8` has fresh real Codex
 Spark plus free-Muse Strands quiet/recovery evidence. This does not close native stability,
 ten-case quiet statistics, OS-isolated benchmark execution, Cursor evidence, AgentCore deployment, video, or
 submission. Follow
@@ -11,14 +11,14 @@ submission. Follow
 historical. Overall submission remains NO-GO and the full steps below remain required.
 
 - [x] Build all three current sidecars and both normal Windows installers from detached clean
-  source `0450dda`; verify both extracted inventories with zero package blockers and retain the
+  source `9357bb8`; verify both extracted inventories with zero package blockers and retain the
   byte-identical tracked receipt.
 - [x] Reach the eight-task development-smoke floor with five recovery stressors and three
   source-pinned QuixBugs tasks; retain `frozen:false` and refuse presentation execution while
   OS isolation and complete Cursor evidence are missing.
 - [x] Re-run the complete offline Strands/AgentCore gate: 200/200 passed.
 - [x] Recapture verified-completion `NOOP` and incomplete-work same-thread recovery through real
-  Codex Spark and real free-Muse Strands on exact clean package source `0450dda`; retain the
+  Codex Spark and real free-Muse Strands on exact clean package source `9357bb8`; retain the
   preceding account-level `thread/list` timeout as a failed attempt.
 - [ ] Run the bounded native resource/interaction smoke only after exact operator permission;
   PEX remains closed after the reported whole-PC freeze.

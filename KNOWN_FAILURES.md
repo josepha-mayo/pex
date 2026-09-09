@@ -2,10 +2,10 @@
 
 ## 9 September 2026 — exact remaining submission blockers after verified package
 
-- Clean source `0450dda` produced MSI and NSIS installers whose extracted desktop, bridge,
+- Clean source `9357bb8` produced MSI and NSIS installers whose extracted desktop, bridge,
   Cursor helpers, and eight-pet inventories all pass the repository verifier. Exact receipt:
-  `docs/PACKAGE_RECEIPT_0450DDA.json`, SHA-256
-  `A79F9D010C76A9C4EBB03C8360F4ABE749D78FC765EC61DD606239A054C04A9B`. This is package
+  `docs/PACKAGE_RECEIPT_9357BB8.json`, SHA-256
+  `B6EE2CBD8E1CC2FA5C1E1707604AB5768AF6742DE76AFCDCF598C002B35841A3`. This is package
   integrity, not native stability, UI interaction, code signing, or publisher trust.
 - PEX was not installed or launched. The prior idle whole-PC freeze remains unexplained, so
   native startup, idle CPU/memory/disk behavior, transparent pet playback, dismissal,
@@ -14,7 +14,7 @@
   the manifest remains unfrozen. No OS-enforced worker boundary blocks hidden evaluator data
   and network access, and Cursor still lacks complete raw/same-session evidence. No live arm,
   score, impact claim, or leaderboard claim is valid yet.
-- Offline Strands and AgentCore contracts pass 200/200. Exact package source `0450dda` now has
+- Offline Strands and AgentCore contracts pass 200/200. Exact package source `9357bb8` now has
   a validated real Codex plus free-Muse Strands NOOP/recovery pair. One prior restraint attempt
   aborted before thread creation when account-level `thread/list` timed out after 45 seconds;
   it remains retained rather than hidden. AgentCore is still undeployed: AWS authentication,
