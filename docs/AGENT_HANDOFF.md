@@ -1,5 +1,30 @@
 # PEX agent handoff
 
+### Native evidence update — bounded launch succeeded, isolation assumption disproved
+
+Two 30-second idle runs of the exact verified `1985caa` desktop completed under
+the watchdog/resource caps. Native Computer Use captured the PEX Home view; no
+mouse/keyboard input was issued and no PEX desktop/bridge remained afterward.
+The normal saved Ledger pet and Cursor state appeared. Rust code inspection
+confirmed that Windows known-folder resolution overrides the harness's temporary
+USERPROFILE/PEX_HOME, so these were NOT clean-profile tests. The first raw
+receipt's isolation claim is invalid and retained with an explicit correction.
+Do not launch this harness believing it isolates durable user state.
+
+Detailed limits, local receipt paths and measurements are recorded in
+`docs/demo/evidence/NATIVE_IDLE_1985CAA_2026-09-09.md`. The second run attributes
+9.375 CPU-seconds over its sample to the persistent bridge, versus less than one
+second per persistent WebView process. This justifies backend idle attribution
+next; it does not establish the freeze cause or long-idle stability. No provider
+save, model call, AWS operation or worker control occurred. The source checkout
+has newer `4a1f0f2` probe changes than the executable tested.
+
+Local diagnostic script remains named `pex-native-smoke-933239a.ps1` but now pins
+the `1985caa` executable hash. It records non-isolation explicitly, fixes the CPU
+baseline, adds per-process counters/start ticks, and terminates only its owned
+process tree. Historical raw receipts were not modified. Do not count this as
+current-source native acceptance, pet control, BYOK UI or benchmark completion.
+
 ### Latest source follow-through — remaining desktop capability probes
 
 Codex, Cursor, Claude and Hermes capability probes now offload their blocking
