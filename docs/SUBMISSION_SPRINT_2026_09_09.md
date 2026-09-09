@@ -73,6 +73,12 @@ drop requirements or declare an unverified product ready.
   working-set, private-memory, thread, or handle delta. The owned bridge shut down normally and
   its 0.9 MiB temporary profile was removed. This narrows the P0 to native/overlay or retained-
   profile behavior; it does not close C.
+  A new-package native harness is prepared but unexecuted at
+  `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-9966a60.ps1` (SHA-256
+  `AB3492B954F19AD1D38B7323CF9BE36E85AFB99F7C616B82B2C5EF9A2D31BFD3`). It pins the
+  clean source and executable hash, refuses an existing PEX/occupied port, isolates the profile,
+  disables model and harness attachment, samples owned descendants, applies resource ceilings,
+  and owns a watchdog. Run only after exact user authorization `run bounded native smoke`.
 
 ### Day 2 — complete human-facing flows
 

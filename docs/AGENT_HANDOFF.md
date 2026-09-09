@@ -9408,3 +9408,18 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - Receipt: `docs/demo/evidence/BRIDGE_IDLE_RESOURCE_2026-09-09.md`. This narrows the freeze risk
   but does not close it: native Tauri/overlay behavior, longer duration, and the user's retained
   profile were excluded. Keep native PEX closed without the exact bounded-smoke authorization.
+
+### 9 September exact-package native smoke harness prepared, not run
+
+- Prepared `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-9966a60.ps1`, SHA-256
+  `AB3492B954F19AD1D38B7323CF9BE36E85AFB99F7C616B82B2C5EF9A2D31BFD3`. PowerShell AST
+  parsing reports zero errors. The script pins clean source
+  `9966a602be7ed700844979e5fac2e2669cdb8823` and desktop SHA-256
+  `07CF6C5526B6877C45EC84330BD7EBB6755F59A59D48048D1FD20EBCC0449E01`.
+- It refuses any already-running PEX process or occupied port 7420, clears ambient environment,
+  uses an isolated Windows profile, disables model reasoning and automatic Codex/Cursor attach,
+  samples only the desktop's owned process tree, aborts at explicit CPU/memory/handle/thread
+  ceilings, and starts a hidden watchdog tied to the exact desktop PID/start time.
+- Default idle capture is 30 seconds with a bounded 60-second startup allowance. It retains a
+  JSON receipt and terminates owned descendants in `finally`. **It has not been executed.** Do
+  not run it unless the user says exactly `run bounded native smoke`.

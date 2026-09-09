@@ -10,6 +10,10 @@ recovery story. Switch to Von only once.
 - Confirm the package receipt still says `release_ready: true` with no blockers.
 - Complete the separately authorized bounded native stability run. Stop if startup, Retry,
   closing, or reopening hangs; retain the failure instead of filming around it.
+  Prepared harness:
+  `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-9966a60.ps1`, SHA-256
+  `AB3492B954F19AD1D38B7323CF9BE36E85AFB99F7C616B82B2C5EF9A2D31BFD3`.
+  It must not be run until the user gives the exact authorization `run bounded native smoke`.
 - Use the already verified free Muse supervisor and `gpt-5.3-codex-spark` worker settings.
   Never switch to a paid fallback.
 - Prepare one tiny workspace whose public acceptance criterion is visible on screen. Do not
