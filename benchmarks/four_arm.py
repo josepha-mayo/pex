@@ -986,12 +986,13 @@ def _try_write_codex_raw_log(
     transport_kind: str,
     followups: int,
     raw_capture: object,
+    capture_complete: bool = False,
 ) -> tuple[str | None, str | None]:
     """Write freeze-shaped jsonl only when vendor start+complete events bind the turn.
 
     Incomplete capture stays null. Do not synthesize turn/started from our RPC.
     """
-    if not arm.startswith("codex"):
+    if not arm.startswith("codex") or capture_complete is not True:
         return None, None
     events = _codex_turn_events_from_raw_capture(raw_capture, thread_id)
     started = {event["turn_id"] for event in events if event["event_kind"] == "turn/started"}
@@ -3183,6 +3184,7 @@ async def run_live(
                 transport_kind=transport_kind,
                 followups=int((pex_meta or {}).get("followups") or 0),
                 raw_capture=getattr(transport, "raw_capture", None),
+                capture_complete=getattr(transport, "raw_capture_complete", False),
             )
         runtime_fields = _runtime_record_fields(
             arm=arm,

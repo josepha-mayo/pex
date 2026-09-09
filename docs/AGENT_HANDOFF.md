@@ -88,10 +88,13 @@ through the actual OpenCode pump into delivery-lineage matching. Intact exact-pa
 responses match; count eviction, byte eviction and oversize discard do not. The full
 OpenCode lineage/pump selection passes 57 tests (4.77 seconds), without live I/O.
 Codex follow-up: full offline pump suite passes 34 tests (26.09 seconds), including
-1,400-notification reclamation and same-thread recovery. Separate `raw_capture`
-retention remains count-only; review its aggregate byte budget and explicit
-incompleteness handling together with benchmark consumers before changing it.
-No native memory result is established by these tests.
+1,400-notification reclamation and same-thread recovery. Subsequent capture repair
+caps `raw_capture` at 8 MiB serialized bytes plus the record limit, marks the retained
+prefix incomplete on saturation, and leaves live notifications flowing. The fallback
+benchmark writer requires literal complete-capture evidence. Four transport cases,
+six writer cases and the full 34-test pump suite pass (last pump run 24.00 seconds);
+Ruff passes. This capture fix is not yet packaged. The live notification queue still
+has its prior count bound; no native memory result is established by these tests.
 
 Collected fixes now included in package 166a656:
 

@@ -51,6 +51,7 @@ INIT_PARAMS = {"clientInfo": CLIENT_INFO, "capabilities": {}}
 MAX_CODEX_LINE_BYTES = 1_048_576
 MAX_CODEX_WRITE_BYTES = 1_048_576
 MAX_CODEX_RECORDS = 1_024
+MAX_CODEX_CAPTURE_BYTES = 8_388_608
 MAX_CODEX_PENDING = 1_024
 MAX_CODEX_NOTIFICATIONS_PER_PASS = 256
 MAX_CODEX_SESSIONS = 10_000
@@ -167,13 +168,33 @@ def _thread_rows(listed: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
-class CodexAppServerTransport:
+class _CodexRawCapture:
+    """Bound the diagnostic prefix independently of the live notification queue."""
+
+    def _init_raw_capture(self) -> None:
+        self.raw_capture: list[dict[str, Any]] = []
+        self.raw_capture_complete = True
+        self.raw_capture_bytes = 0
+
+    def _capture_notification(self, message: dict[str, Any]) -> None:
+        if not self.raw_capture_complete:
+            return
+        size = len(strict_json_dumps(message, separators=(",", ":")).encode("utf-8"))
+        if (len(self.raw_capture) >= MAX_CODEX_RECORDS
+                or self.raw_capture_bytes + size > MAX_CODEX_CAPTURE_BYTES):
+            self.raw_capture_complete = False
+            return
+        self.raw_capture.append(dict(message))
+        self.raw_capture_bytes += size
+
+
+class CodexAppServerTransport(_CodexRawCapture):
     """In-process App Server stand-in. Not a live `codex` process."""
 
     def __init__(self) -> None:
         self.turns: list[dict[str, Any]] = []
         self.notifications: list[dict[str, Any]] = []
-        self.raw_capture: list[dict[str, Any]] = []
+        self._init_raw_capture()
         self.approvals: list[dict[str, Any]] = []
         self.threads: list[dict[str, Any]] = [
             {"id": "thr_demo", "preview": "synthetic thread", "cwd": "C:/fake"}
@@ -186,8 +207,7 @@ class CodexAppServerTransport:
         if len(self.notifications) >= MAX_CODEX_RECORDS:
             raise RuntimeError("Codex notification retention safety bound reached")
         self.notifications.append(message)
-        if len(self.raw_capture) < MAX_CODEX_RECORDS:
-            self.raw_capture.append(dict(message))
+        self._capture_notification(message)
 
     async def ensure_ready(self) -> dict[str, Any]:
         if self.initialized:
@@ -266,7 +286,7 @@ class CodexAppServerTransport:
 CodexProtocolObserver = Callable[[Literal["stdin", "stdout"], bytes], None]
 
 
-class CodexStdioTransport:
+class CodexStdioTransport(_CodexRawCapture):
     """Live `codex app-server --listen stdio://` child process."""
 
     def __init__(
@@ -298,7 +318,7 @@ class CodexStdioTransport:
         self.pending_approvals: dict[str, dict[str, Any]] = {}
         self.notifications: list[dict[str, Any]] = []
         self._activity_ready = asyncio.Event()
-        self.raw_capture: list[dict[str, Any]] = []
+        self._init_raw_capture()
         self.stderr_tail: list[str] = []
         self.init_result: dict[str, Any] | None = None
         self.approvals: list[dict[str, Any]] = []
@@ -328,8 +348,7 @@ class CodexStdioTransport:
             raise RuntimeError("Codex notification retention safety bound reached")
         self.notifications.append(message)
         self._activity_ready.set()
-        if len(self.raw_capture) < MAX_CODEX_RECORDS:
-            self.raw_capture.append(dict(message))
+        self._capture_notification(message)
 
     async def start(self) -> None:
         if self._proc is not None:

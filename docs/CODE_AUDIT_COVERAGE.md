@@ -1,5 +1,31 @@
 # PEX code audit coverage — 5 September 2026
 
+## 10 September — Codex capture budget and honest fallback evidence
+
+Resolved the capture-history item below without changing notification delivery.
+Both memory and stdio transports share `_CodexRawCapture`: at most 8 MiB serialized
+payload and 1,024 records, with an immutable-in-practice retained prefix once
+saturated. `raw_capture_complete` becomes false when either bound drops a record.
+This flag covers retention of accepted notifications, not all raw protocol bytes.
+Exact protocol journaling remains a separate path.
+
+The fallback benchmark writer now requires `capture_complete is True`; absent,
+false or truthy non-boolean values cannot produce a complete-looking log. Live
+notification enqueue/delivery remains independent. No benchmark was run or scored.
+
+Four transport regression cases failed before implementation (unbounded aggregate
+payload and no explicit truncation flag). Verification after repair:
+
+- `test_adapter_deep_audit.py -k codex_capture_budget`: 4 passed, 62 deselected.
+  Covers byte/count saturation for both transports; stdio fixture is never started.
+- `test_pexbench.py -k codex_raw_log_writer`: 6 passed, 147 deselected.
+- `test_codex_pipeline_pump.py`: 34 passed in 24.00 seconds.
+- Ruff for all four changed Python files and diff whitespace check passed.
+
+This limits serialized capture payload, not total RSS or the live notification
+queue's bytes. Native resource use, freeze cause, full transport audit, and live
+benchmark completeness remain unproven. No user app or external service was touched.
+
 ## 10 September — Codex pump and capture-retention review
 
 Read Codex transport notification append/read-loop paths, pump queue reclamation,

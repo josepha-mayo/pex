@@ -324,6 +324,41 @@ async def test_live_http_discarded_sse_frame_exposes_history_gap(monkeypatch, di
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("transport_kind", ["memory", "stdio"])
+@pytest.mark.parametrize("limit", ["bytes", "count"])
+async def test_codex_capture_budget_marks_incomplete_without_stopping_delivery(
+    monkeypatch, tmp_path, transport_kind, limit,
+):
+    from pex_bridge.adapters import codex as codex_module
+
+    if limit == "bytes":
+        monkeypatch.setattr(codex_module, "MAX_CODEX_CAPTURE_BYTES", 80, raising=False)
+    else:
+        monkeypatch.setattr(codex_module, "MAX_CODEX_RECORDS", 1)
+    if transport_kind == "memory":
+        transport = CodexAppServerTransport()
+    else:
+        executable = tmp_path / "codex.exe"
+        executable.write_bytes(b"unlaunched executable identity fixture")
+        transport = CodexStdioTransport([str(executable.resolve())])
+    try:
+        first = {"method": "item/completed", "params": {"text": "x" * 20}}
+        transport._append_notification(first)
+        transport.notifications.clear()
+        transport._append_notification(first)
+        assert transport.notifications == [first]
+        assert transport.raw_capture == [first]
+        assert transport.raw_capture_complete is False
+        transport.notifications.clear()
+        transport._append_notification({"method": "small"})
+        assert transport.notifications == [{"method": "small"}]
+        assert transport.raw_capture == [first]  # retain a prefix, not silent holes
+    finally:
+        if transport_kind == "stdio":
+            await transport.close()
+
+
+@pytest.mark.asyncio
 async def test_live_codex_activity_wait_is_quiet_and_wakes(tmp_path):
     executable = tmp_path / "codex.exe"
     executable.write_bytes(b"test executable identity")

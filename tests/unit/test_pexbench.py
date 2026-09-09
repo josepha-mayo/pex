@@ -1855,6 +1855,7 @@ def test_codex_raw_log_writer_fail_closed_without_turn_started(tmp_path, monkeyp
         harness_identity_sha256="a" * 64,
         transport_kind="codex_stdio",
         followups=0,
+        capture_complete=True,
         raw_capture=[
             {
                 "method": "turn/completed",
@@ -1866,8 +1867,9 @@ def test_codex_raw_log_writer_fail_closed_without_turn_started(tmp_path, monkeyp
     assert digest is None
 
 
+@pytest.mark.parametrize("capture_complete", [True, False, None, "true", 1])
 def test_codex_raw_log_writer_round_trips_inspector_when_start_and_complete_exist(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, capture_complete,
 ):
     four = _four_arm()
     monkeypatch.setattr(four.runner, "RESULTS", tmp_path)
@@ -1890,6 +1892,7 @@ def test_codex_raw_log_writer_round_trips_inspector_when_start_and_complete_exis
         harness_identity_sha256=identity,
         transport_kind="codex_stdio",
         followups=0,
+        capture_complete=capture_complete,
         raw_capture=[
             {
                 "method": "turn/started",
@@ -1901,6 +1904,10 @@ def test_codex_raw_log_writer_round_trips_inspector_when_start_and_complete_exis
             },
         ],
     )
+    if capture_complete is not True:
+        assert (path, digest) == (None, None)
+        assert not four._canonical_raw_log_path(run_id, arm, task).exists()
+        return
     assert path is not None
     assert digest is not None
     row = {
