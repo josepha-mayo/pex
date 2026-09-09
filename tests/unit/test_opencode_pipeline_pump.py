@@ -1,10 +1,65 @@
 from __future__ import annotations
 
 import asyncio
+import threading
+import time
 
+import pytest
 from pex_bridge.adapters.http_json import MemoryHttpTransport
 from pex_bridge.adapters.opencode import OpenCodeAdapter
 from pex_protocol.enums import EventType
+
+
+@pytest.mark.live_desktop
+async def test_opencode_probe_reuses_scoped_snapshot_in_worker_thread(monkeypatch):
+    from pex_bridge.adapters import desktop
+
+    reads = []
+
+    def unexpected_read():
+        reads.append(True)
+        return set()
+
+    monkeypatch.setattr(desktop, "_read_running_image_names", unexpected_read)
+    snapshot = desktop.DesktopProcessSnapshot(
+        names=frozenset({"OpenCode.exe"}), available=True, captured_at=time.monotonic()
+    )
+    with desktop.scoped_running_image_snapshot(snapshot):
+        capabilities = await OpenCodeAdapter(MemoryHttpTransport()).probe()
+    assert capabilities.focus_ui is True
+    assert reads == []
+
+
+async def test_opencode_probe_keeps_loop_responsive_during_desktop_discovery(monkeypatch):
+    entered = threading.Event()
+    release = threading.Event()
+    timed_out = threading.Event()
+
+    def slow_discovery(_images):
+        entered.set()
+        if not release.wait(timeout=2):
+            timed_out.set()
+        return "opencode.exe"
+
+    monkeypatch.setattr(
+        "pex_bridge.adapters.opencode.matching_desktop_image", slow_discovery
+    )
+    adapter = OpenCodeAdapter(MemoryHttpTransport())
+    probe = asyncio.create_task(adapter.probe())
+    try:
+        async with asyncio.timeout(3):
+            while not entered.is_set():
+                await asyncio.sleep(0)
+            # This coroutine must resume before the synchronous discovery exits.
+            assert not timed_out.is_set()
+            assert not probe.done()
+            release.set()
+            capabilities = await probe
+        assert capabilities.focus_ui is True
+        assert capabilities.send_message is True
+    finally:
+        release.set()
+        await asyncio.gather(probe, return_exceptions=True)
 
 
 async def test_opencode_pump_ingests_idle_as_stop():

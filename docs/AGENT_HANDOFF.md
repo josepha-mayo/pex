@@ -1,5 +1,26 @@
 # PEX agent handoff
 
+### Latest incremental repair — OpenCode event-loop responsiveness
+
+OpenCode capability probes run during production event ingestion as well as HTTP
+requests. Their Windows desktop-process lookup was synchronous, so a slow
+`tasklist` blocked the bridge event loop and delayed unrelated work and async
+timeouts. The lookup now runs through `asyncio.to_thread`; existing scoped process
+snapshots propagate into that worker thread, without introducing a new cache or
+changing capability authority.
+
+Two regression tests cover loop responsiveness during stalled discovery and
+snapshot propagation without any real process scan. The focused OpenCode pump,
+outcome-lineage, capability and deep-audit gate passed 137 tests. The first
+snapshot test attempt failed because the suite's empty-discovery fixture masked
+the snapshot; the test now explicitly bypasses that fixture while mocking the
+underlying OS reader. The existing `live_desktop` fixture marker is registered.
+
+This incremental source change is not included in the previously built installers.
+It is not proof that the reported whole-PC freeze is resolved. Keep native
+stability, fresh packaging, and comparative benchmark acceptance gates open.
+
+
 ### Current checkpoint — 9 September 2026, post-regression/package refresh
 
 Current accepted and pushed product source is

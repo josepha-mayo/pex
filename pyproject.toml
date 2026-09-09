@@ -43,6 +43,7 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
 markers = [
+  "live_desktop: bypasses empty desktop-discovery fixtures; tests must explicitly control process access",
   "live_llm: hits a real supervisor provider; requires PEX_LIVE_SUPERVISOR=1",
   "live_codex: hits a real Codex App Server; requires PEX_LIVE_CODEX=1",
   "live_opencode: hits an existing OpenCode server; requires PEX_LIVE_OPENCODE=1",

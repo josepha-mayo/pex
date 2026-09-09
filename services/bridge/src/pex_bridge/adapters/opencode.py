@@ -166,7 +166,11 @@ class OpenCodeAdapter(HarnessAdapter):
             and self._last_pump_error is None
         )
         plugin_live = self._plugin_live()
-        desktop = matching_desktop_image(OPENCODE_DESKTOP_IMAGES) is not None
+        # Capability probes also run during event ingestion, outside the HTTP
+        # endpoints' shared process snapshot. Windows tasklist must not stall
+        # the SSE reader or unrelated bridge requests on those paths.
+        desktop = await asyncio.to_thread(matching_desktop_image, OPENCODE_DESKTOP_IMAGES)
+        desktop = desktop is not None
         return AdapterCapabilities(
             observe_messages=deep,
             observe_tool_calls=deep,
