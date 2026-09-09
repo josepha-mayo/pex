@@ -297,6 +297,12 @@ test("native bootstrap reads pause while hidden and back off after readiness", a
   assert.match(source, /\[acceptBridgeStartupStatus, bridgeStartup\.phase, pageVisible, shell\]/u);
 });
 
+test("retry bridge IPC is bounded and single-flight without automatic reissue", async () => {
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.match(source, /const retryNativeBridgeBootstrap = boundedSingleFlightRead\(async \(\) => \{[\s\S]*?return call<unknown>\("retry_bridge"\);\s*\}\);/u);
+  assert.match(source, /normalizeBridgeBootstrapStatus\(await retryNativeBridgeBootstrap\(\)\)/u);
+});
+
 test("control-read availability gates ready UI without corrupting native generation state", () => {
   const ready = normalizeBridgeBootstrapStatus({
     phase: "ready",

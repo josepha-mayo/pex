@@ -35,6 +35,9 @@ historical, not a test run against current HEAD.
 Post-package source defense: Windows suspended-child handling now rechecks opened
 thread ownership before resume. Three fully mocked tests pass; this change is not
 in package 2966259 and has no live Windows verification yet.
+The native bridge Retry response is also now bounded/single-flight, avoiding a
+permanently busy button without reissuing pending IPC. Recovery/read-budget tests
+pass 42/42 and frontend build passes; this is likewise newer than package 2966259.
 
 Immediate MVP work, in order:
 

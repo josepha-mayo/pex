@@ -226,10 +226,16 @@ async function readBridgeBootstrapStatus(signal?: AbortSignal): Promise<BridgeBo
   }
 }
 
+// A timed-out retry may still be running in native code. Release the UI wait,
+// but retain that pending invocation so another click cannot duplicate it.
+const retryNativeBridgeBootstrap = boundedSingleFlightRead(async () => {
+  const { invoke: call } = await import("@tauri-apps/api/core");
+  return call<unknown>("retry_bridge");
+});
+
 async function retryDesktopBridge(): Promise<BridgeBootstrapStatus | null> {
   try {
-    const { invoke: call } = await import("@tauri-apps/api/core");
-    const status = normalizeBridgeBootstrapStatus(await call<unknown>("retry_bridge"));
+    const status = normalizeBridgeBootstrapStatus(await retryNativeBridgeBootstrap());
     return status.code === "desktop_control_unavailable" || status.code === "desktop_state_unavailable"
       ? null
       : status;

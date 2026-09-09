@@ -1,5 +1,21 @@
 # PEX agent handoff
 
+### Bounded bridge retry response (after package 2966259)
+
+Startup audit found `retryDesktopBridge` directly awaited unbounded native IPC.
+An unresolved IPC response left `bridgeRetrying` true indefinitely. Retry now uses
+the existing five-second bounded single-flight wrapper: UI waiting ends, but a
+still-pending native operation is retained so subsequent clicks cannot duplicate
+it. Late timed-out results are discarded and canonical startup polling remains
+the source of truth. There is no automatic restart/reissue on timeout.
+
+The App wiring regression failed before the fix. Startup/recovery plus read-budget
+tests pass 42/42, including the wrapper's mocked timeout/no-duplicate/stale-result
+behavior; TypeScript/Vite build exits zero. No native UI or bridge IPC ran.
+This repairs a potential stuck Retry control, not the unproven cause of the user's
+`port_check_failed`/`bridge_identity_lost` screenshots. Package 2966259 predates
+this and the Windows thread-owner defense; native-testing hold remains active.
+
 ### Windows thread ownership defense (after package 2966259)
 
 Full read of `packages/protocol/src/pex_protocol/windows_job.py` found that the
