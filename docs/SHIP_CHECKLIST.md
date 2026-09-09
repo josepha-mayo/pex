@@ -18,6 +18,9 @@ native resource improvement and freeze causality are not established. Not yet pa
 SSE discard follow-up: invalid payloads and oversized lines/frames now expose a
 history gap; otherwise later events could appear falsely continuous. Sixteen
 HTTP/SSE and four OpenCode pump checks pass. No live stream was accessed.
+Integrated buffer-to-pump-to-delivery verification also passes: intact history
+matches, while count/byte/oversize losses reject authoritative delivery matching.
+Full OpenCode lineage and pump suites: 57 passed in 4.77 seconds, offline only.
 
 **9 September safety hold:** user reported Codex closed during native testing.
 External `pex-native-smoke-933239a.ps1` is quarantined before execution because

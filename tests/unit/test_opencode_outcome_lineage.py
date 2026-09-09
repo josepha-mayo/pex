@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import UTC, datetime
 
 import pytest
 from pex_bridge.adapters import AdapterRegistry
-from pex_bridge.adapters.http_json import MemoryHttpTransport
+from pex_bridge.adapters import http_json as http_json_module
+from pex_bridge.adapters.http_json import LiveHttpTransport, MemoryHttpTransport
 from pex_bridge.adapters.opencode import OpenCodeAdapter
 from pex_bridge.adapters.opencode_outcomes import (
     OPENCODE_MESSAGE_LINEAGE_KEY,
@@ -153,6 +156,53 @@ def test_exact_assistant_parent_matches_admitted_pex_message() -> None:
         "assistant_message_error": False,
         "assistant_finish": "",
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loss", ["none", "count", "bytes", "oversize"])
+async def test_http_retention_gap_reaches_opencode_delivery_guard(monkeypatch, loss):
+    session = _session()
+    payload = _assistant_payload(session)
+    size = len(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    if loss == "count":
+        monkeypatch.setattr(http_json_module, "MAX_HTTP_EVENTS", 1)
+    if loss in {"bytes", "oversize"}:
+        monkeypatch.setattr(http_json_module, "MAX_HTTP_EVENT_BUFFER_BYTES", size)
+    transport = LiveHttpTransport("http://127.0.0.1:4096")
+
+    async def offline_stream(path):
+        transport.connected_sse_paths.add(path)
+
+    monkeypatch.setattr(transport, "ensure_sse", offline_stream)
+    adapter = OpenCodeAdapter(transport)
+    adapter.sessions[session.id] = session
+    transport._record_event({"type": "server.heartbeat"})
+    if loss == "oversize":
+        transport._record_event({"text": "x" * (size + 1)})
+    transport._record_event(payload)
+    observed = []
+    ready = asyncio.Event()
+
+    async def ingest(event, bound_session):
+        observed.append((event, bound_session))
+        ready.set()
+
+    pump = adapter.start_pipeline_pump(ingest)
+    try:
+        await asyncio.wait_for(ready.wait(), timeout=3)
+        assert len(observed) == 1
+        event, bound_session = observed[0]
+        assert bound_session.id == session.id
+        assert event.metadata[OPENCODE_MESSAGE_LINEAGE_KEY]["stream_contiguous"] is (
+            loss == "none"
+        )
+        assert event_matches_opencode_delivery(_intervention(session), session, event) is (
+            loss == "none"
+        )
+    finally:
+        pump.cancel()
+        await asyncio.gather(pump, return_exceptions=True)
+        await transport.aclose()
 
 
 def test_exact_descendant_of_delivered_human_decision_matches() -> None:

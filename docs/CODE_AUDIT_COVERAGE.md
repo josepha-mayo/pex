@@ -1,5 +1,24 @@
 # PEX code audit coverage — 5 September 2026
 
+## 10 September — integrated retention-to-outcome proof
+
+Added four cases in `test_opencode_outcome_lineage.py` using LiveHttpTransport's
+actual retention implementation, OpenCode's actual asynchronous pipeline pump,
+normalization, and delivery-lineage matcher. Only stream establishment is replaced
+with a no-network stub; no connection is made. The intact control confirms the
+exact-parent response. Count eviction, aggregate-byte eviction and an oversized
+discard each set non-contiguous lineage and prevent confirmation of the same
+otherwise matching response. Each test cancels only its own asyncio pump and
+closes its unused HTTP client.
+
+```text
+.venv\Scripts\python.exe -m pytest -q tests/unit/test_opencode_outcome_lineage.py tests/unit/test_opencode_pipeline_pump.py --tb=short
+```
+
+Result: 57 passed in 4.77 seconds; changed-file Ruff passed. No production change
+was needed. This closes the offline cross-layer regression gap, not real worker
+delivery, model inference, native acceptance, or the full audit.
+
 ## 10 September — dropped SSE frames cannot imply continuous history
 
 Follow-up review of `_read_sse`, `_bounded_sse_lines`, `_decode_sse_data` and

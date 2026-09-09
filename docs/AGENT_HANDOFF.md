@@ -83,6 +83,10 @@ Follow-up: malformed/non-object SSE payloads and oversized lines/frames now emit
 retention gap rather than silently preserving apparent continuity. Empty keep-alives
 and comments remain harmless. Sixteen HTTP/SSE checks plus four OpenCode pump checks
 pass; Ruff passes. This follow-up is also not in package 166a656.
+Integrated verification: four new tests feed the production HTTP retention buffer
+through the actual OpenCode pump into delivery-lineage matching. Intact exact-parent
+responses match; count eviction, byte eviction and oversize discard do not. The full
+OpenCode lineage/pump selection passes 57 tests (4.77 seconds), without live I/O.
 
 Collected fixes now included in package 166a656:
 
