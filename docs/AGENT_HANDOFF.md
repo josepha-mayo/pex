@@ -1,6 +1,6 @@
 # PEX active handoff
 
-Maintained checkpoint: 9 September 2026; includes the goal-ledger freshness repair.
+Maintained checkpoint: 10 September 2026; product source `dec84d1`, with downstream intent-regression coverage.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files before relying on this checkpoint. No prior build/test
 session remains running. This is the active entry point, not another historical log.
@@ -116,6 +116,8 @@ from an older installer.
 | `157b119` combined backend gate | 107 passed in 110.29 seconds | Full Python suite; live worker/provider/AgentCore |
 | `4fc703c` context gate | 15 passed | Measured token/cost savings |
 | API intent-preservation repair | 120 passed in 48.03 seconds: goal lifecycle, operation routes, public-task parser, authority, operations, transactions and semantic hashing | Live workers or full Python suite |
+| `dec84d1` recovery/event regression | 86 passed, 2 background-process cases deselected, 169.73 seconds | Real-worker behavior; the two excluded process cases |
+| Ledger-only dispatch regression | 16 passed in 13.16 seconds; Ruff passed | Real harness delivery |
 | `2966259` installers | Both extracted inventories verified; zero package blockers | Latest source; end-to-end product acceptance |
 | Historical `933239a` full Python | 4,178 passed, 32 skipped | Current full-suite result |
 

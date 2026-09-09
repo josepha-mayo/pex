@@ -1,6 +1,6 @@
 # PEX shipping checklist
 
-## Maintained current status — 9 September 2026
+## Maintained current status — 10 September 2026
 
 Overall: **NO-GO for submission**. This section supersedes current/latest labels
 in the historical log below; the three specifications remain authoritative.
@@ -28,6 +28,12 @@ with Ruff passing. Renaming, overriding with unchanged objective text, or editin
 an unrelated ledger field no longer restores explicitly cleared criteria/decisions.
 New objective text still imports its new labeled intent. These are in-process
 ASGI/temporary SQLite checks, not native or live-provider acceptance.
+
+Downstream verification on `dec84d1`: recovery STOP/event-processing gate passed
+86 tests (169.73 seconds), excluding two background-process cases under the safety
+hold. Dispatch authority passed 16 tests (13.16 seconds), including new cases that
+change only decisions and then optionally restore the original content. The older
+queued action remains ineligible in both cases. No live worker/model was used.
 
 Backend changes: `367b759`, including `5d2b717`, enforce goal/session pause
 at the inference and deterministic routing boundaries. The planner/router/loop/

@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 import pytest
+from pex_bridge.ledger import ledger_projections
 from pex_bridge.store import Store
 from pex_protocol.enums import EventType, SessionStatus
 from test_event_processing_store import _bound_event, _commit_worker_plan, _event
@@ -45,6 +46,37 @@ async def test_same_goal_intent_change_invalidates_older_action(planned, restore
     await store.upsert_goal(original.model_copy(update={"objective": "A new human objective"}))
     if restore_original:
         await store.upsert_goal(original)
+    await _assert_denied(store, event, "goal_intent_changed_before_dispatch")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("clear_again", [False, True])
+async def test_ledger_only_edit_invalidates_older_action(planned, clear_again):
+    store, event, _ = planned
+    original = await store.get_goal_for_authority(event.goal_id)
+    before = await store.get_goal_intent_view(event.goal_id)
+    changed = await store.patch_goal_with_ledger_receipt(
+        original,
+        original,
+        ledger_projections(
+            original,
+            explicit={"decisions": ["Human changed the permitted implementation"]},
+            skip_fields={"decisions"},
+        ),
+        replace_ledger_kinds=frozenset({"decision"}),
+        expected_intent_revision=before["intent_revision"],
+    )
+    # The Goal model itself is unchanged: decisions have separate durable rows.
+    assert await store.get_goal_for_authority(event.goal_id) == original
+    assert changed.after_intent_revision == before["intent_revision"] + 1
+    if clear_again:
+        restored = await store.patch_goal_with_ledger_receipt(
+            original, original, [],
+            replace_ledger_kinds=frozenset({"decision"}),
+            expected_intent_revision=changed.after_intent_revision,
+        )
+        assert restored.after_intent_hash == before["intent_hash"]
+        assert restored.after_intent_revision == before["intent_revision"] + 2
     await _assert_denied(store, event, "goal_intent_changed_before_dispatch")
 
 

@@ -1,5 +1,26 @@
 # PEX code audit coverage — 5 September 2026
 
+## 10 September — downstream intent and queued-action verification
+
+Reviewed the Store pre-dispatch goal revision/hash comparison, event snapshot
+restoration in Pipeline, and recovery completion's existing changed-intent test.
+Added two Store regressions for a decision-only change with the Goal model itself
+unchanged, and for restoring the original hash at a later revision. Both assert
+that the old main effect is denied, remains reserved, and never starts dispatch.
+No production change was needed for this guard.
+
+```text
+.venv\Scripts\python.exe -m pytest -q tests/e2e/test_recovery_stop_loop.py tests/unit/test_event_processing_pipeline.py tests/unit/test_event_processing_store.py -k 'not abandoned_background_train and not exited_background_job' --tb=short
+.venv\Scripts\python.exe -m pytest -q tests/unit/test_generic_dispatch_authority.py --tb=short
+```
+
+Results: 86 passed, 2 deselected in 169.73 seconds; 16 passed in 13.16 seconds.
+Ruff passed for the changed test. Fixtures disable live LLM/Codex attachment and
+mock desktop process inventory. The excluded recovery cases launch background
+processes; they were intentionally not run under the native safety hold. These
+checks use synthetic worker events and temporary SQLite, not actual Codex/Strands
+inference or native UX. They extend regression evidence, not the full-file audit.
+
 ## 9 September — partial goal mutation preserves intentional clears
 
 Read the goal PATCH branches, ledger extraction, and Store transaction's revision,
