@@ -80,6 +80,11 @@ eight-pet native playback evidence. Five screenshots are retained in the stable 
 no PEX native window was launched. This visual check followed the agent-browser verification
 skill and materially confirms the rebuilt UI is no longer the obsolete bridge-error card shown
 in earlier screenshots, while leaving native transparency/dismissal/resource behavior open.
+An additional target-size pass set the browser viewport to the Tauri window's exact 920x700;
+Home and Inspector retained zero horizontal overflow, zero error overlay and zero captured
+console errors. Target-size screenshots `frontend-home-920x700-9966a60.png` and
+`frontend-inspector-920x700-9966a60.png` are in the same stable artifact folder. The second
+browser/server pair was also closed.
 
 The benchmark manifest remains `frozen:false`: the development contract is green, but the
 installed Codex 0.153.4 Windows sandbox was adversarially tested and still allowed the worker
