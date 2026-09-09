@@ -9637,3 +9637,7 @@ The dirty bit is expected because the protected operator-owned file below is ret
   leaderboard or rank. AgentCore is score-strengthening but not required; the five equally
   weighted criteria keep native reliability, coherent design, credible impact, originality and
   the end-to-end video on the critical path.
+- Public GitHub preflight on 9 September confirmed `josepha-mayo/pex` is publicly readable,
+  GitHub renders the root README and detects the root MIT license. The README's stale statement
+  that independent verification lacked curated live evidence was corrected to point at the
+  current OpenCode recovery and quiet receipts.

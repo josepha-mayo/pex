@@ -220,11 +220,14 @@ STOP intervention must also pass a fresh independent verifier Agent using its
 own observations and invocation. Timeout, malformed output, missing evidence,
 or rejection becomes NOOP. Deterministic verification truth and local policy
 still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
-target, not a deployed-service claim. The verifier path has local contract coverage but
-is not part of the curated live receipt. Real Codex + provider-live Strands restraint and
-same-thread recovery are validated on packaged ancestor `9357bb8`: the quiet path
-ended in `NOOP`, and the recovery path sent a specific same-thread continuation, observed
-`report.txt=shipped`, recorded `helped=true`, then ended in `NOOP`. This does not prove the
+target, not a deployed-service claim. Current product source `933239a` now has a retained real
+OpenCode recovery: main Strands inference inspected the workspace, a separate verifier approved
+the exact missing-artifact finding, policy admitted one same-session correction, and the free
+worker produced the exact final bytes. A separate correctly completed OpenCode task produced a
+model-backed `NOOP` and zero PEX follow-ups. See the
+[recovery](docs/demo/evidence/LIVE_OPENCODE_PEX_CLOSED_LOOP_2026-09-09.md) and
+[quiet](docs/demo/evidence/LIVE_OPENCODE_QUIET_2026-09-09.md) receipts. Real Codex restraint and
+same-thread recovery are also retained on packaged ancestor `9357bb8`. This does not prove the
 outstanding bounded native stability run, ten-case quiet statistics, AgentCore deployment, or a
 benchmark result.
 
@@ -234,7 +237,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Current product source `933239a` has verified MSI/NSIS package integrity and exact-package OpenCode polling proof; packaged ancestor `9357bb8` has source-bound real Codex + provider-live Strands quiet/recovery proof. Overall contest state is **NO-GO** until the bounded post-freeze native review, benchmark isolation/evidence, demo video, and submission authorization are complete. The benchmark remains unfrozen, with no citeable impact score or validated leaderboard rank. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md).
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Current product source `933239a` has verified MSI/NSIS package integrity, exact-package OpenCode polling, and real OpenCode recovery/quiet proof; packaged ancestor `9357bb8` also has source-bound real Codex + provider-live Strands quiet/recovery proof. Overall contest state is **NO-GO** until the bounded post-freeze native review, benchmark isolation/evidence, demo video, and submission authorization are complete. The benchmark remains unfrozen, with no citeable impact score or validated leaderboard rank. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md).
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)
