@@ -2785,15 +2785,18 @@ function BridgePetSprite({
   mood,
   scale,
   reducedMotion,
+  active,
 }: {
   path: string;
   mood: PetSnapshot["mood"];
   scale: number;
   reducedMotion: boolean;
+  active: boolean;
 }) {
   const source = useBridgeAsset(path);
   return source && mood ? (
     <CodexSprite
+      active={active}
       src={source}
       mood={mood}
       scale={scale}
@@ -2838,6 +2841,7 @@ function PetRosterButtons({
             <span className="pet-thumb">
               {ready ? (
                 <BridgePetSprite
+                  active={selected}
                   path={`/v1/pets/${encodeURIComponent(item.id)}/spritesheet`}
                   mood="idle"
                   scale={0.42}

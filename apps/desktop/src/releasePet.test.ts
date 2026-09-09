@@ -91,6 +91,14 @@ test("transparent always-on-top pet avoids a continuous compositor animation", a
   );
 });
 
+test("pet picker animates only the selected companion", async () => {
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.match(app, /<BridgePetSprite\s+active=\{selected\}/u);
+  const bridgeSprite = app.slice(app.indexOf("function BridgePetSprite("), app.indexOf("function PetRosterButtons("));
+  assert.match(bridgeSprite, /<CodexSprite\s+active=\{active\}/u,
+    "picker activity must reach the sprite's existing timer and compositor pause gate");
+});
+
 test("transparent overlay keeps its message and hide control legible on light desktops", async () => {
   const styles = await readFile(new URL("./styles.css", import.meta.url), "utf8");
   assert.match(

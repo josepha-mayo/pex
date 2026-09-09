@@ -1,5 +1,20 @@
 # PEX agent handoff
 
+### Offline picker animation budget and native-control API audit
+
+Pet picker previews previously left every catalog sprite's animation active.
+BridgePetSprite now requires an explicit active flag; PetRosterButtons passes
+selected, so unselected previews use the existing sprite timer/compositor pause
+gate. The full catalog remains selectable. Targeted releasePet tests pass 15/15
+and TypeScript/Vite production build passes. Actual CPU/memory savings have not
+been measured; do not present this as a native performance benchmark.
+
+Inspected installed window.js and tauri window/plugin.rs: hide/show/start_dragging
+carry the target label; set_position and set_ignore_cursor_events carry label
+and value, matching the Rust setters. No analogous color/value mismatch was
+found in those controls. That source audit does not prove native hide behavior.
+No PEX launches, process termination, model calls or computer input occurred.
+
 ### White-canvas source defect identified and repaired offline
 
 Removed the pet-shell App.tsx effect's getCurrentWebview().setBackgroundColor call.
