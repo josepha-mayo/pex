@@ -9548,3 +9548,15 @@ The dirty bit is expected because the protected operator-owned file below is ret
   receipt and pinned SHA-256 values for integrity. The older `PEX-submission-9966a60` folder was
   intentionally left untouched, but this `PEX-submission-933239a` bundle is the submission
   candidate.
+
+### 9 September final immutable package-verifier rerun
+
+- A plain second `npm run verify:package` correctly failed with `EEXIST` because the verifier
+  writes receipts with `wx` and will not overwrite prior evidence. This is the documented
+  immutable-receipt behavior, not a package failure.
+- The correct rerun used `--receipt build/pex-package-receipt-rerun-dd4edb1.json` with pinned
+  Rust/Cargo 1.97.1 in `PATH`; it exited 0 with `release_ready:true`, `blockers:[]`, both extracted
+  inventories verified, and the same MSI/NSIS hashes as the sealed bundle.
+- The fresh receipt binds Git commit `dd4edb126fd7b1ac49ecb8a04ec7031f6a970075` while retaining
+  the exact product release-input, sidecar-input, preflight, canonical-desktop, and installer
+  hashes from package source `933239a`. The intervening commits are documentation-only.
