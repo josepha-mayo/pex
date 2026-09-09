@@ -26,6 +26,10 @@ The stable bundle contains the full screenshot set, including
 This is layout evidence, not native Tauri proof. PEX remains closed after the user-reported
 idle whole-PC freeze. Native transparency, animation, close/reopen persistence, click-through,
 and resource stability remain open until the user authorizes the exact bounded native smoke.
+The exact package-source bridge independently passed an isolated empty-profile idle/resource
+smoke with responsive liveness and no measured CPU, memory, thread, or handle growth; see
+[`BRIDGE_IDLE_RESOURCE_2026-09-09.md`](evidence/BRIDGE_IDLE_RESOURCE_2026-09-09.md). That result
+narrows the incident but does not clear the native window or real retained profile.
 
 Keep the visual story to Pex and Von. All eight built-ins pass the structural v2 atlas
 validator, but a two-character story is faster and clearer for judges. Pex is the default

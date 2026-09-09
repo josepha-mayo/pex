@@ -9393,3 +9393,18 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - Retained receipt: `docs/demo/evidence/LOCAL_AGENTCORE_PROTOCOL_2026-09-09.md`. This is real
   local AgentCore-compatible protocol evidence, not an AWS Runtime deployment or inference
   claim. AgentCore deployment remains blocked by current preflight and no-card-charge proof.
+
+### 9 September exact-package-source isolated bridge idle smoke
+
+- Only the exact `9966a60` clean-source bridge was started, on loopback port 17421 with a new
+  empty profile, semantic inference disabled, and no native Tauri window. A measured ten-second
+  steady-state window showed 0.0 CPU-seconds delta, 82.30 MiB working set with 0.0 MiB delta,
+  68.72 MiB private memory with 0.0 MiB delta, four threads/207 handles with zero deltas, and
+  responsive `/health/live`.
+- Ctrl+C produced normal application and StreamableHTTP shutdown. The exact process and port
+  were absent afterward. The enumerated temporary profile contained 0.9 MiB of SQLite/lock/pet
+  state and was deleted file-by-file after the recursive cleanup command was policy-blocked;
+  the root was verified absent.
+- Receipt: `docs/demo/evidence/BRIDGE_IDLE_RESOURCE_2026-09-09.md`. This narrows the freeze risk
+  but does not close it: native Tauri/overlay behavior, longer duration, and the user's retained
+  profile were excluded. Keep native PEX closed without the exact bounded-smoke authorization.

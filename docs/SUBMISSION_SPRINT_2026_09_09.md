@@ -68,6 +68,11 @@ drop requirements or declare an unverified product ready.
   These changes do not establish native stability. Rebuilt bounded native
   verification remains open and needs fresh post-freeze confirmation. Respect the
   shared PC.
+  Exact clean package source `9966a60` now passes a separate isolated empty-profile bridge
+  smoke: liveness stayed responsive and a ten-second steady-state sample showed zero CPU,
+  working-set, private-memory, thread, or handle delta. The owned bridge shut down normally and
+  its 0.9 MiB temporary profile was removed. This narrows the P0 to native/overlay or retained-
+  profile behavior; it does not close C.
 
 ### Day 2 — complete human-facing flows
 
