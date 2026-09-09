@@ -234,6 +234,36 @@ def _settings(tmp_path: Path, mode: str = "agentcore") -> Settings:
     )
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["local", "agentcore", "hybrid"])
+@pytest.mark.parametrize("paused", ["session", "goal"])
+@pytest.mark.parametrize("event_type", [EventType.STOP, EventType.PERMISSION_REQUEST])
+async def test_paused_router_never_infers_or_proposes_permission(
+    tmp_path, mode, paused, event_type,
+):
+    from pex_protocol.enums import EventPhase
+
+    class ForbiddenRemote:
+        calls = 0
+
+        async def decide(self, request):
+            self.calls += 1
+            raise AssertionError("paused request must not reach AgentCore")
+
+    remote = ForbiddenRemote()
+    router = SupervisorRouter(_settings(tmp_path, mode), agentcore_client=remote)
+    request = _request(event_type)
+    request.event.phase = EventPhase.BEFORE
+    if paused == "session":
+        request.session.supervision_paused = True
+    else:
+        request.goal.paused = True
+    result = await router.decide(request, local_model=object())
+    assert remote.calls == 0
+    assert result.action.type == InterventionType.NOOP
+    assert result.inference_status == "not_attempted"
+
+
 def _aws_response(
     request: SupervisorRequest,
     result: SupervisorResult,

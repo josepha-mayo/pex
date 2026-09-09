@@ -365,6 +365,10 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
     """
     event = request.event
     goal = request.goal
+    if request.session.supervision_paused or (goal is not None and goal.paused):
+        return _noop(
+            request, "Supervision is paused for this session or goal.", ["supervision_paused"]
+        )
     if event.event_type == EventType.USER_PROMPT and request.notes.startswith(
         "possible_contradiction"
     ):

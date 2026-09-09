@@ -1,5 +1,18 @@
 # PEX agent handoff
 
+### Shared deterministic planner now honors pause across all routes
+
+Follow-up audit found AgentCore/hybrid nonsemantic routing calls the deterministic
+planner directly, bypassing decide_async. A paused permission event could still
+produce RESPOND_PERMISSION there. Twelve offline router cases covered local,
+AgentCore and hybrid modes, session/goal pause, and STOP/permission events. Four
+AgentCore/hybrid permission cases failed before the fix. Added an early pause
+NOOP in plan_deterministic; all 165 planner/router/loop/trajectory tests now pass
+and scoped Ruff passes. Remote client was a test fake; no AWS calls occurred.
+This repairs proposal generation, not evidence of a real permission action having
+been dispatched: bridge-level pause guards already existed. Package 493aec0
+predates both recent pause fixes. Native-testing hold remains unchanged.
+
 ### Supervisor pause boundary repaired offline
 
 Bridge pause checks existed, but direct `needs_semantic_inference` / `decide_async`
