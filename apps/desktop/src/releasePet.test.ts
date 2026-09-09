@@ -17,6 +17,26 @@ test("showing the pet never changes the main window background", async () => {
   assert.doesNotMatch(source, /await pet\.setBackgroundColor\(/u);
 });
 
+test("floating pet respects the user's small size setting", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createServer } = await import("vite");
+  const vite = await createServer({
+    root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom",
+  });
+  try {
+    const { PetStage } = await vite.ssrLoadModule("/src/components/PetStage.tsx");
+    const markup = renderToStaticMarkup(createElement(PetStage, {
+      name: "Pex", sheet: "/pet.webp", mood: "idle", scale: 0.75,
+      reducedMotion: true, overlay: true, onActivate: () => {}, onDismiss: () => {},
+    }));
+    assert.match(markup, /class="sprite-3d" style="width:84px;height:91px;/u);
+    assert.match(markup, /aria-label="Hide PEX pet"/u);
+  } finally {
+    await vite.close();
+  }
+});
+
 test("inactive pet rendering pauses CSS motion and releases its transform hint", async () => {
   const { createElement } = await import("react");
   const { renderToStaticMarkup } = await import("react-dom/server");

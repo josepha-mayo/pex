@@ -219,7 +219,7 @@ export function PetStage({
             hop={hop}
             dragDir={dragDir}
             look={look}
-            scale={overlay ? Math.max(scale, 1.04) : scale}
+            scale={scale}
             reducedMotion={reducedMotion}
           />
         ) : (

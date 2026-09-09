@@ -1,5 +1,16 @@
 # PEX agent handoff
 
+### Offline pet-size repair after native-testing hold
+
+The floating PetStage forced scale to at least 1.04, ignoring the user's smaller
+size setting. Removed that override so overlay and in-app sprites respect the
+configured scale. A server-rendered component regression failed before the fix
+(75% setting produced 116px width), and passes afterward (84px width, 91px height).
+All 13 releasePet tests and TypeScript/Vite production build pass. This verifies
+rendering logic only: native transparency, close interaction and performance
+remain unverified. No PEX launch, process termination or computer input occurred
+during this repair. The unsafe smoke script remains quarantined.
+
 ### STOP native testing: Codex shutdown incident, 9 September 2026
 
 The user reported "u just killed codex" after the diagnostic native run
