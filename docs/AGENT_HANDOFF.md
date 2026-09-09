@@ -1,5 +1,23 @@
 # PEX agent handoff
 
+### Read-only native-resource observer prepared, not run against apps
+
+Added `scripts/measure_pex_readonly.ps1` and pure attribution module
+`scripts/pex_process_snapshot.psm1`. This observer only selects an already-running
+exact executable, pins its PID plus creation timestamp and samples CIM counters.
+It neither launches nor terminates any process. The old native smoke script
+remains quarantined; this does not remove the native-testing hold.
+
+`scripts/test_pex_process_snapshot.ps1` passes eight synthetic cases: valid tree,
+old child of reused root, old child of reused descendant, reused root, exited
+root, empty snapshot, ambiguous equal timestamps and cyclic data. AST command
+and method allowlists guard against introducing process mutation into the
+observer. Tests did not inspect real processes. Native observer operation is
+not yet verified. Duration is a sampling target, not a hard deadline for a
+potentially stalled OS query. Counters are reported per process-instance;
+summed working sets can double-count shared pages. Snapshot ancestry is for
+measurement only and must never become termination authority.
+
 ### Current-source candidate built and package-verified
 
 Source `493aec0` now has freshly rebuilt sidecars, desktop executable, MSI and
