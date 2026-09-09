@@ -9560,3 +9560,19 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - The fresh receipt binds Git commit `dd4edb126fd7b1ac49ecb8a04ec7031f6a970075` while retaining
   the exact product release-input, sidecar-input, preflight, canonical-desktop, and installer
   hashes from package source `933239a`. The intervening commits are documentation-only.
+
+### 9 September current-package native harness prepared, not run
+
+- Prepared `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-933239a.ps1`, SHA-256
+  `2328F0B7524E64AA4163F8A90FD2FA54ABB36FA32CE80044061E8C9CBE30B2AA`. PowerShell AST parsing
+  reports zero errors.
+- It pins immutable package source `933239a1bd0e05e65274d9c895750374239407b3` as an ancestor and
+  exact canonical desktop SHA-256
+  `F639D2FBE67A15ACE20965DC3DFA8B191A2F75433432C84626567473064BD4C5`, while recording the
+  checkout commit separately so documentation-only descendants do not stale the harness.
+- It retains the previous bounded protections: refuses an existing PEX process or occupied port
+  7420, uses an isolated Windows profile, disables supervisor inference and automatic
+  Codex/Cursor attachment, samples only the owned process tree, enforces CPU/memory/handle/thread
+  ceilings, and starts a hidden PID/start-time-bound watchdog.
+- **It has not been executed.** Keep the native app closed and run this only after the user says
+  exactly `run bounded native smoke`.
