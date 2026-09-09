@@ -87,6 +87,11 @@ Integrated verification: four new tests feed the production HTTP retention buffe
 through the actual OpenCode pump into delivery-lineage matching. Intact exact-parent
 responses match; count eviction, byte eviction and oversize discard do not. The full
 OpenCode lineage/pump selection passes 57 tests (4.77 seconds), without live I/O.
+Codex follow-up: full offline pump suite passes 34 tests (26.09 seconds), including
+1,400-notification reclamation and same-thread recovery. Separate `raw_capture`
+retention remains count-only; review its aggregate byte budget and explicit
+incompleteness handling together with benchmark consumers before changing it.
+No native memory result is established by these tests.
 
 Collected fixes now included in package 166a656:
 

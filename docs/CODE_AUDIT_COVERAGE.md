@@ -1,5 +1,28 @@
 # PEX code audit coverage — 5 September 2026
 
+## 10 September — Codex pump and capture-retention review
+
+Read Codex transport notification append/read-loop paths, pump queue reclamation,
+completion waiting, and the benchmark's raw-capture turn reader. The notification
+queue has a 1,024-record admission limit and the pump removes successful prefixes.
+The separate `raw_capture` retains the first 1,024 notifications even after the
+pump drains them. It has no aggregate payload-byte bound. Do not confuse bounded
+record count with low measured idle memory, and do not silently truncate capture
+further without preserving its incompleteness in benchmark evidence handling.
+
+Current-source verification:
+
+```text
+.venv\Scripts\python.exe -m pytest -q tests/unit/test_codex_pipeline_pump.py --tb=short
+```
+
+34 passed in 26.09 seconds. Includes 1,400-notification reclamation, ingestion
+retry without lost acknowledgement, exact delivered-turn outcome matching,
+same-thread recovery, and passing-test NOOP. These use the in-process App Server
+stand-in and temporary SQLite; no real Codex executable is launched. No production
+change was made in this checkpoint. Aggregate Codex capture budgeting remains
+open, as do native resource measurement and the full transport audit.
+
 ## 10 September — integrated retention-to-outcome proof
 
 Added four cases in `test_opencode_outcome_lineage.py` using LiveHttpTransport's

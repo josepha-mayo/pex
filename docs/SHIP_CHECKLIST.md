@@ -21,6 +21,9 @@ HTTP/SSE and four OpenCode pump checks pass. No live stream was accessed.
 Integrated buffer-to-pump-to-delivery verification also passes: intact history
 matches, while count/byte/oversize losses reject authoritative delivery matching.
 Full OpenCode lineage and pump suites: 57 passed in 4.77 seconds, offline only.
+Codex offline pump suite: 34 passed in 26.09 seconds, including notification
+reclamation, exact-turn recovery and quiet completion. Capture-history aggregate
+memory budgeting is still an audit item; live CPU/memory behavior is not proven.
 
 **9 September safety hold:** user reported Codex closed during native testing.
 External `pex-native-smoke-933239a.ps1` is quarantined before execution because
