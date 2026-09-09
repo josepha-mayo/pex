@@ -4677,6 +4677,19 @@ def create_app() -> FastAPI:
             key: [str(item) for item in (changes.pop(key) or []) if str(item).strip()]
             for key in skip_ledger
         }
+        # A partial edit must not re-adopt requirements or decisions the human
+        # already cleared from the structured ledger. Extract only new objective
+        # text; otherwise preserve every omitted field exactly as stored.
+        objective_changed = (
+            "objective" in changes and changes["objective"] != current.objective
+        )
+        extraction_skip_ledger = (
+            skip_ledger if objective_changed else set(LEDGER_DECISION_FIELDS)
+        )
+        extraction_skip_lists = {
+            key for key in _GOAL_EXTRACT_LIST_FIELDS
+            if key in changes or not objective_changed
+        }
         if not changes and not skip_ledger:
             raise HTTPException(400, "goal patch must include an intent change")
         if body.expected_intent_revision is None:
@@ -4695,7 +4708,7 @@ def create_app() -> FastAPI:
                     ledger_projections(
                         current,
                         explicit=explicit,
-                        skip_fields=skip_ledger,
+                        skip_fields=extraction_skip_ledger,
                     ),
                     replace_ledger_kinds=ledger_kinds_for_fields(skip_ledger),
                     expected_intent_revision=body.expected_intent_revision,
@@ -4740,9 +4753,7 @@ def create_app() -> FastAPI:
 
             updated = fill_empty_goal_lists_from_objective(
                 updated,
-                skip_fields={
-                    key for key in _GOAL_EXTRACT_LIST_FIELDS if key in changes
-                },
+                skip_fields=extraction_skip_lists,
             )
             projections = (
                 []
@@ -4750,7 +4761,7 @@ def create_app() -> FastAPI:
                 else ledger_projections(
                     updated,
                     explicit=explicit,
-                    skip_fields=skip_ledger,
+                    skip_fields=extraction_skip_ledger,
                 )
             )
             try:
@@ -4796,9 +4807,7 @@ def create_app() -> FastAPI:
 
         replacement = fill_empty_goal_lists_from_objective(
             replacement,
-            skip_fields={
-                key for key in _GOAL_EXTRACT_LIST_FIELDS if key in changes
-            },
+            skip_fields=extraction_skip_lists,
         )
         try:
             receipt = await state.store.supersede_goal_with_ledger_receipt(
@@ -4807,7 +4816,7 @@ def create_app() -> FastAPI:
                 ledger_projections(
                     replacement,
                     explicit=explicit,
-                    skip_fields=skip_ledger,
+                    skip_fields=extraction_skip_ledger,
                 ),
                 replace_ledger_kinds=ledger_kinds_for_fields(skip_ledger),
                 expected_intent_revision=body.expected_intent_revision,

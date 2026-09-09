@@ -1,5 +1,25 @@
 # PEX code audit coverage — 5 September 2026
 
+## 9 September — partial goal mutation preserves intentional clears
+
+Read the goal PATCH branches, ledger extraction, and Store transaction's revision,
+hash, retirement, insert and rollback checks. Initial 70 authority/operation/store/
+semantic tests passed. A new in-process API regression then failed in three cases:
+rename and override restored a cleared criterion; an unrelated question edit
+restored a cleared decision from unchanged objective text. PATCH now extracts only
+when objective text actually changes, while explicit ledger replacement remains
+unchanged. A fourth case covers resubmission of identical objective text. Each case
+also confirms that a subsequent new objective imports its new labeled criteria and
+decisions. Final command:
+
+```text
+.venv\Scripts\python.exe -m pytest -q tests/e2e/test_goal_lifecycle.py tests/e2e/test_goal_control_operation_routes.py tests/unit/test_public_task.py tests/unit/test_goal_intent_authority.py tests/unit/test_goal_control_operations.py tests/unit/test_goal_store_transaction.py tests/unit/test_goal_intent_semantics.py --tb=short
+```
+
+Result: 120 passed in 48.03 seconds; Ruff passed for both changed Python files.
+ASGITransport and temporary SQLite only; no UI, native worker or paid model used.
+This does not claim a full audit of the large app/store files or full-suite success.
+
 ## 9 September — goal ledger edit integrity
 
 Reviewed App goal-evidence loading, draft initialization and save flow against core

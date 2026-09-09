@@ -23,6 +23,12 @@ processing/AgentCore-routing/mocked Windows-ownership gate passed 107 tests.
 This is not the complete Python suite or live UI
 acceptance. Saving BYOK still explicitly does not claim tested credentials.
 
+Goal API preservation checkpoint: 120 API/parser/store tests passed (48.03 seconds),
+with Ruff passing. Renaming, overriding with unchanged objective text, or editing
+an unrelated ledger field no longer restores explicitly cleared criteria/decisions.
+New objective text still imports its new labeled intent. These are in-process
+ASGI/temporary SQLite checks, not native or live-provider acceptance.
+
 Backend changes: `367b759`, including `5d2b717`, enforce goal/session pause
 at the inference and deterministic routing boundaries. The planner/router/loop/
 trajectory gate passes 165 tests; scoped lint passes. No billable calls occurred.

@@ -82,6 +82,7 @@ Post-package fixes awaiting the next collected rebuild:
 | `4fc703c` | Count scope in the 18,000-character decision-text budget | Regression formerly admitted 27,000 characters; 15 context/integration tests; Ruff |
 | `a988748` | Lock goal fields while saving to prevent loss of concurrent edits | 267 desktop tests; frontend build |
 | This checkpoint | Require validated decisions for the selected goal revision before editing; reject stale drafts and remove unscoped post-save decision reads | 268 desktop tests; frontend build |
+| API intent-preservation repair | Do not re-extract previously cleared criteria/decisions during unrelated partial edits or unchanged-objective resubmission; new objective text still extracts | 120 API/parser/store tests; Ruff |
 
 Collect verified fixes instead of rebuilding after every tiny change. Keep source
 clean and unchanged during build/verification. Never claim current native behavior
@@ -114,6 +115,7 @@ from an older installer.
 | Goal-ledger freshness repair full desktop suite | 268 passed, zero skipped; TypeScript/Vite build exit 0 | Native rendering, interaction, resource use |
 | `157b119` combined backend gate | 107 passed in 110.29 seconds | Full Python suite; live worker/provider/AgentCore |
 | `4fc703c` context gate | 15 passed | Measured token/cost savings |
+| API intent-preservation repair | 120 passed in 48.03 seconds: goal lifecycle, operation routes, public-task parser, authority, operations, transactions and semantic hashing | Live workers or full Python suite |
 | `2966259` installers | Both extracted inventories verified; zero package blockers | Latest source; end-to-end product acceptance |
 | Historical `933239a` full Python | 4,178 passed, 32 skipped | Current full-suite result |
 

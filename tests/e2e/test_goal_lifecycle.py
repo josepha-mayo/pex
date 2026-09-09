@@ -608,6 +608,51 @@ async def test_goal_patch_keeps_explicit_empty_lists_instead_of_reextracting(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("followup", [
+    {"title": "Renamed receipt"},
+    {"mode": "override", "title": "Replacement receipt"},
+    {"unresolved_questions": ["Who reviews the receipt?"]},
+    {"title": "Same objective", "objective":
+     "Ship receipt.\n\nAcceptance criteria:\n- Old criterion\n\nDecisions:\n- Old decision\n"},
+])
+async def test_unrelated_goal_edit_does_not_resurrect_cleared_intent(client, followup):
+    created = await client.post("/v1/goals", json={
+        "project_id": "demo", "title": "Receipt",
+        "objective": "Ship receipt.\n\nAcceptance criteria:\n- Old criterion\n"
+        "\nDecisions:\n- Old decision\n",
+    })
+    assert created.status_code == 200
+    goal = created.json()
+    cleared = await client.patch(f"/v1/goals/{goal['id']}", json={
+        "expected_intent_revision": goal["intent_revision"],
+        "acceptance_criteria": [], "decisions": [],
+    })
+    assert cleared.status_code == 200
+    edited = await client.patch(f"/v1/goals/{goal['id']}", json={
+        **followup, "expected_intent_revision": cleared.json()["intent_revision"],
+    })
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["acceptance_criteria"] == []
+    decisions = await client.get(f"/v1/goals/{edited.json()['id']}/decisions")
+    assert decisions.status_code == 200
+    assert not any(row["statement"] == "Old decision" and row["status"] == "active"
+                   for row in decisions.json())
+
+    # A real objective change still imports its newly supplied labeled intent.
+    revised = await client.patch(f"/v1/goals/{edited.json()['id']}", json={
+        "expected_intent_revision": edited.json()["intent_revision"],
+        "objective": "Ship the new receipt.\n\nAcceptance criteria:\n- New criterion\n"
+        "\nDecisions:\n- New decision\n",
+    })
+    assert revised.status_code == 200, revised.text
+    assert revised.json()["acceptance_criteria"] == ["New criterion"]
+    decisions = await client.get(f"/v1/goals/{revised.json()['id']}/decisions")
+    assert decisions.status_code == 200
+    assert any(row["statement"] == "New decision" and row["status"] == "active"
+               for row in decisions.json())
+
+
+@pytest.mark.asyncio
 async def test_goal_patch_rejects_empty_or_null_intent_changes(client: AsyncClient):
     goal = await _goal(client)
     empty = await client.patch(f"/v1/goals/{goal['id']}", json={})
