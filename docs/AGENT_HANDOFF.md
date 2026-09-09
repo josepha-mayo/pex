@@ -1,5 +1,26 @@
 # PEX agent handoff
 
+### Combined offline regression checkpoint — source 157b119
+
+Clean source `157b119` passed the complete desktop `npm test` suite: 266 passed,
+zero failures/skips (6.55 seconds). Combined Python gate passed 107 tests in
+110.29 seconds, exit zero:
+
+```text
+.venv\Scripts\python.exe -m pytest -q tests/unit/test_supervisor_loop.py tests/unit/test_trajectory_review.py tests/unit/test_event_processing_pipeline.py tests/unit/test_event_processing_store.py tests/unit/test_agentcore_pipeline.py tests/unit/test_windows_job_ownership.py --tb=short
+```
+
+Coverage includes supervisor decisions, trajectory eligibility, durable replay,
+dispatch budgets, uncertain-delivery non-retry, mocked AgentCore routing and
+mocked Windows thread ownership. This is NOT the full Python suite and NOT a live
+worker/AgentCore test. Desktop tests include logic, static contracts and server-side
+render checks, not native UI interaction or resource measurements. No new provider
+call, desktop app launch or real process termination was performed.
+
+The source-level Retry and thread-owner fixes remain newer than the last verified
+Windows package (2966259). Native safety hold and all remaining shipping gates
+remain open. Do not restart an old build/test session: these commands completed.
+
 ### Bounded bridge retry response (after package 2966259)
 
 Startup audit found `retryDesktopBridge` directly awaited unbounded native IPC.
