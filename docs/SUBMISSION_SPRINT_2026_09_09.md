@@ -247,3 +247,14 @@ audit fields. See the sanitized `demo/evidence/LIVE_CODEX_STRANDS_2026-09-06.md`
 Do not claim perfection or a guaranteed win. Mark a box only with retained
 evidence tied to its source revision. If a gate fails, repair the cause and rerun
 the affected gate; do not erase the failure or weaken the specs to hit the date.
+
+### 9 September Pex/Von acceptance refresh
+
+- The current Pex and Von atlases independently pass the required v2 validator as RGBA WebP,
+  1536x2288, 8 columns by 11 rows, with no errors, warnings, or transparent RGB residue.
+- With the pinned Rust 1.97.1 toolchain restored to `PATH`, `npm --prefix apps\desktop run
+  validate:pets` passes and names exactly the required eight built-ins in release order.
+- Original-resolution contact and direction sheets show clean transparency, coherent state
+  storytelling, and distinct full-circle direction frames for both characters. No asset rewrite
+  is warranted. Native playback remains part of the open bounded-native gate.
+- Receipt: `docs/demo/evidence/PET_ACCEPTANCE_2026-09-09.md`.

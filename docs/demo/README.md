@@ -34,7 +34,8 @@ narrows the incident but does not clear the native window or real retained profi
 Keep the visual story to Pex and Von. All eight built-ins pass the structural v2 atlas
 validator, but a two-character story is faster and clearer for judges. Pex is the default
 supervisor; Von demonstrates that the companion can feel personal without turning the demo
-into a pet gallery.
+into a pet gallery. A fresh original-resolution and structural acceptance receipt for both is
+retained in [`PET_ACCEPTANCE_2026-09-09.md`](evidence/PET_ACCEPTANCE_2026-09-09.md).
 
 ## Current Strands, AgentCore, and benchmark evidence
 

@@ -9427,12 +9427,12 @@ The dirty bit is expected because the protected operator-owned file below is ret
 ### 9 September submission bundle sealed
 
 - Working bundle: `C:\Users\JosephMayo\Documents\Codex\PEX-submission-9966a60`.
-  `BUNDLE_MANIFEST.md` records the exact size and SHA-256 of all 23 files present before the
+  `BUNDLE_MANIFEST.md` records the exact size and SHA-256 of all 24 files present before the
   manifest was created: installers, duplicate package-receipt names, live JUnits, sanitized
   proof, offline/AgentCore/bridge/EFS receipts, visual captures, submission/differentiation
   copy, recording runbook, and bounded native harness.
 - `BUNDLE_MANIFEST.md` SHA-256 is
-  `F2CE95B4AE5E191146C2C72B6AD9E5A9787B52DF55D2CDCC8C293848DE7D05FF`; the folder contains 24
+  `F6B1E345AAB63BF1AE811F7AD87562EB47D89B8CD26CFD97AE0D3574DE1C2883`; the folder contains 25
   files including the manifest. The duplicate receipt names have intentionally identical bytes.
   Recompute the manifest after any later artifact change rather than silently editing a sealed
   file.
@@ -9452,3 +9452,21 @@ The dirty bit is expected because the protected operator-owned file below is ret
   Codex sandbox account. Encrypting/denying shared paths would disrupt the user's other active
   agents and was not attempted. The useful next architecture is an exclusive reversible private
   controller environment with action-time denial receipts for both harnesses.
+
+### 9 September fresh Pex/Von acceptance
+
+- Applied the `hatch-pet` release workflow read-only to the two judge-facing pets. The bundled
+  workspace Python validator reports `ok:true`, zero errors/warnings, RGBA WebP, 1536x2288,
+  8x11 v2 geometry, and zero transparent RGB residue for both Pex and Von.
+- Current sprite hashes match the release manifest: Pex
+  `CE9A714836353C752A5C1BB794A639F03755E39751AB106B8A2A8C1730C6F1A3`; Von
+  `AE1D4517C1C172DCF135ED107201DAEE5EE3BB12E2132FEE303DF1DA7D6A830E`.
+- The first `npm --prefix apps\desktop run validate:pets` attempt did not enter validation because
+  ambient `PATH` lacked `rustc`. With pinned Rust 1.97.1 prepended, it passed and returned exactly
+  `pex, ledger, mesh, nudge, drift, quiet, ember, von`.
+- Original-resolution contact and 16-direction sheets for Pex and Von were visually inspected.
+  Both have clean transparent silhouettes, coherent state storytelling, and distinct directional
+  movement. Von's laptop work/review sequence is particularly suitable for the demo. No sprite
+  edits were justified.
+- Receipt: `docs/demo/evidence/PET_ACCEPTANCE_2026-09-09.md`. This is static/source evidence only;
+  native playback and stability remain guarded by the exact `run bounded native smoke` phrase.

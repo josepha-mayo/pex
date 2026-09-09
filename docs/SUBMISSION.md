@@ -117,7 +117,9 @@ pinned to `gpt-5.3-codex-spark`. See the
 
 Current source contains exactly eight built-in pets. Keep the submission demo focused on Pex
 and Von: both independently pass the 11-row v2 atlas validator and original-resolution visual
-review. A one-call hatch result is only an unverified base candidate, not a playable pet.
+review. The fresh receipt is
+[`PET_ACCEPTANCE_2026-09-09.md`](demo/evidence/PET_ACCEPTANCE_2026-09-09.md). A one-call hatch
+result is only an unverified base candidate, not a playable pet.
 
 ## Demo video voiceover (≤5 minutes)
 
