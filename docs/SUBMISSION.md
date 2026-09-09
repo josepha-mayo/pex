@@ -6,13 +6,14 @@
 > native stability. PEX has stayed closed since the incident; a fresh bounded native run still
 > requires explicit user approval. Submission remains NO-GO until that run and the video pass.
 
-> **Current, 9 September WAT:** exact clean product source `9357bb8` produced normal MSI and
+> **Current, 9 September WAT:** exact clean product source `9966a60` produced normal MSI and
 > NSIS installers whose extracted desktop, frozen bridge, Cursor helpers, and eight-pet
 > inventories pass with `release_ready:true` and zero package blockers. The exact receipt is
-> `PACKAGE_RECEIPT_9357BB8.json`. Complete desktop contracts pass 260/260, production
-> TypeScript/Vite compilation passes, the eight-task benchmark/Cursor-hook gate passes 201/201,
-> and the offline Strands/AgentCore gate passes 200/200. Exact package source `9357bb8` now
-> retains real Codex Spark plus free Muse/Strands quiet and same-thread recovery evidence. The
+> `PACKAGE_RECEIPT_9966A60.json`. The complete repository gate passes 4,175 tests with 34
+> intentional skips, production TypeScript/Vite compilation passes, the eight-task
+> benchmark/Cursor-hook gate passes 201/201, and the offline Strands/AgentCore gate passes all
+> 200 collected tests. Packaged ancestor `9357bb8` retains real Codex Spark plus free
+> Muse/Strands quiet and same-thread recovery evidence. The
 > benchmark remains unfrozen, AgentCore remains undeployed,
 > and PEX has not been installed or launched after the reported idle whole-PC freeze. Native
 > stability/interaction capture, current live demo, video, and authorized submission remain
@@ -139,9 +140,9 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 ## Checklist before clicking Submit
 
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
-- [x] Build all three sidecars/installers from clean product source `9357bb8`; both installer
-  inventories and the retained `PACKAGE_RECEIPT_9357BB8.json` pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `9357bb8`;
+- [x] Build all three sidecars/installers from clean product source `9966a60`; both installer
+  inventories and the retained `PACKAGE_RECEIPT_9966A60.json` pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `9966a60`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run the clean 201-test benchmark/Cursor-hook gate, 200-test offline Strands/AgentCore
   gate, all 260 desktop/UI contracts, and a production TypeScript/Vite build; no benchmark arm,

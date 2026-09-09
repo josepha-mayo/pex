@@ -1,5 +1,79 @@
 # PEX agent handoff
 
+### Current checkpoint — 9 September 2026, post-regression/package refresh
+
+Current accepted and pushed product source is
+`9966a602be7ed700844979e5fac2e2669cdb8823`. Main and `origin/main` were verified equal at
+that checkpoint. The inherited full-suite failure set was reproduced and audited rather than
+papered over:
+
+- speculative winner planning produced a correct comparison but began its continuation with
+  generic `Continue ...` text, so the worker-text rejection guard downgraded it to `NOOP`;
+  the planner now names the bounded probe and selected approach explicitly;
+- four shared-Codex publication tests still expected transportless pumps to call desktop
+  discovery, contradicting the intentional idle-freeze mitigation; those tests now exercise
+  and assert the real dormant transportless pump instead of monkeypatching the removed scan;
+- the public source setup contract required README to say the bootstrap is `not a packaged
+  installer`; README now states that directly.
+
+The exact six failures pass 6/6, their broader planner/shared/source gate passes 74/74, and
+scoped Ruff/whitespace checks pass. A clean authoritative main-checkout run then completed
+**4,175 passed, 34 skipped in 2,273.30 seconds**. The complete eight-task benchmark/Cursor
+contract gate passes **201/201 in 210.05 seconds**. After installing the already locked free
+`bedrock-agentcore==1.22.0` into the local test venv, the exact 200-case Strands/AgentCore
+client, pipeline, preflight, runtime and integration gate executes with **200/200 passed in
+12.91 seconds**; the preceding 198-pass/2-skip run is retained as an environment-gap attempt,
+not the final receipt. No AWS request, Docker start, deployment or paid model call occurred.
+
+The detached clean release worktree at
+`C:\Users\JosephMayo\Documents\Codex\pex-release-18e620e-localenv` was advanced to exact
+`9966a60`. Source preflight verified clean Git state, all 270 tracked release inputs, exact
+eight-pet fleet, pinned Python/Node/Rust/PyInstaller toolchains and Tauri wiring; its only
+pre-build blocker was the expected stale sidecar stamp. The normal Tauri release rebuilt all
+three frozen sidecars, compiled production TypeScript/Vite and Rust, and produced MSI plus
+NSIS bundles. Package verification extracted both installers and returned
+`release_ready:true`, `blockers:[]`, with both embedded inventories verified. The tracked
+receipt is `docs/PACKAGE_RECEIPT_9966A60.json`, SHA-256
+`F8A38C161F3786D4279031B64E450784DB19F4541752A7A47EB5C7D2DA4C706A`.
+
+- MSI SHA-256: `D1101B813D6F0856735CCA3666B5C1EC71559F9410479F2F1A548123674B8028`.
+- NSIS SHA-256: `984C8D50890504C9A68A1193CEB1E32A3B57A7151008FFC6FEFE6935624BEC5C`.
+- Canonical desktop SHA-256: `07CF6C5526B6877C45EC84330BD7EBB6755F59A59D48048D1FD20EBCC0449E01`.
+- Release-input SHA-256: `20B9EEE1A0F1DED94745FB293A92EF9A83DE8A714D86D632F5D461344D8EA354`.
+- Sidecar-input SHA-256: `36DAE47AA68B079FBEFA3DC23C41CDBB9AC1C78646CB08164BACCCB7788ABD13`.
+
+Stable uninstalled artifacts are in
+`C:\Users\JosephMayo\Documents\Codex\PEX-submission-9966a60`. The first package-verifier
+attempt omitted Cargo from that shell's PATH and failed before receipt generation; the corrected
+run used the already installed pinned Rust toolchain and passed. Package integrity is not native
+stability evidence. PEX remained closed throughout.
+
+The benchmark manifest remains `frozen:false`: the development contract is green, but the
+installed Codex 0.153.4 Windows sandbox was adversarially tested and still allowed the worker
+identity to read the hidden evaluator through inherited `CodexSandboxUsers` ACLs. Network denial
+alone is insufficient. Do not weaken ACLs on this shared PC, fake isolation, run presentation
+rows, or cite a score/leaderboard rank. Complete Cursor raw/same-session evidence is also open.
+
+Real Codex Spark plus free Muse/Strands quiet/recovery proof remains tied to packaged ancestor
+`9357bb8`; it is not silently relabeled as exact `9966a60` evidence. AgentCore Runtime remains
+undeployed because active AWS credentials/current deployment tooling/runtime ARN and zero-card
+billing coverage are not proven. Strands is mandatory and already central; AgentCore is an
+implemented, fully tested deploy path, not a deployed-service claim.
+
+PEX remains closed. Do not install or launch it unless the user says exactly `run bounded native
+smoke`; the prior idle run froze the whole PC. Preserve
+`services/supervisor/src/pex_supervisor/loop.py` exactly at SHA-256
+`DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`; it remains the sole
+main-checkout modification and must not be edited, staged, restored or formatted unless the user
+says exactly `remove the protected loop tail`.
+
+**Next causal path:** push this documentation/receipt checkpoint; then either (1) obtain the exact
+native-smoke phrase and run the bounded post-freeze app/resource/UI check, or (2) continue safe
+offline work on benchmark OS isolation and complete Cursor capture. After native safety, recapture
+the Codex Spark + free Muse Strands quiet/recovery pair on the exact final package source, run the
+ten quiet cases, film the <=5-minute demo, and obtain action-time submission authorization. Do
+not spend quota on a 32-row presentation benchmark while preflight must reject it.
+
 ### Current checkpoint — 9 September WAT
 
 The exact clean package source is `9357bb8ccd70dbec77d8fed126a59d03decc29fe`.
