@@ -1569,6 +1569,27 @@ async def _bounded_adapter_probe(adapter: Any) -> AdapterCapabilities:
     return AdapterCapabilities(notes="Adapter probe unavailable or timed out.")
 
 
+async def _bounded_adapter_probes(adapters: list[Any]) -> list[AdapterCapabilities]:
+    """Probe a registry against one non-blocking desktop-process snapshot.
+
+    Several adapters supplement their protocol result with an existing desktop
+    process check. Running one synchronous ``tasklist`` subprocess per adapter
+    can stall the event loop long enough to cancel an otherwise healthy HTTP
+    probe. Capture the inventory once off-loop and share it with every probe.
+    """
+
+    from pex_bridge.adapters.desktop import (
+        capture_running_image_snapshot,
+        scoped_running_image_snapshot,
+    )
+
+    snapshot = await asyncio.to_thread(capture_running_image_snapshot)
+    with scoped_running_image_snapshot(snapshot):
+        return list(
+            await asyncio.gather(*[_bounded_adapter_probe(adapter) for adapter in adapters])
+        )
+
+
 async def _bounded_discover_sessions(adapter: Any) -> list[Any]:
     try:
         return await asyncio.wait_for(
@@ -3598,9 +3619,7 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health(_: None = Depends(_require_token)):
         adapters = state.adapters.all()
-        capabilities = await asyncio.gather(
-            *[_bounded_adapter_probe(adapter) for adapter in adapters]
-        )
+        capabilities = await _bounded_adapter_probes(adapters)
         attached = [
             adapter.name
             for adapter, caps in zip(adapters, capabilities, strict=True)
@@ -6119,9 +6138,7 @@ def create_app() -> FastAPI:
     @app.get("/v1/adapters")
     async def adapters(_: None = Depends(_require_token)):
         registered = state.adapters.all()
-        capabilities = await asyncio.gather(
-            *[_bounded_adapter_probe(adapter) for adapter in registered]
-        )
+        capabilities = await _bounded_adapter_probes(registered)
         return [
             {"name": adapter.name, "capabilities": caps.model_dump(mode="json")}
             for adapter, caps in zip(registered, capabilities, strict=True)

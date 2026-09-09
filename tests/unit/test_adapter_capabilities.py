@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from datetime import UTC, datetime
 
 import pytest
@@ -21,7 +22,7 @@ from pex_bridge.adapters.http_json import MemoryHttpTransport
 from pex_bridge.adapters.opencode import OpenCodeAdapter
 from pex_bridge.adapters.qwen import QwenAdapter
 from pex_bridge.adapters.synthetic import SyntheticAdapter
-from pex_bridge.app import _bounded_adapter_probe
+from pex_bridge.app import _bounded_adapter_probe, _bounded_adapter_probes
 from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings
 from pex_bridge.pipeline import Pipeline
@@ -62,6 +63,48 @@ class SlowProbeAdapter(HarnessAdapter):
 
     async def discover_sessions(self) -> list[HarnessSession]:
         return []
+
+
+@pytest.mark.asyncio
+async def test_registry_probe_reuses_one_off_loop_desktop_snapshot(monkeypatch) -> None:
+    from pex_bridge.adapters import desktop
+
+    captures = 0
+
+    def capture() -> desktop.DesktopProcessSnapshot:
+        nonlocal captures
+        captures += 1
+        return desktop.DesktopProcessSnapshot(
+            names=frozenset({"OpenCode.exe"}),
+            available=True,
+            captured_at=time.monotonic(),
+        )
+
+    class DesktopProbe(ProbeAdapter):
+        async def probe(self) -> AdapterCapabilities:
+            self.probe_calls += 1
+            snapshot = desktop._active_process_snapshot()
+            detected = snapshot is not None and "OpenCode.exe" in snapshot.names
+            return AdapterCapabilities(
+                trust_level=0.4 if detected else 0.0,
+                support_label=(
+                    AdapterSupportLabel.OBSERVE_ONLY
+                    if detected
+                    else AdapterSupportLabel.UNAVAILABLE
+                ),
+            )
+
+    monkeypatch.setattr(desktop, "capture_running_image_snapshot", capture)
+    adapters = [DesktopProbe(AdapterCapabilities()), DesktopProbe(AdapterCapabilities())]
+
+    capabilities = await _bounded_adapter_probes(adapters)
+
+    assert captures == 1
+    assert [adapter.probe_calls for adapter in adapters] == [1, 1]
+    assert [item.support_label for item in capabilities] == [
+        AdapterSupportLabel.OBSERVE_ONLY,
+        AdapterSupportLabel.OBSERVE_ONLY,
+    ]
 
 
 def test_supports_only_reports_negotiated_boolean_capabilities() -> None:
