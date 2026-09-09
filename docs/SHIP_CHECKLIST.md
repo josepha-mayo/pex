@@ -1,32 +1,64 @@
-# PEX shipping checklist — 5 September 2026
+# PEX shipping checklist
+
+## Maintained current status — 9 September 2026
+
+Overall: **NO-GO for submission**. This section supersedes current/latest labels
+in the historical log below; the three specifications remain authoritative.
 
 **9 September safety hold:** user reported Codex closed during native testing.
 External `pex-native-smoke-933239a.ps1` is quarantined before execution because
 its cleanup trusts PID-only descendant discovery. No more native launches,
-process termination, or computer input until this is resolved. Latest preview
-still has a white pet background; pet hide is unverified. See the top of
-`AGENT_HANDOFF.md` for exact evidence and incomplete checks.
+process termination, or computer input until this is resolved. The last native
+observation showed white around the pet. A concrete startup API argument mismatch
+has since been repaired and packaged, but the repaired native rendering and hide
+behavior have not been observed. A read-only observer is prepared and tested only
+with synthetic records. Fresh permission for PEX-only visual checks was requested;
+no permission response has been received yet.
 
-Latest incremental product checkpoint: `1985caa` repairs blocking desktop discovery
-inside OpenCode capability probes. Focused Python 137/137, desktop 260/260, Rust
-18/18, production UI build, MSI/NSIS build and extracted-package verification pass.
-Receipt: `build/pex-package-receipt-1985caa.json`. The earlier full-suite result below
-belongs to the earlier source; it was not rerun for this narrow change.
+Latest product changes: `367b759`, including `5d2b717`, enforce goal/session pause
+at the inference and deterministic routing boundaries. The planner/router/loop/
+trajectory gate passes 165 tests; scoped lint passes. No billable calls occurred.
+
+Latest package-verified source: `493aec0`, BEFORE those two pause fixes. It includes
+the current UI/pet repairs and event-stream/adapter responsiveness changes.
+Both installers passed extracted payload/inventory checks. Exact receipt:
+`build/pex-package-receipt-493aec0.json`; durable hashes:
+[package checkpoint](demo/evidence/PACKAGE_493AEC0_2026-09-09.md).
+Package readiness is not product readiness. Earlier full-suite totals are
+historical, not a test run against current HEAD.
 
 Immediate MVP work, in order:
 
 - [x] Apply the same responsiveness repair to Codex/Cursor probes with regressions;
   Claude/Hermes included. All four failed the new stall regression before the fix.
   The broader adapter/pump/shared-attachment gate passes 154/154 afterward.
-- [ ] Bounded native startup, idle, pet hide, message dismissal and BYOK interaction checks.
-- [ ] Complete quiet/recovery acceptance and the honest, isolated comparative benchmark.
-- [ ] Refresh the final package once those repairs pass, then film and prepare submission.
+- [ ] Resolve native-check safety: keep the old launcher quarantined; use no
+  PID-based cleanup. Obtain fresh agreement on PEX-only visual checks.
+- [ ] Observe the rebuilt app: transparent pet, calm motion, stationary accessible
+  close control, dismissible status, useful workspace/goal UI, startup/recovery,
+  bounded idle CPU/memory. Preserve screenshots and measured process-instance data.
+- [ ] Finish visible Zen BYOK save/validation/error handling and real OpenCode/Codex
+  attach -> persistent goal -> Strands review -> same-worker continuation ->
+  verified completion. Existing one-off receipts do not prove the full UI journey.
+- [ ] Complete the required quiet sample (existing OpenCode quiet receipt is one
+  controlled case, not ten) and retain failures alongside successes.
+- [ ] Satisfy benchmark prerequisites: enforced worker/hidden-evaluator separation,
+  complete raw harness evidence, Cursor same-session/policy receipts, fixed model
+  and budget attribution. Manifest stays `frozen:false`; no scored presentation run
+  or improved-performance claim before those gates pass.
+- [ ] Finish required AgentCore live evidence only within the user's no-billing
+  constraint; offline integration tests are not deployment proof.
+- [ ] Rebuild after collected source fixes, run proportionate final regression and
+  package checks, then film, prepare and verify all submission materials against
+  the official rules. Do not label the app complete based on green subsets.
 
 Keep Pex/Von as the two demo characters, OpenCode/Codex as the primary integrations,
 and preserve Strands, Zen BYOK and the implemented AgentCore path. AgentCore cloud
 deployment is not proven and no paid deployment is authorized.
 
-**Current checkpoint: 9 September WAT.** Exact clean source `933239a` has a verified MSI and
+## Historical checkpoint log (not current readiness)
+
+**Historical checkpoint: 9 September WAT.** Exact clean source `933239a` has a verified MSI and
 NSIS package receipt (`build/pex-package-receipt.json`) and a sealed local submission bundle.
 The current clean repository gate passes 4,178 tests with 32 intentional skips, the eight-task benchmark package passes its 201-test
 contract gate, and the offline Strands/AgentCore gate passes all 200 collected tests with the
