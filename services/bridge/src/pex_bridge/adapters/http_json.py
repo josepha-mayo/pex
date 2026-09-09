@@ -11,10 +11,11 @@ from urllib.parse import urlparse
 import httpx
 
 from pex_bridge.adapters.base import DeliveryUncertainError, bounded_observed_mapping
-from pex_bridge.adapters.strict_json import strict_json_loads
+from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
 
 MAX_HTTP_RESPONSE_BYTES = 8_388_608
 MAX_HTTP_EVENTS = 1_024
+MAX_HTTP_EVENT_BUFFER_BYTES = 8_388_608
 MAX_SSE_LINE_CHARS = 1_048_576
 MAX_SSE_FRAME_CHARS = 1_048_576
 MAX_SSE_STREAMS = 1_024
@@ -196,6 +197,8 @@ class LiveHttpTransport:
             base_url=self.base_url, timeout=8.0, headers=headers, auth=auth
         )
         self.events: deque[dict[str, Any]] = deque(maxlen=MAX_HTTP_EVENTS)
+        self._event_sizes: deque[int] = deque()
+        self._event_buffer_bytes = 0
         self._event_cursor = 0
         self._events_ready = asyncio.Event()
         self._sse_tasks: dict[str, asyncio.Task] = {}
@@ -322,7 +325,27 @@ class LiveHttpTransport:
         await self._client.aclose()
 
     def _record_event(self, payload: dict[str, Any]) -> None:
+        # Bound aggregate serialized payload, not just event count. The decoder
+        # separately bounds object depth/nodes/text; this is not an RSS estimate.
+        size = len(strict_json_dumps(payload, separators=(",", ":")).encode("utf-8"))
+        if size > MAX_HTTP_EVENT_BUFFER_BYTES:
+            # events_since models a contiguous retained tail. An omitted event
+            # in the middle must retire the older tail as well, exposing a gap.
+            self.events.clear()
+            self._event_sizes.clear()
+            self._event_buffer_bytes = 0
+            self._event_cursor += 1
+            self._events_ready.set()
+            return
+        while self.events and (
+            len(self.events) >= MAX_HTTP_EVENTS
+            or self._event_buffer_bytes + size > MAX_HTTP_EVENT_BUFFER_BYTES
+        ):
+            self.events.popleft()
+            self._event_buffer_bytes -= self._event_sizes.popleft()
         self.events.append(payload)
+        self._event_sizes.append(size)
+        self._event_buffer_bytes += size
         self._event_cursor += 1
         self._events_ready.set()
 

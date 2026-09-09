@@ -1,5 +1,30 @@
 # PEX code audit coverage — 5 September 2026
 
+## 10 September — aggregate HTTP event-buffer bound
+
+Read EventBus, HTTP SSE retention/wait/decoder flow, OpenCode pump gap handling,
+Codex pump idle discovery and websocket queue/catch-up cleanup. HTTP retention was
+bounded only by 1,024 records; each sanitized record could retain 65,536 text
+characters plus structural data. Added an 8 MiB aggregate serialized-payload
+budget, with explicit per-record size accounting and oldest-record eviction.
+An individually oversized record advances the absolute cursor and clears the
+previous tail, preserving the contiguous-tail assumption in `events_since`.
+The byte figure is a serialized-payload bound, not an exact Python heap/RSS cap.
+
+The new aggregate-budget test failed before implementation (four rows retained
+where only one fit). It now passes, including oversize gap accounting. A second
+test covers count eviction and Unicode size bookkeeping. Verification:
+
+- HTTP/SSE selection in `test_adapter_deep_audit.py`: 10 passed, 46 deselected.
+- `test_opencode_pipeline_pump.py`: 4 passed, using fake transports and mocked
+  desktop discovery (one test carries a live_desktop marker but mocks inventory).
+- `test_opencode_outcome_lineage.py -k 'retention_gap or removal_tombstone'`:
+  2 passed, 47 deselected; gap-marked evidence cannot prove delivery lineage.
+- Ruff passed for changed transport and test; diff whitespace check passed.
+
+No user app, real worker or network endpoint was used. This is a resource-bound
+repair, not proof that retained SSE data caused the reported machine freeze.
+
 ## 10 September — downstream intent and queued-action verification
 
 Reviewed the Store pre-dispatch goal revision/hash comparison, event snapshot

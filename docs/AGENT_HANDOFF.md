@@ -1,6 +1,6 @@
 # PEX active handoff
 
-Maintained checkpoint: 10 September 2026; product source `dec84d1`, with downstream intent-regression coverage.
+Maintained checkpoint: 10 September 2026; includes aggregate HTTP event-buffer budgeting.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files before relying on this checkpoint. No prior build/test
 session remains running. This is the active entry point, not another historical log.
@@ -60,7 +60,7 @@ Update this active handoff in place; put detailed receipts in evidence files.
 ## Current source versus package
 
 Last verified Windows package source:
-`166a65661234879bb8ccda48fe180300baf7456c`; subsequent changes are documentation only.
+`166a65661234879bb8ccda48fe180300baf7456c`; the subsequent HTTP event-buffer fix is not yet packaged.
 Both MSI/NSIS passed extracted executable/hash and exact pet-inventory checks.
 
 - Receipt: `build/pex-package-receipt-166a656.json`.
@@ -72,6 +72,13 @@ Both MSI/NSIS passed extracted executable/hash and exact pet-inventory checks.
 Verification did not install/open desktop UI; the frozen bridge ran only its
 inventory-only `--verify-bundle` path. Receipt `release_ready:true` is a package
 gate, not submission readiness.
+
+Post-package change: HTTP SSE retention now enforces an 8 MiB aggregate serialized
+payload budget as well as the 1,024-event limit. Eviction preserves absolute
+cursor/drop accounting; a single oversized event clears the earlier retained tail
+so no internal gap is hidden. Ten HTTP/SSE tests, four OpenCode pump tests and two
+lineage-gap tests pass; Ruff passes. This is not an RSS cap or proof of freeze cause.
+Collect the change into the next package rebuild before claiming installer coverage.
 
 Collected fixes now included in package 166a656:
 

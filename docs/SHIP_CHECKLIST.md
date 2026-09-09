@@ -11,6 +11,11 @@ blockers. [Hashes and limitations](demo/evidence/PACKAGE_166A656_2026-09-10.md).
 This includes the collected bridge/goal/decision-budget fixes, but no live native
 acceptance has occurred. The installers were not installed or opened.
 
+Subsequent source-only resource fix: HTTP SSE retention is capped at 8 MiB of
+serialized payload plus its existing count/per-event bounds. Explicit dropped-event
+accounting remains intact. Sixteen focused HTTP/SSE/OpenCode pump/lineage tests pass;
+native resource improvement and freeze causality are not established. Not yet packaged.
+
 **9 September safety hold:** user reported Codex closed during native testing.
 External `pex-native-smoke-933239a.ps1` is quarantined before execution because
 its cleanup trusts PID-only descendant discovery. No more native launches,

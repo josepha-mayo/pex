@@ -195,6 +195,44 @@ async def test_live_http_transport_bounds_buffered_json_responses(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_live_http_event_buffer_has_aggregate_payload_budget(monkeypatch):
+    monkeypatch.setattr(http_json_module, "MAX_HTTP_EVENT_BUFFER_BYTES", 70, raising=False)
+    transport = LiveHttpTransport("http://127.0.0.1:4096")
+    try:
+        for index in range(4):
+            transport._record_event({"id": index, "text": "x" * 20})
+        latest, retained, dropped = transport.events_since(0)
+        assert latest == 4
+        assert [row["id"] for row in retained] == [3]
+        assert dropped == 3
+        # A single oversized observation must not hide a gap between retained
+        # records. Start a new contiguous tail after it, retaining cursor truth.
+        transport._record_event({"text": "x" * 100})
+        assert transport.events_since(0) == (5, [], 5)
+        transport._record_event({"id": 5})
+        assert transport.events_since(4) == (6, [{"id": 5}], 1)
+    finally:
+        await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_live_http_event_size_accounting_survives_count_eviction(monkeypatch):
+    monkeypatch.setattr(http_json_module, "MAX_HTTP_EVENTS", 2)
+    transport = LiveHttpTransport("http://127.0.0.1:4096")
+    try:
+        for index in range(8):
+            transport._record_event({"id": index, "text": "\N{CAT FACE}" * index})
+            expected = sum(len(json.dumps(row, separators=(",", ":")).encode("utf-8"))
+                           for row in transport.events)
+            assert transport._event_buffer_bytes == expected
+            assert len(transport._event_sizes) == len(transport.events) <= 2
+        assert transport.events_since(0)[2] == 6
+        assert transport.events_since(7)[1] == [{"id": 7, "text": "\N{CAT FACE}" * 7}]
+    finally:
+        await transport.aclose()
+
+
+@pytest.mark.asyncio
 async def test_live_http_event_wait_is_quiet_and_wakes_on_activity():
     transport = LiveHttpTransport("http://127.0.0.1:4096")
     waiter = asyncio.create_task(transport.wait_for_events(0))
