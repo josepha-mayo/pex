@@ -70,15 +70,25 @@ def _gate_flags(statement: ast.stmt) -> tuple[str, ...]:
     if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Call):
         call = statement.value
         if isinstance(call.func, ast.Name) and call.func.id == "require_live_authorization":
-            return tuple(
-                str(arg.value)
+            if call.keywords or not call.args or any(
+                not isinstance(arg, ast.Constant) or not isinstance(arg.value, str)
                 for arg in call.args
-                if isinstance(arg, ast.Constant) and isinstance(arg.value, str)
-            )
-    rendered = ast.unparse(statement)
-    if "PEX_AGENTCORE_LIVE" in rendered and "pytest.skip" in rendered:
-        return ("PEX_AGENTCORE_LIVE",)
+            ):
+                return ()
+            return tuple(str(arg.value) for arg in call.args)
     return ()
+
+
+def test_gate_inventory_requires_a_direct_literal_shared_gate():
+    valid = ast.parse('require_live_authorization("PEX_AGENTCORE_LIVE")').body[0]
+    assert _gate_flags(valid) == ("PEX_AGENTCORE_LIVE",)
+    for source in (
+        'note = "PEX_AGENTCORE_LIVE pytest.skip"',
+        'require_live_authorization()',
+        'require_live_authorization(flag)',
+        'require_live_authorization("PEX_AGENTCORE_LIVE", extra=flag)',
+    ):
+        assert _gate_flags(ast.parse(source).body[0]) == ()
 
 
 def test_every_live_contract_has_an_explicit_first_statement_gate():

@@ -1044,17 +1044,17 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `services/supervisor/src/pex_supervisor/workspace.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `tests/__init__.py` | Test cross-review | PENDING |
 | `tests/chaos/test_malformed_events.py` | Test cross-review | PENDING |
-| `tests/conftest.py` | Test cross-review | PENDING |
+| `tests/conftest.py` | Test cross-review | Read fully 9 September: offline supervisor/desktop defaults reviewed; fixtures are not a substitute for explicit live authorization. Unchanged. |
 | `tests/contract/__init__.py` | Test cross-review | PENDING |
 | `tests/contract/codex_live_proof.py` | Test cross-review | PENDING |
-| `tests/contract/live_gate.py` | Test cross-review | PENDING |
-| `tests/contract/test_authorization_inventory.py` | Test cross-review | PENDING |
+| `tests/contract/live_gate.py` | Test cross-review | Read fully 9 September: requires every named flag to equal `1`; unchanged. Static inventory enforces exact nonempty flag lists at live test entry. |
+| `tests/contract/test_authorization_inventory.py` | Test cross-review | Reviewed 9 September: removed AgentCore substring fallback; require direct literal shared-gate calls, reject empty/dynamic/keyword calls. Offline inventory: 3 passed; scoped Ruff passed. AST checks do not prove runtime isolation or authorization outside these test entry points. |
 | `tests/contract/test_cursor_capture_hooks.py` | Test cross-review | PENDING |
 | `tests/contract/test_cursor_delivery_ack_hook.py` | Test cross-review | PENDING |
 | `tests/contract/test_cursor_hooks.py` | Test cross-review | PENDING |
 | `tests/contract/test_cursor_prompt_policy.py` | Test cross-review | PENDING |
 | `tests/contract/test_intent_guardrails.py` | Test cross-review | PENDING |
-| `tests/contract/test_live_agentcore.py` | Test cross-review | PENDING |
+| `tests/contract/test_live_agentcore.py` | Test cross-review | Read fully 9 September; standardized first-statement authorization to shared helper. Static inventory and lint passed. Live test NOT executed; no deployment or inference proof claimed. |
 | `tests/contract/test_live_claude_stop.py` | Test cross-review | PENDING |
 | `tests/contract/test_live_codex_pump.py` | Test cross-review | PENDING |
 | `tests/contract/test_live_codex.py` | Test cross-review | PENDING |

@@ -14,13 +14,14 @@ from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorRequest
 
+from tests.contract.live_gate import require_live_authorization
+
 
 @pytest.mark.live_llm
 @pytest.mark.live_agentcore
 @pytest.mark.asyncio
 async def test_live_agentcore_returns_bound_strands_decision(tmp_path):
-    if os.environ.get("PEX_AGENTCORE_LIVE") != "1":
-        pytest.skip("set PEX_AGENTCORE_LIVE=1 only with live-invocation authorization")
+    require_live_authorization("PEX_AGENTCORE_LIVE")
     runtime_arn = (os.environ.get("PEX_AGENTCORE_RUNTIME_ARN") or "").strip()
     if not runtime_arn:
         pytest.skip("PEX_AGENTCORE_RUNTIME_ARN is not configured")
