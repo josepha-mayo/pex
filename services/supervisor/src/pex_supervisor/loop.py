@@ -1098,12 +1098,18 @@ def _usage(result: object) -> tuple[int, int]:
     )
 
 
+def _supervision_paused(request: SupervisorRequest) -> bool:
+    return request.session.supervision_paused or bool(request.goal and request.goal.paused)
+
+
 def needs_semantic_inference(request: SupervisorRequest, force_llm: bool = False) -> bool:
     """Shared routing gate: STOP or an explicitly enabled material candidate."""
     from pex_protocol.enums import EventType
 
     from pex_supervisor.trajectory import trajectory_review_candidate
 
+    if _supervision_paused(request):
+        return False
     if force_llm or os.environ.get("PEX_FORCE_LLM") == "1":
         return True
     if request.event.event_type != EventType.STOP:
@@ -1337,6 +1343,19 @@ async def decide_async(
     model=None,
     force_llm: bool = False,
 ) -> SupervisorResult:
+    # Pause is user intent, not a model-routing preference. Keep this boundary
+    # self-contained even when callers bypass the bridge's earlier pause gate.
+    if _supervision_paused(request):
+        return SupervisorResult(
+            action=_action_from_proposal(request, {
+                "type": "NOOP",
+                "rationale": "Supervision is paused for this session or goal.",
+                "evidence": ["supervision_paused"],
+            }),
+            used_llm=False,
+            diagnosis="supervision_paused",
+            inference_status="not_attempted",
+        )
     deterministic = plan_deterministic(request)
     if model is None and (force_llm or os.environ.get("PEX_FORCE_LLM") == "1"):
         model = load_supervisor_model()

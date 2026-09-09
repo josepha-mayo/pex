@@ -56,6 +56,37 @@ def test_decide_without_model_stays_deterministic():
     assert result.action.type.value == "NOOP"
 
 
+def test_paused_requests_never_load_or_call_models_even_when_forced(monkeypatch):
+    from pex_supervisor import loop
+
+    calls = []
+
+    def load_model():
+        calls.append("load")
+        return object()
+
+    async def run_model(*args, **kwargs):
+        calls.append("run")
+        raise RuntimeError("model must not run for paused work")
+
+    monkeypatch.setattr(loop, "load_supervisor_model", load_model)
+    monkeypatch.setattr(loop, "run_strands_async", run_model)
+    monkeypatch.setenv("PEX_FORCE_LLM", "1")
+    for paused in ("session", "goal"):
+        for model in (None, object()):
+            request = _request(0.95)
+            if paused == "session":
+                request.session.supervision_paused = True
+            else:
+                request.goal.paused = True
+            assert not loop.needs_semantic_inference(request, force_llm=True)
+            result = loop.decide(request, model=model, force_llm=True)
+            assert result.action.type == InterventionType.NOOP
+            assert result.inference_status == "not_attempted"
+            assert result.diagnosis == "supervision_paused"
+    assert calls == []
+
+
 def test_decide_skips_model_on_non_stop_events():
     from pex_supervisor.loop import needs_semantic_inference
 

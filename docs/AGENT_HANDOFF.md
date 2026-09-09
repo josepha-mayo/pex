@@ -1,5 +1,22 @@
 # PEX agent handoff
 
+### Supervisor pause boundary repaired offline
+
+Bridge pause checks existed, but direct `needs_semantic_inference` / `decide_async`
+calls could still route paused STOP requests into inference. Added a shared pause
+predicate before forced inference routing and an early NOOP before any model
+loading in decide_async. Both session and goal pause override PEX_FORCE_LLM and
+force_llm; the result is truthfully `inference_status=not_attempted` with
+`diagnosis=supervision_paused`. This is defense at the supervisor boundary, not
+proof that this gap caused the user's observed usage.
+
+Regression failed before the fix. Supervisor-loop/trajectory gate passes 23/23;
+broader Strands runtime/evidence/trajectory/loop gate passes 83/83; scoped Ruff
+passes. Model hooks in the new regression are fakes that record forbidden calls;
+no real model requests or native app launches occurred. The 493aec0 installers
+remain the last package-verified candidate and do NOT include this newer backend
+change; defer another full rebuild until the next collected fixes are ready.
+
 ### Read-only native-resource observer prepared, not run against apps
 
 Added `scripts/measure_pex_readonly.ps1` and pure attribution module
