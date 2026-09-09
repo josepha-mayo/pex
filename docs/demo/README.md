@@ -70,6 +70,10 @@ retained in [`PET_ACCEPTANCE_2026-09-09.md`](evidence/PET_ACCEPTANCE_2026-09-09.
   terminal result, Strands + free Muse independently verified the missing artifact, PEX sent one
   correction into that same session, and the free worker produced the exact final bytes. See
   [`LIVE_OPENCODE_PEX_CLOSED_LOOP_2026-09-09.md`](evidence/LIVE_OPENCODE_PEX_CLOSED_LOOP_2026-09-09.md).
+- A separate real OpenCode correct-completion case produced both required files, then PEX used
+  Strands and durably chose `NOOP` with zero worker follow-ups. The receipt preserves a corrected
+  proof-harness predicate and the preceding free-worker timeout. See
+  [`LIVE_OPENCODE_QUIET_2026-09-09.md`](evidence/LIVE_OPENCODE_QUIET_2026-09-09.md).
 - Exact clean package source `9966a60` retains a fresh real Strands quiet success. Its recovery
   attempt failed closed because the independent verifier timed out twice under the free Muse
   provider; do not describe that retry as a current-source recovery pass. See

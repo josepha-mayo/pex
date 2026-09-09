@@ -1,0 +1,26 @@
+{
+  "accepted": true,
+  "acceptance_predicate": {
+    "final_exact": true,
+    "interventions_are_noop": true,
+    "pex_followup_count": 0,
+    "profile_cleanup_complete": true,
+    "stage_one_exact": true,
+    "supervisor_action": "NOOP",
+    "supervisor_used_llm": true
+  },
+  "checker_defect": "the original harness incorrectly required zero intervention rows even though PEX durably records a NOOP row",
+  "credential_source": "pex_os_secret_store",
+  "opencode_version": "1.18.29",
+  "raw_harness_success": false,
+  "raw_receipt_sha256": "2b3159324634220f31b6d4b67525826ad56bf4079a46a1b055f77809725d1f9c",
+  "retained_sse_event_count": 282,
+  "schema": "pex.live-opencode-quiet-adjudication.v1",
+  "session_id": "opencode:ses_f787d9b1fffee12xUbzuE5RQFQ",
+  "supervisor_input_tokens": 6994,
+  "supervisor_latency_ms": 14437,
+  "supervisor_model": "muse-spark-1.3-contributor-free",
+  "supervisor_model_call_count": 2,
+  "supervisor_output_tokens": 811,
+  "worker_model": "opencode/mimo-v2.5-free"
+}

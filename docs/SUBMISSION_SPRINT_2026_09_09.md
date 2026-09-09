@@ -216,6 +216,8 @@ our build-spec target, subject to the user's no-card-charge authorization.
 - [x] Complete worker-mediated uncertain-evidence live case (clean `5ff58f6`,
   independently reviewed run-09: gather, scoped request, actual passing tests, NOOP).
 - [ ] Complete ten varied quiet-task live cases and measure false-positive rate.
+- [x] Retain quiet sample 1/10: real OpenCode completion, Strands `NOOP`, zero follow-ups and exact
+  artifacts. Preserve the prior Ling no-terminal timeout and the corrected proof-checker predicate.
 - [x] Complete one real OpenCode same-session recovery diagnostic: production HTTP/SSE adapter,
   Strands main inference, independent verification, one policy-gated correction, and exact final
   worker output. This is not the ten-case quiet-rate gate or a comparative benchmark result.

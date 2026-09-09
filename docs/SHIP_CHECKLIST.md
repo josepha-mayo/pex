@@ -593,6 +593,8 @@ When specs conflict, preserve the stricter product/integrity contract: Core/Reco
   free Muse main inference + independent verifier, exact same-session `SEND_NUDGE`, free worker
   outcome, cleanup, retained hashes, and zero secret-pattern matches. Ten quiet cases remain open.
 - [ ] Correct completion: inspect and remain silent. Measure unnecessary interruption over ten correctly completed tasks; no canned stop warnings.
+- [x] First current OpenCode quiet sample (1/10): real terminal event, model-backed `NOOP`, zero
+  follow-ups, exact artifacts, retained failed free-worker timeout, and corrected checker predicate.
 - [x] Premature completion: identify exact unmet criterion, gather legitimate evidence, send specific correction to the same worker, observe its response, and verify completion.
 - [ ] Uncertain claim: gather evidence before nagging; do not invent criteria or restore an unverified deterministic message after model failure/NOOP.
 - [ ] Exact failed-test claim and incomplete artifact/row-count examples produce accurate evidence-backed decisions.

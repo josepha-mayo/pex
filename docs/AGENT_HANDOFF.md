@@ -9608,3 +9608,23 @@ The dirty bit is expected because the protected operator-owned file below is ret
   ten quiet cases, an organic failure, a Cursor/Codex comparison, AgentCore deployment, or native
   stability proof. PexBench remains `frozen:false` and the native smoke still requires the exact
   user phrase.
+
+### 9 September real OpenCode quiet completion — sample 1/10 passed
+
+- A matched correctly completed goal used installed OpenCode 1.18.29 with the free
+  `opencode/mimo-v2.5-free` worker. Both required files had exact bytes before the worker emitted
+  its terminal event. Production PEX observed 282 retained SSE events, invoked free Muse through
+  Strands, durably recorded `NOOP`, and sent zero worker follow-ups.
+- Supervisor accounting: two model calls, 6,994 input tokens, 811 output tokens and 14,437 ms.
+  Exact raw receipt/SSE/intervention/SQLite hashes and cleanup checks are in
+  `docs/demo/evidence/LIVE_OPENCODE_QUIET_2026-09-09.md` plus its adjudication JSON.
+- The raw harness set `success:false` only because its checker expected zero intervention rows;
+  PEX intentionally retains a `NOOP` row for audit. The predicate was corrected to require all
+  retained rows be `NOOP` and zero prompts. A read-only validator against the unchanged raw run
+  exited 0 with `quiet_acceptance_predicate: PASS`. No result was silently rewritten.
+- An earlier Ling quiet attempt created both exact files but failed to emit a terminal event by
+  the five-minute bound. PEX correctly sent nothing without STOP authority. Its receipt is
+  retained with the accepted evidence, not erased.
+- Temporary free-worker profiles were deleted, secret scans returned zero matches, port 4097 was
+  closed and no owned OpenCode serve process remained. This raises the current quiet sample only
+  to 1/10 and is not a benchmark result.
