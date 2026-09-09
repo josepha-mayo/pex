@@ -66,6 +66,10 @@ retained in [`PET_ACCEPTANCE_2026-09-09.md`](evidence/PET_ACCEPTANCE_2026-09-09.
 - Installed OpenCode 1.18.29 passes a fresh loopback health, production-adapter discovery, and
   real `/global/event` pump smoke; runtime capability reached `Deep` without a model call. See
   [`OPENCODE_HTTP_PROTOCOL_2026-09-09.md`](evidence/OPENCODE_HTTP_PROTOCOL_2026-09-09.md).
+- A fresh real OpenCode session passes a controlled closed loop: PEX observed an incomplete
+  terminal result, Strands + free Muse independently verified the missing artifact, PEX sent one
+  correction into that same session, and the free worker produced the exact final bytes. See
+  [`LIVE_OPENCODE_PEX_CLOSED_LOOP_2026-09-09.md`](evidence/LIVE_OPENCODE_PEX_CLOSED_LOOP_2026-09-09.md).
 - Exact clean package source `9966a60` retains a fresh real Strands quiet success. Its recovery
   attempt failed closed because the independent verifier timed out twice under the free Muse
   provider; do not describe that retry as a current-source recovery pass. See

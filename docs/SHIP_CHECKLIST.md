@@ -588,9 +588,12 @@ When specs conflict, preserve the stricter product/integrity contract: Core/Reco
 - [ ] Attach/discover an existing real Codex session and receive its actual events without replacing the user's harness.
 - [ ] Persistent goal/criteria/constraints survive reload; correct session/project binding; intentional human updates supersede old intent.
 - [ ] Observe external files/diff/test/process/artifact evidence, with source refs and freshness; distinguish unsupported from contradicted claims.
-- [ ] Real Strands main inference and independent verification execute through a configured supported provider; provenance and overhead recorded, no secrets exposed.
+- [x] Real Strands main inference and independent verification execute through a configured supported provider; provenance and overhead recorded, no secrets exposed.
+- [x] One controlled real OpenCode recovery executes through the production HTTP/SSE adapter:
+  free Muse main inference + independent verifier, exact same-session `SEND_NUDGE`, free worker
+  outcome, cleanup, retained hashes, and zero secret-pattern matches. Ten quiet cases remain open.
 - [ ] Correct completion: inspect and remain silent. Measure unnecessary interruption over ten correctly completed tasks; no canned stop warnings.
-- [ ] Premature completion: identify exact unmet criterion, gather legitimate evidence, send specific correction to the same worker, observe its response, and verify completion.
+- [x] Premature completion: identify exact unmet criterion, gather legitimate evidence, send specific correction to the same worker, observe its response, and verify completion.
 - [ ] Uncertain claim: gather evidence before nagging; do not invent criteria or restore an unverified deterministic message after model failure/NOOP.
 - [ ] Exact failed-test claim and incomplete artifact/row-count examples produce accurate evidence-backed decisions.
 - [ ] Relevant context discovered by one real worker transfers minimally to another with provenance and observed use, not a planted hint.

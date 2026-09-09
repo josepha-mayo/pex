@@ -216,6 +216,9 @@ our build-spec target, subject to the user's no-card-charge authorization.
 - [x] Complete worker-mediated uncertain-evidence live case (clean `5ff58f6`,
   independently reviewed run-09: gather, scoped request, actual passing tests, NOOP).
 - [ ] Complete ten varied quiet-task live cases and measure false-positive rate.
+- [x] Complete one real OpenCode same-session recovery diagnostic: production HTTP/SSE adapter,
+  Strands main inference, independent verification, one policy-gated correction, and exact final
+  worker output. This is not the ten-case quiet-rate gate or a comparative benchmark result.
 - [x] Reject wrong-directory Codex pytest evidence at normalization and receipt matching.
 - [x] Repair disconnected consumer re-block after cancellation-safe settlement.
 - [x] Retain bounded oversized shared command observations without manufacturing
@@ -247,6 +250,8 @@ audit fields. See the sanitized `demo/evidence/LIVE_CODEX_STRANDS_2026-09-06.md`
   confusing developer-centric wording without hiding real capability limits.
 - [ ] Run remaining Cursor/OpenCode and cross-harness flows with honest support
   labels and exact live receipts. Never modify unrelated active user sessions.
+- [x] Retain the controlled OpenCode + PEX recovery receipt with installed versions, model
+  identities, same-session delivery, worker outcome, cleanup, hashes, and honest limitations.
 - [ ] Verify routine approvals, human escalation and reversible overlay paths.
 - [ ] Establish AgentCore access without card charges before deployment. Credits
   or a budget alarm alone are not a guarantee of no billing.

@@ -9576,3 +9576,34 @@ The dirty bit is expected because the protected operator-owned file below is ret
   ceilings, and starts a hidden PID/start-time-bound watchdog.
 - **It has not been executed.** Keep the native app closed and run this only after the user says
   exactly `run bounded native smoke`.
+
+### 9 September real OpenCode + PEX closed loop — passed
+
+- Installed OpenCode 1.18.29 started on isolated loopback port 4097 with an isolated empty
+  workspace and temporary XDG profile. The free worker model was
+  `opencode/ling-3.0-flash-fin-free`; the supervisor was the saved OS-secret-store Zen BYOK choice
+  using `muse-spark-1.3-contributor-free` through the production Strands path.
+- A persistent goal required exact `stage-one.txt` and `final.txt`. The initial worker turn was
+  intentionally bounded to stage one and stopped with only `stage-one.txt` present. Production
+  `LiveHttpTransport`, the OpenCode SSE pump, `Pipeline`, Store authority, evidence tools, main
+  inference and independent verifier all ran. PEX found `missing:final.txt` and delivered one
+  low-risk `SEND_NUDGE` to the exact same vendor session `ses_f78a70612ffeSchA4IopnLYGrT`.
+- The same free OpenCode worker then created `final.txt` with exact bytes `pex-supervised-ok\n`.
+  Final receipt: `success:true`, `supervisor_used_llm:true`, one intervention, one PEX follow-up,
+  269 retained SSE events, both output byte checks true, and profile cleanup true.
+- Retained intervention accounting records four model calls, 15,075 input tokens, 1,144 output
+  tokens and 14,244 ms supervisor latency. The independent verifier contributed two of those
+  calls, 6,280 input tokens, 533 output tokens and 5,946 ms, and returned `approved:true`.
+- Sanitized tracked evidence is
+  `docs/demo/evidence/LIVE_OPENCODE_PEX_CLOSED_LOOP_2026-09-09.md` plus its JSON receipt. Raw
+  evidence remains ignored under `build/opencode-pex-closed-loop`; receipt SHA-256 is
+  `b5407389bfba2dfa09c59f3a2164dba781e3a2bac8efe454163544fc572e847d`, SSE log SHA-256 is
+  `0ead252216c59feed50339477c3592eefb06a0fc19094223ac35802512e47ecf`, and SQLite SHA-256 is
+  `fa61201036fd5988b2ef9ef25b14b3fd52f11c554a37a4100d5fa15ce3f29f24`.
+- Three secret-pattern scans found zero matches. Temporary OpenCode cache/config/data/state were
+  deleted; port 4097 and the owned serve process were absent afterward. The user-visible PEX
+  desktop was not launched.
+- Scope limit: this is one controlled OpenCode diagnostic, not the frozen four-arm benchmark,
+  ten quiet cases, an organic failure, a Cursor/Codex comparison, AgentCore deployment, or native
+  stability proof. PexBench remains `frozen:false` and the native smoke still requires the exact
+  user phrase.
