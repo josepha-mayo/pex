@@ -60,11 +60,11 @@ Update this active handoff in place; put detailed receipts in evidence files.
 ## Current source versus package
 
 Last verified Windows package source:
-`2966259676113bb05638b501188d53e65f83e66e`, not current HEAD.
+`166a65661234879bb8ccda48fe180300baf7456c`; subsequent changes are documentation only.
 Both MSI/NSIS passed extracted executable/hash and exact pet-inventory checks.
 
-- Receipt: `build/pex-package-receipt-2966259.json`.
-- [Durable hashes, warnings, commands and limitations](demo/evidence/PACKAGE_2966259_2026-09-09.md).
+- Receipt: `build/pex-package-receipt-166a656.json`.
+- [Durable hashes, warnings, commands and limitations](demo/evidence/PACKAGE_166A656_2026-09-10.md).
 - Desktop: `apps/desktop/src-tauri/target/release/pex-desktop.exe`.
 - MSI: `apps/desktop/src-tauri/target/release/bundle/msi/PEX_0.1.0_x64_en-US.msi`.
 - NSIS: `apps/desktop/src-tauri/target/release/bundle/nsis/PEX_0.1.0_x64-setup.exe`.
@@ -73,7 +73,7 @@ Verification did not install/open desktop UI; the frozen bridge ran only its
 inventory-only `--verify-bundle` path. Receipt `release_ready:true` is a package
 gate, not submission readiness.
 
-Post-package fixes awaiting the next collected rebuild:
+Collected fixes now included in package 166a656:
 
 | Commit | Change | Evidence |
 | --- | --- | --- |
@@ -81,8 +81,8 @@ Post-package fixes awaiting the next collected rebuild:
 | `157b119` | Bound Retry response to 5 seconds without duplicating unresolved native IPC | 42 recovery/read-budget tests; frontend build |
 | `4fc703c` | Count scope in the 18,000-character decision-text budget | Regression formerly admitted 27,000 characters; 15 context/integration tests; Ruff |
 | `a988748` | Lock goal fields while saving to prevent loss of concurrent edits | 267 desktop tests; frontend build |
-| This checkpoint | Require validated decisions for the selected goal revision before editing; reject stale drafts and remove unscoped post-save decision reads | 268 desktop tests; frontend build |
-| API intent-preservation repair | Do not re-extract previously cleared criteria/decisions during unrelated partial edits or unchanged-objective resubmission; new objective text still extracts | 120 API/parser/store tests; Ruff |
+| `d8f09a3` | Require validated decisions for the selected goal revision before editing; reject stale drafts and remove unscoped post-save decision reads | 268 desktop tests; frontend build |
+| `dec84d1` | Do not re-extract previously cleared criteria/decisions during unrelated partial edits or unchanged-objective resubmission; new objective text still extracts | 120 API/parser/store tests; Ruff |
 
 Collect verified fixes instead of rebuilding after every tiny change. Keep source
 clean and unchanged during build/verification. Never claim current native behavior
@@ -118,7 +118,7 @@ from an older installer.
 | API intent-preservation repair | 120 passed in 48.03 seconds: goal lifecycle, operation routes, public-task parser, authority, operations, transactions and semantic hashing | Live workers or full Python suite |
 | `dec84d1` recovery/event regression | 86 passed, 2 background-process cases deselected, 169.73 seconds | Real-worker behavior; the two excluded process cases |
 | Ledger-only dispatch regression | 16 passed in 13.16 seconds; Ruff passed | Real harness delivery |
-| `2966259` installers | Both extracted inventories verified; zero package blockers | Latest source; end-to-end product acceptance |
+| `166a656` installers | Both extracted inventories verified; zero package blockers | End-to-end product acceptance; native UX/resource use |
 | Historical `933239a` full Python | 4,178 passed, 32 skipped | Current full-suite result |
 
 Combined backend command from repo root:

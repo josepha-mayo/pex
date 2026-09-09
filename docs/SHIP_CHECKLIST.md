@@ -5,6 +5,12 @@
 Overall: **NO-GO for submission**. This section supersedes current/latest labels
 in the historical log below; the three specifications remain authoritative.
 
+Latest package: clean source `166a656`, rebuilt and verified on 10 September.
+MSI and NSIS pass extracted executable/hash/eight-pet-inventory checks; no package
+blockers. [Hashes and limitations](demo/evidence/PACKAGE_166A656_2026-09-10.md).
+This includes the collected bridge/goal/decision-budget fixes, but no live native
+acceptance has occurred. The installers were not installed or opened.
+
 **9 September safety hold:** user reported Codex closed during native testing.
 External `pex-native-smoke-933239a.ps1` is quarantined before execution because
 its cleanup trusts PID-only descendant discovery. No more native launches,
