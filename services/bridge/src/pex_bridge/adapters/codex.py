@@ -916,7 +916,11 @@ class CodexAdapter(HarnessAdapter):
         cursor: str | None = None
         seen_cursors: set[str] = set()
         for _ in range(100):
-            params: dict[str, Any] = {"limit": 100}
+            # We only need authoritative IDs to prove that thread/start did not
+            # return a pre-existing thread. Scanning every rollout to repair
+            # optional metadata can take longer than the request deadline on a
+            # mature account and contributes no identity evidence here.
+            params: dict[str, Any] = {"limit": 100, "useStateDbOnly": True}
             if cursor:
                 params["cursor"] = cursor
             listed = await self.transport.request("thread/list", params)

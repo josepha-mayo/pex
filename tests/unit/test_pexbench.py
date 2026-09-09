@@ -3738,6 +3738,26 @@ async def test_codex_isolated_thread_never_calls_resume():
     assert "thread/resume" not in transport.methods
 
 
+async def test_codex_isolated_thread_lists_ids_without_rollout_repair():
+    from pex_bridge.adapters.codex import CodexAdapter, CodexAppServerTransport
+
+    class Spy(CodexAppServerTransport):
+        def __init__(self) -> None:
+            super().__init__()
+            self.list_params: list[dict] = []
+
+        async def request(self, method, params=None):
+            if method == "thread/list":
+                self.list_params.append(dict(params or {}))
+            return await super().request(method, params)
+
+    transport = Spy()
+    await CodexAdapter(transport).start_isolated_thread("C:/tmp/pexbench")
+
+    assert transport.list_params
+    assert all(params.get("useStateDbOnly") is True for params in transport.list_params)
+
+
 async def test_codex_dangerous_sandbox_requires_explicit_opt_in():
     from pex_bridge.adapters.codex import CodexAdapter, CodexAppServerTransport
 
