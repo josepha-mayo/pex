@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from collections import Counter
 from dataclasses import dataclass
 
 from pex_protocol.enums import EventPhase, EventType
@@ -47,10 +48,26 @@ def trajectory_review_candidate(request: SupervisorRequest) -> TrajectoryReviewC
     events.sort(key=lambda event: event.ts)
     if events[-1].event_id != current.event_id:
         return None
+    command_types = {EventType.SHELL, EventType.TOOL_RESULT, EventType.TOOL_FAILURE}
+    material_times = Counter(
+        event.ts for event in events
+        if event.goal_id == goal.id and event.ts >= goal.updated_at
+        and (event.event_type == EventType.FILE_EDIT or (
+            event.command and event.phase in {EventPhase.AFTER, EventPhase.TERMINAL}
+            and event.event_type in command_types
+        ))
+    )
     failures = []
     signature = None
     progress_anchor = None
     for event in events:
+        if material_times[event.ts] > 1:
+            # No sequence field disambiguates equal-time material observations.
+            # Never let input order place a failure after possibly newer progress.
+            failures = []
+            signature = None
+            progress_anchor = f"ambiguous:{event.ts.isoformat()}"
+            continue
         if event.goal_id != goal.id or event.ts < goal.updated_at:
             failures = []
             signature = None
@@ -61,9 +78,7 @@ def trajectory_review_candidate(request: SupervisorRequest) -> TrajectoryReviewC
             progress_anchor = event.event_id
             continue
         if (not event.command or event.phase not in {EventPhase.AFTER, EventPhase.TERMINAL}
-                or event.event_type not in {
-                    EventType.SHELL, EventType.TOOL_RESULT, EventType.TOOL_FAILURE,
-                }):
+                or event.event_type not in command_types):
             continue
         exit_code = observed_command_exit_code(event)
         failed = exit_code is not None and exit_code != 0

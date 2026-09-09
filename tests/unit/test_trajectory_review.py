@@ -148,3 +148,27 @@ def test_actual_cloud_redaction_keeps_material_eligibility_without_local_paths()
     request.trajectory_review_enabled = False
     assert not needs_semantic_inference(cloud_request(request))
     assert "trajectory_review_enabled" not in request.model_dump(mode="json")
+
+
+def test_equal_timestamp_progress_cannot_depend_on_history_input_order():
+    from pex_supervisor.trajectory import trajectory_review_candidate
+
+    request = request_for_failures()
+    edit = request.recent_events[0].model_copy(update={
+        "event_id": "concurrent-edit", "event_type": EventType.FILE_EDIT,
+        "command": None, "process_state": None,
+    })
+    failures = list(request.recent_events)
+    for prefix in ([edit, failures[0]], [failures[0], edit]):
+        request.recent_events = prefix + failures[1:]
+        assert trajectory_review_candidate(request) is None
+
+    # Ambiguity is a boundary, not a permanent ban on useful future reviews.
+    later = failures[-1].model_copy(update={
+        "event_id": "failure-3", "ts": failures[-1].ts + timedelta(seconds=1),
+    })
+    request.recent_events.append(later)
+    request.event = later
+    candidate = trajectory_review_candidate(request)
+    assert candidate is not None
+    assert candidate.event_ids == ("failure-1", "failure-2", "failure-3")

@@ -610,6 +610,11 @@ platform skip; final ten dispatch/interleaving cases passed. Not native UI proof
 
 ### Material trajectory review — 6 Sep
 
+9 September follow-up: re-read trajectory detector fully. Repaired equal-timestamp
+material-event ordering ambiguity using an uncertainty boundary rather than
+input-order inference. Regression failed before repair; trajectory/loop/pipeline
+63 passed, scoped Ruff passed. No live review or native checks performed.
+
 Full new-file review: `services/supervisor/src/pex_supervisor/trajectory.py` and
 `tests/unit/test_trajectory_review.py`. Changed-path review only: protocol request,
 loop routing/prompt/verifier, evidence tools, Codex normalization, AgentCore

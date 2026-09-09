@@ -1,5 +1,21 @@
 # PEX agent handoff
 
+### Equal-time trajectory ambiguity repaired offline
+
+The repeated-command-failure candidate detector sorted history by timestamp but
+implicitly trusted input order for ties. A FILE_EDIT and first failure at the same
+timestamp could authorize semantic review in one order and suppress it in the
+other. New regression failed before the fix. Equal-time material observations
+now reset the failure streak with a stable uncertainty anchor; three later,
+clearly ordered failures still become a review candidate. Unrelated nonmaterial
+events are excluded from the timestamp counts. This changes review eligibility,
+not intervention authority or the independent-verifier requirement.
+
+Verification: trajectory, supervisor-loop and event-processing-pipeline tests
+pass 63/63 in 79.84 seconds; scoped Ruff and diff whitespace checks pass. Model
+calls are fakes. No native apps or cloud services were invoked. Rebuild the native
+candidate after collecting fixes; 493aec0 does not include this repair.
+
 ### Current desktop regression checkpoint — source 1b8be75
 
 After the live-test authorization audit, ran the complete `apps/desktop` `npm test`:
