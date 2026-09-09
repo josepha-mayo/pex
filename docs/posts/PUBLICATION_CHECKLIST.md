@@ -1,6 +1,6 @@
 # PEX Builder Center publication checklist
 
-## Authority and current state — 5 September 2026
+## Authority and current state — 9 September 2026
 
 **Verified 5 Sep ~20:01 UTC in the user's existing Brave:** the first article renders **Published Sep 5, 2026**, the intended author/title and short final text at its stable URL below. No publish/edit/like/comment occurred in this check. An unauthenticated web fetch was refused before retrieval, so logged-out availability/moderation clearance remains independently unverified. Do not click Publish again or recreate it. No bonus points are claimed. The other two articles remain local drafts. Core product work remains the priority. Earlier draft-only paragraphs below are historical; [live receipt](../AGENTCORE_LIVE_PREFLIGHT_2026_09_05.md).
 
@@ -36,7 +36,11 @@ Eligibility and award of bonus points are the organizers' decision. Three source
 | Source | Focus | Public URL | Status |
 | --- | --- | --- | --- |
 | `01-strands-agentcore.md` | Strands supervisor and local authority; runtime implementation versus cloud proof | [Published article](https://builder.aws.com/content/3IuxELaimn2aM3bayFznibEnnhK/agents-for-humans-teaching-pex-when-to-stay-quiet) | Published date/content verified in signed-in Brave; logged-out access/bonus award unverified; do not duplicate |
-| `02-attention-benchmark.md` | Evaluating attention savings and supervisor overhead without fake results | Not yet published | Short local draft reviewed |
-| `03-safe-approvals.md` | Concrete command-policy boundaries and regressions in the Strands build | Not yet published | Short local draft reviewed |
+| `02-attention-benchmark.md` | Evaluating attention savings and supervisor overhead without fake results | Not yet published | Refreshed against current 201/201 contract evidence; manifest remains unfrozen |
+| `03-safe-approvals.md` | Concrete command-policy boundaries and regressions in the Strands build | Not yet published | Refreshed against current policy lines and local AgentCore protocol evidence |
 
-Keep publication work bounded and parallel to the unfinished Recovery loop. Current source baseline: `e64270c1e947d3e0f7c95598ec108bc2a28dc282`; current documentation baseline: `944995fdcc69363e80ad71acc300c082deabd12a`. Full product goal remains ACTIVE and release NO-GO.
+Keep publication work bounded and parallel to the unfinished native/recovery/benchmark gates.
+Current reviewed documentation baseline before this draft refresh:
+`d79b17bd5d536cce62b60713a25db4aadd836bc1`. Exact package source is `9966a60`;
+current-source Strands/AgentCore and PexBench/Cursor contract gates pass 200/200 and 201/201.
+Full product goal remains ACTIVE and release NO-GO.
