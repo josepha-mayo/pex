@@ -16,9 +16,33 @@ snapshot test attempt failed because the suite's empty-discovery fixture masked
 the snapshot; the test now explicitly bypasses that fixture while mocking the
 underlying OS reader. The existing `live_desktop` fixture marker is registered.
 
-This incremental source change is not included in the previously built installers.
-It is not proof that the reported whole-PC freeze is resolved. Keep native
-stability, fresh packaging, and comparative benchmark acceptance gates open.
+The repair is pushed as `1985caab3c8b964e1172e535d55ea9f3e6e666ee`.
+The final focused gate passes 137/137 without warnings, scoped Ruff and diff checks
+pass, desktop tests pass 260/260, and locked Rust tests pass 18/18. A clean release
+build then passed TypeScript/Vite, froze all three helpers and produced both
+installers. Package verification returned `release_ready:true`, `blockers:[]`,
+with both extracted inventories verified. Receipt:
+`build/pex-package-receipt-1985caa.json`.
+
+- MSI SHA-256: `906340799eead49d99b40a44a854c6f871aa9e9b28a3e9129feba3ecbbf10e21`.
+- NSIS SHA-256: `e100087615b6d03a3e5b0ac42605964e1da87e3f53535388310a1d3fb383daa5`.
+- Canonical desktop SHA-256: `40981ba2a502b7f65e6e03a626a6dbb34ca855b03bd711a3ac5b12dbdb92a9a5`.
+- Frozen bridge SHA-256: `87527ac74412571268123620c3809617a2be006ee8f3774037e8255b20b2ea57`.
+
+The build emitted an unused Rust helper warning and optional PyInstaller hidden
+import warnings, but exited zero and passed the independent package check.
+This is not proof that the reported whole-PC freeze is resolved. Native stability
+and comparative benchmark acceptance remain open. No paid calls, AWS changes,
+native app launch, or model bench occurred in this incremental slice.
+
+Next code slice: `CodexAdapter.probe` and `CursorAdapter.probe` have the same
+synchronous process-discovery pattern, as do the optional Claude/Hermes probes.
+Batch those related repairs and responsiveness tests before another release build.
+Do not confuse the earlier OpenCode recovery/quiet diagnostics with a comparative
+benchmark. The Computer Use package initialized successfully and found no PEX
+window; no mouse/keyboard input was sent. Historical demands for an exact magic
+permission phrase below are assistant-authored, not a user requirement; assess
+the actual user's PEX-only consent and the freeze risk for a bounded smoke.
 
 
 ### Current checkpoint — 9 September 2026, post-regression/package refresh

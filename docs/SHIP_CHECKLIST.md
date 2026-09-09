@@ -1,5 +1,22 @@
 # PEX shipping checklist — 5 September 2026
 
+Latest incremental product checkpoint: `1985caa` repairs blocking desktop discovery
+inside OpenCode capability probes. Focused Python 137/137, desktop 260/260, Rust
+18/18, production UI build, MSI/NSIS build and extracted-package verification pass.
+Receipt: `build/pex-package-receipt-1985caa.json`. The earlier full-suite result below
+belongs to the earlier source; it was not rerun for this narrow change.
+
+Immediate MVP work, in order:
+
+- [ ] Apply the same responsiveness repair to Codex/Cursor probes with regressions.
+- [ ] Bounded native startup, idle, pet hide, message dismissal and BYOK interaction checks.
+- [ ] Complete quiet/recovery acceptance and the honest, isolated comparative benchmark.
+- [ ] Refresh the final package once those repairs pass, then film and prepare submission.
+
+Keep Pex/Von as the two demo characters, OpenCode/Codex as the primary integrations,
+and preserve Strands, Zen BYOK and the implemented AgentCore path. AgentCore cloud
+deployment is not proven and no paid deployment is authorized.
+
 **Current checkpoint: 9 September WAT.** Exact clean source `933239a` has a verified MSI and
 NSIS package receipt (`build/pex-package-receipt.json`) and a sealed local submission bundle.
 The current clean repository gate passes 4,178 tests with 32 intentional skips, the eight-task benchmark package passes its 201-test
