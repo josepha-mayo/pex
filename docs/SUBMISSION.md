@@ -4,7 +4,11 @@
 > amplifier by moving the shared Windows process inventory off the event loop. The exact frozen
 > bridge embedded in the new installers held OpenCode `Deep` for 20/20 authenticated polls
 > (median 506.7 ms), the saved Zen BYOK credential completed through Strands Agents 1.53.0, and
-> package verification is `release_ready:true` with zero blockers. See
+> package verification is `release_ready:true` with zero blockers. A real OpenCode 1.18.29
+> session now also passes the full controlled recovery path: PEX observed incomplete work,
+> Strands + free Muse independently verified the missing artifact, one same-session correction
+> reached the free worker, and the exact final artifact appeared. A separate completed-task run
+> produced a model-backed `NOOP` with zero PEX follow-ups. See
 > [the current MVP receipt](demo/evidence/MVP_RELEASE_2026-09-09.md). PexBench remains unfrozen,
 > AgentCore remains a tested deployment target rather than a deployed AWS runtime, and native
 > Tauri stability still requires the separately authorized bounded smoke.
@@ -109,9 +113,14 @@ The concise judge comparison and its evidence boundaries are in
   runtime. Existing shared sessions may be observe-only; isolated Codex App Server and
   OpenCode HTTP sessions can earn deeper support only after their event transport is healthy.
   Installed Codex 0.153.4 now has a retained real initialization/discovery/shutdown receipt;
-  installed OpenCode 1.18.29 has a separate retained loopback health/discovery/SSE-pump receipt
-  that reached its runtime `Deep` label. Neither smoke created or mutated a user thread.
-- Implements a bounded Strands supervisor with six request-scoped, read-only evidence tools and requires a validated structured action. The live Codex proof demonstrates real Strands decisions and outcome verification; it does not claim every tool path was exercised on camera.
+  installed OpenCode 1.18.29 has retained health/discovery/SSE proof plus a controlled live
+  same-session recovery and a separate quiet-completion sample. The read-only protocol smokes did
+  not mutate a user thread; the isolated recovery diagnostics intentionally created their own
+  proof sessions.
+- Implements a bounded Strands supervisor with six request-scoped, read-only evidence tools and
+  requires a validated structured action. The current OpenCode recovery proves main reasoning,
+  independent verification, policy-gated same-session delivery and exact outcome; it does not
+  claim every tool path was exercised on camera.
 - Exposes the strict versioned AgentCore Runtime protocol. The exact packaged source passes a
   local `/ping` + `/invocations` end-to-end smoke with a typed session-bound result; local mode
   is deterministic-only and is not an AWS deployment claim.
@@ -136,7 +145,7 @@ result is only an unverified base candidate, not a playable pet.
 ## Demo video voiceover (≤5 minutes)
 
 Timebox. Screen-record Pex (with one quick switch to Von), the inspector, and one isolated
-Codex App Server session. Do not turn the broader integration matrix into a demo tour, and do
+OpenCode HTTP session. Do not turn the broader integration matrix into a demo tour, and do
 not use leaked benchmark numbers. Use the exact preflight and rejection checks in
 [the recording runbook](demo/RECORDING_RUNBOOK.md).
 
@@ -145,14 +154,18 @@ not use leaked benchmark numbers. Use the exact preflight and rejection checks i
 3. **0:45–1:15 — Pet.** Start with Pex. Dismiss its status message while leaving the pet
    visible, then hide and restore the pet from Settings. Switch briefly to Von and open the
    inspector. Show that the companion communicates state without becoming another transcript.
-4. **1:15–2:45 — Live recovery.** In one Codex thread, show the intentional stop, PEX's specific `SEND_NUDGE`, the second turn on the same thread ID, `report.txt = shipped`, `helped=true`, and the final evidence-supported `NOOP`.
+4. **1:15–2:45 — Live recovery.** In one OpenCode session, show stage one stopping with
+   `final.txt` missing, PEX's specific `SEND_NUDGE`, the second turn on the identical vendor
+   session ID, and `final.txt = pex-supervised-ok`.
 5. **2:45–3:35 — Strands and safety.** Show the real `used_llm=true`,
    `runtime=strands-agents` receipts and the local deterministic-truth/policy boundary. Then
    show the separate local AgentCore-compatible `/ping` + `/invocations` receipt and label it
    exactly as a tested deployment protocol—not an AWS Runtime deployment. Show an
    independent-verifier receipt only if a separate judge-readable capture exists. Do not call
    this a Strands Graph or claim web/side-effect tools.
-6. **3:35–4:15 — Restraint.** Show the separate completed-task contract: one turn, artifact `pong`, and PEX correctly choosing `NOOP`. The point is fewer pointless interruptions, not maximum agent activity.
+6. **3:35–4:15 — Restraint.** Show the separate completed OpenCode task: both exact artifacts,
+   model-backed `NOOP`, and zero PEX follow-ups. The point is fewer pointless interruptions, not
+   maximum agent activity.
 7. **4:15–4:40 — Honest limits.** PexBench is not frozen and there is no retained leaderboard rank. AgentCore is a deploy target unless a live deployment is proven before recording.
 8. **4:40–5:00 — Close.** You keep goals and dangerous approvals. PEX keeps the mechanical supervision quiet.
 
