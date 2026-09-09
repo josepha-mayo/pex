@@ -9423,3 +9423,16 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - Default idle capture is 30 seconds with a bounded 60-second startup allowance. It retains a
   JSON receipt and terminates owned descendants in `finally`. **It has not been executed.** Do
   not run it unless the user says exactly `run bounded native smoke`.
+
+### 9 September submission bundle sealed
+
+- Working bundle: `C:\Users\JosephMayo\Documents\Codex\PEX-submission-9966a60`.
+  `BUNDLE_MANIFEST.md` records the exact size and SHA-256 of all 22 files present before the
+  manifest was created: installers, duplicate package-receipt names, live JUnits, sanitized
+  proof, offline/AgentCore/bridge receipts, visual captures, submission/differentiation copy,
+  recording runbook, and bounded native harness.
+- `BUNDLE_MANIFEST.md` SHA-256 is
+  `1094C28C500B14321788A1F5DE113FAD91B71976E72F77508B76BAEAE838311E`; the folder contains 23
+  files including the manifest. The duplicate receipt names have intentionally identical bytes.
+  Recompute the manifest after any later artifact change rather than silently editing a sealed
+  file.
