@@ -1,5 +1,23 @@
 # PEX agent handoff
 
+### Current desktop regression checkpoint — source 1b8be75
+
+After the live-test authorization audit, ran the complete `apps/desktop` `npm test`:
+265 passed, zero failures/skips (5.37 seconds). `npm run build` also exited zero:
+TypeScript and Vite production frontend succeeded. These are offline checks,
+not a new native installer build or proof of transparent Windows rendering.
+
+Re-read PetStage, sprite animation, page visibility, pointer and bubble helpers.
+Reviewed App polling cleanup: pending pet/base-state reads are invalidated on
+cleanup, readers abort, and polling stops when hidden. No new defect was proven
+in this pass; do not invent a fix or infer measured resource savings from source.
+Native app launches, termination and computer input remain on hold after the
+Codex shutdown incident. Package 493aec0 still predates pause and BYOK changes.
+
+Authorization checkpoint 1b8be75: AgentCore now uses the shared explicit first-
+statement live gate. Static inventory rejects substring-only, empty, dynamic and
+keyword calls; 3 offline tests and scoped Ruff pass. No live contract ran.
+
 ### BYOK save confirmation and offline credential transaction gate
 
 Supervisor save confirmation now explicitly distinguishes saved configuration

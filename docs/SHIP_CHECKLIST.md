@@ -15,7 +15,12 @@ behavior have not been observed. A read-only observer is prepared and tested onl
 with synthetic records. Fresh permission for PEX-only visual checks was requested;
 no permission response has been received yet.
 
-Latest product changes: `367b759`, including `5d2b717`, enforce goal/session pause
+Latest product changes: `8c54a14` clarifies that saving BYOK configuration does not
+test credentials or run inference. At source `1b8be75`, the complete desktop test
+suite passes 265 tests and TypeScript/Vite production build exits zero. This is
+frontend verification only, not a new native package or live UI acceptance.
+
+Backend changes: `367b759`, including `5d2b717`, enforce goal/session pause
 at the inference and deterministic routing boundaries. The planner/router/loop/
 trajectory gate passes 165 tests; scoped lint passes. No billable calls occurred.
 
