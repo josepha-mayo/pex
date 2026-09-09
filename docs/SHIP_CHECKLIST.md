@@ -49,19 +49,21 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   from retaining an older benchmark identity. The final broad gate remains **291/291** with
   three intentional skips.
 
-- [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX and large tests remain stopped.
+- [ ] **P0 idle/whole-PC freeze:** cause unknown; PEX remains stopped.
   Read the incident checkpoint. Do not treat offline fixes as native stability proof.
-  The prior harnesses are superseded. The exact `b0438bd` harness is
-  `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-b0438bd.ps1`, SHA-256
-  `608C2692E2ABA803B33A29376D4614E847FF5EBFFD2FE1D7AD5673DC45E4D6C3`; it parses with zero
+  The prior harnesses are superseded. The exact `9966a60` harness is
+  `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-9966a60.ps1`, SHA-256
+  `AB3492B954F19AD1D38B7323CF9BE36E85AFB99F7C616B82B2C5EF9A2D31BFD3`; it parses with zero
   errors and was not executed. It must not run without fresh explicit operator authorization
   while the shared PC is otherwise idle.
 - [x] Bound retained SQLite WAL allocation after checkpoints. The contest profile had a
   237,406,792-byte physical WAL but only 2,195 live frames; connections now apply a
   1,000-page auto-checkpoint and 16 MiB journal-size limit. Related gates pass 11/11 and
   94/94 with Ruff. No user database was altered and native freeze proof remains open.
-- [x] Re-run the complete offline Strands/AgentCore client, pipeline, runtime and
-  integration gate: 184/184 pass. Deployment preflight is still honestly NO-GO because
+- [x] Re-run the complete offline Strands/AgentCore client, pipeline, runtime, preflight and
+  integration gate: 200/200 pass. The clean package source also passes the real local
+  AgentCore-compatible HTTP protocol smoke without a model or cloud call. Deployment preflight
+  is still honestly NO-GO because
   AWS credentials/tooling/runtime evidence is absent; no cloud or paid action ran.
 - [x] Reject exponent-overflow JSON in persisted supervisor routing before schema
   validation. Configuration/settings coverage passes 64 with one Windows-only skip and

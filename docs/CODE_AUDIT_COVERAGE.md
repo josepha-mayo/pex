@@ -10,8 +10,11 @@ Bootstrap/audit coverage passes 11/11 and event-processing/pipeline/workspace-re
 coverage passes 94/94 with Ruff. No user database was mutated; native causality remains
 unknown. Commit `bdf257f` is pushed.
 
-Changed-path addendum: the full offline AgentCore/Strands client, pipeline, runtime and
-supervisor integration selection passes 184/184. Read-only deployment preflight remains
+Changed-path addendum: the full offline AgentCore/Strands client, pipeline, runtime,
+preflight and supervisor integration selection passes 200/200 on current pushed source.
+The exact local AgentCore-compatible `/ping` and strict-schema `/invocations` protocol smoke
+also passes on clean packaged source `9966a60`, without a model or cloud call. Read-only
+deployment preflight remains
 NO-GO due to inactive AWS credentials, absent AgentCore/CDK CLIs, stopped Docker engine,
 and missing image/runtime ARN. The saved supervisor-choice decoder now also rejects
 exponent-overflow floats before schema validation; configuration/settings coverage passes

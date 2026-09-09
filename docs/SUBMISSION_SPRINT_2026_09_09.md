@@ -134,11 +134,12 @@ drop requirements or declare an unverified product ready.
   only skip. On pushed source `957c60c`, the Strands/AgentCore gate passes 200/200 in
   23.00 seconds and the eight-task PexBench/Cursor-hook gate passes 201/201 in 343.82
   seconds; see `demo/evidence/OFFLINE_ACCEPTANCE_2026-09-09.md`. Production sidecar builds refuse
-  dirty source before PyInstaller. A detached clean `b0438bd` release now has rebuilt MSI and
-  NSIS installers: package verification is `release_ready: true` with no blockers, both
-  extracted inventories pass, and the final frozen bridge passes 3/3 lifecycle tests. Exact
-  hashes are retained in `PACKAGE_RECEIPT_B0438BD.json`. Its backend-identical ancestor
-  `af35707` passes the real quiet and same-thread recovery Codex + free Muse/Strands contracts.
+  dirty source before PyInstaller. Detached clean source `9966a60` now has rebuilt MSI and
+  NSIS installers: package verification is `release_ready: true` with no blockers and both
+  extracted inventories pass. Exact hashes are retained in `PACKAGE_RECEIPT_9966A60.json`.
+  Packaged ancestor `9357bb8` passes the complete real quiet and same-thread recovery Codex +
+  free Muse/Strands pair; exact `9966a60` separately passes quiet while its recovery attempt
+  failed closed on verifier timeout and must not be presented as a pass.
   Full current Python and the guarded
   installed/fresh-profile native smoke stay open; the protected concurrent `loop.py` edit
   intentionally keeps the primary checkout non-clean.
