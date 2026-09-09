@@ -47,6 +47,9 @@ retained in [`PET_ACCEPTANCE_2026-09-09.md`](evidence/PET_ACCEPTANCE_2026-09-09.
   Strands pair: evidence-supported quiet, then a specific same-thread recovery followed by a
   verified NOOP. See
   [`LIVE_CODEX_STRANDS_2026-09-08.md`](evidence/LIVE_CODEX_STRANDS_2026-09-08.md).
+- Installed `codex-cli 0.153.4` passes a fresh read-only production-transport App Server
+  `initialize` + bounded `thread/list` + owned shutdown smoke. See
+  [`CODEX_APP_SERVER_PROTOCOL_2026-09-09.md`](evidence/CODEX_APP_SERVER_PROTOCOL_2026-09-09.md).
 - Exact clean package source `9966a60` retains a fresh real Strands quiet success. Its recovery
   attempt failed closed because the independent verifier timed out twice under the free Muse
   provider; do not describe that retry as a current-source recovery pass. See

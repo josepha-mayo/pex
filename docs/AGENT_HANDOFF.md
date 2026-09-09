@@ -9427,12 +9427,12 @@ The dirty bit is expected because the protected operator-owned file below is ret
 ### 9 September submission bundle sealed
 
 - Working bundle: `C:\Users\JosephMayo\Documents\Codex\PEX-submission-9966a60`.
-  `BUNDLE_MANIFEST.md` records the exact size and SHA-256 of all 24 files present before the
+  `BUNDLE_MANIFEST.md` records the exact size and SHA-256 of all 25 files present before the
   manifest was created: installers, duplicate package-receipt names, live JUnits, sanitized
   proof, offline/AgentCore/bridge/EFS receipts, visual captures, submission/differentiation
   copy, recording runbook, and bounded native harness.
 - `BUNDLE_MANIFEST.md` SHA-256 is
-  `F6B1E345AAB63BF1AE811F7AD87562EB47D89B8CD26CFD97AE0D3574DE1C2883`; the folder contains 25
+  `B2867AFB148A37AD51306E46A17EFD475E3DD632ACBC6B927B00BFB7BBF943D3`; the folder contains 26
   files including the manifest. The duplicate receipt names have intentionally identical bytes.
   Recompute the manifest after any later artifact change rather than silently editing a sealed
   file.
@@ -9470,3 +9470,18 @@ The dirty bit is expected because the protected operator-owned file below is ret
   edits were justified.
 - Receipt: `docs/demo/evidence/PET_ACCEPTANCE_2026-09-09.md`. This is static/source evidence only;
   native playback and stability remain guarded by the exact `run bounded native smoke` phrase.
+
+### 9 September installed Codex protocol smoke
+
+- Ran PEX's actual production `CodexStdioTransport` against installed `codex-cli 0.153.4`, binary
+  SHA-256 `E5AA76D19C7C94E2E9EF9B707D590206A73AC0E97C8DDC8382181242494BEF75`.
+- The fixed App Server child completed `initialize` with `platformOs: windows`, accepted the
+  `initialized` notification, and returned the documented `data` list from a bounded
+  `thread/list {limit:1,useStateDbOnly:true}` request. The owned child then closed cleanly and
+  reset transport state. Exit 0.
+- No thread/create, resume, turn/start, model call, user-session mutation, native PEX, Cursor,
+  OpenCode, AWS resource, or paid provider ran. The temporary probe was deleted and verified
+  absent. Receipt: `docs/demo/evidence/CODEX_APP_SERVER_PROTOCOL_2026-09-09.md`.
+- This closes installed-version handshake/discovery uncertainty only. It does not establish
+  shared-desktop attachment, benchmark isolation, current-source semantic recovery, or native
+  stability.

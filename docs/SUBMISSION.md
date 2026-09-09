@@ -99,6 +99,8 @@ The concise judge comparison and its evidence boundaries are in
 - Connects through each harness's supported surface and labels the resulting capability at
   runtime. Existing shared sessions may be observe-only; isolated Codex App Server and
   OpenCode HTTP sessions can earn deeper support only after their event transport is healthy.
+  Installed Codex 0.153.4 now has a retained real initialization/discovery/shutdown receipt;
+  this did not create or mutate a user thread.
 - Implements a bounded Strands supervisor with six request-scoped, read-only evidence tools and requires a validated structured action. The live Codex proof demonstrates real Strands decisions and outcome verification; it does not claim every tool path was exercised on camera.
 - Exposes the strict versioned AgentCore Runtime protocol. The exact packaged source passes a
   local `/ping` + `/invocations` end-to-end smoke with a typed session-bound result; local mode
