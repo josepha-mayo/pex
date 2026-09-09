@@ -66,6 +66,21 @@ hashes and the sanitized audit diagnosis are in
 `docs/demo/evidence/LIVE_CODEX_STRANDS_2026-09-09.md`. Do not claim an exact-`9966a60` live pair;
 the complete recovery proof remains the earlier `9357bb8` ancestor evidence.
 
+Browser-only visual QA then ran against exact `9966a60` production frontend source on an
+isolated loopback Vite port. The required browser verifier loaded Home, Inspector, Deck,
+Supervisor Settings and Companion Settings; each rendered meaningful content with no Vite error
+overlay, no captured console errors and no horizontal overflow at 1264x631. Navigation among
+Home/Inspector/Deck and into Settings worked. Home shows the Pex owl; offline Inspector and Deck
+state clearly says no worker/bridge without inventing data. Companion Settings honestly reports
+`0/8 available` in a plain browser because the authenticated native bridge is absent; this is not
+eight-pet native playback evidence. Five screenshots are retained in the stable artifact folder:
+`frontend-visual-9966a60.png`, `frontend-inspector-9966a60.png`,
+`frontend-deck-9966a60.png`, `frontend-settings-9966a60.png`, and
+`frontend-pets-9966a60.png`. The agent-browser session and port-24689 Vite process were closed;
+no PEX native window was launched. This visual check followed the agent-browser verification
+skill and materially confirms the rebuilt UI is no longer the obsolete bridge-error card shown
+in earlier screenshots, while leaving native transparency/dismissal/resource behavior open.
+
 The benchmark manifest remains `frozen:false`: the development contract is green, but the
 installed Codex 0.153.4 Windows sandbox was adversarially tested and still allowed the worker
 identity to read the hidden evaluator through inherited `CodexSandboxUsers` ACLs. Network denial
