@@ -92,7 +92,7 @@ test("floating pet uses canonical first-run status instead of raw quiet copy", (
 
 test("Home presents onboarding once instead of repeating it through the pet and recovery notices", () => {
   const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
-  const start = app.indexOf('<section\n          className="compact-surface');
+  const start = app.indexOf('{surface === "compact" ? (');
   const end = app.indexOf('{surface === "inspector"', start);
   assert.ok(start >= 0 && end > start, "compact Home route must have a bounded source region");
   const home = app.slice(start, end);
