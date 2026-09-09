@@ -115,7 +115,8 @@ review. A one-call hatch result is only an unverified base candidate, not a play
 
 Timebox. Screen-record Pex (with one quick switch to Von), the inspector, and one isolated
 Codex App Server session. Do not turn the broader integration matrix into a demo tour, and do
-not use leaked benchmark numbers.
+not use leaked benchmark numbers. Use the exact preflight and rejection checks in
+[the recording runbook](demo/RECORDING_RUNBOOK.md).
 
 1. **0:00–0:25 — Problem.** Several coding agents running. You are the babysitter: continue, approve pytest, catch drift, copy context.
 2. **0:25–0:45 — Who / why.** Built for people who already use those tools. Goal: get the human back to intent and irreversible calls.

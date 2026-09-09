@@ -1,74 +1,69 @@
-# Demo assets
+# PEX demo assets
 
-**Current evidence, 8 September:** clean product source `b0438bd` has a normal verified MSI
-and NSIS package. Both extracted inventories contain the desktop, frozen bridge, Cursor hook,
-Cursor observer, and packaged pet assets; the package verifier reports `release_ready: true`
-with zero blockers. The final frozen bridge passes 3/3 lifecycle tests. Exact hashes and the
-receipt are in [`PACKAGE_RECEIPT_B0438BD.json`](../PACKAGE_RECEIPT_B0438BD.json).
-Both installers are currently `NotSigned`, so filming should account for a possible Windows
-reputation prompt rather than treating package verification as publisher signing.
+Use only the current evidence map below when preparing the Devpost video. Older files in this
+directory are historical references and must not be presented as final-source proof.
 
-The current Home, Inspector, Deck, Settings/Companion, and Pex overlay were inspected in an
-isolated browser render. The compact hierarchy is coherent, the pet has no opaque card behind
-it, and dismissing the status message visibly leaves the pet present. This is not native Tauri
-evidence: the browser sandbox cannot prove desktop transparency, click-through, hide/restore,
-restart persistence, or resource safety. PEX remains closed after the user-reported idle
-whole-PC freeze. A bounded native run still needs explicit approval, and no submission video
-exists. The 6 September native block below is historical.
+## Current package
 
-For the final video, keep the visual story to Pex and Von. Both independently pass the strict
-v2 atlas validator at 1536x2288 with 11 rows, no structural warnings, and no transparent-RGB
-residue. Original-resolution contact and direction sheets show clean transparency, distinct
-states, coherent identities and readable cardinal directions. Local QA artifacts are under
-`C:\Users\JosephMayo\Documents\Codex\pex-pet-qa-5530938`. These are static visual results,
-not native animation or stability proof.
+Clean product source `9966a602be7ed700844979e5fac2e2669cdb8823` produced the retained MSI and
+NSIS installers. Both extracted inventories contain the desktop, frozen bridge, Cursor hook,
+Cursor observer, and exactly eight packaged pet atlases. Package verification reports
+`release_ready: true` with zero blockers. The source-bound receipt is
+[`PACKAGE_RECEIPT_9966A60.json`](../PACKAGE_RECEIPT_9966A60.json).
 
-## 6 September native-package checkpoint
+The installers and working submission bundle are retained outside the repository at
+`C:\Users\JosephMayo\Documents\Codex\PEX-submission-9966a60`. The installers are unsigned;
+package integrity is not publisher identity and does not prove native runtime stability.
 
-The final repository revision is
-`f99fe4399720a223d96f1ad860b34ae175f5d917`. Its clean package receipt has SHA-256
-`23E1FA33736E387C22292D471375E43AC970DD37E3D27319E8D88CA204683C12` and reports
-`release_ready: true` with no package-integrity blockers. This is narrowly package
-integrity, not overall release or submission readiness. The unsigned MSI is 122,585,088
-bytes with SHA-256
-`759A9B2091804603563333C9087AD88ED4BFA60FD60A9BBBE3F89C126B2660DE`; the unsigned
-NSIS installer is 121,294,055 bytes with SHA-256
-`ADD72B18AFF7792D32D5AEAA1BC07C48929E3ED0A45F0AD4CDD896833FF76A69`.
+## Current visual evidence
 
-The extracted NSIS app was exercised with a fresh profile: its packaged bridge reached
-**All quiet**, the UI exposed exactly eight pets, and the pet rendered transparently.
-Escape dismissal and Settings restoration were proven on the same packaged runtime in
-the preceding pass. Windows Security then displayed a Node-automation prompt and blocked
-the final all-eight playback and Alt+F4 replay. Do not turn those uncompleted replays
-into screenshots, captions, or voiceover claims.
+Browser-only review of the exact package source covered Home, Inspector, Deck, Supervisor
+Settings, Companion Settings, navigation, and the Pex companion. The target 920x700 Home and
+Inspector renders had no error overlay, console error, blank content, or horizontal overflow.
+The stable bundle contains the full screenshot set, including
+`frontend-home-920x700-9966a60.png` and `frontend-inspector-920x700-9966a60.png`.
 
-No final submission video has been recorded. The live Codex + Strands receipts remain
-bound to `5c49c10eaed4ad96346ceef8d2eb257e46fcd425`, AgentCore remains undeployed, and
-PexBench remains unfrozen. The next judge-facing asset must show the packaged native app
-and clearly separate current package proof from the earlier live pair.
+This is layout evidence, not native Tauri proof. PEX remains closed after the user-reported
+idle whole-PC freeze. Native transparency, animation, close/reopen persistence, click-through,
+and resource stability remain open until the user authorizes the exact bounded native smoke.
 
-The August stills and `companion.webm` are pre-redesign references. **Do not use them on
-Devpost.** The recorder below drives headless Chromium against Vite, so its output is a
-layout reference only—not native Tauri, packaged-app, live-worker, or submission proof.
+Keep the visual story to Pex and Von. All eight built-ins pass the structural v2 atlas
+validator, but a two-character story is faster and clearer for judges. Pex is the default
+supervisor; Von demonstrates that the companion can feel personal without turning the demo
+into a pet gallery.
 
-The current judge-facing evidence summary is
-[`evidence/LIVE_CODEX_STRANDS_2026-09-06.md`](evidence/LIVE_CODEX_STRANDS_2026-09-06.md).
-Before submission, record a fresh native Tauri video showing both validated behaviors:
-evidence-supported restraint and same-thread recovery. Upload the reviewed video to
-YouTube or Vimeo (maximum five minutes). Voiceover: [`docs/SUBMISSION.md`](../SUBMISSION.md).
+## Current Strands, AgentCore, and benchmark evidence
 
-The curated live receipt is tied to `5c49c10`; it does not prove live behavior on final
-revision `f99fe43`, AgentCore, a frozen benchmark, a leaderboard rank, or the independent-
-verifier tier. Package integrity is separately proven by the checkpoint above. Current
-source has exactly eight built-in pets; older August assets remain stale even where they
-happen to depict those pets.
+- Current pushed source `957c60c408a7463eccd12420cc660acc80b69cc3` passes the exact offline
+  Strands/AgentCore gate **200/200 in 23.00 seconds** and the eight-task PexBench/Cursor-hook
+  gate **201/201 in 343.82 seconds**. See
+  [`OFFLINE_ACCEPTANCE_2026-09-09.md`](evidence/OFFLINE_ACCEPTANCE_2026-09-09.md).
+- Exact clean packaged source `9357bb8` retains the complete real Codex Spark + free Muse
+  Strands pair: evidence-supported quiet, then a specific same-thread recovery followed by a
+  verified NOOP. See
+  [`LIVE_CODEX_STRANDS_2026-09-08.md`](evidence/LIVE_CODEX_STRANDS_2026-09-08.md).
+- Exact clean package source `9966a60` retains a fresh real Strands quiet success. Its recovery
+  attempt failed closed because the independent verifier timed out twice under the free Muse
+  provider; do not describe that retry as a current-source recovery pass. See
+  [`LIVE_CODEX_STRANDS_2026-09-09.md`](evidence/LIVE_CODEX_STRANDS_2026-09-09.md).
+- AgentCore is a fully contract-tested deployment target, not a deployed runtime. No active AWS
+  credentials, verified ARM64 image, Runtime ARN, or no-card-charge proof exists.
+- PexBench remains `frozen: false`. The green contract gate is not a four-arm productivity
+  score, leaderboard rank, or completed experiment.
 
-Regenerate:
+## Filming
 
-```bash
+Follow [`RECORDING_RUNBOOK.md`](RECORDING_RUNBOOK.md) and the voiceover in
+[`docs/SUBMISSION.md`](../SUBMISSION.md). The final video must be at most five minutes and must
+show a real packaged native run, not the browser layout reference. Record only after bounded
+native stability passes; otherwise present the current artifacts as a proof-of-concept package,
+not a finished release.
+
+The legacy headless recorder remains available for layout references only:
+
+```powershell
 uv run --no-project --with playwright python apps/desktop/scripts/record_submission_demo.py
 ```
 
-The recorder must use `http://localhost:1420` on this machine (`127.0.0.1:1420` does not
-bind). Its current output names are `01-compact.png`, `02-inspector.png`, six Deck frames,
-and `09-settings.png` under `docs/demo/ui-reference/`.
+It does not prove Tauri, the frozen bridge, a live worker, AgentCore deployment, or a benchmark
+result.
