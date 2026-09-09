@@ -275,11 +275,19 @@ class LiveHttpTransport:
                         frame_chars = 0
                         discarding_frame = False
                         async for line in _bounded_sse_lines(response):
+                            if line is None:
+                                if not discarding_frame:
+                                    self._record_event_gap()
+                                data_lines = []
+                                discarding_frame = True
+                                continue
                             if line == "":
                                 if not discarding_frame:
                                     payload = _decode_sse_data(data_lines, path)
                                     if payload is not None:
                                         self._record_event(payload)
+                                    elif any(part.strip() for part in data_lines):
+                                        self._record_event_gap()
                                 data_lines = []
                                 frame_chars = 0
                                 discarding_frame = False
@@ -292,6 +300,7 @@ class LiveHttpTransport:
                                 # process without bound while withholding a frame.
                                 data_lines = []
                                 discarding_frame = True
+                                self._record_event_gap()
                                 continue
                             if line.startswith("data:"):
                                 data_lines.append(line[5:].lstrip(" "))
@@ -324,6 +333,14 @@ class LiveHttpTransport:
                 pass
         await self._client.aclose()
 
+    def _record_event_gap(self) -> None:
+        """Retire the old tail so a discarded observation cannot look contiguous."""
+        self.events.clear()
+        self._event_sizes.clear()
+        self._event_buffer_bytes = 0
+        self._event_cursor += 1
+        self._events_ready.set()
+
     def _record_event(self, payload: dict[str, Any]) -> None:
         # Bound aggregate serialized payload, not just event count. The decoder
         # separately bounds object depth/nodes/text; this is not an RSS estimate.
@@ -331,11 +348,7 @@ class LiveHttpTransport:
         if size > MAX_HTTP_EVENT_BUFFER_BYTES:
             # events_since models a contiguous retained tail. An omitted event
             # in the middle must retire the older tail as well, exposing a gap.
-            self.events.clear()
-            self._event_sizes.clear()
-            self._event_buffer_bytes = 0
-            self._event_cursor += 1
-            self._events_ready.set()
+            self._record_event_gap()
             return
         while self.events and (
             len(self.events) >= MAX_HTTP_EVENTS
@@ -418,8 +431,8 @@ def transport_events_since(
     return latest, retained, dropped
 
 
-async def _bounded_sse_lines(response: httpx.Response) -> AsyncIterator[str]:
-    """Split a UTF-8 SSE stream without buffering an unbounded unterminated line."""
+async def _bounded_sse_lines(response: httpx.Response) -> AsyncIterator[str | None]:
+    """Split bounded lines; None tells the frame decoder a line was discarded."""
     pending = ""
     discarding = False
     async for chunk in response.aiter_text():
@@ -432,11 +445,14 @@ async def _bounded_sse_lines(response: httpx.Response) -> AsyncIterator[str]:
                     if len(pending) > MAX_SSE_LINE_CHARS:
                         pending = ""
                         discarding = True
+                        yield None
                 break
             if not discarding:
                 pending += chunk[cursor:newline]
                 if len(pending) <= MAX_SSE_LINE_CHARS:
                     yield pending.removesuffix("\r")
+                else:
+                    yield None
             pending = ""
             discarding = False
             cursor = newline + 1

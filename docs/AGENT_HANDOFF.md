@@ -79,6 +79,10 @@ cursor/drop accounting; a single oversized event clears the earlier retained tai
 so no internal gap is hidden. Ten HTTP/SSE tests, four OpenCode pump tests and two
 lineage-gap tests pass; Ruff passes. This is not an RSS cap or proof of freeze cause.
 Collect the change into the next package rebuild before claiming installer coverage.
+Follow-up: malformed/non-object SSE payloads and oversized lines/frames now emit a
+retention gap rather than silently preserving apparent continuity. Empty keep-alives
+and comments remain harmless. Sixteen HTTP/SSE checks plus four OpenCode pump checks
+pass; Ruff passes. This follow-up is also not in package 166a656.
 
 Collected fixes now included in package 166a656:
 

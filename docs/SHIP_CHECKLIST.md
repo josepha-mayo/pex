@@ -15,6 +15,9 @@ Subsequent source-only resource fix: HTTP SSE retention is capped at 8 MiB of
 serialized payload plus its existing count/per-event bounds. Explicit dropped-event
 accounting remains intact. Sixteen focused HTTP/SSE/OpenCode pump/lineage tests pass;
 native resource improvement and freeze causality are not established. Not yet packaged.
+SSE discard follow-up: invalid payloads and oversized lines/frames now expose a
+history gap; otherwise later events could appear falsely continuous. Sixteen
+HTTP/SSE and four OpenCode pump checks pass. No live stream was accessed.
 
 **9 September safety hold:** user reported Codex closed during native testing.
 External `pex-native-smoke-933239a.ps1` is quarantined before execution because

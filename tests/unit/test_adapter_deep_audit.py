@@ -287,6 +287,43 @@ async def test_live_http_clean_sse_eof_backs_off(monkeypatch):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("discarded, gap", [
+    (b"data: not-json\n\n", True),
+    (b"data: []\n\n", True),
+    (b"data: " + b"x" * 100 + b"\n\n", True),
+    (b"data: " + b"x" * 40 + b"\ndata: " + b"x" * 40 + b"\n\n", True),
+    # A later valid data line cannot salvage a partially discarded frame.
+    (b"data: " + b"x" * 100 + b'\ndata: {"id":2}\n\n', True),
+    (b": heartbeat\n\ndata:\n\n", False),
+])
+async def test_live_http_discarded_sse_frame_exposes_history_gap(monkeypatch, discarded, gap):
+    monkeypatch.setattr(http_json_module, "MAX_SSE_LINE_CHARS", 80)
+    monkeypatch.setattr(http_json_module, "MAX_SSE_FRAME_CHARS", 70)
+    transport = LiveHttpTransport("http://127.0.0.1:4096")
+    stream = httpx.AsyncClient(
+        base_url="http://127.0.0.1:4096",
+        transport=httpx.MockTransport(lambda _: httpx.Response(
+            200, content=b'data: {"id":1}\n\n' + discarded + b'data: {"id":3}\n\n',
+        )),
+    )
+    monkeypatch.setattr(http_json_module.httpx, "AsyncClient", lambda *args, **kwargs: stream)
+
+    async def stop_after_stream(_delay):
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(http_json_module.asyncio, "sleep", stop_after_stream)
+    try:
+        with pytest.raises(asyncio.CancelledError):
+            await transport._read_sse("/event")
+        latest, rows, dropped = transport.events_since(0)
+        assert latest == (3 if gap else 2)
+        assert [row["id"] for row in rows] == ([3] if gap else [1, 3])
+        assert dropped == (2 if gap else 0)
+    finally:
+        await transport.aclose()
+
+
+@pytest.mark.asyncio
 async def test_live_codex_activity_wait_is_quiet_and_wakes(tmp_path):
     executable = tmp_path / "codex.exe"
     executable.write_bytes(b"test executable identity")

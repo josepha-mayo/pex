@@ -1,5 +1,23 @@
 # PEX code audit coverage — 5 September 2026
 
+## 10 September — dropped SSE frames cannot imply continuous history
+
+Follow-up review of `_read_sse`, `_bounded_sse_lines`, `_decode_sse_data` and
+`events_since` found that invalid or oversized observations were silently omitted.
+Four mocked HTTP regressions failed: malformed JSON, non-object JSON, excessive
+line length, and excessive cumulative frame length. The retained surrounding
+observations looked contiguous. `_record_event_gap` now retires the old tail,
+advances the absolute cursor, and wakes readers. The line reader emits a discard
+sentinel so the complete affected frame is ignored and marked as a gap.
+
+Expanded verification also covers a valid data line following a discarded line
+within the same frame (must not salvage it), plus comments/empty keep-alives
+(must not create a gap). Results: `test_adapter_deep_audit.py -k 'http or sse'`
+16 passed, 46 deselected in 2.42 seconds; `test_opencode_pipeline_pump.py` 4 passed
+in 1.38 seconds; Ruff passed. Mock HTTP only: no user server or worker contacted.
+This preserves the existing adapter rule that a known stream gap cannot support
+authoritative delivery lineage; no live model or native behavior is claimed.
+
 ## 10 September — aggregate HTTP event-buffer bound
 
 Read EventBus, HTTP SSE retention/wait/decoder flow, OpenCode pump gap handling,
