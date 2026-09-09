@@ -8,7 +8,11 @@ produce RESPOND_PERMISSION there. Twelve offline router cases covered local,
 AgentCore and hybrid modes, session/goal pause, and STOP/permission events. Four
 AgentCore/hybrid permission cases failed before the fix. Added an early pause
 NOOP in plan_deterministic; all 165 planner/router/loop/trajectory tests now pass
-and scoped Ruff passes. Remote client was a test fake; no AWS calls occurred.
+and scoped Ruff passes. A subsequent bridge integration gate also passes 80/80
+in 74.79 seconds: test_event_processing_pipeline.py, test_event_processing_store.py
+and test_agentcore_pipeline.py. It exercises replay, restart, durable dispatch
+budgets, uncertain-delivery non-retry and dispatch-time pause revalidation.
+Remote client was a test fake; no AWS calls occurred.
 This repairs proposal generation, not evidence of a real permission action having
 been dispatched: bridge-level pause guards already existed. Package 493aec0
 predates both recent pause fixes. Native-testing hold remains unchanged.
