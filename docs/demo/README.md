@@ -3,7 +3,17 @@
 Use only the current evidence map below when preparing the Devpost video. Older files in this
 directory are historical references and must not be presented as final-source proof.
 
-## Current package
+## Current MVP package
+
+Clean commit `933239a1bd0e05e65274d9c895750374239407b3` contains the adapter-polling
+stability repair and produced newly verified MSI and NSIS installers. The exact frozen bridge
+then retained OpenCode `Deep` across 20 live polls, and the saved Zen BYOK credential completed
+one production Strands invocation without exposing the key. Package verification reports
+`release_ready:true` with zero blockers. Use
+[`MVP_RELEASE_2026-09-09.md`](evidence/MVP_RELEASE_2026-09-09.md) as the newest acceptance
+receipt. The older `9966a60` package below is retained as historical evidence.
+
+## Previous package
 
 Clean product source `9966a602be7ed700844979e5fac2e2669cdb8823` produced the retained MSI and
 NSIS installers. Both extracted inventories contain the desktop, frozen bridge, Cursor hook,

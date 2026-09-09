@@ -9502,3 +9502,28 @@ The dirty bit is expected because the protected operator-owned file below is ret
   no gap or pump error. The pump, server, port, script, and directory were then cleanly removed.
   No prompt/correction or permission response was delivered, so those effects and benchmark
   participation remain unproven.
+
+### 9 September submission-focused MVP release — current
+
+- Clean pushed commit `933239a1bd0e05e65274d9c895750374239407b3` fixes the observed adapter
+  polling failure mode: `/health` and `/v1/adapters` now capture one Windows process snapshot
+  off the event loop and share it across concurrent probes. Previously, repeated synchronous
+  `tasklist` calls blocked the loop and caused healthy OpenCode probes to time out.
+- Regression/integration evidence: 58 passed plus one live deselection for the focused adapter
+  gate; 361 passed plus three live deselections across supervisor/OpenCode/Codex/Cursor; desktop
+  260/260; Rust 18/18; Strands/AgentCore 200/200; production TypeScript/Vite build passed.
+- Exact frozen release bridge plus installed OpenCode 1.18.29 passed 20 authenticated adapter
+  polls: all `Deep`, 492.1 ms minimum, 506.7 ms median, 707.7 ms maximum. Owned processes,
+  ports 4097/17423, and the isolated profile were removed afterward.
+- The saved Windows-secret-store Zen BYOK choice completed one real production Strands call:
+  `muse-spark-1.3-contributor-free`, Responses API, `strands-agents` 1.53.0,
+  `used_llm:true`, `inference_status:completed`, four model calls, final fail-closed `NOOP`.
+  The temporary script was deleted; the key was neither printed nor written.
+- Current package verification is `release_ready:true`, zero blockers. MSI SHA-256:
+  `49f7f8ceb2df3831bbd8dca71fde25024c6a6b57622b7283170bfe7e65994903`; NSIS SHA-256:
+  `1bfeaa456028f75cfc58692ff673c1dcf9fe8843bb61c01f97d72febb0e79ce7`.
+- PexBench remains `frozen:false`. Do not cite old partial coverage as a result. The live
+  readiness gate still requires OS-isolated hidden evaluation and a controller-enforced Cursor
+  network-policy receipt before a coherent four-arm result can exist.
+- Full receipt: `docs/demo/evidence/MVP_RELEASE_2026-09-09.md`. Next shortest path is the guarded
+  native stability smoke (only with explicit authorization), then filming and submission.

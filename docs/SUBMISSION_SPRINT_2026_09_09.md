@@ -8,7 +8,24 @@ Read all three binding specs and `CHECKPOINT_2026_09_08.md` before each work cyc
 Conserve quota: no new subagents. The user approved bounded live recovery/quiet
 checks after clean build/tests pass, subject to verifying free-provider setup.
 If independent review is later needed, use the user's Terra / medium preference.
-Preserve the protected supervisor `loop.py` change. Push only reviewed, scoped updates.
+The user subsequently instructed removal of stale code; the duplicate unreachable `loop.py`
+tail was removed, restoring the tracked file exactly and unblocking a clean package. Push only
+reviewed, scoped updates.
+
+## 9 September submission-focused MVP checkpoint
+
+- [x] Fix the adapter polling freeze amplifier and prove OpenCode `Deep` for 20/20 polls in the
+  exact frozen bridge.
+- [x] Verify Pex/Von presentation, distinct message dismissal and pet hiding, 260/260 UI tests,
+  18/18 Rust tests, and a production frontend build.
+- [x] Verify the saved Zen BYOK route with real `muse-spark-1.3-contributor-free` inference via
+  Strands Agents 1.53.0 without exposing the secret or using a paid fallback.
+- [x] Re-run the Strands/AgentCore gate: 200/200.
+- [x] Build and verify current MSI/NSIS: `release_ready:true`, zero package blockers.
+- [ ] Run the guarded native stability smoke only with its explicit authorization.
+- [ ] Record the demo and submit.
+- [ ] Keep PexBench unfrozen until OS-isolated hidden evaluation and the Cursor network receipt
+  are genuinely implemented; do not publish old partial rows.
 
 ## Active execution queue — refreshed 8 September
 

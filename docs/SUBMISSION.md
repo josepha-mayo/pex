@@ -1,6 +1,15 @@
 # Devpost submission copy
 
-> **P0 override: user-reported whole-PC freeze while PEX was idle.** The source now removes
+> **Current MVP, 9 September WAT:** clean commit `933239a` fixes a concrete UI-polling freeze
+> amplifier by moving the shared Windows process inventory off the event loop. The exact frozen
+> bridge embedded in the new installers held OpenCode `Deep` for 20/20 authenticated polls
+> (median 506.7 ms), the saved Zen BYOK credential completed through Strands Agents 1.53.0, and
+> package verification is `release_ready:true` with zero blockers. See
+> [the current MVP receipt](demo/evidence/MVP_RELEASE_2026-09-09.md). PexBench remains unfrozen,
+> AgentCore remains a tested deployment target rather than a deployed AWS runtime, and native
+> Tauri stability still requires the separately authorized bounded smoke.
+
+> **Earlier P0 context: user-reported whole-PC freeze while PEX was idle.** The source now removes
 > multiple hot-poll/resource amplifiers, bounds retained SQLite WAL allocation, and pins the
 > desktop-owned bridge to the normal `~/.pex/pex.sqlite` profile. Those repairs do not prove
 > native stability. PEX has stayed closed since the incident; a fresh bounded native run still
