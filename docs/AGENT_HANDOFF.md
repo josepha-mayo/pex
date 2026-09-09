@@ -9539,11 +9539,12 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - It contains the two installers produced from product source commit
   `933239a1bd0e05e65274d9c895750374239407b3`, the package receipt, current submission/demo
   documents, and the focused Codex/OpenCode/Strands/AgentCore/pet acceptance receipts.
-- `BUNDLE_MANIFEST.md` lists 15 payload files, including the current architecture diagram. A
+- `BUNDLE_MANIFEST.md` lists 17 payload files, including the current architecture diagram and
+  tracked live OpenCode closed-loop Markdown/JSON receipts. A
   fresh verifier recomputed every byte count and SHA-256 with zero missing files and zero
-  mismatches; the directory contains 16 files including the manifest.
+  mismatches; the directory contains 18 files including the manifest.
 - `BUNDLE_MANIFEST.md` SHA-256 is
-  `25fe36db041987153df6a69895a91e7c7fa98029274154c91026c220d754093c`.
+  `cbcbcf659a1a7909773d459de674133e4d2e27b7c3e7727fddb5f9d4618c72ed`.
 - Both installers are currently unsigned. Do not imply Authenticode signing; use the package
   receipt and pinned SHA-256 values for integrity. The older `PEX-submission-9966a60` folder was
   intentionally left untouched, but this `PEX-submission-933239a` bundle is the submission
