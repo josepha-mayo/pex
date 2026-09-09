@@ -15,10 +15,10 @@ behavior have not been observed. A read-only observer is prepared and tested onl
 with synthetic records. Fresh permission for PEX-only visual checks was requested;
 no permission response has been received yet.
 
-Latest verified source checkpoint: `157b119`. The complete desktop suite passes
-266 tests; combined supervisor/trajectory/event-processing/AgentCore-routing/
-mocked Windows-ownership gate passes 107 tests. The frontend production build
-also passed at this source. This is not the complete Python suite or live UI
+Latest desktop checkpoint: `a988748`, complete suite 267 passed and frontend
+production build passed. At `157b119`, the combined supervisor/trajectory/event-
+processing/AgentCore-routing/mocked Windows-ownership gate passed 107 tests.
+This is not the complete Python suite or live UI
 acceptance. Saving BYOK still explicitly does not claim tested credentials.
 
 Backend changes: `367b759`, including `5d2b717`, enforce goal/session pause
@@ -41,6 +41,10 @@ permanently busy button without reissuing pending IPC. Recovery/read-budget test
 pass 42/42 and frontend build passes; this is likewise newer than package 2966259.
 Decision-context scope is now included in the 18,000-character text budget;
 15 context/integration tests pass. This source fix also awaits the next package.
+Goal editor fields now lock during saves to prevent losing concurrent edits;
+this is also newer than package 2966259. See the compact maintained
+[active handoff](AGENT_HANDOFF.md); all previous handoff details remain in the
+[unchanged historical archive](AGENT_HANDOFF_HISTORY_2026_09_09.md).
 
 Immediate MVP work, in order:
 
