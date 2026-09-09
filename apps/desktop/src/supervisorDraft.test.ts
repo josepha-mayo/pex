@@ -10,6 +10,7 @@ import {
   supervisorDispatchLimitDraft,
   supervisorSavePayload,
   supervisorSaveResponseIsCurrent,
+  supervisorSaveConfirmation,
   type SupervisorDraft,
 } from "./supervisorDraft.ts";
 
@@ -22,6 +23,13 @@ const custom: SupervisorDraft = {
   apiKey: "fixture-key-not-a-real-credential",
   credentialAction: "keep",
 };
+
+test("save confirmation distinguishes configuration from tested credentials", () => {
+  assert.match(supervisorSaveConfirmation(true), /did not test the API key or run model inference/u);
+  assert.match(supervisorSaveConfirmation(false), /model is not loaded yet/u);
+  assert.match(supervisorSaveConfirmation(undefined), /did not test the API key/u);
+  assert.match(supervisorSaveConfirmation(undefined), /availability is unconfirmed/u);
+});
 
 test("saved review cap is explicit, bounded and omitted for unsupported bridges", () => {
   const draft = { ...custom, apiKey: "" };

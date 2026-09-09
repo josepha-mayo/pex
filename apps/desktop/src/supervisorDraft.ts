@@ -2,6 +2,16 @@ export type SupervisorAuthMode = "api_key" | "login" | "local" | "custom" | "bed
 export type SupervisorProtocol = "openai" | "anthropic";
 export type SupervisorCredentialAction = "keep" | "environment" | "clear";
 
+export function supervisorSaveConfirmation(modelLoaded: boolean | undefined): string {
+  if (modelLoaded === true) {
+    return "Configuration saved. This save did not test the API key or run model inference.";
+  }
+  if (modelLoaded === false) {
+    return "Configuration saved. The model is not loaded yet; PEX remains deterministic until it is available. This save did not test the API key.";
+  }
+  return "Configuration saved. Model availability is unconfirmed. This save did not test the API key.";
+}
+
 export function supervisorReviewLimitCopy(value: unknown): string {
   if (value === null) return "No per-session dispatch cap is configured.";
   if (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 100_000) {

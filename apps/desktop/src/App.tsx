@@ -50,6 +50,7 @@ import {
   supervisorSavePayload,
   supervisorDispatchLimitDraft,
   supervisorSaveResponseIsCurrent,
+  supervisorSaveConfirmation,
   type SupervisorAuthMode,
   type SupervisorCredentialAction,
   type SupervisorProtocol,
@@ -2193,7 +2194,7 @@ export function App() {
       setSupervisorApiKey("");
       supervisorKeyAudience.current = null;
       setSupervisorCredentialAction("keep");
-      setNote(data.model_loaded ? `Supervisor set to ${data.backend || "configured"} / ${data.model_id || "default"}.` : "Choice saved. PEX will remain deterministic until the configured model is available.");
+      setNote(supervisorSaveConfirmation(data.model_loaded));
     } catch (error) {
       markCanonical("supervisor", "failed", "The save was not confirmed. Reload the current configuration before another save.");
       setNote(operationError(error, "Could not save supervisor configuration."));

@@ -1,5 +1,16 @@
 # PEX agent handoff
 
+### BYOK save confirmation and offline credential transaction gate
+
+Supervisor save confirmation now explicitly distinguishes saved configuration
+from a tested API key or successful inference. It handles loaded, unloaded and
+unknown model availability without claiming authentication success. Tests:
+34/34 frontend draft cases and TypeScript/Vite build pass; supervisor config plus
+HTTP settings contracts pass 64 with one symlink-environment skip (55.90 seconds).
+Credential tests use fakes; no user's key was read/displayed and no provider
+inference was performed. The real Zen BYOK UI journey is still unverified.
+The packaged 493aec0 candidate predates this copy change and the pause repairs.
+
 ### Shared deterministic planner now honors pause across all routes
 
 Follow-up audit found AgentCore/hybrid nonsemantic routing calls the deterministic
