@@ -9427,12 +9427,12 @@ The dirty bit is expected because the protected operator-owned file below is ret
 ### 9 September submission bundle sealed
 
 - Working bundle: `C:\Users\JosephMayo\Documents\Codex\PEX-submission-9966a60`.
-  `BUNDLE_MANIFEST.md` records the exact size and SHA-256 of all 25 files present before the
+  `BUNDLE_MANIFEST.md` records the exact size and SHA-256 of all 26 files present before the
   manifest was created: installers, duplicate package-receipt names, live JUnits, sanitized
   proof, offline/AgentCore/bridge/EFS receipts, visual captures, submission/differentiation
   copy, recording runbook, and bounded native harness.
 - `BUNDLE_MANIFEST.md` SHA-256 is
-  `B2867AFB148A37AD51306E46A17EFD475E3DD632ACBC6B927B00BFB7BBF943D3`; the folder contains 26
+  `67F1D5388060EB8B95ADC2CC2B701CC00B225C3ECC3324176519FA6087DC6C23`; the folder contains 27
   files including the manifest. The duplicate receipt names have intentionally identical bytes.
   Recompute the manifest after any later artifact change rather than silently editing a sealed
   file.
@@ -9485,3 +9485,15 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - This closes installed-version handshake/discovery uncertainty only. It does not establish
   shared-desktop attachment, benchmark isolation, current-source semantic recovery, or native
   stability.
+
+### 9 September installed OpenCode HTTP smoke
+
+- Started installed OpenCode 1.18.29 on isolated loopback port 4097. PEX's production
+  `LiveHttpTransport` received `healthy:true`; production `OpenCodeAdapter.discover_sessions()`
+  accepted 100 returned rows and bound every ID exactly as `opencode:<vendor_session_id>`.
+- No prompt, model, message/session detail, SSE-control claim, plugin heartbeat, native PEX,
+  Cursor, AWS resource, or paid provider ran. The server warned that its temporary loopback
+  endpoint had no password. It was stopped immediately; port 4097, script, and isolated probe
+  directory were verified absent.
+- Receipt: `docs/demo/evidence/OPENCODE_HTTP_PROTOCOL_2026-09-09.md`. This proves health and
+  discovery only, not event-stream supervision, correction delivery, or benchmark participation.
