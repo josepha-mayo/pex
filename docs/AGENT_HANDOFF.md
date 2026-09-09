@@ -9527,3 +9527,19 @@ The dirty bit is expected because the protected operator-owned file below is ret
   network-policy receipt before a coherent four-arm result can exist.
 - Full receipt: `docs/demo/evidence/MVP_RELEASE_2026-09-09.md`. Next shortest path is the guarded
   native stability smoke (only with explicit authorization), then filming and submission.
+
+### 9 September current submission bundle — replaces the older 9966a60 bundle
+
+- Current bundle: `C:\Users\JosephMayo\Documents\Codex\PEX-submission-933239a`.
+- It contains the two installers produced from product source commit
+  `933239a1bd0e05e65274d9c895750374239407b3`, the package receipt, current submission/demo
+  documents, and the focused Codex/OpenCode/Strands/AgentCore/pet acceptance receipts.
+- `BUNDLE_MANIFEST.md` lists 14 payload files. A fresh verifier recomputed every byte count and
+  SHA-256 with zero missing files and zero mismatches; the directory contains 15 files including
+  the manifest.
+- `BUNDLE_MANIFEST.md` SHA-256 is
+  `991e1978218e976d0e972708522c8e3c8705fddb8886a75808f4325ac4261576`.
+- Both installers are currently unsigned. Do not imply Authenticode signing; use the package
+  receipt and pinned SHA-256 values for integrity. The older `PEX-submission-9966a60` folder was
+  intentionally left untouched, but this `PEX-submission-933239a` bundle is the submission
+  candidate.
