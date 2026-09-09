@@ -9543,7 +9543,7 @@ The dirty bit is expected because the protected operator-owned file below is ret
   SHA-256 with zero missing files and zero mismatches; the directory contains 15 files including
   the manifest.
 - `BUNDLE_MANIFEST.md` SHA-256 is
-  `991e1978218e976d0e972708522c8e3c8705fddb8886a75808f4325ac4261576`.
+  `00c6dcf0121b4de2bec6a467cc1a200ec9d1e9fca3f59acd99e074c845735afc`.
 - Both installers are currently unsigned. Do not imply Authenticode signing; use the package
   receipt and pinned SHA-256 values for integrity. The older `PEX-submission-9966a60` folder was
   intentionally left untouched, but this `PEX-submission-933239a` bundle is the submission
