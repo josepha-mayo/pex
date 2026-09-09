@@ -147,6 +147,9 @@ do not replace explicit authorization. Earlier receipts and failures remain in t
    Eight-task package exists. Ordinary subprocesses, Python `-I`, manifest claims
    and saved stop payloads are not isolation/continuation proof. Do not add tasks
    to evade the recovery specification or publish a scored win prematurely.
+   [Latest read-only runtime preflight](demo/evidence/BENCHMARK_RUNTIME_PREFLIGHT_2026-09-09.md):
+   Docker CLI/WSL exist, Docker engine pipe unavailable; six execution-gate tests
+   pass. Do not start Docker/VM services under the safety hold without agreement.
 5. **Strands/AgentCore:** retain Strands reasoning and implemented AgentCore route.
    Fake-client tests are not deployment evidence. Live AWS proof requires current
    no-billing evidence and appropriate authorization.
