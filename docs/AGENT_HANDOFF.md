@@ -133,6 +133,11 @@ from an older installer.
 
 ## Verification ledger
 
+Latest combined checkpoint: source `d53de4c`, 423 selected backend tests and all
+268 desktop tests passed on 10 September (111.34s and 6.842s). No source changes
+during verification. [Exact commands and scope](demo/evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md).
+This is not the full Python suite or live acceptance.
+
 | Source/scope | Result | Not proven |
 | --- | --- | --- |
 | Goal-ledger freshness repair full desktop suite | 268 passed, zero skipped; TypeScript/Vite build exit 0 | Native rendering, interaction, resource use |

@@ -5,6 +5,10 @@
 Overall: **NO-GO for submission**. This section supersedes current/latest labels
 in the historical log below; the three specifications remain authoritative.
 
+Latest combined offline gate on `d53de4c`: 423 selected backend tests plus all
+268 desktop tests passed. [Commands, coverage and limitations](demo/evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md).
+No real worker/model/native acceptance is implied by this checkpoint.
+
 Latest package: clean source `166a656`, rebuilt and verified on 10 September.
 MSI and NSIS pass extracted executable/hash/eight-pet-inventory checks; no package
 blockers. [Hashes and limitations](demo/evidence/PACKAGE_166A656_2026-09-10.md).
