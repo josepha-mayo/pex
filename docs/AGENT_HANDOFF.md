@@ -9628,3 +9628,7 @@ The dirty bit is expected because the protected operator-owned file below is ret
 - Temporary free-worker profiles were deleted, secret scans returned zero matches, port 4097 was
   closed and no owned OpenCode serve process remained. This raises the current quiet sample only
   to 1/10 and is not a benchmark result.
+- Post-live regression on the current docs descendant passed 135/135 across OpenCode pump,
+  outcome-lineage, capability and deep-adapter suites in 13.63 seconds. A source diff from package
+  commit `933239a` to current HEAD contains documentation only; installer hashes remain exactly
+  `49f7f8ce...4903` (MSI) and `1bfeaa45...9ce7` (NSIS).
