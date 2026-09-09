@@ -196,6 +196,13 @@ judge criteria and retained live evidence as the quality bar; do not invent a ra
 AgentCore is encouraged but not required by those official rules; it remains in
 our build-spec target, subject to the user's no-card-charge authorization.
 
+Fresh read-only recheck on 9 September: the official
+[project gallery](https://agentsforhumans.devpost.com/project-gallery) still says the managers
+have not published it. There is no public leaderboard or rank to chase. The official rules still
+show 14 September at 5 PM PDT and five equally weighted criteria: technical implementation,
+design, potential impact, creativity/originality, and presentation. Prioritize native reliability
+and a clear end-to-end video; do not freeze or fabricate a score.
+
 ## 1. Core product and reliability — first gate
 
 - [x] Real shared Codex thread inspected and confirmed without creating its work.

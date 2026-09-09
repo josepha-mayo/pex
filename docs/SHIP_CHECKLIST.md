@@ -542,7 +542,9 @@ These are immediate steps within stage 1, not another competing product plan. Pr
 - [ ] Run four formal Cursor/Codex baseline/+PEX arms with equivalent within-harness settings and fresh environments.
 - [ ] Run the separately labeled OpenCode baseline/+PEX diagnostic pair; do not silently change the frozen four-arm specification.
 - [ ] Preserve immutable raw outcomes, overhead, failures/aborts and human actions; small demos are not statistical proof.
-- [ ] Check for an official leaderboard at this checkpoint; use it as context if available, otherwise continue product improvement without inventing a rank.
+- [x] Recheck the official gallery at this checkpoint. On 9 September it still states that the
+  managers have not published it, so no leaderboard/rank exists. Continue against the five equal
+  judging criteria and verified product evidence without inventing a comparison.
 
 **Exit:** honest reproducible comparisons and visible product behavior, with no benchmark-only privileges or hidden-data leakage.
 

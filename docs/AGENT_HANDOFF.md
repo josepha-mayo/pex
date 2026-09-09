@@ -9632,3 +9632,8 @@ The dirty bit is expected because the protected operator-owned file below is ret
   outcome-lineage, capability and deep-adapter suites in 13.63 seconds. A source diff from package
   commit `933239a` to current HEAD contains documentation only; installer hashes remain exactly
   `49f7f8ce...4903` (MSI) and `1bfeaa45...9ce7` (NSIS).
+- Official Devpost rules/gallery were rechecked read-only on 9 September. Deadline remains
+  14 September 2026 at 5:00 PM PDT. The gallery explicitly remains unpublished, so there is no
+  leaderboard or rank. AgentCore is score-strengthening but not required; the five equally
+  weighted criteria keep native reliability, coherent design, credible impact, originality and
+  the end-to-end video on the critical path.
