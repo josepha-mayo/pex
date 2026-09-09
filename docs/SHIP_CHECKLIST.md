@@ -39,6 +39,8 @@ in package 2966259 and has no live Windows verification yet.
 The native bridge Retry response is also now bounded/single-flight, avoiding a
 permanently busy button without reissuing pending IPC. Recovery/read-budget tests
 pass 42/42 and frontend build passes; this is likewise newer than package 2966259.
+Decision-context scope is now included in the 18,000-character text budget;
+15 context/integration tests pass. This source fix also awaits the next package.
 
 Immediate MVP work, in order:
 

@@ -1,5 +1,18 @@
 # PEX agent handoff
 
+### Decision-context scope now counts against its text budget
+
+Full selector re-read found `build_supervisor_context` omitted each decision's
+scope from the 18,000-character decision-text budget while still serializing that
+scope. A fixture admitted 27,000 characters before repair. The cleaned scope is
+now counted with statement/rationale/alternatives before selection; offered IDs
+continue to match selected records. Existing ranking and provenance are unchanged.
+
+Context and autonomous Codex-context integration tests pass 15/15 (11.78 seconds),
+with fake supervisors; scoped Ruff and whitespace checks pass. No model/provider
+or coding app was used. This is a character-budget repair, not measured token or
+cost savings. Package 2966259 predates it and the two preceding source fixes.
+
 ### Combined offline regression checkpoint — source 157b119
 
 Clean source `157b119` passed the complete desktop `npm test` suite: 266 passed,

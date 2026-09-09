@@ -308,6 +308,28 @@ def test_secret_replacement_suppresses_predecessor_without_disclosing_replacemen
     assert envelope.context_items == ()
 
 
+def test_decision_text_budget_includes_scope():
+    from pex_bridge.supervisor_context import _MAX_DECISION_TEXT
+
+    now = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    session, _, _ = _bound(now)
+    decisions = [_decision(now, f"decision-{index:02d}") for index in range(24)]
+    for decision in decisions:
+        decision.statement = "x" * 1_000
+        decision.rationale = ""
+        decision.alternatives_rejected = []
+        decision.scope = "s" * 500
+    envelope = build_supervisor_context(session, [], decisions, now=now)
+    actual_text = sum(
+        len(item.statement) + len(item.rationale) + len(item.scope)
+        + sum(len(value) for value in item.alternatives_rejected)
+        for item in envelope.decisions
+    )
+    assert actual_text <= _MAX_DECISION_TEXT
+    assert len(envelope.decisions) == 12
+    assert envelope.offered_decision_ids == tuple(item.id for item in envelope.decisions)
+
+
 def test_harness_metadata_cannot_upgrade_self_report_to_verified_context():
     now = datetime(2026, 9, 5, 12, tzinfo=UTC)
     session, _, _ = _bound(now)

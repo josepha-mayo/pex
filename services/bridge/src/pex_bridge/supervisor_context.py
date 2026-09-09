@@ -254,6 +254,7 @@ def build_supervisor_context(
             continue
         statement = _clean_text(decision.statement, 2_000)
         rationale = _clean_text(decision.rationale, 1_000)
+        scope = _clean_text(decision.scope, 500)
         alternatives = tuple(
             value
             for value in (
@@ -262,7 +263,9 @@ def build_supervisor_context(
             )
             if value
         )
-        cost = len(statement) + len(rationale) + sum(len(value) for value in alternatives)
+        cost = len(statement) + len(rationale) + len(scope) + sum(
+            len(value) for value in alternatives
+        )
         if not statement or decision_text + cost > _MAX_DECISION_TEXT:
             continue
         metadata = decision.metadata if isinstance(decision.metadata, dict) else {}
@@ -273,7 +276,7 @@ def build_supervisor_context(
                 statement=statement,
                 rationale=rationale,
                 alternatives_rejected=alternatives,
-                scope=_clean_text(decision.scope, 500),
+                scope=scope,
                 confidence=decision.confidence,
                 source=decision.source,
                 status=decision.status,

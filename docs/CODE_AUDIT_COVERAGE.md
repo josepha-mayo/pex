@@ -867,7 +867,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | New file | Review scope / result |
 | --- | --- |
 | `services/bridge/src/pex_bridge/adapters/opencode_outcomes.py` | FULL READ by main and harness owner; exact receipt/parent/scope checks; offline positive and adversarial coverage, not live proof |
-| `services/bridge/src/pex_bridge/supervisor_context.py` | FULL READ by main and supervisor owner; scope, redaction, validity and bounded selection; exact evidence observations remain separate |
+| `services/bridge/src/pex_bridge/supervisor_context.py` | FULL READ by main and supervisor owner; re-read 9 September, repaired omitted decision scope in text-budget accounting. Regression admitted 27,000 vs 18,000 characters before fix; context/integration gate 15 passed, Ruff passed. Exact evidence observations remain separate. |
 | `tests/unit/test_opencode_outcome_lineage.py` | FULL READ by harness owner; main reviewed terminal and attribution cases; offline fixtures only |
 | `tests/unit/test_supervisor_context.py` | FULL READ by supervisor owner; main reviewed integration and pagination boundaries; no real model execution |
 | `tests/unit/test_worker_outcome_attribution.py` | FULL READ by main and independent integration reviewer; generic false-credit and foreign-authority regressions |
