@@ -9436,3 +9436,19 @@ The dirty bit is expected because the protected operator-owned file below is ret
   files including the manifest. The duplicate receipt names have intentionally identical bytes.
   Recompute the manifest after any later artifact change rather than silently editing a sealed
   file.
+
+### 9 September Windows EFS isolation primitive, benchmark still NO-GO
+
+- A temporary EFS probe tested the actual escape shape that defeated command-text filtering:
+  a permitted workspace script opened an absolute controller-private path. Installed
+  `codex-cli 0.153.4` ran `python escape_probe.py` under workspace-write with Codex Spark;
+  Windows returned `PermissionError` for the EFS file. `cipher /c` showed AES-256 and only the
+  JosephMayo identity could decrypt it, while `icacls` still showed inherited
+  `CodexSandboxUsers:(RX)`. This is real OS denial, not model refusal.
+- Receipt: `docs/demo/evidence/WINDOWS_EFS_BOUNDARY_PROBE_2026-09-09.md`. Three earlier probe
+  attempts were blocked before command execution and are explicitly excluded from the proof.
+- Do not flip the manifest or run arms. The main repository, Git objects and other local copies
+  still contain reachable plaintext evaluator material, and Cursor is not constrained by the
+  Codex sandbox account. Encrypting/denying shared paths would disrupt the user's other active
+  agents and was not attempted. The useful next architecture is an exclusive reversible private
+  controller environment with action-time denial receipts for both harnesses.

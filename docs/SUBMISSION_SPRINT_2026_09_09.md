@@ -152,7 +152,11 @@ drop requirements or declare an unverified product ready.
   rows report the verified revision. Source-revision capture is satisfied. Read-only
   plan/readiness still blocks execution/freeze on OS isolation, Cursor network
   enforcement, natural public-repo tasks, complete raw logs, and synchronous
-  Cursor+PEX continuation. No quota-consuming arm ran.
+  Cursor+PEX continuation. A 9 September adversarial Windows EFS probe gives a real
+  Codex workspace-write `PermissionError` when a permitted workspace script reads an
+  owner-encrypted external file despite inherited sandbox-group RX ACLs. This is a viable
+  primitive, not a completed boundary: plaintext Git copies and Cursor remain reachable.
+  No benchmark arm ran.
 - [ ] **I. Produce the judge-facing demo and exact submission package.**
   Acceptance: reproducible setup, truthful support matrix, architecture and
   curated real recovery trace; <=5-minute video; rules/bonus evidence rechecked.
