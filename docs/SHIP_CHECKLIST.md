@@ -1,5 +1,12 @@
 # PEX shipping checklist — 5 September 2026
 
+**9 September safety hold:** user reported Codex closed during native testing.
+External `pex-native-smoke-933239a.ps1` is quarantined before execution because
+its cleanup trusts PID-only descendant discovery. No more native launches,
+process termination, or computer input until this is resolved. Latest preview
+still has a white pet background; pet hide is unverified. See the top of
+`AGENT_HANDOFF.md` for exact evidence and incomplete checks.
+
 Latest incremental product checkpoint: `1985caa` repairs blocking desktop discovery
 inside OpenCode capability probes. Focused Python 137/137, desktop 260/260, Rust
 18/18, production UI build, MSI/NSIS build and extracted-package verification pass.

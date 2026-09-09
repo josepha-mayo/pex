@@ -1,5 +1,45 @@
 # PEX agent handoff
 
+### STOP native testing: Codex shutdown incident, 9 September 2026
+
+The user reported "u just killed codex" after the diagnostic native run
+`ui-preview-20260909T203502Z`. Native testing is suspended. Do not launch PEX,
+terminate processes, or resume computer input without resolving this incident.
+The assistant-owned external script
+`C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-933239a.ps1`
+is quarantined with an unconditional top-level throw before all executable work.
+Do not remove that guard or reuse the implementation.
+
+Offline audit found an unsafe cleanup mechanism: Get-OwnedProcesses recursively
+trusted Win32_Process.ParentProcessId, with no parent/child creation-time checks;
+Stop-OwnedProcesses then issued Stop-Process by numeric PID. A reused PID can
+match older, unrelated children; a process can also exit between enumeration and
+termination. This is a plausible cause, NOT proof of exactly what closed Codex.
+The affected run directory contains only profile data and no receipt.json, so
+there is no completed termination ledger. The old watchdog's root start-time
+check did not protect the separate recursive final cleanup.
+
+Replacement testing must use retained process handles / explicit OS ownership,
+never PID-only recursive discovery as termination authority. First test ownership
+selection with synthetic PID reuse and races, without launching or killing apps.
+Production Python Windows parent watchdog retains a SYNCHRONIZE handle and exits
+only itself; it is not the same recursive cleanup implementation. Rust sidecar
+cleanup calls its retained child object; dependency internals still need review.
+
+Latest UI preview executable SHA-256:
+`f167a0b06faa2c8aefc493180346ae0d5edbf20bed497e0382a017d502ae0f74`.
+It includes committed 72bd190 frontend but still embeds the 1985caa bridge.
+The completed run `ui-preview-20260909T203123Z` STILL showed white around Ledger
+after removing the wrong cross-window background call. Its hide-button attempt
+returned "foreground window did not report a process id"; hide was not verified.
+The next run added diagnostic WEBVIEW2_DEFAULT_BACKGROUND_COLOR=00000000 only
+in the external harness, but was interrupted before a result. That experiment
+is inconclusive, not a product fix. No model calls or AWS deployments were made.
+
+Next: finish offline safety audit, then fix native transparency and verify the
+actual workflow. UI approval, usage improvement, benchmark, and submission remain
+unproven. Do not call the mixed preview a final release.
+
 ### User-directed UI rework and measured event-stream fix — in progress
 
 The user rejected the white pet rectangle, fast motion, moving close controls,
