@@ -18,6 +18,8 @@
 > and PEX has not been installed or launched after the reported idle whole-PC freeze. Native
 > stability/interaction capture, current live demo, video, and authorized submission remain
 > open. Package integrity does not imply publisher identity or native stability.
+> The fresh command lines, timings, and claim boundary are retained in
+> [the 9 September offline acceptance receipt](demo/evidence/OFFLINE_ACCEPTANCE_2026-09-09.md).
 > Follow
 > [the detailed checkpoint](CHECKPOINT_2026_09_08.md), [handoff](AGENT_HANDOFF.md), and
 > [shipping checklist](SHIP_CHECKLIST.md). Every older "current" block below is historical.

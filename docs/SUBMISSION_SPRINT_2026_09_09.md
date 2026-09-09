@@ -93,7 +93,7 @@ drop requirements or declare an unverified product ready.
   build/tests pass and free-provider configuration is verified. No paid/AWS work.
   AgentCore remains a spec target under the no-card-charge boundary, not an
   excuse to deploy without verified coverage. Its complete offline client/pipeline/
-  runtime/Strands integration gate passes 184/184. Read-only preflight still finds no
+  runtime/Strands integration gate now passes 200/200 on current pushed source. Read-only preflight still finds no
   active AWS credentials, required CLIs, running Docker engine, image or runtime ARN,
   so deployed proof remains open. No mock is live integration proof.
   Exact clean package source `9357bb8` now passes one real verified-completion `NOOP` and one
@@ -116,7 +116,9 @@ drop requirements or declare an unverified product ready.
   package integrity and installed/fresh-profile smoke after final code changes.
   Current offline desktop coverage is 260/260, Rust is 18/18, and the production
   frontend build succeeds. The latest settings/config gate passes 64 with one Windows-
-  only skip, and the Strands/AgentCore gate passes 184/184. Production sidecar builds refuse
+  only skip. On pushed source `957c60c`, the Strands/AgentCore gate passes 200/200 in
+  23.00 seconds and the eight-task PexBench/Cursor-hook gate passes 201/201 in 343.82
+  seconds; see `demo/evidence/OFFLINE_ACCEPTANCE_2026-09-09.md`. Production sidecar builds refuse
   dirty source before PyInstaller. A detached clean `b0438bd` release now has rebuilt MSI and
   NSIS installers: package verification is `release_ready: true` with no blockers, both
   extracted inventories pass, and the final frozen bridge passes 3/3 lifecycle tests. Exact

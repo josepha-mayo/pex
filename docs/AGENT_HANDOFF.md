@@ -9364,3 +9364,18 @@ The dirty bit is expected because the protected operator-owned file below is ret
   unless the user says exactly `remove the protected loop tail`; expected SHA-256 is
   `DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`. Keep native PEX closed
   unless the user says exactly `run bounded native smoke`.
+
+### 9 September current-source offline acceptance refresh
+
+- On pushed source `957c60c408a7463eccd12420cc660acc80b69cc3`, the exact Strands +
+  AgentCore client/pipeline/runtime/preflight/integration gate passed **200/200 in 23.00
+  seconds**. The exact eight-task PexBench + Cursor-hook gate then passed **201/201 in
+  343.82 seconds**. Both processes exited 0.
+- The command lines and claim boundary are retained in
+  `docs/demo/evidence/OFFLINE_ACCEPTANCE_2026-09-09.md`. These are current-source
+  implementation and contract results. They do not prove deployed AgentCore or a completed
+  four-arm benchmark.
+- `benchmarks/manifest.yaml` remains `frozen: false`. Its remaining presentation blockers
+  are OS-enforced untrusted execution, controller-verified Cursor network policy, complete
+  Cursor raw event evidence, and synchronous same-session Cursor + PEX treatment. No model,
+  Cursor, native PEX, Docker, AWS resource, or paid provider ran in this refresh.
