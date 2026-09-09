@@ -902,10 +902,9 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("pet-shell", shell === "pet");
     document.body.classList.toggle("pet-shell", shell === "pet");
-    if (!TAURI || shell !== "pet") return;
-    void import("@tauri-apps/api/webview")
-      .then(({ getCurrentWebview }) => getCurrentWebview().setBackgroundColor({ red: 0, green: 0, blue: 0, alpha: 0 }))
-      .catch(() => undefined);
+    // Native configuration/setup owns the transparent canvas. The installed
+    // JS background setter sends `color`, while the Rust plugin expects `value`;
+    // that optional missing value resets the webview canvas to opaque white.
   }, [shell]);
 
   useEffect(() => {

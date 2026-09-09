@@ -17,6 +17,20 @@ test("showing the pet never changes the main window background", async () => {
   assert.doesNotMatch(source, /await pet\.setBackgroundColor\(/u);
 });
 
+test("pet startup preserves native transparency without the mismatched JS setter", async () => {
+  const [app, native, configText] = await Promise.all([
+    readFile(new URL("./App.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src-tauri/src/main.rs", import.meta.url), "utf8"),
+    readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
+  ]);
+  const pet = JSON.parse(configText).app.windows.find((entry: { label: string }) => entry.label === "pet");
+  assert.equal(pet.transparent, true);
+  assert.deepEqual(pet.backgroundColor, [0, 0, 0, 0]);
+  assert.match(native, /pet\.set_background_color\(Some\(tauri::window::Color\(0, 0, 0, 0\)\)\)/u);
+  assert.doesNotMatch(app, /getCurrentWebview\(\)\.setBackgroundColor/u,
+    "JS color/value mismatch must not overwrite native transparency");
+});
+
 test("floating pet respects the user's small size setting", async () => {
   const { createElement } = await import("react");
   const { renderToStaticMarkup } = await import("react-dom/server");

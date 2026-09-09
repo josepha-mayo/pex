@@ -1,5 +1,24 @@
 # PEX agent handoff
 
+### White-canvas source defect identified and repaired offline
+
+Removed the pet-shell App.tsx effect's getCurrentWebview().setBackgroundColor call.
+Exact installed dependency trace:
+- @tauri-apps/api 2.11.1 webview.js sends `{ color }`.
+- tauri 2.11.5 webview/plugin.rs setter macro expects argument `value: Option<Color>`.
+- tauri ipc/command.rs deserialize_option maps an absent key to visitor.visit_none().
+- tauri-runtime-wry 2.11.4 WebviewMessage::SetBackgroundColor maps None to
+  `(255, 255, 255, 255)`, overwriting the transparent native startup canvas.
+
+Native tauri.conf.json transparent=true/backgroundColor=[0,0,0,0] and Rust
+setup's typed transparent setter remain the sole canvas initialization. The JS
+call was redundant and actively reset that state. New regression guards those
+native settings and absence of the mismatched startup setter. Full desktop suite
+passes 263/263; TypeScript/Vite production build passes. This source-level cause
+is verified, but restored transparency is NOT natively verified. No app launch,
+process termination or computer input occurred; the safety hold remains active.
+The canonical native executable still predates this repair; do not call it fixed.
+
 ### Offline pet-size repair after native-testing hold
 
 The floating PetStage forced scale to at least 1.04, ignoring the user's smaller
