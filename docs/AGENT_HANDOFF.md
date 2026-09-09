@@ -1,5 +1,24 @@
 # PEX agent handoff
 
+### Windows thread ownership defense (after package 2966259)
+
+Full read of `packages/protocol/src/pex_protocol/windows_job.py` found that the
+suspended-child helper selected a thread by snapshot ID and resumed the opened
+handle without checking its current owner. It now requests suspend/resume plus
+limited-query rights and checks `GetProcessIdOfThread` before ResumeThread.
+Unknown/mismatched ownership fails through the existing retained-job/owned-child
+cleanup; it never resumes that thread. This is not a proven cause of the Codex
+shutdown and does not replace the quarantine of the external smoke script.
+
+New `tests/unit/test_windows_job_ownership.py` mocks every Windows/process API.
+Three cases (unknown owner, wrong owner, correct owner) failed before the change
+and pass afterward, including query-before-resume and handle/pipe cleanup checks.
+Scoped Ruff and whitespace checks pass. No real processes were started, resumed
+or killed in these tests. Native Windows execution remains unverified.
+
+API contract: [Microsoft GetProcessIdOfThread documentation](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocessidofthread).
+Package 2966259 predates this defense; do not label it as included in that package.
+
 ### Latest package checkpoint — 2966259
 
 Clean source `2966259676113bb05638b501188d53e65f83e66e` now has rebuilt MSI/NSIS

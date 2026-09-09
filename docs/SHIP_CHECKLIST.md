@@ -32,6 +32,10 @@ Both installers passed extracted payload/inventory checks. Exact receipt:
 Package readiness is not product readiness. Earlier full-suite totals are
 historical, not a test run against current HEAD.
 
+Post-package source defense: Windows suspended-child handling now rechecks opened
+thread ownership before resume. Three fully mocked tests pass; this change is not
+in package 2966259 and has no live Windows verification yet.
+
 Immediate MVP work, in order:
 
 - [x] Apply the same responsiveness repair to Codex/Cursor probes with regressions;

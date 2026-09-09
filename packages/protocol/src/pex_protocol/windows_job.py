@@ -51,6 +51,8 @@ def assign_job_and_resume(process):
         kernel.Thread32Next.restype = wintypes.BOOL
         kernel.CloseHandle.argtypes = [wintypes.HANDLE]
         kernel.CloseHandle.restype = wintypes.BOOL
+        kernel.GetProcessIdOfThread.argtypes = [wintypes.HANDLE]
+        kernel.GetProcessIdOfThread.restype = wintypes.DWORD
         snapshot = kernel.CreateToolhelp32Snapshot(0x00000004, 0)
         if snapshot == ctypes.c_void_p(-1).value:
             raise OSError(ctypes.get_last_error(), "thread snapshot failed")
@@ -62,8 +64,12 @@ def assign_job_and_resume(process):
                 found = kernel.Thread32Next(snapshot, ctypes.byref(entry))
             if not found:
                 raise OSError("suspended process thread not found")
-            thread = win32api.OpenThread(0x0002, False, entry.th32ThreadID)
+            # Query the opened handle, not just the earlier thread-id snapshot.
+            # THREAD_SUSPEND_RESUME | THREAD_QUERY_LIMITED_INFORMATION.
+            thread = win32api.OpenThread(0x0802, False, entry.th32ThreadID)
             try:
+                if kernel.GetProcessIdOfThread(int(thread)) != process.pid:
+                    raise OSError("suspended process thread ownership could not be verified")
                 if win32process.ResumeThread(thread) == -1:
                     raise OSError("suspended process could not be resumed")
             finally:

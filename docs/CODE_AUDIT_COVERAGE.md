@@ -492,6 +492,13 @@ Snapshot: 341 unique tracked or untracked source/configuration paths from the cu
 
 All entries start `PENDING` for the fresh independent audit. Replace status only with specific coverage evidence from the reviewer; reading a diff, searching a symbol or passing a test does not equal full-file review. Record unresolved findings in SHIP_CHECKLIST.md or a linked findings log. New source files must be added and changed files re-reviewed.
 
+9 September Windows ownership addendum: full read of
+`packages/protocol/src/pex_protocol/windows_job.py`; added opened-thread owner
+verification before resume. Full new-file review of
+`tests/unit/test_windows_job_ownership.py`: all Windows/process calls mocked,
+unknown/mismatched/matching owner cases, ordering and cleanup assertions.
+3 passed; scoped Ruff passed. Not a real-process test or incident root-cause proof.
+
 ## New-path addendum and bounded repair review
 
 ### 7 September 22:30 UTC — bounded liveness, pet provenance and canvas review
