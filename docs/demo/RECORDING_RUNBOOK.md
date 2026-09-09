@@ -36,8 +36,9 @@ recovery story. Switch to Von only once.
 6. **3:30–4:05 — Restraint.** Show the completed-task case and PEX choosing `NOOP`. The benefit
    is fewer unnecessary human interruptions, not more agent chatter.
 7. **4:05–4:30 — Engineering evidence.** Briefly show the current offline receipt: 200/200
-   Strands/AgentCore and 201/201 PexBench/Cursor contracts. Say AgentCore is the tested deploy
-   target unless a real Runtime is deployed before filming.
+   Strands/AgentCore and 201/201 PexBench/Cursor contracts. If useful, show the retained local
+   AgentCore protocol receipt, but say AgentCore is the tested deploy target unless a real AWS
+   Runtime is deployed before filming.
 8. **4:30–4:50 — Honest limits.** Do not show or quote a benchmark lift. PexBench is unfrozen,
    and there is no public scored leaderboard.
 9. **4:50–5:00 — Close.** “You keep the goal and the irreversible decisions. PEX keeps the

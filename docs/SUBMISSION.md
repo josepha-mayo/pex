@@ -95,6 +95,9 @@ If agents keep multiplying, humans become full-time dispatchers. PEX attacks tha
   runtime. Existing shared sessions may be observe-only; isolated Codex App Server and
   OpenCode HTTP sessions can earn deeper support only after their event transport is healthy.
 - Implements a bounded Strands supervisor with six request-scoped, read-only evidence tools and requires a validated structured action. The live Codex proof demonstrates real Strands decisions and outcome verification; it does not claim every tool path was exercised on camera.
+- Exposes the strict versioned AgentCore Runtime protocol. The exact packaged source passes a
+  local `/ping` + `/invocations` end-to-end smoke with a typed session-bound result; local mode
+  is deterministic-only and is not an AWS deployment claim.
 - Routes semantic-only interventions through an independent verifier Agent in locally tested contracts; failures and evidence-free approvals become NOOP, while deterministic verification truth remains authoritative. The curated live receipt does not independently prove this tier, so do not call it live-demonstrated unless a judge-readable trace is captured.
 - Keeps a local policy guard. Cloud can propose; it cannot bypass allow/deny/ask.
 - Surfaces attention as a desktop pet, not another chat transcript.

@@ -96,6 +96,10 @@ drop requirements or declare an unverified product ready.
   runtime/Strands integration gate now passes 200/200 on current pushed source. Read-only preflight still finds no
   active AWS credentials, required CLIs, running Docker engine, image or runtime ARN,
   so deployed proof remains open. No mock is live integration proof.
+  Exact clean package source `9966a60` now also passes the documented real local HTTP runtime
+  smoke: `/ping` and a strict `/invocations` envelope both returned 200, the typed result was
+  bound to the requested session, `used_llm=false`, and the owned server shut down normally.
+  This strengthens protocol evidence only; it is not AWS deployment or model-inference proof.
   Exact clean package source `9357bb8` now passes one real verified-completion `NOOP` and one
   real same-thread incomplete-work recovery with Codex Spark plus free Muse/Strands. A preceding
   `0450dda` account-level `thread/list` timeout is retained; `9357bb8` repairs its optional

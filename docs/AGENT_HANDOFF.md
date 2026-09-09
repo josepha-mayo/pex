@@ -9379,3 +9379,17 @@ The dirty bit is expected because the protected operator-owned file below is ret
   are OS-enforced untrusted execution, controller-verified Cursor network policy, complete
   Cursor raw event evidence, and synchronous same-session Cursor + PEX treatment. No model,
   Cursor, native PEX, Docker, AWS resource, or paid provider ran in this refresh.
+
+### 9 September exact-package-source local AgentCore protocol smoke
+
+- In the detached clean source used for the `9966a60` installers, the actual
+  `pex_supervisor.runtime` entrypoint started in documented `local_http` mode on loopback.
+  `GET /ping` returned 200/Healthy and a strict schema-one `POST /invocations` returned 200,
+  preserved the exact invocation identity, and returned a typed `NOOP` bound to the requested
+  `package-smoke` session with `used_llm=false` and
+  `deterministic_triage_no_supervisor_model`.
+- Ctrl+C stopped the exact Uvicorn session; it logged application shutdown complete and the
+  owned process exited. No bridge, native PEX, Docker, AWS resource, browser, or model ran.
+- Retained receipt: `docs/demo/evidence/LOCAL_AGENTCORE_PROTOCOL_2026-09-09.md`. This is real
+  local AgentCore-compatible protocol evidence, not an AWS Runtime deployment or inference
+  claim. AgentCore deployment remains blocked by current preflight and no-card-charge proof.

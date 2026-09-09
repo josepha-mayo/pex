@@ -47,7 +47,10 @@ into a pet gallery.
   provider; do not describe that retry as a current-source recovery pass. See
   [`LIVE_CODEX_STRANDS_2026-09-09.md`](evidence/LIVE_CODEX_STRANDS_2026-09-09.md).
 - AgentCore is a fully contract-tested deployment target, not a deployed runtime. No active AWS
-  credentials, verified ARM64 image, Runtime ARN, or no-card-charge proof exists.
+  credentials, verified ARM64 image, Runtime ARN, or no-card-charge proof exists. The exact
+  package source does pass the real local AgentCore-compatible `/ping` + `/invocations`
+  protocol smoke; see
+  [`LOCAL_AGENTCORE_PROTOCOL_2026-09-09.md`](evidence/LOCAL_AGENTCORE_PROTOCOL_2026-09-09.md).
 - PexBench remains `frozen: false`. The green contract gate is not a four-arm productivity
   score, leaderboard rank, or completed experiment.
 
