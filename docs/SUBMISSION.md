@@ -1,6 +1,18 @@
 # Devpost submission copy
 
-> **Current MVP, 9 September WAT:** clean commit `933239a` fixes a concrete UI-polling freeze
+> **Current claim boundary — 10 September 2026:** draft only; not approved for
+> submission. Latest verified package is `166a656`; subsequent HTTP/Codex resource
+> fixes are source-only. See [package evidence](demo/evidence/PACKAGE_166A656_2026-09-10.md)
+> and [423-backend/268-desktop regression evidence](demo/evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md).
+> These are not live UX, model, deployed AgentCore or comparative-impact proof.
+> Native testing is on hold after the PC-freeze/Codex-closure reports. Earlier
+> approvals below are historical. Follow [the active handoff](AGENT_HANDOFF.md).
+> Do not present old live receipts as current-source results or package
+> `release_ready:true` as overall submission readiness.
+
+## Historical evidence context
+
+> **Historical MVP, 9 September WAT:** clean commit `933239a` fixes a concrete UI-polling freeze
 > amplifier by moving the shared Windows process inventory off the event loop. The exact frozen
 > bridge embedded in the new installers held OpenCode `Deep` for 20/20 authenticated polls
 > (median 506.7 ms), the saved Zen BYOK credential completed through Strands Agents 1.53.0, and

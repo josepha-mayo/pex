@@ -1,9 +1,20 @@
 # PEX demo assets
 
-Use only the current evidence map below when preparing the Devpost video. Older files in this
+Use the current checkpoint below when preparing the Devpost video. Older files in this
 directory are historical references and must not be presented as final-source proof.
 
-## Current MVP package
+## Current checkpoint — 10 September 2026
+
+- Latest verified MSI/NSIS: source `166a656`; [hashes and limits](evidence/PACKAGE_166A656_2026-09-10.md).
+- Subsequent HTTP/Codex resource fixes are tested but not packaged.
+- Latest combined offline proof: [423 selected backend and 268 desktop tests](evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md).
+- Native acceptance remains on hold after the PC-freeze/Codex-closure reports.
+  Do not run historical smoke/cleanup scripts or infer fresh approval from this page.
+- No current-source live worker/UX proof, AgentCore deployment, frozen benchmark
+  result or final video is established. Historical live receipts below retain their
+  original source/date limitations. Follow [the active handoff](../AGENT_HANDOFF.md).
+
+## Historical MVP package
 
 Clean commit `933239a1bd0e05e65274d9c895750374239407b3` contains the adapter-polling
 stability repair and produced newly verified MSI and NSIS installers. The exact frozen bridge
@@ -50,7 +61,7 @@ supervisor; Von demonstrates that the companion can feel personal without turnin
 into a pet gallery. A fresh original-resolution and structural acceptance receipt for both is
 retained in [`PET_ACCEPTANCE_2026-09-09.md`](evidence/PET_ACCEPTANCE_2026-09-09.md).
 
-## Current Strands, AgentCore, and benchmark evidence
+## Historical Strands, AgentCore, and benchmark evidence
 
 - Current pushed source `957c60c408a7463eccd12420cc660acc80b69cc3` passes the exact offline
   Strands/AgentCore gate **200/200 in 23.00 seconds** and the eight-task PexBench/Cursor-hook

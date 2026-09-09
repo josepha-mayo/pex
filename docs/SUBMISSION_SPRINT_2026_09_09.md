@@ -1,5 +1,14 @@
 # PEX submission sprint — target 9 September 2026, WAT
 
+> **Historical sprint, superseded on 10 September.** Use [the active handoff](AGENT_HANDOFF.md)
+> and [shipping checklist](SHIP_CHECKLIST.md) for current work. Native launches,
+> process termination and computer input are on hold after the Codex-closure
+> report; prior approvals in this document do not lift that hold. Latest package
+> source is `166a656`, with later HTTP/Codex resource fixes still awaiting packaging.
+> Current regression evidence is 423 selected backend plus 268 desktop tests,
+> not current live acceptance. Date/rule statements below were recorded at the
+> time and must be reverified before submission. Overall status remains NO-GO.
+
 The full goal remains active. September 9 is the user's internal filming target. The
 [official rules](https://agentsforhumans.devpost.com/rules), refreshed 8 September,
 close submissions on 14 September 2026 at 5:00 PM PDT (15 September at 1:00 AM WAT).

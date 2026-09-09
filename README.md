@@ -4,6 +4,13 @@
 
 It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude Code, OpenCode, and other coding agents you already use. It is not another coding harness, not a Kanban board, and not a chat UI that makes you babysit a babysitter.
 
+**Development status — 10 September 2026:** not submission-ready. Package source
+`166a656` passes installer-content verification; newer HTTP/Codex resource fixes
+are tested but not yet packaged. Current source passed 423 selected backend tests
+and all 268 desktop tests. Native stability/UX, current-source live supervision,
+AgentCore deployment and a frozen comparative benchmark remain unverified.
+See [current status](STATUS.md) and the [shipping checklist](docs/SHIP_CHECKLIST.md).
+
 ## The pain it removes
 
 Running several long-lived coding agents created a new job: remembering the real goal, noticing drift, catching false “done”, approving the same safe test command, copying context between windows, and typing “continue”.
@@ -33,13 +40,14 @@ See [`INTEGRATIONS.md`](INTEGRATIONS.md) for the live matrix.
 
 ## Pets
 
-The desktop has a compact command surface plus a separate transparent,
-always-on-top pet overlay. It supervises existing harnesses; it is not a chat UI.
+The desktop is designed around a compact command surface and a separate transparent,
+always-on-top pet overlay. Repaired native transparency/playback still needs acceptance
+testing. It supervises existing harnesses; it is not a chat UI.
 
 - Plays **Codex v2** atlases (`1536×2288`, `spriteVersionNumber: 2`): pointer movement selects one of sixteen look directions, a dwell hops, dragging moves the overlay with running animation, and click opens the PEX inspector.
 - Import a hatch-pet folder (`pet.json` + `spritesheet.webp`), including a pet already installed under `~/.codex/pets/`.
 - Settings can authorize exactly one potentially billable image call for an unverified custom-pet base candidate through an explicitly configured image provider (`PEX_HATCH_*` or the canonical OpenAI Images endpoint). It does not build an atlas or playable pet; grounded 8×11 assembly and independent QA are still required before import. Text-only or unauthorized endpoints fail honestly.
-- The verified `933239a` package contains exactly eight built-ins: Pex, Ledger, Mesh, Nudge, Drift, Quiet, Ember, and Von. Both MSI and NSIS inventories and the static atlas chain pass; fresh native playback after the reported machine freeze remains deliberately unclaimed. Custom imports and unfinished hatch candidates stay separate from that built-in catalog.
+- The verified `166a656` package contains exactly eight built-ins: Pex, Ledger, Mesh, Nudge, Drift, Quiet, Ember, and Von. Both MSI and NSIS inventories pass; fresh native playback after the reported machine freeze remains deliberately unclaimed. Custom imports and unfinished hatch candidates stay separate from that built-in catalog.
 
 ## Benchmark headline
 
@@ -53,9 +61,10 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for product source `933239a`, but it has not been published as a
-GitHub release and is not code-signed. Its current verification evidence is
-[`docs/demo/evidence/MVP_RELEASE_2026-09-09.md`](docs/demo/evidence/MVP_RELEASE_2026-09-09.md). To build from source,
+installer candidate exists for product source `166a656` and is not code-signed.
+These instructions cover building from source; package integrity is not native
+acceptance or publisher trust. Its current verification evidence is
+[`docs/demo/evidence/PACKAGE_166A656_2026-09-10.md`](docs/demo/evidence/PACKAGE_166A656_2026-09-10.md). To build from source,
 install Git and `uv`, Node matching [`.node-version`](.node-version),
 and Rust matching [`rust-toolchain.toml`](rust-toolchain.toml). A Windows Tauri
 build also needs the Microsoft C++ build tools and WebView2 runtime. `uv` uses

@@ -1,5 +1,20 @@
 # Known failures
 
+## Current — 10 September 2026
+
+- The PC freeze and Codex closure are not causally resolved. Native launches,
+  process termination and computer input remain on hold; the PID-only cleanup
+  harness is quarantined. Earlier native-test approvals are not current authority.
+- Latest verified installer is source `166a656`. Later HTTP event/capture and
+  Codex capture-budget repairs await packaging; none prove improved native RSS/CPU.
+- [691 passing checks across two commands](docs/demo/evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md)
+  are selected backend plus desktop regression evidence, not full live acceptance.
+- Current-source visible BYOK and real same-worker supervision, native pet/UI
+  acceptance, live AgentCore proof, enforced benchmark isolation, a frozen four-arm
+  result, filming and final submission remain open. No validated leaderboard rank.
+- [Active handoff](docs/AGENT_HANDOFF.md) takes precedence over historical status
+  and approvals below. Historical successes/failures remain preserved.
+
 ## 9 September 2026 — exact remaining submission blockers after verified package
 
 - Clean source `9357bb8` produced MSI and NSIS installers whose extracted desktop, bridge,

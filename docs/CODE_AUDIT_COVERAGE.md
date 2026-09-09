@@ -1,5 +1,18 @@
 # PEX code audit coverage — 5 September 2026
 
+## 10 September — public status and submission claim consistency
+
+Audited current entry-point claims in README, STATUS, KNOWN_FAILURES, submission
+copy, the historical submission sprint and demo README. Several "current" labels
+still selected older packages (9357bb8/933239a), and the sprint retained prior
+native-test approval language. Added authoritative 10 September checkpoints and
+clearly historical labels without deleting prior evidence. Current package 166a656,
+later source-only fixes, selected 423-backend/268-desktop regression scope and
+native safety hold now agree across these entry points. No public submission or
+posting was performed. All local Markdown links in these six files resolve;
+diff whitespace check passes. Read-only Authenticode inspection returned NotSigned
+for both current installers, now retained in package evidence.
+
 ## 10 September — Codex capture budget and honest fallback evidence
 
 Resolved the capture-history item below without changing notification delivery.

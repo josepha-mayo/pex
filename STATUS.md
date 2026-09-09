@@ -1,6 +1,24 @@
 # STATUS
 
-## Current — 9 September WAT, verified eight-task package checkpoint
+## Current — 10 September 2026
+
+Submission remains **NO-GO**. Latest verified package source is `166a656`, not the
+latest source. [Installer hashes and limitations](docs/demo/evidence/PACKAGE_166A656_2026-09-10.md)
+confirm MSI/NSIS contents and eight-pet inventories, not native behavior.
+Later HTTP retention/gap fixes and Codex capture budgeting are source-only.
+
+Source `d53de4c` passed 423 selected backend tests and all 268 desktop tests.
+[Exact combined commands and scope](docs/demo/evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md).
+This is not a current full-Python-suite or real-provider result.
+
+After the user's PC-freeze and Codex-closure reports, native launches, process
+termination and computer input remain on hold pending fresh agreement. The
+PID-only cleanup harness is quarantined; older approvals below do not override
+the hold. Native UX/stability, current live BYOK/same-worker supervision,
+AgentCore deployment, fair frozen benchmark, video and submission remain open.
+Follow [the active handoff](docs/AGENT_HANDOFF.md) and [shipping checklist](docs/SHIP_CHECKLIST.md).
+
+## Historical — 9 September WAT, verified eight-task package checkpoint
 
 Current packaged product source is `9357bb8ccd70dbec77d8fed126a59d03decc29fe`.
 A detached clean worktree with its own `.venv` built all three frozen sidecars and the normal
