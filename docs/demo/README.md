@@ -57,6 +57,10 @@ into a pet gallery.
   [`LOCAL_AGENTCORE_PROTOCOL_2026-09-09.md`](evidence/LOCAL_AGENTCORE_PROTOCOL_2026-09-09.md).
 - PexBench remains `frozen: false`. The green contract gate is not a four-arm productivity
   score, leaderboard rank, or completed experiment.
+- A current Windows EFS adversarial probe proves a permitted Codex workspace script receives
+  `PermissionError` when it reaches an owner-encrypted controller file. It is only a useful
+  isolation primitive: plaintext Git copies and the Cursor boundary remain open. See
+  [`WINDOWS_EFS_BOUNDARY_PROBE_2026-09-09.md`](evidence/WINDOWS_EFS_BOUNDARY_PROBE_2026-09-09.md).
 
 ## Filming
 

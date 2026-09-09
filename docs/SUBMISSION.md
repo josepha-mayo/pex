@@ -13,7 +13,9 @@
 > intentional skips, production TypeScript/Vite compilation passes, the eight-task
 > benchmark/Cursor-hook gate passes 201/201, and the offline Strands/AgentCore gate passes all
 > 200 collected tests. Packaged ancestor `9357bb8` retains real Codex Spark plus free
-> Muse/Strands quiet and same-thread recovery evidence. The
+> Muse/Strands quiet and same-thread recovery evidence. Exact packaged source `9966a60` also
+> passes the real local AgentCore-compatible `/ping` and strict-schema `/invocations` protocol
+> path without a model or cloud call. The
 > benchmark remains unfrozen, AgentCore remains undeployed,
 > and PEX has not been installed or launched after the reported idle whole-PC freeze. Native
 > stability/interaction capture, current live demo, video, and authorized submission remain
@@ -130,7 +132,12 @@ not use leaked benchmark numbers. Use the exact preflight and rejection checks i
    visible, then hide and restore the pet from Settings. Switch briefly to Von and open the
    inspector. Show that the companion communicates state without becoming another transcript.
 4. **1:15–2:45 — Live recovery.** In one Codex thread, show the intentional stop, PEX's specific `SEND_NUDGE`, the second turn on the same thread ID, `report.txt = shipped`, `helped=true`, and the final evidence-supported `NOOP`.
-5. **2:45–3:35 — Strands and safety.** Show the real `used_llm=true`, `runtime=strands-agents` receipts and the local deterministic-truth/policy boundary. Show an independent-verifier receipt only if a separate judge-readable capture exists. Do not call this a Strands Graph or claim web/side-effect tools. Optional AgentCore `/ping` only if actually deployed.
+5. **2:45–3:35 — Strands and safety.** Show the real `used_llm=true`,
+   `runtime=strands-agents` receipts and the local deterministic-truth/policy boundary. Then
+   show the separate local AgentCore-compatible `/ping` + `/invocations` receipt and label it
+   exactly as a tested deployment protocol—not an AWS Runtime deployment. Show an
+   independent-verifier receipt only if a separate judge-readable capture exists. Do not call
+   this a Strands Graph or claim web/side-effect tools.
 6. **3:35–4:15 — Restraint.** Show the separate completed-task contract: one turn, artifact `pong`, and PEX correctly choosing `NOOP`. The point is fewer pointless interruptions, not maximum agent activity.
 7. **4:15–4:40 — Honest limits.** PexBench is not frozen and there is no retained leaderboard rank. AgentCore is a deploy target unless a live deployment is proven before recording.
 8. **4:40–5:00 — Close.** You keep goals and dangerous approvals. PEX keeps the mechanical supervision quiet.
@@ -164,5 +171,7 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Recapture the validated semantic pair on clean product source `af35707`
 - [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source
 - [ ] Pass bounded native stability and record the validated pair in the packaged-app demo
-- [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence is contract-only, while controlled local Codex + provider-live Strands evidence now exists
+- [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence includes
+  the 200-test contract gate plus an exact-package local `/ping` + `/invocations` protocol
+  smoke, while controlled local Codex + provider-live Strands evidence exists separately
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)
