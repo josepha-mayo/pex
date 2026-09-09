@@ -632,7 +632,8 @@ def _observed_outcome(
         "pytest_before": before_pytest.get("ok"),
         "pytest_after": after_pytest.get("ok"),
     }
-    if before_pytest.get("ok") is not True and after_pytest.get("ok") is True:
+    # Unavailable or malformed baseline evidence cannot establish improvement.
+    if before_pytest.get("ok") is False and after_pytest.get("ok") is True:
         result["helped"] = True
     return result
 

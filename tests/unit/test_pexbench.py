@@ -34,6 +34,25 @@ def _runner():
     return module
 
 
+@pytest.mark.parametrize("before_ok", [None, True, 0, "false"])
+def test_observed_outcome_does_not_credit_missing_or_nonfailed_baseline(before_ok):
+    result = _pex_attach()._observed_outcome(
+        "delivered", before={"pytest": {"ok": before_ok}},
+        after={"pytest": {"ok": True}}, followup_turn_id="turn-2",
+    )
+    assert "helped" not in result
+
+
+def test_observed_outcome_credits_only_observed_failure_to_success():
+    attach = _pex_attach()
+    for after_ok in (None, False, 1, "true", True):
+        result = attach._observed_outcome(
+            "delivered", before={"pytest": {"ok": False}},
+            after={"pytest": {"ok": after_ok}}, followup_turn_id="turn-2",
+        )
+        assert (result.get("helped") is True) == (after_ok is True)
+
+
 def _digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 

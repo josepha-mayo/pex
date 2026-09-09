@@ -1,5 +1,17 @@
 # PEX agent handoff
 
+### Benchmark outcome credit repaired (offline audit)
+
+`benchmarks/pex_attach.py::_observed_outcome` previously treated any baseline
+other than literal True as a failed test. A missing baseline followed by passing
+tests could therefore become `helped:true`, inflating helpful-intervention counts.
+Now only an observed literal False -> True test transition receives that credit.
+Unknown/nonboolean/unchanged outcomes stay unjudged; no historical evidence was
+rewritten. Three new cases failed before the fix. Outcome/report regression gate:
+10 passed, 139 deselected; scoped Ruff and whitespace checks pass. No worker,
+model, evaluator subprocess or native UI was launched by the new outcome tests.
+This is measurement correctness, not a new benchmark result or causal proof.
+
 ### Equal-time trajectory ambiguity repaired offline
 
 The repeated-command-failure candidate detector sorted history by timestamp but

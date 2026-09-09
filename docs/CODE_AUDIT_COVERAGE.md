@@ -916,7 +916,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `benchmarks/evaluator.py` | Harness / integrity | PENDING |
 | `benchmarks/four_arm.py` | Harness / integrity | PENDING |
 | `benchmarks/manifest.yaml` | Harness / integrity | PENDING |
-| `benchmarks/pex_attach.py` | Harness / integrity | PENDING |
+| `benchmarks/pex_attach.py` | Harness / integrity | Partial 9 September outcome-path audit: missing baseline no longer earns helpful-intervention credit; literal False -> True required. Three regressions failed before fix; outcome/report gate 10 passed. Full-file audit remains pending. |
 | `benchmarks/pex_supervisor_process.py` | Harness / integrity | PENDING |
 | `benchmarks/report.py` | Harness / integrity | PENDING |
 | `benchmarks/runner.py` | Harness / integrity | PENDING |
