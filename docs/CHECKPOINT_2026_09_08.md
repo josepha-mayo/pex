@@ -1,5 +1,40 @@
 # PEX checkpoint — 8 September 2026 WAT
 
+## 9 September clean package and eight-task benchmark checkpoint
+
+Accepted source `18e620e` added three pinned QuixBugs repairs to the five recovery stressors,
+reaching the binding eight-task development-smoke floor and a 32-row Cursor/Codex four-arm
+plan. The task packages bind upstream commit
+`4257f44b0ff1181dedaedee6a447e133219fcebf`, path and SHA-256 provenance, the MIT notice,
+packaged starters, private references, and hidden-data exclusion. The clean benchmark and
+Cursor-hook gate passed **200/200 in 441.54 seconds** with Ruff clean. The manifest deliberately
+remains unfrozen because OS isolation/no-network enforcement and complete Cursor raw and
+same-session treatment evidence remain missing; no live benchmark row ran.
+
+Accepted source `0450dda` made the compact-route source contract formatting-agnostic without
+weakening its behavior. The complete desktop suite passed **260/260** and the production
+TypeScript/Vite build passed. A detached clean worktree with an independent `.venv` then passed
+source preflight for all 270 tracked inputs, built current frozen bridge/Cursor sidecars, and
+completed the normal Tauri release. `npm run verify:package` passed only after checking both
+installer payloads with a checksum-verified official 7-Zip 26.03 extractor local to that
+worktree. The final receipt has `release_ready:true`, no blockers, and SHA-256
+`A79F9D010C76A9C4EBB03C8360F4ABE749D78FC765EC61DD606239A054C04A9B`.
+
+- MSI: `933C86D684DC2260B2F56E5CAFD26EAED5404DA405627757DEFCEA4772F5F61E`.
+- NSIS: `C790B8443C7ED648276BB2F245F96A51680473DD8C1A62C331545423B35713E1`.
+- Canonical desktop: `1DB3B0F774AEB432E5DF040451B29ABFFF10C2EAEF29525B39711A84234E626F`.
+
+The first verifier attempt is retained as
+`build/pex-package-receipt.nsis-extractor-missing.json`; the second as
+`build/pex-package-receipt.nsis-7za-unsupported.json`. Neither is a pass. Stable, uninstalled
+artifacts are copied to `C:\Users\JosephMayo\Documents\Codex\PEX-submission-0450dda`.
+
+The offline Strands/AgentCore gate passed **200/200 in 17.34 seconds**. Historical `af35707`
+still supplies the real Codex plus free-Muse Strands quiet/recovery proof; later package source
+does not inherit that live evidence by assertion. Read-only AgentCore preflight remains NO-GO,
+and no AWS resource or paid call ran. PEX was not installed or launched, so the prior freeze and
+all native UX/resource checks remain open. Overall submission remains NO-GO.
+
 Updated after the 8 September WAT idle-freeze report. The internal filming
 target remains 9 September WAT. The three specs and the full shipping checklist
 remain binding. Overall submission is **NO-GO**, not blocked: substantial safe work

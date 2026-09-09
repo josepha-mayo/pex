@@ -39,22 +39,22 @@ always-on-top pet overlay. It supervises existing harnesses; it is not a chat UI
 - Plays **Codex v2** atlases (`1536×2288`, `spriteVersionNumber: 2`): pointer movement selects one of sixteen look directions, a dwell hops, dragging moves the overlay with running animation, and click opens the PEX inspector.
 - Import a hatch-pet folder (`pet.json` + `spritesheet.webp`), including a pet already installed under `~/.codex/pets/`.
 - Settings can authorize exactly one potentially billable image call for an unverified custom-pet base candidate through an explicitly configured image provider (`PEX_HATCH_*` or the canonical OpenAI Images endpoint). It does not build an atlas or playable pet; grounded 8×11 assembly and independent QA are still required before import. Text-only or unauthorized endpoints fail honestly.
-- The verified `b0438bd` package contains exactly eight built-ins: Pex, Ledger, Mesh, Nudge, Drift, Quiet, Ember, and Von. Package inventory and static atlas validation pass; fresh native playback after the reported machine freeze remains deliberately unclaimed. Custom imports and unfinished hatch candidates stay separate from that built-in catalog.
+- The verified `0450dda` package contains exactly eight built-ins: Pex, Ledger, Mesh, Nudge, Drift, Quiet, Ember, and Von. Both MSI and NSIS inventories and the static atlas chain pass; fresh native playback after the reported machine freeze remains deliberately unclaimed. Custom imports and unfinished hatch candidates stay separate from that built-in catalog.
 
 ## Benchmark headline
 
 Four-arm experiment: Cursor / Cursor+PEX / Codex / Codex+PEX.
 
-Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor decides in an isolated process on public observations only. The deterministic manifest deliberately retains the five recovery-spec tasks and is **unfrozen**: existing local rows predate the current suite/integrity contract, the natural public-repository task requirement is unsatisfied, and Cursor+PEX still lacks proven same-session continuation. **There is no citeable impact score or validated public leaderboard rank yet.** Do not cite quarantined leakage runs.
+Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor decides in a separate process on public observations only. The deterministic development smoke has five recovery tasks plus three source-pinned public QuixBugs repairs and is **unfrozen**: an OS-enforced hidden-data/no-network worker boundary is still missing, existing rows predate the current 32-row suite/integrity contract, and Cursor+PEX still lacks complete same-session/raw-log evidence. **There is no citeable impact score or validated public leaderboard rank yet.** Do not cite quarantined leakage runs.
 
 ## Quick start
 
 ### Windows source prerequisites
 
 This public repository provides a **source-development bootstrap**. A verified local Windows
-installer candidate exists for product source `b0438bd`, but it has not been published as a
+installer candidate exists for product source `0450dda`, but it has not been published as a
 GitHub release and is not code-signed. Its exact package receipt is
-[`docs/PACKAGE_RECEIPT_B0438BD.json`](docs/PACKAGE_RECEIPT_B0438BD.json). To build from source,
+[`docs/PACKAGE_RECEIPT_0450DDA.json`](docs/PACKAGE_RECEIPT_0450DDA.json). To build from source,
 install Git and `uv`, Node matching [`.node-version`](.node-version),
 and Rust matching [`rust-toolchain.toml`](rust-toolchain.toml). A Windows Tauri
 build also needs the Microsoft C++ build tools and WebView2 runtime. `uv` uses
@@ -221,12 +221,12 @@ or rejection becomes NOOP. Deterministic verification truth and local policy
 still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
 target, not a deployed-service claim. The verifier path has local contract coverage but
 is not part of the curated live receipt. Real Codex + provider-live Strands restraint and
-same-thread recovery are validated on backend source `af35707`: the quiet path ended in NOOP,
+same-thread recovery were validated on historical backend source `af35707`: the quiet path ended in NOOP,
 and the recovery path sent a specific same-thread nudge, observed `report.txt=shipped`, recorded
-`helped=true`, then ended in NOOP. Packaged product source `b0438bd` adds only current docs and
-the tested overlay-contrast repair above that backend; it has verified MSI/NSIS inventories and
-a passing frozen-bridge lifecycle gate. This does not prove the outstanding bounded native
-stability run or a benchmark result.
+`helped=true`, then ended in NOOP. Current packaged product source `0450dda` has verified
+MSI/NSIS inventories and a passing source/sidecar chain, but its later backend changes have not
+re-run that provider-live trajectory. This does not prove the outstanding bounded native
+stability run, current live trajectory, AgentCore deployment, or a benchmark result.
 
 The cloud supervisor can propose actions. It cannot bypass local policy.
 
@@ -234,7 +234,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Clean product source `b0438bd` has verified MSI/NSIS package integrity; its backend-identical ancestor `af35707` has source-bound real Codex + provider-live Strands quiet/recovery proof. Overall contest state is **NO-GO** until the bounded post-freeze native review, demo video, and submission authorization are complete. The benchmark remains unfrozen, with no citeable impact score or validated leaderboard rank. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md).
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Clean product source `0450dda` has verified MSI/NSIS package integrity; historical source `af35707` has source-bound real Codex + provider-live Strands quiet/recovery proof, which is not treated as current-package live proof. Overall contest state is **NO-GO** until the bounded post-freeze native review, current live demo, and submission authorization are complete. The benchmark remains unfrozen, with no citeable impact score or validated leaderboard rank. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md).
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)

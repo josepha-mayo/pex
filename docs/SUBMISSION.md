@@ -6,24 +6,17 @@
 > native stability. PEX has stayed closed since the incident; a fresh bounded native run still
 > requires explicit user approval. Submission remains NO-GO until that run and the video pass.
 
-> **Current, 8 September WAT:** backend source `af35707` fixes a live Codex event-pump
-> starvation found during final recapture. Its clean quiet and same-thread recovery contracts
-> now pass with real Codex Spark and the free Muse/Strands supervisor. A detached
-> clean worktree produced normal MSI and NSIS installers. `npm run verify:package` reports
-> `release_ready: true`, zero blockers, and verified desktop/bridge/Cursor-helper inventories
-> in both installers. Both artifacts are currently `NotSigned`; package integrity does not
-> imply publisher identity or suppress Windows reputation prompts. The final frozen bridge
-> passed 3/3 lifecycle tests. The complete desktop contract gate passes 260/260; Rust passes
-> 18/18; TypeScript/Vite production compilation and
-> the 184-test Strands/AgentCore offline gate pass. A bounded live Codex App Server check now
-> proves the truthful `basic` handshake -> `deep` healthy-event-pump transition without a model
-> call. The current Home, Inspector, Deck, Settings, and Pex overlay were inspected in an
-> isolated browser render; message dismissal visibly left the pet present. This is not native
-> transparency, click-through, hide/restore, restart-persistence, or freeze-resolution proof.
-> Product source `b0438bd` adds the reviewed overlay-contrast repair and has rebuilt MSI/NSIS
-> packages that pass extracted-payload verification; exact hashes are in
-> `PACKAGE_RECEIPT_B0438BD.json`. The bounded native run,
-> packaged-app interaction capture, demo video, and authorized submission remain open.
+> **Current, 9 September WAT:** exact clean product source `0450dda` produced normal MSI and
+> NSIS installers whose extracted desktop, frozen bridge, Cursor helpers, and eight-pet
+> inventories pass with `release_ready:true` and zero package blockers. The exact receipt is
+> `PACKAGE_RECEIPT_0450DDA.json`. Complete desktop contracts pass 260/260, production
+> TypeScript/Vite compilation passes, the eight-task benchmark/Cursor-hook gate passes 200/200,
+> and the offline Strands/AgentCore gate passes 200/200. Historical backend source `af35707`
+> retains real Codex Spark plus free Muse/Strands quiet and same-thread recovery evidence; it is
+> not current-package live proof. The benchmark remains unfrozen, AgentCore remains undeployed,
+> and PEX has not been installed or launched after the reported idle whole-PC freeze. Native
+> stability/interaction capture, current live demo, video, and authorized submission remain
+> open. Package integrity does not imply publisher identity or native stability.
 > Follow
 > [the detailed checkpoint](CHECKPOINT_2026_09_08.md), [handoff](AGENT_HANDOFF.md), and
 > [shipping checklist](SHIP_CHECKLIST.md). Every older "current" block below is historical.
@@ -146,20 +139,21 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 ## Checklist before clicking Submit
 
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
-- [x] Build all three sidecars/installers from clean product source `b0438bd`; both installer
-  inventories and the retained `PACKAGE_RECEIPT_B0438BD.json` pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `b0438bd`;
+- [x] Build all three sidecars/installers from clean product source `0450dda`; both installer
+  inventories and the retained `PACKAGE_RECEIPT_0450DDA.json` pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `0450dda`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
-- [x] Re-run 362 focused Cursor/Codex/OpenCode integration tests plus all 259 desktop/UI
-  contracts and a production TypeScript/Vite build; no worker, model, native app or paid call ran
+- [x] Re-run the clean 200-test benchmark/Cursor-hook gate, 200-test offline Strands/AgentCore
+  gate, all 260 desktop/UI contracts, and a production TypeScript/Vite build; no benchmark arm,
+  native app, AWS resource, or paid call ran
 - [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases and review their full contact and
   direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)
 - [x] Recapture the validated semantic pair on clean product source `af35707`
-- [x] Rebuild/package the overlay-fixed descendant `b0438bd` and retain the validated `af35707`
-  backend semantic pair
+- [x] Rebuild/package descendant `0450dda` and retain historical `af35707` semantic evidence
+  without presenting it as current-package live proof
 - [ ] Pass bounded native stability and record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence is contract-only, while controlled local Codex + provider-live Strands evidence now exists
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)

@@ -1,8 +1,23 @@
 # PEX shipping checklist — 5 September 2026
 
-**Current checkpoint: 8 September WAT.** Follow
+**Current checkpoint: 9 September WAT.** Exact clean source `0450dda` has a verified MSI and
+NSIS package receipt (`PACKAGE_RECEIPT_0450DDA.json`), the complete desktop gate passes
+260/260, the eight-task benchmark package passes its 200-test contract gate, and the offline
+Strands/AgentCore gate passes 200/200. This does not close native stability, current live
+Strands, OS-isolated benchmark execution, Cursor evidence, AgentCore deployment, video, or
+submission. Follow
 [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md); older current/latest labels are
 historical. Overall submission remains NO-GO and the full steps below remain required.
+
+- [x] Build all three current sidecars and both normal Windows installers from detached clean
+  source `0450dda`; verify both extracted inventories with zero package blockers and retain the
+  byte-identical tracked receipt.
+- [x] Reach the eight-task development-smoke floor with five recovery stressors and three
+  source-pinned QuixBugs tasks; retain `frozen:false` and refuse presentation execution while
+  OS isolation and complete Cursor evidence are missing.
+- [x] Re-run the complete offline Strands/AgentCore gate: 200/200 passed.
+- [ ] Run the bounded native resource/interaction smoke only after exact operator permission;
+  PEX remains closed after the reported whole-PC freeze.
 
 - [x] Recheck the official contest surface: submission closes 14 September 2026 at
   5:00 PM PDT; public repository, visible MIT license, README, architecture diagram,

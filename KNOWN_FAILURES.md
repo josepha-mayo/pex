@@ -1,5 +1,27 @@
 # Known failures
 
+## 9 September 2026 — exact remaining submission blockers after verified package
+
+- Clean source `0450dda` produced MSI and NSIS installers whose extracted desktop, bridge,
+  Cursor helpers, and eight-pet inventories all pass the repository verifier. Exact receipt:
+  `docs/PACKAGE_RECEIPT_0450DDA.json`, SHA-256
+  `A79F9D010C76A9C4EBB03C8360F4ABE749D78FC765EC61DD606239A054C04A9B`. This is package
+  integrity, not native stability, UI interaction, code signing, or publisher trust.
+- PEX was not installed or launched. The prior idle whole-PC freeze remains unexplained, so
+  native startup, idle CPU/memory/disk behavior, transparent pet playback, dismissal,
+  hide/restore, drag/click-through, persistence, and all-eight playback remain unverified.
+- The eight-task/32-row development benchmark package passes its 200-test contract gate, but
+  the manifest remains unfrozen. No OS-enforced worker boundary blocks hidden evaluator data
+  and network access, and Cursor still lacks complete raw/same-session evidence. No live arm,
+  score, impact claim, or leaderboard claim is valid yet.
+- Offline Strands and AgentCore contracts pass 200/200. The last real Codex plus free-Muse
+  Strands NOOP/recovery trajectory belongs to historical source `af35707`, not package
+  `0450dda`. AgentCore is still undeployed: AWS authentication, current tooling, a verified
+  ARM64 image/runtime ARN, and zero-card-spend proof are absent. No AWS mutation or paid call
+  occurred.
+- Final live demo capture, public video, current submission claims review, and explicit submit
+  authorization remain open. Overall status is NO-GO even though the package verifier is green.
+
 ## 8 September 2026 — idle whole-PC freeze; native stability not established
 
 - The four-arm benchmark is still unfrozen and has no citeable presentation score. Fresh

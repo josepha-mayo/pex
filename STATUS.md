@@ -1,6 +1,45 @@
 # STATUS
 
-## Current — 8 September WAT, final minimal submission path
+## Current — 9 September WAT, verified eight-task package checkpoint
+
+Current packaged product source is `0450ddaececbd3a9eee6f757591626f36c6f86c9`.
+A detached clean worktree with its own `.venv` built all three frozen sidecars and the normal
+Tauri MSI and NSIS installers. Source preflight was green for all 270 tracked release inputs,
+the eight-pet inventory, toolchain pins, clean Git state, current sidecars, and the frozen
+inventory. `npm run verify:package` then reported `release_ready: true` with no blockers and
+verified both extracted installer payloads. The exact receipt is
+`docs/PACKAGE_RECEIPT_0450DDA.json`, SHA-256
+`A79F9D010C76A9C4EBB03C8360F4ABE749D78FC765EC61DD606239A054C04A9B`.
+
+- MSI SHA-256: `933C86D684DC2260B2F56E5CAFD26EAED5404DA405627757DEFCEA4772F5F61E`.
+- NSIS SHA-256: `C790B8443C7ED648276BB2F245F96A51680473DD8C1A62C331545423B35713E1`.
+- Canonical desktop SHA-256: `1DB3B0F774AEB432E5DF040451B29ABFFF10C2EAEF29525B39711A84234E626F`.
+- Complete desktop contracts: **260/260 passed**; production TypeScript/Vite build passed.
+
+Package verification was fail-closed. The first attempt retained
+`build/pex-package-receipt.nsis-extractor-missing.json` because no NSIS extractor was
+available. A second retained `build/pex-package-receipt.nsis-7za-unsupported.json` because
+the reduced 7za binary returned status 2. Verification passed only after a checksum-verified
+official 7-Zip 26.03 x64 tool was installed inside the detached worktree's build-tools folder.
+This was not a system-wide install and PEX itself was not installed or launched.
+
+The development benchmark now has the required eight predeclared tasks: five PEX recovery
+stressors and three source/license/hash-pinned QuixBugs repairs, producing a 32-row four-arm
+plan. Its clean benchmark/Cursor-hook gate passes **200/200** and scoped Ruff passes. The
+manifest remains `frozen: false`: OS-enforced hidden-evaluator/no-network isolation and complete
+Cursor raw/same-session evidence remain missing, so no quota-consuming presentation row or
+score ran. The offline Strands/AgentCore gate also passes **200/200**. Historical source
+`af35707` retains real Codex plus provider-live Strands NOOP/recovery evidence, but that is not
+claimed as current-package live proof. AgentCore remains undeployed because read-only preflight
+is NO-GO and zero-card-spend authority is not established.
+
+Overall submission remains **NO-GO** pending the explicitly authorized bounded native
+stability/interaction run, current live demonstration evidence, benchmark execution-boundary
+proof, demo video, and final submission authorization. The stable uninstalled artifacts are in
+`C:\Users\JosephMayo\Documents\Codex\PEX-submission-0450dda`. Older current blocks below are
+historical.
+
+## Historical checkpoint — superseded by the 9 September block above
 
 Current packaged product source is `b0438bd4e01b9f930c152960cbd33b1a86cfefb5`.
 Its only product-code change after the live-tested `af35707` backend is the reviewed

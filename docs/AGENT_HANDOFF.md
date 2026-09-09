@@ -1,5 +1,63 @@
 # PEX agent handoff
 
+### Current checkpoint — 9 September WAT
+
+The exact clean package source is `0450ddaececbd3a9eee6f757591626f36c6f86c9`.
+Commit `18e620e5d939904b4633df4bd53c0023a1c8f2d0` added three pinned QuixBugs repairs to the
+five PEX recovery stressors, reaching the required eight-task development-smoke floor and a
+32-row four-arm plan. Its clean benchmark/Cursor-hook gate passed **200/200 in 441.54s** with
+Ruff clean. Commit `0450dda` then repaired a brittle desktop source-contract assertion; the
+complete desktop suite passed **260/260** and production TypeScript/Vite compilation passed.
+Both commits were pushed with local `HEAD == origin/main` verified at their checkpoints.
+
+A detached clean worktree at
+`C:\Users\JosephMayo\Documents\Codex\pex-release-18e620e-localenv` was advanced to exact
+`0450dda`, given an independent `.venv`, and verified not to import editable PEX packages from
+the shared checkout. Source preflight passed all 270 tracked release inputs, exact eight-pet
+inventory, clean Git state, current frozen sidecars, and frozen inventory. The full Tauri release
+built in 6m26s. The final verifier passed both extracted installer payloads with
+`release_ready:true` and no blockers. Receipt:
+`docs/PACKAGE_RECEIPT_0450DDA.json`, SHA-256
+`A79F9D010C76A9C4EBB03C8360F4ABE749D78FC765EC61DD606239A054C04A9B`.
+
+- MSI SHA-256: `933C86D684DC2260B2F56E5CAFD26EAED5404DA405627757DEFCEA4772F5F61E`.
+- NSIS SHA-256: `C790B8443C7ED648276BB2F245F96A51680473DD8C1A62C331545423B35713E1`.
+- Canonical desktop SHA-256: `1DB3B0F774AEB432E5DF040451B29ABFFF10C2EAEF29525B39711A84234E626F`.
+- Release-input SHA-256: `DD81D0E9807065506DE373D7E78377E6A4DCA3D3CF18BD11E197B8134466B94B`.
+- Sidecar-input SHA-256: `84016B78FF9105B973203A5F5D0F4C107C5048CB63E70F0BC1D049B1A6E0F2E8`.
+
+The first package check retained an extractor-missing failure receipt; the second retained a
+reduced-7za status-2 failure receipt. Only a checksum-verified official 7-Zip 26.03 x64 tool,
+installed inside the detached worktree's build-tools directory, produced the passing check.
+Stable uninstalled artifacts are copied to
+`C:\Users\JosephMayo\Documents\Codex\PEX-submission-0450dda` with a README and exact receipt.
+
+The offline Strands runtime/supervisor and AgentCore client/pipeline/runtime/preflight gate
+passed **200/200 in 17.34s**. Historical source `af35707` retains a real Codex Spark plus free
+Muse/Strands NOOP and same-thread recovery trajectory. Do not claim that historical trajectory
+as current-package live proof. AgentCore is undeployed: read-only preflight reports inactive AWS
+credentials, absent current AgentCore/CDK tooling, stopped Docker, no verified ARM64 image, and
+no runtime ARN. The user's no-card-billing condition is not proven; do not create AWS resources
+or make a paid call.
+
+The benchmark manifest remains `frozen:false`. Although its eight natural/recovery packages and
+32-row plan are contract-green, it still lacks an OS-enforced worker boundary preventing hidden
+evaluator reads/network and complete Cursor raw/same-session evidence. Do not run quota-consuming
+presentation rows or cite a score/leaderboard rank until those gates pass.
+
+PEX remains closed. Do not install or launch it unless the user says exactly `run bounded native
+smoke`; the prior idle run froze the whole PC. Therefore native startup/idle resources,
+transparency, playback, dismissal, hide/restore, drag/click-through, persistence, and all-eight
+pet playback remain unverified. Overall submission remains **NO-GO** pending that bounded native
+run, current live evidence/demo, video, and final submit authorization.
+
+The shared checkout must continue to preserve
+`services/supervisor/src/pex_supervisor/loop.py` exactly at SHA-256
+`DEA56DA49607069E889D56DA0D458D7CF5284555967FCD617867316A6D7ED77E`; it contains a protected
+concurrent unreachable duplicate tail. Do not edit, stage, restore, or format it unless the user
+says exactly `remove the protected loop tail`. Stage explicit paths only. Older current blocks
+below are historical.
+
 ### Current checkpoint — 8 September WAT
 
 Current packaged product source is `b0438bd`; `origin/main` may include later documentation-only
