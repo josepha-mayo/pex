@@ -13,8 +13,8 @@ one production Strands invocation without exposing the key. Package verification
 [`MVP_RELEASE_2026-09-09.md`](evidence/MVP_RELEASE_2026-09-09.md) as the newest acceptance
 receipt. The older `9966a60` package below is retained as historical evidence.
 The current sealed submission candidate is
-`C:\Users\JosephMayo\Documents\Codex\PEX-submission-933239a`; its manifest SHA-256 is
-`991e1978218e976d0e972708522c8e3c8705fddb8886a75808f4325ac4261576`.
+`C:\Users\JosephMayo\Documents\Codex\PEX-submission-933239a`; use its
+`BUNDLE_MANIFEST.md` for the exact payload sizes and SHA-256 values.
 
 ## Previous package
 
