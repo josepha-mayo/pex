@@ -1,5 +1,17 @@
 # PEX agent handoff
 
+### Current-source candidate built and package-verified
+
+Source `493aec0` now has freshly rebuilt sidecars, desktop executable, MSI and
+NSIS. Build and extracted-package verification both exited 0. Full receipt:
+`build/pex-package-receipt-493aec0.json`; durable checkpoint and hashes:
+`docs/demo/evidence/PACKAGE_493AEC0_2026-09-09.md`.
+The canonical native executable now includes the transparency repair, size fix
+and picker animation gate, with the current backend (not the 1985caa sidecar).
+No desktop launch or installation occurred. Only the standalone frozen bundle
+inventory path executed. Native testing is still on hold, and `release_ready`
+in the receipt denotes package verification only, NOT submission readiness.
+
 ### Offline picker animation budget and native-control API audit
 
 Pet picker previews previously left every catalog sprite's animation active.
