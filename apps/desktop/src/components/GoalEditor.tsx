@@ -36,7 +36,8 @@ export function GoalEditor({
   onCancel?: () => void;
 }) {
   return (
-    <form className="goal-form" onSubmit={onSubmit}>
+    <form className="goal-form" onSubmit={onSubmit} aria-busy={saving}>
+      <fieldset className="goal-form-fields" disabled={saving} aria-label="Goal details">
       {projectIdentity ? (
         <p className="goal-project-identity">
           <span>Project identity</span>
@@ -171,6 +172,7 @@ export function GoalEditor({
           </button>
         ) : null}
       </div>
+      </fieldset>
     </form>
   );
 }

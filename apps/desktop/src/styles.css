@@ -1185,6 +1185,15 @@ p {
   margin-top: 12px;
 }
 
+.goal-form-fields {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .canonical-state-warning {
   display: flex;
   flex-wrap: wrap;

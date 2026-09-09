@@ -1472,6 +1472,34 @@ test("pet renders separate keyboard buttons for status dismissal, activation, an
   }
 });
 
+test("goal editor locks submitted fields only while saving", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createServer } = await import("vite");
+  const vite = await createServer({
+    root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom",
+  });
+  try {
+    const { GoalEditor } = await vite.ssrLoadModule("/src/components/GoalEditor.tsx");
+    const draft = {
+      projectId: "project", title: "Goal", objective: "Keep this draft",
+      acceptance: "", constraints: "", nonGoals: "", preferences: "", evidence: "",
+      decisions: "", rejectedApproaches: "", unresolvedQuestions: "",
+    };
+    const props = { draft, willAttach: false, onChange: () => {}, onSubmit: () => {} };
+    const saving = renderToStaticMarkup(createElement(GoalEditor, { ...props, saving: true }));
+    assert.match(saving, /<fieldset[^>]*disabled=""[^>]*>/u);
+    assert.match(saving, /<fieldset[^>]*>[\s\S]*Keep this draft[\s\S]*Saving…[\s\S]*<\/fieldset>/u);
+    const offline = renderToStaticMarkup(createElement(GoalEditor, {
+      ...props, saving: false, disabled: true,
+    }));
+    assert.doesNotMatch(offline, /<fieldset[^>]*disabled/u);
+    assert.match(offline, /Keep this draft/u);
+  } finally {
+    await vite.close();
+  }
+});
+
 test("goal editor objective is a textarea so a full task can be pasted", async () => {
   const { readFile } = await import("node:fs/promises");
   const { dirname, join } = await import("node:path");

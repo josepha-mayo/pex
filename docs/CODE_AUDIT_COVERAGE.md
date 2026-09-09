@@ -891,7 +891,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `apps/desktop/src/App.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src/components/AskPex.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src/components/CommandDeck.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
-| `apps/desktop/src/components/GoalEditor.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/src/components/GoalEditor.tsx` | UI / release | Full re-read 9 September; disabled fieldset while saving prevents edits being cleared by pending save completion. SSR regression failed before fix; 267 desktop tests and frontend build pass. Native layout/interaction remains unverified. |
 | `apps/desktop/src/components/Inspector.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src/components/PetStage.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src/components/ProjectIdentityPanel.tsx` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |

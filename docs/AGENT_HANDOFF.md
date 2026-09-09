@@ -1,5 +1,19 @@
 # PEX agent handoff
 
+### Goal editor protects the submitted draft during saving
+
+GoalEditor previously disabled only Submit/Cancel during saving. Its fields stayed
+editable while App cleared the draft on a successful response, risking loss of
+text entered during that wait. A native disabled fieldset now locks all fields
+only while saving; offline/disabled-submit state still permits drafting. The form
+exposes `aria-busy`; fieldset CSS preserves the grid gap and removes default chrome.
+Existing Inspector edit controls already reject editing while saving.
+
+New server-render regression failed before the change. Complete desktop suite:
+267 passed, no failures/skips (6.18 seconds); TypeScript/Vite build exits zero;
+whitespace check passes. No native interaction/layout verification occurred.
+This and the other post-2966259 fixes are not in the last verified installers.
+
 ### Decision-context scope now counts against its text budget
 
 Full selector re-read found `build_supervisor_context` omitted each decision's
