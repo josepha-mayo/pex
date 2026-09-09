@@ -854,7 +854,7 @@ def _speculative_action(request: SupervisorRequest) -> ProposedAction | None:
                 "Isolated probe of this approach outperformed the sibling.",
                 reasons or ["speculative:winner"],
                 (
-                    f"Continue {winner_approach}. "
+                    f"The bounded probe selected {winner_approach}; continue that approach. "
                     f"{loser_approach} did worse on the bounded probe. "
                     "Keep those findings and do not restart the losing worker."
                 ),

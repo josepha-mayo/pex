@@ -551,15 +551,9 @@ async def test_cancel_after_commit_settles_publication_before_releasing_lock(
     previous = adapters.codex
     previous_task = None
     if operation == "confirm":
-        started = asyncio.Event()
-
-        async def local_discovery_only():
-            started.set()
-            return []
-
-        monkeypatch.setattr(previous, "discover_sessions", local_discovery_only)
         previous_task = previous.start_pipeline_pump(state.pipeline.ingest_event)
-        await asyncio.wait_for(started.wait(), 2)
+        await asyncio.sleep(0)
+        assert not previous_task.done()
     original = state.store.publish_observer_session
     committed, release = asyncio.Event(), asyncio.Event()
 
@@ -618,16 +612,11 @@ async def test_failed_shared_publication_restores_only_its_stopped_bare_pump(
 
     client, body, transports, adapters, _, manager = shared_client
     old = adapters.codex
-    entered = asyncio.Event()
-
-    async def local_discovery_only():
-        entered.set()
-        return []
-
-    # Exercise the real pump loop, with no desktop session/process inspection.
-    monkeypatch.setattr(old, "discover_sessions", local_discovery_only)
+    # Exercise the real transportless pump loop. It deliberately sleeps without
+    # desktop discovery so an idle bridge does not spawn repeated process scans.
     old_task = old.start_pipeline_pump(state.pipeline.ingest_event)
-    await asyncio.wait_for(entered.wait(), 2)
+    await asyncio.sleep(0)
+    assert not old_task.done()
     selected = await _inspect(client, body)
     replacement = CodexAdapter()
     original_publication = state.store.publish_observer_session

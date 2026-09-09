@@ -51,7 +51,8 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 ### Windows source prerequisites
 
-This public repository provides a **source-development bootstrap**. A verified local Windows
+This public repository provides a **source-development bootstrap**, not a packaged installer.
+A verified local Windows
 installer candidate exists for product source `9357bb8`, but it has not been published as a
 GitHub release and is not code-signed. Its exact package receipt is
 [`docs/PACKAGE_RECEIPT_9357BB8.json`](docs/PACKAGE_RECEIPT_9357BB8.json). To build from source,
