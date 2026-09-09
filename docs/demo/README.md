@@ -50,8 +50,8 @@ retained in [`PET_ACCEPTANCE_2026-09-09.md`](evidence/PET_ACCEPTANCE_2026-09-09.
 - Installed `codex-cli 0.153.4` passes a fresh read-only production-transport App Server
   `initialize` + bounded `thread/list` + owned shutdown smoke. See
   [`CODEX_APP_SERVER_PROTOCOL_2026-09-09.md`](evidence/CODEX_APP_SERVER_PROTOCOL_2026-09-09.md).
-- Installed OpenCode 1.18.29 passes a fresh loopback health and production-adapter discovery
-  smoke with canonical session binding and complete cleanup. See
+- Installed OpenCode 1.18.29 passes a fresh loopback health, production-adapter discovery, and
+  real `/global/event` pump smoke; runtime capability reached `Deep` without a model call. See
   [`OPENCODE_HTTP_PROTOCOL_2026-09-09.md`](evidence/OPENCODE_HTTP_PROTOCOL_2026-09-09.md).
 - Exact clean package source `9966a60` retains a fresh real Strands quiet success. Its recovery
   attempt failed closed because the independent verifier timed out twice under the free Muse

@@ -9432,7 +9432,7 @@ The dirty bit is expected because the protected operator-owned file below is ret
   proof, offline/AgentCore/bridge/EFS receipts, visual captures, submission/differentiation
   copy, recording runbook, and bounded native harness.
 - `BUNDLE_MANIFEST.md` SHA-256 is
-  `67F1D5388060EB8B95ADC2CC2B701CC00B225C3ECC3324176519FA6087DC6C23`; the folder contains 27
+  `382C870D7EED575E1E7C81E03D4682DD7BFF33AED20AF6C8C8B46844C5DB65D2`; the folder contains 27
   files including the manifest. The duplicate receipt names have intentionally identical bytes.
   Recompute the manifest after any later artifact change rather than silently editing a sealed
   file.
@@ -9496,4 +9496,9 @@ The dirty bit is expected because the protected operator-owned file below is ret
   endpoint had no password. It was stopped immediately; port 4097, script, and isolated probe
   directory were verified absent.
 - Receipt: `docs/demo/evidence/OPENCODE_HTTP_PROTOCOL_2026-09-09.md`. This proves health and
-  discovery only, not event-stream supervision, correction delivery, or benchmark participation.
+  discovery plus a healthy event-stream pump. A second bounded invocation connected
+  `/global/event`; production `start_pipeline_pump()` stayed running, runtime capability reached
+  `Deep`, message observation/send and async permission mediation were reported, and there was
+  no gap or pump error. The pump, server, port, script, and directory were then cleanly removed.
+  No prompt/correction or permission response was delivered, so those effects and benchmark
+  participation remain unproven.
