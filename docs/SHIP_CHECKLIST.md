@@ -8,7 +8,9 @@ belongs to the earlier source; it was not rerun for this narrow change.
 
 Immediate MVP work, in order:
 
-- [ ] Apply the same responsiveness repair to Codex/Cursor probes with regressions.
+- [x] Apply the same responsiveness repair to Codex/Cursor probes with regressions;
+  Claude/Hermes included. All four failed the new stall regression before the fix.
+  The broader adapter/pump/shared-attachment gate passes 154/154 afterward.
 - [ ] Bounded native startup, idle, pet hide, message dismissal and BYOK interaction checks.
 - [ ] Complete quiet/recovery acceptance and the honest, isolated comparative benchmark.
 - [ ] Refresh the final package once those repairs pass, then film and prepare submission.

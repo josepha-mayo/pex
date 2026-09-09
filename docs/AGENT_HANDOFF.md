@@ -1,5 +1,25 @@
 # PEX agent handoff
 
+### Latest source follow-through — remaining desktop capability probes
+
+Codex, Cursor, Claude and Hermes capability probes now offload their blocking
+process lookup with `asyncio.to_thread`, matching the preceding OpenCode repair.
+No session mutation moved to worker threads, no capability was widened, and no
+global discovery cache was introduced. A parameterized regression demonstrates
+all four old implementations stall unrelated coroutines; after repair it checks
+both loop liveness and that process detection alone cannot send worker messages.
+
+Verification: 154/154 pass in 47.58 seconds across probe responsiveness, adapter
+capabilities/deep audit, OpenCode/Codex pumps, ACP/Cursor and shared Codex attach.
+Scoped Ruff and diff checks pass. The first post-fix attempt had two fixture-only
+boolean validation failures because the mock returned a filename for boolean
+lookups; the mock now respects each production lookup's return contract.
+
+These four source changes are newer than the verified `1985caa` installers below.
+Rebuild once the source batch is settled before claiming current-source native
+acceptance. Native idle/interaction stability and comparative benchmarks remain
+open. No app launch, paid call, AWS mutation or native interaction occurred here.
+
 ### Latest incremental repair — OpenCode event-loop responsiveness
 
 OpenCode capability probes run during production event ingestion as well as HTTP

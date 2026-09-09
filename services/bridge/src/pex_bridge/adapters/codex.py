@@ -1352,7 +1352,7 @@ class CodexAdapter(HarnessAdapter):
                 )
             except Exception:
                 connected = False
-        desktop = chatgpt_desktop_running()
+        desktop = await asyncio.to_thread(chatgpt_desktop_running)
         pumping = (
             connected
             and self._pump_task is not None

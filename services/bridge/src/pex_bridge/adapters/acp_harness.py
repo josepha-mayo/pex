@@ -865,7 +865,10 @@ class HermesAdapter(AcpHarnessAdapter):
         from pex_bridge.adapters.desktop import matching_desktop_image
 
         hook_live = self._hook_live()
-        desktop = matching_desktop_image(("Hermes.exe", "NousHermes.exe")) is not None
+        desktop = await asyncio.to_thread(
+            matching_desktop_image, ("Hermes.exe", "NousHermes.exe")
+        )
+        desktop = desktop is not None
         if not hook_live:
             if desktop and caps.support_label == AdapterSupportLabel.UNAVAILABLE:
                 return caps.model_copy(

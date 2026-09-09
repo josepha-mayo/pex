@@ -7,6 +7,7 @@ spawn Claude sessions.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import time
 from contextvars import ContextVar
@@ -91,7 +92,8 @@ class ClaudeCodeAdapter(HarnessAdapter):
         active_permission = bool(
             hook_live and active and active[1] in {"PreToolUse", "PermissionRequest"}
         )
-        desktop = matching_desktop_image(("claude.exe",)) is not None
+        desktop = await asyncio.to_thread(matching_desktop_image, ("claude.exe",))
+        desktop = desktop is not None
         available = hook_live or desktop
         return AdapterCapabilities(
             observe_messages=hook_live,

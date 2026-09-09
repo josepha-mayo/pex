@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import time
 from contextvars import ContextVar
@@ -142,7 +143,7 @@ class CursorAdapter(HarnessAdapter):
             except Exception:
                 acp_ready = False
         hook_live = self._hook_live()
-        desktop = desktop_process_running("Cursor.exe")
+        desktop = await asyncio.to_thread(desktop_process_running, "Cursor.exe")
         active_hook = self._active_hook.get()
         synchronous_hook_control = self._delivery_channel.get() != "observe"
         active_stop = bool(
