@@ -1,7 +1,8 @@
 # PEX shipping checklist — 5 September 2026
 
-**Current checkpoint: 9 September WAT.** Exact clean source `9966a60` has a verified MSI and
-NSIS package receipt (`PACKAGE_RECEIPT_9966A60.json`). The complete repository gate passes
+**Current checkpoint: 9 September WAT.** Exact clean source `933239a` has a verified MSI and
+NSIS package receipt (`build/pex-package-receipt.json`) and a sealed local submission bundle.
+The prior complete repository gate passes
 4,175 tests with 34 intentional skips, the eight-task benchmark package passes its 201-test
 contract gate, and the offline Strands/AgentCore gate passes all 200 collected tests with the
 locked AgentCore runtime installed. Packaged ancestor `9357bb8` has fresh real Codex Spark plus
@@ -11,9 +12,9 @@ submission. Follow
 [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md); older current/latest labels are
 historical. Overall submission remains NO-GO and the full steps below remain required.
 
-- [x] Build all three current sidecars and both normal Windows installers from detached clean
-  source `9966a60`; verify both extracted inventories with zero package blockers and retain the
-  byte-identical tracked receipt.
+- [x] Build all three current sidecars and both normal Windows installers from clean product
+  source `933239a`; verify both extracted inventories with zero package blockers and retain the
+  source-bound receipt.
 - [x] Reach the eight-task development-smoke floor with five recovery stressors and three
   source-pinned QuixBugs tasks; retain `frozen:false` and refuse presentation execution while
   OS isolation and complete Cursor evidence are missing.

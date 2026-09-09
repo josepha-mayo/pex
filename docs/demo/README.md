@@ -12,6 +12,9 @@ one production Strands invocation without exposing the key. Package verification
 `release_ready:true` with zero blockers. Use
 [`MVP_RELEASE_2026-09-09.md`](evidence/MVP_RELEASE_2026-09-09.md) as the newest acceptance
 receipt. The older `9966a60` package below is retained as historical evidence.
+The current sealed submission candidate is
+`C:\Users\JosephMayo\Documents\Codex\PEX-submission-933239a`; its manifest SHA-256 is
+`991e1978218e976d0e972708522c8e3c8705fddb8886a75808f4325ac4261576`.
 
 ## Previous package
 
@@ -21,11 +24,11 @@ Cursor observer, and exactly eight packaged pet atlases. Package verification re
 `release_ready: true` with zero blockers. The source-bound receipt is
 [`PACKAGE_RECEIPT_9966A60.json`](../PACKAGE_RECEIPT_9966A60.json).
 
-The installers and working submission bundle are retained outside the repository at
+The installers and previous submission bundle are retained outside the repository at
 `C:\Users\JosephMayo\Documents\Codex\PEX-submission-9966a60`. The installers are unsigned;
 package integrity is not publisher identity and does not prove native runtime stability.
 
-## Current visual evidence
+## Visual evidence from the previous package source
 
 Browser-only review of the exact package source covered Home, Inspector, Deck, Supervisor
 Settings, Companion Settings, navigation, and the Pex companion. The target 920x700 Home and
