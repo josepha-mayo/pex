@@ -28,10 +28,13 @@ stressors and three source/license/hash-pinned QuixBugs repairs, producing a 32-
 plan. Its clean benchmark/Cursor-hook gate passes **200/200** and scoped Ruff passes. The
 manifest remains `frozen: false`: OS-enforced hidden-evaluator/no-network isolation and complete
 Cursor raw/same-session evidence remain missing, so no quota-consuming presentation row or
-score ran. The offline Strands/AgentCore gate also passes **200/200**. Historical source
-`af35707` retains real Codex plus provider-live Strands NOOP/recovery evidence, but that is not
-claimed as current-package live proof. AgentCore remains undeployed because read-only preflight
-is NO-GO and zero-card-spend authority is not established.
+score ran. The offline Strands/AgentCore gate also passes **200/200**. Exact clean packaged
+source `0450dda` now has a fresh real Codex Spark plus free-Muse Strands pair: verified
+completion produced `NOOP`; incomplete work received a specific same-thread continuation,
+reached `report.txt=shipped`, recorded `helped=true`, then produced final `NOOP`. One earlier
+restraint attempt failed before thread creation on a 45-second Codex `thread/list` timeout and
+is retained. AgentCore remains undeployed because read-only preflight is NO-GO and
+zero-card-spend authority is not established.
 
 Overall submission remains **NO-GO** pending the explicitly authorized bounded native
 stability/interaction run, current live demonstration evidence, benchmark execution-boundary

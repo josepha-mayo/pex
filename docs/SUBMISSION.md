@@ -11,9 +11,9 @@
 > inventories pass with `release_ready:true` and zero package blockers. The exact receipt is
 > `PACKAGE_RECEIPT_0450DDA.json`. Complete desktop contracts pass 260/260, production
 > TypeScript/Vite compilation passes, the eight-task benchmark/Cursor-hook gate passes 200/200,
-> and the offline Strands/AgentCore gate passes 200/200. Historical backend source `af35707`
-> retains real Codex Spark plus free Muse/Strands quiet and same-thread recovery evidence; it is
-> not current-package live proof. The benchmark remains unfrozen, AgentCore remains undeployed,
+> and the offline Strands/AgentCore gate passes 200/200. Exact package source `0450dda` now
+> retains real Codex Spark plus free Muse/Strands quiet and same-thread recovery evidence. The
+> benchmark remains unfrozen, AgentCore remains undeployed,
 > and PEX has not been installed or launched after the reported idle whole-PC freeze. Native
 > stability/interaction capture, current live demo, video, and authorized submission remain
 > open. Package integrity does not imply publisher identity or native stability.
@@ -96,7 +96,7 @@ If agents keep multiplying, humans become full-time dispatchers. PEX attacks tha
 - Keeps a local policy guard. Cloud can propose; it cannot bypass allow/deny/ask.
 - Surfaces attention as a desktop pet, not another chat transcript.
 
-On September 8, clean source `af35707` completed both prepared live contracts with an isolated
+On September 9, exact packaged source `0450dda` completed both prepared live contracts with an isolated
 Codex worker and a real Strands supervisor: it stayed quiet after evidence-supported completion,
 then detected incomplete work, sent a specific nudge to the same Codex thread, observed the
 resulting artifact, marked the intervention helped, and ended with a verified NOOP. The
@@ -150,10 +150,9 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
-- [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on reviewed source (`5c49c10`; final-release recapture still required)
+- [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `0450dda`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
-- [x] Rebuild/package descendant `0450dda` and retain historical `af35707` semantic evidence
-  without presenting it as current-package live proof
+- [x] Rebuild/package `0450dda` and recapture the semantic quiet/recovery pair on that exact source
 - [ ] Pass bounded native stability and record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence is contract-only, while controlled local Codex + provider-live Strands evidence now exists
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)

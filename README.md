@@ -221,12 +221,11 @@ or rejection becomes NOOP. Deterministic verification truth and local policy
 still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
 target, not a deployed-service claim. The verifier path has local contract coverage but
 is not part of the curated live receipt. Real Codex + provider-live Strands restraint and
-same-thread recovery were validated on historical backend source `af35707`: the quiet path ended in NOOP,
-and the recovery path sent a specific same-thread nudge, observed `report.txt=shipped`, recorded
-`helped=true`, then ended in NOOP. Current packaged product source `0450dda` has verified
-MSI/NSIS inventories and a passing source/sidecar chain, but its later backend changes have not
-re-run that provider-live trajectory. This does not prove the outstanding bounded native
-stability run, current live trajectory, AgentCore deployment, or a benchmark result.
+same-thread recovery are now validated on exact clean packaged source `0450dda`: the quiet path
+ended in `NOOP`, and the recovery path sent a specific same-thread continuation, observed
+`report.txt=shipped`, recorded `helped=true`, then ended in `NOOP`. This does not prove the
+outstanding bounded native stability run, ten-case quiet statistics, AgentCore deployment, or a
+benchmark result.
 
 The cloud supervisor can propose actions. It cannot bypass local policy.
 
@@ -234,7 +233,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Clean product source `0450dda` has verified MSI/NSIS package integrity; historical source `af35707` has source-bound real Codex + provider-live Strands quiet/recovery proof, which is not treated as current-package live proof. Overall contest state is **NO-GO** until the bounded post-freeze native review, current live demo, and submission authorization are complete. The benchmark remains unfrozen, with no citeable impact score or validated leaderboard rank. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md).
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Clean product source `0450dda` has verified MSI/NSIS package integrity and source-bound real Codex + provider-live Strands quiet/recovery proof. Overall contest state is **NO-GO** until the bounded post-freeze native review, benchmark isolation/evidence, demo video, and submission authorization are complete. The benchmark remains unfrozen, with no citeable impact score or validated leaderboard rank. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md).
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)

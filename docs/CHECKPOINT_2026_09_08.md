@@ -29,9 +29,11 @@ The first verifier attempt is retained as
 `build/pex-package-receipt.nsis-7za-unsupported.json`. Neither is a pass. Stable, uninstalled
 artifacts are copied to `C:\Users\JosephMayo\Documents\Codex\PEX-submission-0450dda`.
 
-The offline Strands/AgentCore gate passed **200/200 in 17.34 seconds**. Historical `af35707`
-still supplies the real Codex plus free-Muse Strands quiet/recovery proof; later package source
-does not inherit that live evidence by assertion. Read-only AgentCore preflight remains NO-GO,
+The offline Strands/AgentCore gate passed **200/200 in 17.34 seconds**. Exact clean package
+source `0450dda` then passed the real Codex Spark plus free-Muse Strands quiet/recovery pair.
+The restraint retry passed in 111.54 seconds; the recovery case passed in the first combined
+236.46-second run. A preceding restraint attempt failed before thread creation because Codex
+`thread/list` timed out at 45 seconds and is retained rather than erased. Read-only AgentCore preflight remains NO-GO,
 and no AWS resource or paid call ran. PEX was not installed or launched, so the prior freeze and
 all native UX/resource checks remain open. Overall submission remains NO-GO.
 

@@ -1,5 +1,37 @@
 # Live Codex + Strands release-candidate evidence — 8 September 2026
 
+## 9 September current-package recapture
+
+The same two contracts were recaptured against exact clean packaged source
+`0450ddaececbd3a9eee6f757591626f36c6f86c9`. The worker remained pinned to
+`gpt-5.3-codex-spark`; the supervisor used Strands Agents 1.53.0 with Zen's free
+`muse-spark-1.3-contributor-free`. Both validated receipts report `used_llm=true`,
+`runtime=strands-agents`, `provider=zen`, `auth_mode=api_key`, and completed inference. No
+native PEX desktop, Cursor, Docker, AgentCore deployment, AWS resource, or paid model ran.
+
+- Verified-completion restraint: **1 passed in 111.54 seconds**. One Codex turn produced
+  `ping.txt = pong`; one Strands model call returned `NOOP`. The validated proof itself spans
+  100.11 seconds and has SHA-256
+  `1EB6F888264226EDF1877E8F00939B25AF62581D6A5550D89BC040C3DA882255`.
+- Same-thread recovery: the combined first attempt reported this case as passed within the
+  two-case **1 passed / 1 failed in 236.46 seconds** run. One Codex thread had exactly two
+  turns. The first stopped with empty `report.txt`; PEX made four bounded Strands calls with
+  three public evidence observations, sent `CONTINUE_SESSION`, observed `report.txt = shipped`,
+  recorded `helped=true` / `goal_evidence_supported`, and made a final one-call Strands
+  `NOOP`. The validated proof spans 162.94 seconds and has SHA-256
+  `25136FDC19D22D86B9F871913A673E086D722CE8896014AF880CE872F6C17250`.
+
+The first restraint attempt is deliberately retained as
+`codex_inspect_proof.failed-thread-list-timeout.json`, SHA-256
+`4CA459461058250EFF0B89AB5AE4FF1D5E680AF7C464256C81F79361DCBD85AD`. It failed before
+thread creation or supervisor inference because an account-level Codex App Server
+`thread/list` request had no verified response within 45 seconds. The immediately following
+recovery case passed, and one bounded restraint retry passed; no further retry loop ran.
+
+This closes current-package source-level Strands quiet/recovery evidence. It does not turn the
+unfrozen benchmark into a score, prove the unsigned native desktop, provide ten-case quiet-rate
+statistics, or establish deployed AgentCore.
+
 This is a sanitized, judge-readable summary of two validated contract receipts captured on
 clean source `af3570726923b9d233723de950c9d33e4606e033`. The raw receipts stay in ignored
 local scratch because they contain machine-local paths and run identities.

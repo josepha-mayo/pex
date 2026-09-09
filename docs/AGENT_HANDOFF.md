@@ -33,9 +33,16 @@ Stable uninstalled artifacts are copied to
 `C:\Users\JosephMayo\Documents\Codex\PEX-submission-0450dda` with a README and exact receipt.
 
 The offline Strands runtime/supervisor and AgentCore client/pipeline/runtime/preflight gate
-passed **200/200 in 17.34s**. Historical source `af35707` retains a real Codex Spark plus free
-Muse/Strands NOOP and same-thread recovery trajectory. Do not claim that historical trajectory
-as current-package live proof. AgentCore is undeployed: read-only preflight reports inactive AWS
+passed **200/200 in 17.34s**. Exact clean package source `0450dda` then produced a fresh real
+Codex Spark plus free-Muse/Strands pair. Restraint passed in 111.54s with `ping.txt=pong` and a
+one-call `NOOP`; recovery used one thread/two turns, sent `CONTINUE_SESSION`, observed
+`report.txt=shipped`, recorded `helped=true`, and ended in `NOOP`. Validated proof hashes are
+`1EB6F888264226EDF1877E8F00939B25AF62581D6A5550D89BC040C3DA882255` and
+`25136FDC19D22D86B9F871913A673E086D722CE8896014AF880CE872F6C17250`. A preceding restraint
+attempt failed before thread creation on a 45-second account-level `thread/list` timeout; its
+retained receipt hash is
+`4CA459461058250EFF0B89AB5AE4FF1D5E680AF7C464256C81F79361DCBD85AD`.
+AgentCore is undeployed: read-only preflight reports inactive AWS
 credentials, absent current AgentCore/CDK tooling, stopped Docker, no verified ARM64 image, and
 no runtime ARN. The user's no-card-billing condition is not proven; do not create AWS resources
 or make a paid call.

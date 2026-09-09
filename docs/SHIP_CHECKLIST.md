@@ -3,8 +3,9 @@
 **Current checkpoint: 9 September WAT.** Exact clean source `0450dda` has a verified MSI and
 NSIS package receipt (`PACKAGE_RECEIPT_0450DDA.json`), the complete desktop gate passes
 260/260, the eight-task benchmark package passes its 200-test contract gate, and the offline
-Strands/AgentCore gate passes 200/200. This does not close native stability, current live
-Strands, OS-isolated benchmark execution, Cursor evidence, AgentCore deployment, video, or
+Strands/AgentCore gate passes 200/200, and exact package source `0450dda` has fresh real Codex
+Spark plus free-Muse Strands quiet/recovery evidence. This does not close native stability,
+ten-case quiet statistics, OS-isolated benchmark execution, Cursor evidence, AgentCore deployment, video, or
 submission. Follow
 [CHECKPOINT_2026_09_08.md](CHECKPOINT_2026_09_08.md); older current/latest labels are
 historical. Overall submission remains NO-GO and the full steps below remain required.
@@ -16,6 +17,9 @@ historical. Overall submission remains NO-GO and the full steps below remain req
   source-pinned QuixBugs tasks; retain `frozen:false` and refuse presentation execution while
   OS isolation and complete Cursor evidence are missing.
 - [x] Re-run the complete offline Strands/AgentCore gate: 200/200 passed.
+- [x] Recapture verified-completion `NOOP` and incomplete-work same-thread recovery through real
+  Codex Spark and real free-Muse Strands on exact clean package source `0450dda`; retain the
+  preceding account-level `thread/list` timeout as a failed attempt.
 - [ ] Run the bounded native resource/interaction smoke only after exact operator permission;
   PEX remains closed after the reported whole-PC freeze.
 

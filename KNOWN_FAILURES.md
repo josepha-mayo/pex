@@ -14,9 +14,11 @@
   the manifest remains unfrozen. No OS-enforced worker boundary blocks hidden evaluator data
   and network access, and Cursor still lacks complete raw/same-session evidence. No live arm,
   score, impact claim, or leaderboard claim is valid yet.
-- Offline Strands and AgentCore contracts pass 200/200. The last real Codex plus free-Muse
-  Strands NOOP/recovery trajectory belongs to historical source `af35707`, not package
-  `0450dda`. AgentCore is still undeployed: AWS authentication, current tooling, a verified
+- Offline Strands and AgentCore contracts pass 200/200. Exact package source `0450dda` now has
+  a validated real Codex plus free-Muse Strands NOOP/recovery pair. One prior restraint attempt
+  aborted before thread creation when account-level `thread/list` timed out after 45 seconds;
+  it remains retained rather than hidden. AgentCore is still undeployed: AWS authentication,
+  current tooling, a verified
   ARM64 image/runtime ARN, and zero-card-spend proof are absent. No AWS mutation or paid call
   occurred.
 - Final live demo capture, public video, current submission claims review, and explicit submit
