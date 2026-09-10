@@ -13,6 +13,29 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Current offline regression follow-through:** source `5ea699d` finished with
+4,335 passed, one failed, 16 skipped and 18 deselected in 956.91 seconds (exit 1).
+The sole failure was
+`tests/unit/test_fleet_pets_codex.py::test_release_preflight_is_structured_and_never_claims_package_readiness`:
+the shell lacked Rust on PATH, so the preflight returned the legitimate
+`rust_toolchain_unavailable` blocker before fleet details. The installed
+`C:/Users/JosephMayo/.cargo/bin/rustc.exe` reports `x86_64-pc-windows-msvc`.
+With that directory prepended only to the command's PATH, the unchanged test
+passed (1 passed, 23.14 seconds). No product code or assertion was weakened.
+Original XML: `build/offline-5ea699d.xml`, SHA-256
+`9b4daab2f2bdb747894c5aae2d4577a9ad4e57ccc6022d98672733a9c98a5878`.
+This is a failed full run plus a successful targeted retest, not a full green run.
+A fresh complete offline run on `10d4f51` has started with the explicit Rust
+PATH and all live gates disabled; expected XML
+`build/offline-10d4f51-rustpath.xml`. Verify its terminal result before claiming
+success. The desktop suite independently passed all 276 tests on `5ea699d`.
+Only workflow/docs changed during these runs, not runtime or test source.
+
+**Recording reproducibility:** [REHEARSAL_CARD.md](demo/REHEARSAL_CARD.md)
+now provides exact public goals, initial worker prompts, byte checks and stop
+conditions for recovery and quiet takes. It is a manual recipe derived from
+the retained native proof, not a new executed rehearsal or video.
+
 **Local release staging:** `build/releases/pex-mvp-06c6b73` contains copies of
 the verified MSI (125,607,936 bytes) and NSIS (124,336,673 bytes), `SHA256SUMS.txt`
 and reviewed candidate `RELEASE_NOTES.md`. Both copied installers match the
