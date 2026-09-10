@@ -13,6 +13,19 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Latest live restraint batch on `739c8d3`: nine valid quiet passes, tenth case
+ineligible/failed; run exit 1, not a clean ten-case pass.** Last worker wrote a
+UTF-8 BOM and hit free-route HTTP 429. PEX initially chose uncertainty NOOP,
+then inspected bytes and sent an independently verified BOM-specific nudge.
+The follow-up assistant was still unfinished when the quiet runner's journal-only
+settlement gate sealed and stopped its own server. This is an incomplete recovery
+observation, not proof the correction failed. Independent review confirmed.
+No live process remains from that batch and no further provider calls should
+run while its limit is active. [Full chronology, token costs and hashes](demo/evidence/QUIET_BATCH_739C8D3_2026-09-10.md).
+Next engineering action: offline-test and repair the active quiet runner's
+quiescence check to require worker idle and a terminal assistant response bound
+to the latest follow-up generation. Preserve the sealed runner and failed run.
+
 **Thirty-minute resource observation completed on package `06c6b73`:** all
 180 samples retained, 1801.14 measured seconds, 342.4–347.5 MiB private memory,
 31.026 CPU seconds / 1.72% of one core. Root PID/start identity unchanged.

@@ -2,6 +2,15 @@
 
 ## Current — 10 September 2026
 
+**Live restraint attempt `739c8d3`:** nine correctly completed tasks received
+completed Strands NOOP reviews and no follow-ups. The tenth worker produced a
+BOM, then encountered free-provider HTTP 429. PEX correctly diagnosed the BOM
+and sent one verified nudge, but the quiet runner sealed while the follow-up
+assistant was unfinished. Journal settlement is not worker completion; fix
+the active runner's completion fence before another live attempt. The batch
+remains failed and its recovery outcome unproven. No more provider calls while
+the free-route limit is active. [Evidence](docs/demo/evidence/QUIET_BATCH_739C8D3_2026-09-10.md).
+
 **Workspace inventory fence limitation:** the `10d4f51` full regression exposed
 a platform-sensitive fixture: creating a file during enumeration did not always
 advance the directory mtime. Inventory compares observed directory identity,
