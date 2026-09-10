@@ -23,6 +23,14 @@ Ruff passed for both Python files. Tests use local temporary artifacts and fake
 AWS clients; no deployment, paid request, native app or worker was started.
 This source fix is newer than verified package 2f5038e and is not yet packaged.
 
+Follow-through verification extended those two reader cases beyond serialization:
+the sanitized request is reconstructed, its real Strands `inspect_workspace` tool
+is called, and the returned artifact metadata must match the cloud envelope.
+The evidence collector must record the exact returned output and sanitized request
+digest. Both cases passed; combined AgentCore client/runtime/pipeline regression
+then passed 158 tests in 44.67s. Ruff passed. No additional production change,
+model inference, worker or AWS invocation was needed for this offline contract.
+
 ## 10 September — Zen Muse protocol and settings constructor repair
 
 Corrected the exact Muse 1.3/1.2 routing against current official Zen endpoint

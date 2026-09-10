@@ -826,6 +826,8 @@ def test_cloud_request_preserves_only_complete_exact_artifact_counts(count, comp
 
 @pytest.mark.parametrize("valid", [True, False])
 def test_local_artifact_reader_count_survives_cloud_request(tmp_path, valid):
+    from pex_supervisor.evidence_observations import EvidenceObservationCollector
+    from pex_supervisor.evidence_tools import build_evidence_tools
     from pex_supervisor.workspace import artifact_row_count
 
     artifact = tmp_path / "results.jsonl"
@@ -846,6 +848,23 @@ def test_local_artifact_reader_count_survives_cloud_request(tmp_path, valid):
 
     assert remote["row_count"] == (27 if valid else None)
     assert remote["row_count_complete"] is valid
+
+    remote_request = SupervisorRequest.model_validate(json.loads(encoded)["request"])
+    collector = EvidenceObservationCollector(
+        remote_request, stage="main", invocation_id="artifact-count-fixture",
+    )
+    used = []
+    inspect = next(
+        tool for tool in build_evidence_tools(remote_request, used, collector=collector)
+        if tool.tool_name == "inspect_workspace"
+    )
+    output = inspect()
+
+    assert json.loads(output)["artifacts"][0] == remote
+    assert used == ["inspect_workspace"]
+    assert len(collector.observations) == 1
+    assert collector.observations[0].output == output
+    assert collector.observations[0].request_digest == supervisor_request_digest(remote_request)
 
 
 def test_workspace_compaction_bounds_cycles_invalid_collections_and_large_numbers():
