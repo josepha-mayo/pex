@@ -12,7 +12,8 @@ production build pass; not yet packaged. [Evidence and exact limits](demo/eviden
 - [x] Packaged OpenCode connection, goal attachment and quiet completion.
 - [x] Native pet transparency, dismiss and hide controls.
 - [ ] Package status/rationale repair and verify native recovery/outcome.
-- [ ] Repair old-buffered-idle duplicate review without losing new-turn fallback.
+- [x] Source repair for known-old buffered idle; 81 focused tests and review pass.
+- [ ] Native verification of prompt-boundary repair; mixed batches stay conservative.
 - [ ] Native existing-Codex attachment and required additional behavior cases.
 - [ ] Longer resource/stability check; short sample is not freeze clearance.
 - [ ] Isolated comparative benchmark, no-billing AgentCore deployed proof.

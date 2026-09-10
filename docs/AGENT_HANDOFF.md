@@ -21,8 +21,12 @@ test. All 274 desktop tests and production UI build passed. These follow-up
 fixes are not yet in the running `490b82b` binary.
 
 [Current native evidence and limits](demo/evidence/NATIVE_490B82B_2026-09-10.md).
-Next: package the verified status/rationale repair and run native recovery.
-The buffered-old-idle duplicate review after correction remains unresolved.
+Next: package the verified status/rationale and prompt-boundary repairs, then
+run native recovery. The buffered-old-idle follow-up now passes 81 focused
+tests (two behavioral failures reproduced before repair). A pre-POST,
+transport-bound whole-batch cutoff prevents known-old idle from triggering a
+new review; ambiguous mixed batches retain STOP. Native confirmation remains
+required. Independent read-only review found no defect in the patch.
 The quiet fixture server exited; its temporary data directory remains after
 incomplete profile cleanup. Preserve receipts; never use recursive PID cleanup.
 

@@ -81,6 +81,7 @@ class OpenCodeAdapter(HarnessAdapter):
         self._removed_messages: set[tuple[str, str]] = set()
         self._completed_terminal_parents: dict[str, str] = {}
         self._message_send_locks: dict[str, asyncio.Lock] = {}
+        self._prompt_event_boundaries: dict[str, tuple[HttpJsonTransport, int]] = {}
         self._last_pump_error: str | None = None
         self._event_gap_detected = False
         self._desktop_hint_at: float | None = None
@@ -103,6 +104,7 @@ class OpenCodeAdapter(HarnessAdapter):
             self._message_parents.clear()
             self._removed_messages.clear()
             self._completed_terminal_parents.clear()
+            self._prompt_event_boundaries.clear()
         self.transport = transport
 
     def _pumping(self) -> bool:
@@ -391,6 +393,15 @@ class OpenCodeAdapter(HarnessAdapter):
         if len(inbox) >= MAX_INBOX_MESSAGES:
             return False
         prior_message_ids = await self._user_message_ids(session)
+        transport = self.transport
+        boundary = None
+        try:
+            # Capture before admission, not after the POST: the new turn may
+            # already have stopped by the time the HTTP response arrives.
+            boundary = (transport, transport_events_since(transport, 0)[0])
+        except Exception:
+            # Observation failure must not prevent an otherwise valid send.
+            pass
         try:
             await self.transport.request(
                 "POST",
@@ -404,6 +415,8 @@ class OpenCodeAdapter(HarnessAdapter):
             # The vendor may have admitted a new turn. Retaining the old marker
             # could suppress the only later idle observation for that turn.
             self._completed_terminal_parents.pop(session.id, None)
+            if boundary is not None:
+                self._prompt_event_boundaries[session.id] = boundary
             raise
         except Exception:
             return False
@@ -411,6 +424,8 @@ class OpenCodeAdapter(HarnessAdapter):
         # user-message frame arrives. Do not let the prior turn's final-message
         # marker suppress this turn's idle fallback if later frames are lost.
         self._completed_terminal_parents.pop(session.id, None)
+        if boundary is not None:
+            self._prompt_event_boundaries[session.id] = boundary
         inbox.append(cleaned)
         turn_id = await self._new_prompt_turn_id(
             session,
@@ -829,7 +844,9 @@ class OpenCodeAdapter(HarnessAdapter):
         self.sessions[session_id] = session
         return session
 
-    def normalize_sse(self, session: HarnessSession, payload: dict) -> HarnessEvent:
+    def normalize_sse(
+        self, session: HarnessSession, payload: dict, *, pre_admission_idle: bool = False
+    ) -> HarnessEvent:
         canonical_id = f"opencode:{session.vendor_session_id}"
         payload_vendor_id = self._vendor_id(payload)
         if (
@@ -1002,7 +1019,7 @@ class OpenCodeAdapter(HarnessAdapter):
             event_type = EventType.STATUS
         elif kind in {"message.updated", "message.part.updated"} and role == "user":
             event_type = EventType.USER_PROMPT
-        elif idle_after_exact_terminal:
+        elif idle_after_exact_terminal or (kind == "session.idle" and pre_admission_idle):
             # OpenCode emits session.idle after the final assistant update. The
             # exact parent-bound message is the richer terminal event; emitting
             # a second STOP would dispatch the supervisor twice for one turn.
@@ -1086,7 +1103,7 @@ class OpenCodeAdapter(HarnessAdapter):
             observed_status = props["status"].get("type")
             if isinstance(observed_status, str) and observed_status in {"idle", "busy", "retry"}:
                 metadata["opencode_status"] = observed_status
-        elif idle_after_exact_terminal:
+        elif idle_after_exact_terminal and not pre_admission_idle:
             metadata["opencode_status"] = "idle"
         if lineage is not None:
             metadata[OPENCODE_MESSAGE_LINEAGE_KEY] = lineage
@@ -1147,6 +1164,7 @@ class OpenCodeAdapter(HarnessAdapter):
                     continue
                 if transport is not active_transport:
                     if active_transport is not None:
+                        self._prompt_event_boundaries.clear()
                         self._event_gap_detected = True
                         self._message_roles.clear()
                         self._message_parents.clear()
@@ -1206,7 +1224,19 @@ class OpenCodeAdapter(HarnessAdapter):
                     if session is None:
                         batch_offset = index + 1
                         continue
-                    event = self.normalize_sse(session, payload)
+                    boundary = self._prompt_event_boundaries.get(session.id)
+                    # Whole-batch bounds remain valid even when transport
+                    # validation filtered raw entries. A mixed old/new batch
+                    # is deliberately not suppressed: never lose a new STOP.
+                    pre_admission_idle = bool(
+                        kind == "session.idle"
+                        and boundary is not None
+                        and boundary[0] is transport
+                        and batch_end <= boundary[1]
+                    )
+                    event = self.normalize_sse(
+                        session, payload, pre_admission_idle=pre_admission_idle
+                    )
                     pending = (event, session.model_copy(deep=True))
                     ingesting = True
                     await ingest(event, pending[1])
