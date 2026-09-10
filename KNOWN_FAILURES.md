@@ -2,6 +2,25 @@
 
 ## Current — 10 September 2026
 
+- Latest package `d55e899` verifies both installers. Native quiet completion,
+  pet transparency/dismiss/hide and real Codex source-level quiet/recovery now
+  have passing evidence. Native recovery on this package is in progress, not
+  yet accepted. [Evidence](docs/demo/evidence/NATIVE_490B82B_2026-09-10.md).
+- The original whole-PC freeze is not causally resolved by a short settled
+  resource sample. PEX-only native checks are authorized again; unrelated
+  apps must not be controlled and the unsafe recursive-PID launcher stays
+  quarantined. The old hold statements below are historical.
+- Pre-prompt idle suppression is conservative: a mixed old/new batch retains
+  normal STOP behavior rather than risk losing a new completion. Native
+  confirmation is pending despite 81 passing focused tests.
+- Native `490b82b` fixture server exited, but its temporary `data` directory
+  remains after incomplete profile cleanup. Keep receipts and scope cleanup.
+- Existing-Codex native attachment, additional behavior cases, long stability,
+  deployed AgentCore with no-billing authority, isolated comparative benchmark
+  and recording/submission remain open. No leaderboard/winning claim is made.
+
+### Historical checkpoint — superseded by the current list above
+
 - The PC freeze and Codex closure are not causally resolved. Native launches,
   process termination and computer input remain on hold; the PID-only cleanup
   harness is quarantined. Earlier native-test approvals are not current authority.

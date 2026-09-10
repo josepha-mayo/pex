@@ -2,6 +2,30 @@
 
 ## Current — 10 September 2026
 
+Latest verified package: `d55e899`; MSI/NSIS content and eight-pet inventory
+checks pass, exit 0. It includes stopped-state preservation, human-readable
+Inspector rationale and conservative pre-prompt idle suppression. Follow-up
+regressions: 81 backend tests and independent read-only review pass; desktop
+274 tests and production UI build pass. Native recovery is now running with
+the saved free Zen/Muse route and a three-review cap; no result claimed yet.
+
+Real Codex source-level quiet and same-worker recovery checks passed on
+`2174ad0`, including verified `helped: true` outcome. Its full offline suite
+passed 4295 tests. Native packaged OpenCode quiet completion passed on
+`490b82b`: exact files, one Strands NOOP, all 336 events settled. Native pet
+transparency, bubble dismissal and hiding passed. These are bounded behavioral
+proofs, not a comparative benchmark or long-term stability clearance.
+
+Evidence: [Codex](docs/demo/evidence/CODEX_AND_PACKAGE_2174AD0_2026-09-10.md),
+[native quiet and follow-up repairs](docs/demo/evidence/NATIVE_490B82B_2026-09-10.md),
+local package receipt `build/pex-package-receipt-d55e899.json`.
+Submission remains **NO-GO**; follow the active handoff/checklist for remaining
+native recovery, existing-Codex attachment, behavior, benchmark and AgentCore
+deployment gates. PEX-only native input is authorized; unrelated apps and the
+quarantined recursive-PID launcher remain out of scope.
+
+### Historical checkpoint — superseded by the evidence above
+
 Included in verified package `b9702fd`: AgentCore artifact compaction preserves
 exact complete row counts while withholding file contents and treating incomplete
 counts as unknown. Nine regression cases and two reader-to-envelope checks cover
