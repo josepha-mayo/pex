@@ -7,6 +7,8 @@ under the official rules refreshed through Devpost on 10 September 2026.
 
 ## Before recording
 
+- Use the [public rehearsal card](REHEARSAL_CARD.md) for exact persistent-goal,
+  worker-prompt and byte-check steps. It is a recipe, not a new passing receipt.
 - Use the source-specific installer and receipt identified in the active
   [handoff](../AGENT_HANDOFF.md). Do not use old submission folders by habit.
 - Confirm the package receipt still says `release_ready: true` with no blockers.
