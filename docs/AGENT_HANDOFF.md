@@ -13,6 +13,16 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**AgentCore client/pipeline reverified at clean source `c07e60a`:** command
+`.venv/Scripts/python.exe -m pytest tests/unit/test_agentcore_client.py tests/unit/test_agentcore_pipeline.py -q`
+passed **130 tests in 13.25 seconds**, exit 0. Reviewed transport/router paths
+retain exact request/session binding, locally reconstructed action authority,
+independent-verifier requirements, typed uncertain delivery without automatic
+second-model execution, and persisted failure receipts. These tests use fake
+remote/SDK/model responses plus real local validation and Store logic; they do
+not establish deployed AWS behavior, live Strands inference or native acceptance.
+No new defect found in this pass; no cloud invocation/deployment or product edit.
+
 **BYOK provider-switch UI repair:** selecting a provider with no catalog entry
 now clears the prior provider's model ID instead of silently retaining it. The
 existing credential-destination clearing remains unchanged. The new source-wiring
