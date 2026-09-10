@@ -59,3 +59,26 @@ coordinate click succeeded. This was not a PEX hang.
 Receipt: `build/pex-idle-fcb624d-20260910.json`, SHA-256
 `306ad3d41374a267cd35753415e3a08eebe7764e1518a828f52cfcad9ea70385`.
 Three minutes is not a long soak or causal clearance of the earlier PC freeze.
+
+## Packaged follow-through
+
+Clean checkout `e56a07772d202323d07f463be1f46cb3685bf6db` includes product
+`320249b`. Production build and package verification both exited 0. MSI and
+NSIS extraction verified embedded binaries and all eight catalog pets. Both
+installers are unsigned. Integrity verification is not a fresh-user install test.
+
+Native PEX started successfully; selecting the saved OpenCode workflow showed
+the actual worker message, Von and a dismiss control. The overlay stayed hidden.
+This readback made no new supervisor inference and is not a fresh recovery run.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `build/pex-package-receipt-e56a077.json` | `c4029ba6838c106ea16f9220b46dd3ca03ad145526e7852f047948639c6f6076` |
+| Canonical desktop executable | `4f5780ac701f21c6e10facb8c4a95584e55064c589e14c6c3d40ed1fe1ecc21c` |
+| Bundled bridge | `6c0ba075556a75945aa437f17f7c6234148a0c6e467a7345c508170d93d63e14` |
+| `PEX_0.1.0_x64_en-US.msi` | `a63cea52d2193f8c1bedd2fe9fdd2fd25c202a0818f4e15ec1800b4f53957171` |
+| `PEX_0.1.0_x64-setup.exe` | `338da5607f6d629a1f0a6c4e40979875b4294eb4ad0879cd727a181e438c2200` |
+
+The public repository is MIT-licensed. Authenticated Devpost lists registration,
+not submission. No current test-CI proof, release publication, AWS deployment,
+fresh Windows-user installation or long-soak result is claimed.

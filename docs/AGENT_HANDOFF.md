@@ -13,6 +13,16 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Latest package: `e56a077` (product `320249b`).** Production build and MSI/NSIS
+extraction/content/eight-pet checks exited 0. Both installers are unsigned.
+Native startup and selecting the recorded OpenCode workflow succeeded: Home
+shows the actual worker message, Von and the dismiss control; overlay remains
+hidden. No new inference was invoked by this check. The prompt update is bundled.
+[Hashes and boundaries](demo/evidence/SUPERVISOR_BUDGET_RETEST_2026-09-10.md#packaged-follow-through).
+Public GitHub source is MIT; authenticated Devpost shows registered, not submitted.
+No current test-CI run was established. Public installer release awaits the
+pending user's approval; do not infer publication permission from this file.
+
 **Source update `320249b`:** main supervisor prompt now explicitly reserves a
 decision call within the unchanged three-call budget. 71 tests and independent
 review pass. The previously failed identifiers case and one control both pass a
@@ -22,7 +32,8 @@ the control still used two reviews. Prior failures remain preserved.
 [Exact results and native idle sample](demo/evidence/SUPERVISOR_BUDGET_RETEST_2026-09-10.md).
 Native fcb624d also passed a three-minute no-input observation with 335–338 MiB
 private memory and 2.73% of one core; navigation worked afterward. Not freeze
-clearance. PEX was then closed normally; the prompt update now needs bundling.
+clearance. PEX was then closed normally; the prompt update was subsequently
+bundled and reopened as recorded above.
 
 **Latest: product `fcb624d`, clean package checkout `d50e420` (docs-only).** Both
 installers pass, native progress text is repaired, and pause/resume is verified
@@ -37,7 +48,7 @@ The first package check stopped only for two uncommitted documentation files;
 after committing them, the clean verification passed. Do not repeat that failed
 attempt as a package-content failure or claim full-source regression after fcb624d.
 
-Next: verify the second reopen, keep the app available for filming, consolidate
+Next: keep the app available for filming, consolidate
 judge-facing materials and finish the demo/submission with appropriate user
 approval. Do not silently turn optional AgentCore deployment into a shipping gate.
 

@@ -7,6 +7,14 @@ or every research extension into a contest-entry prerequisite.
 
 ## MVP acceptance checkpoint — 10 September 2026
 
+Latest package `e56a077` includes product `320249b`: production build and both
+installer integrity gates pass, followed by native startup and recorded OpenCode
+selection. Both installers are unsigned. The 71-test supervisor-budget repair
+and two-case completed-decision retest pass; no new model call was made in this
+native reopening. See the focused gate for actual remaining shipping work.
+
+### Earlier regression checkpoint (source-bound)
+
 Current package `1a5eb92` passes both installer gates and native reopening;
 Inspector correctly shows newer unverified completion as uncertain. Full offline
 suite on that product/test source: **4,313 passed, 16 skipped, 16 deselected**,

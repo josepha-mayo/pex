@@ -2,8 +2,13 @@
 
 ## Current — 10 September 2026
 
-**Latest package/native checkpoint:** product `fcb624d`, clean verification
-checkout `d50e420` (documentation-only change). Both installer gates pass.
+**Latest package/native checkpoint:** product `320249b`, clean verification
+checkout `e56a077` (documentation-only change). Both installer gates pass;
+native startup and recorded OpenCode selection pass. Installers are unsigned.
+The supervisor-budget prompt repair passes 71 tests and a separate two-case
+free-Zen/Strands source retest with completed decisions and zero followups.
+[Latest package hashes and retest](docs/demo/evidence/SUPERVISOR_BUDGET_RETEST_2026-09-10.md).
+Prior product `fcb624d` evidence follows:
 Native meaningful progress, pause/resume and fresh packaged bridge profile checks
 pass; two-minute native observation completed without a hang. This is not a
 long soak or causal clearance of the previous whole-PC freeze.
@@ -15,10 +20,11 @@ AgentCore implementation is offline-tested; deployment is optional and unclaimed
 
 Product/test source `1a5eb92` passed the full offline suite: **4,313 passed,
 16 skipped, 16 deselected**, exit 0. Its native package shows newer unverified
-completion as uncertain. Follow-up `fcb624d` is pushed and building; it removes
+completion as uncertain. Follow-up `fcb624d` is pushed and packaged; it removes
 raw transport fallback progress while preserving explicitly tagged genuine text.
-84 targeted snapshot/OpenCode tests and independent review pass. Final package,
-native/setup/stability and recording checks remain pending. No comparative score.
+84 targeted snapshot/OpenCode tests, 117 wider OpenCode tests and independent
+review pass. Fresh Windows-user installation, longer stability and recording
+checks remain pending. No comparative score or submitted entry is claimed.
 
 ### Earlier source-bound checkpoints (superseded where inconsistent)
 
