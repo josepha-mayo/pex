@@ -16,6 +16,20 @@ def _timestamp(value: Any) -> bool:
     return type(value) in (int, float) and math.isfinite(value) and value > 0
 
 
+def belongs_to_case(event: Any, session: Any, expected_session_id: str | None) -> bool:
+    """Keep a global SSE stream from contaminating an isolated case's pipeline.
+
+    Before the case session and goal are stored, no event is eligible. Require
+    both the event and adapter-provided session to agree with the selected case.
+    """
+    return (
+        isinstance(expected_session_id, str)
+        and bool(expected_session_id)
+        and getattr(event, "session_id", None) == expected_session_id
+        and getattr(session, "id", None) == expected_session_id
+    )
+
+
 def review_completed_for_event(
     journal: list[Any], *, event_id: str | None, session_id: str, goal_id: str
 ) -> bool:

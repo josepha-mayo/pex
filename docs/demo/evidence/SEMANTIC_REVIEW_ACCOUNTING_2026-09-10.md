@@ -51,3 +51,23 @@ Completion tests now total **61 passed in 6.46 seconds**, exit 0; Ruff passes.
 Read-only inspection confirms that every archived case's captured first STOP has
 the exact complete model-review binding, so historical conclusions remain
 unchanged. In particular, this does not make the tenth worker generation finish.
+
+## Isolate case ingestion from the global event stream
+
+The runner started a global SSE pump before creating the case session. Its
+callback previously captured the first STOP without checking session ownership,
+then ingested all observed sessions into the case pipeline. A late STOP from a
+previous case could occupy the first-stop slot; the strict review binding would
+reject it later, but the runner would have lost the intended observation.
+
+The callback now rejects events until the selected case session and goal are
+stored, and requires both the event's session ID and the adapter-provided
+session's ID to match that case. This guard precedes artifact capture and pipeline
+ingestion. The binding is set before the worker prompt is sent. Other-session
+events therefore cannot trigger case supervision or consume the first-stop slot.
+
+Verification: completion helper/CLI/wiring suite **71 passed in 5.48 seconds**,
+exit 0; Ruff and `git diff --check` pass. Ten additional tests cover unbound,
+empty, matching, foreign and inconsistent session identities, missing objects,
+and guard/binding placement. This is an offline runner repair, not a new live
+behavioral result. Archived receipts and the packaged app are unchanged.

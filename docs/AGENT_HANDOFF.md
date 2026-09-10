@@ -13,6 +13,14 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Global-stream case isolation repaired while computer control remains paused:**
+the quiet runner now filters both event and observed-session identity before
+capturing STOP artifacts or invoking the case pipeline. Binding becomes active
+only after the selected session/goal are stored and before the worker prompt.
+Late events from another case cannot occupy the first-stop slot. Completion
+suite: 71 passed in 5.48 seconds; Ruff/diff checks pass. No live calls, app launch
+or package rebuild. Prior nine-pass/one-incomplete results remain unchanged.
+
 **Quiet benchmark reporting tightened during the computer-control pause:** the
 runner now audits every journal result, not only `used_llm=true` results, before
 claiming completed semantic reviews. Setup/reconciliation failures with

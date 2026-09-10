@@ -142,6 +142,7 @@ def source_is_clean():
 async def run_case(number, case, model, server):
     from benchmarks.opencode_completion import (
         QuietCompletionFence,
+        belongs_to_case,
         completed_generation,
         review_completed_for_event,
         semantic_reviews_succeeded,
@@ -185,9 +186,12 @@ async def run_case(number, case, model, server):
         model=model,
     )
     first_stop = None
+    case_session_id = None
 
     async def observed_ingest(event, observed_session):
         nonlocal first_stop
+        if not belongs_to_case(event, observed_session, case_session_id):
+            return
         if event.event_type.value == "stop" and first_stop is None:
             artifact = workspace / output_name
             raw = artifact.read_bytes() if artifact.is_file() else None
@@ -233,6 +237,7 @@ async def run_case(number, case, model, server):
         await store.upsert_goal(goal)
         session.goal_id = goal.id
         await store.upsert_session(session)
+        case_session_id = session.id
         write_json(case_root / "goal.json", goal.model_dump(mode="json"))
         await transport.request(
             "POST",

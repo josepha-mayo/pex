@@ -2,15 +2,52 @@ import subprocess
 import sys
 from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from benchmarks.opencode_completion import (
     QuietCompletionFence,
+    belongs_to_case,
     completed_generation,
     review_completed_for_event,
     semantic_reviews_succeeded,
 )
+
+
+@pytest.mark.parametrize("expected,event_session,observed_session,accepted", [
+    (None, "case", "case", False),
+    ("", "", "", False),
+    ("case", "case", "case", True),
+    ("case", "previous-case", "previous-case", False),
+    ("case", "previous-case", "case", False),
+    ("case", "case", "previous-case", False),
+    ("case", None, "case", False),
+    ("case", "case", None, False),
+])
+def test_global_events_are_bound_to_the_ready_case(
+    expected, event_session, observed_session, accepted
+):
+    assert belongs_to_case(
+        SimpleNamespace(session_id=event_session),
+        SimpleNamespace(id=observed_session),
+        expected,
+    ) is accepted
+
+
+def test_missing_event_or_session_is_not_a_case_observation():
+    assert not belongs_to_case(None, None, "case")
+
+
+def test_runner_filters_before_capture_and_ingestion_and_binds_before_prompt():
+    runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
+    source = runner.read_text(encoding="utf-8")
+    guard = source.index("if not belongs_to_case(event, observed_session, case_session_id):")
+    assert guard < source.index('if event.event_type.value == "stop"')
+    assert guard < source.index("await pipeline.ingest_event(event, observed_session)")
+    assert source.index("await store.upsert_session(session)") < source.index(
+        "case_session_id = session.id"
+    ) < source.index('f"/session/{vendor}/prompt_async"')
 
 
 def review(used_llm=True, status="completed"):
