@@ -7,6 +7,27 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+Package `1f3a0ea` now passes both installer extraction/content/eight-pet gates,
+exit 0. Receipt `build/pex-package-receipt-1f3a0ea.json`, SHA-256
+`bcf4bc57e0e131526864fb8fd06550ee2d4a98bd49350ddbcc4c14d89b9ec1ef`.
+PEX was closed normally through its own window, then reopened successfully.
+Current native window is 166987032 (reselect before input), pet hidden,
+OpenCode recovery selected on Home. No unrelated app was controlled.
+
+Follow-up source repairs, NOT in that package: skip bare assistant/user role
+fallbacks in progress text, and let newer bound unverified STOP evidence
+supersede old supported/unsatisfied goal verdicts as uncertain. Fingerprint
+scoring keeps its previous evidence contract. The native goal panel had retained
+an obsolete acceptance gap because its newer no_claims STOP was ignored; this
+is not proof that the saved exact recovery artifacts disappeared. Two failing
+regressions reproduced stale positive/negative verdicts; repair plus recovery,
+snapshot and fingerprint suites pass 45 tests. An older stale-evidence count
+now correctly includes both STOP records (2 rather than 1). Ruff passes.
+Independent design review approved projection-only handling. Next: package
+these repairs and verify native goal/progress display, then remaining behavior,
+review-efficiency, Codex, benchmark and AgentCore gates. No model calls were
+added for these repairs.
+
 Live restraint audit: eight original small-task cases plus one supplemental
 case have completed Strands NOOP decisions and zero followups. The original
 batch stopped on an ambiguous CRLF/LF criterion; supplemental case 9 has a

@@ -72,6 +72,61 @@ async def _attach_goal(client: AsyncClient, session_id: str, title: str, **goal_
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("initially_complete", [False, True])
+async def test_newer_unverified_stop_supersedes_old_completion_verdict(
+    client: AsyncClient, tmp_path, initially_complete
+):
+    worker = tmp_path / "newer-unverified-worker"
+    worker.mkdir()
+    adapter = state.adapters.synthetic
+    session = adapter.seed_session(vendor_id="newer-unverified", cwd=str(worker))
+    await state.store.upsert_session(session)
+    goal = await _attach_goal(
+        client,
+        session.id,
+        "report",
+        objective="Create report.txt containing exactly the word shipped.",
+        acceptance_criteria=["report.txt contains shipped"],
+        evidence_requirements=["report.txt"],
+    )
+    if initially_complete:
+        (worker / "report.txt").write_text("shipped\n", encoding="utf-8")
+    first = await client.post(
+        "/v1/synthetic/events",
+        json={"session_id": session.id, "event_type": "stop", "message": "I am done."},
+    )
+    assert first.status_code == 200
+    before = (await client.get(f"/v1/goals/{goal['id']}/completion")).json()
+    assert before["status"] == ("verified_complete" if initially_complete else "incomplete")
+    (worker / "report.txt").write_text("shipped\n", encoding="utf-8")
+    # A new attached worker has no earlier narration to re-extract as a claim.
+    later_session = adapter.seed_session(vendor_id="later-no-claims", cwd=str(worker))
+    await state.store.upsert_session(later_session)
+    attached = await client.post(
+        f"/v1/sessions/{later_session.id}/attach",
+        json={
+            "idempotency_key": f"recovery-attach-{next(_GOAL_CONTROL_SEQUENCE):08d}",
+            "goal_id": goal["id"],
+            "expected_goal_id": None,
+            "expected_control_revision": 0,
+            "expected_goal_intent_revision": goal["intent_revision"],
+        },
+    )
+    assert attached.status_code == 200
+    later = await client.post(
+        "/v1/synthetic/events",
+        json={"session_id": later_session.id, "event_type": "stop", "message": "assistant"},
+    )
+    assert later.status_code == 200
+    verification = later.json()["intervention"]["metadata"]["verification"]
+    assert verification["status"] == "no_claims"
+    assert verification["acceptance_status"] == "supported"
+    after = (await client.get(f"/v1/goals/{goal['id']}/completion")).json()
+    assert after["status"] == "uncertain"
+    assert after["latest_evidence"]["verification_status"] == "uncertain"
+
+
+@pytest.mark.asyncio
 async def test_genuine_pytest_completion_is_noop(client: AsyncClient, tmp_path):
     worker = tmp_path / "complete-worker"
     worker.mkdir()
@@ -165,7 +220,9 @@ async def test_genuine_pytest_completion_is_noop(client: AsyncClient, tmp_path):
     stale = await client.get(f"/v1/goals/{goal['id']}/completion")
     assert stale.status_code == 200
     assert stale.json()["status"] == "uncertain"
-    assert stale.json()["stale_evidence_excluded"] == 1
+    # Both the old supported STOP and the newer unverified STOP are now
+    # represented, and both must be excluded after the goal intent changes.
+    assert stale.json()["stale_evidence_excluded"] == 2
 
 
 @pytest.mark.asyncio

@@ -2704,6 +2704,7 @@ def _fingerprint_intervention_outcome(
     *,
     event_row: aiosqlite.Row,
     plan: dict[str, Any],
+    include_uncertain_stops: bool = False,
 ) -> tuple[str | None, str] | None:
     """Validate exact committed-plan ownership before reading one outcome."""
 
@@ -2768,6 +2769,15 @@ def _fingerprint_intervention_outcome(
         and status in {"supported", "contradicted", "acceptance_gap"}
         else None
     )
+    if (
+        include_uncertain_stops
+        and intervention.trigger == "stop"
+        and status in {"no_claims", "uncertain", "unavailable"}
+    ):
+        # A later bound STOP may invalidate an older completion verdict without
+        # establishing success. Fingerprint aggregates retain their narrower
+        # evidence contract; only the current-goal projection opts into this.
+        supported_status = "uncertain"
     return supported_status, intervention.action_taken
 
 
@@ -15600,6 +15610,7 @@ class Store:
                         intervention_row,
                         event_row=event_row,
                         plan=plan,
+                        include_uncertain_stops=True,
                     )
                     if outcome is None or outcome[0] is None:
                         continue

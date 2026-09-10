@@ -2,6 +2,12 @@
 
 ## Current — 10 September 2026
 
+Package `1f3a0ea` passes both installer gates and native reopening. Follow-up
+source now prevents stale goal success/failure surviving a newer unverified
+STOP, and removes bare role labels from meaningful progress. 45 combined
+recovery/snapshot/fingerprint tests pass. These follow-ups need packaging/native
+verification; see the handoff. Remaining submission gates are unchanged.
+
 Restraint audit: nine successful semantic quiet cases across two runs, not a
 clean ten-case batch. Another correctly completed case produced a failed
 structured decision and cannot count as a semantic pass. Original failed

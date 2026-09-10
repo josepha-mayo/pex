@@ -2,6 +2,11 @@
 
 ## MVP acceptance checkpoint — 10 September 2026
 
+Latest package `1f3a0ea` verified both installers and reopened natively.
+Follow-up role-fallback and stale goal-verdict repairs pass 45 recovery,
+snapshot and fingerprint tests; not yet packaged. Newer unverified STOP becomes
+uncertain, never invented completion. See the active handoff for receipt hash.
+
 Restraint evidence: nine successful semantic quiet cases across two runs;
 one additional correct task had failed inference. Original ten-case batch did
 not pass. [Audit, test defects and resource sample](demo/evidence/QUIET_RESTRAINT_2026-09-10.md).

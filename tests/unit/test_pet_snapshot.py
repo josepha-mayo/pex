@@ -367,7 +367,11 @@ async def test_pet_snapshot_uses_last_worker_message(tmp_path, harness):
         session_snapshot=session,
     )
     if harness == HarnessType.OPENCODE:
-        for kind, text in [("message.updated", "user"), ("session.status", "session.status")]:
+        for kind, text, event_type in [
+            ("message.updated", "assistant", EventType.STOP),
+            ("message.updated", "user", EventType.STATUS),
+            ("session.status", "session.status", EventType.STATUS),
+        ]:
             await store.accept_pipeline_event(
                 HarnessEvent(
                     event_id=uuid4().hex,
@@ -376,7 +380,7 @@ async def test_pet_snapshot_uses_last_worker_message(tmp_path, harness):
                     session_id=session.id,
                     project_id=goal.project_id,
                     goal_id=goal.id,
-                    event_type=EventType.STATUS,
+                    event_type=event_type,
                     phase=EventPhase.AFTER,
                     message_delta=text,
                     metadata={"sse_type": kind},

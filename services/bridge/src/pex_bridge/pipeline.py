@@ -6782,6 +6782,14 @@ def activity_phrase(event: HarnessEvent | None) -> str:
 def visible_event_line(event: HarnessEvent) -> str | None:
     if (
         event.harness_type == HarnessType.OPENCODE
+        and (event.metadata or {}).get("sse_type") == "message.updated"
+        and event.message_delta in {"assistant", "user"}
+        and not event.command
+        and not event.tool_name
+    ):
+        return None  # Adapter role fallback, not the worker's response text.
+    if (
+        event.harness_type == HarnessType.OPENCODE
         and event.event_type == EventType.STATUS
         and (event.metadata or {}).get("sse_type")
         in {

@@ -2,6 +2,10 @@
 
 ## Current — 10 September 2026
 
+- Native 1f3a0ea still exposed bare assistant progress text and an obsolete
+  incomplete goal verdict after newer no_claims STOP. Source fixes pass 45
+  recovery/snapshot/fingerprint tests but are not in that running package yet.
+
 - Supplemental quiet case 9 returned no validated Strands decision. The test
   runner incorrectly accepted attempted inference; its gate is fixed, sealed
   receipts retained. Original CRLF/LF case is ambiguous, not a measured false
