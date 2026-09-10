@@ -2,6 +2,12 @@
 
 ## Current — 10 September 2026
 
+**Current-source offline regression: 4,336 passed, 16 skipped, 18 deselected**
+on `aba8d38`, exit 0, 1001.79 seconds. Git was clean at completion; XML confirms
+zero failures/errors. [Exact evidence and retained failed attempts](docs/demo/evidence/OFFLINE_REGRESSION_2026-09-10.md).
+This closes the current offline regression gap, not live deployment, long-term
+stability, recording or submission. Package remains `06c6b73`.
+
 **Latest: `06c6b73` package / `97e84d4` product.** OpenCode first-run instructions
 now include the separate attached worker session. 276 desktop tests, UI build,
 both installer integrity gates and native onboarding inspection pass.

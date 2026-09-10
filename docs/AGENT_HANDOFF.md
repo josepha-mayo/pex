@@ -13,6 +13,14 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Full offline regression now passes on `aba8d38`: 4,336 passed, 16 skipped,
+18 deselected; exit 0, 1001.79 seconds.** Clean source at completion; XML confirms
+zero failures/errors. [Reproduction, hashes, failed attempts and limits](demo/evidence/OFFLINE_REGRESSION_2026-09-10.md).
+The two failed runs below are retained as historical evidence, not current
+regression failures. No test process remains running from this pass. Current
+package stays `06c6b73`; only docs/workflow and a test fixture changed afterward.
+Fresh-user/long-stability, recording and authorized submission remain open.
+
 **Second full regression result:** the Rust-PATH-corrected run on `10d4f51`
 also exited 1: 4,335 passed, one failed, 16 skipped, 18 deselected in 970.66
 seconds. The release preflight passed this time. The sole failure was

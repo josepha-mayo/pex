@@ -42,8 +42,9 @@ OpenCode instructions; both installers and native onboarding inspection pass.
 - [x] Failed inference is distinguished from a successful quiet review.
 - [x] Newer unverified STOP supersedes obsolete goal success/failure as uncertain.
 - [x] Remove the remaining raw event-kind progress fallback and verify natively.
-- [x] Complete offline regression on product/test source `1a5eb92`: 4,313 passed,
-  16 skipped, 16 deselected, exit 0. Live-provider tests are excluded.
+- [x] Complete offline regression on current source `aba8d38`: 4,336 passed,
+  16 skipped, 18 deselected, exit 0. Live-provider/desktop tests are excluded.
+  [Exact evidence and retained failed attempts](demo/evidence/OFFLINE_REGRESSION_2026-09-10.md).
 - [x] Both installers pass on clean checkout `e56a077` (product `320249b`),
   including the progress-label and supervisor-budget guidance repairs. Native
   startup and recorded OpenCode selection pass. Installers remain unsigned.
