@@ -13,6 +13,15 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Local release staging:** `build/releases/pex-mvp-06c6b73` contains copies of
+the verified MSI (125,607,936 bytes) and NSIS (124,336,673 bytes), `SHA256SUMS.txt`
+and reviewed candidate `RELEASE_NOTES.md`. Both copied installers match the
+package receipt. Exact four-file inventory and public-text checks pass; no
+private receipts, credentials or logs were copied. Release notes identify the
+unsigned build, source revision, supported setup and remaining limitations.
+This folder is local/ignored, not a public GitHub release. Publication still
+requires the pending explicit approval. Do not overwrite this versioned folder.
+
 **Test-harness follow-up (no product binary change):** the legacy OpenCode
 live-supervisor probe now requires literal `used_llm: true` and completed
 inference, and closes only its own pump/pipeline/store. It is explicitly an
