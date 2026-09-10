@@ -2,6 +2,19 @@
 
 ## Current — 10 September 2026
 
+The focused shipping scope is [MVP_SHIP_GATE.md](docs/MVP_SHIP_GATE.md):
+OpenCode/Codex App Server, Zen BYOK, Strands, controllable pets and usable UI.
+AgentCore implementation is offline-tested; deployment is optional and unclaimed.
+
+Product/test source `1a5eb92` passed the full offline suite: **4,313 passed,
+16 skipped, 16 deselected**, exit 0. Its native package shows newer unverified
+completion as uncertain. Follow-up `fcb624d` is pushed and building; it removes
+raw transport fallback progress while preserving explicitly tagged genuine text.
+84 targeted snapshot/OpenCode tests and independent review pass. Final package,
+native/setup/stability and recording checks remain pending. No comparative score.
+
+### Earlier source-bound checkpoints (superseded where inconsistent)
+
 Package `1f3a0ea` passes both installer gates and native reopening. Follow-up
 source now prevents stale goal success/failure surviving a newer unverified
 STOP, and removes bare role labels from meaningful progress. 45 combined

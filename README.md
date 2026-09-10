@@ -69,8 +69,8 @@ This public repository provides a **source-development bootstrap**, not a packag
 A verified local Windows
 installer candidate exists for product source `166a656` and is not code-signed.
 These instructions cover building from source; package integrity is not native
-acceptance or publisher trust. Its current verification evidence is
-[`docs/demo/evidence/PACKAGE_166A656_2026-09-10.md`](docs/demo/evidence/PACKAGE_166A656_2026-09-10.md). To build from source,
+acceptance or publisher trust. Current source-bound package evidence is recorded
+in the [active handoff](docs/AGENT_HANDOFF.md). To build from source,
 install Git and `uv`, Node matching [`.node-version`](.node-version),
 and Rust matching [`rust-toolchain.toml`](rust-toolchain.toml). A Windows Tauri
 build also needs the Microsoft C++ build tools and WebView2 runtime. `uv` uses
@@ -121,7 +121,13 @@ Set-Location C:\path\to\worker-project
 opencode serve --port 4096
 ```
 
-Then set its loopback origin before starting PEX from a second shell:
+In PEX, choose **Connect a worker → Connect your local OpenCode server**, enter
+`http://127.0.0.1:4096`, then choose **Connect OpenCode**. Return Home, select the
+worker and set its persistent goal. Connecting does not start a worker turn.
+The quick-connect form supports unauthenticated loopback servers only; do not
+put the Zen key in the server address.
+
+Alternatively, set the loopback origin before starting PEX from a second shell:
 
 ```powershell
 $env:PEX_OPENCODE_URL="http://127.0.0.1:4096"
@@ -186,42 +192,7 @@ release CLI; it exists only inside explicit in-process Python test harnesses via
 
 ![PEX architecture](docs/architecture/pex-architecture.png)
 
-```mermaid
-flowchart LR
-  human[Human: goals and decisions]
-  pet[PEX Pet / Command Deck]
-  bridge[Local Bridge + Policy Guard]
-  store[(SQLite intent ledger)]
-  adapters[Adapter layer]
-  cursor[Cursor]
-  codex[Codex]
-  others[Claude / OpenCode / Qwen / ...]
-  strands[Bounded Strands semantic judge]
-  verifier[Independent verifier Agent · local contract only]
-  runtime[AgentCore Runtime deploy target]
-  memory[AgentCore Memory when configured]
-  cw[CloudWatch when deployed]
-  out[Typed interventions]
-
-  human --> pet
-  pet <--> bridge
-  cursor --> adapters
-  codex --> adapters
-  others --> adapters
-  adapters --> bridge
-  bridge --> store
-  bridge -->|local mode: redacted evidence| strands
-  bridge -.->|remote mode| runtime
-  runtime -->|hosts| strands
-  runtime -->|hosts| verifier
-  runtime -.-> memory
-  runtime -.-> cw
-  strands -->|semantic-only action| verifier
-  verifier --> out
-  bridge -->|deterministic action| out
-  out --> bridge
-  bridge -->|policy-gated| adapters
-```
+Editable diagram: [Mermaid source](docs/architecture/pex-architecture.mmd).
 
 User input is the pet and persistent goals. Each semantic inspection can create a
 fresh bounded Strands supervisor with request-scoped, read-only evidence tools
@@ -235,7 +206,7 @@ STOP intervention must also pass a fresh independent verifier Agent using its
 own observations and invocation. Timeout, malformed output, missing evidence,
 or rejection becomes NOOP. Deterministic verification truth and local policy
 still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
-target, not a deployed-service claim. Current product source `933239a` now has a retained real
+target, not a deployed-service claim. Historical source `933239a` has a retained real
 OpenCode recovery: main Strands inference inspected the workspace, a separate verifier approved
 the exact missing-artifact finding, policy admitted one same-session correction, and the free
 worker produced the exact final bytes. A separate correctly completed OpenCode task produced a
@@ -252,7 +223,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents in the local supervisor and targets Amazon Bedrock AgentCore Runtime; AgentCore is not currently deployed. Current product source `933239a` has verified MSI/NSIS package integrity, exact-package OpenCode polling, and real OpenCode recovery/quiet proof; packaged ancestor `9357bb8` also has source-bound real Codex + provider-live Strands quiet/recovery proof. Overall contest state is **NO-GO** until the bounded post-freeze native review, benchmark isolation/evidence, demo video, and submission authorization are complete. The benchmark remains unfrozen, with no citeable impact score or validated leaderboard rank. Canonical Devpost draft: [`docs/SUBMISSION.md`](docs/SUBMISSION.md).
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound native OpenCode and separate Codex App Server behavior proofs are retained. Final native/setup checks and the demo/submission remain pending under [the focused MVP gate](docs/MVP_SHIP_GATE.md). Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](docs/SUBMISSION.md).
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)
