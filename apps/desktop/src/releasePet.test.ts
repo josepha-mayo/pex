@@ -49,7 +49,7 @@ test("floating pet respects the user's small size setting", async () => {
   const { renderToStaticMarkup } = await import("react-dom/server");
   const { createServer } = await import("vite");
   const vite = await createServer({
-    root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom",
+    root: process.cwd(), server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom",
   });
   try {
     const { PetStage } = await vite.ssrLoadModule("/src/components/PetStage.tsx");
@@ -69,7 +69,7 @@ test("inactive pet rendering pauses CSS motion and releases its transform hint",
   const { renderToStaticMarkup } = await import("react-dom/server");
   const { createServer } = await import("vite");
   const vite = await createServer({
-    root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom",
+    root: process.cwd(), server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom",
   });
   try {
     const { CodexSprite } = await vite.ssrLoadModule("/src/pets/atlas.tsx");

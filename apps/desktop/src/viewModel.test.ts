@@ -190,7 +190,7 @@ test("inspector renders review allowance and replaces stale numbers with unavail
   const { renderToStaticMarkup } = await import("react-dom/server");
   const { createServer } = await import("vite");
   const vite = await createServer({
-    root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom",
+    root: process.cwd(), server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom",
   });
   try {
     const { Inspector } = await vite.ssrLoadModule("/src/components/Inspector.tsx");
@@ -1468,7 +1468,7 @@ test("pet renders separate keyboard buttons for status dismissal, activation, an
   const { createServer } = await import("vite");
   const vite = await createServer({
     root: process.cwd(),
-    server: { middlewareMode: true, hmr: false },
+    server: { middlewareMode: true, hmr: false, ws: false },
     appType: "custom",
   });
   try {
@@ -1507,7 +1507,7 @@ test("goal editor locks submitted fields only while saving", async () => {
   const { renderToStaticMarkup } = await import("react-dom/server");
   const { createServer } = await import("vite");
   const vite = await createServer({
-    root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom",
+    root: process.cwd(), server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom",
   });
   try {
     const { GoalEditor } = await vite.ssrLoadModule("/src/components/GoalEditor.tsx");

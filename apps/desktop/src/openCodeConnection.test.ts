@@ -7,7 +7,7 @@ test("OpenCode onboarding explains the separate server and worker without starti
   const { renderToStaticMarkup } = await import("react-dom/server");
   const { createServer } = await import("vite");
   const vite = await createServer({
-    root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: "custom",
+    root: process.cwd(), server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom",
   });
   try {
     const { OpenCodeConnectionPanel } = await vite.ssrLoadModule("/src/components/OpenCodeConnectionPanel.tsx");

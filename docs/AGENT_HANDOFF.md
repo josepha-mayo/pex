@@ -13,6 +13,13 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Complete desktop suite: 280 passed**, 2.72 seconds, exit 0. The first run also
+passed but printed a Vite WebSocket port-collision error: `hmr:false` does not
+disable Vite's listener. All eight render-test server configurations now set
+`ws:false` as well as middleware mode and disabled HMR. The repeated complete
+suite passed without the collision error. This changes test infrastructure only;
+no existing listener was stopped, native app opened or production config changed.
+
 **AgentCore client/pipeline reverified at clean source `c07e60a`:** command
 `.venv/Scripts/python.exe -m pytest tests/unit/test_agentcore_client.py tests/unit/test_agentcore_pipeline.py -q`
 passed **130 tests in 13.25 seconds**, exit 0. Reviewed transport/router paths
