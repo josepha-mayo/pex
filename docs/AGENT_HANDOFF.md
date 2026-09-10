@@ -13,6 +13,15 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Quiet benchmark reporting tightened during the computer-control pause:** the
+runner now audits every journal result, not only `used_llm=true` results, before
+claiming completed semantic reviews. Setup/reconciliation failures with
+`used_llm=false` can no longer hide behind earlier success. 50 completion helper/
+CLI/wiring tests passed in 4.90 seconds, Ruff passed. Read-only inspection of the
+archived ten-case run found no such hidden failures; its nine-pass/one-incomplete
+conclusion is unchanged. No live calls or desktop checks were run.
+[Exact defect, repair and evidence](demo/evidence/SEMANTIC_REVIEW_ACCOUNTING_2026-09-10.md).
+
 **September 10 user scope override: exactly TWO pets, Pex and Von.** Runtime
 catalog, selection API, picker and packaging allowlist now exclude the other six.
 Old selection migrates to Pex while retaining nickname, scale and legacy import
@@ -28,9 +37,14 @@ current release manifest/structural evidence/gallery bind only the two shipping 
 pass. Updated bridge roundtrip suite: 16 passed (initial run caught two stale
 eight-pet/tortoise expectations; those failures were not product regressions).
 Final combined backend check: **113 passed in 74.51 seconds**, exit 0.
-The new native package is next; do not treat
-the existing f575d45 installers as the two-pet version. Old PEX was closed normally
-using its own Close button, and its owned desktop/bridge processes exited.
+**Two-pet package `4de1db8` now built and verified, both installers exit 0.**
+After disabling hatch writes, 19 API/roundtrip tests passed. Both installers are
+unsigned. [Artifact hashes and exact evidence](demo/evidence/TWO_PET_PACKAGE_2026-09-10.md).
+Old PEX was closed normally using its own Close button; its owned processes exited.
+The new launch was stopped by physical Escape, and the user then asked to use
+the computer. Do not resume computer control, open PEX or launch heavy checks
+without renewed permission. Lightweight source review/docs can continue. Native
+two-pet checks and the earlier startup timeout remain unverified/unresolved.
 
 **Cold-start diagnostics:** optional fixed-phase, credential-free local trace
 added for the next packaged launch. It does not fix or relax the 60-second
@@ -40,13 +54,13 @@ store module import 1.141 seconds. This does not measure frozen extraction/impor
 or prove the cause of the first native timeout. Private backup remains ignored
 under build/startup-diagnostic-f575d45-20260910 and must not be published.
 
-**Current package `f575d45`: integrity passes; first native startup failed its
+**Previous package `f575d45`: integrity passes; first native startup failed its
 60-second identity deadline, one Retry succeeded.** The app is responsive and
 the packaged cross-window pet feedback repair is now verified (hide via pet X
 updates Settings to hidden). Keep the initial failure; do not claim cold-start
 readiness or blame Windows Security without evidence. No security change or
-unrelated process termination occurred. PEX remains open on Companion Settings,
-overlay hidden; fresh-query process identity before any lifecycle action.
+unrelated process termination occurred. Its window was subsequently closed;
+fresh-query process identity before any lifecycle action.
 [Hashes and precise native chronology](demo/evidence/PACKAGE_F575D45_2026-09-10.md).
 **Next priority: diagnose startup phase timing and fix the cold-start failure.**
 Both build/verifier sessions ended exit 0; no test/build session remains active.

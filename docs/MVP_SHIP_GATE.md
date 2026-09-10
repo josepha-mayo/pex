@@ -1,7 +1,7 @@
 # PEX focused MVP shipping gate
 
-This is the shipping scope from the user's later request: usable UI/UX, one or
-two primary pets, Zen BYOK, OpenCode/Codex, Strands supervision, AgentCore
+This is the shipping scope from the user's later request: usable UI/UX, exactly
+two pets (Pex and Von), Zen BYOK, OpenCode/Codex, Strands supervision, AgentCore
 implementation and honest behavioral measurement. Cursor is optional. Preserve
 the full specs and historical research checklist; do not pretend every expanded
 feature or formal benchmark has been completed.
@@ -26,9 +26,14 @@ anything on the user's behalf.
 
 ## Evidence and remaining work
 
-Latest package is `06c6b73` (product `97e84d4`), including corrected first-run
-OpenCode instructions; both installers and native onboarding inspection pass.
-[Current receipt and twelve-minute observation](demo/evidence/MVP_ONBOARDING_2026-09-10.md).
+Latest package is `4de1db8`, with exactly Pex and Von and no extra-pet generation.
+Both installers pass integrity verification, but native checks were stopped by
+the user's Escape press and remain pending. The previous package's first-start
+timeout is still unresolved; a passing retry is not a cold-start fix.
+[Current package evidence](demo/evidence/TWO_PET_PACKAGE_2026-09-10.md).
+
+- [ ] Resume PEX-only checks after permission; verify startup and both pets.
+- [ ] Diagnose and fix the recorded first-start timeout with phase evidence.
 
 - [x] Native OpenCode connection and persistent goal attachment.
 - [x] Real native Strands correction to the same OpenCode worker, exact recovery

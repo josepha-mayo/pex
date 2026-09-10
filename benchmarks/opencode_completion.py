@@ -16,6 +16,38 @@ def _timestamp(value: Any) -> bool:
     return type(value) in (int, float) and math.isfinite(value) and value > 0
 
 
+def semantic_reviews_succeeded(journal: list[Any]) -> bool:
+    """A prior success must not hide a later setup/reconciliation failure.
+
+    Ordinary deterministic triage is not an inference attempt. Failed setup can
+    nevertheless report used_llm=False, so inspect every recorded result before
+    deciding whether this was a clean model-backed quiet case.
+    """
+    completed_model_review = False
+    for row in journal:
+        if not isinstance(row, dict):
+            return False
+        plan = row.get("plan")
+        if plan is None:
+            continue  # Record-only events have no supervisor plan.
+        if not isinstance(plan, dict):
+            return False
+        result = plan.get("supervisor_result")
+        if result is None:
+            continue
+        if not isinstance(result, dict):
+            return False
+        used_llm = result.get("used_llm")
+        status = result.get("inference_status")
+        if used_llm is True and status == "completed":
+            completed_model_review = True
+        elif used_llm is False and status == "not_attempted":
+            continue
+        else:
+            return False
+    return completed_model_review
+
+
 def completed_generation(
     messages: Any, statuses: Any, session_id: str, *, minimum_user_count: int = 1
 ) -> tuple[str, str] | None:

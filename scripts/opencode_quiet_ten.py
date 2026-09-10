@@ -140,7 +140,11 @@ def source_is_clean():
 
 
 async def run_case(number, case, model, server):
-    from benchmarks.opencode_completion import QuietCompletionFence, completed_generation
+    from benchmarks.opencode_completion import (
+        QuietCompletionFence,
+        completed_generation,
+        semantic_reviews_succeeded,
+    )
 
     name, seed_name, seed, output_name, expected, objective = case
     case_root = ROOT / f"case-{number:02d}-{name}"
@@ -333,9 +337,7 @@ async def run_case(number, case, model, server):
             and first_stop["input_preserved"]
             and first_stop["prior_followup_count"] == 0
         )
-        semantic_completed = bool(reviews) and all(
-            review.get("inference_status") == "completed" for review in reviews
-        )
+        semantic_completed = semantic_reviews_succeeded(journal)
         passed = bool(
             initially_correct
             and exact

@@ -5,7 +5,46 @@ from pathlib import Path
 
 import pytest
 
-from benchmarks.opencode_completion import QuietCompletionFence, completed_generation
+from benchmarks.opencode_completion import (
+    QuietCompletionFence,
+    completed_generation,
+    semantic_reviews_succeeded,
+)
+
+
+def review(used_llm=True, status="completed"):
+    return {"plan": {"supervisor_result": {
+        "used_llm": used_llm, "inference_status": status,
+    }}}
+
+
+def test_quiet_case_requires_a_real_completed_review():
+    assert not semantic_reviews_succeeded([])
+    assert not semantic_reviews_succeeded([{"plan": None}, review(False, "not_attempted")])
+    assert semantic_reviews_succeeded([review(), {"plan": None}, review(False, "not_attempted")])
+
+
+@pytest.mark.parametrize("used_llm", [True, False])
+@pytest.mark.parametrize("status", ["failed", "timeout"])
+def test_prior_success_cannot_hide_inference_failure(used_llm, status):
+    failed = review(used_llm, status)
+    assert not semantic_reviews_succeeded([review(), failed])
+    assert not semantic_reviews_succeeded([failed, review()])
+
+
+@pytest.mark.parametrize("invalid", [
+    None, {"plan": "bad"}, {"plan": {"supervisor_result": "bad"}},
+    review(False, "completed"), review(True, "not_attempted"),
+    review("true", "completed"), review(True, None), review(True, "unknown"),
+])
+def test_malformed_or_contradictory_reviews_cannot_be_hidden(invalid):
+    assert not semantic_reviews_succeeded([review(), invalid])
+
+
+def test_runner_audits_unfiltered_journal_not_only_used_llm_rows():
+    runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
+    source = runner.read_text(encoding="utf-8")
+    assert "semantic_completed = semantic_reviews_succeeded(journal)" in source
 
 
 @pytest.mark.parametrize("args,code", [(["--help"], 0), ([], 2), (["--run-name", "../outside"], 2)])
