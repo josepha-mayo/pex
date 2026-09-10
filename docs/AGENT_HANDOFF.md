@@ -13,6 +13,20 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Second full regression result:** the Rust-PATH-corrected run on `10d4f51`
+also exited 1: 4,335 passed, one failed, 16 skipped, 18 deselected in 970.66
+seconds. The release preflight passed this time. The sole failure was
+`test_snapshot_marks_directory_mutation_incomplete`; it also failed a standalone
+reproduction. The fixture assumed an immediate file create changes directory
+mtime. It now explicitly advances that timestamp, preserving the real file
+creation and both truncation/reason assertions. No production code changed.
+Workspace-file suite: 23 passed, one skipped (8.44 seconds); Ruff passes.
+Independent read-only review agreed with this test-only repair and the explicit
+non-atomic inventory limitation now recorded in `KNOWN_FAILURES.md`.
+Original XML: `build/offline-10d4f51-rustpath.xml`, SHA-256
+`349757d33801056dc22eef50cd50bbd4d5804e458b1d5eb9aef170e4f85079ee`.
+The failed full run is retained; these targeted results are not a full green run.
+
 **Current offline regression follow-through:** source `5ea699d` finished with
 4,335 passed, one failed, 16 skipped and 18 deselected in 956.91 seconds (exit 1).
 The sole failure was

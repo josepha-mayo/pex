@@ -2,6 +2,17 @@
 
 ## Current — 10 September 2026
 
+**Workspace inventory fence limitation:** the `10d4f51` full regression exposed
+a platform-sensitive fixture: creating a file during enumeration did not always
+advance the directory mtime. Inventory compares observed directory identity,
+mtime and resolved path; it is not an atomic namespace snapshot and cannot
+promise to detect a file addition that preserves those observations. The test
+now explicitly advances directory mtime after the real file creation, preserving
+its incomplete/reason assertions. This verifies the observable-metadata fence,
+not universal concurrent-mutation detection. Earlier broad descriptions of
+"directory mutation" detection must be read with this limitation. No production
+behavior was changed by this fixture repair.
+
 **Current corrections:** package `e56a077` includes product `320249b`; installer
 integrity and native startup pass. The bare-progress/stale-verdict defects below
 are repaired and bundled. The formerly failed identifiers review passes its

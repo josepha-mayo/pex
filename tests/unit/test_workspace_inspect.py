@@ -98,6 +98,7 @@ def test_snapshot_marks_directory_mutation_incomplete(
     import pex_supervisor.workspace as workspace_module
 
     (tmp_path / "first.txt").write_text("visible\n", encoding="utf-8")
+    initial_directory_stat = tmp_path.stat()
     real_scandir = workspace_module.os.scandir
 
     class MutatingScan:
@@ -120,6 +121,17 @@ def test_snapshot_marks_directory_mutation_incomplete(
             if not self._mutated:
                 self._mutated = True
                 (tmp_path / "arrived-during-scan.txt").write_text("late\n", encoding="utf-8")
+                # Exercise the observable-mtime fence deterministically. An
+                # immediate create need not advance directory mtime on Windows;
+                # this inventory is not an atomic filesystem snapshot.
+                workspace_module.os.utime(
+                    tmp_path,
+                    ns=(
+                        initial_directory_stat.st_atime_ns,
+                        initial_directory_stat.st_mtime_ns + 2_000_000_000,
+                    ),
+                )
+                assert tmp_path.stat().st_mtime_ns != initial_directory_stat.st_mtime_ns
             return next(self._iterator)
 
     monkeypatch.setattr(workspace_module.os, "scandir", MutatingScan)
