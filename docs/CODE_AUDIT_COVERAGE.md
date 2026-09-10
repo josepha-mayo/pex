@@ -1,5 +1,26 @@
 # PEX code audit coverage — 5 September 2026
 
+## 10 September — connector cleanup safety regression
+
+Scoped read of shared-Codex proxy launch/cleanup, Codex stdio start/close and ACP
+start/close found subprocess-object cleanup, not recursive numeric-PID discovery.
+This does not establish incident cause or complete those adapters' full-file audit.
+Added five fully mocked proxy cleanup cases: graceful exit, terminate escalation,
+kill escalation, and process-exit races at both escalation steps. No process is
+spawned or terminated by these tests. The assertions check the connector's actual
+method calls; they are not OS-level proof that unrelated apps cannot be affected.
+
+Verification command:
+
+```text
+.venv\Scripts\python.exe -m pytest -q tests/unit/test_codex_proxy_process_cleanup.py tests/unit/test_codex_shared_consumer_shutdown.py tests/unit/test_codex_shared_attach.py -k 'cleanup or exit_race or consumer_exits or detach_closes or failed_confirmation' --tb=short
+```
+
+The selection also covers consumer cancellation settlement, selected-subscription
+detach without turn commands, and failed confirmation preserving the prior adapter.
+Result: 8 passed, 22 deselected in 6.78 seconds; Ruff passed for the new test file.
+Native safety hold remains in force. No production behavior changed.
+
 ## 10 September — public status and submission claim consistency
 
 Audited current entry-point claims in README, STATUS, KNOWN_FAILURES, submission
