@@ -26,6 +26,11 @@ anything on the user's behalf.
 
 ## Evidence and remaining work
 
+- [x] Bound fresh-install model use at current source `7bf591c`: three durable
+  semantic dispatches per worker session by default, explicit Settings/env
+  override retained. Ruff and 126 affected pipeline/settings tests pass;
+  provider/source/settings slice passes 156 with one intentional skip. Rebuild
+  and native verification remain pending; `567778b` is still the last package.
 - [x] Repair observed OpenCode free-tier retry/idle follow-up loop in source;
   durable provider block survives refresh/restart and requires tool/file activity
   to clear. Processing/OpenCode: 123 passed; final persistence focus: 7 passed.

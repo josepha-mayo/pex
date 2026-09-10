@@ -2,14 +2,18 @@
 
 ## Current — 11 September 2026
 
-**Shipping candidate: `567778b`, exactly Pex and Von.** The full Tauri build
+**Current source: `7bf591c`; last packaged candidate: `567778b`, exactly Pex and
+Von.** Source `7bf591c` adds a fresh-install cap of three durable semantic
+dispatches per worker session; 126 affected pipeline/settings tests and 156
+provider/source/settings tests pass, with one intentional provider skip. It has
+not been rebuilt or natively checked yet. The earlier full Tauri build
 completed and both unsigned installers pass integrity with zero blockers and
 2,375 matching bridge-runtime files. Receipt:
 `build/package-567778b-20260910-rebuilt.json`, SHA-256
 `9bda2583d3307dd7470002fec4e419f7ba4700a7fd9e9dcb393132222de7185e`.
 Custom import and image-generation write APIs remain disabled.
 
-The candidate includes the compact Ask layout repair and an exact OpenCode
+The packaged candidate includes the compact Ask layout repair and an exact OpenCode
 `MessageAbortedError` fence: cancellation stays stopped without automatic
 follow-up until concrete tool/file activity, while a simultaneous free-provider
 limit keeps Blocked priority. Focused gates: 290 frontend tests passed with one
