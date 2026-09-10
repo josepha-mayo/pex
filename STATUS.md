@@ -15,6 +15,8 @@ follow-up until concrete tool/file activity, while a simultaneous free-provider
 limit keeps Blocked priority. Focused gates: 290 frontend tests passed with one
 platform skip; 77 OpenCode/Codex continuity tests passed; 228 Ask PEX + offline
 AgentCore tests passed. Production frontend build passed.
+Benchmark safety/scoring and Cursor-hook contracts pass 280/280; the manifest
+remains deliberately unfrozen, so no comparative result or leaderboard rank is claimed.
 
 **Native acceptance of `567778b` is pending.** Joseph is using the PC and asked
 for command-line work only until he says otherwise. Package integrity does not

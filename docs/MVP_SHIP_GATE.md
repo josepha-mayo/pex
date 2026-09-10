@@ -47,6 +47,8 @@ anything on the user's behalf.
   explicit cancellation event remains unproven; native verification pending.
 - [x] Current BYOK/provider configuration gate: 148 passed, one skipped; the
   supplied Zen key has zero tracked-source matches and no live call ran.
+- [x] Current benchmark safety/scoring/Cursor-hook contracts: 280 passed in
+  284.29s. Manifest remains honestly unfrozen; this is not a benchmark score.
 
 ### Latest candidate — supersedes older package descriptions below
 

@@ -26,6 +26,10 @@ supervision/continuity tests passed, and 228 Ask + offline AgentCore tests passe
 Current BYOK/provider contracts also pass **148 tests with one intentional skip**;
 the supplied Zen key has zero tracked-source matches. Generic secret-pattern hits
 are deliberate redaction fixtures in tests. No live provider call ran in this gate.
+Current benchmark/scoring/execution-safety and Cursor-hook contracts pass
+**280/280 in 284.29s**. This proves the gate and its fail-closed accounting, not
+a productivity score: `benchmarks/manifest.yaml` remains `frozen: false` because
+complete raw vendor logs and Cursor same-session treatment evidence are missing.
 Native verification of the newest Ask/cancellation behavior is pending because
 Joseph is using the PC and requested offline-only work until he says otherwise.
 Do not use Computer Use before that permission changes.
