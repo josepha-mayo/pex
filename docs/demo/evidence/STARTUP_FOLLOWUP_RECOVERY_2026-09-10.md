@@ -33,3 +33,22 @@ extraction/import time from database, adapter and recovery time.
 No desktop launch, live model invocation, profile edit, heavy build or process
 termination occurred. The existing `4de1db8` package does not contain this repair;
 rebuild and native acceptance remain pending while the user uses the PC.
+
+## Persisted-state regression check
+
+A further test writes two real completed synthetic events and pending follow-up
+rows to a temporary SQLite database, changes one accepted snapshot's vendor
+session identity, closes the database, and reopens it with a new process boot ID.
+It runs the actual store queries, input validation and recovery drain. Only the
+final automatic-handoff operation is replaced with a recorder; no model or real
+worker is invoked.
+
+The restarted pipeline rejects the mismatched vendor identity, keeps its pending
+row/result and invalid snapshot unchanged, completes the healthy follow-up, and
+does not deliver the invalid event. This proves persistence and validation
+behavior beyond the earlier injected-exception test. It remains a controlled
+synthetic fixture, not evidence about the user's profile or native timeout.
+
+Focused startup/restart checks: **8 passed, 34 deselected in 11.14 seconds**,
+exit 0. Ruff passed. Command:
+`.venv/Scripts/python.exe -m pytest tests/unit/test_event_processing_pipeline.py -q -k 'startup or restart_retains_invalid'`.

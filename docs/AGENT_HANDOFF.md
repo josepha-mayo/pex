@@ -17,7 +17,10 @@ This is the active entry point, not another historical log.
 bindings now receive the same narrow logged-and-skipped `ValueError` handling as
 main event heads. Rows remain intact; later healthy follow-ups continue; runtime
 failures still propagate. Event-processing suite: 41 passed in 45.57 seconds;
-Ruff/diff checks pass. This is not a proven cause/fix of the earlier native
+Ruff/diff checks pass. An additional real SQLite close/reopen regression verifies
+that a mismatched accepted vendor identity stays pending/unchanged while the
+healthy event completes, with no invalid handoff. Focused startup/restart checks:
+8 passed, 34 deselected in 11.14 seconds; Ruff passed. This is not a proven cause/fix of the earlier native
 timeout. Current `4de1db8` package predates the repair; rebuild/native checks stay
 paused. [Exact scope and evidence](demo/evidence/STARTUP_FOLLOWUP_RECOVERY_2026-09-10.md).
 

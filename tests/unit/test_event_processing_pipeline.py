@@ -1299,3 +1299,53 @@ async def test_startup_followup_recovery_does_not_hide_runtime_failure(tmp_path,
     finally:
         await _drain_presentations(pipeline)
         await store.close()
+
+
+@pytest.mark.asyncio
+async def test_restart_retains_invalid_followup_and_recovers_healthy_persisted_event(
+    tmp_path, monkeypatch, caplog
+):
+    path = tmp_path / "pex.sqlite"
+    store, _, session, pipeline = await _pipeline(tmp_path, path=path, boot_id="before")
+    poison = _event(session, "invalid-followup", event_type=EventType.AGENT_RESPONSE)
+    healthy = _event(session, "valid-followup", event_type=EventType.AGENT_RESPONSE)
+    try:
+        for event in (poison, healthy):
+            await pipeline.ingest_event(event, session)
+        snapshot = session.model_copy(update={"vendor_session_id": "different-worker"})
+        await store.db.execute(
+            "UPDATE event_processing SET accepted_session_json = ? WHERE event_id = ?",
+            (snapshot.model_dump_json(), poison.event_id),
+        )
+        await store.db.execute(
+            "UPDATE event_followups SET state = 'pending', result_json = NULL, "
+            "lease_owner = NULL, lease_expires_at = NULL, completed_at = NULL "
+            "WHERE kind = 'auto_handoff' AND event_id IN (?, ?)",
+            (poison.event_id, healthy.event_id),
+        )
+        await store.db.commit()
+    finally:
+        await _drain_presentations(pipeline)
+        await store.close()
+
+    restarted_store, _, _, restarted = await _pipeline(tmp_path, path=path, boot_id="after")
+    handoffs = []
+
+    async def record_handoff(accepted_session, event, verification):
+        handoffs.append(event.event_id)
+
+    monkeypatch.setattr(restarted, "_maybe_auto_handoff", record_handoff)
+    try:
+        assert await restarted.recover_unfinished_events() == [healthy.event_id]
+        assert handoffs == [healthy.event_id]
+        invalid = await _followup_row(restarted_store, poison.event_id, "auto_handoff")
+        valid = await _followup_row(restarted_store, healthy.event_id, "auto_handoff")
+        assert invalid["state"] == "pending"
+        assert invalid["result_json"] is None
+        assert valid["state"] == "complete"
+        assert "accepted session vendor identity changed" in caplog.text
+        processing = await restarted_store.get_event_processing(poison.event_id)
+        assert processing["accepted_session"].vendor_session_id == "different-worker"
+    finally:
+        await _drain_presentations(restarted)
+        await restarted_store.close()
