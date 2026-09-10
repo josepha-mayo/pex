@@ -369,7 +369,7 @@ async def test_saved_supervisor_activation_cannot_block_bridge_health(
     entered = __import__("threading").Event()
     release = __import__("threading").Event()
     if failure_phase == "hung_vault":
-        monkeypatch.setattr("pex_bridge.app._SUPERVISOR_CONFIG_TIMEOUT_SECONDS", 0.02)
+        monkeypatch.setattr("pex_bridge.app._SUPERVISOR_STARTUP_TIMEOUT_SECONDS", 0.02)
 
         def blocking_get(*_args, **_kwargs):
             entered.set()
@@ -418,6 +418,47 @@ async def test_saved_supervisor_activation_cannot_block_bridge_health(
             assert state.pipeline.model is None
         else:
             assert state.supervisor_error == "SupervisorActivationTimeout"
+    finally:
+        release.set()
+        if not activation.done():
+            activation.cancel()
+        await asyncio.gather(activation, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_cold_start_has_separate_budget_without_blocking_health(
+    supervisor_client, monkeypatch,
+):
+    import threading
+
+    from pex_bridge.app import _activate_saved_supervisor_choice
+
+    client, _secret_store, _home = supervisor_client
+    entered = threading.Event()
+    release = threading.Event()
+    model = object()
+
+    def prepare(_choice):
+        entered.set()
+        release.wait(2)
+        return None, model, False
+
+    monkeypatch.setattr("pex_bridge.app._prepare_saved_supervisor_choice", prepare)
+    monkeypatch.setattr("pex_bridge.app._SUPERVISOR_CONFIG_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr("pex_bridge.app._SUPERVISOR_STARTUP_TIMEOUT_SECONDS", 1.0)
+    state.supervisor_choice = None
+    state.supervisor_error = "SupervisorLoading"
+    generation = state.supervisor_config_generation
+    activation = asyncio.create_task(_activate_saved_supervisor_choice(None, generation))
+    try:
+        assert await asyncio.to_thread(entered.wait, 0.5)
+        await asyncio.sleep(0.04)
+        assert not activation.done()
+        assert (await asyncio.wait_for(client.get("/health"), timeout=0.2)).status_code == 200
+        release.set()
+        await asyncio.wait_for(activation, timeout=0.5)
+        assert state.pipeline.model is model
+        assert state.supervisor_error is None
     finally:
         release.set()
         if not activation.done():

@@ -56,6 +56,17 @@ Update this active handoff in place; put detailed receipts in evidence files.
 
 ## Safety hold and user constraints
 
+10 September update: user explicitly approved resuming PEX-only live checks
+("yes, its 3am so u have full access now"). The prior native hold below is
+historical. Keep control scoped to PEX and dedicated test workers; do not
+restart/close unrelated apps, use the quarantined script, or infer paid AWS
+authority. Native b9702fd launched successfully; saved Zen activation timed out,
+then visible Save recovered using the existing vault credential. A three-review
+cap was saved. Von's overlay is visibly transparent and its bubble dismissed.
+Source repair separates background startup's 60-second deadline from Save's
+10-second deadline; 60 supervisor-settings tests pass (108.78s), Ruff passes.
+Cold-start fix still needs rebuilt-native verification; no full live loop claim.
+
 - User reported a whole-PC freeze and later Codex closing during native testing.
   Native app launches, process termination and computer input are ON HOLD pending
   fresh agreement. Earlier blanket live-test approvals do not lift the hold.

@@ -114,6 +114,9 @@ from pex_bridge.supervisor_config import (
 
 logger = logging.getLogger(__name__)
 _SUPERVISOR_CONFIG_TIMEOUT_SECONDS = 10.0
+# Frozen SDK imports and the first OS-vault lookup can exceed a warm Save's
+# deadline. Startup runs off the event loop and must not delay bridge health.
+_SUPERVISOR_STARTUP_TIMEOUT_SECONDS = 60.0
 _PRE_PERMISSION_HOOKS = {
     "preToolUse",
     "beforeShellExecution",
@@ -3154,7 +3157,7 @@ async def _activate_saved_supervisor_choice(
     try:
         runtime, model, api_key_present = await asyncio.wait_for(
             _run_daemon_call(_prepare_saved_supervisor_choice, choice),
-            timeout=_SUPERVISOR_CONFIG_TIMEOUT_SECONDS,
+            timeout=_SUPERVISOR_STARTUP_TIMEOUT_SECONDS,
         )
     except asyncio.CancelledError:
         raise
