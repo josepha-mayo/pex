@@ -19,8 +19,11 @@ inference, and closes only its own pump/pipeline/store. It is explicitly an
 in-memory worker-transport probe, not a real worker or recovery result.
 36 focused offline tests pass, Ruff passes, and the live probe skips with
 `PEX_LIVE_SUPERVISOR=0` (no provider call). Independent review approved.
-Two Codex live-proof cleanup blocks still use loop-wide task cancellation;
-audit those before expanding multi-test live runs. Existing sealed results are
+Both Codex live-proof cleanup blocks are now also scoped to their owned pump,
+pipeline, transport and store. Cleanup exceptions remain visible and later
+resources still close through finally blocks. 31 combined cleanup/proof-contract
+tests pass; Ruff passes; all three live Codex tests skip with authorization
+disabled. No new Codex process or inference was started. Existing sealed results are
 not relabeled or rewritten. Current packaged app remains `06c6b73`.
 
 **Latest: package `06c6b73`, product `97e84d4`.** Both installer integrity gates

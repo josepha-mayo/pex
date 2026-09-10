@@ -31,6 +31,27 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PROOF_SCRATCH = _REPO_ROOT / "benchmarks" / "results" / "_scratch"
 
 
+async def _close_codex_probe(pump, pipeline, transport, store) -> None:
+    """Close this proof's owned resources without touching other loop tasks."""
+    import asyncio
+
+    try:
+        if pump is not None:
+            pump.cancel()
+            try:
+                await pump
+            except asyncio.CancelledError:
+                pass
+    finally:
+        try:
+            await pipeline.close_presentations()
+        finally:
+            try:
+                await asyncio.wait_for(transport.close(), timeout=2)
+            finally:
+                await store.close()
+
+
 def _live_codex_turn_params() -> dict[str, str]:
     """Pin the intentionally modest worker used by the recovery proof."""
 
@@ -345,24 +366,7 @@ async def test_live_codex_stop_inspects_with_strands(tmp_path: Path):
         publish_proof(proof_path, proof)
         publish_proof(tmp_path / "codex_inspect_proof.json", proof)
     finally:
-        current = asyncio.current_task()
-        for task in list(asyncio.all_tasks()):
-            if task is not current:
-                task.cancel()
-        existing = adapter._pump_task
-        if existing is not None:
-            try:
-                await asyncio.wait_for(existing, timeout=1)
-            except (asyncio.CancelledError, TimeoutError, Exception):
-                pass
-        try:
-            await asyncio.wait_for(transport.close(), timeout=2)
-        except Exception:
-            pass
-        try:
-            await store.close()
-        except Exception:
-            pass
+        await _close_codex_probe(adapter._pump_task, pipeline, transport, store)
 
 
 @pytest.mark.live_codex
@@ -582,15 +586,4 @@ async def test_live_codex_incomplete_stop_sends_specific_continue(tmp_path: Path
         publish_proof(proof_path, proof)
         publish_proof(tmp_path / "codex_incomplete_proof.json", proof)
     finally:
-        current = asyncio.current_task()
-        for task in list(asyncio.all_tasks()):
-            if task is not current:
-                task.cancel()
-        try:
-            await asyncio.wait_for(transport.close(), timeout=2)
-        except Exception:
-            pass
-        try:
-            await store.close()
-        except Exception:
-            pass
+        await _close_codex_probe(adapter._pump_task, pipeline, transport, store)
