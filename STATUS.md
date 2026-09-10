@@ -2,6 +2,14 @@
 
 ## Current — 10 September 2026
 
+**Latest: `06c6b73` package / `97e84d4` product.** OpenCode first-run instructions
+now include the separate attached worker session. 276 desktop tests, UI build,
+both installer integrity gates and native onboarding inspection pass.
+[Current evidence](docs/demo/evidence/MVP_ONBOARDING_2026-09-10.md).
+Before rebuilding, PEX completed a twelve-minute observation and responsive
+Inspector refresh/normal close; not causal freeze clearance. Public release
+approval, recording/submission and fresh-user/long-duration checks remain open.
+
 **Latest package/native checkpoint:** product `320249b`, clean verification
 checkout `e56a077` (documentation-only change). Both installer gates pass;
 native startup and recorded OpenCode selection pass. Installers are unsigned.

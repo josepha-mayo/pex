@@ -26,6 +26,10 @@ anything on the user's behalf.
 
 ## Evidence and remaining work
 
+Latest package is `06c6b73` (product `97e84d4`), including corrected first-run
+OpenCode instructions; both installers and native onboarding inspection pass.
+[Current receipt and twelve-minute observation](demo/evidence/MVP_ONBOARDING_2026-09-10.md).
+
 - [x] Native OpenCode connection and persistent goal attachment.
 - [x] Real native Strands correction to the same OpenCode worker, exact recovery
   artifacts, helped outcome, then NOOP; see native d55e899 evidence.

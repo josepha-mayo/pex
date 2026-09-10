@@ -7,6 +7,10 @@ or every research extension into a contest-entry prerequisite.
 
 ## MVP acceptance checkpoint — 10 September 2026
 
+Superseding package: `06c6b73` (product `97e84d4`), 276 desktop tests, UI build,
+MSI/NSIS integrity and native onboarding pass. Both installers remain unsigned.
+[Current evidence and bounded stability limits](demo/evidence/MVP_ONBOARDING_2026-09-10.md).
+
 Latest package `e56a077` includes product `320249b`: production build and both
 installer integrity gates pass, followed by native startup and recorded OpenCode
 selection. Both installers are unsigned. The 71-test supervisor-budget repair

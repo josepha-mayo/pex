@@ -13,12 +13,23 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Latest: package `06c6b73`, product `97e84d4`.** Both installer integrity gates
+pass, followed by native startup and visible three-step OpenCode onboarding.
+PEX is open on Connections; no connection or new worker turn was submitted.
+The preceding package completed a twelve-minute bounded observation, Inspector
+refresh and normal close. Retained-tail CPU was 16.30% of one core, memory
+336.8–340.4 MiB; not freeze clearance. [Exact current evidence and hashes](demo/evidence/MVP_ONBOARDING_2026-09-10.md).
+Next required user-facing work: recording rehearsal/video and approved release
+publication/submission. Fresh-user install and longer stability remain unproven;
+formal research benchmark remains unclaimed. Public-release approval question
+is still pending. No AWS resources or paid model calls were started.
+
 **Onboarding follow-up:** OpenCode setup now explains `serve` versus `attach`
 and creating/resuming the vendor session before selecting it in PEX. Connecting
 an empty server does not create a worker. README and recording instructions
 match the app. 276 desktop tests and production UI build pass; independent
-read-only review approved. This copy-only follow-up is not yet in the package
-identified below. No adapter behavior, credentials or process lifecycle changed.
+read-only review approved. This copy-only follow-up is now bundled in `06c6b73`.
+No adapter behavior, credentials or process lifecycle changed.
 
 **Latest package: `e56a077` (product `320249b`).** Production build and MSI/NSIS
 extraction/content/eight-pet checks exited 0. Both installers are unsigned.

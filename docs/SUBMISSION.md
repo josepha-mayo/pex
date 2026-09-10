@@ -1,7 +1,7 @@
 # Devpost submission copy
 
 > **Current claim boundary — 10 September 2026:** draft, not submitted. Package
-> `e56a077` (product `320249b`) passes both installer gates and native reopening.
+> `06c6b73` (product `97e84d4`) passes both installer gates and native onboarding.
 > Installers are unsigned. Real packaged
 > OpenCode/Strands recovery and quiet evidence exists on the source revisions
 > recorded in the active handoff; Codex App Server has separate source proofs.
