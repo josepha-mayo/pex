@@ -65,21 +65,23 @@ Update this active handoff in place; put detailed receipts in evidence files.
 
 ## Current source versus package
 
-Newer source-only fix: AgentCore request compaction now preserves validated
+Included in package b9702fd: AgentCore request compaction preserves validated
 complete artifact row counts instead of dropping them. Partial/invalid counts
 remain unknown, and contents stay local. Nine regressions plus two actual
 JSONL-reader-to-envelope cases cover this. The combined AgentCore/Strands gate
 passed 221 tests before the two final additions; full AgentCore client suite then
-passed 112 tests. Collect this fix into the next package before live cloud checks.
+passed 112 tests. Follow-through into audited model-tool output is also verified
+offline; combined client/runtime/pipeline tests passed 158 cases. Live cloud
+behavior remains unproven.
 
 Last verified Windows package source:
-`2f5038e2aa36a5b742ada6be3ad34b4e68b3da17`. Includes HTTP/Codex memory-retention
-fixes and Zen Muse routing repair. The default artifact paths below now contain
+`b9702fd70113462d82df302b9ac01ebfe46b4281`. Includes HTTP/Codex memory-retention,
+Zen Muse routing and AgentCore artifact-count fixes. The default paths now contain
 this build; historical 166a656/d1b259b hashes do not describe the current files.
 Both MSI/NSIS passed extracted executable/hash and exact pet-inventory checks.
 
-- Receipt: `build/pex-package-receipt-2f5038e.json`.
-- [Durable hashes, warnings, commands and limitations](demo/evidence/PACKAGE_2F5038E_2026-09-10.md).
+- Receipt: `build/pex-package-receipt-b9702fd.json`.
+- [Durable hashes, warnings, commands and limitations](demo/evidence/PACKAGE_B9702FD_2026-09-10.md).
 - Desktop: `apps/desktop/src-tauri/target/release/pex-desktop.exe`.
 - MSI: `apps/desktop/src-tauri/target/release/bundle/msi/PEX_0.1.0_x64_en-US.msi`.
 - NSIS: `apps/desktop/src-tauri/target/release/bundle/nsis/PEX_0.1.0_x64-setup.exe`.

@@ -5,8 +5,8 @@
 It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude Code, OpenCode, and other coding agents you already use. It is not another coding harness, not a Kanban board, and not a chat UI that makes you babysit a babysitter.
 
 **Development status — 10 September 2026:** not submission-ready. Package source
-`2f5038e` passes MSI/NSIS content verification and includes the HTTP/Codex resource
-fixes and Zen routing repair. A saved-key Zen/Strands live inference probe passed;
+`b9702fd` passes MSI/NSIS content verification and includes the HTTP/Codex resource
+fixes, Zen routing repair and AgentCore artifact-count preservation. A saved-key Zen/Strands live inference probe passed;
 it used a synthetic session, not a real worker. Source `d53de4c` passed 423 selected backend tests
 and all 268 desktop tests. Native stability/UX, current-source live supervision,
 AgentCore deployment and a frozen comparative benchmark remain unverified.

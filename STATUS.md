@@ -2,19 +2,19 @@
 
 ## Current — 10 September 2026
 
-Newer than the verified installer: AgentCore artifact compaction now preserves
+Included in verified package `b9702fd`: AgentCore artifact compaction preserves
 exact complete row counts while withholding file contents and treating incomplete
 counts as unknown. Nine regression cases and two reader-to-envelope checks cover
-the fix; full AgentCore client suite passed 112 tests. Not yet packaged or proven
-against a deployed runtime.
+the fix; full AgentCore client suite passed 112 tests. Not yet proven against a
+deployed runtime.
 
 At `4329978`, a live supervisor-only probe passed using the saved OS-vault Zen
 Contributor Free configuration: real Strands inference, exact provider/model/API,
 and typed decision. No worker/UI attached; synthetic input, not a behavioral
 benchmark. [Receipt](docs/demo/evidence/LIVE_ZEN_SUPERVISOR_4329978_2026-09-10.md).
 
-Submission remains **NO-GO**. Latest verified package source is `2f5038e`.
-[Installer hashes and limitations](docs/demo/evidence/PACKAGE_2F5038E_2026-09-10.md)
+Submission remains **NO-GO**. Latest verified package source is `b9702fd`.
+[Installer hashes and limitations](docs/demo/evidence/PACKAGE_B9702FD_2026-09-10.md)
 confirm MSI/NSIS contents and eight-pet inventories, not native behavior. This
 package includes HTTP retention/gap bounds, Codex capture budgeting and the Zen
 Muse routing repair. Default installer paths now contain these verified artifacts;
