@@ -52,3 +52,15 @@ snapshot reported 12 logical processors at 100% load and 37,055,648 KiB free
 physical memory. The timings above are therefore loaded-machine observations,
 not a portable startup benchmark or evidence of RAM exhaustion. No unrelated
 process was stopped or reprioritized.
+
+## Follow-up offline checks
+
+At source `0b005db`, the desktop suite includes runtime-tree integrity checks:
+283 passed, one explicit Windows EPERM symlink-fixture skip, exit 0 in 106.34s.
+
+`python -m pytest tests/unit/test_bridge_main_watchdog.py tests/unit/test_startup_trace.py -q`
+returned 19 passed and one failed in 32.28s. The failure was the bootloader-parent
+case waiting five seconds for its child to print `ready`, before terminating
+either owned sentinel. An isolated rerun of that exact case passed in 21.75s,
+exit 0, without code changes. Retain the initial failure: the rerun does not
+prove a cause or clear packaged startup. No unrelated process was terminated.
