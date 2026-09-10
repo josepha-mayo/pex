@@ -24,6 +24,23 @@ from pex_protocol.intervention import Intervention
 from pex_protocol.session import HarnessEvent, HarnessSession
 
 
+@pytest.mark.parametrize("actual_text", [None, "message.part.updated"])
+def test_transport_fallback_is_distinct_from_literal_event_name(actual_text):
+    adapter, session = _adapter_session()
+    part = {"type": "step-finish", "sessionID": session.vendor_session_id}
+    if actual_text is not None:
+        part.update(type="text", text=actual_text)
+    event = adapter.normalize_sse(
+        session,
+        {
+            "type": "message.part.updated",
+            "properties": {"part": part, "cwd": session.cwd},
+        },
+    )
+    assert event.message_delta == "message.part.updated"
+    assert event.metadata["transport_text_fallback"] is (actual_text is None)
+
+
 def _session(vendor_id: str = "session-one") -> HarnessSession:
     return HarnessSession(
         id=f"opencode:{vendor_id}",
@@ -117,6 +134,8 @@ def _human_decision_intervention(session: HarnessSession) -> Intervention:
             },
         },
     )
+
+
 def _assistant_payload(
     session: HarnessSession,
     *,
@@ -193,9 +212,7 @@ async def test_http_retention_gap_reaches_opencode_delivery_guard(monkeypatch, l
         assert len(observed) == 1
         event, bound_session = observed[0]
         assert bound_session.id == session.id
-        assert event.metadata[OPENCODE_MESSAGE_LINEAGE_KEY]["stream_contiguous"] is (
-            loss == "none"
-        )
+        assert event.metadata[OPENCODE_MESSAGE_LINEAGE_KEY]["stream_contiguous"] is (loss == "none")
         assert event_matches_opencode_delivery(_intervention(session), session, event) is (
             loss == "none"
         )
@@ -210,9 +227,7 @@ def test_exact_descendant_of_delivered_human_decision_matches() -> None:
     event = adapter.normalize_sse(session, _assistant_payload(session))
 
     assert (
-        event_matches_opencode_delivery(
-            _human_decision_intervention(session), session, event
-        )
+        event_matches_opencode_delivery(_human_decision_intervention(session), session, event)
         is True
     )
 
@@ -254,9 +269,7 @@ def test_assistant_part_inherits_only_an_observed_exact_parent() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    "parent_id", ["human-concurrent", "user-old", " user-pex ", "", None, 17]
-)
+@pytest.mark.parametrize("parent_id", ["human-concurrent", "user-old", " user-pex ", "", None, 17])
 def test_unrelated_absent_or_malformed_parent_never_matches(parent_id: object) -> None:
     adapter, session = _adapter_session()
     event = adapter.normalize_sse(
@@ -381,9 +394,7 @@ def test_duplicate_final_sibling_for_same_parent_is_not_a_second_stop() -> None:
     assert first.event_type == EventType.STOP
     assert duplicate.event_type == EventType.STATUS
     assert duplicate.phase == EventPhase.AFTER
-    assert event_matches_opencode_delivery(
-        _intervention(session), session, duplicate
-    ) is False
+    assert event_matches_opencode_delivery(_intervention(session), session, duplicate) is False
 
 
 def test_new_user_prompt_restores_idle_fallback_for_the_new_turn() -> None:
@@ -486,7 +497,10 @@ def test_completed_assistant_message_is_exact_terminal_for_its_parent() -> None:
     ],
 )
 async def test_pipeline_attributes_verified_terminal_only_through_exact_parent(
-    tmp_path, status, expected_outcome, helped,
+    tmp_path,
+    status,
+    expected_outcome,
+    helped,
 ) -> None:
     now = datetime.now(UTC)
     project = str(tmp_path)
@@ -552,9 +566,7 @@ def test_malformed_or_incomplete_completion_is_not_terminal(time_info: dict) -> 
     event = adapter.normalize_sse(session, payload)
 
     assert event.event_type == EventType.AGENT_RESPONSE
-    assert event.metadata[OPENCODE_MESSAGE_LINEAGE_KEY][
-        "assistant_message_completed"
-    ] is False
+    assert event.metadata[OPENCODE_MESSAGE_LINEAGE_KEY]["assistant_message_completed"] is False
 
 
 def test_stop_finish_without_required_parent_is_not_terminal() -> None:
@@ -764,26 +776,32 @@ def test_cross_session_project_goal_and_receipt_bindings_fail_closed() -> None:
 
     foreign = _session("session-two")
     assert event_matches_opencode_delivery(intervention, foreign, event) is False
-    assert event_matches_opencode_delivery(
-        intervention,
-        session.model_copy(update={"project_id": "C:/other"}),
-        event,
-    ) is False
-    assert event_matches_opencode_delivery(
-        intervention.model_copy(
-            update={
-                "metadata": {
-                    **intervention.metadata,
-                    "worker_delivery_receipt": {
-                        **intervention.metadata["worker_delivery_receipt"],
-                        "vendor_session_id": "session-two",
-                    },
+    assert (
+        event_matches_opencode_delivery(
+            intervention,
+            session.model_copy(update={"project_id": "C:/other"}),
+            event,
+        )
+        is False
+    )
+    assert (
+        event_matches_opencode_delivery(
+            intervention.model_copy(
+                update={
+                    "metadata": {
+                        **intervention.metadata,
+                        "worker_delivery_receipt": {
+                            **intervention.metadata["worker_delivery_receipt"],
+                            "vendor_session_id": "session-two",
+                        },
+                    }
                 }
-            }
-        ),
-        session,
-        event,
-    ) is False
+            ),
+            session,
+            event,
+        )
+        is False
+    )
 
 
 @pytest.mark.parametrize("result", ["send_failed", "send_delivery_uncertain", None])

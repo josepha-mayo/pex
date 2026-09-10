@@ -1,11 +1,48 @@
 # PEX active handoff
 
+**Shipping scope: [MVP_SHIP_GATE.md](MVP_SHIP_GATE.md).** Current official rules
+make AgentCore deployment optional. Retain its tested implementation without
+claiming deployment. The user's later small-MVP request takes priority over
+historical expansion gates; formal four-arm scores remain unclaimed. The unsafe
+933239a launcher instructions have been removed from the recording runbook.
+
 Maintained checkpoint: 10 September 2026; current-source Codex recovery and quiet checks passed.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files and running processes before relying on this checkpoint.
 This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
+
+**10 September, current checkpoint:** package `1a5eb92` passed both installer
+content/eight-pet checks and native reopening. Receipt
+`build/pex-package-receipt-1a5eb92.json`, SHA-256
+`74f4328e8aab4a7d397a8dbc977dee85b5bd5ee71008ec182a881dba21cbd3a7`.
+Native Inspector displays newer unverified STOP as completion uncertain,
+not the obsolete acceptance gap. Pet is hidden. Re-enumerate windows before input.
+
+Full offline suite on product/test source `1a5eb92`: **4,313 passed, 16 skipped,
+16 deselected**, exit 0, 1150.65 seconds. XML `build/offline-1a5eb92.xml`, SHA-256
+`3b52f989edb76091077028c939835cdc3cd791eed7d7970b11f3de44cdf6f35f`.
+Only documentation/diagram changed during that run. Separate focused offline
+Strands/AgentCore contracts: 235 passed; no AWS deployment or paid inference.
+
+A later display-only repair hides OpenCode payloads that fall back to their
+transport event kind, preserving actual text and the immutable journal. Native
+`message.part.updated` exposed this remaining fallback. The updated snapshot
+suite passes 22 tests and Ruff; combined snapshot, OpenCode lineage and delta
+tests pass 84. Independent review caught literal event-name ambiguity, so the
+adapter now tags synthetic fallback versus genuine text explicitly. Historical
+journal rows lack the marker and retain a display-only equality heuristic;
+their original data is not migrated or altered. This repair still needs packaging and
+native verification. No extra polling or model calls were added.
+
+Next: final package/native setup, pause/reopen and bounded stability checks;
+retain honest behavior evidence; finish recording and public submission materials.
+Follow `MVP_SHIP_GATE.md`, not the historical expansion queue. Optional AWS
+deployment and formal four-arm research scoring are not contest prerequisites.
+No formal score or freeze clearance is claimed.
+
+### Historical checkpoint below — superseded where it conflicts
 
 Package `1f3a0ea` now passes both installer extraction/content/eight-pet gates,
 exit 0. Receipt `build/pex-package-receipt-1f3a0ea.json`, SHA-256

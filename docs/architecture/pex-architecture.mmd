@@ -1,58 +1,37 @@
-%%{init: {"theme":"base","themeVariables":{"background":"#081014","primaryTextColor":"#f4f1e8","lineColor":"#789097","clusterBkg":"#101a1f","clusterBorder":"#486067","edgeLabelBackground":"#101a1f"}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"18px","primaryTextColor":"#f4f1e8","lineColor":"#86a7ad","clusterBkg":"#132126","clusterBorder":"#486067","edgeLabelBackground":"#081014"},"flowchart":{"curve":"basis","nodeSpacing":35,"rankSpacing":55}}}%%
 flowchart TB
-  human[Human<br/>goals + irreversible decisions]
-  pet[PEX Pet<br/>Inspector + Command Deck]
+  human[Human<br/>owns goals and decisions]
+  ui[PEX desktop + companion<br/>goal, pause, inspect, dismiss]
 
-  subgraph local[LOCAL IMPLEMENTED + TESTED]
-    direction LR
-    store[(SQLite intent ledger<br/>JSONL audit parity)]
-    adapters[Capability-negotiated adapters]
-    verifier[Independent Verifier<br/>local contract coverage]
-    cursor[Cursor]
-    others[Claude Code / OpenCode / Hermes]
-    cursor --> adapters
-    others --> adapters
+  subgraph local[LOCAL PEX · IMPLEMENTED]
+    direction TB
+    bridge[Bridge + adapters<br/>observe existing workers]
+    evidence[Goal-bound evidence<br/>files, tests, progress]
+    strands[Strands Agents supervisor<br/>bounded structured proposal]
+    verifier[Independent verifier<br/>checks consequential corrections]
+    policy[Local policy guard<br/>allow, deny, or ask human]
+    ledger[(SQLite goal ledger<br/>durable action + outcome audit)]
+    bridge --> evidence --> strands
+    strands -->|correction proposal| verifier --> policy
+    strands -->|NOOP: stay quiet| ledger
+    policy -->|record decision| ledger
   end
 
-  subgraph live[VALIDATED LIVE · CODEX PAIR]
-    direction LR
-    codex[Codex App Server<br/>same worker thread]
-    bridge[Local Bridge<br/>evidence + policy]
-    strands[Strands Supervisor<br/>real provider calls]
-    out[Typed action<br/>SEND_NUDGE or NOOP]
-    result[Observed outcome<br/>unsatisfied → supported]
-    codex -->|STOP event| bridge
-    bridge -->|bounded evidence tools| strands
-    strands -->|structured proposal| verifier
-    bridge -->|deterministic truth| verifier
-    verifier --> out
-    out -->|policy-gated same-thread turn| codex
-    codex --> result
-    result --> bridge
-  end
+  worker[Existing coding worker<br/>OpenCode HTTP / Codex App Server]
+  zen[Zen BYOK model<br/>credential held in local vault]
+  cloud[Optional AgentCore Runtime<br/>implemented + offline-tested<br/>NOT DEPLOYED]
 
-  subgraph target[DEPLOY TARGET · NOT LIVE-CLAIMED]
-    direction LR
-    runtime[Bedrock AgentCore Runtime]
-    memory[AgentCore Memory]
-    cw[CloudWatch]
-    runtime -.-> memory
-    runtime -.-> cw
-  end
+  human --> ui -->|goal and controls| bridge
+  worker -->|worker events| bridge
+  policy -->|authorized same-session correction| worker
+  policy -->|consequential choice| ui
+  strands <-->|model inference| zen
+  bridge -.->|optional remote proposal path| cloud
 
-  human --> pet
-  pet <--> bridge
-  adapters --> bridge
-  bridge <--> store
-  bridge -.->|optional remote supervisor| runtime
-  runtime -.-> strands
-
-  classDef validated fill:#173f35,stroke:#67deb1,color:#f4f1e8,stroke-width:2px;
-  classDef implemented fill:#17252b,stroke:#72939a,color:#f4f1e8;
-  classDef target fill:#29261d,stroke:#b49a50,color:#f4f1e8,stroke-dasharray:5 4;
-  class codex,bridge,strands,out,result validated;
-  class human,pet,store,adapters,cursor,others,verifier implemented;
-  class runtime,memory,cw target;
-  style live fill:#0d1918,stroke:#67deb1,color:#f4f1e8,stroke-width:2px
+  classDef live fill:#173f35,stroke:#67deb1,color:#f4f1e8,stroke-width:2px;
+  classDef normal fill:#17252b,stroke:#72939a,color:#f4f1e8;
+  classDef optional fill:#29261d,stroke:#c9ad61,color:#f4f1e8,stroke-dasharray:5 4;
+  class bridge,evidence,strands,verifier,policy,worker live;
+  class human,ui,ledger,zen normal;
+  class cloud optional;
   style local fill:#101a1f,stroke:#617b82,color:#f4f1e8
-  style target fill:#1e1b13,stroke:#b49a50,color:#f4f1e8,stroke-dasharray:5 4

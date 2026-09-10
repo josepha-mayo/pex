@@ -1,14 +1,14 @@
 # Devpost submission copy
 
-> **Current claim boundary — 10 September 2026:** draft only; not approved for
-> submission. Latest verified package is `166a656`; subsequent HTTP/Codex resource
-> fixes are source-only. See [package evidence](demo/evidence/PACKAGE_166A656_2026-09-10.md)
-> and [423-backend/268-desktop regression evidence](demo/evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md).
-> These are not live UX, model, deployed AgentCore or comparative-impact proof.
-> Native testing is on hold after the PC-freeze/Codex-closure reports. Earlier
-> approvals below are historical. Follow [the active handoff](AGENT_HANDOFF.md).
-> Do not present old live receipts as current-source results or package
-> `release_ready:true` as overall submission readiness.
+> **Current claim boundary — 10 September 2026:** draft, not submitted. Package
+> `1a5eb92` passes both installer gates and native reopening. Real packaged
+> OpenCode/Strands recovery and quiet evidence exists on the source revisions
+> recorded in the active handoff; Codex App Server has separate source proofs.
+> Native testing is authorized, not on the old hold. AgentCore is implemented
+> and offline-tested, not deployed; deployment is optional under refreshed
+> official rules. No frozen comparative score is available. Finish
+> [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
+> equate package integrity or historical green tests with overall readiness.
 
 ## Historical evidence context
 

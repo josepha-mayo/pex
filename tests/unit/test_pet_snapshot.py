@@ -368,6 +368,7 @@ async def test_pet_snapshot_uses_last_worker_message(tmp_path, harness):
     )
     if harness == HarnessType.OPENCODE:
         for kind, text, event_type in [
+            ("message.part.updated", "message.part.updated", EventType.AGENT_RESPONSE),
             ("message.updated", "assistant", EventType.STOP),
             ("message.updated", "user", EventType.STATUS),
             ("session.status", "session.status", EventType.STATUS),
@@ -536,6 +537,46 @@ def test_visible_event_line_uses_hook_name():
         metadata={"hook_event_name": "afterAgentResponse"},
     )
     assert visible_event_line(event) == "cursor · agent replied"
+
+
+@pytest.mark.parametrize("kind", ["message.part.updated", "future.transport.event"])
+def test_visible_event_line_ignores_opencode_transport_fallback(kind):
+    event = HarnessEvent(
+        event_id="transport-fallback",
+        ts=datetime.now(UTC),
+        harness_type=HarnessType.OPENCODE,
+        session_id="opencode:live",
+        event_type=EventType.AGENT_RESPONSE,
+        phase=EventPhase.AFTER,
+        message_delta=kind,
+        metadata={"sse_type": kind},
+    )
+    assert visible_event_line(event) is None
+    assert event.message_delta == kind  # Display filtering never changes the journal.
+    assert (
+        visible_event_line(
+            event.model_copy(
+                update={
+                    "metadata": {
+                        "sse_type": kind,
+                        "transport_text_fallback": False,
+                    }
+                }
+            )
+        )
+        == kind
+    )
+    assert (
+        visible_event_line(
+            event.model_copy(update={"message_delta": "Verified both output files."})
+        )
+        == "Verified both output files."
+    )
+    assert (
+        visible_event_line(event.model_copy(update={"message_delta": None, "command": "pytest -q"}))
+        == "pytest -q"
+    )
+    assert visible_event_line(event.model_copy(update={"harness_type": HarnessType.CODEX})) == kind
 
 
 def test_collapse_live_agents_hides_hook_spam():

@@ -1046,10 +1046,12 @@ class OpenCodeAdapter(HarnessAdapter):
             or state.get("output")
             or state.get("error")
             or info.get("role")
-            or kind
         )
         if isinstance(text, dict):
-            text = text.get("text") or kind
+            text = text.get("text")
+        transport_text_fallback = not text
+        if transport_text_fallback:
+            text = kind
         permission = kind in {"permission.asked", "permission.updated"}
         try:
             request_id = (
@@ -1099,6 +1101,9 @@ class OpenCodeAdapter(HarnessAdapter):
             else None
         )
         metadata: dict[str, object] = {"sse_type": kind}
+        if transport_text_fallback or text == kind:
+            # Explicit false preserves genuine text equal to an event name.
+            metadata["transport_text_fallback"] = transport_text_fallback
         if kind == "session.status" and isinstance(props.get("status"), dict):
             observed_status = props["status"].get("type")
             if isinstance(observed_status, str) and observed_status in {"idle", "busy", "retry"}:

@@ -1,19 +1,21 @@
 # PEX five-minute recording runbook
 
-Do not improvise the demo. Keep one visible Codex worker, one Pex companion, and one clear
-recovery story. Switch to Von only once.
+Use the verified OpenCode recovery story, one PEX companion, and a clear persistent
+goal. Mention Codex App Server support separately; do not imply control of an
+arbitrary existing Codex desktop conversation. AgentCore deployment is optional
+under the official rules refreshed through Devpost on 10 September 2026.
 
 ## Before recording
 
-- Use the installer and receipt from
-  `C:\Users\JosephMayo\Documents\Codex\PEX-submission-933239a`.
+- Use the source-specific installer and receipt identified in the active
+  [handoff](../AGENT_HANDOFF.md). Do not use old submission folders by habit.
 - Confirm the package receipt still says `release_ready: true` with no blockers.
 - Complete the separately authorized bounded native stability run. Stop if startup, Retry,
   closing, or reopening hangs; retain the failure instead of filming around it.
-  Prepared harness:
-  `C:\Users\JosephMayo\Documents\Codex\pex-native-smoke-933239a.ps1`, SHA-256
-  `2328F0B7524E64AA4163F8A90FD2FA54ABB36FA32CE80044061E8C9CBE30B2AA`.
-  It must not be run until the user gives the exact authorization `run bounded native smoke`.
+  **Never run the quarantined 933239a native-smoke launcher.** It uses unsafe
+  process cleanup. Close PEX normally through its own window; fixture controllers
+  may stop only subprocess handles they created. Never kill a recursive PID tree
+  or unrelated Codex/Cursor/Devin process to prepare a recording.
 - Use the verified free Muse supervisor and an isolated OpenCode free worker setting already
   accepted by the receipts. Never reuse the private proof session in a public recording.
   Never switch to a paid fallback.
@@ -41,8 +43,8 @@ recovery story. Switch to Von only once.
 6. **3:30–4:05 — Restraint.** Show the separate completed OpenCode case, PEX choosing a
    model-backed `NOOP`, and zero PEX follow-ups. The benefit is fewer unnecessary human
    interruptions, not more agent chatter.
-7. **4:05–4:30 — Engineering evidence.** Briefly show the current offline receipt: 200/200
-   Strands/AgentCore and 201/201 PexBench/Cursor contracts. If useful, show the retained local
+7. **4:05–4:30 — Engineering evidence.** Briefly show source-bound current offline and
+   behavioral receipts, not a stale hardcoded test count. If useful, show the retained local
    AgentCore protocol receipt, but say AgentCore is the tested deploy target unless a real AWS
    Runtime is deployed before filming.
 8. **4:30–4:50 — Honest limits.** Do not show or quote a benchmark lift. PexBench is unfrozen,

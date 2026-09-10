@@ -1,6 +1,20 @@
 # PEX shipping checklist
 
+**Start with [the focused MVP shipping gate](MVP_SHIP_GATE.md).** The user's
+later scope narrows the release target; the extensive historical checklist below
+is retained for audit and does not turn optional AgentCore deployment, Cursor,
+or every research extension into a contest-entry prerequisite.
+
 ## MVP acceptance checkpoint — 10 September 2026
+
+Current package `1a5eb92` passes both installer gates and native reopening;
+Inspector correctly shows newer unverified completion as uncertain. Full offline
+suite on that product/test source: **4,313 passed, 16 skipped, 16 deselected**,
+exit 0. An additional transport-kind progress-label fix passes 22 snapshot tests
+and Ruff, but needs final packaging/native verification. Focused Strands/AgentCore
+offline contracts separately pass 235 tests. No live AWS claim.
+
+### Earlier checkpoint details (source-bound historical evidence)
 
 Latest package `1f3a0ea` verified both installers and reopened natively.
 Follow-up role-fallback and stale goal-verdict repairs pass 45 recovery,

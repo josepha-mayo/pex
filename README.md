@@ -4,13 +4,18 @@
 
 It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude Code, OpenCode, and other coding agents you already use. It is not another coding harness, not a Kanban board, and not a chat UI that makes you babysit a babysitter.
 
-**Development status — 10 September 2026:** not submission-ready. Package source
-`b9702fd` passes MSI/NSIS content verification and includes the HTTP/Codex resource
-fixes, Zen routing repair and AgentCore artifact-count preservation. A saved-key Zen/Strands live inference probe passed;
-it used a synthetic session, not a real worker. Source `d53de4c` passed 423 selected backend tests
-and all 268 desktop tests. Native stability/UX, current-source live supervision,
-AgentCore deployment and a frozen comparative benchmark remain unverified.
-See [current status](STATUS.md) and the [shipping checklist](docs/SHIP_CHECKLIST.md).
+**MVP in final validation — 10 September 2026.** The shipping focus is OpenCode,
+Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
+OpenCode + Strands has demonstrated same-worker correction, exact artifact
+recovery, a helped outcome and quiet completion. Codex App Server has separate
+real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
+Package `1a5eb92` passes both installer content/inventory gates and opens natively.
+The full offline regression passed 4,313 tests (16 skipped, 16 deselected);
+final setup, stability and recording
+checks remain. AgentCore is implemented and tested but **not deployed**;
+deployment is optional under the current contest rules. No formal comparative
+benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
+[current status](STATUS.md), and the source-bound evidence linked there.
 
 ## The pain it removes
 

@@ -2357,9 +2357,7 @@ class Pipeline:
             self._advisory_workspace_scan_reservations
             and self._advisory_workspace_scan_reservations[0][0] <= cutoff
         ):
-            observed_at, observed_session_id = (
-                self._advisory_workspace_scan_reservations.popleft()
-            )
+            observed_at, observed_session_id = self._advisory_workspace_scan_reservations.popleft()
             if (
                 self._advisory_workspace_scan_last_by_session.get(observed_session_id)
                 == observed_at
@@ -2372,10 +2370,7 @@ class Pipeline:
             and now - previous < ADVISORY_WORKSPACE_SCAN_SESSION_MIN_INTERVAL_SECONDS
         ):
             return "workspace_snapshot_session_cooldown"
-        if (
-            len(self._advisory_workspace_scan_reservations)
-            >= ADVISORY_WORKSPACE_SCANS_PER_WINDOW
-        ):
+        if len(self._advisory_workspace_scan_reservations) >= ADVISORY_WORKSPACE_SCANS_PER_WINDOW:
             return "workspace_snapshot_aggregate_budget"
 
         self._advisory_workspace_scan_reservations.append((now, session_id))
@@ -2383,7 +2378,8 @@ class Pipeline:
         return None
 
     async def _advisory_snapshot_for_session(
-        self, session: HarnessSession,
+        self,
+        session: HarnessSession,
     ) -> tuple[dict | None, str | None]:
         """Run one optional scan or expose why current evidence was not gathered."""
 
@@ -2529,8 +2525,8 @@ class Pipeline:
         ):
             workspace: dict = {}
             try:
-                advisory_workspace, unavailable_reason = (
-                    await self._advisory_snapshot_for_session(session)
+                advisory_workspace, unavailable_reason = await self._advisory_snapshot_for_session(
+                    session
                 )
                 if advisory_workspace is None:
                     scores.features["prerequisite_evidence_unavailable"] = unavailable_reason
@@ -6435,9 +6431,7 @@ class Pipeline:
 
         if blocked_goal_ids:
             accepted_sessions = [
-                session
-                for session in accepted_sessions
-                if session.goal_id not in blocked_goal_ids
+                session for session in accepted_sessions if session.goal_id not in blocked_goal_ids
             ]
             interventions_by_id = {
                 row_id: row
@@ -6780,6 +6774,19 @@ def activity_phrase(event: HarnessEvent | None) -> str:
 
 
 def visible_event_line(event: HarnessEvent) -> str | None:
+    sse_type = (event.metadata or {}).get("sse_type")
+    if (
+        event.harness_type == HarnessType.OPENCODE
+        and isinstance(sse_type, str)
+        and sse_type
+        and event.message_delta == sse_type
+        and (event.metadata or {}).get("transport_text_fallback") is not False
+        and not event.command
+        and not event.tool_name
+    ):
+        # Older journal entries lack the marker; retain their display-only
+        # fallback heuristic, but honor explicit genuine text from new adapters.
+        return None
     if (
         event.harness_type == HarnessType.OPENCODE
         and (event.metadata or {}).get("sse_type") == "message.updated"
