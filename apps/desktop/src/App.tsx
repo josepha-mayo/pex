@@ -33,7 +33,7 @@ import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } 
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
 import bundledPexSheet from "./pets/pex/spritesheet.webp";
-import { applyPetClickThrough, expandMainSurface, hidePetOverlay, nextPetExpansion, PET_NATIVE_DISMISSED_EVENT, PET_VISIBILITY_EVENT, petClickThroughEnabled, petOverlayVisible, releasePetOverlay, setPetOverlayVisible, showPetOverlay } from "./releasePet";
+import { applyPetClickThrough, expandMainSurface, hidePetOverlay, nextPetExpansion, PET_NATIVE_DISMISSED_EVENT, PET_VISIBILITY_EVENT, petClickThroughEnabled, petOverlayVisible, petVisibilityNote, reconcilePetVisibilityNote, releasePetOverlay, setPetOverlayVisible, showPetOverlay } from "./releasePet";
 import {
   advanceBridgeBootstrapStatus,
   bridgeBootstrapAvailable,
@@ -430,8 +430,12 @@ export function App() {
   const observationActive = pageVisible && (shell !== "pet" || petVisible);
 
   useEffect(() => {
-    const syncVisibility = () => setPetVisible(petOverlayVisible());
-    const syncDirectVisibility = (event: Event) => setPetVisible(Boolean((event as CustomEvent).detail));
+    const acceptVisibility = (visible: boolean) => {
+      setPetVisible(visible);
+      setNote((current) => reconcilePetVisibilityNote(current, visible));
+    };
+    const syncVisibility = () => acceptVisibility(petOverlayVisible());
+    const syncDirectVisibility = (event: Event) => acceptVisibility(Boolean((event as CustomEvent).detail));
     window.addEventListener("storage", syncVisibility);
     window.addEventListener(PET_VISIBILITY_EVENT, syncDirectVisibility);
     return () => {
@@ -2105,7 +2109,7 @@ export function App() {
     try {
       if (visible) await showPetOverlay();
       else await hidePetOverlay();
-      setNote(visible ? "Desktop pet shown." : "Desktop pet hidden. You can restore it here anytime.");
+      setNote(petVisibilityNote(petOverlayVisible()));
     } catch (error) {
       setNote(operationError(error, visible ? "Could not show the desktop pet." : "Could not hide the desktop pet."));
     }

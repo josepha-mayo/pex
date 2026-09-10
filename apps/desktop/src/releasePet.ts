@@ -4,6 +4,16 @@ const PET_VISIBLE_KEY = "pex.pet.overlay.visible";
 export const PET_VISIBILITY_EVENT = "pex-pet-visibility";
 export const PET_NATIVE_DISMISSED_EVENT = "pex-pet-native-dismissed";
 
+export function petVisibilityNote(visible: boolean): string {
+  return visible ? "Desktop pet shown." : "Desktop pet hidden. You can restore it here anytime.";
+}
+
+export function reconcilePetVisibilityNote(note: string | null, visible: boolean): string | null {
+  // A second webview can change visibility after Settings reports success.
+  // Update only visibility confirmations; preserve unrelated errors and feedback.
+  return note === petVisibilityNote(!visible) ? petVisibilityNote(visible) : note;
+}
+
 export function petOverlayVisible(): boolean {
   return typeof window === "undefined" || window.localStorage.getItem(PET_VISIBLE_KEY) !== "false";
 }

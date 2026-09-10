@@ -13,6 +13,21 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Completion runner and pet feedback source repairs:** tracked
+`scripts/opencode_quiet_ten.py` now requires an idle terminal latest generation,
+accepted follow-up history, stable event/action identity and final rereads.
+36 helper/CLI tests pass; 129 surrounding OpenCode tests passed before the last
+three CLI cases were added. Independent review found the target race closed.
+Offline replay rejects the real unfinished tenth case; no new provider calls.
+Native PEX transparency/bubble dismissal/hide controls were checked. Hiding from
+the pet exposed stale Settings feedback; source now reconciles that message.
+277 desktop tests and production UI build pass after repairing test import
+isolation (the failed initial run is retained in the report).
+[Changes, tests and limitations](demo/evidence/COMPLETION_FENCE_AND_PET_FEEDBACK_2026-09-10.md).
+**Next: rebuild/package and verify the feedback fix natively.** Running/staged
+package remains `06c6b73`; do not call the source-only fix packaged yet.
+Do not rerun live probes while the previous free-route limit remains active.
+
 **Latest live restraint batch on `739c8d3`: nine valid quiet passes, tenth case
 ineligible/failed; run exit 1, not a clean ten-case pass.** Last worker wrote a
 UTF-8 BOM and hit free-route HTTP 429. PEX initially chose uncertainty NOOP,
@@ -22,7 +37,7 @@ settlement gate sealed and stopped its own server. This is an incomplete recover
 observation, not proof the correction failed. Independent review confirmed.
 No live process remains from that batch and no further provider calls should
 run while its limit is active. [Full chronology, token costs and hashes](demo/evidence/QUIET_BATCH_739C8D3_2026-09-10.md).
-Next engineering action: offline-test and repair the active quiet runner's
+Historical next action (now source-repaired above): offline-test and repair the quiet runner's
 quiescence check to require worker idle and a terminal assistant response bound
 to the latest follow-up generation. Preserve the sealed runner and failed run.
 

@@ -2,6 +2,19 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+test("visibility feedback follows the other pet window without erasing unrelated notes", async () => {
+  const { petVisibilityNote, reconcilePetVisibilityNote } = await import("./releasePet.ts");
+  for (const visible of [true, false]) {
+    assert.equal(reconcilePetVisibilityNote(petVisibilityNote(!visible), visible), petVisibilityNote(visible));
+    assert.equal(reconcilePetVisibilityNote(petVisibilityNote(visible), visible), petVisibilityNote(visible));
+    assert.equal(reconcilePetVisibilityNote(null, visible), null);
+    assert.equal(reconcilePetVisibilityNote("Could not save appearance.", visible), "Could not save appearance.");
+  }
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.match(app, /setNote\(\(current\) => reconcilePetVisibilityNote\(current, visible\)\)/u);
+  assert.match(app, /setNote\(petVisibilityNote\(petOverlayVisible\(\)\)\)/u);
+});
+
 test("pet overlay opts out of an opaque themed canvas", async () => {
   const [petHtml, sharedStyles] = await Promise.all([
     readFile(new URL("../pet.html", import.meta.url), "utf8"),
@@ -213,7 +226,7 @@ for (const [newIntent, delayedCommand] of [
   ["show", "plugin:window|get_all_windows"],
   ["show", "plugin:window|hide"],
 ] as const) {
-  test(`${newIntent} wins over an older delayed ${delayedCommand}`, async (t) => {
+  test(`${newIntent} wins over an older delayed ${delayedCommand}`, { timeout: 5000 }, async (t) => {
     const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
     const storage = new Map<string, string>();
     let visible = newIntent === "show";
@@ -251,7 +264,9 @@ for (const [newIntent, delayedCommand] of [
       if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow);
       else Reflect.deleteProperty(globalThis, "window");
     });
-    const pet = await import("./releasePet.ts");
+    // TAURI is captured at module load. Each simulated desktop gets a fresh
+    // module instance, independent of earlier browser/pure-helper tests.
+    const pet = await import(`./releasePet.ts?race=${newIntent}-${encodeURIComponent(delayedCommand)}`);
     const pending = newIntent === "hide" ? pet.releasePetOverlay() : pet.hidePetOverlay();
     await reached;
     if (newIntent === "hide") await pet.hidePetOverlay();

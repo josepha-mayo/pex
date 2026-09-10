@@ -2,6 +2,15 @@
 
 ## Current — 10 September 2026
 
+**Latest source repairs:** OpenCode live-probe completion fence and cross-window
+pet visibility feedback. 36 helper/CLI tests pass, surrounding OpenCode suite
+129 passed, desktop suite 277 passed, production UI build passes. No new provider
+calls. [Exact evidence and retained failed test run](docs/demo/evidence/COMPLETION_FENCE_AND_PET_FEEDBACK_2026-09-10.md).
+Running/staged package is still `06c6b73`; rebuild and native verification of the
+new feedback change remain pending. Nine valid quiet passes are not a clean
+ten-case batch: the tenth recovery observation was prematurely sealed by the
+old runner after a free-provider rate limit. Failed evidence is preserved.
+
 **Packaged thirty-minute resource observation completed:** 180/180 samples,
 342.4–347.5 MiB private memory, 1.72% of one core. PEX was minimized when
 inspected afterward; restored navigation and Inspector refresh responded.
