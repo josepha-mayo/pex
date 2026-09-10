@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   EXPECTED_BUNDLE_ICONS,
+  EXPECTED_BRIDGE_RESOURCES,
   EXPECTED_BRIDGE_RECOVERY_PERMISSION,
   EXPECTED_FOCUS_PERMISSION,
   EXPECTED_MAIN_PERMISSIONS,
@@ -99,6 +100,7 @@ function wiringFixture() {
         active: true,
         targets: "all",
         externalBin: [...EXPECTED_SIDECAR_BINS],
+        resources: { ...EXPECTED_BRIDGE_RESOURCES },
         icon: [...EXPECTED_BUNDLE_ICONS],
       },
     },
@@ -335,15 +337,24 @@ test("sidecar stamp is exact and rejects stale, forged, malformed, and extended 
     bridgeSha256: hash("b"),
     cursorHookSha256: hash("c"),
     cursorObserveSha256: hash("d"),
+    bridgeRuntimeManifest: { version: 1, files: [
+      { path: "_internal/python312.dll", bytes: 1, sha256: hash("a") },
+      { path: "pex-bridge.exe", bytes: 1, sha256: hash("b") },
+    ] },
   };
   const stamp = {
-    version: 3,
+    version: 4,
     input_sha256: expected.inputSha256,
     bridge_sha256: expected.bridgeSha256,
     cursor_hook_sha256: expected.cursorHookSha256,
     cursor_observe_sha256: expected.cursorObserveSha256,
+    bridge_runtime_manifest: structuredClone(expected.bridgeRuntimeManifest),
   };
   assert.equal(sidecarStampMatches({ stamp, ...expected }), true);
+  const changedRuntime = structuredClone(stamp);
+  changedRuntime.bridge_runtime_manifest.files[0].sha256 = hash("e");
+  assert.equal(sidecarStampMatches({ stamp: changedRuntime, ...expected }), false);
+  assert.equal(sidecarStampMatches({ stamp, ...expected, bridgeRuntimeManifest: undefined }), false);
   assert.equal(sidecarStampMatches({ stamp: { ...stamp, input_sha256: hash("d") }, ...expected }), false);
   assert.equal(sidecarStampMatches({ stamp: { ...stamp, bridge_sha256: hash("d") }, ...expected }), false);
   assert.equal(sidecarStampMatches({ stamp: { ...stamp, trusted: true }, ...expected }), false);

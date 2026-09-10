@@ -19,10 +19,8 @@ const BRIDGE_ADDRESS: &str = "127.0.0.1:7420";
 const BRIDGE_IDENTITY_PATH: &str = "/health/identity";
 const MIN_BRIDGE_TOKEN_BYTES: usize = 32;
 const MAX_BRIDGE_TOKEN_CHARS: usize = 512;
-// This includes cold one-file extraction, imports and authenticated readiness.
-// A measured Windows restart spent ~13s extracting before Python started;
-// 20s incorrectly rejected a healthy payload before it could bind. Keep a
-// bounded cold-start allowance without relaxing identity or port ownership.
+// Bound cold runtime imports and authenticated readiness. The bridge is shipped
+// unpacked so startup no longer extracts a one-file payload on every launch.
 const BRIDGE_STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
 const BRIDGE_PROBE_TIMEOUT: Duration = Duration::from_millis(1_500);
 const BRIDGE_RETRY_INTERVAL: Duration = Duration::from_millis(100);
@@ -558,6 +556,35 @@ fn bridge_address() -> Result<SocketAddr, String> {
     Ok(address)
 }
 
+fn packaged_bridge_path(resource_root: &Path) -> Result<PathBuf, String> {
+    let root = resource_root
+        .canonicalize()
+        .map_err(|_| "missing resource directory")?;
+    let runtime = root.join("pex-bridge-runtime");
+    for path in [
+        &runtime,
+        &runtime.join("_internal"),
+        &runtime.join("pex-bridge.exe"),
+        &runtime.join("_internal/python312.dll"),
+    ] {
+        let metadata = std::fs::symlink_metadata(path).map_err(|_| "missing bridge runtime")?;
+        if metadata.file_type().is_symlink() {
+            return Err("linked bridge runtime is unsupported".into());
+        }
+    }
+    let executable = runtime
+        .join("pex-bridge.exe")
+        .canonicalize()
+        .map_err(|_| "missing bridge executable")?;
+    if !executable.starts_with(&root)
+        || !executable.is_file()
+        || !runtime.join("_internal/python312.dll").is_file()
+    {
+        return Err("invalid bridge runtime layout".into());
+    }
+    Ok(executable)
+}
+
 fn bridge_sidecar_args() -> [&'static str; 4] {
     ["--host", BRIDGE_HOST, "--port", BRIDGE_PORT]
 }
@@ -822,8 +849,13 @@ fn run_bridge_bootstrap(app: tauri::AppHandle, attempt: u64) {
         }
     }
 
-    let command = match app.shell().sidecar("pex-bridge") {
-        Ok(command) => command,
+    let bridge_path = app
+        .path()
+        .resource_dir()
+        .map_err(|_| "missing resources".to_string())
+        .and_then(|root| packaged_bridge_path(&root));
+    let command = match bridge_path {
+        Ok(path) => app.shell().command(path),
         Err(_) => {
             fail_bridge_attempt(
                 &app,
@@ -1060,10 +1092,38 @@ mod tests {
         bridge_address, bridge_data_paths, bridge_identity_proof,
         bridge_port_is_free_for_owned_launch, bridge_port_state_at, bridge_sidecar_args,
         command_event_is_terminal, is_pex_identity_response, normalize_bridge_token,
-        remaining_timeout, trusted_webview_navigation, window_close_action, BridgeAuth,
-        BridgeBootstrapPhase, BridgePortState, BridgeRuntime, BridgeSource, WindowCloseAction,
-        BRIDGE_IDENTITY_MISS_LIMIT, BRIDGE_IDENTITY_MONITOR_INTERVAL, MAX_BRIDGE_TOKEN_CHARS,
+        packaged_bridge_path, remaining_timeout, trusted_webview_navigation, window_close_action,
+        BridgeAuth, BridgeBootstrapPhase, BridgePortState, BridgeRuntime, BridgeSource,
+        WindowCloseAction, BRIDGE_IDENTITY_MISS_LIMIT, BRIDGE_IDENTITY_MONITOR_INTERVAL,
+        MAX_BRIDGE_TOKEN_CHARS,
     };
+
+    #[test]
+    fn bridge_runtime_requires_fixed_complete_resource_layout() {
+        struct Fixture(std::path::PathBuf);
+        impl Drop for Fixture {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        let root = std::env::temp_dir().join(format!(
+            "pex-runtime-test-{}-{}",
+            std::process::id(),
+            rand::random::<u64>()
+        ));
+        std::fs::create_dir(&root).unwrap();
+        let fixture = Fixture(root);
+        assert!(packaged_bridge_path(&fixture.0).is_err());
+        let runtime = fixture.0.join("pex-bridge-runtime");
+        std::fs::create_dir_all(runtime.join("_internal")).unwrap();
+        std::fs::write(runtime.join("pex-bridge.exe"), b"fixture").unwrap();
+        assert!(packaged_bridge_path(&fixture.0).is_err());
+        std::fs::write(runtime.join("_internal/python312.dll"), b"fixture").unwrap();
+        assert_eq!(
+            packaged_bridge_path(&fixture.0).unwrap(),
+            runtime.join("pex-bridge.exe").canonicalize().unwrap()
+        );
+    }
 
     #[test]
     fn pet_native_close_persists_dismissal_without_changing_main_exit() {

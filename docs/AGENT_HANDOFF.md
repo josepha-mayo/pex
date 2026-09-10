@@ -13,6 +13,21 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Goal is active; startup packaging repair is in progress, not blocked.** The
+isolated unpacked build completed, exit 0. Its `--help` took 8.0387 seconds versus
+the earlier single-file 68.92s under different machine load; not a controlled
+benchmark or native-ready proof. Builder, native resource launch and installer
+verification now use `pex-bridge-runtime/`, with a full-tree v4 sidecar stamp and
+v2 package receipt. Cursor helpers remain one-file; identity checks and 60-second
+startup deadline are unchanged. Desktop suite: 283 passed, one explicit symlink
+fixture skip; the additional installer-location regression also passes. Normal
+sidecar preparation and exact-two-pet smoke completed, exit 0. Full runtime
+manifest covers 2,375 files / 144,541,638 bytes. Rust `cargo test --locked` passed
+all 19 tests, including the new fixed runtime-path check. Release desktop
+compilation is now running; native startup and live flows remain pending.
+The first preparation attempt failed
+before building because rustc was absent from PATH; the retry pins Rust 1.97.1.
+
 **User resumed PEX-only checks; native startup failure reproduced on `4de1db8`.**
 Desktop suite with the runtime-tree checks now included in `npm test`: **283
 passed, 1 explicitly skipped**, exit 0, 106.34 seconds on the loaded machine.

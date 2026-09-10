@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { posix } from "node:path";
+import { assertBridgeRuntimeMatches } from "./bridge-runtime-contract.mjs";
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
@@ -91,9 +93,10 @@ export function packageReceiptIsReady(receipt) {
   if (!exactKeys(receipt, [
     "schema", "stage", "source", "installers", "desktop_bundle_marker", "msi", "nsis", "release_ready", "blockers",
   ])) return false;
-  if (receipt.schema !== "pex.package-receipt.v1" || receipt.stage !== "package") return false;
+  if (receipt.schema !== "pex.package-receipt.v2" || receipt.stage !== "package") return false;
   if (!exactKeys(receipt.source, [
     "commit", "release_input_sha256", "sidecar_input_sha256", "preflight_sha256", "canonical_desktop_sha256",
+    "bridge_runtime_manifest",
   ])) return false;
   if (!COMMIT.test(receipt.source.commit)
     || !SHA256.test(receipt.source.release_input_sha256)
@@ -106,6 +109,13 @@ export function packageReceiptIsReady(receipt) {
   try {
     validateEmbeddedFiles(receipt.msi?.embedded);
     validateEmbeddedFiles(receipt.nsis?.embedded);
+    for (const installer of [receipt.msi, receipt.nsis]) {
+      if (!exactKeys(installer, ["status", "embedded", "inventory_verified", "bridge_runtime_manifest"])) return false;
+      assertBridgeRuntimeMatches(receipt.source.bridge_runtime_manifest, installer.bridge_runtime_manifest);
+      const bridge = installer.bridge_runtime_manifest.files.find((file) => file.path === "pex-bridge.exe");
+      if (bridge.sha256 !== installer.embedded["pex-bridge.exe"].sha256
+          || bridge.bytes !== installer.embedded["pex-bridge.exe"].bytes) return false;
+    }
   } catch {
     return false;
   }
@@ -143,4 +153,13 @@ export function findUniquePackagedFiles(relativeFiles) {
     result[expected] = matches[0];
   }
   return result;
+}
+
+export function findPackagedBridgeRuntimeDirectory(relativeFiles) {
+  const mapped = findUniquePackagedFiles(relativeFiles);
+  const desktopDirectory = posix.dirname(mapped["pex-desktop.exe"].replaceAll("\\", "/"));
+  const actual = posix.dirname(mapped["pex-bridge.exe"].replaceAll("\\", "/"));
+  const expected = posix.join(desktopDirectory, "pex-bridge-runtime");
+  if (actual !== expected) throw new Error("Bridge runtime must be beside the packaged desktop");
+  return actual;
 }

@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   PACKAGE_BINARIES,
   findUniquePackagedFiles,
+  findPackagedBridgeRuntimeDirectory,
   packageReceiptIsReady,
   validateEmbeddedFiles,
   verifyDesktopBundleVariants,
@@ -19,8 +20,12 @@ const embedded = () => Object.fromEntries(PACKAGE_BINARIES.map(
 function receipt() {
   const msi = embedded();
   const nsis = structuredClone(msi);
+  const runtime = { version: 1, files: [
+    { path: "_internal/python312.dll", bytes: 1, sha256: hash("a") },
+    { path: "pex-bridge.exe", ...msi["pex-bridge.exe"] },
+  ] };
   return {
-    schema: "pex.package-receipt.v1",
+    schema: "pex.package-receipt.v2",
     stage: "package",
     source: {
       commit: "a".repeat(40),
@@ -28,6 +33,7 @@ function receipt() {
       sidecar_input_sha256: hash("c"),
       preflight_sha256: hash("d"),
       canonical_desktop_sha256: hash("a"),
+      bridge_runtime_manifest: structuredClone(runtime),
     },
     installers: { msi_sha256: hash("e"), nsis_sha256: hash("f") },
     desktop_bundle_marker: {
@@ -38,8 +44,8 @@ function receipt() {
       nsis_marker_hex: "4e5353c0",
       normalized_sha256: hash("a"),
     },
-    msi: { status: "verified", embedded: msi, inventory_verified: true },
-    nsis: { status: "verified", embedded: nsis, inventory_verified: true },
+    msi: { status: "verified", embedded: msi, inventory_verified: true, bridge_runtime_manifest: structuredClone(runtime) },
+    nsis: { status: "verified", embedded: nsis, inventory_verified: true, bridge_runtime_manifest: structuredClone(runtime) },
     release_ready: true,
     blockers: [],
   };
@@ -51,6 +57,15 @@ test("package inventory requires each named executable exactly once", () => {
   assert.throws(() => findUniquePackagedFiles(paths.slice(1)), /exactly one pex-desktop/u);
   assert.throws(() => findUniquePackagedFiles([...paths, `other/${PACKAGE_BINARIES[1]}`]), /found 2/u);
   assert.throws(() => findUniquePackagedFiles([42]), /must be text/u);
+});
+
+test("runtime is bound to the desktop resource directory, not merely its basename", () => {
+  const paths = PACKAGE_BINARIES.map((name) => name === "pex-bridge.exe"
+    ? `root/bin/pex-bridge-runtime/${name}` : `root/bin/${name}`);
+  assert.equal(findPackagedBridgeRuntimeDirectory(paths), "root/bin/pex-bridge-runtime");
+  assert.equal(findPackagedBridgeRuntimeDirectory(paths.map((path) => path.replaceAll("/", "\\"))), "root/bin/pex-bridge-runtime");
+  const misplaced = paths.map((path) => path.includes("pex-bridge-runtime") ? path.replace("root/bin", "other") : path);
+  assert.throws(() => findPackagedBridgeRuntimeDirectory(misplaced), /beside the packaged desktop/u);
 });
 
 test("canonical, MSI, and NSIS differ only at the exact four-byte Tauri marker", () => {
@@ -107,6 +122,11 @@ test("package readiness fails closed on unsupported NSIS, mismatches, or schema 
   assert.equal(packageReceiptIsReady(receipt()), true);
   for (const mutate of [
     (value) => { value.nsis.status = "unsupported"; value.release_ready = false; },
+    (value) => { value.schema = "pex.package-receipt.v1"; },
+    (value) => { delete value.source.bridge_runtime_manifest; },
+    (value) => { value.nsis.bridge_runtime_manifest.files[0].sha256 = hash("9"); },
+    (value) => { value.msi.bridge_runtime_manifest.files.pop(); },
+    (value) => { value.nsis.bridge_runtime_manifest.files.push({ path: "z.dll", bytes: 1, sha256: hash("a") }); },
     (value) => { value.msi.inventory_verified = false; value.release_ready = false; },
     (value) => { value.nsis.embedded[PACKAGE_BINARIES[1]].sha256 = hash("9"); },
     (value) => { value.desktop_bundle_marker.normalized_sha256 = "bad"; },

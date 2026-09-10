@@ -18,6 +18,10 @@ import {
 } from "node:fs";
 import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  assertBridgeRuntimeMatches,
+  buildBridgeRuntimeManifest,
+} from "./bridge-runtime-contract.mjs";
 import { validatePetReviewArchive } from "./pet-review-contract.mjs";
 
 import {
@@ -66,7 +70,8 @@ try {
 }
 
 const extension = process.platform === "win32" ? ".exe" : "";
-const bridgeTarget = join(binaries, `pex-bridge-${triple}${extension}`);
+const bridgeRuntimeTarget = join(binaries, "pex-bridge-runtime");
+const bridgeTarget = join(bridgeRuntimeTarget, `pex-bridge${extension}`);
 const cursorHookTarget = join(binaries, `pex-cursor-hook-${triple}${extension}`);
 const cursorObserveTarget = join(binaries, `pex-cursor-observe-${triple}${extension}`);
 const buildStamp = join(binaries, `pex-sidecars-${triple}.json`);
@@ -101,6 +106,7 @@ const sourceRoots = [
 ];
 const sourceFiles = [
   fileURLToPath(import.meta.url),
+  join(scriptDir, "bridge-runtime-contract.mjs"),
   join(scriptDir, "release-contract.mjs"),
   join(scriptDir, "pet-review-contract.mjs"),
   join(repo, "scripts", "verify_pet_neutral_lineage.py"),
@@ -1410,9 +1416,19 @@ function usableHelper(path) {
   return assertSafeRegularFile(path, "Cached sidecar artifact").size > 0;
 }
 
+function runtimeManifestIfUsable(path) {
+  if (!existsSync(path)) return null;
+  try {
+    return buildBridgeRuntimeManifest(path);
+  } catch {
+    return null;
+  }
+}
+
 function helpersAreCurrent(inputFingerprint) {
+  const bridgeRuntimeManifest = runtimeManifestIfUsable(bridgeRuntimeTarget);
   if (
-    !usableHelper(bridgeTarget)
+    bridgeRuntimeManifest === null
     || !usableHelper(cursorHookTarget)
     || !usableHelper(cursorObserveTarget)
   ) return false;
@@ -1422,6 +1438,7 @@ function helpersAreCurrent(inputFingerprint) {
     return sidecarStampMatches({
       stamp,
       inputSha256: inputFingerprint,
+      bridgeRuntimeManifest,
       bridgeSha256: sha256File(bridgeTarget),
       cursorHookSha256: sha256File(cursorHookTarget),
       cursorObserveSha256: sha256File(cursorObserveTarget),
@@ -1575,7 +1592,8 @@ function runReleasePreflight(petSources) {
   } catch (error) {
     addBlocker("missing_or_invalid_sidecar_stamp", error.message);
   }
-  const bridgeSha256 = usableHelper(bridgeTarget) ? sha256File(bridgeTarget) : null;
+  const bridgeRuntimeManifest = runtimeManifestIfUsable(bridgeRuntimeTarget);
+  const bridgeSha256 = bridgeRuntimeManifest === null ? null : sha256File(bridgeTarget);
   const cursorHookSha256 = usableHelper(cursorHookTarget) ? sha256File(cursorHookTarget) : null;
   const cursorObserveSha256 = usableHelper(cursorObserveTarget)
     ? sha256File(cursorObserveTarget)
@@ -1583,6 +1601,7 @@ function runReleasePreflight(petSources) {
   const sidecarsCurrent = sidecarStampMatches({
     stamp,
     inputSha256,
+    bridgeRuntimeManifest,
     bridgeSha256,
     cursorHookSha256,
     cursorObserveSha256,
@@ -1592,7 +1611,7 @@ function runReleasePreflight(petSources) {
     addBlocker("stale_or_missing_sidecars", "Sidecar stamp or helper bytes do not match current source inputs");
   } else {
     try {
-      verifyFrozenPetBundle(bridgeTarget, petSources);
+       verifyFrozenPetBundle(bridgeTarget, petSources);
       frozenInventoryVerified = true;
     } catch (error) {
       addBlocker("frozen_inventory_mismatch", error.message);
@@ -1651,6 +1670,7 @@ function runReleasePreflight(petSources) {
     sidecars: {
       input_sha256: inputSha256,
       stamp_input_sha256: stamp?.input_sha256 ?? null,
+      bridge_runtime_manifest: bridgeRuntimeManifest,
       bridge_sha256: bridgeSha256,
       cursor_hook_sha256: cursorHookSha256,
       cursor_observe_sha256: cursorObserveSha256,
@@ -1690,6 +1710,43 @@ function installBinary(built, target) {
     throw error;
   }
   removeSafeRegularFile(backup, "Sidecar backup artifact");
+}
+
+function installBridgeRuntime(built, target) {
+  buildBridgeRuntimeManifest(built);
+  assertSafeDirectory(dirname(target), "Bridge runtime directory");
+  assertSafeRepoPath(target, "Bridge runtime install target");
+  const staged = `${target}.new`;
+  const backup = `${target}.old`;
+  removeSafeDirectory(staged, "Staged bridge runtime");
+  removeSafeDirectory(backup, "Bridge runtime backup");
+  if (existsSync(target)) buildBridgeRuntimeManifest(target);
+  renameSync(built, staged);
+  try {
+    if (existsSync(target)) renameSync(target, backup);
+    renameSync(staged, target);
+  } catch (error) {
+    const rollbackErrors = [];
+    try {
+      if (!existsSync(target) && existsSync(backup)) renameSync(backup, target);
+    } catch (rollbackError) {
+      rollbackErrors.push(rollbackError);
+    }
+    try {
+      removeSafeDirectory(staged, "Staged bridge runtime");
+    } catch (cleanupError) {
+      rollbackErrors.push(cleanupError);
+    }
+    if (rollbackErrors.length > 0) {
+      throw new AggregateError(
+        [error, ...rollbackErrors],
+        "Bridge runtime installation and rollback both failed",
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+  removeSafeDirectory(backup, "Bridge runtime backup");
 }
 
 try {
@@ -1768,7 +1825,7 @@ execFileSync(
   [
     "--noconfirm",
     ...pyinstallerCleanArgs,
-    "--onefile",
+    "--onedir",
     "--name",
     "pex-bridge",
     "--distpath",
@@ -1793,11 +1850,15 @@ execFileSync(
   ],
   { cwd: repo, stdio: "inherit" },
 );
-const built = join(dist, `pex-bridge${extension}`);
-if (!existsSync(built)) throw new Error(`PyInstaller did not create ${built}`);
-const stagedBridge = join(repo, "build", "pyinstaller", `pex-bridge-${triple}.stage${extension}`);
-removeSafeRegularFile(stagedBridge, "Staged bridge artifact");
-renameSync(built, stagedBridge);
+const builtBridgeRuntime = join(dist, "pex-bridge");
+if (!existsSync(builtBridgeRuntime) || !lstatSync(builtBridgeRuntime).isDirectory()) {
+  throw new Error(`PyInstaller did not create bridge runtime directory ${builtBridgeRuntime}`);
+}
+const stagedBridgeRuntime = join(repo, "build", "pyinstaller", `pex-bridge-runtime-${triple}.stage`);
+removeSafeDirectory(stagedBridgeRuntime, "Staged bridge runtime");
+renameSync(builtBridgeRuntime, stagedBridgeRuntime);
+const stagedBridge = join(stagedBridgeRuntime, `pex-bridge${extension}`);
+const stagedBridgeManifest = buildBridgeRuntimeManifest(stagedBridgeRuntime);
 
 execFileSync(
   pyinstaller,
@@ -1856,7 +1917,10 @@ if (postSmokeFingerprint !== inputFingerprint) {
     "Sidecar inputs changed during frozen verification; no helper was installed. Retry from a stable source tree.",
   );
 }
-installBinary(stagedBridge, bridgeTarget);
+assertBridgeRuntimeMatches(stagedBridgeManifest, buildBridgeRuntimeManifest(stagedBridgeRuntime));
+installBridgeRuntime(stagedBridgeRuntime, bridgeRuntimeTarget);
+const bridgeRuntimeManifest = buildBridgeRuntimeManifest(bridgeRuntimeTarget);
+assertBridgeRuntimeMatches(stagedBridgeManifest, bridgeRuntimeManifest);
 installBinary(builtCursorHook, cursorHookTarget);
 installBinary(builtCursorObserve, cursorObserveTarget);
 const stampArtifact = join(dist, `pex-sidecars-${triple}.json`);
@@ -1864,8 +1928,9 @@ writeFileSync(
   stampArtifact,
   `${JSON.stringify(
     {
-      version: 3,
+      version: 4,
       input_sha256: inputFingerprint,
+      bridge_runtime_manifest: bridgeRuntimeManifest,
       bridge_sha256: sha256File(bridgeTarget),
       cursor_hook_sha256: sha256File(cursorHookTarget),
       cursor_observe_sha256: sha256File(cursorObserveTarget),
@@ -1876,7 +1941,7 @@ writeFileSync(
   "utf8",
 );
 installBinary(stampArtifact, buildStamp);
-process.stdout.write(`Built PEX bridge sidecar: ${bridgeTarget}\n`);
+process.stdout.write(`Built PEX bridge runtime: ${bridgeRuntimeTarget}\n`);
 process.stdout.write(`Built PEX Cursor hook helper: ${cursorHookTarget}\n`);
 process.stdout.write(`Built PEX Cursor observe helper: ${cursorObserveTarget}\n`);
 } catch (error) {

@@ -6,8 +6,10 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseFrozenBundleInventory, RELEASE_BUILT_IN_PET_IDS } from "./release-contract.mjs";
+import { assertBridgeRuntimeMatches, buildBridgeRuntimeManifest } from "./bridge-runtime-contract.mjs";
 import {
   findUniquePackagedFiles,
+  findPackagedBridgeRuntimeDirectory,
   packageReceiptIsReady,
   verifyDesktopBundleVariants,
 } from "./package-contract.mjs";
@@ -53,6 +55,14 @@ function extractedReceipt(root) {
     const absolute = join(root, path);
     return [name, { bytes: statSync(absolute).size, sha256: sha256File(absolute) }];
   }));
+}
+function extractedBridgeRuntime(root) {
+  const bridgeDirectory = join(root, findPackagedBridgeRuntimeDirectory(
+    listFiles(root).map((path) => relative(root, path)),
+  ));
+  const manifest = buildBridgeRuntimeManifest(bridgeDirectory);
+  assertBridgeRuntimeMatches(preflight.sidecars.bridge_runtime_manifest, manifest);
+  return manifest;
 }
 function verifyInventory(root) {
   const paths = listFiles(root);
@@ -106,7 +116,8 @@ try {
     windowsHide: true, timeout: 180_000, encoding: "utf8",
   });
   if (extraction.error || extraction.status !== 0) throw new Error(`MSI extraction failed with status ${extraction.status}`);
-  msi = { status: "verified", embedded: extractedReceipt(msiRoot), inventory_verified: verifyInventory(msiRoot) };
+  const runtime = extractedBridgeRuntime(msiRoot);
+  msi = { status: "verified", embedded: extractedReceipt(msiRoot), inventory_verified: verifyInventory(msiRoot), bridge_runtime_manifest: runtime };
   const mapped = findUniquePackagedFiles(listFiles(msiRoot).map((path) => relative(msiRoot, path)));
   msiDesktop = readFileSync(join(msiRoot, mapped["pex-desktop.exe"]));
 } catch (error) {
@@ -128,7 +139,8 @@ try {
       blockers.push({ code: "nsis_extraction_failed", detail: `Deterministic NSIS extraction failed with status ${extractionResult.status}` });
       nsis = { status: "failed", embedded: null, inventory_verified: false };
     } else {
-      nsis = { status: "verified", embedded: extractedReceipt(nsisRoot), inventory_verified: verifyInventory(nsisRoot) };
+      const runtime = extractedBridgeRuntime(nsisRoot);
+      nsis = { status: "verified", embedded: extractedReceipt(nsisRoot), inventory_verified: verifyInventory(nsisRoot), bridge_runtime_manifest: runtime };
       const mapped = findUniquePackagedFiles(listFiles(nsisRoot).map((path) => relative(nsisRoot, path)));
       nsisDesktop = readFileSync(join(nsisRoot, mapped["pex-desktop.exe"]));
     }
@@ -161,7 +173,7 @@ for (const [name, expected] of Object.entries(sourceSidecars)) {
   if (nsis.status === "verified" && nsis.embedded?.[name]?.sha256 !== expected) blockers.push({ code: "nsis_sidecar_mismatch", detail: `${name} does not match source preflight` });
 }
 const receipt = {
-  schema: "pex.package-receipt.v1",
+  schema: "pex.package-receipt.v2",
   stage: "package",
   source: {
     commit,
@@ -169,6 +181,7 @@ const receipt = {
     sidecar_input_sha256: preflight.sidecars.input_sha256,
     preflight_sha256: hashJson(preflight),
     canonical_desktop_sha256: sha256Buffer(canonicalDesktop),
+    bridge_runtime_manifest: preflight.sidecars.bridge_runtime_manifest,
   },
   installers: installerHashes,
   desktop_bundle_marker: desktopBundleMarker,

@@ -81,9 +81,11 @@
       "icons/icon.ico"
     ],
     "externalBin": [
-      "binaries/pex-bridge",
       "binaries/pex-cursor-hook",
       "binaries/pex-cursor-observe"
-    ]
+    ],
+    "resources": {
+      "binaries/pex-bridge-runtime/": "pex-bridge-runtime/"
+    }
   }
 }

@@ -1,3 +1,5 @@
+import { assertBridgeRuntimeMatches } from "./bridge-runtime-contract.mjs";
+
 const SHA256 = /^[0-9a-f]{64}$/u;
 
 // This is the release allowlist, not the historical-review corpus.
@@ -31,10 +33,13 @@ export function withSynchronousCleanup(operation, cleanup) {
 }
 
 export const EXPECTED_SIDECAR_BINS = [
-  "binaries/pex-bridge",
   "binaries/pex-cursor-hook",
   "binaries/pex-cursor-observe",
 ];
+
+export const EXPECTED_BRIDGE_RESOURCES = {
+  "binaries/pex-bridge-runtime/": "pex-bridge-runtime/",
+};
 
 export const EXPECTED_BUNDLE_ICONS = [
   "icons/32x32.png",
@@ -185,7 +190,7 @@ export function tauriReleaseWiringMatches({
     && tauri?.bundle?.targets === "all"
     && sameJson(tauri?.bundle?.externalBin, EXPECTED_SIDECAR_BINS)
     && sameJson(tauri?.bundle?.icon, EXPECTED_BUNDLE_ICONS)
-    && tauri?.bundle?.resources === undefined
+    && sameJson(tauri?.bundle?.resources, EXPECTED_BRIDGE_RESOURCES)
     && sameJson(windows.map((window) => window?.label), ["main", "pet"])
     && windows[0]?.visible === true
     && windows[1]?.visible === false
@@ -260,15 +265,22 @@ export function sidecarStampMatches({
   bridgeSha256,
   cursorHookSha256,
   cursorObserveSha256,
+  bridgeRuntimeManifest,
 }) {
+  try {
+    assertBridgeRuntimeMatches(stamp?.bridge_runtime_manifest, bridgeRuntimeManifest);
+  } catch {
+    return false;
+  }
   return exactKeys(stamp, [
     "version",
     "input_sha256",
     "bridge_sha256",
     "cursor_hook_sha256",
     "cursor_observe_sha256",
+    "bridge_runtime_manifest",
   ])
-    && stamp.version === 3
+    && stamp.version === 4
     && [inputSha256, bridgeSha256, cursorHookSha256, cursorObserveSha256].every(
       (value) => typeof value === "string" && SHA256.test(value),
     )
