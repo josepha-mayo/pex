@@ -13,6 +13,17 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Thirty-minute resource observation completed on package `06c6b73`:** all
+180 samples retained, 1801.14 measured seconds, 342.4–347.5 MiB private memory,
+31.026 CPU seconds / 1.72% of one core. Root PID/start identity unchanged.
+PEX was minimized when inspected afterward; visibility was not sampled, so
+this is not a foreground-animation test. Restoring PEX, Home navigation,
+recorded OpenCode selection and Inspector refresh all responded. The same
+process reports responsive; PEX is left open on Inspector with overlay hidden.
+No model calls or worker follow-ups were started. Sampler has exited 0; no
+resource/test session remains active. [Receipt, method and limits](demo/evidence/RESOURCE_OBSERVATION_2026-09-10.md).
+Fresh-user install and active-workload/foreground stability remain unproven.
+
 **Full offline regression now passes on `aba8d38`: 4,336 passed, 16 skipped,
 18 deselected; exit 0, 1001.79 seconds.** Clean source at completion; XML confirms
 zero failures/errors. [Reproduction, hashes, failed attempts and limits](demo/evidence/OFFLINE_REGRESSION_2026-09-10.md).

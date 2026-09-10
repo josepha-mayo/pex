@@ -2,6 +2,12 @@
 
 ## Current — 10 September 2026
 
+**Packaged thirty-minute resource observation completed:** 180/180 samples,
+342.4–347.5 MiB private memory, 1.72% of one core. PEX was minimized when
+inspected afterward; restored navigation and Inspector refresh responded.
+[Exact method and limits](docs/demo/evidence/RESOURCE_OBSERVATION_2026-09-10.md).
+Not a foreground stress test, fresh-user install or causal freeze clearance.
+
 **Current-source offline regression: 4,336 passed, 16 skipped, 18 deselected**
 on `aba8d38`, exit 0, 1001.79 seconds. Git was clean at completion; XML confirms
 zero failures/errors. [Exact evidence and retained failed attempts](docs/demo/evidence/OFFLINE_REGRESSION_2026-09-10.md).

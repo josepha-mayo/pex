@@ -50,8 +50,11 @@ OpenCode instructions; both installers and native onboarding inspection pass.
   startup and recorded OpenCode selection pass. Installers remain unsigned.
 - [x] Fresh packaged bridge profile, native reopen and pause/resume checks.
   [Exact evidence and limits](demo/evidence/MVP_NATIVE_FCB624D_2026-09-10.md).
-- [ ] Fresh Windows-user installation and longer idle soak remain unverified;
-  the bounded native observation does not causally clear the old PC freeze.
+- [x] Thirty-minute packaged resource observation: 180/180 samples retained,
+  followed by responsive restore/navigation/Inspector refresh. PEX was minimized
+  at inspection; [precise limits](demo/evidence/RESOURCE_OBSERVATION_2026-09-10.md).
+- [ ] Fresh Windows-user installation and long-running foreground/active-worker
+  stability remain unverified; bounded checks do not causally clear the old PC freeze.
 - [x] Behavioral report retains failed/invalid attempts. Nine semantic
   quiet cases across runs are not a clean ten-case pass or comparative score.
 - [x] The previously failed identifiers case and one control pass a separate
