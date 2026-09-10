@@ -18,17 +18,19 @@ under the official rules refreshed through Devpost on 10 September 2026.
   process cleanup. Close PEX normally through its own window; fixture controllers
   may stop only subprocess handles they created. Never kill a recursive PID tree
   or unrelated Codex/Cursor/Devin process to prepare a recording.
-- Use the verified free Muse supervisor and an isolated OpenCode free worker setting already
-  accepted by the receipts. Never reuse the private proof session in a public recording.
-  Never switch to a paid fallback.
+- Verify current free-provider availability before using the Muse supervisor and an
+  isolated OpenCode worker. Historical receipts do not guarantee current pricing or
+  availability. Never reuse the private proof session in a public recording and
+  never switch to a paid fallback.
 - Prepare one tiny workspace whose public acceptance criterion is visible on screen. Do not
   expose API keys, raw private worker state, hidden evaluator data, or local account details.
 - Follow the README's two-terminal OpenCode setup: `serve` keeps the backend
   running; `attach` opens the worker interface on that same address. Create or
   resume the session in OpenCode before selecting it in PEX. An empty server
   is not a broken PEX connection, and connecting PEX does not create a task.
-- Keep [`SUBMISSION.md`](../SUBMISSION.md) open off-camera for the exact voiceover and claim
-  boundaries.
+- Use the [shipping gate](../MVP_SHIP_GATE.md) and its source-bound evidence for
+  claim boundaries. `SUBMISSION.md` still contains older eight-pet and package
+  descriptions; it is not approved recording copy until reconciled with the current MVP.
 
 ## Shot list
 
@@ -38,7 +40,7 @@ under the official rules refreshed through Devpost on 10 September 2026.
    the persistent goal and attaches through supported harness surfaces; it does not require the
    work to originate inside PEX.
 3. **0:55–1:20 — Quiet companion.** Show Pex. Dismiss its message while leaving the pet visible,
-   then open Companion Settings and switch once to Von. Do not tour all eight pets.
+   then open Companion Settings and switch once to Von. These are the only two shipping pets.
 4. **1:20–2:45 — Same-session recovery.** In one isolated OpenCode session, show stage one
    stopping without `final.txt`, PEX's evidence-bound `SEND_NUDGE`, the follow-up on the identical
    vendor session ID, and the exact required `final.txt` artifact.

@@ -2,6 +2,31 @@
 
 ## Current — 10 September 2026
 
+**Shipping candidate: `4de1db8`, exactly Pex and Von.** Both unsigned installer
+content/inventory checks pass. Custom import and image-generation write APIs are
+disabled. [Package hashes and scoped test evidence](docs/demo/evidence/TWO_PET_PACKAGE_2026-09-10.md).
+
+**Native acceptance is pending.** The user stopped computer control and is using
+the PC; no new launch, startup diagnostic or heavy build is authorized during this
+pause. The earlier `f575d45` first-start timeout is unresolved. Package integrity
+does not establish startup reliability or readiness to film.
+
+**Latest benchmark-accounting source: `93c17bc`.** 61 focused tests pass. Quiet
+completion now requires a successful semantic review bound to the exact STOP,
+session and goal, and rejects hidden failed inference. No new live provider calls
+were made. The archived batch remains nine quiet passes and one incomplete
+recovery observation, not ten passes or a comparative benchmark score.
+[Accounting evidence](docs/demo/evidence/SEMANTIC_REVIEW_ACCOUNTING_2026-09-10.md).
+
+AgentCore remains implemented/tested but not deployed. Current-package native
+validation, final recording and submission are not complete. See the
+[shipping gate](docs/MVP_SHIP_GATE.md) for remaining work.
+
+## Historical source-bound checkpoints
+
+The entries below describe their named revisions, not the current candidate.
+In particular, the full `aba8d38` regression is not a full-suite run of `93c17bc`.
+
 **Latest package `f575d45`: installer integrity passes, first native start times
 out, one Retry succeeds.** Packaged pet feedback repair verified after recovery.
 Cold-start reliability remains unresolved and is the next priority; no causal

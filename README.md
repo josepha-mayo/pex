@@ -9,10 +9,10 @@ Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
 OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Package `1a5eb92` passes both installer content/inventory gates and opens natively.
-The full offline regression passed 4,313 tests (16 skipped, 16 deselected);
-final setup, stability and recording
-checks remain. AgentCore is implemented and tested but **not deployed**;
+Package `4de1db8` passes both installer content/inventory gates and ships only
+Pex and Von. Its native acceptance check is pending; an earlier package's first-start
+timeout remains unresolved. Final setup, stability and recording checks remain.
+AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
 [current status](STATUS.md), and the source-bound evidence linked there.
@@ -50,10 +50,11 @@ The desktop is designed around a compact command surface and a separate transpar
 always-on-top pet overlay. Repaired native transparency/playback still needs acceptance
 testing. It supervises existing harnesses; it is not a chat UI.
 
-- Plays **Codex v2** atlases (`1536×2288`, `spriteVersionNumber: 2`): pointer movement selects one of sixteen look directions, a dwell hops, dragging moves the overlay with running animation, and click opens the PEX inspector.
-- Import a hatch-pet folder (`pet.json` + `spritesheet.webp`), including a pet already installed under `~/.codex/pets/`.
-- Settings can authorize exactly one potentially billable image call for an unverified custom-pet base candidate through an explicitly configured image provider (`PEX_HATCH_*` or the canonical OpenAI Images endpoint). It does not build an atlas or playable pet; grounded 8×11 assembly and independent QA are still required before import. Text-only or unauthorized endpoints fail honestly.
-- The verified `166a656` package contains exactly eight built-ins: Pex, Ledger, Mesh, Nudge, Drift, Quiet, Ember, and Von. Both MSI and NSIS inventories pass; fresh native playback after the reported machine freeze remains deliberately unclaimed. Custom imports and unfinished hatch candidates stay separate from that built-in catalog.
+- Exactly two companions: **Pex**, the owl, and **Von**, the dark-navy cat, selected in Settings → Companion.
+- Uses reviewed **Codex v2** atlases (`1536×2288`, `spriteVersionNumber: 2`), restrained playback and manual dragging. The overlay does not roam or hop on hover.
+- Separate controls hide the pet or dismiss only its status message; the pet can be restored from Settings. Current-package native acceptance remains pending.
+- Custom imports and image generation are disabled in this MVP, including their write APIs. Existing legacy import metadata is preserved; retired selections fall back to Pex.
+- Both installer inventories for `4de1db8` contain only Pex and Von. See the [two-pet package evidence](docs/demo/evidence/TWO_PET_PACKAGE_2026-09-10.md) for source-bound checks and remaining limits.
 
 ## Benchmark headline
 
@@ -67,7 +68,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for product source `166a656` and is not code-signed.
+installer candidate exists for product source `4de1db8` and is not code-signed.
 These instructions cover building from source; package integrity is not native
 acceptance or publisher trust. Current source-bound package evidence is recorded
 in the [active handoff](docs/AGENT_HANDOFF.md). To build from source,
