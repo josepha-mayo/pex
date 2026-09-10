@@ -123,7 +123,7 @@ export function Inspector({
         <div>
           <p className="eyebrow">Inspector · {current ? titleCase(current.harness_type) : "No worker"}</p>
           <h1>{goal?.title || current?.label || "Waiting for an attached goal"}</h1>
-          <p>{goal?.objective || status.detail}</p>
+          <p>{goal?.objective || (current ? meaningfulEvidence(current) : status.detail)}</p>
         </div>
         <button type="button" className="solid" onClick={onOpenDeck}>
           Open command deck

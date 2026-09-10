@@ -208,6 +208,13 @@ test("inspector renders review allowance and replaces stale numbers with unavail
     const html = renderToStaticMarkup(createElement(Inspector, props));
     assert.match(html, /<dt>Supervisor review allowance<\/dt>/);
     assert.match(html, /3 of 5 review dispatches remaining at last refresh/);
+    assert.doesNotMatch(html, /Observed work/);
+    assert.match(html, /No meaningful evidence observed yet/);
+    const selectedEvidence = renderToStaticMarkup(createElement(Inspector, {
+      ...props, current: { ...props.current, last_message: "Selected worker evidence" },
+    }));
+    assert.match(selectedEvidence, /Selected worker evidence/);
+    assert.doesNotMatch(selectedEvidence, /Observed work/);
     const offline = renderToStaticMarkup(createElement(Inspector, {
       ...props, canonicalStateAvailable: false,
     }));
@@ -216,6 +223,18 @@ test("inspector renders review allowance and replaces stale numbers with unavail
   } finally {
     await vite.close();
   }
+});
+
+test("Ask PEX binds the selected session and drops superseded replies", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const handler = source.slice(source.indexOf("  async function askPex("),
+    source.indexOf("  async function undoIntervention("));
+  assert.match(handler, /session_id: current\?\.id \?\? null/);
+  assert.match(handler, /const requestSequence = \+\+askRequestSequence\.current/);
+  assert.equal((handler.match(/if \(requestSequence !== askRequestSequence\.current\) return;/g) || []).length, 2);
+  assert.match(handler, /if \(requestSequence === askRequestSequence\.current\) \{\s*setAsking\(false\)/);
+  assert.match(source, /setAnswer\(""\);\s*setQuestion\(""\);\s*setAsking\(false\);\s*return \(\) => \{ askRequestSequence\.current \+= 1; \};\s*\}, \[current\?\.id, current\?\.goal_id, attachedGoal\?\.intent_revision\]\)/);
 });
 
 test("goal replacement binds exact goal and control authority", () => {

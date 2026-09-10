@@ -406,6 +406,177 @@ async def test_pet_snapshot_uses_last_worker_message(tmp_path, harness):
 
 
 @pytest.mark.asyncio
+async def test_pet_snapshot_ignores_stopped_unrelated_status_detail(tmp_path):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    now = datetime.now(UTC)
+    cursor_goal = Goal(
+        id="goal-active-cursor",
+        project_id=str(tmp_path),
+        title="active cursor",
+        objective="Keep working.",
+        created_at=now,
+        updated_at=now,
+    )
+    stopped_goal = Goal(
+        id="goal-stopped-opencode",
+        project_id=str(tmp_path),
+        title="stopped opencode",
+        objective="Already complete.",
+        created_at=now,
+        updated_at=now,
+    )
+    await store.upsert_goal(cursor_goal)
+    await store.upsert_goal(stopped_goal)
+    cursor = HarnessSession(
+        id="cursor:active",
+        harness_type=HarnessType.CURSOR,
+        vendor_session_id="active",
+        project_id=cursor_goal.project_id,
+        goal_id=cursor_goal.id,
+        cwd=cursor_goal.project_id,
+        status=SessionStatus.WORKING,
+        last_activity=now,
+    )
+    stopped = HarnessSession(
+        id="opencode:stopped",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="stopped",
+        project_id=stopped_goal.project_id,
+        goal_id=stopped_goal.id,
+        cwd=stopped_goal.project_id,
+        status=SessionStatus.STOPPED,
+        last_activity=now,
+    )
+    await store.upsert_session(cursor)
+    await store.upsert_session(stopped)
+    await store.accept_pipeline_event(
+        HarnessEvent(
+            event_id=uuid4().hex,
+            ts=now - timedelta(seconds=1),
+            harness_type=HarnessType.CURSOR,
+            session_id=cursor.id,
+            project_id=cursor_goal.project_id,
+            goal_id=cursor_goal.id,
+            event_type=EventType.AGENT_RESPONSE,
+            phase=EventPhase.AFTER,
+            message_delta="Cursor is applying the active repair.",
+        ),
+        session_snapshot=cursor,
+    )
+    await store.accept_pipeline_event(
+        HarnessEvent(
+            event_id=uuid4().hex,
+            ts=now,
+            harness_type=HarnessType.OPENCODE,
+            session_id=stopped.id,
+            project_id=stopped_goal.project_id,
+            goal_id=stopped_goal.id,
+            event_type=EventType.AGENT_RESPONSE,
+            phase=EventPhase.AFTER,
+            message_delta="Both files verified. Phase two finished.",
+        ),
+        session_snapshot=stopped,
+    )
+    pipeline = Pipeline(
+        store,
+        AdapterRegistry(),
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
+    )
+    snap = await pipeline.pet_snapshot()
+    await store.close()
+    assert snap["headline"] == "1 working · 0 need you"
+    assert snap["last_source"] == "cursor"
+    assert snap["last_message"] == "Cursor is applying the active repair."
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("preferred_status", "other_status"),
+    [
+        (SessionStatus.NEEDS_DECISION, SessionStatus.WORKING),
+        (SessionStatus.BLOCKED, SessionStatus.DRIFTING),
+        (SessionStatus.DRIFTING, SessionStatus.VERIFYING),
+    ],
+)
+async def test_pet_snapshot_prioritizes_primary_status_group_detail(
+    tmp_path, preferred_status, other_status
+):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    now = datetime.now(UTC)
+    preferred_goal = Goal(
+        id=f"goal-preferred-{preferred_status.value}",
+        project_id=str(tmp_path),
+        title="preferred",
+        objective="Primary status.",
+        created_at=now,
+        updated_at=now,
+    )
+    other_goal = Goal(
+        id=f"goal-other-{other_status.value}",
+        project_id=str(tmp_path),
+        title="other",
+        objective="Secondary status.",
+        created_at=now,
+        updated_at=now,
+    )
+    await store.upsert_goal(preferred_goal)
+    await store.upsert_goal(other_goal)
+    preferred = HarnessSession(
+        id="cursor:preferred",
+        harness_type=HarnessType.CURSOR,
+        vendor_session_id="preferred",
+        project_id=preferred_goal.project_id,
+        goal_id=preferred_goal.id,
+        cwd=preferred_goal.project_id,
+        status=preferred_status,
+        last_activity=now - timedelta(seconds=1),
+    )
+    other = HarnessSession(
+        id="opencode:other",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="other",
+        project_id=other_goal.project_id,
+        goal_id=other_goal.id,
+        cwd=other_goal.project_id,
+        status=other_status,
+        last_activity=now,
+    )
+    await store.upsert_session(preferred)
+    await store.upsert_session(other)
+    for session, message, timestamp in [
+        (preferred, "Preferred group detail.", now - timedelta(seconds=1)),
+        (other, "Newer secondary group detail.", now),
+    ]:
+        await store.accept_pipeline_event(
+            HarnessEvent(
+                event_id=uuid4().hex,
+                ts=timestamp,
+                harness_type=session.harness_type,
+                session_id=session.id,
+                project_id=session.project_id,
+                goal_id=session.goal_id,
+                event_type=EventType.AGENT_RESPONSE,
+                phase=EventPhase.AFTER,
+                message_delta=message,
+            ),
+            session_snapshot=session,
+        )
+    pipeline = Pipeline(
+        store,
+        AdapterRegistry(),
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
+    )
+    snap = await pipeline.pet_snapshot()
+    await store.close()
+    assert snap["last_source"] == "cursor"
+    assert snap["last_message"] == "Preferred group detail."
+
+
+@pytest.mark.asyncio
 async def test_refresh_keeps_hook_working_over_idle_discover(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()

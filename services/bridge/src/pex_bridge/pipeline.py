@@ -6530,7 +6530,20 @@ class Pipeline:
         paused = sum(1 for s in live if s.supervision_paused)
         needs = [s for s in live if s.status == SessionStatus.NEEDS_DECISION]
         last = interventions[0] if interventions else None
-        last_message, last_source = await self._latest_visible_line(last, events)
+        status_detail = (
+            needs
+            or [s for s in live if s.status.value in {"blocked", "error"}]
+            or [s for s in live if s.status == SessionStatus.DRIFTING]
+            or [s for s in live if s.status.value in {"working", "verifying"}]
+        )
+        if status_detail:
+            last_message, last_source = await self._latest_visible_line(
+                last,
+                events,
+                session_ids={status_detail[0].id},
+            )
+        else:
+            last_message, last_source = await self._latest_visible_line(last, events)
         transition_mood, transition_headline = pet_transition(last, now)
         if needs:
             named = needs[0].harness_type.value.replace("_", " ").title()
@@ -6619,9 +6632,13 @@ class Pipeline:
         self,
         last: Intervention | None,
         events: list[HarnessEvent],
+        *,
+        session_ids: set[str] | None = None,
     ) -> tuple[str | None, str | None]:
         fallback: tuple[str | None, str | None] = (None, None)
         for event in events:
+            if session_ids is not None and event.session_id not in session_ids:
+                continue
             source = event.harness_type.value
             line = visible_event_line(event)
             if not line:
@@ -6633,6 +6650,8 @@ class Pipeline:
                 fallback = (line, source)
         if fallback[0]:
             return fallback
+        if session_ids is not None:
+            return None, None
         if last is not None:
             text = clip_status_line(last.diagnosis or last.action_taken)
             if (

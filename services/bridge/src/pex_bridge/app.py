@@ -2695,6 +2695,7 @@ class AskIn(_StrictRequestModel):
     question: str = Field(
         default="what needs me?", min_length=1, max_length=MAX_CONTROL_TEXT_CHARS
     )
+    session_id: BoundedId | None = None
 
 
 class DemoReplayIn(_StrictRequestModel):
@@ -5803,6 +5804,7 @@ def create_app() -> FastAPI:
         from pex_supervisor.review_authority import review_invocation_guard
 
         from pex_bridge.ask import answer_question, asks_about_goal_completion
+        from pex_bridge.store import ProjectIdentityBlockedError
         from pex_bridge.workspace_access import workspace_read_check
         from pex_bridge.workspace_binding import WorkspaceAuthorityError
 
@@ -5813,63 +5815,133 @@ def create_app() -> FastAPI:
             )
         except TimeoutError:
             logger.warning("Ask refresh timed out; answering from durable state")
-        forensic_goals = await state.store.list_goals_page(limit=200)
-        goals: list[Goal] = []
-        for forensic_goal in forensic_goals:
-            goal = await state.store.get_goal_for_authority(forensic_goal.id)
-            if goal is not None:
-                goals.append(goal)
-        interventions = []
-        for goal in goals:
-            interventions.extend(
-                await state.store.list_interventions_for_goal_for_authority(
-                    goal.id,
-                    project_id=goal.project_id,
+        selected_session: HarnessSession | None = None
+        if body.session_id is not None:
+            try:
+                selected_session = await state.store.get_session_for_authority(body.session_id)
+            except ProjectIdentityBlockedError as exc:
+                raise HTTPException(
+                    409,
+                    {
+                        "code": exc.code,
+                        "detail": "selected session workspace authority changed",
+                    },
+                ) from exc
+            if selected_session is None:
+                raise HTTPException(404, "selected session is unavailable or no longer authorized")
+            if selected_session.goal_id is None:
+                goals = []
+                interventions = []
+                authority_sessions = [selected_session]
+            else:
+                try:
+                    selected_goal = await state.store.get_goal_for_authority(
+                        selected_session.goal_id
+                    )
+                except ProjectIdentityBlockedError as exc:
+                    raise HTTPException(
+                        409,
+                        {
+                            "code": exc.code,
+                            "detail": "selected session goal workspace authority changed",
+                        },
+                    ) from exc
+                if selected_goal is None:
+                    raise HTTPException(
+                        409, "selected session goal is unavailable or no longer authorized"
+                    )
+                goals = [selected_goal]
+                interventions = await state.store.list_interventions_for_goal_for_authority(
+                    selected_goal.id,
+                    project_id=selected_goal.project_id,
                     limit=20,
                 )
-            )
-        authority_sessions: list[HarnessSession] = []
-        for goal in goals:
-            remaining = 1_000 - len(authority_sessions)
-            if remaining <= 0:
-                break
-            authority_sessions.extend(
-                await state.store.list_sessions_for_goal_for_authority(
-                    goal.id,
-                    project_id=goal.project_id,
-                    limit=min(50, remaining),
+                authority_sessions = await state.store.list_sessions_for_goal_for_authority(
+                    selected_goal.id,
+                    project_id=selected_goal.project_id,
+                    limit=50,
                 )
-            )
-        sessions = collapse_promptable_agents(authority_sessions, datetime.now(UTC))
+        else:
+            forensic_goals = await state.store.list_goals_page(limit=200)
+            goals = []
+            for forensic_goal in forensic_goals:
+                goal = await state.store.get_goal_for_authority(forensic_goal.id)
+                if goal is not None:
+                    goals.append(goal)
+            interventions = []
+            for goal in goals:
+                interventions.extend(
+                    await state.store.list_interventions_for_goal_for_authority(
+                        goal.id,
+                        project_id=goal.project_id,
+                        limit=20,
+                    )
+                )
+            authority_sessions = []
+            for goal in goals:
+                remaining = 1_000 - len(authority_sessions)
+                if remaining <= 0:
+                    break
+                authority_sessions.extend(
+                    await state.store.list_sessions_for_goal_for_authority(
+                        goal.id,
+                        project_id=goal.project_id,
+                        limit=min(50, remaining),
+                    )
+                )
+        sessions = (
+            [
+                selected_session,
+                *(
+                    row
+                    for row in authority_sessions
+                    if row.id != selected_session.id
+                    and row.harness_type != selected_session.harness_type
+                ),
+            ]
+            if selected_session is not None
+            else collapse_promptable_agents(authority_sessions, datetime.now(UTC))
+        )
         interventions.sort(key=lambda row: row.created_at, reverse=True)
         interventions = interventions[:20]
         items = await _ask_context_items(goals)
         if asks_about_goal_completion(body.question):
+            if selected_session is not None and selected_session.goal_id is None:
+                return {
+                    "answer": (
+                        "Completion is uncertain: the selected session is not attached to an "
+                        "active goal. "
+                        "PEX will not borrow completion evidence from another goal."
+                    )
+                }
             lowered = body.question.casefold()
-            named_goal_ids = {
-                session.goal_id
-                for session in sessions
-                if session.goal_id is not None
-                and session.harness_type.value.replace("_", " ") in lowered
-            }
-            latest_verified_goal_id = next(
-                (
-                    intervention.goal_id
-                    for intervention in interventions
-                    if intervention.goal_id is not None
-                    and isinstance(intervention.metadata.get("verification"), dict)
-                ),
-                None,
-            )
-            candidate_goal_ids = (
-                named_goal_ids
-                if named_goal_ids
-                else {latest_verified_goal_id}
-                if latest_verified_goal_id is not None
-                else {goal.id for goal in goals}
-                if len(goals) == 1
-                else set()
-            )
+            if selected_session is not None:
+                candidate_goal_ids = {selected_session.goal_id}
+            else:
+                named_goal_ids = {
+                    session.goal_id
+                    for session in sessions
+                    if session.goal_id is not None
+                    and session.harness_type.value.replace("_", " ") in lowered
+                }
+                latest_verified_goal_id = next(
+                    (
+                        intervention.goal_id
+                        for intervention in interventions
+                        if intervention.goal_id is not None
+                        and isinstance(intervention.metadata.get("verification"), dict)
+                    ),
+                    None,
+                )
+                candidate_goal_ids = (
+                    named_goal_ids
+                    if named_goal_ids
+                    else {latest_verified_goal_id}
+                    if latest_verified_goal_id is not None
+                    else {goal.id for goal in goals}
+                    if len(goals) == 1
+                    else set()
+                )
             if len(candidate_goal_ids) != 1:
                 return {
                     "answer": (
@@ -5911,7 +5983,11 @@ def create_app() -> FastAPI:
         # Match Ask's one selected review workspace. A model may inspect this
         # target only under server-owned publication authority, never metadata
         # alone. The scope is revoked even if a timed-out thread keeps running.
-        selected = next((row for row in sessions if row.cwd), sessions[0] if sessions else None)
+        selected = (
+            selected_session
+            if selected_session is not None
+            else next((row for row in sessions if row.cwd), sessions[0] if sessions else None)
+        )
         try:
             witness = (
                 await state.store.require_session_workspace_current(selected)

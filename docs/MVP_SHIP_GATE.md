@@ -26,18 +26,21 @@ anything on the user's behalf.
 
 ## Evidence and remaining work
 
-Latest package is `4de1db8`, with exactly Pex and Von and no extra-pet generation.
-Both installers pass integrity verification. The user resumed PEX-only checks
-on September 10: startup and one explicit Retry both exceeded the 60-second
-deadline. The isolated packaged bridge took 68.92 seconds to run `--help` on
-the loaded machine, before app/database/provider initialization. An isolated
-unpacked-build experiment is in progress; it is not a verified fix or release.
-Native acceptance remains pending; a passing retry would not be a cold-start fix.
+Latest installer pair remains `4de1db8`, with exactly Pex and Von. Its integrity
+passed but native startup and Retry exceeded the unchanged 60-second deadline.
+The replacement unpacked runtime in source `be67a91` now starts the release
+desktop without Retry, with `ready` at 5.109 seconds after Python entry. Both
+pets are transparent, dismissible and independently hideable. This is one
+native check, not a fresh-Windows-user installation or prolonged stability proof.
+Native BYOK save/catalog, OpenCode connection and synthetic goal attachment also
+passed. Ask PEX exposed selected-session leakage from an older OpenCode worker;
+the fix is under regression review and not yet in the running package.
+Rebuild and verify the new MSI/NSIS runtime trees before calling them current.
 [Current package evidence](demo/evidence/TWO_PET_PACKAGE_2026-09-10.md).
 
 - [x] Resume PEX-only checks after permission; recorded startup failure retained.
-- [ ] Verify reliable packaged startup and both pets after the startup repair.
-- [ ] Diagnose and fix the recorded first-start timeout with phase evidence.
+- [x] Diagnose startup extraction delay; native unpacked-runtime launch and both pets checked.
+- [ ] Verify new MSI/NSIS startup and rerun corrected Ask/session flows.
 
 - [x] Native OpenCode connection and persistent goal attachment.
 - [x] Real native Strands correction to the same OpenCode worker, exact recovery

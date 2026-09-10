@@ -13,6 +13,38 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Native startup and two-pet checks passed on `be67a91`; live Ask found a bug.**
+The unpacked runtime opened Home without Retry; startup trace reached `ready`
+5.109 seconds after Python entry (not total process launch). The first direct
+Cargo build lacked `tauri/custom-protocol` and showed a blank development URL;
+that attempt is not a UI pass. Rebuilding with that feature fixed the bundle.
+Both Pex and Von were visually transparent; bubble dismissal and pet hiding
+worked independently without closing the main app. Restored Von, pet hidden.
+Saved existing Zen/Muse configuration without reading/replacing its vault key.
+Catalog refresh returned 70 models; this is not an inference/credential proof.
+
+An isolated OpenCode server at loopback port 4097, pinned to
+`opencode/ling-3.0-flash-fin-free`, connected through native Settings. The test
+session appeared on Home. No worker prompt had been sent. Native Ask's
+`what is Opencode doing?` incorrectly answered about an older stopped session,
+and Inspector's no-goal heading borrowed global status text. Repairs are in
+progress: optional exact session scope on Ask, selected-worker heading evidence,
+and rejection of late replies after selection changes. Do not count this Ask
+check as passing. New MSI/NSIS packages and current-source live supervision
+remain pending; older package receipts do not validate the unpacked runtime.
+
+The floating status-detail repair passes 30 pet snapshot/coalescing tests and
+Ruff: unrelated stopped-session text cannot accompany the active status group.
+Frontend production build passes. Combined Ask, workspace-authority and pet
+tests pass 76/76; Ruff passes. Desktop suite passes 285 tests with one explicit
+Windows symlink skip. The scoped-Ask wiring/render checks pass after fixing a
+missing test-only import. The scoped API retains authorized same-goal peers of
+different harnesses for context questions, while selected-session completion
+cannot borrow another goal. Responses are invalidated on session/goal/revision
+changes. Native synthetic goal entry and attachment also passed; worker still
+discovered and all three review dispatches remained available. PEX was closed
+through its own title bar for rebuilding; unrelated applications were untouched.
+
 **Goal is active; startup packaging repair is in progress, not blocked.** The
 isolated unpacked build completed, exit 0. Its `--help` took 8.0387 seconds versus
 the earlier single-file 68.92s under different machine load; not a controlled

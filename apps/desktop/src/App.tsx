@@ -468,6 +468,7 @@ export function App() {
   const [attachingGoal, setAttachingGoal] = useState(false);
   const [selectingPet, setSelectingPet] = useState(false);
   const askInput = useRef<HTMLInputElement>(null);
+  const askRequestSequence = useRef(0);
   const petRequestSequence = useRef(0);
   const baseRequestSequence = useRef(0);
   const cursorRejectionRequestSequence = useRef(0);
@@ -1727,24 +1728,37 @@ export function App() {
     }
   }
 
+  useEffect(() => {
+    askRequestSequence.current += 1;
+    setAnswer("");
+    setQuestion("");
+    setAsking(false);
+    return () => { askRequestSequence.current += 1; };
+  }, [current?.id, current?.goal_id, attachedGoal?.intent_revision]);
+
   async function askPex(event?: FormEvent | null, prompt?: string) {
     event?.preventDefault();
     const query = (prompt ?? question).trim();
     if (!query || asking) return;
+    const requestSequence = ++askRequestSequence.current;
     setQuestion(query);
     setAsking(true);
     try {
       const data = await bridgeJson<{ answer?: string }>("/v1/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: query }),
+        body: JSON.stringify({ question: query, session_id: current?.id ?? null }),
       });
+      if (requestSequence !== askRequestSequence.current) return;
       setAnswer(data.answer || "PEX has no answer in canonical state yet.");
     } catch {
+      if (requestSequence !== askRequestSequence.current) return;
       setAnswer("PEX could not reach canonical local state. No worker was interrupted.");
     } finally {
-      setAsking(false);
-      askInput.current?.focus();
+      if (requestSequence === askRequestSequence.current) {
+        setAsking(false);
+        askInput.current?.focus();
+      }
     }
   }
 
