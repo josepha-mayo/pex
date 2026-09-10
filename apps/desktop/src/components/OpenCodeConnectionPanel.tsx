@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { connectOpenCode, openCodeOrigin } from "../openCodeConnection";
+import { connectOpenCode, openCodeConnectionFailure, openCodeOrigin } from "../openCodeConnection";
 import type { SharedRequest } from "../sharedConnection";
 
 export function OpenCodeConnectionPanel({ request }: { request: SharedRequest }) {
@@ -24,9 +24,9 @@ export function OpenCodeConnectionPanel({ request }: { request: SharedRequest })
       if (pending.current === controller) {
         setNotice("OpenCode server connected. If no worker appears, create or resume a session in the OpenCode terminal attached to this server. Then return Home, select your worker, and set its persistent goal. PEX did not start a worker turn.");
       }
-    } catch {
+    } catch (error) {
       if (pending.current === controller) {
-        setNotice("Connection was not confirmed. Check that your local OpenCode server is running and inspect the worker list before retrying. A lost response does not mean the connection was rolled back.");
+        setNotice(openCodeConnectionFailure(error));
       }
     } finally {
       clearTimeout(timer);

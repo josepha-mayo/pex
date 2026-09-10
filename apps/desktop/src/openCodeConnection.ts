@@ -1,4 +1,21 @@
 import type { SharedRequest } from "./sharedConnection.ts";
+import { BridgeRequestError } from "./decisionContract.ts";
+
+/** Explain verified failures without reflecting arbitrary server diagnostics. */
+export function openCodeConnectionFailure(error: unknown): string {
+  if (error instanceof BridgeRequestError) {
+    if (error.status === 401 || error.status === 403) {
+      return "PEX could not authorize this connection request. Restart PEX to refresh its local bridge connection; do not paste your Zen key into the server address.";
+    }
+    if (error.status === 409) {
+      return "The bridge rejected the connection because an active connection conflicts with this request. Inspect the worker list before changing connections. No new worker was started.";
+    }
+    if (error.status === 502) {
+      return "The OpenCode health check did not pass. Check the local server and address, then retry. PEX discarded this connection attempt; it did not start a worker.";
+    }
+  }
+  return "Connection was not confirmed. Check that your local OpenCode server is running and inspect the worker list before retrying. A lost response does not mean the connection was rolled back.";
+}
 
 export function openCodeOrigin(value: string): string | null {
   if (!value.trim() || value.length > 2048 || /[\s\\]/.test(value.trim())) return null;

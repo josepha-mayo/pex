@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { connectOpenCode, openCodeOrigin } from "./openCodeConnection.ts";
+import { connectOpenCode, openCodeConnectionFailure, openCodeOrigin } from "./openCodeConnection.ts";
+import { BridgeRequestError } from "./decisionContract.ts";
+
+test("OpenCode connection failures distinguish rejection from uncertainty without leaking diagnostics", () => {
+  for (const status of [401, 403, 409, 502]) {
+    const notice = openCodeConnectionFailure(new BridgeRequestError("private diagnostic", { status }));
+    assert.doesNotMatch(notice, /private diagnostic/);
+    assert.doesNotMatch(notice, /lost response/);
+  }
+  assert.match(openCodeConnectionFailure(new BridgeRequestError("probe", { status: 502 })), /health check/);
+  assert.match(openCodeConnectionFailure(new BridgeRequestError("busy", { status: 409 })), /active connection/);
+  assert.match(openCodeConnectionFailure(new DOMException("aborted", "AbortError")), /lost response/);
+  assert.match(openCodeConnectionFailure(new Error("network")), /lost response/);
+});
 
 test("OpenCode onboarding explains the separate server and worker without starting a task", async () => {
   const { createElement } = await import("react");
