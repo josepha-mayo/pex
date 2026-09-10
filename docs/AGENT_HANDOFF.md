@@ -13,6 +13,25 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**User resumed PEX-only checks; native startup failure reproduced on `4de1db8`.**
+Both the opened app and one Retry exceeded the unchanged 60-second deadline.
+Retry trace reached app imports at 11.031s and routes at 16s after Python entry,
+but never Store startup. The isolated packaged `--help` path took 68.92 seconds,
+exit 0, before app/db/provider initialization. CPU snapshot was 100% across 12
+logical processors; these are loaded-machine timings, not proof of antivirus
+or RAM failure. PEX was closed through its own Close button; unrelated apps
+were untouched. [Detailed evidence](demo/evidence/PACKAGED_STARTUP_RECHECK_2026-09-10.md).
+
+An isolated unpacked bridge build is running under `build/startup-unpacked`
+(current exec session 80835). First attempt failed during keyring collection;
+isolated keyring collection then passed and one retry progressed into Analysis.
+Do not restart based on a polling timeout. It contains no staged pet assets and
+is only a `--help` startup experiment, not a release candidate. Canonical package
+unchanged. Standalone `bridge-runtime-contract.mjs` and tests prepare full-tree
+integrity checking for an unpacked distribution; not integrated yet. Three tests
+pass, one symlink-fixture test explicitly skips for Windows EPERM. Parent review
+caught/fixed mixed-case sorting before acceptance. No new live model calls.
+
 **Complete desktop suite: 280 passed**, 2.72 seconds, exit 0. The first run also
 passed but printed a Vite WebSocket port-collision error: `hmr:false` does not
 disable Vite's listener. All eight render-test server configurations now set
