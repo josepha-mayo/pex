@@ -7,11 +7,23 @@ import {
   findUniquePackagedFiles,
   findPackagedBridgeRuntimeDirectory,
   packageReceiptIsReady,
+  recordPackageCleanup,
   validateEmbeddedFiles,
   verifyDesktopBundleVariants,
 } from "./package-contract.mjs";
 
 const hash = (character) => character.repeat(64);
+
+test("package cleanup preserves earlier blockers and permits receipt emission", () => {
+  const blockers = [{ code: "msi_verification_failed", detail: "original failure" }];
+  recordPackageCleanup(() => { throw Object.assign(new Error("private path"), { code: "EPERM" }); }, blockers);
+  assert.deepEqual(blockers.map((entry) => entry.code), ["msi_verification_failed", "package_cleanup_failed"]);
+  assert.match(blockers[1].detail, /EPERM/);
+  assert.doesNotMatch(blockers[1].detail, /private path/);
+  const clean = [];
+  recordPackageCleanup(() => {}, clean);
+  assert.deepEqual(clean, []);
+});
 const hashBuffer = (value) => createHash("sha256").update(value).digest("hex");
 const embedded = () => Object.fromEntries(PACKAGE_BINARIES.map(
   (name, index) => [name, { bytes: index + 1, sha256: hash(String(index + 1)) }],

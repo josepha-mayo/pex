@@ -11,6 +11,7 @@ import {
   findUniquePackagedFiles,
   findPackagedBridgeRuntimeDirectory,
   packageReceiptIsReady,
+  recordPackageCleanup,
   verifyDesktopBundleVariants,
 } from "./package-contract.mjs";
 
@@ -156,7 +157,10 @@ try {
       blockers.push({ code: "desktop_bundle_mismatch", detail: error.message });
     }
   }
-  rmSync(work, { recursive: true, force: true });
+  recordPackageCleanup(
+    () => rmSync(work, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 }),
+    blockers,
+  );
 }
 
 const statusAfter = execFileSync("git", ["status", "--porcelain=v1", "-z", "--untracked-files=all"], { cwd: repo, encoding: "utf8" });

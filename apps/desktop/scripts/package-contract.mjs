@@ -6,6 +6,20 @@ const SHA256 = /^[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
 const BUNDLE_MARKER_PREFIX = Buffer.from("__TAURI_BUNDLE_TYPE_VAR_", "ascii");
 
+export function recordPackageCleanup(cleanup, blockers) {
+  try {
+    cleanup();
+  } catch (error) {
+    // Retain verification results even when Windows still holds extracted files.
+    const code = typeof error?.code === "string" && /^[A-Z0-9_]+$/u.test(error.code)
+      ? error.code : "unknown";
+    blockers.push({
+      code: "package_cleanup_failed",
+      detail: `Temporary extraction cleanup failed (${code}); artifacts remain for diagnosis.`,
+    });
+  }
+}
+
 function exactKeys(value, expected) {
   return value !== null
     && typeof value === "object"
