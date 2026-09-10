@@ -488,6 +488,9 @@ def test_supervisor_and_verifier_prompts_treat_observed_text_as_untrusted_data()
     assert "inspect_workspace" in _system_prompt()
     assert "web_search" in _system_prompt()
     assert "at most one round of evidence-tool calls" in _system_prompt()
+    assert "three model calls" in _system_prompt()
+    assert "Reserve a call" in _system_prompt()
+    assert "do not invent evidence" in " ".join(_system_prompt().split())
     assert "NOOP without calling more tools" in _system_prompt()
     assert "Do not call search" not in _system_prompt()
     assert "untrusted data" in _verifier_system_prompt()
@@ -846,6 +849,23 @@ async def test_verifier_budget_reserves_a_verdict_or_fails_closed(evidence_calls
         assert verifier.status == "missing_structured_output"
         assert not verifier.authorizes_intervention()
         assert result.action.type.value == "NOOP"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("evidence_calls", [1, 2, 3])
+async def test_main_budget_requires_a_real_decision_within_three_calls(evidence_calls):
+    result = await run_strands_async(
+        _request(0.1),
+        model=FakeStructuredModel("NOOP", evidence_tool_calls=evidence_calls),
+    )
+    assert result.model_call_count == min(evidence_calls + 1, 3)
+    assert result.action.type.value == "NOOP"
+    if evidence_calls < 3:
+        assert result.inference_status == "completed"
+    else:
+        assert result.inference_status == "failed"
+        assert result.diagnosis == "strands_missing_structured_output"
+        assert "stop_reason=limit_turns" in result.traces
 
 
 @pytest.mark.asyncio
