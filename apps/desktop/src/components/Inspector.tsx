@@ -13,6 +13,7 @@ import type {
 } from "../types";
 import {
   actionExplanation,
+  recordedActionLabel,
   canAttachPersistentGoal,
   canOpenSession,
   humanize,
@@ -108,11 +109,7 @@ export function Inspector({
   const canOpen = canOpenSession(current);
   const canAttach = canAttachPersistentGoal(current);
   const ledger = partitionLedgerDecisions(ledgerDecisions);
-  const actionName = !action
-    ? "No recorded action"
-    : action.action === "NOOP"
-      ? "Stayed quiet"
-      : humanize(action.action);
+  const actionName = recordedActionLabel(action);
   const actionWhy = actionExplanation(action);
 
   return (

@@ -101,6 +101,7 @@ export type LastAction = {
   reversible?: boolean;
   confidence?: number;
   used_llm?: boolean;
+  inference_status?: string | null;
   verification_status?: string | null;
   evidence_tools?: string[];
 };

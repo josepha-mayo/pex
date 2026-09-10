@@ -2918,6 +2918,7 @@ function actionForSession(
     action: item.action_taken,
     diagnosis: item.diagnosis,
     rationale: item.proposed_action?.rationale,
+    inference_status: typeof metadata.inference_status === "string" ? metadata.inference_status : undefined,
     evidence: item.evidence,
     result: item.action_taken === "CLEANUP" ? item.result : item.outcome || item.result,
     reversible: item.reversible,

@@ -2,21 +2,27 @@
 
 ## Current — 10 September 2026
 
+- Supplemental quiet case 9 returned no validated Strands decision. The test
+  runner incorrectly accepted attempted inference; its gate is fixed, sealed
+  receipts retained. Original CRLF/LF case is ambiguous, not a measured false
+  positive. Some correct tasks still use two reviews and multiple model calls.
+  [Exact audit](docs/demo/evidence/QUIET_RESTRAINT_2026-09-10.md).
+
 Native `d55e899` recovery has now passed with `helped: true`, final NOOP and all
 216 events settled. The "in progress/pending" labels below are superseded for
 this specific case. [Proof and limitations](docs/demo/evidence/NATIVE_D55E899_2026-09-10.md).
 
 - Latest package `d55e899` verifies both installers. Native quiet completion,
   pet transparency/dismiss/hide and real Codex source-level quiet/recovery now
-  have passing evidence. Native recovery on this package is in progress, not
-  yet accepted. [Evidence](docs/demo/evidence/NATIVE_490B82B_2026-09-10.md).
+  have passing evidence. Native recovery on this package also passed.
+  [Evidence](docs/demo/evidence/NATIVE_D55E899_2026-09-10.md).
 - The original whole-PC freeze is not causally resolved by a short settled
   resource sample. PEX-only native checks are authorized again; unrelated
   apps must not be controlled and the unsafe recursive-PID launcher stays
   quarantined. The old hold statements below are historical.
 - Pre-prompt idle suppression is conservative: a mixed old/new batch retains
   normal STOP behavior rather than risk losing a new completion. Native
-  confirmation is pending despite 81 passing focused tests.
+  recovery confirmation passed; duplicate quiet reviews remain possible.
 - Native `490b82b` fixture server exited, but its temporary `data` directory
   remains after incomplete profile cleanup. Keep receipts and scope cleanup.
 - Existing-Codex native attachment, additional behavior cases, long stability,

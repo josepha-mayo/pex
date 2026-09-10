@@ -2,15 +2,22 @@
 
 ## MVP acceptance checkpoint — 10 September 2026
 
+Restraint evidence: nine successful semantic quiet cases across two runs;
+one additional correct task had failed inference. Original ten-case batch did
+not pass. [Audit, test defects and resource sample](demo/evidence/QUIET_RESTRAINT_2026-09-10.md).
+120 seconds of resource observation is not freeze clearance. Progress-label
+source repair and failed-review honesty pass 20 snapshot tests, 275 desktop
+tests and production UI build; not yet packaged.
+
 **Latest native recovery passed on package `d55e899`**: specific Strands nudge,
 same-worker exact completion, `helped: true`, final NOOP, 216 settled events and
 exactly two reviews. Stopped/rationale UI verified. [Current evidence](demo/evidence/NATIVE_D55E899_2026-09-10.md).
 
-Latest package `490b82b`: both installer gates passed. Native OpenCode quiet
+Earlier package `490b82b`: both installer gates passed. Native OpenCode quiet
 completion passed with one real Strands NOOP and all 336 events settled.
 Transparent pet, bubble dismissal and pet hiding passed native checks.
 Status/rationale follow-up: 114 backend tests, Ruff, 274 desktop tests and UI
-production build pass; not yet packaged. [Evidence and exact limits](demo/evidence/NATIVE_490B82B_2026-09-10.md).
+production build pass; included in d55e899. [Evidence and exact limits](demo/evidence/NATIVE_490B82B_2026-09-10.md).
 
 - [x] Real Codex source-level same-worker recovery and quiet proofs.
 - [x] Packaged OpenCode connection, goal attachment and quiet completion.

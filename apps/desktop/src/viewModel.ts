@@ -22,6 +22,21 @@ import type { PetMood } from "./pets/atlas";
 
 const LIFECYCLE_ACTIONS = new Set(["START_AGENT", "STOP_AGENT", "FORK_PROBE", "CLEANUP"]);
 
+export function actionReviewIncomplete(action?: LastAction | null): boolean {
+  return action?.action === "NOOP" && (
+    action.inference_status === "failed" || action.inference_status === "timeout"
+    || action.diagnosis === "strands_missing_structured_output"
+    || action.diagnosis === "strands_timeout"
+    || Boolean(action.diagnosis?.startsWith("strands_failed:"))
+  );
+}
+
+export function recordedActionLabel(action?: LastAction | null): string {
+  if (!action) return "No recorded action";
+  if (actionReviewIncomplete(action)) return "Review incomplete";
+  return action.action === "NOOP" ? "Stayed quiet" : humanize(action.action);
+}
+
 export function actionExplanation(action?: LastAction | null): string {
   if (!action) return "No intervention has been recorded for this session.";
   if (action.rationale?.trim()) return action.rationale.trim();
@@ -718,6 +733,13 @@ export function statusCopy(
       tone: "watch",
       label: pet.working ? `${pet.working} working · review unavailable` : "Review unavailable",
       detail: "No supervisor was available for the last review. Check model or AgentCore settings; this is not a verified completion.",
+    };
+  }
+  if (actionReviewIncomplete(pet?.last_action)) {
+    return {
+      tone: "watch",
+      label: pet?.working ? `${pet.working} working · review incomplete` : "Review incomplete",
+      detail: "The supervisor did not return a validated decision. No correction was sent; this does not verify completion.",
     };
   }
   if (pet?.working) {

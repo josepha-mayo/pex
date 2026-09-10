@@ -6599,6 +6599,8 @@ class Pipeline:
                 "session_id": last.session_id,
                 "action": last.action_taken,
                 "diagnosis": last.diagnosis,
+                "rationale": last.proposed_action.rationale,
+                "inference_status": (last.metadata or {}).get("inference_status"),
                 "evidence": last.evidence[:6],
                 "result": last.result,
                 "reversible": last.reversible,
@@ -6778,6 +6780,25 @@ def activity_phrase(event: HarnessEvent | None) -> str:
 
 
 def visible_event_line(event: HarnessEvent) -> str | None:
+    if (
+        event.harness_type == HarnessType.OPENCODE
+        and event.event_type == EventType.STATUS
+        and (event.metadata or {}).get("sse_type")
+        in {
+            "message.updated",
+            "message.part.delta",
+            "session.updated",
+            "session.diff",
+            "session.status",
+            "session.idle",
+        }
+        and not event.command
+        and not event.tool_name
+    ):
+        # Bookkeeping is retained in the journal, but is not meaningful worker
+        # progress. In particular, a late user metadata refresh must not replace
+        # the assistant's actual response with the adapter's role fallback.
+        return None
     text = clip_status_line(event.message_delta)
     if text and not _is_pex_line(text):
         return text

@@ -16,6 +16,7 @@ import {
 import {
   BUILT_IN_PET_IDS,
   actionExplanation,
+  recordedActionLabel,
   HATCH_BASE_CANDIDATE_CONFIRMATION,
   HATCH_BASE_CANDIDATE_DISCLOSURE,
   HATCH_EXTERNAL_IMPORT_DISCLOSURE,
@@ -92,6 +93,19 @@ test("action explanations prefer recorded reasons without inventing verification
   assert.equal(actionExplanation({ ...action, diagnosis: "supervisor_unavailable" }), "PEX chose not to interrupt. Open its evidence for the recorded reason.");
   assert.equal(actionExplanation({ ...action, diagnosis: "The tests failed." }), "The tests failed.");
   assert.equal(actionExplanation(null), "No intervention has been recorded for this session.");
+});
+
+test("failed inference is not presented as a successful quiet review", () => {
+  const action = { id: "i", session_id: "s", action: "NOOP" };
+  for (const inference_status of ["failed", "timeout"]) {
+    const last_action = { ...action, inference_status };
+    assert.equal(recordedActionLabel(last_action), "Review incomplete");
+    const pet = { headline: "Stopped", working: 0, drifting: 0, needs_you: 0, last_action };
+    assert.equal(statusCopy(pet, null).label, "Review incomplete");
+  }
+  assert.equal(recordedActionLabel({ ...action, diagnosis: "strands_missing_structured_output" }), "Review incomplete");
+  assert.equal(recordedActionLabel({ ...action, inference_status: "completed" }), "Stayed quiet");
+  assert.notEqual(recordedActionLabel({ ...action, action: "SEND_NUDGE", inference_status: "failed" }), "Review incomplete");
 });
 
 import type {

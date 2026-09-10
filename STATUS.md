@@ -2,6 +2,14 @@
 
 ## Current — 10 September 2026
 
+Restraint audit: nine successful semantic quiet cases across two runs, not a
+clean ten-case batch. Another correctly completed case produced a failed
+structured decision and cannot count as a semantic pass. Original failed
+receipts remain unchanged. [Results and resource evidence](docs/demo/evidence/QUIET_RESTRAINT_2026-09-10.md).
+Source-only progress and failed-review labels pass 20 snapshot tests, Ruff,
+275 desktop tests and production UI build;
+running package remains d55e899. Resource/review overhead remains open.
+
 **Native recovery passed on `d55e899`:** exact missing-file correction, same
 worker continuation, supported outcome with `helped: true`, final NOOP, all
 216 events settled. The UI showed Stopped and the actual rationale. Two reviews
@@ -14,8 +22,8 @@ Latest verified package: `d55e899`; MSI/NSIS content and eight-pet inventory
 checks pass, exit 0. It includes stopped-state preservation, human-readable
 Inspector rationale and conservative pre-prompt idle suppression. Follow-up
 regressions: 81 backend tests and independent read-only review pass; desktop
-274 tests and production UI build pass. Native recovery is now running with
-the saved free Zen/Muse route and a three-review cap; no result claimed yet.
+274 tests and production UI build pass. Native recovery passed with
+the saved free Zen/Muse route and a three-review cap as recorded above.
 
 Real Codex source-level quiet and same-worker recovery checks passed on
 `2174ad0`, including verified `helped: true` outcome. Its full offline suite

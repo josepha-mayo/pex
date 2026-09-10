@@ -7,6 +7,29 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+Live restraint audit: eight original small-task cases plus one supplemental
+case have completed Strands NOOP decisions and zero followups. The original
+batch stopped on an ambiguous CRLF/LF criterion; supplemental case 9 has a
+failed structured decision, NOT a semantic pass despite its raw runner flag.
+No ten-case batch PASS or comparative score. All owned fixture servers exited.
+[Audited results, usage, hashes and resource sample](demo/evidence/QUIET_RESTRAINT_2026-09-10.md).
+The 120-second native sample used 393.7–414.0 MiB private memory and about
+19.58% of one CPU core; it does not clear the earlier freeze. PEX remains open
+on package d55e899, pet hidden. Source-only progress-text repair ignores late
+OpenCode bookkeeping in the visible message. Failed/timed-out Strands reviews
+now carry their status/reason to the UI and say Review incomplete, not Stayed
+quiet. 20 snapshot tests, 275 desktop tests, production UI build and Ruff pass;
+independent review found no defect in the bookkeeping repair. These changes
+are not yet in the running binary. The added status regression initially lacked
+last_activity and was excluded from the snapshot; setting the fixture's current
+activity made its scope match the real case. No production filter was relaxed.
+
+Next priorities: investigate failed structured decisions/review overhead,
+finish current behavior cases, then remaining native Codex, isolation,
+AgentCore no-billing deployment and submission gates. Do not rerun sealed roots
+or mutate failed receipts. The ignored quiet helper's gate now requires
+completed inference, not merely an attempted model call.
+
 **Native recovery now passed on verified package `d55e899`.** UI-connected
 OpenCode worker received a specific Strands correction, created the missing
 exact file, and PEX recorded `goal_evidence_supported` / `helped: true`, followed
@@ -15,7 +38,7 @@ this run. Inspector showed Stopped and the actual rationale. Fixture exited 0,
 owned server closed; temporary data cleanup remains incomplete. PEX stays open,
 pet hidden. [Sealed evidence and limits](demo/evidence/NATIVE_D55E899_2026-09-10.md).
 
-Next: required additional behavior cases/quiet-rate measurement and longer
+Next: required additional behavior cases and longer
 stability, then native existing-Codex and fair benchmark/AgentCore evidence.
 Do not rerun the already sealed fixture or overwrite its audit. The earlier
 checkpoint below records the quiet case and intervening repair work.

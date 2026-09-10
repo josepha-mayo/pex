@@ -151,6 +151,54 @@ def test_pet_decoration_preserves_transition_with_safety_priority():
 
 
 @pytest.mark.asyncio
+async def test_pet_snapshot_preserves_failed_review_status_and_reason(tmp_path):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    now = datetime.now(UTC)
+    await store.upsert_goal(
+        Goal(
+            id=PET_GOAL_ID,
+            project_id=str(tmp_path),
+            title="Review status",
+            objective="Do not disguise failed inference as successful supervision.",
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    await store.upsert_session(
+        HarnessSession(
+            id="codex:pet-state",
+            harness_type=HarnessType.CODEX,
+            vendor_session_id="pet-state",
+            project_id=str(tmp_path),
+            goal_id=PET_GOAL_ID,
+            cwd=str(tmp_path),
+            status=SessionStatus.STOPPED,
+            last_activity=now,
+        )
+    )
+    review = _pet_intervention(
+        InterventionType.NOOP,
+        result="noop",
+        diagnosis="strands_missing_structured_output",
+        metadata={"used_llm": True, "inference_status": "failed"},
+    )
+    await store.add_intervention(review)
+    pipeline = Pipeline(
+        store,
+        AdapterRegistry(),
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
+    )
+    try:
+        snap = await pipeline.pet_snapshot()
+        assert snap["last_action"]["inference_status"] == "failed"
+        assert snap["last_action"]["rationale"] == review.proposed_action.rationale
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_pet_snapshot_emits_transition_but_never_hides_human_decision(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
@@ -279,7 +327,8 @@ async def test_pet_snapshot_names_a_drifting_session_in_the_present_tense(tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_pet_snapshot_uses_last_worker_message(tmp_path):
+@pytest.mark.parametrize("harness", [HarnessType.CURSOR, HarnessType.OPENCODE])
+async def test_pet_snapshot_uses_last_worker_message(tmp_path, harness):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
     now = datetime.now(UTC)
@@ -293,8 +342,8 @@ async def test_pet_snapshot_uses_last_worker_message(tmp_path):
     )
     await store.upsert_goal(goal)
     session = HarnessSession(
-        id="cursor:live",
-        harness_type=HarnessType.CURSOR,
+        id=f"{harness.value}:live",
+        harness_type=harness,
         vendor_session_id="live",
         project_id=goal.project_id,
         goal_id=goal.id,
@@ -307,7 +356,7 @@ async def test_pet_snapshot_uses_last_worker_message(tmp_path):
         HarnessEvent(
             event_id=uuid4().hex,
             ts=datetime.now(UTC),
-            harness_type=HarnessType.CURSOR,
+            harness_type=harness,
             session_id=session.id,
             project_id=goal.project_id,
             goal_id=goal.id,
@@ -317,6 +366,23 @@ async def test_pet_snapshot_uses_last_worker_message(tmp_path):
         ),
         session_snapshot=session,
     )
+    if harness == HarnessType.OPENCODE:
+        for kind, text in [("message.updated", "user"), ("session.status", "session.status")]:
+            await store.accept_pipeline_event(
+                HarnessEvent(
+                    event_id=uuid4().hex,
+                    ts=datetime.now(UTC),
+                    harness_type=harness,
+                    session_id=session.id,
+                    project_id=goal.project_id,
+                    goal_id=goal.id,
+                    event_type=EventType.STATUS,
+                    phase=EventPhase.AFTER,
+                    message_delta=text,
+                    metadata={"sse_type": kind},
+                ),
+                session_snapshot=session,
+            )
     pipeline = Pipeline(
         store,
         AdapterRegistry(),
@@ -326,7 +392,7 @@ async def test_pet_snapshot_uses_last_worker_message(tmp_path):
     snap = await pipeline.pet_snapshot()
     await store.close()
     assert snap["headline"] == "1 working · 0 need you"
-    assert snap["last_source"] == "cursor"
+    assert snap["last_source"] == harness.value
     assert snap["last_message"] == "Ran pytest: 92 passed, 2 skipped."
     assert snap["sessions"][0]["last_message"] == "Ran pytest: 92 passed, 2 skipped."
     assert snap["sessions"][0]["label"] == "pex"
