@@ -406,7 +406,9 @@ export function SettingsPage({
                     const next = event.target.value;
                     onSupervisorProvider(next);
                     const first = (supervisor?.catalog || []).find((row) => row.provider === next);
-                    if (first) onSupervisorModel(first.model_id);
+                    // Never carry a model ID from the previous provider when
+                    // the selected destination has no catalog suggestion.
+                    onSupervisorModel(first?.model_id || "");
                   }}
                 >
                   <option value="">auto-detect</option>

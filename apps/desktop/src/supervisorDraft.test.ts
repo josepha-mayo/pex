@@ -24,6 +24,17 @@ const custom: SupervisorDraft = {
   credentialAction: "keep",
 };
 
+test("provider changes clear stale model ids when the new catalog is empty", () => {
+  const settings = readFileSync(new URL("./components/SettingsPage.tsx", import.meta.url), "utf8");
+  const start = settings.indexOf("onSupervisorProvider(next);");
+  const end = settings.indexOf("}}", start);
+  assert.ok(start >= 0 && end > start);
+  const handler = settings.slice(start, end);
+  assert.match(handler, /find\(\(row\) => row.provider === next\)/u);
+  assert.match(handler, /onSupervisorModel\(first\?\.model_id \|\| ""\)/u);
+  assert.doesNotMatch(handler, /if \(first\)/u);
+});
+
 test("save confirmation distinguishes configuration from tested credentials", () => {
   assert.match(supervisorSaveConfirmation(true), /did not test the API key or run model inference/u);
   assert.match(supervisorSaveConfirmation(false), /model is not loaded yet/u);

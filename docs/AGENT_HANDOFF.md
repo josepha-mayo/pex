@@ -13,6 +13,17 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**BYOK provider-switch UI repair:** selecting a provider with no catalog entry
+now clears the prior provider's model ID instead of silently retaining it. The
+existing credential-destination clearing remains unchanged. The new source-wiring
+regression failed before the repair, then all 35 supervisor-draft tests passed;
+TypeScript `--noEmit` passed. Seven selected backend BYOK/settings contracts
+passed (53 deselected, 9.58 seconds): exact named-provider key/endpoint, write-only
+restart persistence, model-only retention/endpoint change, invalid-secret errors,
+and key rotation/explicit clear. Tests used fake secrets/vault/model constructors;
+no actual key was read, no provider call or native UI check occurred. Packaged
+`4de1db8` predates this UI repair; rebuild/native verification remain pending.
+
 **Startup follow-up validation recovery repaired offline:** invalid follow-up
 bindings now receive the same narrow logged-and-skipped `ValueError` handling as
 main event heads. Rows remain intact; later healthy follow-ups continue; runtime
