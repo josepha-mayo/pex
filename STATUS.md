@@ -2,6 +2,11 @@
 
 ## Current — 10 September 2026
 
+At `4329978`, a live supervisor-only probe passed using the saved OS-vault Zen
+Contributor Free configuration: real Strands inference, exact provider/model/API,
+and typed decision. No worker/UI attached; synthetic input, not a behavioral
+benchmark. [Receipt](docs/demo/evidence/LIVE_ZEN_SUPERVISOR_4329978_2026-09-10.md).
+
 Submission remains **NO-GO**. Latest verified package source is `166a656`, not the
 latest source. [Installer hashes and limitations](docs/demo/evidence/PACKAGE_166A656_2026-09-10.md)
 confirm MSI/NSIS contents and eight-pet inventories, not native behavior.

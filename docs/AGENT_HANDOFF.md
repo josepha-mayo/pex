@@ -143,6 +143,12 @@ from an older installer.
 
 ## Verification ledger
 
+Current live supervisor-only proof at `4329978`: saved OS-vault Zen Contributor
+Free configuration passed the real Strands inference contract, with exact
+provider/model/Responses assertions and a typed decision. Synthetic session only,
+no worker or UI attached; not behavioral/benchmark or AgentCore proof.
+[Receipt and limitations](demo/evidence/LIVE_ZEN_SUPERVISOR_4329978_2026-09-10.md).
+
 Latest combined checkpoint: source `d53de4c`, 423 selected backend tests and all
 268 desktop tests passed on 10 September (111.34s and 6.842s). No source changes
 during verification. [Exact commands and scope](demo/evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md).
