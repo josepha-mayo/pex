@@ -782,6 +782,101 @@ def test_generic_completion_is_supported_by_required_file_content(tmp_path):
     assert "contains:report.txt:shipped" in result["verdicts"][0]["evidence"]
 
 
+@pytest.mark.parametrize(
+    "content,supported",
+    [
+        (b"stage-one-ok\n", True),
+        (b"stage-one-ok", False),
+        (b"stage-one-ok\n\n", False),
+        (b"stage-one-ok\r\n", False),
+        (b"prefix stage-one-ok\n", False),
+        (b"stage-one-ok followed by one newline", False),
+    ],
+)
+def test_exact_file_content_with_one_newline_is_not_prose_or_substring(
+    tmp_path, content, supported
+):
+    (tmp_path / "report.txt").write_bytes(content)
+    result = verify_claims(
+        [
+            {
+                "statement": "I am done",
+                "kind": "complete",
+                "polarity": "asserted",
+                "source_event_id": "stop",
+            }
+        ],
+        [_event(event_id="stop", event_type=EventType.STOP)],
+        _goal(
+            acceptance_criteria=[
+                "report.txt contains exactly stage-one-ok followed by one newline."
+            ],
+            evidence_requirements=["report.txt"],
+        ),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert (result["status"] == "supported") is supported
+    if not supported:
+        assert result["status"] == "contradicted"
+
+
+@pytest.mark.parametrize(
+    "content,supported", [(b"ready", True), (b"ready\n", False), (b"already", False)]
+)
+def test_exact_content_without_newline_requires_whole_file(tmp_path, content, supported):
+    (tmp_path / "report.txt").write_bytes(content)
+    result = verify_claims(
+        [
+            {
+                "statement": "I am done",
+                "kind": "complete",
+                "polarity": "asserted",
+                "source_event_id": "stop",
+            }
+        ],
+        [_event(event_id="stop", event_type=EventType.STOP)],
+        _goal(acceptance_criteria=['report.txt contains exactly "ready".']),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert (result["status"] == "supported") is supported
+
+
+@pytest.mark.parametrize(
+    "criterion,content,status",
+    [
+        ('report.txt contains exactly "ready.done".', b"ready.done", "supported"),
+        ('report.txt contains exactly "".', b"", "supported"),
+        ('report.txt contains exactly "ready" followed by one newline.', b"ready\n", "supported"),
+        (
+            "report.txt contains exactly ready and nothing else.",
+            b"ready and nothing else",
+            "uncertain",
+        ),
+        ('report.txt contains exactly "\ufffd".', b"\xff", "uncertain"),
+        ('report.txt contains exactly "ready".', b"ready" + b"x" * 4_000_000, "uncertain"),
+    ],
+    ids=["quoted-period", "empty", "quoted-newline", "ambiguous", "invalid-utf8", "oversized"],
+)
+def test_exact_content_preserves_literals_and_fails_closed_on_ambiguity(
+    tmp_path, criterion, content, status
+):
+    (tmp_path / "report.txt").write_bytes(content)
+    result = verify_claims(
+        [
+            {
+                "statement": "I am done",
+                "kind": "complete",
+                "polarity": "asserted",
+                "source_event_id": "stop",
+            }
+        ],
+        [_event(event_id="stop", event_type=EventType.STOP)],
+        _goal(acceptance_criteria=[criterion], evidence_requirements=["report.txt"]),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert result["status"] == status
+
+
 def test_required_content_after_legacy_preview_boundary_is_still_observed(tmp_path):
     (tmp_path / "report.txt").write_text(
         ("draft\n" * 20_000) + "shipped\n",

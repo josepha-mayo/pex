@@ -2,6 +2,84 @@
 
 Submission remains NO-GO. User explicitly resumed bounded PEX-only live checks.
 
+## Native package 2dc5d81: same-session correction and final semantic NOOP observed
+
+Both MSI/NSIS content, hash and eight-pet inventory checks passed, exit 0.
+Receipt: `build/pex-package-receipt-2dc5d81.json`.
+MSI SHA-256: `cc3e5fb36f0885af4d86d57c06e127615ecd2c9662c775fffa71605456855fa5`.
+NSIS SHA-256: `29ac8123a13b6440f6aff774fcac54d06aa9212c9603d4682f89e658a43dfe43`.
+
+Native Computer Use verified cold startup with saved Zen, the OpenCode connection
+form, accurate Discovered status before prompting, compact Inspector selection,
+selected-worker Ask PEX suggestions, and visible exact goal attachment. Von's
+hidden preference remained respected. The desktop bridge was the only supervisor.
+No manual correction, abort, second Pipeline, or paid fallback was used.
+
+Synthetic root: `build/native-opencode-2dc5d81-20260910`.
+Vendor session: `ses_f7686539affeBwGz2a5flGNYju`.
+Worker: `ling-3.0-flash-fin-free`; supervisor:
+`muse-spark-1.3-contributor-free`, Strands 1.53.0, local execution.
+
+- Initial worker prompt requested only phase one; attached persistent goal required
+  both files. The worker stopped with only stage-one.txt present.
+- First semantic proposal failed evidence-reference validation and became NOOP.
+  This consumed a review; it is retained as a failed proposal, not hidden.
+- Second semantic review and independent verifier inspected missing final.txt.
+  PEX delivered one specific SEND_NUDGE. The vendor receipt identifies user turn
+  `msg_08983773c001iOihiSLrUsvD5r` in the SAME session; retained assistant messages
+  reference that parent and end in a completed stop.
+- Both artifacts became exact: stage-one.txt = 13 bytes `stage-one-ok\n`,
+  final.txt = 18 bytes `pex-supervised-ok\n`.
+- Third semantic review read both files and chose NOOP because their contents
+  were correct. This is observed semantic silence after correction, not a
+  separate quiet-case benchmark or ten-case false-positive result.
+- Three reviews used ten model calls total: 35,389 input / 2,828 output tokens.
+  Their recorded latencies were 11,394 / 14,810 / 10,925 ms (second includes its
+  independent verifier). These are diagnostic costs, not a comparative claim.
+- All 306 accepted events eventually completed. Processing noticeably lagged
+  worker execution. The driver stopped its owned server at the predefined
+  seven-minute post-first-idle budget; the native bridge drained buffered work
+  afterward. Its intervention outcome remained unset (`helped:null`), despite
+  external same-parent messages and exact-file evidence. Do not call the full
+  product outcome-tracking gate passed.
+
+Scoped local audit: `native-audit.json`, SHA-256
+`5d96e5a4da92b1dddbe70a48ab6df7358bd1aac2f2b2aedea24bc6fb7320438c`.
+Worker messages: `worker-messages.json`, SHA-256
+`b73743c15ef9a4cc885ab0acfa3b515eab280f56607a7e26f934b8de074d636a`.
+Only the dedicated session was extracted, not the historical database. Review
+before publishing raw diagnostic records. Server/profile cleanup receipt confirms
+owned server exit and no remaining temporary profiles. PEX closed normally with
+Alt+F4; no unrelated app was closed. Ten-second read-only process sampling was
+performed during processing, not an idle resource or stability acceptance test.
+
+### Repairs prompted by this run (not yet packaged)
+
+The deterministic verifier incorrectly interpreted "followed by one newline" as
+literal required content, and treated "exactly" as a substring match. Four new
+regressions failed before repair. Exact checks now compare the complete UTF-8
+content, handle one LF newline, and keep unsupported prose/incomplete reads
+uncertain. All 89 verifier tests pass, including invalid UTF-8 and oversized input.
+
+Every OpenCode event also performed process discovery for the optional focus
+button. A concurrent twenty-probe regression reproduced twenty discoveries;
+the focus-only hint now shares a five-second bounded lookup. HTTP message and
+permission authority remain live-probed; fresh scoped snapshots override the hint.
+Retained ingestion retries no longer erase intact lineage; transport failures
+still mark gaps. Both retry cases failed before that follow-up repair.
+Combined verifier/OpenCode/discovery/lineage gate: 248 passed in 13.56 seconds.
+Independent Terra review found no code defect and requested downstream gap
+coverage. Added direct pump-retry-to-delivery-guard checks: intact retries match,
+actual transport failures reject later outcome authority. Full lineage file:
+55 passed in 3.52 seconds. AgentCore client/runtime, durable event processing,
+and lazy-import gate: 199 passed in 45.44 seconds. Ruff and diff checks pass.
+
+Broad offline run on 2dc5d81: 4,272 passed, 2 failed, 16 skipped, 16 deselected
+in 1,262.76 seconds. Failures were the stale Muse chat-only test fixture and a
+missing Rust PATH during preflight. Corrected chat fixture plus explicit Rust
+toolchain rerun: 3 passed in 39.27 seconds. This is not a clean full-suite rerun
+of the subsequent source changes; that remains required.
+
 ## Native package 66b5e52: connection passed, recovery failed
 
 Both installers verified; `release_ready:true` describes packaging only.

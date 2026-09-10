@@ -38,6 +38,7 @@ from pex_bridge.adapters.base import (
     session_binding_matches,
 )
 from pex_bridge.adapters.desktop import (
+    _active_process_snapshot,
     is_desktop_observe_session,
     matching_desktop_image,
     upsert_desktop_observe_session,
@@ -82,6 +83,9 @@ class OpenCodeAdapter(HarnessAdapter):
         self._message_send_locks: dict[str, asyncio.Lock] = {}
         self._last_pump_error: str | None = None
         self._event_gap_detected = False
+        self._desktop_hint_at: float | None = None
+        self._desktop_hint = False
+        self._desktop_hint_lock = asyncio.Lock()
 
     def attach_transport(self, transport: HttpJsonTransport) -> None:
         if (
@@ -150,6 +154,27 @@ class OpenCodeAdapter(HarnessAdapter):
         separator = "&" if "?" in path else "?"
         return f"{path}{separator}directory={quote(directory, safe='')}"
 
+    async def _desktop_focus_hint(self) -> bool:
+        # Every streamed chunk negotiates capabilities. Do not spawn tasklist
+        # per token just to render the optional Open button. This short-lived
+        # hint grants no message/permission authority; those stay live-probed.
+        snapshot = _active_process_snapshot()
+        if snapshot is not None:
+            return (
+                snapshot.available
+                and matching_desktop_image(OPENCODE_DESKTOP_IMAGES, running=set(snapshot.names))
+                is not None
+            )
+        async with self._desktop_hint_lock:
+            now = monotonic()
+            if self._desktop_hint_at is None or not 0 <= now - self._desktop_hint_at < 5.0:
+                self._desktop_hint = (
+                    await asyncio.to_thread(matching_desktop_image, OPENCODE_DESKTOP_IMAGES)
+                    is not None
+                )
+                self._desktop_hint_at = monotonic()
+            return self._desktop_hint
+
     async def probe(self) -> AdapterCapabilities:
         connected = False
         if self.transport is not None:
@@ -169,8 +194,7 @@ class OpenCodeAdapter(HarnessAdapter):
         # Capability probes also run during event ingestion, outside the HTTP
         # endpoints' shared process snapshot. Windows tasklist must not stall
         # the SSE reader or unrelated bridge requests on those paths.
-        desktop = await asyncio.to_thread(matching_desktop_image, OPENCODE_DESKTOP_IMAGES)
-        desktop = desktop is not None
+        desktop = await self._desktop_focus_hint()
         return AdapterCapabilities(
             observe_messages=deep,
             observe_tool_calls=deep,
@@ -294,9 +318,7 @@ class OpenCodeAdapter(HarnessAdapter):
             existing = updates.get(session_id) or self.sessions.get(session_id)
             if existing is None and session_id not in new_session_ids:
                 if len(self.sessions) + len(new_session_ids) >= MAX_TRACKED_SESSIONS:
-                    raise RuntimeError(
-                        "OpenCode retained session state reached the safety bound"
-                    )
+                    raise RuntimeError("OpenCode retained session state reached the safety bound")
                 new_session_ids.add(session_id)
             cwd = _optional_bounded_path(item.get("cwd") or item.get("directory"))
             goal_id, paused = preserve_bridge_state(
@@ -319,7 +341,7 @@ class OpenCodeAdapter(HarnessAdapter):
                     "discovery_observation_only": True,
                     "title": bounded_observed_text(
                         item.get("title"), field="OpenCode session title"
-                    )
+                    ),
                 },
             )
         self.sessions.update(updates)
@@ -410,9 +432,7 @@ class OpenCodeAdapter(HarnessAdapter):
     ) -> bool:
         return bool(
             self.transport is not None
-            and session_binding_matches(
-                bound, session, harness_type=HarnessType.OPENCODE
-            )
+            and session_binding_matches(bound, session, harness_type=HarnessType.OPENCODE)
             and not is_desktop_observe_session(session)
             and not is_desktop_observe_session(bound)
             and bound is not None
@@ -449,9 +469,7 @@ class OpenCodeAdapter(HarnessAdapter):
                 continue
             raw_message_id = info.get("id")
             try:
-                message_id = bounded_adapter_id(
-                    raw_message_id or "", field="OpenCode message id"
-                )
+                message_id = bounded_adapter_id(raw_message_id or "", field="OpenCode message id")
             except ValueError:
                 continue
             if not message_id or message_id != raw_message_id:
@@ -500,18 +518,20 @@ class OpenCodeAdapter(HarnessAdapter):
             if info.get("sessionID") != vendor_session_id:
                 continue
             parts = item.get("parts")
-            texts = [
-                str(part.get("text") or "")
-                for part in parts
-                if isinstance(part, dict) and part.get("type") == "text"
-            ] if isinstance(parts, list) else []
+            texts = (
+                [
+                    str(part.get("text") or "")
+                    for part in parts
+                    if isinstance(part, dict) and part.get("type") == "text"
+                ]
+                if isinstance(parts, list)
+                else []
+            )
             if cleaned not in texts:
                 continue
             try:
                 raw_message_id = info.get("id")
-                message_id = bounded_adapter_id(
-                    raw_message_id or "", field="OpenCode message id"
-                )
+                message_id = bounded_adapter_id(raw_message_id or "", field="OpenCode message id")
             except ValueError:
                 continue
             if not message_id or message_id != raw_message_id:
@@ -526,9 +546,7 @@ class OpenCodeAdapter(HarnessAdapter):
         bound = self.sessions.get(session.id)
         if (
             self.transport is None
-            or not session_binding_matches(
-                bound, session, harness_type=HarnessType.OPENCODE
-            )
+            or not session_binding_matches(bound, session, harness_type=HarnessType.OPENCODE)
             or not bound.cwd
             or not bound.project_id
             or session.id != f"opencode:{session.vendor_session_id}"
@@ -552,9 +570,7 @@ class OpenCodeAdapter(HarnessAdapter):
         if not isinstance(created, dict):
             return None
         try:
-            vendor_id = bounded_adapter_id(
-                created.get("id") or "", field="OpenCode session id"
-            )
+            vendor_id = bounded_adapter_id(created.get("id") or "", field="OpenCode session id")
         except ValueError:
             return None
         child_id = f"opencode:{vendor_id}"
@@ -607,9 +623,7 @@ class OpenCodeAdapter(HarnessAdapter):
         bound = self.sessions.get(session.id)
         if (
             self.transport is None
-            or not session_binding_matches(
-                bound, session, harness_type=HarnessType.OPENCODE
-            )
+            or not session_binding_matches(bound, session, harness_type=HarnessType.OPENCODE)
             or not bound.cwd
             or not bound.project_id
             or session.id != f"opencode:{session.vendor_session_id}"
@@ -618,9 +632,7 @@ class OpenCodeAdapter(HarnessAdapter):
             return False
         if decision not in {"allow", "once", "deny"}:
             return False
-        response = (
-            "once" if decision in {"allow", "once"} else "reject"
-        )
+        response = "once" if decision in {"allow", "once"} else "reject"
         session = bound
         try:
             await self.transport.request(
@@ -780,9 +792,7 @@ class OpenCodeAdapter(HarnessAdapter):
                 value = blob.get(key) if isinstance(blob, dict) else None
                 if isinstance(value, str) and value.strip():
                     try:
-                        candidates.append(
-                            bounded_adapter_id(value, field="OpenCode session id")
-                        )
+                        candidates.append(bounded_adapter_id(value, field="OpenCode session id"))
                     except ValueError:
                         return None
         if not candidates or any(item != candidates[0] for item in candidates[1:]):
@@ -854,9 +864,7 @@ class OpenCodeAdapter(HarnessAdapter):
         raw_message_id = info.get("id") or part.get("messageID")
         message_id = ""
         if isinstance(raw_message_id, str) and raw_message_id:
-            bounded_message_id = bounded_adapter_id(
-                raw_message_id, field="OpenCode message id"
-            )
+            bounded_message_id = bounded_adapter_id(raw_message_id, field="OpenCode message id")
             if bounded_message_id == raw_message_id:
                 message_id = bounded_message_id
         raw_role = info.get("role")
@@ -866,9 +874,7 @@ class OpenCodeAdapter(HarnessAdapter):
             if bounded_role == raw_role:
                 role = bounded_role
         assistant_message_error = bool(
-            kind == "message.updated"
-            and role == "assistant"
-            and info.get("error") is not None
+            kind == "message.updated" and role == "assistant" and info.get("error") is not None
         )
         raw_finish = info.get("finish")
         try:
@@ -904,9 +910,7 @@ class OpenCodeAdapter(HarnessAdapter):
                     if isinstance(raw_parent_id, str) and raw_parent_id
                     else ""
                 )
-                parent_message_id = (
-                    bounded_parent_id if bounded_parent_id == raw_parent_id else ""
-                )
+                parent_message_id = bounded_parent_id if bounded_parent_id == raw_parent_id else ""
             except ValueError:
                 parent_message_id = ""
         if kind == "message.updated" and message_id:
@@ -955,8 +959,7 @@ class OpenCodeAdapter(HarnessAdapter):
                     self._removed_messages.clear()
                     self._completed_terminal_parents.clear()
         idle_after_exact_terminal = bool(
-            kind == "session.idle"
-            and session.id in self._completed_terminal_parents
+            kind == "session.idle" and session.id in self._completed_terminal_parents
         )
         duplicate_terminal_for_parent = bool(
             kind == "message.updated"
@@ -999,11 +1002,7 @@ class OpenCodeAdapter(HarnessAdapter):
             event_type = EventType.STATUS
         elif kind == "message.updated" and assistant_message_error:
             event_type = EventType.ERROR
-        elif (
-            kind == "message.updated"
-            and assistant_message_completed
-            and parent_message_id
-        ):
+        elif kind == "message.updated" and assistant_message_completed and parent_message_id:
             # OpenCode's completed assistant Message is exact turn-level proof:
             # unlike session.idle, it retains the admitted user parentID.
             event_type = EventType.STOP
@@ -1041,9 +1040,7 @@ class OpenCodeAdapter(HarnessAdapter):
             self._permission_requests.add((session.id, request_id))
         elif kind == "permission.replied":
             raw_replied_id = (
-                props.get("permissionID")
-                or props.get("requestID")
-                or props.get("requestId")
+                props.get("permissionID") or props.get("requestID") or props.get("requestId")
             )
             replied_id = (
                 bounded_adapter_id(raw_replied_id, field="OpenCode permission id")
@@ -1124,6 +1121,7 @@ class OpenCodeAdapter(HarnessAdapter):
         batch_offset = 0
         batch_end = 0
         while True:
+            ingesting = False
             try:
                 transport = self.transport
                 if transport is None:
@@ -1158,7 +1156,10 @@ class OpenCodeAdapter(HarnessAdapter):
                     # Acceptance may have committed before ingest raised. Keep
                     # the exact normalized event (including lineage and time),
                     # so the durable pipeline can resume it idempotently.
+                    ingesting = True
                     await ingest(event, session)
+                    ingesting = False
+                    self._last_pump_error = None
                     batch_offset += 1
                     pending = None
                 if batch is None:
@@ -1189,7 +1190,10 @@ class OpenCodeAdapter(HarnessAdapter):
                         continue
                     event = self.normalize_sse(session, payload)
                     pending = (event, session.model_copy(deep=True))
+                    ingesting = True
                     await ingest(event, pending[1])
+                    ingesting = False
+                    self._last_pump_error = None
                     batch_offset = index + 1
                     pending = None
                 seen = batch_end
@@ -1204,11 +1208,15 @@ class OpenCodeAdapter(HarnessAdapter):
                 raise
             except Exception as exc:
                 self._last_pump_error = type(exc).__name__
-                self._event_gap_detected = True
-                self._message_roles.clear()
-                self._message_parents.clear()
-                self._removed_messages.clear()
-                self._completed_terminal_parents.clear()
+                if not ingesting:
+                    # A transport/normalization failure may lose observation.
+                    # A retained, identically retried ingestion is not a gap:
+                    # destroying its lineage prevents verified outcome matching.
+                    self._event_gap_detected = True
+                    self._message_roles.clear()
+                    self._message_parents.clear()
+                    self._removed_messages.clear()
+                    self._completed_terminal_parents.clear()
                 await asyncio.sleep(0.5)
 
     def start_pipeline_pump(self, ingest) -> asyncio.Task:

@@ -36,6 +36,13 @@ FILE_CONTAINS = re.compile(
     r"\s+(?:contains?|containing)\s+(?P<expected>.+?)(?:[.;]|$)",
     re.I,
 )
+FILE_EXACT_CONTENT = re.compile(
+    r"(?P<path>(?![A-Za-z]:)(?!/)[A-Za-z0-9._/-]{1,240}\.[A-Za-z0-9]{1,12})"
+    r"\s+(?:contains?|containing)\s+exactly\s+"
+    r"(?P<literal>`[^`\r\n]*`|\"[^\"\r\n]*\"|'[^'\r\n]*'|[A-Za-z0-9_/-]+)"
+    r"(?P<newline>\s+followed\s+by\s+(?:one|a single|a|1)\s+newline)?[.;]?",
+    re.I,
+)
 FILE_ROWS = re.compile(
     r"(?P<path>(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\.\.(?:/|$))"
     r"[A-Za-z0-9._/-]{1,240}\.(?:jsonl?|csv))\s+"
@@ -909,18 +916,30 @@ def _missing_file_verdict(
     }
 
 
-def _expected_content(raw: str) -> tuple[str, str] | None:
+def _expected_content(raw: str) -> tuple[str, str, bool] | None:
+    exact = FILE_EXACT_CONTENT.fullmatch(raw.strip())
+    if exact is not None:
+        path = exact.group("path")
+        literal = exact.group("literal")
+        if literal[:1] in {"`", '"', "'"}:
+            literal = literal[1:-1]
+        if exact.group("newline"):
+            literal += "\n"
+        return (path, literal, True) if _visible_goal_path(path) else None
     match = FILE_CONTAINS.search(raw.strip())
     if match is None:
         return None
     expected = match.group("expected").strip().strip("`\"'")
-    expected = re.sub(r"^exactly\s+", "", expected, flags=re.I)
+    # Unsupported exact-content prose is uncertain, never silently weakened
+    # into a substring requirement or interpreted as literal suffix text.
+    if re.match(r"^exactly\s+", expected, flags=re.I):
+        return None
     expected = re.sub(r"^the\s+word\s+", "", expected, flags=re.I)
     expected = expected.strip().strip("`\"'")
     if not expected:
         return None
     path = match.group("path").replace("\\", "/")
-    return (path, expected) if _visible_goal_path(path) else None
+    return (path, expected, False) if _visible_goal_path(path) else None
 
 
 def _expected_file_rows(raw: str) -> tuple[str, int] | None:
@@ -959,7 +978,7 @@ def _read_goal_file(
                 with target.open("rb") as handle:
                     data = handle.read(limit + 1)
                 complete = len(data) <= limit
-                return data[:limit].decode("utf-8", "replace"), complete
+                return data[:limit].decode("utf-8"), complete
             except PermissionError:
                 if attempt == 9:
                     return None
@@ -967,7 +986,7 @@ def _read_goal_file(
                 # just after the turn-completed event. Bound the settle window.
                 time.sleep(0.05)
         return None
-    except (OSError, ValueError):
+    except (OSError, ValueError, UnicodeError):
         return None
 
 
@@ -997,7 +1016,7 @@ def _goal_file_verdict(
 
     evidence = [f"exists:{name}" for name in required]
     unresolved: list[str] = []
-    checks: list[tuple[str, str]] = []
+    checks: list[tuple[str, str, bool]] = []
     row_checks: list[tuple[str, int]] = []
     for raw in goal.acceptance_criteria:
         criterion = str(raw or "").strip()
@@ -1018,7 +1037,7 @@ def _goal_file_verdict(
         if requirement and not FILE_TOKEN.fullmatch(requirement):
             unresolved.append(requirement)
 
-    for path, expected in checks:
+    for path, expected, exact in checks:
         observed_content = _read_goal_file(workspace, path)
         if observed_content is None:
             return {
@@ -1029,7 +1048,8 @@ def _goal_file_verdict(
                 "probe": f"Retry a bounded read of {path} before deciding completion.",
             }
         content, complete = observed_content
-        if expected not in content:
+        matches = (complete and content == expected) if exact else expected in content
+        if not matches:
             if not complete:
                 return {
                     "claim": claim,
@@ -1045,13 +1065,15 @@ def _goal_file_verdict(
                 "claim": claim,
                 "status": "unsatisfied" if claim is None else "contradicted",
                 "basis": "acceptance_criterion" if claim is None else "worker_claim",
-                "evidence": [f"content_missing:{path}:{expected}"],
+                "evidence": [
+                    f"{'content_mismatch' if exact else 'content_missing'}:{path}:{expected}"
+                ],
                 "correction": (
-                    f"{path} exists but does not contain {expected!r}. "
+                    f"{path} exists but does not {'equal' if exact else 'contain'} {expected!r}. "
                     "Correct the file and verify it before stopping."
                 ),
             }
-        evidence.append(f"contains:{path}:{expected}")
+        evidence.append(f"{'equals' if exact else 'contains'}:{path}:{expected}")
     for path, expected_rows in row_checks:
         _, count = _artifact_rows(goal, workspace, path)
         if count is None:

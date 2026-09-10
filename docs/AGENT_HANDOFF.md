@@ -1,11 +1,31 @@
 # PEX active handoff
 
-Maintained checkpoint: 10 September 2026; native OpenCode failure reproduced.
+Maintained checkpoint: 10 September 2026; native OpenCode correction observed.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files before relying on this checkpoint. No prior build/test
 session remains running. This is the active entry point, not another historical log.
 
 ## Authority and product scope
+
+Newest checkpoint supersedes historical latest/hold labels below: native package
+`2dc5d81` verified both installers. PEX-only UI connected a fresh OpenCode worker,
+attached its exact goal, showed correct Discovered status and compact Inspector.
+The native Strands supervisor sent a specific independently verified correction
+to that same worker; both exact files appeared, then a semantic NOOP inspected
+them. All 306 events drained. This is NOT full submission/benchmark acceptance:
+processing was slow, the first proposal failed evidence refs, and the recorded
+intervention outcome remained unset. No paid fallback or manual correction.
+Full details and hashes: [native evidence](demo/evidence/NATIVE_AND_RECOVERY_2026-09-10.md).
+
+Follow-up source repairs address the live false exact-content/newline verdict,
+per-event tasklist overhead (focus hint only), and lineage destroyed on an exact
+ingestion retry. 248 focused tests pass. Broad prior run: 4272 passed, two failures
+(stale Muse chat-only fixture and missing Rust PATH); both rerun checks pass with
+the fixture corrected and toolchain available. Subsequent source still needs a
+clean full-suite run and packaging/native rerun. Owned server/profile cleaned,
+PEX closed normally, no unrelated apps touched. Keep quiet-case/Codex/outcome
+tracking and benchmark isolation gates open; do not repeat older failure claims
+as though this native progress did not occur.
 
 Latest continuation: the user renewed PEX-only computer-use access after an
 accidental physical Escape. Native package `66b5e52` passed MSI/NSIS content and

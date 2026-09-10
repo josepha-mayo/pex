@@ -669,6 +669,44 @@ def test_malformed_full_update_clears_prior_parent_before_later_part() -> None:
     assert event_matches_opencode_delivery(_intervention(session), session, part) is False
 
 
+@pytest.mark.parametrize("transport_failure", [False, True])
+async def test_ingestion_retry_preserves_only_contiguous_outcome_authority(transport_failure):
+    adapter, session = _adapter_session()
+    first = _assistant_payload(session)
+    second = _assistant_payload(session)
+    second["properties"]["info"]["id"] = "assistant-after-retry"
+    adapter.transport.events.extend([first, second])
+    ensure_count = 0
+
+    async def ensure(_path):
+        nonlocal ensure_count
+        ensure_count += 1
+        if transport_failure and ensure_count == 2:
+            raise OSError("stream reconnect failed during retained ingestion")
+
+    adapter.transport.ensure_sse = ensure
+    calls = []
+    ready = asyncio.Event()
+
+    async def ingest(event, bound_session):
+        calls.append(event)
+        if len(calls) == 1:
+            raise RuntimeError("retry retained event")
+        if len(calls) == 3:
+            ready.set()
+
+    pump = adapter.start_pipeline_pump(ingest)
+    try:
+        await asyncio.wait_for(ready.wait(), timeout=4)
+        assert calls[0].model_dump() == calls[1].model_dump()
+        assert event_matches_opencode_delivery(_intervention(session), session, calls[2]) is (
+            not transport_failure
+        )
+    finally:
+        pump.cancel()
+        await asyncio.gather(pump, return_exceptions=True)
+
+
 def test_retention_gap_marks_even_exact_parent_non_authoritative() -> None:
     adapter, session = _adapter_session()
     adapter._event_gap_detected = True

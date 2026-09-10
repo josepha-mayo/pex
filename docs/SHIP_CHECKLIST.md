@@ -2,6 +2,16 @@
 
 ## MVP acceptance checkpoint — 10 September 2026
 
+Latest: package `2dc5d81` verified. Native UI connection/goal setup passed; Strands
+sent one independently verified same-session OpenCode correction, both files
+became exact, and the final semantic review chose NOOP after reading them.
+Not full GO: processing lag, an invalid-evidence proposal, unset native outcome
+tracking, separate quiet/Codex checks and benchmark isolation remain. Follow-up
+exact-content, process-discovery and retry-lineage fixes pass 248 focused tests
+but require rebuilt-native validation. [Detailed evidence and limitations](demo/evidence/NATIVE_AND_RECOVERY_2026-09-10.md).
+
+The older checkpoint immediately below is retained for the failed diagnostic.
+
 **NO-GO for submission.** Latest verified package source is `66b5e52`; both installers
 passed content/inventory verification. Native cold startup, OpenCode form
 connection and exact goal attachment passed. Native recovery failed before a

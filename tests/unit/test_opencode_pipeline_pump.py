@@ -60,6 +60,41 @@ async def test_opencode_probe_keeps_loop_responsive_during_desktop_discovery(mon
         await asyncio.gather(probe, return_exceptions=True)
 
 
+async def test_opencode_event_probe_bounds_desktop_inventory_reads(monkeypatch):
+    clock = [100.0]
+    reads = []
+    monkeypatch.setattr("pex_bridge.adapters.opencode.monotonic", lambda: clock[0])
+    monkeypatch.setattr(
+        "pex_bridge.adapters.opencode.matching_desktop_image",
+        lambda _: reads.append(True) or "opencode.exe",
+    )
+    adapter = OpenCodeAdapter(MemoryHttpTransport())
+    results = await asyncio.gather(*(adapter.probe() for _ in range(20)))
+    assert all(result.focus_ui for result in results)
+    assert len(reads) == 1
+    # A focus hint may be cached, never worker-message authority.
+    adapter.transport = None
+    assert (await adapter.probe()).send_message is False
+    assert len(reads) == 1
+    clock[0] += 5.1
+    await adapter.probe()
+    assert len(reads) == 2
+
+
+@pytest.mark.live_desktop
+async def test_opencode_scoped_inventory_overrides_cached_focus_hint(monkeypatch):
+    # Marker bypasses conftest's always-empty inventory, not a live app check.
+    # The raw discovery below is still fully mocked.
+    from pex_bridge.adapters import desktop
+
+    monkeypatch.setattr(desktop, "_read_running_image_names", lambda: {"OpenCode.exe"})
+    adapter = OpenCodeAdapter(MemoryHttpTransport())
+    assert (await adapter.probe()).focus_ui is True
+    fresh = desktop.DesktopProcessSnapshot(frozenset(), True, time.monotonic())
+    with desktop.scoped_running_image_snapshot(fresh):
+        assert (await adapter.probe()).focus_ui is False
+
+
 async def test_opencode_pump_ingests_idle_as_stop():
     transport = MemoryHttpTransport()
     adapter = OpenCodeAdapter(transport)
@@ -148,8 +183,10 @@ async def test_opencode_discovery_does_not_invent_activity():
 
 
 @pytest.mark.parametrize("filtered_tail", [False, True])
+@pytest.mark.parametrize("transport_failure", [False, True])
 async def test_opencode_pump_retries_identical_event_without_replaying_completed_prefix(
     filtered_tail,
+    transport_failure,
 ):
     transport = MemoryHttpTransport()
     adapter = OpenCodeAdapter(transport)
@@ -183,6 +220,16 @@ async def test_opencode_pump_retries_identical_event_without_replaying_completed
     )
     calls = []
     completed = asyncio.Event()
+    if transport_failure:
+        ensure_calls = 0
+
+        async def reconnect(_path):
+            nonlocal ensure_calls
+            ensure_calls += 1
+            if ensure_calls == 2:
+                raise OSError("transport failed while an ingestion was pending")
+
+        transport.ensure_sse = reconnect
     if filtered_tail:
         # An invalid trailing raw entry occupies a cursor but is filtered out
         # by the transport. Returned list length does not encode raw positions.
@@ -207,6 +254,9 @@ async def test_opencode_pump_retries_identical_event_without_replaying_completed
         await asyncio.gather(task, return_exceptions=True)
     assert len(calls) == 4
     assert calls[1] == calls[2], "Retry must preserve the originally accepted event exactly"
+    assert adapter._event_gap_detected is transport_failure
+    if not transport_failure:
+        assert adapter._message_parents[("opencode:ses_retry", "msg_second")] == "msg_first"
 
 
 async def test_opencode_pump_recovers_after_real_journal_acceptance(tmp_path, monkeypatch):
