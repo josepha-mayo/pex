@@ -13,6 +13,17 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Clean-source live Codex/Strands pair passed at `e864389`.** Quiet completion:
+1 passed in 79.19s, validated evidence-supported NOOP. Incomplete-stop recovery:
+1 passed in 193.45s, same owned thread/process, exact `report.txt`, helped outcome,
+then model-backed NOOP. Both retained clean-source provenance, pinned Spark,
+saved free Muse/Zen, and a three-dispatch cap. See
+`demo/evidence/CODEX_LIVE_E864389_2026-09-10.md` for receipt hashes and limits.
+PEX was closed normally through its own window before the rebuild; no PEX
+process remained at the subsequent check. No unrelated app was closed.
+Next: rebuild MSI/NSIS and verify the newest source natively, especially the
+provider-limit copy/behavior. Keep the failed Ling run as failed evidence.
+
 **Provider-limit repair, after the evening native failure:** OpenCode retry
 messages/actions now survive normalization. Exact `free_tier_limit` becomes a
 durable Blocked state with no automatic follow-up, including later idle and

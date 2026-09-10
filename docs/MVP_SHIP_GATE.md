@@ -33,7 +33,10 @@ anything on the user's behalf.
   build passed, 288 tests passed with one platform skip.
 - [x] Recheck offline AgentCore contracts: 183 passed, no AWS calls/deployment.
 - [ ] Rebuild and verify these newest provider-limit repairs natively.
-- [ ] Repeat clean-source live supervision checks; the latest free Ling run was
+- [x] Clean-source Codex/Strands quiet + recovery pair at `e864389`: 1 passed in
+  79.19s and 1 passed in 193.45s, validated receipts and same-thread recovery.
+  [Evidence and limits](demo/evidence/CODEX_LIVE_E864389_2026-09-10.md).
+- [ ] Recheck packaged OpenCode behavior; the latest free Ling run was
   quota-limited, not a passing artifact/recovery benchmark.
 
 ### 10 September evening: current package and live recheck
