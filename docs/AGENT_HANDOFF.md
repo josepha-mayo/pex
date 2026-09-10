@@ -17,6 +17,9 @@ This is the active entry point, not another historical log.
 MSI and NSIS verification passes with zero blockers and 2,375 matching runtime
 files. Receipt `build/package-567778b-20260910-rebuilt.json`, SHA-256
 `9bda2583d3307dd7470002fec4e419f7ba4700a7fd9e9dcb393132222de7185e`.
+Documentation/evidence head `70a9c5c` publishes the exact installer hashes and
+claim boundary in
+`demo/evidence/PACKAGE_567778B_2026-09-11.md`; it does not change product code.
 An earlier verification against stale pre-commit installer artifacts correctly
 failed with runtime/helper mismatches; retain
 `build/package-567778b-20260910.json` as failed evidence. `567778b` includes the
@@ -32,6 +35,12 @@ a productivity score: `benchmarks/manifest.yaml` remains `frozen: false` because
 complete raw vendor logs and Cursor same-session treatment evidence are missing.
 Current Tauri/Rust contracts pass **19/19**; release preflight exits 0 with clean
 tracked inputs, exactly Pex/Von, current sidecars and verified toolchains/wiring.
+An additional passive-resource audit found serialized 30–32 second desktop
+reconciliation, hidden-webview suspension, coalesced event refresh and no pumps
+for dormant transport adapters. Its focused backend tests pass **10/10** and the
+desktop suite again passes **290/290 with one platform skip**. Source setup
+contracts pass **8/8**. This supports the bounded design but does not causally
+clear the historical whole-PC freeze or replace foreground native observation.
 Preflight's `release_ready: false` is intentional; package readiness is proven
 only by the separate green installer receipt above.
 Native verification of the newest Ask/cancellation behavior is pending because
