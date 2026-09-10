@@ -2,6 +2,17 @@
 
 ## MVP acceptance checkpoint — 10 September 2026
 
+Current checkpoint: package `2174ad0` verified; **4295 offline tests passed**.
+Real Codex Spark + saved free Zen/Muse + local Strands recovery and quiet checks
+both passed, including same-worker correction and `helped: true` outcome.
+These are not native existing-thread attachment or comparative benchmark proof.
+Packaged OpenCode detected a false completion but did not achieve verified
+recovery; token backlog and duplicate idle review remain live defects. The
+record-only delta repair passes 111 combined tests and needs native validation.
+**Still NO-GO.** [Current evidence and remaining gates](demo/evidence/CODEX_AND_PACKAGE_2174AD0_2026-09-10.md).
+
+The checkpoints below are historical, including their current/latest wording.
+
 Latest: package `2dc5d81` verified. Native UI connection/goal setup passed; Strands
 sent one independently verified same-session OpenCode correction, both files
 became exact, and the final semantic review chose NOOP after reading them.

@@ -1163,6 +1163,38 @@ class Pipeline:
             if processing["mode"] != "pipeline":
                 return self._receipt_intervention(processing)
             return await self._drain_event_and_followups(event.event_id)
+        if (
+            event.harness_type == HarnessType.OPENCODE
+            and event.event_type == EventType.STATUS
+            and event.phase == EventPhase.AFTER
+            and event.metadata.get("sse_type") == "message.part.delta"
+            and not event.file_paths
+            and all(
+                value is None
+                for value in (
+                    event.tool_name,
+                    event.tool_input,
+                    event.tool_output_ref,
+                    event.command,
+                    event.diff_ref,
+                    event.approval_request,
+                    event.token_usage,
+                    event.cost,
+                    event.process_state,
+                    event.error,
+                )
+            )
+            and await self.store.get_session_for_authority(session.id) is not None
+        ):
+            # Token fragments are observations, not fresh decisions. Running
+            # capability probes and the planner for each fragment can queue
+            # minutes of work ahead of the actual completed-message STOP.
+            # Preserve every redacted event and its immutable processing row;
+            # only full message/part, tool, status and terminal frames plan.
+            event, _ = await self._prepare_event_acceptance(event, session)
+            if await self.store.add_event(event):
+                self._schedule_committed_publication("event", event.model_dump(mode="json"))
+            return None
         return await self._accept_and_resume_event(event, session)
 
     async def _prepare_event_acceptance(

@@ -1,9 +1,34 @@
 # PEX active handoff
 
-Maintained checkpoint: 10 September 2026; native OpenCode correction observed.
+Maintained checkpoint: 10 September 2026; current-source Codex recovery and quiet checks passed.
 **Submission status: NO-GO. The full goal remains active.**
-Verify Git/current files before relying on this checkpoint. No prior build/test
-session remains running. This is the active entry point, not another historical log.
+Verify Git/current files and running processes before relying on this checkpoint.
+This is the active entry point, not another historical log.
+
+## Latest verified checkpoint — supersedes historical status below
+
+Package `2174ad0` passed both installer content/inventory gates. Full offline
+suite: **4295 passed, 16 skipped, 16 deselected**, exit 0. Two real, bounded
+Codex Spark + saved free Zen/Muse + local Strands tests passed: incomplete-stop
+same-worker correction with `goal_evidence_supported` / `helped: true`, and
+correct-completion semantic NOOP. These are source-level App Server proofs,
+not native existing-thread attachment or a scored comparative benchmark.
+
+Packaged OpenCode follow-up is NOT a quiet pass: the worker used the parent
+repository instead of the attached workspace. PEX detected the gap and nudged,
+but the worker repeated the wrong-directory behavior. A delta-event backlog and
+duplicate idle review were exposed. Follow-up source routes plain OpenCode token
+deltas into immutable record-only storage, retaining full semantic processing
+for actual message/tool/error/stop events. 111 combined regression tests pass.
+The source change still needs rebuilt-native validation; duplicate idle remains
+open. [Exact evidence, commands, hashes and limits](demo/evidence/CODEX_AND_PACKAGE_2174AD0_2026-09-10.md).
+
+Next: finish scoped native evidence collection, rebuild the delta-path repair,
+and rerun a fixture with its own Git root and explicit target path. Preserve
+all failed receipts. Continue native quiet/recovery and resource checks before
+claiming readiness. No paid fallback or AWS deployment is authorized without
+verified no-billing coverage. PEX-only computer use is allowed; unrelated apps
+and the unsafe recursive-PID launcher remain out of scope.
 
 ## Authority and product scope
 
