@@ -1243,3 +1243,59 @@ async def test_recover_unfinished_events_skips_poison_rows_and_continues(
     finally:
         await _drain_presentations(pipeline)
         await store.close()
+
+
+@pytest.mark.asyncio
+async def test_startup_followup_recovery_skips_invalid_binding_and_continues(
+    tmp_path, monkeypatch, caplog
+):
+    store, _, _, pipeline = await _pipeline(tmp_path)
+    attempted = []
+    try:
+        async def no_heads():
+            return []
+
+        async def followups():
+            return [
+                {"event_id": "poison"},
+                {"event_id": "healthy"},
+                {"event_id": "healthy"},
+            ]
+
+        async def drain(event_id):
+            attempted.append(event_id)
+            if event_id == "poison":
+                raise ValueError("intervention requires a persistent goal binding")
+
+        monkeypatch.setattr(store, "list_recoverable_event_processing", no_heads)
+        monkeypatch.setattr(store, "list_recoverable_event_followups", followups)
+        monkeypatch.setattr(pipeline, "_drain_event_and_followups", drain)
+        assert await pipeline.recover_unfinished_events() == ["healthy"]
+        assert attempted == ["poison", "healthy"]
+        assert "Skipping unfinished event followup poison" in caplog.text
+    finally:
+        await _drain_presentations(pipeline)
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_startup_followup_recovery_does_not_hide_runtime_failure(tmp_path, monkeypatch):
+    store, _, _, pipeline = await _pipeline(tmp_path)
+    try:
+        async def no_heads():
+            return []
+
+        async def followups():
+            return [{"event_id": "broken"}]
+
+        async def drain(event_id):
+            raise RuntimeError("storage failure")
+
+        monkeypatch.setattr(store, "list_recoverable_event_processing", no_heads)
+        monkeypatch.setattr(store, "list_recoverable_event_followups", followups)
+        monkeypatch.setattr(pipeline, "_drain_event_and_followups", drain)
+        with pytest.raises(RuntimeError, match="storage failure"):
+            await pipeline.recover_unfinished_events()
+    finally:
+        await _drain_presentations(pipeline)
+        await store.close()

@@ -13,6 +13,14 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Startup follow-up validation recovery repaired offline:** invalid follow-up
+bindings now receive the same narrow logged-and-skipped `ValueError` handling as
+main event heads. Rows remain intact; later healthy follow-ups continue; runtime
+failures still propagate. Event-processing suite: 41 passed in 45.57 seconds;
+Ruff/diff checks pass. This is not a proven cause/fix of the earlier native
+timeout. Current `4de1db8` package predates the repair; rebuild/native checks stay
+paused. [Exact scope and evidence](demo/evidence/STARTUP_FOLLOWUP_RECOVERY_2026-09-10.md).
+
 **Global-stream case isolation repaired while computer control remains paused:**
 the quiet runner now filters both event and observed-session identity before
 capturing STOP artifacts or invoking the case pipeline. Binding becomes active

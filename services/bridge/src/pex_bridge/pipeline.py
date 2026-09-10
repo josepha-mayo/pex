@@ -3948,7 +3948,13 @@ class Pipeline:
             recovered.append(event_id)
         followup_rows = await self.store.list_recoverable_event_followups()
         for event_id in dict.fromkeys(str(row["event_id"]) for row in followup_rows):
-            await self._drain_event_and_followups(event_id)
+            try:
+                await self._drain_event_and_followups(event_id)
+            except ValueError:
+                logger.exception(
+                    "Skipping unfinished event followup %s during startup recovery", event_id
+                )
+                continue
             if event_id not in recovered:
                 recovered.append(event_id)
         return recovered
