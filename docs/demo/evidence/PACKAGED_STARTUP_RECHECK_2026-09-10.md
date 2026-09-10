@@ -1,5 +1,28 @@
 # Packaged startup recheck — 10 September 2026
 
+## Later verified result
+
+The unpacked runtime repair at `be67a91` opened the native desktop without
+Retry. Trace `ready` was 5.109 seconds after Python entry, excluding prior
+process launch. A bare release Cargo build initially produced a blank development
+URL; rebuilding with `tauri/custom-protocol` corrected that mistake. Both
+companions were transparent; dismissing the bubble and hiding the pet worked
+independently. Von was restored as the selection, with the overlay hidden.
+
+Product `dbc141a` was subsequently rebuilt using `npm run tauri -- build`, exit
+0, producing MSI and NSIS. The native selected-session Ask regression also
+passed. Verifier `d1da140` checked both bundles with no blockers, including all
+2,375 bridge runtime files and exactly two pets. The first verifier run failed
+on temporary-directory cleanup (EPERM); the verifier now records cleanup errors
+instead of throwing before writing its receipt. The subsequent run exited 0.
+
+Receipt: `build/package-d1da140-20260910.json`.
+SHA-256: `6394c80025cbdf7ebc05742c3e7e2b995b8f9e0aeb033c2c3009885f8d0ee97d`.
+
+These results do not prove prolonged stability, installation on a fresh Windows
+profile, publisher identity (installers are unsigned), or complete submission
+readiness. The original failed attempts below remain evidence.
+
 The user explicitly resumed PEX-only computer checks. Existing two-pet package
 `4de1db8` was tested before rebuilding. No unrelated app was closed and no live
 model call was made.

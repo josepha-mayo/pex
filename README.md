@@ -9,9 +9,11 @@ Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
 OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Package `4de1db8` passes both installer content/inventory gates and ships only
-Pex and Von. Its native acceptance check is pending; an earlier package's first-start
-timeout remains unresolved. Final setup, stability and recording checks remain.
+Product `dbc141a` ships only Pex and Von; verifier `d1da140` passes both installer
+content/inventory gates. Native unpacked-runtime startup, pet transparency,
+dismissal/hiding and selected-session Ask have passed bounded checks. The latest
+live OpenCode run hit its free-provider quota and is not a benchmark pass;
+provider-limit handling, final stability and recording checks remain.
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
@@ -47,14 +49,14 @@ See [`INTEGRATIONS.md`](INTEGRATIONS.md) for the live matrix.
 ## Pets
 
 The desktop is designed around a compact command surface and a separate transparent,
-always-on-top pet overlay. Repaired native transparency/playback still needs acceptance
-testing. It supervises existing harnesses; it is not a chat UI.
+always-on-top pet overlay. Transparency and controls passed bounded native checks;
+prolonged stability is not yet claimed. It supervises existing harnesses.
 
 - Exactly two companions: **Pex**, the owl, and **Von**, the dark-navy cat, selected in Settings → Companion.
 - Uses reviewed **Codex v2** atlases (`1536×2288`, `spriteVersionNumber: 2`), restrained playback and manual dragging. The overlay does not roam or hop on hover.
-- Separate controls hide the pet or dismiss only its status message; the pet can be restored from Settings. Current-package native acceptance remains pending.
+- Separate controls hide the pet or dismiss only its status message; the pet can be restored from Settings. Both actions were observed independently in native checks.
 - Custom imports and image generation are disabled in this MVP, including their write APIs. Existing legacy import metadata is preserved; retired selections fall back to Pex.
-- Both installer inventories for `4de1db8` contain only Pex and Von. See the [two-pet package evidence](docs/demo/evidence/TWO_PET_PACKAGE_2026-09-10.md) for source-bound checks and remaining limits.
+- Both current installer inventories contain only Pex and Von. See the [shipping gate](docs/MVP_SHIP_GATE.md) for current source-bound checks and remaining limits.
 
 ## Benchmark headline
 
@@ -68,7 +70,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for product source `4de1db8` and is not code-signed.
+installer candidate exists for product source `dbc141a` and is not code-signed.
 These instructions cover building from source; package integrity is not native
 acceptance or publisher trust. Current source-bound package evidence is recorded
 in the [active handoff](docs/AGENT_HANDOFF.md). To build from source,
