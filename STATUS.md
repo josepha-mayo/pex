@@ -2,6 +2,14 @@
 
 ## Current — 10 September 2026
 
+**Native recovery passed on `d55e899`:** exact missing-file correction, same
+worker continuation, supported outcome with `helped: true`, final NOOP, all
+216 events settled. The UI showed Stopped and the actual rationale. Two reviews
+used, no old-idle duplicate in this run. [Evidence and hashes](docs/demo/evidence/NATIVE_D55E899_2026-09-10.md).
+The server exited; its temporary data directory remains. PEX is open, pet hidden.
+This supersedes the "running" checkpoint immediately below, not the remaining
+behavior/benchmark/AgentCore/stability gates.
+
 Latest verified package: `d55e899`; MSI/NSIS content and eight-pet inventory
 checks pass, exit 0. It includes stopped-state preservation, human-readable
 Inspector rationale and conservative pre-prompt idle suppression. Follow-up

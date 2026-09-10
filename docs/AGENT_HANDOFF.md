@@ -7,6 +7,19 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Native recovery now passed on verified package `d55e899`.** UI-connected
+OpenCode worker received a specific Strands correction, created the missing
+exact file, and PEX recorded `goal_evidence_supported` / `helped: true`, followed
+by NOOP. All 216 events settled; exactly two reviews, no old-idle duplicate in
+this run. Inspector showed Stopped and the actual rationale. Fixture exited 0,
+owned server closed; temporary data cleanup remains incomplete. PEX stays open,
+pet hidden. [Sealed evidence and limits](demo/evidence/NATIVE_D55E899_2026-09-10.md).
+
+Next: required additional behavior cases/quiet-rate measurement and longer
+stability, then native existing-Codex and fair benchmark/AgentCore evidence.
+Do not rerun the already sealed fixture or overwrite its audit. The earlier
+checkpoint below records the quiet case and intervening repair work.
+
 Package `490b82b` passed MSI/NSIS content and eight-pet inventory verification.
 Its **native desktop-owned OpenCode + saved free Zen/Muse + Strands quiet case
 passed**: exact two-file acceptance, one semantic NOOP, all 336 events settled

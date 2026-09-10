@@ -2,6 +2,10 @@
 
 ## MVP acceptance checkpoint — 10 September 2026
 
+**Latest native recovery passed on package `d55e899`**: specific Strands nudge,
+same-worker exact completion, `helped: true`, final NOOP, 216 settled events and
+exactly two reviews. Stopped/rationale UI verified. [Current evidence](demo/evidence/NATIVE_D55E899_2026-09-10.md).
+
 Latest package `490b82b`: both installer gates passed. Native OpenCode quiet
 completion passed with one real Strands NOOP and all 336 events settled.
 Transparent pet, bubble dismissal and pet hiding passed native checks.
@@ -11,9 +15,9 @@ production build pass; not yet packaged. [Evidence and exact limits](demo/eviden
 - [x] Real Codex source-level same-worker recovery and quiet proofs.
 - [x] Packaged OpenCode connection, goal attachment and quiet completion.
 - [x] Native pet transparency, dismiss and hide controls.
-- [ ] Package status/rationale repair and verify native recovery/outcome.
+- [x] Package status/rationale repair and verify native recovery/outcome.
 - [x] Source repair for known-old buffered idle; 81 focused tests and review pass.
-- [ ] Native verification of prompt-boundary repair; mixed batches stay conservative.
+- [x] Native prompt-boundary case passed; mixed batches stay conservative.
 - [ ] Native existing-Codex attachment and required additional behavior cases.
 - [ ] Longer resource/stability check; short sample is not freeze clearance.
 - [ ] Isolated comparative benchmark, no-billing AgentCore deployed proof.

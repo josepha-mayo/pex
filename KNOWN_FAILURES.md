@@ -2,6 +2,10 @@
 
 ## Current — 10 September 2026
 
+Native `d55e899` recovery has now passed with `helped: true`, final NOOP and all
+216 events settled. The "in progress/pending" labels below are superseded for
+this specific case. [Proof and limitations](docs/demo/evidence/NATIVE_D55E899_2026-09-10.md).
+
 - Latest package `d55e899` verifies both installers. Native quiet completion,
   pet transparency/dismiss/hide and real Codex source-level quiet/recovery now
   have passing evidence. Native recovery on this package is in progress, not
