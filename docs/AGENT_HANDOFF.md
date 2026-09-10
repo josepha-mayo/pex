@@ -13,6 +13,16 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Test-harness follow-up (no product binary change):** the legacy OpenCode
+live-supervisor probe now requires literal `used_llm: true` and completed
+inference, and closes only its own pump/pipeline/store. It is explicitly an
+in-memory worker-transport probe, not a real worker or recovery result.
+36 focused offline tests pass, Ruff passes, and the live probe skips with
+`PEX_LIVE_SUPERVISOR=0` (no provider call). Independent review approved.
+Two Codex live-proof cleanup blocks still use loop-wide task cancellation;
+audit those before expanding multi-test live runs. Existing sealed results are
+not relabeled or rewritten. Current packaged app remains `06c6b73`.
+
 **Latest: package `06c6b73`, product `97e84d4`.** Both installer integrity gates
 pass, followed by native startup and visible three-step OpenCode onboarding.
 PEX is open on Connections; no connection or new worker turn was submitted.

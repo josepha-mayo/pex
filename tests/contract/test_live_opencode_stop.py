@@ -1,11 +1,13 @@
-"""Live OpenCode session.idle through the SSE pump into Pipeline inspect.
+"""Live supervisor inference with an in-memory OpenCode transport.
 
 Does not require `opencode serve`. Uses the official event shape and the
-prompt_async send path. Skips without a supervisor key.
+prompt_async send path. This is not a real OpenCode worker/recovery proof.
+Skips without a supervisor key and explicit authorization.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -13,6 +15,27 @@ import pytest
 
 from tests.contract.live_gate import require_live_authorization
 from tests.contract.test_live_codex_pump import _ensure_local_supervisor_env, _has_supervisor_key
+
+
+def _assert_completed_review(proof: dict) -> None:
+    assert proof.get("used_llm") is True, f"STOP did not inspect with a model: {proof!r}"
+    assert proof.get("inference_status") == "completed", (
+        f"STOP did not produce a completed model decision: {proof!r}"
+    )
+
+
+async def _close_probe(pump, pipeline, store) -> None:
+    """Drain only this probe's resources; never cancel unrelated loop tasks."""
+    pump.cancel()
+    try:
+        await pump
+    except asyncio.CancelledError:
+        pass
+    finally:
+        try:
+            await pipeline.close_presentations()
+        finally:
+            await store.close()
 
 
 @pytest.mark.live_llm
@@ -23,7 +46,6 @@ async def test_live_opencode_idle_stop_sends_specific_prompt(tmp_path: Path):
         pytest.skip("no supervisor API key or local OpenAI-compatible server")
     _ensure_local_supervisor_env()
 
-    import asyncio
     from datetime import UTC, datetime
 
     from pex_bridge.adapters import AdapterRegistry
@@ -82,7 +104,8 @@ async def test_live_opencode_idle_stop_sends_specific_prompt(tmp_path: Path):
             stops = [row for row in rows if row.trigger == "stop"]
             if stops:
                 last = stops[0]
-                proof["used_llm"] = bool((last.metadata or {}).get("used_llm"))
+                proof["used_llm"] = (last.metadata or {}).get("used_llm")
+                proof["inference_status"] = (last.metadata or {}).get("inference_status")
                 proof["action_taken"] = last.action_taken
                 proof["diagnosis"] = last.diagnosis
                 proof["worker_text"] = str((last.proposed_action.payload or {}).get("text") or "")
@@ -95,7 +118,7 @@ async def test_live_opencode_idle_stop_sends_specific_prompt(tmp_path: Path):
             json.dumps(proof, indent=2, default=str), encoding="utf-8"
         )
         assert proof["action_taken"], f"no STOP intervention: {proof!r}"
-        assert proof["used_llm"] is True, f"STOP did not inspect with a model: {proof!r}"
+        _assert_completed_review(proof)
         assert not str(proof.get("worker_text") or "").startswith("PEX:")
         assert proof["action_taken"] in {
             "SEND_NUDGE",
@@ -107,13 +130,4 @@ async def test_live_opencode_idle_stop_sends_specific_prompt(tmp_path: Path):
         assert "report" in sent or "report" in str(proof.get("worker_text") or "").lower()
         assert "pex:" not in sent
     finally:
-        pump.cancel()
-        try:
-            await pump
-        except asyncio.CancelledError:
-            pass
-        current = asyncio.current_task()
-        for task in list(asyncio.all_tasks()):
-            if task is not current:
-                task.cancel()
-        await store.close()
+        await _close_probe(pump, pipeline, store)
