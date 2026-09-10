@@ -13,6 +13,19 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Native product `5a4c4ac` now verified for the provider-limit repair.** Full
+Tauri build passed; MSI/NSIS verification passed on one bounded retry, retaining
+the first cleanup-EPERM receipt. Native startup needed no Retry, both pet previews
+loaded, and isolated OpenCode attach succeeded on the first attempt. One free
+Ling prompt hit quota; Inspector showed Blocked with the correct explanation.
+After exact-session abort/idle, 61 events were complete and the durable fence
+remained set, with zero additional model reviews or interventions. The test
+session is paused again and its owned server runner exited 0. PEX remains open.
+See `demo/evidence/NATIVE_QUOTA_FENCE_5A4C4AC_2026-09-10.md`. Generic cancellation
+without quota, final stability, fresh-user installation and recording remain
+unverified. A current full offline Python regression is running; do not assume
+it passed until its terminal result is recorded.
+
 **Clean-source live Codex/Strands pair passed at `e864389`.** Quiet completion:
 1 passed in 79.19s, validated evidence-supported NOOP. Incomplete-stop recovery:
 1 passed in 193.45s, same owned thread/process, exact `report.txt`, helped outcome,
@@ -21,8 +34,8 @@ saved free Muse/Zen, and a three-dispatch cap. See
 `demo/evidence/CODEX_LIVE_E864389_2026-09-10.md` for receipt hashes and limits.
 PEX was closed normally through its own window before the rebuild; no PEX
 process remained at the subsequent check. No unrelated app was closed.
-Next: rebuild MSI/NSIS and verify the newest source natively, especially the
-provider-limit copy/behavior. Keep the failed Ling run as failed evidence.
+The rebuilt native provider-limit check above now supersedes this checkpoint's
+rebuild TODO. Keep the failed Ling run as failed evidence.
 
 **Provider-limit repair, after the evening native failure:** OpenCode retry
 messages/actions now survive normalization. Exact `free_tier_limit` becomes a
@@ -35,8 +48,8 @@ without provider-limit evidence remains a separate unresolved behavior.
 Broad processing/OpenCode regression: 123 passed in 91.95s; final persistence
 guard rerun: 7 passed in 15.75s; Ruff passed. Frontend build and 288 tests passed
 (one Windows symlink-fixture skip). Offline AgentCore contracts: 183 passed.
-These repairs still need a rebuilt native candidate. Current native test session
-is paused (confirmed in durable state); the owned OpenCode server is stopped.
+These repairs are now in the rebuilt native candidate described above. The test
+session is paused (confirmed in durable state); the owned OpenCode server is stopped.
 No-turn Codex preflight confirmed ChatGPT account + requested Spark availability;
 the next bounded proof must preserve receipts and run against clean source.
 

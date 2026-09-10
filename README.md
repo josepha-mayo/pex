@@ -9,11 +9,12 @@ Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
 OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Product `dbc141a` ships only Pex and Von; verifier `d1da140` passes both installer
+Product `5a4c4ac` ships only Pex and Von and passes both installer
 content/inventory gates. Native unpacked-runtime startup, pet transparency,
 dismissal/hiding and selected-session Ask have passed bounded checks. The latest
 live OpenCode run hit its free-provider quota and is not a benchmark pass;
-provider-limit handling, final stability and recording checks remain.
+provider-limit blocking and idle suppression now pass a native negative-case
+check with zero additional reviews or nudges. Final stability and recording remain.
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
@@ -70,7 +71,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for product source `dbc141a` and is not code-signed.
+installer candidate exists for product source `5a4c4ac` and is not code-signed.
 These instructions cover building from source; package integrity is not native
 acceptance or publisher trust. Current source-bound package evidence is recorded
 in the [active handoff](docs/AGENT_HANDOFF.md). To build from source,

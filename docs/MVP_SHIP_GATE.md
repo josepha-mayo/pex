@@ -32,12 +32,24 @@ anything on the user's behalf.
 - [x] Explain provider limit and distinct connection failures in UI; frontend
   build passed, 288 tests passed with one platform skip.
 - [x] Recheck offline AgentCore contracts: 183 passed, no AWS calls/deployment.
-- [ ] Rebuild and verify these newest provider-limit repairs natively.
+- [x] Rebuild and verify provider-limit repairs natively on `5a4c4ac`:
+  first-attempt attach, Blocked state, zero new reviews/nudges after idle.
+  [Native evidence](demo/evidence/NATIVE_QUOTA_FENCE_5A4C4AC_2026-09-10.md).
 - [x] Clean-source Codex/Strands quiet + recovery pair at `e864389`: 1 passed in
   79.19s and 1 passed in 193.45s, validated receipts and same-thread recovery.
   [Evidence and limits](demo/evidence/CODEX_LIVE_E864389_2026-09-10.md).
-- [ ] Recheck packaged OpenCode behavior; the latest free Ling run was
+- [x] Recheck packaged OpenCode quota behavior; the free Ling run remains
   quota-limited, not a passing artifact/recovery benchmark.
+- [ ] Complete final stability, ordinary cancellation and recording checks.
+
+### Latest candidate — supersedes older package descriptions below
+
+Product `5a4c4ac` rebuilt successfully; MSI/NSIS verification passed on one
+bounded retry after a retained cleanup EPERM. Native startup required no Retry,
+both pet previews loaded, and the isolated OpenCode connection succeeded first
+attempt. The quota fence survived cancellation/idle with no extra model review
+or intervention. Exact receipts and limits are linked above. This is not a
+fresh-user install or blanket stability claim.
 
 ### 10 September evening: current package and live recheck
 
