@@ -812,7 +812,7 @@ test("offline state immediately suppresses stale agent prompts", async () => {
   assert.match(app, /currentSocket\.onclose = \(\) => \{[\s\S]*?void refreshBackgroundPet\(\)/);
   assert.match(app, /canonicalStateAvailable=\{inspectorCanonicalStateAvailable\}/);
   assert.match(app, /attentionMetrics\?\.current_pending\.items \|\| deck\.interventions \|\| \[\]/);
-  assert.match(inspector, /canonicalStateAvailable \? askPexQuestions\(sessions, action\) : \[\]/);
+  assert.match(inspector, /canonicalStateAvailable \? askPexQuestions\(sessions, action, current\) : \[\]/);
   assert.match(inspector, /Verified complete for the current persistent intent\./);
   assert.match(inspector, /PEX will not infer it from narration\./);
   assert.match(app, /\/v1\/goals\/\$\{goalId\}\/completion/);
@@ -974,6 +974,14 @@ test("ask chips name attached harnesses and do not invent missing vendors", () =
   assert.match(questions.join("\n"), /what is Cursor doing/i);
   assert.match(questions.join("\n"), /why did you message Cursor/i);
   assert.doesNotMatch(questions.join("\n"), /OpenCode|Opencode|Devin/);
+});
+
+test("Inspector questions prioritize the selected worker over historical row order", () => {
+  const cursor = { id: "cursor:1", harness_type: "cursor", status: "working" };
+  const selected = { id: "opencode:1", harness_type: "opencode", status: "stopped" };
+  const questions = askPexQuestions([cursor, selected], null, selected);
+  assert.equal(questions[0], "what is Opencode doing?");
+  assert.match(questions.join("\n"), /what does Cursor know that Opencode doesn't/);
 });
 
 test("recent handoff and approval moods animate without hiding higher-priority states", () => {

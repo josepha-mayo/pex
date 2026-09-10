@@ -367,6 +367,51 @@ async def test_refresh_detaches_vanished_desktop_rows(tmp_path, monkeypatch):
     assert stored.status == SessionStatus.DETACHED
 
 
+async def test_opencode_listing_preserves_event_owned_projection(tmp_path, monkeypatch):
+    from datetime import UTC, datetime
+
+    from pex_bridge.adapters.desktop import DesktopProcessSnapshot
+    from pex_protocol.capabilities import AdapterCapabilities, AdapterSupportLabel
+    from pex_protocol.enums import HarnessType
+
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    registry = AdapterRegistry()
+    pipeline = Pipeline(
+        store, registry, EventBus(), Settings.for_test(home=tmp_path, require_auth=False)
+    )
+    stopped = HarnessSession(
+        id="opencode:recorded", harness_type=HarnessType.OPENCODE,
+        vendor_session_id="recorded", status=SessionStatus.STOPPED,
+        last_activity=datetime(2026, 1, 1, tzinfo=UTC),
+        capabilities=AdapterCapabilities(
+            support_label=AdapterSupportLabel.STRONG
+        ).model_dump(mode="json"),
+    )
+    await store.upsert_session(stopped)
+    listing = stopped.model_copy(deep=True)
+    listing.status = SessionStatus.WORKING
+    listing.capabilities = {}
+    listing.last_activity = datetime.now(UTC)
+    listing.metadata["discovery_observation_only"] = True
+    for name in ("cursor", "codex", "opencode", "hermes", "claude_code"):
+        registry.get(name).discover_sessions = AsyncMock(
+            return_value=[listing] if name == "opencode" else []
+        )
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.capture_running_image_snapshot",
+        lambda: DesktopProcessSnapshot(frozenset(), True, 1.0),
+    )
+    try:
+        await pipeline.refresh_desktop_sessions()
+        actual = await store.get_session(stopped.id)
+        assert actual.status == SessionStatus.STOPPED
+        assert actual.last_activity == stopped.last_activity
+        assert actual.capabilities == stopped.capabilities
+    finally:
+        await store.close()
+
+
 async def test_refresh_batches_control_reads_before_detaching_vanished_rows(
     tmp_path,
     monkeypatch,

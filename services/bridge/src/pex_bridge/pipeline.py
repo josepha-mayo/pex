@@ -6240,6 +6240,16 @@ class Pipeline:
                     if existing:
                         session.goal_id = None if observe_tile else existing.goal_id
                         session.supervision_paused = existing.supervision_paused
+                        if (
+                            name == "opencode"
+                            and not observe_tile
+                            and session.metadata.get("discovery_observation_only") is True
+                        ):
+                            # HTTP session listing has no activity/capability
+                            # observation. Preserve the event-owned projection.
+                            session.status = existing.status
+                            session.last_activity = existing.last_activity
+                            session.capabilities = existing.capabilities
                         source = (session.metadata or {}).get("source") or (
                             existing.metadata or {}
                         ).get("source")

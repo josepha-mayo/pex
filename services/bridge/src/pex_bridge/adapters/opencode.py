@@ -310,11 +310,13 @@ class OpenCodeAdapter(HarnessAdapter):
                 vendor_session_id=vendor_id,
                 cwd=cwd,
                 project_id=cwd,
-                status=SessionStatus.WORKING if existing else SessionStatus.DISCOVERED,
-                last_activity=datetime.now(UTC),
+                # Listing a session is not evidence that its worker is active.
+                status=existing.status if existing else SessionStatus.DISCOVERED,
+                last_activity=existing.last_activity if existing else datetime.now(UTC),
                 goal_id=goal_id,
                 supervision_paused=paused,
                 metadata={
+                    "discovery_observation_only": True,
                     "title": bounded_observed_text(
                         item.get("title"), field="OpenCode session title"
                     )
@@ -1117,6 +1119,10 @@ class OpenCodeAdapter(HarnessAdapter):
         seen = 0
         active_transport: HttpJsonTransport | None = None
         stream_was_connected = False
+        pending: tuple[HarnessEvent, HarnessSession] | None = None
+        batch: list[dict] | None = None
+        batch_offset = 0
+        batch_end = 0
         while True:
             try:
                 transport = self.transport
@@ -1133,6 +1139,9 @@ class OpenCodeAdapter(HarnessAdapter):
                     active_transport = transport
                     seen = 0
                     stream_was_connected = False
+                    # Never replay an old transport's event into its replacement.
+                    pending = None
+                    batch = None
                 ensure = getattr(transport, "ensure_sse", None)
                 if ensure is not None:
                     await ensure("/global/event")
@@ -1144,26 +1153,47 @@ class OpenCodeAdapter(HarnessAdapter):
                     self._removed_messages.clear()
                     self._completed_terminal_parents.clear()
                 stream_was_connected = stream_connected
-                next_seen, events, dropped = transport_events_since(transport, seen)
-                if dropped:
-                    self._event_gap_detected = True
-                    self._message_roles.clear()
-                    self._message_parents.clear()
-                    self._removed_messages.clear()
-                    self._completed_terminal_parents.clear()
-                for raw_payload in events:
+                if pending is not None:
+                    event, session = pending
+                    # Acceptance may have committed before ingest raised. Keep
+                    # the exact normalized event (including lineage and time),
+                    # so the durable pipeline can resume it idempotently.
+                    await ingest(event, session)
+                    batch_offset += 1
+                    pending = None
+                if batch is None:
+                    batch_end, batch, dropped = transport_events_since(transport, seen)
+                    batch_offset = 0
+                    if dropped:
+                        self._event_gap_detected = True
+                        self._message_roles.clear()
+                        self._message_parents.clear()
+                        self._removed_messages.clear()
+                        self._completed_terminal_parents.clear()
+                # Retain the bounded batch and its successful prefix. The
+                # transport may have filtered invalid entries, so individual
+                # raw cursor positions cannot be inferred from list length.
+                for index in range(batch_offset, len(batch)):
+                    raw_payload = batch[index]
                     payload = _unwrap_global_event(raw_payload)
                     if payload is None:
+                        batch_offset = index + 1
                         continue
                     kind = payload.get("type") if isinstance(payload.get("type"), str) else ""
                     if kind in {"server.connected", "server.heartbeat"}:
+                        batch_offset = index + 1
                         continue
                     session = self._session_for(payload)
                     if session is None:
+                        batch_offset = index + 1
                         continue
                     event = self.normalize_sse(session, payload)
-                    await ingest(event, session)
-                seen = next_seen
+                    pending = (event, session.model_copy(deep=True))
+                    await ingest(event, pending[1])
+                    batch_offset = index + 1
+                    pending = None
+                seen = batch_end
+                batch = None
                 self._last_pump_error = None
                 wait_for_events = getattr(transport, "wait_for_events", None)
                 if callable(wait_for_events):

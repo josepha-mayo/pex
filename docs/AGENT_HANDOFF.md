@@ -1,11 +1,35 @@
 # PEX active handoff
 
-Maintained checkpoint: 10 September 2026; includes Zen Muse routing repair.
+Maintained checkpoint: 10 September 2026; native OpenCode failure reproduced.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files before relying on this checkpoint. No prior build/test
 session remains running. This is the active entry point, not another historical log.
 
 ## Authority and product scope
+
+Latest continuation: the user renewed PEX-only computer-use access after an
+accidental physical Escape. Native package `66b5e52` passed MSI/NSIS content and
+inventory verification (`build/pex-package-receipt-66b5e52.json`). Cold startup
+loaded the saved Zen supervisor without manual Save; Von's hidden preference
+persisted. The new OpenCode connection form connected a dedicated server, and
+the native goal editor saved/attached exact criteria to the intended session.
+
+The native recovery did NOT pass: after the worker completed phase one, the
+desktop journal stayed at one complete and one accepted event, with no semantic
+review. A manual abort was issued while investigating a transient provider retry;
+retain that intervention, do not claim this was a clean hands-off run. Both PEX
+and the dedicated server were closed normally/scoped; other apps were untouched.
+Details: [native evidence](demo/evidence/NATIVE_AND_RECOVERY_2026-09-10.md).
+
+Current un-packaged repairs: OpenCode retries retain the exact accepted event and
+retain successful batch-prefix progress instead of replaying a completed batch
+with mutated lineage. Discovery no longer invents activity or overwrites the
+event-owned status/capabilities. Inspector uses a compact session selector, and
+Ask PEX suggestions prioritize the selected worker. Two regressions failed before
+repair. The real SQLite acceptance/retry regression passes too; the initial native
+exception is not yet established, so these fixes still require a native rerun.
+154 selected backend tests passed including the durable-journal regression.
+Desktop: 273 tests and production build pass.
 
 Latest source-only repair (10 September): AgentCore workspace compaction no
 longer labels absent/empty evidence, invalid observation flags, or an explicit
@@ -21,7 +45,7 @@ output/request digest agree; 9 passed, 112 deselected in 5.30s. No model or AWS
 call occurred. This is evidence-path verification, not live behavioral proof.
 The recovery spec prioritizes the actual same-worker supervision loop before
 more Docker/infrastructure work; the existing benchmark execution gate remains
-intact. Native/process-control hold remains pending explicit agreement.
+intact. The former native hold has been lifted for scoped PEX checks.
 
 Latest user goal supersedes the broader audit objective: implement and verify
 UI/UX, Zen BYOK, OpenCode/Codex, Strands supervision, AgentCore implementation,

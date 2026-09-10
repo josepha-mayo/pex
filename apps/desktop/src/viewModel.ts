@@ -475,9 +475,11 @@ export const ASK_PEX_QUESTIONS = [
 export function askPexQuestions(
   sessions: SessionRow[] = [],
   lastAction?: { action?: string; action_taken?: string } | null,
+  selected?: SessionRow,
 ): string[] {
-  const live = sessions.filter((session) =>
-    ["working", "verifying", "drifting", "needs_decision", "blocked", "error"].includes(
+  const ordered = selected ? [selected, ...sessions.filter((session) => session.id !== selected.id)] : sessions;
+  const live = ordered.filter((session) =>
+    session.id === selected?.id || ["working", "verifying", "drifting", "needs_decision", "blocked", "error"].includes(
       session.status,
     ),
   );

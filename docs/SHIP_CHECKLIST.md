@@ -2,7 +2,14 @@
 
 ## MVP acceptance checkpoint — 10 September 2026
 
-**NO-GO for submission.** Current package source is `b9702fd`; both installers
+**NO-GO for submission.** Latest verified package source is `66b5e52`; both installers
+passed content/inventory verification. Native cold startup, OpenCode form
+connection and exact goal attachment passed. Native recovery failed before a
+semantic review; source retry/status/Inspector repairs now need packaging and
+rerun. [Current native evidence](demo/evidence/NATIVE_AND_RECOVERY_2026-09-10.md).
+PEX-only computer use is authorized again; the unsafe script stays quarantined.
+
+Earlier checkpoint below describes `b9702fd`; both installers
 passed content/hash/inventory verification. [Package receipt](demo/evidence/PACKAGE_B9702FD_2026-09-10.md).
 This includes the Zen routing, resource-retention and AgentCore artifact-count
 fixes. Earlier source-only/latest labels below are historical.

@@ -143,20 +143,18 @@ export function Inspector({
         </p>
       ) : null}
       {sessions.length > 1 ? (
-        <div className="session-chips" role="group" aria-label="Sessions">
-          {sessions.map((session) => (
-            <button
-              type="button"
-              className={session.id === current?.id ? "active" : ""}
-              aria-pressed={session.id === current?.id}
-              onClick={() => onSelectSession?.(session.id)}
-              key={session.id}
-            >
-              {titleCase(session.harness_type)}
-              <span className={`state-pill state-${session.status}`}>{humanize(session.status)}</span>
-            </button>
-          ))}
-        </div>
+        <label className="session-picker">
+          Inspect a worker · includes recorded sessions
+          <select value={current?.id || ""} disabled={!onSelectSession}
+            onChange={(event) => onSelectSession?.(event.target.value)}>
+            {!current ? <option value="" disabled>Choose a worker</option> : null}
+            {sessions.map((session) => (
+              <option key={session.id} value={session.id}>
+                {titleCase(session.harness_type)} · {session.label || session.id} · {humanize(session.status)}
+              </option>
+            ))}
+          </select>
+        </label>
       ) : null}
 
       <div className="inspector-grid">
@@ -359,7 +357,7 @@ export function Inspector({
         answer={answer}
         asking={asking}
         inputRef={askInput}
-        questions={canonicalStateAvailable ? askPexQuestions(sessions, action) : []}
+        questions={canonicalStateAvailable ? askPexQuestions(sessions, action, current) : []}
         onQuestion={onQuestion}
         onSubmit={onAsk}
         onAskPrompt={onAskPrompt}

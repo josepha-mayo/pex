@@ -728,27 +728,22 @@ p {
   margin: 16px auto 0;
 }
 
-.session-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.session-picker {
+  display: grid;
+  gap: 6px;
   margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
-.session-chips > button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+.session-picker select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
   border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: transparent;
-  color: inherit;
-}
-
-.session-chips > button.active {
-  border-color: var(--mint);
-  background: rgba(103, 222, 177, 0.12);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--paper);
 }
 
 .ask-chips {
