@@ -1,6 +1,37 @@
 # PEX shipping checklist
 
-## Maintained current status — 10 September 2026
+## MVP acceptance checkpoint — 10 September 2026
+
+**NO-GO for submission.** Current package source is `b9702fd`; both installers
+passed content/hash/inventory verification. [Package receipt](demo/evidence/PACKAGE_B9702FD_2026-09-10.md).
+This includes the Zen routing, resource-retention and AgentCore artifact-count
+fixes. Earlier source-only/latest labels below are historical.
+
+| Acceptance step | Available evidence | Still required |
+| --- | --- | --- |
+| UI/UX and pets | Source repairs and 268 desktop tests | Native transparency, motion, hide/dismiss, workflow and resource checks |
+| Zen BYOK | Saved OS-vault free-Zen route passed a real Strands inference probe | Visible settings/save/error/restart journey |
+| OpenCode/Codex | Offline pump/lineage/recovery suites; dated earlier live receipts | Current-package attach, same-worker correction and verified completion |
+| Supervision behavior | Real synthetic-input inference; offline NOOP/recovery tests | Live quiet completion, specific intervention and ten-case false-positive measurement |
+| AgentCore | Typed runtime/client/policy contracts; artifact counts reach audited model-tool output | Deployed-runtime evidence under verified no-billing authority |
+| Benchmark | Eight-task/four-arm manifest remains unfrozen | Implement and validate execution isolation, complete raw logs and Cursor same-session/network evidence |
+| Recording/submission | Draft materials and verified package | Complete live acceptance first, then provide recording steps and validate submission |
+
+Important: benchmark execution is **not merely waiting for a test run**.
+`benchmarks/boundary.py::execution_runtime_blockers` explicitly reports that the
+OS-isolated worker/PEX and hidden-evaluator backend is not implemented. Current
+candidate evaluation uses ordinary local processes. Do not remove this gate,
+reinterpret fixture directories as isolation, or publish scored results to make
+the checklist appear complete. The next benchmark implementation must keep
+candidate execution separate from private evaluator data and prove its network
+boundary; a manifest assertion or mocked container command is not that proof.
+
+Native launches, process termination, computer input and Docker/VM service starts
+remain on hold after the Codex incident, pending fresh agreement. The old unsafe
+launcher stays quarantined. No automatic goal continuation lifts that hold.
+Avoid repeating completed builds/tests while awaiting the required live access.
+
+## Historical running status — superseded by checkpoint above
 
 Overall: **NO-GO for submission**. This section supersedes current/latest labels
 in the historical log below; the three specifications remain authoritative.
