@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseFrozenBundleInventory } from "./release-contract.mjs";
+import { parseFrozenBundleInventory, RELEASE_BUILT_IN_PET_IDS } from "./release-contract.mjs";
 import {
   findUniquePackagedFiles,
   packageReceiptIsReady,
@@ -62,11 +62,11 @@ function verifyInventory(root) {
     encoding: "utf8", windowsHide: true, timeout: 120_000, maxBuffer: 16 * 1024 * 1024,
   });
   const inventory = parseFrozenBundleInventory(result);
-  const expected = ["pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von"];
+  const expected = RELEASE_BUILT_IN_PET_IDS;
   if (inventory.version !== 1
     || inventory.pets?.length !== expected.length
     || inventory.pets.some((pet, index) => pet.id !== expected[index])) {
-    throw new Error("Extracted bridge did not report the exact ordered eight-pet inventory");
+    throw new Error("Extracted bridge did not report the exact ordered two-pet inventory");
   }
   return true;
 }

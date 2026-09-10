@@ -26,6 +26,7 @@ import {
   assertFrozenBundleInventory,
   assertSchema2EvidenceClosure,
   assertReleaseBuildSourceClean,
+  RELEASE_BUILT_IN_PET_IDS,
   classifyGitReleaseInputs,
   parseFrozenBundleInventory,
   preflightSnapshotIsStable,
@@ -69,7 +70,10 @@ const bridgeTarget = join(binaries, `pex-bridge-${triple}${extension}`);
 const cursorHookTarget = join(binaries, `pex-cursor-hook-${triple}${extension}`);
 const cursorObserveTarget = join(binaries, `pex-cursor-observe-${triple}${extension}`);
 const buildStamp = join(binaries, `pex-sidecars-${triple}.json`);
-const builtInPets = ["pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von"];
+const builtInPets = RELEASE_BUILT_IN_PET_IDS;
+// These files are retained as immutable review lineage only. They are never
+// copied to build/sidecar-pets and therefore never enter the bundled bridge.
+const archivedReviewedPets = ["pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von"];
 const petsRoot = join(repo, "apps", "desktop", "src", "pets");
 const petReleaseManifest = join(petsRoot, "release-manifest.json");
 const fleetAuditManifest = join(petsRoot, "_audit", "release", "manifest.json");
@@ -217,7 +221,7 @@ function rememberReleaseEvidence(path, role) {
   return path;
 }
 
-function validateCompactPetReleaseEvidence(petSources) {
+function validateCompactPetReleaseEvidence(petSources, historicalPetSources) {
   validatedReleaseEvidence.clear();
   assertSafeRegularFile(petReleaseManifest, "Pet release manifest");
   const releaseText = readFileSync(petReleaseManifest, "utf8");
@@ -237,7 +241,7 @@ function validateCompactPetReleaseEvidence(petSources) {
     || JSON.stringify(release?.built_in_pet_ids) !== JSON.stringify(builtInPets)
     || !Array.isArray(release?.pets)
     || release.pets.length !== builtInPets.length
-  ) throw new Error("Pet release manifest must describe the exact ordered eight-pet fleet");
+  ) throw new Error("Pet release manifest must describe the exact ordered two-pet fleet");
 
   const bindings = [
     [release.structural_evidence, "release-evidence/structural.json", "Structural evidence", 128 * 1024],
@@ -256,7 +260,10 @@ function validateCompactPetReleaseEvidence(petSources) {
     bound.set(expectedPath, path);
   }
 
-  const sheetHashes = [];
+  const shippedSheetHashes = [];
+  const archivedSheetHashes = archivedReviewedPets.map(
+    (id) => sha256File(join(historicalPetSources.get(id), "spritesheet.webp")),
+  );
   for (let index = 0; index < builtInPets.length; index += 1) {
     const id = builtInPets[index];
     const source = petSources.get(id);
@@ -272,13 +279,20 @@ function validateCompactPetReleaseEvidence(petSources) {
     ) {
       throw new Error(`Pet release manifest hash mismatch for ${id}`);
     }
-    sheetHashes.push(spritesheetSha);
+    shippedSheetHashes.push(spritesheetSha);
   }
 
   const structuralPath = bound.get("release-evidence/structural.json");
   const visualPath = bound.get("release-evidence/visual-attestation.json");
+  for (let index = 0; index < builtInPets.length; index += 1) {
+    const archivedIndex = archivedReviewedPets.indexOf(builtInPets[index]);
+    if (archivedIndex < 0 || shippedSheetHashes[index] !== archivedSheetHashes[archivedIndex]) {
+      throw new Error(`Shipped pet ${builtInPets[index]} is not bound to its archived visual-quality record`);
+    }
+  }
   let structural;
   let visual;
+  let regeneratedArchivedStructural;
   try {
     structural = JSON.parse(readFileSync(structuralPath, "utf8"));
     visual = JSON.parse(readFileSync(visualPath, "utf8"));
@@ -306,7 +320,7 @@ function validateCompactPetReleaseEvidence(petSources) {
       "transparent_rgb_residue_pixels", "all_contract_cells_nonempty",
       "all_unused_cells_transparent",
     ]))
-  ) throw new Error("Compact structural evidence has an unsupported contract");
+  ) throw new Error("Current structural evidence has an unsupported contract");
 
   const generatedRoot = assertSafeDirectory(join(repo, "build"), "Pet validation temp root");
   mkdirSync(generatedRoot, { recursive: true });
@@ -372,13 +386,17 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
   try {
     execFileSync(
       venvPython,
-      ["-c", validator, JSON.stringify(builtInPets), generatedPath,
-        ...builtInPets.map((id) => join(petSources.get(id), "spritesheet.webp"))],
+      ["-c", validator, JSON.stringify(archivedReviewedPets), generatedPath,
+        ...archivedReviewedPets.map((id) => join(historicalPetSources.get(id), "spritesheet.webp"))],
       { cwd: repo, stdio: "inherit" },
     );
-    const regenerated = JSON.parse(readFileSync(generatedPath, "utf8"));
-    if (canonicalJson(regenerated) !== canonicalJson(structural)) {
-      throw new Error("Tracked structural evidence does not match deterministic source-atlas regeneration");
+    regeneratedArchivedStructural = JSON.parse(readFileSync(generatedPath, "utf8"));
+    const regeneratedCurrent = {
+      ...regeneratedArchivedStructural,
+      pets: regeneratedArchivedStructural.pets.filter((pet) => builtInPets.includes(pet.id)),
+    };
+    if (canonicalJson(regeneratedCurrent) !== canonicalJson(structural)) {
+      throw new Error("Current structural evidence does not match deterministic source-atlas regeneration");
     }
   } finally {
     removeSafeDirectory(generated, "Pet validation temp directory");
@@ -395,7 +413,7 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
       "canonical_records", "neutral_repair", "review_archive",
     ])
     || JSON.stringify(visual?.pet_ids) !== JSON.stringify(builtInPets)
-    || JSON.stringify(visual?.spritesheet_sha256) !== JSON.stringify(sheetHashes)
+    || JSON.stringify(visual?.spritesheet_sha256) !== JSON.stringify(shippedSheetHashes)
     || JSON.stringify(visual?.contract_cell_hash_roots)
       !== JSON.stringify(structural.pets.map((pet) => pet.contract_cell_hash_root))
     || !Array.isArray(visual?.limitations)
@@ -451,17 +469,17 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
     || canonicalJson(neutralRepair.target_frame) !== canonicalJson({ row: 0, column: 6 })
     || neutralRepair.animation_cells_preserved !== true
     || !Array.isArray(neutralRepair.pets)
-    || neutralRepair.pets.length !== builtInPets.length
+    || neutralRepair.pets.length !== archivedReviewedPets.length
     || neutralRepair.pets.some((pet, index) =>
       !hasExactKeys(pet, [
         "id", "before_sha256", "after_sha256", "animation_pixels_sha256_before",
         "animation_pixels_sha256_after",
         "animation_pixels_unchanged", "neutral_matches_idle_zero",
       ])
-      || pet.id !== builtInPets[index]
+      || pet.id !== archivedReviewedPets[index]
       || typeof pet.before_sha256 !== "string"
       || !/^[0-9a-f]{64}$/u.test(pet.before_sha256)
-      || pet.after_sha256 !== sheetHashes[index]
+      || pet.after_sha256 !== archivedSheetHashes[index]
       || typeof pet.animation_pixels_sha256_before !== "string"
       || !/^[0-9a-f]{64}$/u.test(pet.animation_pixels_sha256_before)
       || pet.animation_pixels_sha256_before !== pet.animation_pixels_sha256_after
@@ -498,8 +516,8 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
     || reviews.records.some((row, index) =>
       !Array.isArray(row)
       || row.length !== 6
-      || row[0] !== builtInPets[Math.floor(index / 3)]
-      || row[1] !== structural.pets[Math.floor(index / 3)].direction_cell_hash_root
+      || row[0] !== archivedReviewedPets[Math.floor(index / 3)]
+      || row[1] !== regeneratedArchivedStructural.pets[Math.floor(index / 3)].direction_cell_hash_root
       || row[2] !== (index % 3) + 1
       || row[3] !== "pass"
       || typeof row[4] !== "string"
@@ -519,13 +537,13 @@ Path(sys.argv[2]).write_text(json.dumps(document, sort_keys=True, separators=(",
   const archiveText = readFileSync(archivePath, "utf8");
   assertPublicReleaseEvidence(archiveText, "Original review archive");
   rememberReleaseEvidence(archivePath, "Original review archive");
-  validatePetReviewArchive(JSON.parse(archiveText), reviews.records, neutralRepair.pets, builtInPets);
+  validatePetReviewArchive(JSON.parse(archiveText), reviews.records, neutralRepair.pets, archivedReviewedPets);
 
   const gallery = readFileSync(bound.get("judge-gallery.html"), "utf8");
   const figures = builtInPets.map((id) =>
     `<figure><img src="${id}/spritesheet.webp" alt="${id[0].toUpperCase()}${id.slice(1)} source animation atlas"><figcaption>${id}</figcaption></figure>`
   ).join("");
-  const expectedGallery = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PEX eight-pet source atlas gallery</title><style>body{background:#081114;color:#edf7f1;font:15px system-ui}main{max-width:1120px;margin:auto}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}figure{margin:0;padding:12px;background:#122126;border-radius:12px}img{width:100%;background:#b8c4c0}figcaption{font-weight:700}</style><main><h1>PEX built-in pet fleet</h1><p>Exact shipped source atlases. This is not proof of native packaged playback.</p><div class="grid">${figures}</div></main></html>\n`;
+  const expectedGallery = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PEX two-pet source atlas gallery</title><style>body{background:#081114;color:#edf7f1;font:15px system-ui}main{max-width:760px;margin:auto}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}figure{margin:0;padding:12px;background:#122126;border-radius:12px}img{width:100%;background:#b8c4c0}figcaption{font-weight:700}</style><main><h1>PEX built-in pet fleet</h1><p>Exact shipped source atlases. This is not proof of native packaged playback.</p><div class="grid">${figures}</div></main></html>\n`;
   if (gallery !== expectedGallery) throw new Error("Judge gallery is not the exact deterministic template");
 }
 
@@ -619,15 +637,15 @@ function sourceFingerprint() {
   return hash.digest("hex");
 }
 
-function validateBuiltInPet(id) {
+function validatePetSource(id, collection) {
   const source = assertSafeDirectory(
     join(repo, "apps", "desktop", "src", "pets", id),
-    `Built-in pet directory for ${id}`,
+    `${collection} pet directory for ${id}`,
   );
   const manifestPath = join(source, "pet.json");
   const sheetPath = join(source, "spritesheet.webp");
   if (!existsSync(manifestPath) || !existsSync(sheetPath)) {
-    throw new Error(`Required built-in pet assets are missing for ${id}: ${source}`);
+    throw new Error(`Required ${collection.toLowerCase()} pet assets are missing for ${id}: ${source}`);
   }
   const manifestStat = lstatSync(manifestPath);
   const sheetStat = lstatSync(sheetPath);
@@ -637,26 +655,26 @@ function validateBuiltInPet(id) {
     || !manifestStat.isFile()
     || !sheetStat.isFile()
   ) {
-    throw new Error(`Built-in pet assets must be regular files for ${id}`);
+    throw new Error(`${collection} pet assets must be regular files for ${id}`);
   }
   if (manifestStat.size < 1 || manifestStat.size > 65_536) {
-    throw new Error(`Built-in pet manifest must be between 1 byte and 64 KiB for ${id}`);
+    throw new Error(`${collection} pet manifest must be between 1 byte and 64 KiB for ${id}`);
   }
   if (sheetStat.size < 1 || sheetStat.size > 16 * 1024 * 1024) {
-    throw new Error(`Built-in pet spritesheet must be between 1 byte and 16 MiB for ${id}`);
+    throw new Error(`${collection} pet spritesheet must be between 1 byte and 16 MiB for ${id}`);
   }
   let manifest;
   try {
     manifest = JSON.parse(readFileSync(manifestPath, "utf8").replace(/^\uFEFF/, ""));
   } catch (error) {
-    throw new Error(`Built-in pet manifest is invalid for ${id}: ${error.message}`);
+    throw new Error(`${collection} pet manifest is invalid for ${id}: ${error.message}`);
   }
   if (
     manifest.id !== id ||
     manifest.spriteVersionNumber !== 2 ||
     manifest.spritesheetPath !== "spritesheet.webp"
   ) {
-    throw new Error(`Built-in pet ${id} must be an exact Codex v2 manifest`);
+    throw new Error(`${collection} pet ${id} must be an exact Codex v2 manifest`);
   }
   return source;
 }
@@ -1686,9 +1704,12 @@ assertReleaseBuildSourceClean(buildPolicy.requireCleanWorktree, releaseBuildStat
 for (const path of [binaries, join(repo, "build", "sidecar-pets"), join(repo, "build", "pyinstaller")]) {
   assertSafeDirectory(path, "Sidecar build path");
 }
-const petSources = new Map(builtInPets.map((id) => [id, validateBuiltInPet(id)]));
+const petSources = new Map(builtInPets.map((id) => [id, validatePetSource(id, "Built-in")]));
+const historicalPetSources = new Map(
+  archivedReviewedPets.map((id) => [id, validatePetSource(id, "Archived reviewed")]),
+);
 validateBuiltInPetMedia(petSources);
-validateCompactPetReleaseEvidence(petSources);
+validateCompactPetReleaseEvidence(petSources, historicalPetSources);
 if (process.argv.includes("--preflight-release")) runReleasePreflight(petSources);
 if (process.argv.includes("--validate-pets-only")) {
   process.stdout.write(

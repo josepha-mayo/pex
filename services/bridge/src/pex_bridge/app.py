@@ -71,7 +71,6 @@ from pex_bridge.pets import (
     PetSettings,
     catalog,
     catalog_by_id,
-    import_codex_pet,
     starters_by_id,
     validate_codex_v2_atlas,
 )
@@ -91,6 +90,7 @@ from pex_bridge.pets.imagegen import (
 )
 from pex_bridge.pipeline import Pipeline, collapse_promptable_agents
 from pex_bridge.request_limits import RequestBodyLimitMiddleware
+from pex_bridge.startup_trace import mark_startup_phase
 from pex_bridge.store import (
     GOAL_CONTROL_ACTION_ATTACH,
     GOAL_CONTROL_ACTION_CREATE,
@@ -3395,6 +3395,7 @@ async def lifespan(app: FastAPI):
 
             state.codex_shared_attachments = SharedCodexAttachments()
         cleanup.push_async_callback(state.store.close)
+        mark_startup_phase("store_begin")
         await state.store.connect()
         recovered_operator_effects = await state.store.recover_interrupted_operator_effects()
         if recovered_operator_effects:
@@ -3425,6 +3426,8 @@ async def lifespan(app: FastAPI):
             set_internal_bridge_token(state.token)
         else:
             state.token = None
+        mark_startup_phase("store_ready")
+        mark_startup_phase("pets_begin")
         pet_file = state.settings.data_dir / "pet.json"
         preserve_invalid_pet_file = False
         if pet_file.exists():
@@ -3446,19 +3449,21 @@ async def lifespan(app: FastAPI):
                     type(exc).__name__,
                 )
             state.pet_path = pet_file
-        from pex_bridge.pets import maybe_import_codex_home
+        # The two-pet MVP does not scan or activate unrelated Codex pets.
+        # Preserve legacy import metadata, but migrate an unavailable selection.
+        from pex_bridge.pets import shipping_pet_settings
 
-        state.pet_settings = maybe_import_codex_home(state.pet_settings)
-        if state.pet_settings.selected_id not in catalog_by_id(state.pet_settings):
-            state.pet_settings.selected_id = STARTERS[0].id
+        state.pet_settings = shipping_pet_settings(state.pet_settings)
         state.pet_path = pet_file
         pet_file.parent.mkdir(parents=True, exist_ok=True)
         if not preserve_invalid_pet_file:
             _atomic_write_text(pet_file, state.pet_settings.model_dump_json(indent=2))
+        mark_startup_phase("pets_ready")
         state.bus.subscribe(state.broadcast)
         from pex_bridge.adapters.attach import attach_from_settings
 
         await attach_from_settings(state.adapters, state.settings)
+        mark_startup_phase("adapters_ready")
         choice_file = state.settings.data_dir / "supervisor.json"
         state.supervisor_choice = None
         state.pipeline.supervisor_dispatch_limit_override = None
@@ -3505,7 +3510,9 @@ async def lifespan(app: FastAPI):
                 type(exc).__name__,
             )
 
+        mark_startup_phase("recovery_begin")
         recovered_events = await state.pipeline.recover_unfinished_events()
+        mark_startup_phase("recovery_ready")
         if recovered_events:
             logger.info(
                 "Recovered %d unfinished accepted events before starting adapter pumps",
@@ -3537,6 +3544,7 @@ async def lifespan(app: FastAPI):
             name="Cursor observe loop",
         )
 
+        mark_startup_phase("ready")
         yield
 
 
@@ -4375,11 +4383,7 @@ def create_app() -> FastAPI:
         incoming = body.model_dump(exclude_none=True)
         data.update(incoming)
         selected = data.get("selected_id")
-        if (
-            selected
-            and selected not in starters_by_id()
-            and not any(item.id == selected for item in state.pet_settings.imports)
-        ):
+        if selected and selected not in starters_by_id():
             raise HTTPException(400, "unknown pet")
         updated = PetSettings.model_validate(data)
         _atomic_write_text(state.pet_path, updated.model_dump_json(indent=2))
@@ -4388,19 +4392,7 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/pets/import")
     async def import_pet(body: ImportPetIn, _: None = Depends(_require_token)):
-        try:
-            imported = import_codex_pet(body.directory)
-        except (FileNotFoundError, ValueError) as exc:
-            raise HTTPException(400, str(exc)) from exc
-        imports = [item for item in state.pet_settings.imports if item.id != imported.id]
-        imports.append(imported)
-        updated = state.pet_settings.model_copy(deep=True)
-        updated.imports = imports
-        updated.selected_id = imported.id
-        updated.imported_codex_dir = imported.directory
-        _atomic_write_text(state.pet_path, updated.model_dump_json(indent=2))
-        state.pet_settings = updated
-        return imported.model_dump(mode="json", exclude={"directory", "spritesheet"})
+        raise HTTPException(409, "This MVP supports Pex and Von only; pet imports are disabled.")
 
     @app.get("/v1/pets/hatch/capability")
     async def hatch_capability(_: None = Depends(_require_token)):

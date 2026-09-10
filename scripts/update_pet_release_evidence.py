@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate compact eight-pet evidence after the canonical neutral-frame repair."""
+"""Regenerate the shipped two-pet evidence while retaining the eight-pet review archive."""
 
 from __future__ import annotations
 
@@ -12,7 +12,8 @@ from typing import Any
 from PIL import Image
 from verify_pet_neutral_lineage import verify_lineage
 
-PET_IDS = ("pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von")
+SHIPPED_PET_IDS = ("pex", "von")
+ARCHIVED_REVIEW_PET_IDS = ("pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von")
 COUNTS = (6, 8, 8, 4, 5, 8, 6, 6, 6, 8, 8)
 CELL_WIDTH = 192
 CELL_HEIGHT = 208
@@ -92,18 +93,20 @@ def main() -> None:
     sheet_hashes: list[str] = []
     contract_roots: list[str] = []
 
-    for pet_id in PET_IDS:
+    for pet_id in ARCHIVED_REVIEW_PET_IDS:
         atlas_path = pets_root / pet_id / "spritesheet.webp"
         manifest_path = pets_root / pet_id / "pet.json"
         receipt = report_by_id.get(pet_id)
         old_entry = old_release_by_id.get(pet_id)
-        if receipt is None or old_entry is None:
-            raise SystemExit(f"missing repair or prior release record for {pet_id}")
+        if receipt is None:
+            raise SystemExit(f"missing repair receipt for {pet_id}")
         current_sha = sha256_file(atlas_path)
         if (
-            old_entry.get("spritesheet_sha256")
+            old_entry is not None
+            and old_entry.get("spritesheet_sha256")
             not in {receipt.get("before_sha256"), receipt.get("after_sha256")}
-            or receipt.get("after_sha256") != current_sha
+        ) or (
+            receipt.get("after_sha256") != current_sha
             or receipt.get("animation_pixels_unchanged") is not True
         ):
             raise SystemExit(f"repair lineage is incomplete for {pet_id}")
@@ -144,9 +147,7 @@ def main() -> None:
         contract_root = hash_root(contract_cells)
         direction_root = hash_root(direction_cells)
         direction_roots[pet_id] = direction_root
-        sheet_hashes.append(current_sha)
-        contract_roots.append(contract_root)
-        structural_pets.append(
+        structural_entry = (
             {
                 "id": pet_id,
                 "spritesheet_sha256": current_sha,
@@ -160,21 +161,28 @@ def main() -> None:
                 "all_unused_cells_transparent": all(unused),
             }
         )
-        release_pets.append(
+        release_entry = (
             {
                 "id": pet_id,
                 "manifest_sha256": sha256_file(manifest_path),
                 "spritesheet_sha256": current_sha,
             }
         )
+        if pet_id in SHIPPED_PET_IDS:
+            sheet_hashes.append(current_sha)
+            contract_roots.append(contract_root)
+            structural_pets.append(structural_entry)
+            release_pets.append(release_entry)
 
     migrated_records = []
-    old_before_hashes = {pet_id: report_by_id[pet_id]["before_sha256"] for pet_id in PET_IDS}
+    old_before_hashes = {
+        pet_id: report_by_id[pet_id]["before_sha256"] for pet_id in ARCHIVED_REVIEW_PET_IDS
+    }
     records = old_reviews.get("records")
     if not isinstance(records, list) or len(records) != 24:
         raise SystemExit("prior independent direction records are incomplete")
     for index, row in enumerate(records):
-        pet_id = PET_IDS[index // 3]
+        pet_id = ARCHIVED_REVIEW_PET_IDS[index // 3]
         if (
             not isinstance(row, list)
             or len(row) != 6
@@ -194,7 +202,7 @@ def main() -> None:
             return {"sha256": sha, "bytes": len(data), "content": data.decode("utf-8")}
 
         archived_pets = []
-        for index, pet_id in enumerate(PET_IDS):
+        for index, pet_id in enumerate(ARCHIVED_REVIEW_PET_IDS):
             original_binding = archived_file(args.archive_source / f"{pet_id}.json")
             original = json.loads(original_binding["content"])
             if original["shipped_sha256"] != report_by_id[pet_id]["before_sha256"]:
@@ -277,7 +285,7 @@ def main() -> None:
                 archive_path, relative="release-evidence/review-archive.json"
             ),
         },
-        "pet_ids": list(PET_IDS),
+        "pet_ids": list(SHIPPED_PET_IDS),
         "spritesheet_sha256": sheet_hashes,
         "contract_cell_hash_roots": contract_roots,
         "limitations": [
@@ -292,7 +300,7 @@ def main() -> None:
 
     release = {
         "schema_version": 4,
-        "built_in_pet_ids": list(PET_IDS),
+        "built_in_pet_ids": list(SHIPPED_PET_IDS),
         "structural_evidence": binding(
             structural_path, relative="release-evidence/structural.json"
         ),

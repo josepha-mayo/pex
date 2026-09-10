@@ -850,6 +850,7 @@ fn run_bridge_bootstrap(app: tauri::AppHandle, attempt: u64) {
         // and WAL cost. These paths preserve the documented default profile.
         .env("PEX_HOME", &bridge_home)
         .env("PEX_DB_PATH", &bridge_database)
+        .env("PEX_STARTUP_DIAGNOSTICS", "1")
         .env("PEX_DESKTOP_PARENT_PID", std::process::id().to_string())
         .spawn();
     let (mut events, child) = match spawned {

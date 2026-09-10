@@ -91,12 +91,6 @@ export function supervisorReviewAllowanceCopy(
 
 export const BUILT_IN_PET_IDS = [
   "pex",
-  "ledger",
-  "mesh",
-  "nudge",
-  "drift",
-  "quiet",
-  "ember",
   "von",
 ] as const;
 

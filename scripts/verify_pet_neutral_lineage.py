@@ -16,7 +16,8 @@ from pathlib import Path
 
 from PIL import Image
 
-PET_IDS = ("pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von")
+# Historical neutral-copy proof covers the original eight reviewed atlases.
+ARCHIVED_REVIEW_PET_IDS = ("pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von")
 COUNTS = (6, 8, 8, 4, 5, 8, 6, 6, 6, 8, 8)
 BASELINE_COMMIT = "638542c522e01adfa9705b4704701975dfe0237d"
 
@@ -78,7 +79,7 @@ def verify_lineage(repo: Path, source_commit: str) -> dict:
     if resolved != source_commit:
         raise ValueError("source commit did not resolve exactly")
     pets = []
-    for pet_id in PET_IDS:
+    for pet_id in ARCHIVED_REVIEW_PET_IDS:
         relative = f"apps/desktop/src/pets/{pet_id}/spritesheet.webp"
         before = subprocess.check_output(["git", "show", f"{source_commit}:{relative}"], cwd=repo)
         pets.append({"id": pet_id, **verify_pair(before, (repo / relative).read_bytes())})

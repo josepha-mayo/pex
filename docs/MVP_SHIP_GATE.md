@@ -38,7 +38,8 @@ OpenCode instructions; both installers and native onboarding inspection pass.
 - [x] Saved Zen vault credential used in real free-route inference; never publish
   keys or raw private receipts. BYOK configuration is not a billing guarantee.
 - [x] Native transparent Von, bubble dismissal and pet hiding demonstrated.
-  Keep the eight catalog entries; no need to tour all eight in the MVP video.
+  September 10 scope override: ship only Pex (owl) and Von (cat), per Joseph's
+  latest request. Retain historical eight-pet evidence as history, not current proof.
 - [x] Failed inference is distinguished from a successful quiet review.
 - [x] Newer unverified STOP supersedes obsolete goal success/failure as uncertain.
 - [x] Remove the remaining raw event-kind progress fallback and verify natively.

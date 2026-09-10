@@ -73,8 +73,6 @@ import type {
   Goal,
   GoalCompletion,
   GoalMutationResponse,
-  HatchCap,
-  HatchJobRow,
   HandoffAssimilationStatus,
   HumanDecisionChoice,
   Intervention,
@@ -104,9 +102,6 @@ import {
   encodeWebSocketTokenProtocol,
   eventPageResumeCursor,
   goalToDraft,
-  hatchIntentRequiresFreshAcknowledgement,
-  hatchResponseMatchesCurrentAttempt,
-  newHatchBaseCandidateKey,
   newUndoIdempotencyKey,
   isPendingHumanDecision,
   isPendingLifecycleDecision,
@@ -115,8 +110,6 @@ import {
   initialCanonicalResources,
   prepareGoalControlAttempt,
   type GoalControlAttempt,
-  prepareHatchBaseCandidateAttempt,
-  type HatchBaseCandidateAttempt,
   prepareUndoAttempt,
   projectCompletedOverlayUndo,
   projectIdentityCompletionIsCurrent,
@@ -143,12 +136,10 @@ const EVENT_CURSOR_STORAGE_KEY = "pex.event_cursor.v1";
 const PET_RECONCILIATION_INTERVAL_MS = 30_000;
 const BASE_STATE_RECONCILIATION_INTERVAL_MS = 30_000;
 const SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS = 30_000;
-const ACTIVE_HATCH_RECONCILIATION_INTERVAL_MS = 4_000;
 const GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS = 30_000;
 const HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS = 30_000;
 const PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS = 30_000;
 const DETAIL_RECONCILIATION_INTERVAL_MS = 32_000;
-const ACTIVE_HATCH_STATUSES = new Set(["queued", "probing", "running"]);
 
 function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
   if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return "local";
@@ -399,7 +390,6 @@ export function App() {
   const [note, setNote] = useState<string | null>(null);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [builtInRoster, setBuiltInRoster] = useState<CatalogPet[]>([]);
-  const [customRoster, setCustomRoster] = useState<CatalogPet[]>([]);
   const [petFleetIssues, setPetFleetIssues] = useState<string[]>([]);
   const [deck, setDeck] = useState<DeckData>({});
   const [contextItems, setContextItems] = useState<ContextItem[]>([]);
@@ -451,20 +441,11 @@ export function App() {
     // authority until every relevant canonical resource refreshes after reactivation.
     setCanonicalResources(initialCanonicalResources());
   }, [observationActive]);
-  const [importDir, setImportDir] = useState("");
   const [hookHarness, setHookHarness] = useState<HookHarness>("cursor");
   const [hookProject, setHookProject] = useState("");
   const [hookBootstrap, setHookBootstrap] = useState<HookBootstrapReceipt | null>(null);
   const [cursorRejections, setCursorRejections] = useState<CursorInboxRejectionPage | null>(null);
   const [provisioningHook, setProvisioningHook] = useState(false);
-  const [hatchCap, setHatchCap] = useState<HatchCap | null>(null);
-  const [hatchJobs, setHatchJobs] = useState<HatchJobRow[]>([]);
-  const [hatchName, setHatchName] = useState("");
-  const [hatchNotes, setHatchNotes] = useState("");
-  const [hatchStyle, setHatchStyle] = useState("plush");
-  const [hatchOneCallConfirmed, setHatchOneCallConfirmed] = useState(false);
-  const [hatching, setHatching] = useState(false);
-  const hatchAttempt = useRef<HatchBaseCandidateAttempt | null>(null);
   const goalControlAttempts = useRef(new Map<string, GoalControlAttempt>());
   const undoAttempts = useRef(new Map<string, UndoAttempt>());
   const undoRequestsInFlight = useRef(new Set<string>());
@@ -489,7 +470,6 @@ export function App() {
   const askInput = useRef<HTMLInputElement>(null);
   const petRequestSequence = useRef(0);
   const baseRequestSequence = useRef(0);
-  const hatchRequestSequence = useRef(0);
   const cursorRejectionRequestSequence = useRef(0);
   const detailRequestSequence = useRef(0);
   const identityConflictRequestSequence = useRef(0);
@@ -589,14 +569,11 @@ export function App() {
     }
   }, [markCanonical]);
 
-  const loadBaseState = useCallback(async (includeCapability = false, signal?: AbortSignal) => {
+  const loadBaseState = useCallback(async (signal?: AbortSignal) => {
     const requestSequence = ++baseRequestSequence.current;
-    const [goalsResult, petsResult, capResult] = await Promise.allSettled([
+    const [goalsResult, petsResult] = await Promise.allSettled([
       bridgeJson<Goal[]>("/v1/goals", { signal }),
       bridgeJson<{ catalog?: CatalogPet[]; starters?: CatalogPet[] }>("/v1/pets", { signal }),
-      includeCapability
-        ? bridgeJson<HatchCap>("/v1/pets/hatch/capability", { signal })
-        : Promise.resolve<HatchCap | null>(null),
     ]);
     if (requestSequence !== baseRequestSequence.current) return;
     if (goalsResult.status === "fulfilled" && Array.isArray(goalsResult.value)) {
@@ -611,26 +588,12 @@ export function App() {
         petsResult.value.catalog || petsResult.value.starters || [],
       );
       setBuiltInRoster(partitioned.builtIns);
-      setCustomRoster(partitioned.custom);
       setPetFleetIssues(partitioned.fleetIssues);
       markCanonical("pets", "fresh");
     } else {
       markCanonical("pets", "failed", "Pet catalog could not be refreshed.");
     }
-    if (capResult.status === "fulfilled" && capResult.value) setHatchCap(capResult.value);
   }, [markCanonical]);
-
-  const loadHatchJobs = useCallback(async (signal?: AbortSignal) => {
-    const requestSequence = ++hatchRequestSequence.current;
-    try {
-      const data = await bridgeJson<{ jobs?: HatchJobRow[] }>("/v1/pets/hatch", { signal });
-      if (requestSequence !== hatchRequestSequence.current) return;
-      setHatchJobs(data.jobs || []);
-    } catch {
-      // Keep the last observed jobs. A missing row could otherwise masquerade as
-      // completion while the local bridge is briefly unavailable.
-    }
-  }, []);
 
   const loadCursorRejections = useCallback(async (signal?: AbortSignal) => {
     const requestSequence = ++cursorRejectionRequestSequence.current;
@@ -778,12 +741,9 @@ export function App() {
 
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || shell === "pet") return;
-    let firstRefresh = true;
     const stopPolling = startSerialPolling(
       (signal) => {
-        const includeCapability = firstRefresh && shell === "settings";
-        firstRefresh = false;
-        return loadBaseState(includeCapability, signal);
+        return loadBaseState(signal);
       },
       BASE_STATE_RECONCILIATION_INTERVAL_MS,
     );
@@ -792,22 +752,6 @@ export function App() {
       stopPolling();
     };
   }, [bridgeAvailable, loadBaseState, pageVisible, shell]);
-
-  const hatchJobsActive = hatchJobs.some((job) => ACTIVE_HATCH_STATUSES.has(job.status));
-
-  useEffect(() => {
-    if (!bridgeAvailable || !pageVisible || shell !== "settings") return;
-    const stopPolling = startSerialPolling(
-      (signal) => loadHatchJobs(signal),
-      hatchJobsActive
-        ? ACTIVE_HATCH_RECONCILIATION_INTERVAL_MS
-        : SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS,
-    );
-    return () => {
-      hatchRequestSequence.current += 1;
-      stopPolling();
-    };
-  }, [bridgeAvailable, hatchJobsActive, loadHatchJobs, pageVisible, shell]);
 
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || shell !== "settings") return;
@@ -2265,80 +2209,6 @@ export function App() {
     }
   }
 
-  async function hatchOwnPet() {
-    if (
-      !hatchName.trim() ||
-      !hatchOneCallConfirmed ||
-      hatchCap?.generation_ready !== true ||
-      hatching
-    ) return;
-    const prepared = prepareHatchBaseCandidateAttempt(
-      hatchAttempt.current,
-      {
-        displayName: hatchName,
-        description: hatchNotes,
-        petNotes: hatchNotes,
-        stylePreset: hatchStyle,
-      },
-      newHatchBaseCandidateKey,
-    );
-    if (!prepared) {
-      setNote("The base-candidate request is invalid. Check the bounded name, style, and look fields.");
-      return;
-    }
-    const submittedAttempt = prepared.attempt;
-    hatchAttempt.current = submittedAttempt;
-    setHatching(true);
-    try {
-      const data = await bridgeJson<HatchJobRow>("/v1/pets/hatch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prepared.request),
-      });
-      setHatchJobs((rows) => [data, ...rows.filter((row) => row.id !== data.id)]);
-      if (hatchResponseMatchesCurrentAttempt(submittedAttempt, hatchAttempt.current)) {
-        setHatchName("");
-        setHatchOneCallConfirmed(false);
-        hatchAttempt.current = null;
-      }
-      setNote(
-        data.error
-          || `The one-call request for ${data.display_name} is recorded. Any delivered image is an unverified base candidate, not a playable pet.`,
-      );
-    } catch (error) {
-      setNote(operationError(error, "The one-call base-candidate request did not complete."));
-    } finally {
-      setHatching(false);
-    }
-  }
-
-  function changeHatchIntent(
-    currentValue: string,
-    nextValue: string,
-    commit: (value: string) => void,
-  ) {
-    if (hatchIntentRequiresFreshAcknowledgement(currentValue, nextValue)) {
-      setHatchOneCallConfirmed(false);
-      hatchAttempt.current = null;
-    }
-    commit(nextValue);
-  }
-
-  async function importPet() {
-    if (!importDir.trim()) return;
-    try {
-      await bridgeJson("/v1/pets/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ directory: importDir.trim() }),
-      });
-      await Promise.all([refreshPet(), loadBaseState(false)]);
-      setNote("Pet imported and selected.");
-    } catch (error) {
-      setNote(operationError(error, "Could not import that Codex v2 pet folder."));
-    }
-  }
-
   function openInspector(sessionId?: string) {
     if (sessionId) setSelectedId(sessionId);
     setSurface("inspector");
@@ -2417,14 +2287,6 @@ export function App() {
         settingsIssue={settingsIssue}
         savingSupervisor={savingSupervisor}
         refreshingCatalog={refreshingCatalog}
-        hatchCap={hatchCap}
-        hatchJobs={hatchJobs}
-        hatchName={hatchName}
-        hatchNotes={hatchNotes}
-        hatchStyle={hatchStyle}
-        hatchOneCallConfirmed={hatchOneCallConfirmed}
-        hatching={hatching}
-        importDir={importDir}
         hookHarness={hookHarness}
         hookProject={hookProject}
         hookEnvironment={HOOK_ENVIRONMENT[hookHarness]}
@@ -2463,13 +2325,6 @@ export function App() {
         onSaveSupervisor={() => void saveSupervisor()}
         onReloadSettings={() => void loadSettings()}
         onRefreshCatalog={() => void refreshSupervisorCatalog()}
-        onHatchName={(value) => changeHatchIntent(hatchName, value, setHatchName)}
-        onHatchNotes={(value) => changeHatchIntent(hatchNotes, value, setHatchNotes)}
-        onHatchStyle={(value) => changeHatchIntent(hatchStyle, value, setHatchStyle)}
-        onHatchOneCallConfirmed={setHatchOneCallConfirmed}
-        onHatch={() => void hatchOwnPet()}
-        onImportDir={setImportDir}
-        onImport={() => void importPet()}
         onHookHarness={(value) => {
           setHookHarness(value);
           setHookBootstrap(null);
@@ -2486,11 +2341,11 @@ export function App() {
             <header>
               <div>
                 <p className="eyebrow">
-                  Built-in companions · {builtInRoster.filter((item) => item.atlas_ready === true).length}/8 available
+                  Built-in companions · {builtInRoster.filter((item) => item.atlas_ready === true).length}/2 available
                 </p>
-                <h2>Choose your PEX pet</h2>
+                <h2>Your companion</h2>
               </div>
-              <p>State comes from the local bridge; offline and missing art stay explicit.</p>
+              <p>Pex the watchful owl or Von the focused cat. Same supervision, your choice.</p>
             </header>
             {petFleetIssues.length ? (
               <p className="pet-roster-unavailable" role="alert">
@@ -2504,18 +2359,6 @@ export function App() {
               reducedMotion={reducedMotion}
               onSelect={(id) => void selectPet(id)}
             />
-            {customRoster.length ? (
-              <section className="custom-pet-roster" aria-label="Imported custom pets">
-                <p className="eyebrow">Your imports · separate from the eight built-ins</p>
-                <PetRosterButtons
-                  pets={customRoster}
-                  selectedId={pet?.appearance?.id}
-                  selecting={selectingPet}
-                  reducedMotion={reducedMotion}
-                  onSelect={(id) => void selectPet(id)}
-                />
-              </section>
-            ) : null}
           </section>
         )}
       />
@@ -2871,7 +2714,7 @@ function PetRosterButtons({
                   active={selected}
                   path={`/v1/pets/${encodeURIComponent(item.id)}/spritesheet`}
                   mood="idle"
-                  scale={0.42}
+                  scale={0.72}
                   reducedMotion={reducedMotion}
                 />
               ) : (
@@ -2879,7 +2722,7 @@ function PetRosterButtons({
               )}
             </span>
             <strong>{item.display_name}</strong>
-            <small>{ready ? item.species || "companion" : "art unavailable"}</small>
+            <small>{ready ? selected ? "Selected" : item.species || "companion" : "art unavailable"}</small>
           </button>
         );
       })}

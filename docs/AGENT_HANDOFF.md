@@ -13,6 +13,30 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**September 10 user scope override: exactly TWO pets, Pex and Von.** Runtime
+catalog, selection API, picker and packaging allowlist now exclude the other six.
+Old selection migrates to Pex while retaining nickname, scale and legacy import
+metadata. No Codex-home pet scan at startup. Import endpoint rejects with 409;
+generation/import controls, custom roster and hatch polling were removed from
+the desktop. The two picker cards have larger previews and an explicit Selected
+label. Original atlas pixels and historical eight-pet review archives are preserved;
+current release manifest/structural evidence/gallery bind only the two shipping pets.
+279 desktop tests, TypeScript/Vite production build, and exact-two asset validation
+pass. Updated bridge roundtrip suite: 16 passed (initial run caught two stale
+eight-pet/tortoise expectations; those failures were not product regressions).
+Final combined backend check: **113 passed in 74.51 seconds**, exit 0.
+The new native package is next; do not treat
+the existing f575d45 installers as the two-pet version. Old PEX was closed normally
+using its own Close button, and its owned desktop/bridge processes exited.
+
+**Cold-start diagnostics:** optional fixed-phase, credential-free local trace
+added for the next packaged launch. It does not fix or relax the 60-second
+identity deadline. A read-only backup of the local SQLite database was profiled:
+Store.connect on the isolated copy took 2.844 seconds; backup 4.547 seconds,
+store module import 1.141 seconds. This does not measure frozen extraction/import
+or prove the cause of the first native timeout. Private backup remains ignored
+under build/startup-diagnostic-f575d45-20260910 and must not be published.
+
 **Current package `f575d45`: integrity passes; first native startup failed its
 60-second identity deadline, one Retry succeeded.** The app is responsive and
 the packaged cross-window pet feedback repair is now verified (hide via pet X

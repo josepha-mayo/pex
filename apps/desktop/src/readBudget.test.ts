@@ -203,17 +203,15 @@ test("the newest detail read always releases loading even when it did not start 
   assert.doesNotMatch(detail, /if \(showLoading\) setDetailsLoading\(false\)/);
 });
 
-test("settings separates slow base data from only-while-active hatch polling", async () => {
+test("two-pet settings retain slow base reads without hatch polling", async () => {
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
   assert.match(source, /const BASE_STATE_RECONCILIATION_INTERVAL_MS = 30_000/);
-  assert.match(source, /const ACTIVE_HATCH_RECONCILIATION_INTERVAL_MS = 4_000/);
   assert.match(source, /const SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS = 30_000/);
-  assert.match(source, /const hatchJobsActive = hatchJobs\.some\(\(job\) => ACTIVE_HATCH_STATUSES\.has\(job\.status\)\)/);
-  assert.match(source, /loadHatchJobs\(signal\),\s*hatchJobsActive\s*\? ACTIVE_HATCH_RECONCILIATION_INTERVAL_MS\s*: SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS/);
+  assert.doesNotMatch(source, /loadHatchJobs|ACTIVE_HATCH_|\/v1\/pets\/hatch/);
   assert.match(source, /loadCursorRejections\(signal\),\s*SETTINGS_ACTIVITY_RECONCILIATION_INTERVAL_MS/);
   const baseStart = source.indexOf("const loadBaseState =");
-  const baseEnd = source.indexOf("const loadHatchJobs", baseStart);
+  const baseEnd = source.indexOf("const loadCursorRejections", baseStart);
   const base = source.slice(baseStart, baseEnd);
   assert.doesNotMatch(base, /\/v1\/pets\/hatch(?:"|\?)/);
   assert.doesNotMatch(base, /\/v1\/hooks\/cursor\/rejections/);
@@ -225,8 +223,7 @@ test("view-owned background reads propagate cancellation and handoff reads use a
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
   for (const call of [
     "refreshPet(controller.signal)",
-    "loadBaseState(includeCapability, signal)",
-    "loadHatchJobs(signal)",
+    "loadBaseState(signal)",
     "loadCursorRejections(signal)",
     "refreshPetGoals(signal)",
     "loadDetails(includeSlowDetails, showLoading, controller.signal)",

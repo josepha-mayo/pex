@@ -3,8 +3,6 @@ import type { SupervisorAuthMode, SupervisorProtocol, SupervisorCredentialAction
 import { supervisorReviewLimitCopy } from "../supervisorDraft";
 import type {
   Goal,
-  HatchCap,
-  HatchJobRow,
   ChannelHubStatus,
   CursorInboxRejectionPage,
   SupervisorInfo,
@@ -12,9 +10,6 @@ import type {
 import {
   channelStatusCopy,
   cursorRejectionReasonCopy,
-  HATCH_BASE_CANDIDATE_CONFIRMATION,
-  HATCH_BASE_CANDIDATE_DISCLOSURE,
-  HATCH_EXTERNAL_IMPORT_DISCLOSURE,
   supervisorHonestyCopy,
 } from "../viewModel";
 
@@ -44,14 +39,6 @@ export function SettingsPage({
   settingsIssue,
   savingSupervisor,
   refreshingCatalog,
-  hatchCap,
-  hatchJobs,
-  hatchName,
-  hatchNotes,
-  hatchStyle,
-  hatchOneCallConfirmed,
-  hatching,
-  importDir,
   hookHarness,
   hookProject,
   hookEnvironment,
@@ -77,13 +64,6 @@ export function SettingsPage({
   onSaveSupervisor,
   onReloadSettings,
   onRefreshCatalog,
-  onHatchName,
-  onHatchNotes,
-  onHatchStyle,
-  onHatchOneCallConfirmed,
-  onHatch,
-  onImportDir,
-  onImport,
   onHookHarness,
   onHookProject,
   onProvisionHook,
@@ -112,14 +92,6 @@ export function SettingsPage({
   settingsIssue?: string | null;
   savingSupervisor: boolean;
   refreshingCatalog: boolean;
-  hatchCap: HatchCap | null;
-  hatchJobs: HatchJobRow[];
-  hatchName: string;
-  hatchNotes: string;
-  hatchStyle: string;
-  hatchOneCallConfirmed: boolean;
-  hatching: boolean;
-  importDir: string;
   hookHarness: HookHarness;
   hookProject: string;
   hookEnvironment: string;
@@ -145,13 +117,6 @@ export function SettingsPage({
   onSaveSupervisor: () => void;
   onReloadSettings: () => void;
   onRefreshCatalog: () => void;
-  onHatchName: (value: string) => void;
-  onHatchNotes: (value: string) => void;
-  onHatchStyle: (value: string) => void;
-  onHatchOneCallConfirmed: (value: boolean) => void;
-  onHatch: () => void;
-  onImportDir: (value: string) => void;
-  onImport: () => void;
   onHookHarness: (value: HookHarness) => void;
   onHookProject: (value: string) => void;
   onProvisionHook: () => void;
@@ -203,7 +168,7 @@ export function SettingsPage({
           <div>
             <p className="eyebrow">Local companion</p>
             <h1>Settings</h1>
-            <p>Appearance, supervisor inference, and pet sources. Credentials stay in the local environment or secret store.</p>
+            <p>Your companion, supervisor, and coding-agent connections. Credentials stay in the local environment or secret store.</p>
           </div>
         </header>
 
@@ -578,83 +543,6 @@ export function SettingsPage({
                 <li key={row.id}>{channelStatusCopy(row)}</li>
               ))}
             </ul>
-          </section>
-          ) : null}
-
-          {section === "companion" ? (
-          <section className="settings-card settings-wide">
-            <p className="eyebrow">Custom pet input</p>
-            <h2>Generate a base candidate</h2>
-            <p className="settings-note">
-              {hatchCap?.generation_ready
-                ? `Uses ${hatchCap.provider || "your configured"} image endpoint.`
-                : hatchCap?.reason || "A configured image endpoint is required. Text-only endpoints fail explicitly."}
-            </p>
-            <p className="settings-note">
-              {HATCH_BASE_CANDIDATE_DISCLOSURE}
-            </p>
-            <div className="form-grid two-column">
-              <label>
-                Pet name
-                <input value={hatchName} onChange={(event) => onHatchName(event.target.value)} placeholder="Nori" />
-              </label>
-              <label>
-                Style
-                <select value={hatchStyle} onChange={(event) => onHatchStyle(event.target.value)}>
-                  {['plush', 'clay', 'sticker', 'flat-vector', '3d-toy', 'auto'].map((style) => (
-                    <option value={style} key={style}>{style}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label>
-              Look
-              <input value={hatchNotes} onChange={(event) => onHatchNotes(event.target.value)} placeholder="Plush fox, ink-navy, cream belly, no laptop" />
-            </label>
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={hatchOneCallConfirmed}
-                onChange={(event) => onHatchOneCallConfirmed(event.target.checked)}
-              />
-              {HATCH_BASE_CANDIDATE_CONFIRMATION}
-            </label>
-            <button
-              type="button"
-              className="solid"
-              disabled={
-                !hatchName.trim() ||
-                !hatchOneCallConfirmed ||
-                hatchCap?.generation_ready !== true ||
-                hatching
-              }
-              onClick={onHatch}
-            >
-              {hatching ? "Starting one call…" : "Generate unverified base candidate"}
-            </button>
-            {hatchJobs.length ? (
-              <ul className="settings-list">
-                {hatchJobs.slice(0, 4).map((job) => (
-                  <li key={job.id}>
-                    <strong>{job.display_name}</strong>
-                    <span>{job.status} · {job.jobs_complete}/{job.jobs_total} · {job.error || job.step}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </section>
-          ) : null}
-
-          {section === "companion" ? (
-          <section className="settings-card">
-            <p className="eyebrow">Bring your own</p>
-            <h2>Import pet</h2>
-            <p className="settings-note">{HATCH_EXTERNAL_IMPORT_DISCLOSURE}</p>
-            <label>
-              Codex v2 pet folder
-              <input value={importDir} onChange={(event) => onImportDir(event.target.value)} placeholder="Folder with pet.json and spritesheet.webp" />
-            </label>
-            <button type="button" className="ghost" disabled={!importDir.trim()} onClick={onImport}>Import hatch-pet</button>
           </section>
           ) : null}
 

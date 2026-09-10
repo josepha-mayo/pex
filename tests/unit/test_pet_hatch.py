@@ -20,15 +20,9 @@ from pex_bridge.pets.imagegen import HatchImageError, generate_png, probe_images
 from PIL import Image
 
 
-def test_eight_starters_are_the_bound_fleet():
+def test_two_starters_are_the_bound_fleet():
     assert [pet.id for pet in STARTERS] == [
         "pex",
-        "ledger",
-        "mesh",
-        "nudge",
-        "drift",
-        "quiet",
-        "ember",
         "von",
     ]
 

@@ -4,11 +4,10 @@ Codex hatch-pets are v2 8x11 atlases (192x208 cells, spriteVersionNumber 2) with
 rows: idle, running-right, running-left, waving, jumping, failed, waiting,
 running (focused work), review, then 16 look directions.
 
-Eight distinct starters (owl, tortoise, moth, hedgehog, axolotl, armadillo,
-clay robot, and the user's original dark-navy cat Von). Production starters
-resolve only from the bundled/repository asset tree; missing art stays
-explicitly unavailable. Users can hatch or import separate custom pets from
-Settings. Bundled starter art must be project-owned or user-owned.
+Two shipping companions: Pex the owl and Von the dark-navy cat. Production
+starters resolve only from the bundled/repository asset tree; missing art stays
+explicitly unavailable. Legacy import metadata is preserved, but extra pets are
+not part of the focused MVP catalog.
 """
 
 from __future__ import annotations
@@ -267,66 +266,6 @@ STARTERS: list[PetDefinition] = [
         accent="#9dffd8",
     ),
     PetDefinition(
-        id="ledger",
-        display_name="Ledger",
-        description="Dusty teal plush tortoise with a tiny bound ledger. Remembers constraints.",
-        shape="ledger",
-        species="tortoise",
-        hue=210,
-        body="#3d7ea6",
-        accent="#b7e3ff",
-    ),
-    PetDefinition(
-        id="mesh",
-        display_name="Mesh",
-        description="Lavender plush moth courier with envelope-fold wing markings.",
-        shape="mesh",
-        species="moth",
-        hue=265,
-        body="#7a5cff",
-        accent="#d7ccff",
-    ),
-    PetDefinition(
-        id="nudge",
-        display_name="Nudge",
-        description="Amber plush hedgehog. A corrective tap, then quiet.",
-        shape="nudge",
-        species="hedgehog",
-        hue=40,
-        body="#e0a21b",
-        accent="#ffe7a3",
-    ),
-    PetDefinition(
-        id="drift",
-        display_name="Drift",
-        description="Coral plush axolotl. Lights up when a worker leaves the goal.",
-        shape="pulse",
-        species="axolotl",
-        hue=0,
-        body="#e25b4c",
-        accent="#ffc4bc",
-    ),
-    PetDefinition(
-        id="quiet",
-        display_name="Quiet",
-        description="Slate plush armadillo. Almost invisible until a real decision exists.",
-        shape="quiet",
-        species="armadillo",
-        hue=200,
-        body="#4b5a63",
-        accent="#c5d0d6",
-    ),
-    PetDefinition(
-        id="ember",
-        display_name="Ember",
-        description="Terracotta clay robot. Warm when a test is safe, still for danger.",
-        shape="ember",
-        species="robot",
-        hue=20,
-        body="#d96a2b",
-        accent="#ffd0b0",
-    ),
-    PetDefinition(
         id="von",
         display_name="Von",
         description=(
@@ -343,6 +282,13 @@ STARTERS: list[PetDefinition] = [
 
 def starters_by_id() -> dict[str, PetDefinition]:
     return {pet.id: pet for pet in STARTERS}
+
+
+def shipping_pet_settings(settings: PetSettings) -> PetSettings:
+    """Retain saved preferences/imports without activating a retired companion."""
+    if settings.selected_id in starters_by_id():
+        return settings
+    return settings.model_copy(update={"selected_id": STARTERS[0].id})
 
 
 def _with_sheet(pet: PetDefinition) -> PetDefinition:
@@ -366,8 +312,10 @@ def _validated_imported_sheet(imported: ImportedPet) -> str | None:
     return str(sheet)
 
 
-def catalog(settings: PetSettings) -> list[PetDefinition]:
+def catalog(settings: PetSettings, *, include_legacy_imports: bool = False) -> list[PetDefinition]:
     items = [_with_sheet(pet) for pet in STARTERS]
+    if not include_legacy_imports:
+        return items
     for imported in settings.imports:
         sheet = _validated_imported_sheet(imported)
         items.append(

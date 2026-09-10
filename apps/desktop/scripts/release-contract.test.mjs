@@ -8,6 +8,7 @@ import {
   EXPECTED_MAIN_PERMISSIONS,
   EXPECTED_PET_PERMISSIONS,
   EXPECTED_SIDECAR_BINS,
+  RELEASE_BUILT_IN_PET_IDS,
   assertCanonicalRepoRelativePath,
   assertPublicReleaseEvidence,
   assertFrozenBundleInventory,
@@ -24,6 +25,11 @@ import {
 } from "./release-contract.mjs";
 
 const hash = (character) => character.repeat(64);
+
+test("release allowlist ships only Pex and Von", () => {
+  assert.deepEqual(RELEASE_BUILT_IN_PET_IDS, ["pex", "von"]);
+  assert.throws(() => RELEASE_BUILT_IN_PET_IDS.push("ledger"), /not extensible/u);
+});
 
 test("verification cleanup preserves success and each failure without masking", () => {
   let cleaned = 0;

@@ -244,12 +244,6 @@ async def test_m0_event_to_action_roundtrip(client: AsyncClient):
     pets = await client.get("/v1/pets")
     assert [pet["id"] for pet in pets.json()["starters"]] == [
         "pex",
-        "ledger",
-        "mesh",
-        "nudge",
-        "drift",
-        "quiet",
-        "ember",
         "von",
     ]
     assert all("spritesheet" not in pet for pet in pets.json()["catalog"])
@@ -296,11 +290,11 @@ async def test_unimplemented_generic_hook_surfaces_are_rejected(client: AsyncCli
     live_decide.assert_not_awaited()
     patched = await client.patch(
         "/v1/pets/settings",
-        json={"custom_name": "Ledgerbot", "selected_id": "ledger"},
+        json={"custom_name": "Little Von", "selected_id": "von"},
     )
     assert patched.status_code == 200
     shown = await client.get("/v1/pet")
-    assert shown.json()["appearance"]["display_name"] == "Ledgerbot"
+    assert shown.json()["appearance"]["display_name"] == "Little Von"
     click_through = await client.patch("/v1/pets/settings", json={"click_through": True})
     assert click_through.status_code == 200
     assert click_through.json()["click_through"] is True
@@ -597,6 +591,30 @@ async def test_desktop_inventory_does_not_starve_identity(client, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_two_pet_mvp_catalog_selection_and_import_boundary(client: AsyncClient, tmp_path):
+    state.pet_settings.imports = [ImportedPet(
+        id="import:legacy", display_name="Legacy",
+        directory=str(tmp_path / "legacy"),
+        spritesheet=str(tmp_path / "legacy" / "spritesheet.webp"),
+    )]
+    response = await client.get("/v1/pets")
+    assert response.status_code == 200
+    assert [row["id"] for row in response.json()["catalog"]] == ["pex", "von"]
+    for pet_id in ("pex", "von"):
+        selected = await client.patch("/v1/pets/settings", json={"selected_id": pet_id})
+        assert selected.status_code == 200
+        assert state.pet_settings.selected_id == pet_id
+    for pet_id in ("ledger", "import:legacy"):
+        rejected = await client.patch("/v1/pets/settings", json={"selected_id": pet_id})
+        assert rejected.status_code == 400
+        assert state.pet_settings.selected_id == "von"
+    imported = await client.post("/v1/pets/import", json={"directory": str(tmp_path)})
+    assert imported.status_code == 409
+    assert state.pet_settings.selected_id == "von"
+    assert len(state.pet_settings.imports) == 1
+
+
+@pytest.mark.asyncio
 async def test_pet_spritesheet_route_fails_closed_for_missing_or_invalid_atlas(
     client: AsyncClient,
     tmp_path,
@@ -612,8 +630,8 @@ async def test_pet_spritesheet_route_fails_closed_for_missing_or_invalid_atlas(
         )
     ]
     imported = await client.get("/v1/pets/import:missing/spritesheet")
-    assert imported.status_code == 409
-    assert "unavailable" in imported.json()["detail"]
+    assert imported.status_code == 404
+    assert "unknown pet" in imported.json()["detail"]
 
     monkeypatch.setattr("pex_bridge.pets.resolve_spritesheet", lambda _pet_id: None)
     missing_starter = await client.get("/v1/pets/pex/spritesheet")

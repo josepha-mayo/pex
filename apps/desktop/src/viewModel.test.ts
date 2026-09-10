@@ -326,15 +326,9 @@ test("goal payload keeps constraints and non-goals separate", () => {
   assert.notDeepEqual(payload.constraints, payload.non_goals);
 });
 
-test("the built-in fleet is exactly eight and custom imports remain separate", () => {
+test("the shipping fleet is exactly Pex and Von and legacy imports remain separate", () => {
   assert.deepEqual(BUILT_IN_PET_IDS, [
     "pex",
-    "ledger",
-    "mesh",
-    "nudge",
-    "drift",
-    "quiet",
-    "ember",
     "von",
   ]);
   const starters = BUILT_IN_PET_IDS.map((id) => ({
@@ -407,22 +401,7 @@ test("material hatch intent changes require a fresh acknowledgement", async () =
     true,
   );
 
-  const { readFile } = await import("node:fs/promises");
-  const appSource = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
-  assert.match(
-    appSource,
-    /onHatchName=\{\(value\) => changeHatchIntent\(hatchName, value, setHatchName\)\}/u,
-  );
-  assert.match(
-    appSource,
-    /onHatchNotes=\{\(value\) => changeHatchIntent\(hatchNotes, value, setHatchNotes\)\}/u,
-  );
-  assert.match(
-    appSource,
-    /onHatchStyle=\{\(value\) => changeHatchIntent\(hatchStyle, value, setHatchStyle\)\}/u,
-  );
-  assert.match(appSource, /setHatchOneCallConfirmed\(false\);/u);
-  assert.match(appSource, /hatchAttempt\.current = null;/u);
+
 });
 
 test("an old hatch response cannot clear a newer draft attempt", async () => {
@@ -447,12 +426,7 @@ test("an old hatch response cannot clear a newer draft attempt", async () => {
     false,
   );
 
-  const { readFile } = await import("node:fs/promises");
-  const appSource = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
-  assert.match(
-    appSource,
-    /if \(hatchResponseMatchesCurrentAttempt\(submittedAttempt, hatchAttempt\.current\)\)/u,
-  );
+
 });
 
 test("base-candidate hatch request and import copy stay honest", () => {
@@ -2030,4 +2004,16 @@ test("project identity App flow separates summary polling from active candidate 
   assert.match(source, /projectIdentityCompletionIsCurrent/);
   assert.match(source, /const \[liveStatus\] = await Promise\.all\(\[/);
   assert.match(source, /projectIdentityResolutionMessage\(response, liveStatus\)/);
+});
+
+
+
+test("two-pet settings have no generation, import controls, or custom roster", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const settings = await readFile(new URL("./components/SettingsPage.tsx", import.meta.url), "utf8");
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(settings, /Generate a base candidate|Import pet|onHatch|onImport/);
+  assert.doesNotMatch(app, /custom-pet-roster|hatchOwnPet|\/v1\/pets\/hatch/);
+  assert.match(app, /\/2 available/);
+  assert.match(settings, /onPetVisible/);
 });

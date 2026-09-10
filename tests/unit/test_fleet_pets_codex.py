@@ -1173,26 +1173,14 @@ async def test_hermes_plugin_hooks_use_official_returns():
     assert await adapter.send_message(session, "PEX: keep going") is False
 
 
-def test_eight_starter_pets_and_codex_geometry():
-    assert len(STARTERS) == 8
+def test_two_starter_pets_and_codex_geometry():
+    assert len(STARTERS) == 2
     assert {p.id for p in STARTERS} == {
         "pex",
-        "ledger",
-        "mesh",
-        "nudge",
-        "drift",
-        "quiet",
-        "ember",
         "von",
     }
     assert {p.species for p in STARTERS} == {
         "owl",
-        "tortoise",
-        "moth",
-        "hedgehog",
-        "axolotl",
-        "armadillo",
-        "robot",
         "cat",
     }
     assert CODEX_CELL_W * 8 == 1536
@@ -1231,16 +1219,10 @@ def test_cached_atlas_repairs_corrupt_cache_and_rejects_invalid_keys(tmp_path: P
         cached_bytes("pex", 361, str(cache))
 
 
-def test_all_eight_shipped_starter_atlases_pass_the_v2_file_contract():
+def test_both_shipped_starter_atlases_pass_the_v2_file_contract():
     resolved = catalog(PetSettings())
     assert [pet.id for pet in resolved] == [
         "pex",
-        "ledger",
-        "mesh",
-        "nudge",
-        "drift",
-        "quiet",
-        "ember",
         "von",
     ]
     assert all(pet.atlas_ready and pet.spritesheet for pet in resolved)
@@ -1274,7 +1256,7 @@ def test_starter_spritesheets_are_not_gitignored_and_match_release_manifest():
     assert ignored == []
 
 
-def test_release_manifest_seals_compact_exact_eight_evidence_closure():
+def test_release_manifest_seals_current_two_pet_evidence_and_archived_review_closure():
     repo = Path(__file__).resolve().parents[2]
     pets_dir = repo / "apps" / "desktop" / "src" / "pets"
     release = json.loads((pets_dir / "release-manifest.json").read_text(encoding="utf-8"))
@@ -1297,13 +1279,13 @@ def test_release_manifest_seals_compact_exact_eight_evidence_closure():
     assert structural["schema_version"] == 4
     assert structural["algorithm"] == "pex-codex-v2-rgba-cell-hash-v2"
     assert structural["neutral_look_frame"] == {"row": 0, "column": 6}
-    assert [row["id"] for row in structural["pets"]] == release["built_in_pet_ids"]
+    assert [row["id"] for row in structural["pets"]] == ["pex", "von"]
     assert all(row["contract_cell_count"] == 74 for row in structural["pets"])
     assert all(row["neutral_matches_idle_zero"] is True for row in structural["pets"])
     assert all(row["transparent_rgb_residue_pixels"] == 0 for row in structural["pets"])
     assert all(row["all_contract_cells_nonempty"] is True for row in structural["pets"])
     assert all(row["all_unused_cells_transparent"] is True for row in structural["pets"])
-    assert visual["pet_ids"] == release["built_in_pet_ids"]
+    assert visual["pet_ids"] == ["pex", "von"]
     assert visual["spritesheet_sha256"] == [row["spritesheet_sha256"] for row in release["pets"]]
     assert "verdict" not in visual
     assert "final_operator_source_atlas_review" not in visual["review_provenance"]
@@ -1317,13 +1299,16 @@ def test_release_manifest_seals_compact_exact_eight_evidence_closure():
         "cell_count": 16,
         "binding": "decoded-rgba-cell-hash-root-v1",
     }
-    assert len(reviews["records"]) == 24
-    assert [row[0] for row in reviews["records"]] == [pet.id for pet in STARTERS for _ in range(3)]
-    assert [row[1] for row in reviews["records"]] == [
-        row["direction_cell_hash_root"] for row in structural["pets"] for _ in range(3)
-    ]
+    archived_ids = ["pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von"]
+    assert len(reviews["records"]) == len(archived_ids) * 3
+    assert [row[0] for row in reviews["records"]] == [pet_id for pet_id in archived_ids for _ in range(3)]
+    assert all(len(row[1]) == 64 for row in reviews["records"])
+    current_direction_roots = {row["id"]: row["direction_cell_hash_root"] for row in structural["pets"]}
+    assert [row[1] for row in reviews["records"][:3]] == [current_direction_roots["pex"]] * 3
+    assert [row[1] for row in reviews["records"][-3:]] == [current_direction_roots["von"]] * 3
     gallery = gallery_path.read_text(encoding="utf-8")
     assert all(gallery.count(f"{pet.id}/spritesheet.webp") == 1 for pet in STARTERS)
+    assert all(gallery.count(f"{pet_id}/spritesheet.webp") == 0 for pet_id in archived_ids[1:-1])
     assert "not proof of native packaged playback" in gallery
     assert "C:\\Users\\" not in structural_path.read_text(encoding="utf-8")
     assert "file:///" not in gallery
@@ -1385,8 +1370,8 @@ def test_release_preflight_is_structured_and_never_claims_package_readiness():
     assert report["release_ready"] is False
     assert report["fleet"]["pet_ids"] == [pet.id for pet in STARTERS]
     assert report["fleet"]["evidence"]["schema_version"] == 4
-    assert report["fleet"]["evidence"]["source_atlas_count"] == 8
-    assert report["fleet"]["evidence"]["runtime_cell_count"] == 592
+    assert report["fleet"]["evidence"]["source_atlas_count"] == 2
+    assert report["fleet"]["evidence"]["runtime_cell_count"] == 148
     assert report["fleet"]["evidence"]["native_runtime_proof"] is False
     assert report["git"]["release_input_count"] >= 200
     assert report["git"]["release_input_count"] == (
@@ -1413,7 +1398,7 @@ def test_release_preflight_is_structured_and_never_claims_package_readiness():
     assert bool(report["blockers"]) is (not report["source_ready"])
 
 
-def test_runtime_bundle_inventory_proves_exact_eight_resource_hashes():
+def test_runtime_bundle_inventory_proves_exact_two_resource_hashes():
     from pex_bridge.main import bundled_pet_inventory
 
     inventory = bundled_pet_inventory()
@@ -1513,12 +1498,17 @@ def test_import_codex_pet_contract(tmp_path: Path):
     assert imported.id == "import:von-test"
     assert imported.sprite_version == 2
     settings = PetSettings(imports=[imported], selected_id=imported.id)
-    ids = {pet.id for pet in catalog(settings)}
+    assert [pet.id for pet in catalog(settings)] == ["pex", "von"]
+    assert settings.selected_id == imported.id  # Reading never destroys legacy metadata.
+    ids = {pet.id for pet in catalog(settings, include_legacy_imports=True)}
     assert "import:von-test" in ids
-    assert len(STARTERS) == 8
+    assert len(STARTERS) == 2
 
     sheet.unlink()
-    stale = next(pet for pet in catalog(settings) if pet.id == "import:von-test")
+    stale = next(
+        pet for pet in catalog(settings, include_legacy_imports=True)
+        if pet.id == "import:von-test"
+    )
     assert stale.atlas_ready is False
     assert stale.spritesheet is None
 

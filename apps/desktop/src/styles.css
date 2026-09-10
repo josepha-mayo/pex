@@ -821,16 +821,6 @@ p {
   scrollbar-color: var(--line-strong) transparent;
 }
 
-.custom-pet-roster {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.custom-pet-roster .eyebrow {
-  margin-bottom: 7px;
-}
-
 .pet-roster-unavailable {
   padding: 12px;
   border: 1px dashed var(--line-strong);
@@ -2336,9 +2326,20 @@ textarea::placeholder {
 
 .settings-grid .pet-roster-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   overflow: visible;
 }
+
+.settings-grid .pet-roster-row > button {
+  min-width: 0;
+  padding: 16px 8px;
+  gap: 6px;
+}
+
+.settings-grid .pet-roster-row strong { font-size: 14px; }
+.settings-grid .pet-roster-row small { font-size: 11px; }
+.settings-grid .pet-thumb { width: 84px; height: 92px; }
 
 .settings-card {
   display: grid;

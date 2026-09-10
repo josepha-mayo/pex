@@ -1,5 +1,8 @@
 const SHA256 = /^[0-9a-f]{64}$/u;
 
+// This is the release allowlist, not the historical-review corpus.
+export const RELEASE_BUILT_IN_PET_IDS = Object.freeze(["pex", "von"]);
+
 // A secondary Windows file-lock failure must not replace the verification error.
 export function withSynchronousCleanup(operation, cleanup) {
   let result;

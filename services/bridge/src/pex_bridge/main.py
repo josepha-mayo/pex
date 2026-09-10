@@ -11,12 +11,6 @@ from pathlib import Path
 
 EXPECTED_BUNDLED_PET_IDS = (
     "pex",
-    "ledger",
-    "mesh",
-    "nudge",
-    "drift",
-    "quiet",
-    "ember",
     "von",
 )
 
@@ -185,12 +179,21 @@ def main() -> None:
         except (OSError, ValueError) as exc:
             parser.error(str(exc))
 
+    from pex_bridge.startup_trace import mark_startup_phase, start_startup_trace
+
+    if os.environ.get("PEX_STARTUP_DIAGNOSTICS") == "1":
+        # Native launch pins this directory; trace rows contain only fixed phases
+        # and elapsed times, never environment values, exception text or tokens.
+        start_startup_trace(Path(os.environ.get("PEX_HOME") or Path.home() / ".pex"))
+    mark_startup_phase("app_import_begin")
     # These imports initialize runtime dependencies. Keep them after parent
     # retention so extraction/import work cannot outlive the desktop owner.
     import uvicorn
 
     from pex_bridge.app import create_app, state
     from pex_bridge.config import normalize_loopback_host
+
+    mark_startup_phase("app_import_ready")
 
     # The desktop passes its operator bearer only to this owned sidecar. Settings
     # has already validated and copied it into bridge-owned memory, so scrub the
@@ -211,8 +214,11 @@ def main() -> None:
         parser.error("PEX bridge port must be between 1 and 65535")
     # The authenticated event stream is loopback-only. Compressing historical
     # pages consumes bridge CPU without saving a remote network transfer.
+    mark_startup_phase("routes_begin")
+    application = create_app()
+    mark_startup_phase("routes_ready")
     uvicorn.run(
-        create_app(), host=host, port=port, log_level="info",
+        application, host=host, port=port, log_level="info",
         ws_per_message_deflate=False,
     )
 
