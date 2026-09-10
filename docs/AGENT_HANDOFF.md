@@ -13,6 +13,13 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Onboarding follow-up:** OpenCode setup now explains `serve` versus `attach`
+and creating/resuming the vendor session before selecting it in PEX. Connecting
+an empty server does not create a worker. README and recording instructions
+match the app. 276 desktop tests and production UI build pass; independent
+read-only review approved. This copy-only follow-up is not yet in the package
+identified below. No adapter behavior, credentials or process lifecycle changed.
+
 **Latest package: `e56a077` (product `320249b`).** Production build and MSI/NSIS
 extraction/content/eight-pet checks exited 0. Both installers are unsigned.
 Native startup and selecting the recorded OpenCode workflow succeeded: Home

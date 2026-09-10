@@ -21,6 +21,10 @@ under the official rules refreshed through Devpost on 10 September 2026.
   Never switch to a paid fallback.
 - Prepare one tiny workspace whose public acceptance criterion is visible on screen. Do not
   expose API keys, raw private worker state, hidden evaluator data, or local account details.
+- Follow the README's two-terminal OpenCode setup: `serve` keeps the backend
+  running; `attach` opens the worker interface on that same address. Create or
+  resume the session in OpenCode before selecting it in PEX. An empty server
+  is not a broken PEX connection, and connecting PEX does not create a task.
 - Keep [`SUBMISSION.md`](../SUBMISSION.md) open off-camera for the exact voiceover and claim
   boundaries.
 

@@ -1,7 +1,8 @@
 # Devpost submission copy
 
 > **Current claim boundary — 10 September 2026:** draft, not submitted. Package
-> `1a5eb92` passes both installer gates and native reopening. Real packaged
+> `e56a077` (product `320249b`) passes both installer gates and native reopening.
+> Installers are unsigned. Real packaged
 > OpenCode/Strands recovery and quiet evidence exists on the source revisions
 > recorded in the active handoff; Codex App Server has separate source proofs.
 > Native testing is authorized, not on the old hold. AgentCore is implemented

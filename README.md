@@ -121,6 +121,19 @@ Set-Location C:\path\to\worker-project
 opencode serve --port 4096
 ```
 
+Keep that server running. In another terminal, attach the OpenCode interface to
+the **same** server and create or resume a worker session there:
+
+```powershell
+opencode attach http://127.0.0.1:4096
+```
+
+A newly started server may have no sessions: connecting PEX alone does not
+create one. Running plain `opencode` in another terminal can open a different
+backend; use the explicit attach address. Configure the worker's provider/model
+in OpenCode separately from PEX's supervisor provider. These commands follow the
+[official OpenCode CLI interface](https://opencode.ai/docs/cli/#attach).
+
 In PEX, choose **Connect a worker → Connect your local OpenCode server**, enter
 `http://127.0.0.1:4096`, then choose **Connect OpenCode**. Return Home, select the
 worker and set its persistent goal. Connecting does not start a worker turn.

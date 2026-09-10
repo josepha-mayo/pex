@@ -22,7 +22,7 @@ export function OpenCodeConnectionPanel({ request }: { request: SharedRequest })
     try {
       await connectOpenCode(request, url, controller.signal);
       if (pending.current === controller) {
-        setNotice("OpenCode connected. Return Home, select your worker, and set its persistent goal. This did not start a worker turn.");
+        setNotice("OpenCode server connected. If no worker appears, create or resume a session in the OpenCode terminal attached to this server. Then return Home, select your worker, and set its persistent goal. PEX did not start a worker turn.");
       }
     } catch {
       if (pending.current === controller) {
@@ -45,6 +45,12 @@ export function OpenCodeConnectionPanel({ request }: { request: SharedRequest })
       PEX connects to existing sessions; it does not restart OpenCode or start a task.
       Your Zen key belongs in Supervisor settings, not this address.
     </p>
+    <ol className="settings-note">
+      <li>In your project terminal, run <code>opencode serve --port 4096</code>.</li>
+      <li>In another terminal, run <code>opencode attach http://127.0.0.1:4096</code>.
+        Create or resume your worker session there. Use the same server address below if you changed the port.</li>
+      <li>Connect PEX, then return Home to select that worker and set its goal.</li>
+    </ol>
     <label>OpenCode server address
       <input type="url" value={url} maxLength={2048} disabled={busy}
         onChange={(event) => setUrl(event.target.value)} autoComplete="off"
