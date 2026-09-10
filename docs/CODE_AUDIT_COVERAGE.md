@@ -1,5 +1,28 @@
 # PEX code audit coverage — 5 September 2026
 
+## 10 September — preserve artifact-count evidence through AgentCore
+
+Scoped review of cloud request compaction found artifact metadata retained path
+and size but discarded the local reader's `row_count` and `row_count_complete`.
+The remote semantic supervisor therefore lost exact count evidence without a
+privacy reason: counts can be retained without sending artifact contents.
+
+Added `_artifact_count_metadata`: preserve only nonnegative signed-64-bit integer
+counts with literal `row_count_complete: true`. Partial, malformed, boolean,
+negative or oversized counts become null/false rather than an exact-looking
+clamped value. Older metadata without either count field keeps its prior shape.
+Artifact tails remain excluded. This conveys evidence, not a canned decision
+or permission to execute a cloud-proposed action.
+
+Nine cloud-envelope cases failed before the fix. After repair, the AgentCore
+client/runtime/preflight/pipeline and Strands runtime/integration selection passed
+221 tests in 45.39s. Two additional tests then connected the actual local JSONL
+reader to cloud serialization: valid 27-row input remains 27/complete; malformed
+input stays unknown. Full AgentCore client suite passed 112 tests in 8.84s.
+Ruff passed for both Python files. Tests use local temporary artifacts and fake
+AWS clients; no deployment, paid request, native app or worker was started.
+This source fix is newer than verified package 2f5038e and is not yet packaged.
+
 ## 10 September — Zen Muse protocol and settings constructor repair
 
 Corrected the exact Muse 1.3/1.2 routing against current official Zen endpoint

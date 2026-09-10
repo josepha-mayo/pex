@@ -234,6 +234,19 @@ def _bounded_json(
     return _safe_text(value, 300, local_values)
 
 
+def _artifact_count_metadata(item: Mapping[str, Any]) -> dict[str, Any]:
+    """Preserve exact observed counts, never turn a partial count into evidence."""
+    if "row_count" not in item and "row_count_complete" not in item:
+        return {}
+    count = item.get("row_count")
+    complete = (
+        type(count) is int
+        and 0 <= count <= (1 << 63) - 1
+        and item.get("row_count_complete") is True
+    )
+    return {"row_count": count if complete else None, "row_count_complete": complete}
+
+
 def compact_workspace_evidence(workspace: Mapping[str, Any] | None) -> dict[str, Any]:
     """Keep counts and artifact metadata, never repository contents or absolute paths."""
     raw = dict(workspace or {})
@@ -280,6 +293,7 @@ def compact_workspace_evidence(workspace: Mapping[str, Any] | None) -> dict[str,
             {
                 "path": _safe_path(item.get("path")),
                 "bytes": _bounded_int(item.get("bytes")),
+                **_artifact_count_metadata(item),
             }
             for item in artifacts[:24]
         ],

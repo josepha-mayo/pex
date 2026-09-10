@@ -793,6 +793,61 @@ def test_agentcore_boundary_recompacts_raw_workspace_evidence_before_cloud():
     }
 
 
+@pytest.mark.parametrize("count,complete,expected", [
+    (27, True, 27),
+    (0, True, 0),
+    (27, False, None),
+    (27, "true", None),
+    (True, True, None),
+    (-1, True, None),
+    ("27", True, None),
+    (1 << 80, True, None),
+    (None, True, None),
+])
+def test_cloud_request_preserves_only_complete_exact_artifact_counts(count, complete, expected):
+    request = _request()
+    request.scores.features["prefetched_evidence"] = {
+        "artifacts": [{
+            "path": "results.jsonl", "bytes": 100,
+            "row_count": count, "row_count_complete": complete,
+            "tail": "PRIVATE_ARTIFACT_CONTENT",
+        }],
+    }
+
+    encoded = request_envelope(request, max_bytes=262_144)
+    artifact = json.loads(encoded)["request"]["scores"]["features"][
+        "prefetched_evidence"
+    ]["artifacts"][0]
+
+    assert artifact["row_count"] == expected
+    assert artifact["row_count_complete"] is (expected is not None)
+    assert b"PRIVATE_ARTIFACT_CONTENT" not in encoded
+
+
+@pytest.mark.parametrize("valid", [True, False])
+def test_local_artifact_reader_count_survives_cloud_request(tmp_path, valid):
+    from pex_supervisor.workspace import artifact_row_count
+
+    artifact = tmp_path / "results.jsonl"
+    artifact.write_text('{"value":1}\n' * 27 + ("" if valid else "not-json\n"), encoding="utf-8")
+    count, complete = artifact_row_count(artifact)
+    request = _request()
+    request.scores.features["prefetched_evidence"] = {
+        "artifacts": [{
+            "path": "results.jsonl", "bytes": artifact.stat().st_size,
+            "row_count": count, "row_count_complete": complete,
+        }],
+    }
+
+    encoded = request_envelope(request, max_bytes=262_144)
+    remote = json.loads(encoded)["request"]["scores"]["features"][
+        "prefetched_evidence"
+    ]["artifacts"][0]
+
+    assert remote["row_count"] == (27 if valid else None)
+    assert remote["row_count_complete"] is valid
+
+
 def test_workspace_compaction_bounds_cycles_invalid_collections_and_large_numbers():
     cyclic: dict[str, object] = {}
     cyclic["self"] = cyclic

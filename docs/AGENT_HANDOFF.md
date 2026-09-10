@@ -65,6 +65,13 @@ Update this active handoff in place; put detailed receipts in evidence files.
 
 ## Current source versus package
 
+Newer source-only fix: AgentCore request compaction now preserves validated
+complete artifact row counts instead of dropping them. Partial/invalid counts
+remain unknown, and contents stay local. Nine regressions plus two actual
+JSONL-reader-to-envelope cases cover this. The combined AgentCore/Strands gate
+passed 221 tests before the two final additions; full AgentCore client suite then
+passed 112 tests. Collect this fix into the next package before live cloud checks.
+
 Last verified Windows package source:
 `2f5038e2aa36a5b742ada6be3ad34b4e68b3da17`. Includes HTTP/Codex memory-retention
 fixes and Zen Muse routing repair. The default artifact paths below now contain

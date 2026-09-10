@@ -2,6 +2,12 @@
 
 ## Current — 10 September 2026
 
+Newer than the verified installer: AgentCore artifact compaction now preserves
+exact complete row counts while withholding file contents and treating incomplete
+counts as unknown. Nine regression cases and two reader-to-envelope checks cover
+the fix; full AgentCore client suite passed 112 tests. Not yet packaged or proven
+against a deployed runtime.
+
 At `4329978`, a live supervisor-only probe passed using the saved OS-vault Zen
 Contributor Free configuration: real Strands inference, exact provider/model/API,
 and typed decision. No worker/UI attached; synthetic input, not a behavioral
