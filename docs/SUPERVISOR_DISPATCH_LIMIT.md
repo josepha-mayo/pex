@@ -1,14 +1,16 @@
-# Optional semantic-dispatch limit
+# Semantic-dispatch limit
 
-Set `PEX_SUPERVISOR_MAX_DISPATCHES_PER_SESSION=20` before starting the bridge to
-allow at most 20 newly reserved semantic dispatches for each session in that
-bridge database. Omit the setting for existing unlimited-dispatch behavior.
-The allowed range is 1–100000. The example is not a recommended spending budget.
+PEX defaults to at most **three** newly reserved semantic dispatches for each
+worker session in the bridge database. This bounds fresh-install BYOK usage and
+enables the paced trajectory-review path. Set
+`PEX_SUPERVISOR_MAX_DISPATCHES_PER_SESSION=20` before starting the bridge only
+when a longer session deliberately needs a higher cap. The allowed range is
+1–100000; 20 is an example, not a recommended spending budget.
 
 In the current desktop source, Settings → Supervisor also has **Saved review
 limit per session**. Enter an integer and choose Save supervisor to persist an
 override in the secret-free supervisor configuration. Leave it blank to inherit
-the bridge's startup setting. This does not reset reservations, cancel in-flight
+the bridge's startup setting (three unless explicitly changed). This does not reset reservations, cancel in-flight
 work, or change the model's credential destination. A stale settings revision,
 invalid value or failed config write cannot commit a new override. The existing
 startup Settings object remains unchanged; the pipeline computes the effective

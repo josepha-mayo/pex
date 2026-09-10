@@ -228,6 +228,9 @@ async def test_deck_reports_session_review_reservations_without_cross_session_le
     assert rows["codex:allowance-b"]["reserved"] == 0
     assert rows["codex:allowance-b"]["remaining"] == 1
     assert all(row["limit"] == 1 for row in rows.values())
+    # Explicitly exercise the supported uncapped programmatic configuration;
+    # clearing a saved override now inherits the safe fresh-install cap.
+    state.pipeline.settings.supervisor_max_dispatches_per_session = None
     state.pipeline.supervisor_dispatch_limit_override = None
     unlimited = await client.get("/v1/deck")
     assert unlimited.status_code == 200

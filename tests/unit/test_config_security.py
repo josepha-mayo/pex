@@ -42,6 +42,16 @@ def test_bridge_settings_bound_control_plane_values() -> None:
         Settings(autonomy="invented")
 
 
+def test_fresh_install_bounds_semantic_dispatches_but_allows_explicit_override(
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv("PEX_SUPERVISOR_MAX_DISPATCHES_PER_SESSION", raising=False)
+    assert Settings().supervisor_max_dispatches_per_session == 3
+
+    monkeypatch.setenv("PEX_SUPERVISOR_MAX_DISPATCHES_PER_SESSION", "7")
+    assert Settings().supervisor_max_dispatches_per_session == 7
+
+
 def test_unauthenticated_settings_require_the_explicit_test_constructor(monkeypatch) -> None:
     with pytest.raises(ValidationError, match="Settings.for_test"):
         Settings(require_auth=False)
