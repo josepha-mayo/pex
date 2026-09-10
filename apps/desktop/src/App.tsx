@@ -21,6 +21,7 @@ import { Inspector } from "./components/Inspector";
 import { PetStage } from "./components/PetStage";
 import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
 import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
+import { OpenCodeConnectionPanel } from "./components/OpenCodeConnectionPanel";
 import { createOperatorRequest } from "./operatorRequest";
 import { canEditGoalLedger, goalLedgerKey, readGoalDecisions } from "./goalLedger";
 import { usePageVisibility } from "./pageVisibility";
@@ -2426,7 +2427,7 @@ export function App() {
         hookCredential={hookBootstrap?.token || ""}
         hookCredentialExpiresAt={hookBootstrap?.expires_at || ""}
         provisioningHook={provisioningHook}
-        workerConnection={<SharedConnectionPanel request={sharedConnectionRequest} />}
+        workerConnection={<><OpenCodeConnectionPanel request={sharedConnectionRequest} /><SharedConnectionPanel request={sharedConnectionRequest} /></>}
         onBack={() => { window.location.hash = surface; }}
         onNickname={setNickname}
         onScale={setScale}

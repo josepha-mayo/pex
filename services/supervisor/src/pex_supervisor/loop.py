@@ -924,10 +924,10 @@ async def run_independent_verifier_async(
     )
     if wall_timeout is None:
         try:
-            wall_timeout = float(os.environ.get("PEX_VERIFIER_WALL_TIMEOUT", "15"))
+            wall_timeout = float(os.environ.get("PEX_VERIFIER_WALL_TIMEOUT", "25"))
         except ValueError:
-            wall_timeout = 15.0
-    wall_timeout = _bounded_wall_timeout(wall_timeout, default=15.0)
+            wall_timeout = 25.0
+    wall_timeout = _bounded_wall_timeout(wall_timeout, default=25.0)
     try:
         result = await asyncio.wait_for(asyncio.shield(invocation), timeout=wall_timeout)
     except TimeoutError:

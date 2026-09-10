@@ -430,6 +430,40 @@ def test_wall_timeouts_are_finite_and_bounded():
     assert _bounded_wall_timeout(100, default=60.0, maximum=60.0) == 60.0
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("configured,expected", [
+    (None, 25.0), ("invalid", 25.0), ("999", 25.0), ("10", 10.0),
+])
+async def test_independent_verifier_default_and_override_remain_bounded(
+    monkeypatch, configured, expected,
+):
+    import asyncio
+
+    from pex_supervisor.loop import run_independent_verifier_async
+
+    if configured is None:
+        monkeypatch.delenv("PEX_VERIFIER_WALL_TIMEOUT", raising=False)
+    else:
+        monkeypatch.setenv("PEX_VERIFIER_WALL_TIMEOUT", configured)
+    class Agent:
+        async def invoke_async(self, *_args, **_kwargs):
+            return SimpleNamespace(structured_output=None, metrics=None)
+
+    original_wait = asyncio.wait_for
+    observed = []
+    async def measured_wait(awaitable, timeout):
+        observed.append(timeout)
+        return await original_wait(awaitable, timeout)
+
+    monkeypatch.setattr("pex_supervisor.loop.build_verifier_agent", lambda *args, **kwargs: Agent())
+    monkeypatch.setattr("pex_supervisor.loop._format_verifier_user", lambda *args: "fixture")
+    monkeypatch.setattr("pex_supervisor.loop.asyncio.wait_for", measured_wait)
+    result = await run_independent_verifier_async(_request(0.9), None, model=object())
+    assert observed == [expected]
+    assert result["approved"] is False
+    assert result["status"] == "missing_structured_output"
+
+
 def test_supervisor_prompt_bounds_untrusted_goal_and_event_fields():
     request = _request(0.1)
     request.goal.objective = "A" * 100_000
