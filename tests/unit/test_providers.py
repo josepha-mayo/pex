@@ -218,19 +218,22 @@ def test_zen_openai_compat_excludes_reasoning_on_follow_up_turns(monkeypatch):
     asyncio.run(http_client.aclose())
 
 
-def test_zen_responses_model_is_routed_by_catalog_id(monkeypatch):
+@pytest.mark.parametrize("model_id", [
+    "muse-spark-1.3-contributor-free", "muse-spark-1.3", "muse-spark-1.2",
+])
+def test_zen_responses_model_is_routed_by_catalog_id(monkeypatch, model_id):
     from pex_supervisor.openai_responses import OpenAIResponsesModel
 
     monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
     monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "zen")
-    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "muse-spark-1.3-contributor-free")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", model_id)
     monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-key")
 
     model = load_supervisor_model()
 
     assert isinstance(model, OpenAIResponsesModel)
     assert model._pex_provenance["provider"] == "zen"
-    assert model._pex_provenance["model_id"] == "muse-spark-1.3-contributor-free"
+    assert model._pex_provenance["model_id"] == model_id
     assert model._pex_provenance["generation_api"] == "responses"
     assert "http_client" not in model.client_args
     assert set(model.client_args["default_headers"]) == {"x-opencode-session"}
@@ -261,7 +264,7 @@ def test_other_zen_models_preserve_chat_completions_route(monkeypatch):
 
     monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
     monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "zen")
-    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "muse-spark-1.3")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "big-pickle")
     monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-key")
 
     model = load_supervisor_model()

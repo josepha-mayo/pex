@@ -5,8 +5,10 @@
 It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude Code, OpenCode, and other coding agents you already use. It is not another coding harness, not a Kanban board, and not a chat UI that makes you babysit a babysitter.
 
 **Development status — 10 September 2026:** not submission-ready. Package source
-`166a656` passes installer-content verification; newer HTTP/Codex resource fixes
-are tested but not yet packaged. Current source passed 423 selected backend tests
+`166a656` has historical installer-content verification. The current installer
+paths were replaced by a successful `d1b259b` build containing HTTP/Codex resource
+fixes; those new installers have not passed content verification and predate the
+latest Zen routing fix. Source `d53de4c` passed 423 selected backend tests
 and all 268 desktop tests. Native stability/UX, current-source live supervision,
 AgentCore deployment and a frozen comparative benchmark remain unverified.
 See [current status](STATUS.md) and the [shipping checklist](docs/SHIP_CHECKLIST.md).

@@ -1,11 +1,17 @@
 # PEX active handoff
 
-Maintained checkpoint: 10 September 2026; includes aggregate HTTP event-buffer budgeting.
+Maintained checkpoint: 10 September 2026; includes Zen Muse routing repair.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files before relying on this checkpoint. No prior build/test
 session remains running. This is the active entry point, not another historical log.
 
 ## Authority and product scope
+
+Latest user goal supersedes the broader audit objective: implement and verify
+UI/UX, Zen BYOK, OpenCode/Codex, Strands supervision, AgentCore implementation,
+agent benchmarking and supervision behavior; then provide live recording steps.
+Aim for a strong hackathon submission without guaranteeing a judging outcome.
+Do not treat selected offline tests as completion of this acceptance chain.
 
 Read all three specifications before implementation:
 
@@ -60,7 +66,11 @@ Update this active handoff in place; put detailed receipts in evidence files.
 ## Current source versus package
 
 Last verified Windows package source:
-`166a65661234879bb8ccda48fe180300baf7456c`; the subsequent HTTP event-buffer fix is not yet packaged.
+`166a65661234879bb8ccda48fe180300baf7456c` (historical receipt).
+WARNING: the default artifact paths below were overwritten by a successful
+`d1b259b` build on 10 September. It includes HTTP/Codex memory-retention fixes,
+but has not passed installer-content verification and predates the Zen Muse
+routing fix. Historical 166a656 hashes do not describe the current files.
 Both MSI/NSIS passed extracted executable/hash and exact pet-inventory checks.
 
 - Receipt: `build/pex-package-receipt-166a656.json`.

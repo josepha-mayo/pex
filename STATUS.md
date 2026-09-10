@@ -5,7 +5,10 @@
 Submission remains **NO-GO**. Latest verified package source is `166a656`, not the
 latest source. [Installer hashes and limitations](docs/demo/evidence/PACKAGE_166A656_2026-09-10.md)
 confirm MSI/NSIS contents and eight-pet inventories, not native behavior.
-Later HTTP retention/gap fixes and Codex capture budgeting are source-only.
+The default installer paths now contain a successful `d1b259b` build, including
+HTTP retention/gap fixes and Codex capture budgeting. Those artifacts have not
+passed installer-content verification and do not include the subsequent Zen
+Muse routing repair. Do not apply the historical hashes to the current files.
 
 Source `d53de4c` passed 423 selected backend tests and all 268 desktop tests.
 [Exact combined commands and scope](docs/demo/evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md).

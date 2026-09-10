@@ -44,7 +44,12 @@ _RUNTIME_SCOPE: ContextVar[Any] = ContextVar(
 )
 
 _RESPONSES_API_MODELS: dict[str, frozenset[str]] = {
-    "zen": frozenset({"muse-spark-1.3-contributor-free"}),
+    # Zen documents all three Muse IDs on /responses, not /chat/completions.
+    # Exact IDs avoid changing the route for unrelated or future models.
+    # https://opencode.ai/docs/zen/ (verified 2026-09-10)
+    "zen": frozenset({
+        "muse-spark-1.3-contributor-free", "muse-spark-1.3", "muse-spark-1.2",
+    }),
 }
 
 

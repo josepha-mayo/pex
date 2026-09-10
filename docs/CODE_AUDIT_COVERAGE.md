@@ -1,5 +1,13 @@
 # PEX code audit coverage — 5 September 2026
 
+## 10 September — Zen Muse protocol and settings constructor repair
+
+Corrected the exact Muse 1.3/1.2 routing against current official Zen endpoint
+documentation. Two test cases failed before the fix; 15 selected routing/settings
+cases and then all 81 provider tests passed. Added Zen chat and Responses cases
+to the settings API's vault-to-model constructor contract. No live model called.
+[Commands, intermediate package hashes, warnings and limitations](demo/evidence/ZEN_ROUTING_2026-09-10.md).
+
 ## 10 September — connector cleanup safety regression
 
 Scoped read of shared-Codex proxy launch/cleanup, Codex stdio start/close and ACP

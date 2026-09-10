@@ -571,8 +571,22 @@ async def test_lifespan_exits_while_supervisor_activation_remains_hung(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("provider, model_id, endpoint, model_class", [
+    (
+        "openrouter", "anthropic/claude-sonnet-4.6", "https://openrouter.ai/api/v1",
+        "strands.models.openai.OpenAIModel",
+    ),
+    (
+        "zen", "big-pickle", "https://opencode.ai/zen/v1",
+        "strands.models.openai.OpenAIModel",
+    ),
+    (
+        "zen", "muse-spark-1.3-contributor-free", "https://opencode.ai/zen/v1",
+        "pex_supervisor.openai_responses.OpenAIResponsesModel",
+    ),
+])
 async def test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint(
-    supervisor_client, monkeypatch
+    supervisor_client, monkeypatch, provider, model_id, endpoint, model_class
 ):
     client, _secret_store, _home = supervisor_client
     monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
@@ -582,15 +596,15 @@ async def test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint
         def __init__(self, **kwargs):
             captured.update(kwargs)
 
-    monkeypatch.setattr("strands.models.openai.OpenAIModel", FakeOpenAIModel)
+    monkeypatch.setattr(model_class, FakeOpenAIModel)
     canary = "or-vault-bound-canary"
 
     response = await client.patch(
         "/v1/supervisor",
         json={
             "expected_revision": 0,
-            "provider": "openrouter",
-            "model_id": "anthropic/claude-sonnet-4.6",
+            "provider": provider,
+            "model_id": model_id,
             "auth_mode": "api_key",
             "api_key": canary,
         },
@@ -600,9 +614,10 @@ async def test_named_byok_constructs_with_exact_vault_key_and_canonical_endpoint
     assert response.json()["model_loaded"] is True
     assert canary not in response.text
     assert captured["client_args"]["api_key"] == canary
-    assert captured["client_args"]["base_url"] == "https://openrouter.ai/api/v1"
+    assert captured["client_args"]["base_url"] == endpoint
+    assert captured["model_id"] == model_id
     assert state.supervisor_choice is not None
-    assert state.supervisor_choice.base_url == "https://openrouter.ai/api/v1"
+    assert state.supervisor_choice.base_url == endpoint
 
 
 @pytest.mark.asyncio
