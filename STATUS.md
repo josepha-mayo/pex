@@ -17,6 +17,8 @@ platform skip; 77 OpenCode/Codex continuity tests passed; 228 Ask PEX + offline
 AgentCore tests passed. Production frontend build passed.
 Benchmark safety/scoring and Cursor-hook contracts pass 280/280; the manifest
 remains deliberately unfrozen, so no comparative result or leaderboard rank is claimed.
+Tauri/Rust contracts pass 19/19. Clean-source release preflight exits 0 with
+current sidecars, exactly Pex/Von and verified toolchains/wiring.
 
 **Native acceptance of `567778b` is pending.** Joseph is using the PC and asked
 for command-line work only until he says otherwise. Package integrity does not
