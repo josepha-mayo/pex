@@ -71,7 +71,8 @@ holds STOPPED without automatic follow-up across idle/discovery/restart, and
 clears only after concrete tool/file activity. A simultaneous provider limit
 retains BLOCKED priority. Malformed/non-assistant/ordinary errors do not create
 the fence. UI explains cancellation without calling it completion. This is
-source-tested, not yet packaged or natively verified. Idle-only cancellation
+source-tested and packaged in `567778b`, but not yet natively verified. Idle-only
+cancellation
 without explicit vendor abort evidence is not distinguishable from ordinary
 completion and is not claimed solved. Do not relabel the old full run as green.
 

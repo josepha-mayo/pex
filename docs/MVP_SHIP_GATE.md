@@ -61,6 +61,7 @@ verification of those two newest behaviors remains pending. Its predecessor
 started without Retry, loaded both pets, attached OpenCode first attempt and
 held the quota fence across cancellation/idle with no extra review/intervention.
 This is not a fresh-user install or blanket stability claim.
+[Exact installer hashes, bounded test gates and claim boundary](demo/evidence/PACKAGE_567778B_2026-09-11.md).
 
 ### 10 September evening: current package and live recheck
 

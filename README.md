@@ -10,14 +10,16 @@ OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
 Product `567778b` ships only Pex and Von and passes both installer
-content/inventory gates. Native unpacked-runtime startup, pet transparency,
-dismissal/hiding and selected-session Ask have passed bounded checks. The latest
-live OpenCode run hit its free-provider quota and is not a benchmark pass;
+content/inventory gates. Its predecessor passed native unpacked-runtime startup,
+pet transparency, dismissal/hiding and selected-session Ask checks; the newest
+Ask layout and explicit-cancellation repairs still need bounded native checks.
+The latest live OpenCode run hit its free-provider quota and is not a benchmark pass;
 provider-limit blocking and idle suppression now pass a native negative-case
 check with zero additional reviews or nudges. Final stability and recording remain.
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
+[current package evidence](docs/demo/evidence/PACKAGE_567778B_2026-09-11.md),
 [current status](STATUS.md), and the source-bound evidence linked there.
 
 ## The pain it removes
