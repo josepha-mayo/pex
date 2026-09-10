@@ -6,12 +6,26 @@ claiming deployment. The user's later small-MVP request takes priority over
 historical expansion gates; formal four-arm scores remain unclaimed. The unsafe
 933239a launcher instructions have been removed from the recording runbook.
 
-Maintained checkpoint: 10 September 2026; current-source Codex recovery and quiet checks passed.
+Maintained checkpoint: 11 September 2026; current-source Codex recovery and quiet checks passed.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files and running processes before relying on this checkpoint.
 This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
+
+**Current packaged candidate: `567778b`.** Clean full Tauri build completed;
+MSI and NSIS verification passes with zero blockers and 2,375 matching runtime
+files. Receipt `build/package-567778b-20260910-rebuilt.json`, SHA-256
+`9bda2583d3307dd7470002fec4e419f7ba4700a7fd9e9dcb393132222de7185e`.
+An earlier verification against stale pre-commit installer artifacts correctly
+failed with runtime/helper mismatches; retain
+`build/package-567778b-20260910.json` as failed evidence. `567778b` includes the
+Ask overflow repair and explicit OpenCode cancellation fence. Source gates:
+290 frontend passed/one platform skip, production build passed, 77 focused
+supervision/continuity tests passed, and 228 Ask + offline AgentCore tests passed.
+Native verification of the newest Ask/cancellation behavior is pending because
+Joseph is using the PC and requested offline-only work until he says otherwise.
+Do not use Computer Use before that permission changes.
 
 **Later offline checkpoint: product `53105d6`.** Native inspection of `5a4c4ac`
 found the compact Ask input overflowing the window when suggestion chips appeared.

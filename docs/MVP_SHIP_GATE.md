@@ -48,12 +48,15 @@ anything on the user's behalf.
 
 ### Latest candidate — supersedes older package descriptions below
 
-Product `5a4c4ac` rebuilt successfully; MSI/NSIS verification passed on one
-bounded retry after a retained cleanup EPERM. Native startup required no Retry,
-both pet previews loaded, and the isolated OpenCode connection succeeded first
-attempt. The quota fence survived cancellation/idle with no extra model review
-or intervention. Exact receipts and limits are linked above. This is not a
-fresh-user install or blanket stability claim.
+Product `567778b` rebuilt successfully; MSI/NSIS verification passes with zero
+blockers and 2,375 matching runtime files. Receipt:
+`build/package-567778b-20260910-rebuilt.json`, SHA-256
+`9bda2583d3307dd7470002fec4e419f7ba4700a7fd9e9dcb393132222de7185e`.
+It includes the bounded Ask layout and explicit cancellation repairs. Native
+verification of those two newest behaviors remains pending. Its predecessor
+started without Retry, loaded both pets, attached OpenCode first attempt and
+held the quota fence across cancellation/idle with no extra review/intervention.
+This is not a fresh-user install or blanket stability claim.
 
 ### 10 September evening: current package and live recheck
 

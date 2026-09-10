@@ -29,8 +29,8 @@ under the official rules refreshed through Devpost on 10 September 2026.
   resume the session in OpenCode before selecting it in PEX. An empty server
   is not a broken PEX connection, and connecting PEX does not create a task.
 - Use the [shipping gate](../MVP_SHIP_GATE.md) and its source-bound evidence for
-  claim boundaries. `SUBMISSION.md` still contains older eight-pet and package
-  descriptions; it is not approved recording copy until reconciled with the current MVP.
+  claim boundaries. Historical blocks in `SUBMISSION.md` remain history; use only
+  its current claim boundary and two-pet MVP copy for recording.
 
 ## Shot list
 

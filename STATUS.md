@@ -1,15 +1,27 @@
 # STATUS
 
-## Current — 10 September 2026
+## Current — 11 September 2026
 
-**Shipping candidate: `4de1db8`, exactly Pex and Von.** Both unsigned installer
-content/inventory checks pass. Custom import and image-generation write APIs are
-disabled. [Package hashes and scoped test evidence](docs/demo/evidence/TWO_PET_PACKAGE_2026-09-10.md).
+**Shipping candidate: `567778b`, exactly Pex and Von.** The full Tauri build
+completed and both unsigned installers pass integrity with zero blockers and
+2,375 matching bridge-runtime files. Receipt:
+`build/package-567778b-20260910-rebuilt.json`, SHA-256
+`9bda2583d3307dd7470002fec4e419f7ba4700a7fd9e9dcb393132222de7185e`.
+Custom import and image-generation write APIs remain disabled.
 
-**Native acceptance is pending.** The user stopped computer control and is using
-the PC; no new launch, startup diagnostic or heavy build is authorized during this
-pause. The earlier `f575d45` first-start timeout is unresolved. Package integrity
-does not establish startup reliability or readiness to film.
+The candidate includes the compact Ask layout repair and an exact OpenCode
+`MessageAbortedError` fence: cancellation stays stopped without automatic
+follow-up until concrete tool/file activity, while a simultaneous free-provider
+limit keeps Blocked priority. Focused gates: 290 frontend tests passed with one
+platform skip; 77 OpenCode/Codex continuity tests passed; 228 Ask PEX + offline
+AgentCore tests passed. Production frontend build passed.
+
+**Native acceptance of `567778b` is pending.** Joseph is using the PC and asked
+for command-line work only until he says otherwise. Package integrity does not
+prove the repaired Ask layout, cancellation display, active-worker stability or
+recording readiness. The last native candidate before these two fixes did start
+without Retry, loaded Pex and Von, and correctly held a quota-limited OpenCode
+session Blocked without extra reviews or nudges.
 
 **Latest benchmark-accounting source: `93c17bc`.** 61 focused tests pass. Quiet
 completion now requires a successful semantic review bound to the exact STOP,

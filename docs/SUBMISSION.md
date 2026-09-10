@@ -1,7 +1,9 @@
 # Devpost submission copy
 
-> **Current claim boundary — 10 September 2026:** draft, not submitted. Package
-> `06c6b73` (product `97e84d4`) passes both installer gates and native onboarding.
+> **Current claim boundary — 11 September 2026:** draft, not submitted. Package
+> candidate `567778b` passes both installer integrity gates with zero blockers.
+> It ships exactly two companions, Pex and Von. Its newest Ask layout and explicit
+> cancellation behavior still require native visual/interaction verification.
 > Installers are unsigned. Real packaged
 > OpenCode/Strands recovery and quiet evidence exists on the source revisions
 > recorded in the active handoff; Codex App Server has separate source proofs.
@@ -149,9 +151,9 @@ supervisor was Zen's free `muse-spark-1.3-contributor-free`; the intentionally m
 pinned to `gpt-5.3-codex-spark`. See the
 [sanitized evidence](demo/evidence/LIVE_CODEX_STRANDS_2026-09-08.md).
 
-Current source contains exactly eight built-in pets. Keep the submission demo focused on Pex
-and Von: both independently pass the 11-row v2 atlas validator and original-resolution visual
-review. The fresh receipt is
+Current shipping source contains exactly two built-in pets, Pex and Von. Both independently
+pass the 11-row v2 atlas validator and original-resolution visual review. Historical eight-pet
+evidence below is retained only as superseded history. The prior fleet receipt is
 [`PET_ACCEPTANCE_2026-09-09.md`](demo/evidence/PET_ACCEPTANCE_2026-09-09.md). A one-call hatch
 result is only an unverified base candidate, not a playable pet.
 
@@ -196,9 +198,9 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 ## Checklist before clicking Submit
 
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
-- [x] Build all three sidecars/installers from clean product source `933239a`; both installer
-  inventories and `build/pex-package-receipt.json` pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `933239a`;
+- [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean product
+  source `567778b`; both installer inventories pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `567778b`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run the clean 201-test benchmark/Cursor-hook gate, 200-test offline Strands/AgentCore
   gate, all 260 desktop/UI contracts, and a production TypeScript/Vite build; no benchmark arm,
@@ -210,7 +212,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
 - [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source
-- [ ] Pass bounded native stability and record the validated pair in the packaged-app demo
+- [ ] Natively verify `567778b` Ask layout, cancellation display and bounded stability; then
+  record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence includes
   the 200-test contract gate plus an exact-package local `/ping` + `/invocations` protocol
   smoke, while controlled local Codex + provider-live Strands evidence exists separately
