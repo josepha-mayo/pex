@@ -14,6 +14,11 @@ all nine observation cases are covered, including repeated compaction.
 `python -m pytest tests/unit/test_agentcore_client.py tests/unit/test_agentcore_runtime.py -q`
 passed 158 tests in 17.78s; Ruff passed for both edited files. No AWS/native
 process was launched. This change is not in the b9702fd installer yet.
+Follow-up verification exercises all nine cases through the serialized cloud
+request, reconstructed remote request, actual `inspect_workspace` tool and its
+EvidenceObservationCollector. Model-visible observation status and exact audited
+output/request digest agree; 9 passed, 112 deselected in 5.30s. No model or AWS
+call occurred. This is evidence-path verification, not live behavioral proof.
 The recovery spec prioritizes the actual same-worker supervision loop before
 more Docker/infrastructure work; the existing benchmark execution gate remains
 intact. Native/process-control hold remains pending explicit agreement.

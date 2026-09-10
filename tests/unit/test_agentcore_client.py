@@ -879,9 +879,32 @@ def test_local_artifact_reader_count_survives_cloud_request(tmp_path, valid):
     ({"files": [], "git": {"available": False}}, True),
 ])
 def test_workspace_compaction_does_not_invent_successful_observation(raw, expected):
+    from pex_supervisor.evidence_observations import EvidenceObservationCollector
+    from pex_supervisor.evidence_tools import build_evidence_tools
+
     compacted = compact_workspace_evidence(raw)
     assert compacted["observed"] is expected
     assert compact_workspace_evidence(compacted)["observed"] is expected
+
+    request = _request()
+    request.scores.features["prefetched_evidence"] = raw
+    envelope = request_envelope(request, max_bytes=262_144)
+    remote = SupervisorRequest.model_validate(json.loads(envelope)["request"])
+    assert remote.session.cwd is None
+    collector = EvidenceObservationCollector(
+        remote, stage="main", invocation_id="workspace-observation-fixture",
+    )
+    used = []
+    inspect = next(
+        tool for tool in build_evidence_tools(remote, used, collector=collector)
+        if tool.tool_name == "inspect_workspace"
+    )
+    output = inspect()
+    assert json.loads(output)["observed"] is expected
+    assert used == ["inspect_workspace"]
+    assert len(collector.observations) == 1
+    assert collector.observations[0].output == output
+    assert collector.observations[0].request_digest == supervisor_request_digest(remote)
 
 
 def test_workspace_compaction_bounds_cycles_invalid_collections_and_large_numbers():
