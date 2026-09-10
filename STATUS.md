@@ -2,6 +2,11 @@
 
 ## Current — 10 September 2026
 
+**Latest package `f575d45`: installer integrity passes, first native start times
+out, one Retry succeeds.** Packaged pet feedback repair verified after recovery.
+Cold-start reliability remains unresolved and is the next priority; no causal
+antivirus claim, deadline weakening or profile deletion. [Hashes and evidence](docs/demo/evidence/PACKAGE_F575D45_2026-09-10.md).
+
 **Latest source repairs:** OpenCode live-probe completion fence and cross-window
 pet visibility feedback. 36 helper/CLI tests pass, surrounding OpenCode suite
 129 passed, desktop suite 277 passed, production UI build passes. No new provider

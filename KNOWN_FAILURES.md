@@ -677,3 +677,10 @@ Private nonce-bound observed capture and prompt-release-to-stop timing are now i
   read-only preflight reports no AWS authentication, no current AgentCore CLI, no CDK, a stopped
   Docker engine, no verified ARM64 image, and no configured runtime ARN. Do not claim cloud proof
   or start billable resources from these local results.
+# 10 September 2026: f575d45 first packaged startup timed out
+
+Both installers passed integrity gates, but the first native start missed its
+60-second owned-bridge identity deadline. One Retry succeeded and packaged pet
+feedback was then verified. This is not a clean cold-start pass. Cause is not
+established; no security-setting changes, profile deletion or authentication
+weakening are justified. [Chronology and next diagnostic action](docs/demo/evidence/PACKAGE_F575D45_2026-09-10.md).

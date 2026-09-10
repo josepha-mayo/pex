@@ -13,6 +13,19 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Current package `f575d45`: integrity passes; first native startup failed its
+60-second identity deadline, one Retry succeeded.** The app is responsive and
+the packaged cross-window pet feedback repair is now verified (hide via pet X
+updates Settings to hidden). Keep the initial failure; do not claim cold-start
+readiness or blame Windows Security without evidence. No security change or
+unrelated process termination occurred. PEX remains open on Companion Settings,
+overlay hidden; fresh-query process identity before any lifecycle action.
+[Hashes and precise native chronology](demo/evidence/PACKAGE_F575D45_2026-09-10.md).
+**Next priority: diagnose startup phase timing and fix the cold-start failure.**
+Both build/verifier sessions ended exit 0; no test/build session remains active.
+Previous staged package `06c6b73` is retained, new installers are unsigned and
+not published. Rules agreement/public release approval/video remain outstanding.
+
 **Completion runner and pet feedback source repairs:** tracked
 `scripts/opencode_quiet_ten.py` now requires an idle terminal latest generation,
 accepted follow-up history, stable event/action identity and final rereads.
@@ -24,8 +37,8 @@ the pet exposed stale Settings feedback; source now reconciles that message.
 277 desktop tests and production UI build pass after repairing test import
 isolation (the failed initial run is retained in the report).
 [Changes, tests and limitations](demo/evidence/COMPLETION_FENCE_AND_PET_FEEDBACK_2026-09-10.md).
-**Next: rebuild/package and verify the feedback fix natively.** Running/staged
-package remains `06c6b73`; do not call the source-only fix packaged yet.
+Historical next step is now completed by the package checkpoint above; the
+first-launch timeout remains open even though the feedback repair is packaged.
 Do not rerun live probes while the previous free-route limit remains active.
 
 **Latest live restraint batch on `739c8d3`: nine valid quiet passes, tenth case
