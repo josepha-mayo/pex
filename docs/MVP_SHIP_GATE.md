@@ -45,6 +45,8 @@ anything on the user's behalf.
   fence, quota precedence and truthful UI copy; 77 focused backend tests and
   290 frontend tests passed (one platform skip). Idle-only abort without an
   explicit cancellation event remains unproven; native verification pending.
+- [x] Current BYOK/provider configuration gate: 148 passed, one skipped; the
+  supplied Zen key has zero tracked-source matches and no live call ran.
 
 ### Latest candidate — supersedes older package descriptions below
 

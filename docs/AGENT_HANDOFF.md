@@ -23,6 +23,9 @@ failed with runtime/helper mismatches; retain
 Ask overflow repair and explicit OpenCode cancellation fence. Source gates:
 290 frontend passed/one platform skip, production build passed, 77 focused
 supervision/continuity tests passed, and 228 Ask + offline AgentCore tests passed.
+Current BYOK/provider contracts also pass **148 tests with one intentional skip**;
+the supplied Zen key has zero tracked-source matches. Generic secret-pattern hits
+are deliberate redaction fixtures in tests. No live provider call ran in this gate.
 Native verification of the newest Ask/cancellation behavior is pending because
 Joseph is using the PC and requested offline-only work until he says otherwise.
 Do not use Computer Use before that permission changes.
