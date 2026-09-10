@@ -13,6 +13,21 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Evening update: product `dbc141a`, verifier `d1da140`.** Both rebuilt installers
+pass integrity verification (zero blockers, 2,375 runtime files), and the native
+selected-session Ask regression passes. See the evening section in
+`MVP_SHIP_GATE.md` for the exact receipt/hash and retained cleanup failure.
+Live OpenCode attach succeeded on a bounded retry, but the free worker hit
+`Free usage exceeded`; no acceptance artifact exists. PEX ingested 40 events and
+recorded one Strands/Zen inference. An additional worker prompt appeared after
+the test session was aborted, so the exact owned server was stopped (runner
+exit 0). Investigate provider-limit projection and cancellation/recovery
+behavior next. Do not count this as a benchmark pass or mark the goal blocked.
+The native PEX app remains open; only its window is authorized for automation.
+Scratch helpers/receipts are in `build/native-mvp-be67a91-20260910/`.
+The resumed server is now stopped; do not reuse its process/session handle.
+No paid route, cloud deployment, or submission was performed.
+
 **Native startup and two-pet checks passed on `be67a91`; live Ask found a bug.**
 The unpacked runtime opened Home without Retry; startup trace reached `ready`
 5.109 seconds after Python entry (not total process launch). The first direct

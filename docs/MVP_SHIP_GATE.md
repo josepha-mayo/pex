@@ -26,6 +26,33 @@ anything on the user's behalf.
 
 ## Evidence and remaining work
 
+### 10 September evening: current package and live recheck
+
+Product `dbc141a` was rebuilt with the full Tauri build (exit 0). The verifier
+cleanup-receipt fix is `d1da140`; its MSI/NSIS verification passed with zero
+blockers and 2,375 matching runtime files. Receipt:
+`build/package-d1da140-20260910.json`, SHA-256
+`6394c80025cbdf7ebc05742c3e7e2b995b8f9e0aeb033c2c3009885f8d0ee97d`.
+The prior verifier attempt failed on temporary-directory cleanup (EPERM), and
+must not be reported as a pass. These are integrity checks, not a fresh-user
+installation or complete MVP acceptance.
+
+The rebuilt native Ask correctly answered for the selected synthetic OpenCode
+session instead of an older worker. Both shipping pets remain Pex and Von.
+The native OpenCode attach first failed confirmation; a bounded retry succeeded.
+Independent local probe returned Strong in roughly one second. The first
+failure's cause is not yet proven.
+
+The isolated Ling free worker then returned `Free usage exceeded` without
+creating the required `status.txt`. PEX received 40 events and recorded one
+Strands/Zen model review. This is not a successful benchmark or recovery proof.
+After aborting the owned session, another worker prompt appeared; the exact
+owned server was stopped and its runner exited 0 to prevent further retries.
+Audit provider-limit visibility and supervision after cancellation before
+repeating this check. Do not substitute a paid model or reset the review budget.
+
+Historical checkpoint below is retained; it does not supersede this update.
+
 Latest installer pair remains `4de1db8`, with exactly Pex and Von. Its integrity
 passed but native startup and Retry exceeded the unchanged 60-second deadline.
 The replacement unpacked runtime in source `be67a91` now starts the release
