@@ -3,16 +3,21 @@
 Use the current checkpoint below when preparing the Devpost video. Older files in this
 directory are historical references and must not be presented as final-source proof.
 
-## Current checkpoint — 10 September 2026
+## Current checkpoint — 11 September 2026
 
-- Latest verified MSI/NSIS: source `166a656`; [hashes and limits](evidence/PACKAGE_166A656_2026-09-10.md).
-- Subsequent HTTP/Codex resource fixes are tested but not packaged.
-- Latest combined offline proof: [423 selected backend and 268 desktop tests](evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md).
-- Native acceptance remains on hold after the PC-freeze/Codex-closure reports.
-  Do not run historical smoke/cleanup scripts or infer fresh approval from this page.
-- No current-source live worker/UX proof, AgentCore deployment, frozen benchmark
-  result or final video is established. Historical live receipts below retain their
-  original source/date limitations. Follow [the active handoff](../AGENT_HANDOFF.md).
+- Latest verified MSI/NSIS: source `567778b`; receipt
+  `build/package-567778b-20260910-rebuilt.json`, SHA-256
+  `9bda2583d3307dd7470002fec4e419f7ba4700a7fd9e9dcb393132222de7185e`.
+- Both installers contain exactly Pex and Von and 2,375 matching bridge-runtime files.
+- Focused current gates: 290 frontend passed/one platform skip, 77 supervision and
+  continuity tests passed, and 228 Ask PEX + offline AgentCore tests passed.
+- Clean `e864389` retains a fresh real Codex/Strands quiet and same-thread recovery pair.
+  Native OpenCode recovery/quiet evidence is retained on its named earlier revisions.
+- Native acceptance of the newest Ask/cancellation repairs is pending while Joseph uses
+  the PC; do not use Computer Use until he says otherwise.
+- No AgentCore deployment, frozen comparative benchmark, final video or submission is
+  established. Historical receipts below retain their original limits. Follow
+  [the active handoff](../AGENT_HANDOFF.md).
 
 ## Historical MVP package
 
@@ -55,8 +60,8 @@ smoke with responsive liveness and no measured CPU, memory, thread, or handle gr
 [`BRIDGE_IDLE_RESOURCE_2026-09-09.md`](evidence/BRIDGE_IDLE_RESOURCE_2026-09-09.md). That result
 narrows the incident but does not clear the native window or real retained profile.
 
-Keep the visual story to Pex and Von. All eight built-ins pass the structural v2 atlas
-validator, but a two-character story is faster and clearer for judges. Pex is the default
+Keep the visual story to Pex and Von. These are the only two shipping companions and pass the
+structural v2 atlas validator. Pex is the default
 supervisor; Von demonstrates that the companion can feel personal without turning the demo
 into a pet gallery. A fresh original-resolution and structural acceptance receipt for both is
 retained in [`PET_ACCEPTANCE_2026-09-09.md`](evidence/PET_ACCEPTANCE_2026-09-09.md).
