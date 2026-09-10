@@ -14,6 +14,11 @@ This is the active entry point, not another historical log.
 ## Latest verified checkpoint — supersedes historical status below
 
 **User resumed PEX-only checks; native startup failure reproduced on `4de1db8`.**
+Desktop suite with the runtime-tree checks now included in `npm test`: **283
+passed, 1 explicitly skipped**, exit 0, 106.34 seconds on the loaded machine.
+The skip is the Windows EPERM symbolic-link fixture. This is offline evidence,
+not a native-startup, credential, chat or live-inference pass.
+
 Both the opened app and one Retry exceeded the unchanged 60-second deadline.
 Retry trace reached app imports at 11.031s and routes at 16s after Python entry,
 but never Store startup. The isolated packaged `--help` path took 68.92 seconds,

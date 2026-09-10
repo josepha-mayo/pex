@@ -27,12 +27,16 @@ anything on the user's behalf.
 ## Evidence and remaining work
 
 Latest package is `4de1db8`, with exactly Pex and Von and no extra-pet generation.
-Both installers pass integrity verification, but native checks were stopped by
-the user's Escape press and remain pending. The previous package's first-start
-timeout is still unresolved; a passing retry is not a cold-start fix.
+Both installers pass integrity verification. The user resumed PEX-only checks
+on September 10: startup and one explicit Retry both exceeded the 60-second
+deadline. The isolated packaged bridge took 68.92 seconds to run `--help` on
+the loaded machine, before app/database/provider initialization. An isolated
+unpacked-build experiment is in progress; it is not a verified fix or release.
+Native acceptance remains pending; a passing retry would not be a cold-start fix.
 [Current package evidence](demo/evidence/TWO_PET_PACKAGE_2026-09-10.md).
 
-- [ ] Resume PEX-only checks after permission; verify startup and both pets.
+- [x] Resume PEX-only checks after permission; recorded startup failure retained.
+- [ ] Verify reliable packaged startup and both pets after the startup repair.
 - [ ] Diagnose and fix the recorded first-start timeout with phase evidence.
 
 - [x] Native OpenCode connection and persistent goal attachment.
