@@ -276,9 +276,9 @@ def compact_workspace_evidence(workspace: Mapping[str, Any] | None) -> dict[str,
         )
     return {
         "observed": (
-            raw.get("observed")
-            if isinstance(raw.get("observed"), bool)
-            else not bool(raw.get("error"))
+            bool(raw)
+            and not bool(raw.get("error"))
+            and (raw.get("observed") is True if "observed" in raw else True)
         ),
         "observed_file_count": (
             _bounded_int(raw.get("observed_file_count"), maximum=1_000_000_000)

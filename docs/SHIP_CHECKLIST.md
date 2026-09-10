@@ -7,6 +7,12 @@ passed content/hash/inventory verification. [Package receipt](demo/evidence/PACK
 This includes the Zen routing, resource-retention and AgentCore artifact-count
 fixes. Earlier source-only/latest labels below are historical.
 
+Subsequent source-only correction: absent/empty workspace evidence and failed or
+invalid observation flags no longer become `observed: true` at the AgentCore
+boundary. Five failing regression cases reproduced first; 158 AgentCore
+client/runtime tests and Ruff pass after repair. Not yet in the installer;
+does not satisfy live acceptance.
+
 | Acceptance step | Available evidence | Still required |
 | --- | --- | --- |
 | UI/UX and pets | Source repairs and 268 desktop tests | Native transparency, motion, hide/dismiss, workflow and resource checks |

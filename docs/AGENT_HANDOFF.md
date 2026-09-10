@@ -7,6 +7,17 @@ session remains running. This is the active entry point, not another historical 
 
 ## Authority and product scope
 
+Latest source-only repair (10 September): AgentCore workspace compaction no
+longer labels absent/empty evidence, invalid observation flags, or an explicit
+read error as a successful observation. Five new cases failed before repair;
+all nine observation cases are covered, including repeated compaction.
+`python -m pytest tests/unit/test_agentcore_client.py tests/unit/test_agentcore_runtime.py -q`
+passed 158 tests in 17.78s; Ruff passed for both edited files. No AWS/native
+process was launched. This change is not in the b9702fd installer yet.
+The recovery spec prioritizes the actual same-worker supervision loop before
+more Docker/infrastructure work; the existing benchmark execution gate remains
+intact. Native/process-control hold remains pending explicit agreement.
+
 Latest user goal supersedes the broader audit objective: implement and verify
 UI/UX, Zen BYOK, OpenCode/Codex, Strands supervision, AgentCore implementation,
 agent benchmarking and supervision behavior; then provide live recording steps.

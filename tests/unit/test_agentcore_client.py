@@ -867,6 +867,23 @@ def test_local_artifact_reader_count_survives_cloud_request(tmp_path, valid):
     assert collector.observations[0].request_digest == supervisor_request_digest(remote_request)
 
 
+@pytest.mark.parametrize("raw,expected", [
+    (None, False),
+    ({}, False),
+    ({"observed": False}, False),
+    ({"observed": True}, True),
+    ({"observed": "true"}, False),
+    ({"observed": 1}, False),
+    ({"error": "unavailable"}, False),
+    ({"observed": True, "error": "unavailable"}, False),
+    ({"files": [], "git": {"available": False}}, True),
+])
+def test_workspace_compaction_does_not_invent_successful_observation(raw, expected):
+    compacted = compact_workspace_evidence(raw)
+    assert compacted["observed"] is expected
+    assert compact_workspace_evidence(compacted)["observed"] is expected
+
+
 def test_workspace_compaction_bounds_cycles_invalid_collections_and_large_numbers():
     cyclic: dict[str, object] = {}
     cyclic["self"] = cyclic
