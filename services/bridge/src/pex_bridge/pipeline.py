@@ -202,6 +202,7 @@ _DURABLE_SESSION_METADATA_KEYS = {
 _OPENCODE_PROVIDER_BLOCK_METADATA_KEYS = {
     "opencode_free_tier_limited",
     "opencode_provider_block",
+    "opencode_turn_aborted",
 }
 _CONTEXT_TASK_CHARS = 2_000
 _CONTEXT_ACTIVE_FILES = 32
@@ -1330,9 +1331,10 @@ class Pipeline:
         if processing["state"] == "failed":
             return intervention
         receipt = processing.get("receipt")
-        if isinstance(receipt, dict) and receipt.get("terminal_reason") == (
-            "opencode_free_tier_limit_without_followup"
-        ):
+        if isinstance(receipt, dict) and receipt.get("terminal_reason") in {
+            "opencode_free_tier_limit_without_followup",
+            "opencode_message_aborted_without_followup",
+        }:
             return intervention
         event, accepted_session, _ = await self._processing_inputs(processing)
         try:
@@ -2448,9 +2450,18 @@ class Pipeline:
             and isinstance(status_action, dict)
             and status_action.get("reason") == "free_tier_limit"
         )
+        opencode_message_aborted = bool(
+            event.harness_type == HarnessType.OPENCODE
+            and event.event_type == EventType.ERROR
+            and event.metadata.get("opencode_message_aborted") is True
+        )
         opencode_free_tier_fenced = bool(
             live_session is not None
             and live_session.metadata.get("opencode_free_tier_limited") is True
+        )
+        opencode_message_aborted_fenced = bool(
+            live_session is not None
+            and live_session.metadata.get("opencode_turn_aborted") is True
         )
         opencode_work_reset = bool(
             event.harness_type == HarnessType.OPENCODE
@@ -2469,10 +2480,18 @@ class Pipeline:
             and event.harness_type == HarnessType.OPENCODE
             and not opencode_work_reset
         )
+        opencode_message_aborted_fenced_event = bool(
+            opencode_message_aborted_fenced
+            and event.harness_type == HarnessType.OPENCODE
+            and not opencode_work_reset
+        )
         observation = event.metadata.get("pex_observer_snapshot")
-        if opencode_work_reset and opencode_free_tier_fenced:
+        if opencode_work_reset and (
+            opencode_free_tier_fenced or opencode_message_aborted_fenced
+        ):
             session.metadata.pop("opencode_free_tier_limited", None)
             session.metadata.pop("opencode_provider_block", None)
+            session.metadata.pop("opencode_turn_aborted", None)
             session.metadata["opencode_provider_block_cleared"] = True
         if opencode_free_tier_limited:
             session.status = SessionStatus.BLOCKED
@@ -2480,6 +2499,13 @@ class Pipeline:
             session.metadata["opencode_provider_block"] = dict(status_action)
         elif opencode_free_tier_fenced_event:
             session.status = SessionStatus.BLOCKED
+            if opencode_message_aborted:
+                session.metadata["opencode_turn_aborted"] = True
+        elif opencode_message_aborted:
+            session.status = SessionStatus.STOPPED
+            session.metadata["opencode_turn_aborted"] = True
+        elif opencode_message_aborted_fenced_event:
+            session.status = SessionStatus.STOPPED
         elif isinstance(observation, dict):
             if (
                 observation.get("schema") != "pex.codex-live-observation.v1"
@@ -2834,10 +2860,14 @@ class Pipeline:
             or cursor_stop_terminated
             or opencode_free_tier_limited
             or opencode_free_tier_fenced_event
+            or opencode_message_aborted
+            or opencode_message_aborted_fenced_event
         ):
             reason = (
                 "opencode_free_tier_limit_without_followup"
                 if opencode_free_tier_limited or opencode_free_tier_fenced_event
+                else "opencode_message_aborted_without_followup"
+                if opencode_message_aborted or opencode_message_aborted_fenced_event
                 else "cursor_stop_terminated_without_followup"
                 if cursor_stop_terminated
                 else "global_supervision_paused"
@@ -6369,6 +6399,7 @@ class Pipeline:
                             for key in (
                                 "opencode_free_tier_limited",
                                 "opencode_provider_block",
+                                "opencode_turn_aborted",
                             ):
                                 if key in existing.metadata:
                                     session.metadata[key] = existing.metadata[key]

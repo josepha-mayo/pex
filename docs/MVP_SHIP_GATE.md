@@ -41,6 +41,10 @@ anything on the user's behalf.
 - [x] Recheck packaged OpenCode quota behavior; the free Ling run remains
   quota-limited, not a passing artifact/recovery benchmark.
 - [ ] Complete final stability, ordinary cancellation and recording checks.
+- [x] Source repair for explicit OpenCode cancellation: persistent no-follow-up
+  fence, quota precedence and truthful UI copy; 77 focused backend tests and
+  290 frontend tests passed (one platform skip). Idle-only abort without an
+  explicit cancellation event remains unproven; native verification pending.
 
 ### Latest candidate — supersedes older package descriptions below
 

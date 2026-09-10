@@ -169,10 +169,13 @@ def test_readme_documents_reproducible_source_setup_and_all_sidecars() -> None:
 
     sidecars = set(tauri["bundle"]["externalBin"])
     assert sidecars == {
-        "binaries/pex-bridge",
         "binaries/pex-cursor-hook",
         "binaries/pex-cursor-observe",
     }
+    assert tauri["bundle"]["resources"] == {
+        "binaries/pex-bridge-runtime/": "pex-bridge-runtime/",
+    }
+    assert 'join(binaries, "pex-bridge-runtime")' in builder
     assert all(sidecar.removeprefix("binaries/") in builder for sidecar in sidecars)
     assert "bridge, Cursor control hook, and Cursor observer" in readme
     assert "not a packaged installer" in prose

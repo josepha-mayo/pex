@@ -4725,13 +4725,14 @@ def _merge_event_session_projection(
             continue
         if current.metadata.get(key) == accepted_metadata.get(key):
             merged.metadata[key] = value
-    # A provider-limit reset is authorized only by the event-processing path:
+    # An OpenCode terminal-fence reset is authorized only by the event-processing path:
     # generic adapter/discovery metadata must never be able to clear it.  The
     # pipeline emits this private marker solely for concrete OpenCode work, and
     # it is consumed before the projection is persisted.
     if planned.metadata.get("opencode_provider_block_cleared") is True:
         merged.metadata.pop("opencode_free_tier_limited", None)
         merged.metadata.pop("opencode_provider_block", None)
+        merged.metadata.pop("opencode_turn_aborted", None)
     merged.metadata.pop("opencode_provider_block_cleared", None)
     if (
         observer_matches
@@ -11585,6 +11586,7 @@ class Store:
                     for key in (
                         "opencode_free_tier_limited",
                         "opencode_provider_block",
+                        "opencode_turn_aborted",
                     ):
                         if existing is not None and key in existing.metadata:
                             session.metadata[key] = existing.metadata[key]
@@ -11594,6 +11596,10 @@ class Store:
                         existing.metadata.get("opencode_free_tier_limited") is True
                     ):
                         session.status = SessionStatus.BLOCKED
+                    elif existing is not None and (
+                        existing.metadata.get("opencode_turn_aborted") is True
+                    ):
+                        session.status = SessionStatus.STOPPED
                 incoming_generation = _session_discovery_generation(session)
                 incoming_binding = session.project_id or session.cwd
                 existing_binding = (

@@ -897,6 +897,24 @@ class OpenCodeAdapter(HarnessAdapter):
             bounded_role = bounded_adapter_id(raw_role, field="OpenCode message role")
             if bounded_role == raw_role:
                 role = bounded_role
+        assistant_error = info.get("error") if isinstance(info.get("error"), dict) else {}
+        raw_assistant_error_name = assistant_error.get("name")
+        try:
+            bounded_assistant_error_name = (
+                bounded_adapter_id(
+                    raw_assistant_error_name,
+                    field="OpenCode assistant error name",
+                )
+                if isinstance(raw_assistant_error_name, str) and raw_assistant_error_name
+                else ""
+            )
+            assistant_error_name = (
+                bounded_assistant_error_name
+                if bounded_assistant_error_name == raw_assistant_error_name
+                else ""
+            )
+        except ValueError:
+            assistant_error_name = ""
         assistant_message_error = bool(
             kind == "message.updated" and role == "assistant" and info.get("error") is not None
         )
@@ -1112,6 +1130,10 @@ class OpenCodeAdapter(HarnessAdapter):
         if transport_text_fallback or text == kind:
             # Explicit false preserves genuine text equal to an event name.
             metadata["transport_text_fallback"] = transport_text_fallback
+        if assistant_message_error and assistant_error_name == "MessageAbortedError":
+            # Exact vendor cancellation evidence is kept separately from
+            # generic errors; only this name receives terminal handling.
+            metadata["opencode_message_aborted"] = True
         if kind == "session.status":
             observed_status = status.get("type")
             if isinstance(observed_status, str) and observed_status in {"idle", "busy", "retry"}:

@@ -100,7 +100,13 @@ async def settled(case, item_id):
                     matches = event.metadata.get("source") == "codex_shared_live_notification"
                 if matches:
                     processing = await case.bound.store.get_event_processing(event.event_id)
-                    if processing["state"] in {"complete", "failed", "record_only_complete"}:
+                    # Durable completion precedes the receiver's in-memory
+                    # acknowledgement. Wait for both before asserting cleanup.
+                    if (
+                        processing["state"] in {"complete", "failed", "record_only_complete"}
+                        and case.bound.adapter.last_ingested_sequence
+                        >= event.metadata["ingress_sequence"]
+                    ):
                         return event, processing
             if case.bound.task.done():
                 raise AssertionError(f"pump stopped: {case.bound.adapter.last_pump_error}")

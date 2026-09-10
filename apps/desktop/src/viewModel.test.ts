@@ -1057,6 +1057,19 @@ test("OpenCode provider limit is actionable without claiming progress or suggest
   assert.equal(meaningfulEvidence({ ...session, metadata: {} }), "Old progress");
 });
 
+test("explicit OpenCode cancellation is not presented as completion or automatic recovery", () => {
+  const session = {
+    id: "opencode:cancelled", harness_type: "opencode", status: "stopped",
+    last_message: "Old progress", metadata: { opencode_turn_aborted: true },
+  };
+  assert.match(meaningfulEvidence(session), /will not restart it automatically/);
+  assert.match(meaningfulEvidence(session), /not task completion/);
+  assert.match(nextExpectedEvent(session), /observed tool or file activity/);
+  assert.equal(meaningfulEvidence({ ...session, status: "working" }), "Old progress");
+  assert.equal(meaningfulEvidence({ ...session, harness_type: "codex" }), "Old progress");
+  assert.equal(meaningfulEvidence({ ...session, metadata: {} }), "Old progress");
+});
+
 test("only an exact unresolved permission response is actionable", () => {
   const pending = {
     id: "int-permission",

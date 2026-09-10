@@ -782,10 +782,18 @@ function openCodeProviderBlocked(session?: SessionRow): boolean {
     && session.metadata?.opencode_free_tier_limited === true;
 }
 
+function openCodeTurnAborted(session?: SessionRow): boolean {
+  return session?.harness_type === "opencode" && session.status === "stopped"
+    && session.metadata?.opencode_turn_aborted === true;
+}
+
 export function meaningfulEvidence(session?: SessionRow): string {
   if (!session) return "No meaningful evidence observed yet.";
   if (openCodeProviderBlocked(session)) {
     return "OpenCode reported its free usage limit. PEX is holding automatic follow-ups; this is not task completion.";
+  }
+  if (openCodeTurnAborted(session)) {
+    return "OpenCode reported that this turn was cancelled. PEX will not restart it automatically; cancellation is not task completion.";
   }
   if (session.last_message?.trim()) return session.last_message;
   if (
@@ -802,6 +810,9 @@ export function meaningfulEvidence(session?: SessionRow): string {
 export function nextExpectedEvent(session?: SessionRow): string {
   if (openCodeProviderBlocked(session)) {
     return "Restore provider access in OpenCode and resume work there. PEX waits for observed tool or file activity before resuming supervision.";
+  }
+  if (openCodeTurnAborted(session)) {
+    return "Resume work in OpenCode when ready. PEX waits for observed tool or file activity before resuming supervision.";
   }
   switch (session?.status) {
     case "needs_decision":

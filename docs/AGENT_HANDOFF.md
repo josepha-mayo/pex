@@ -13,6 +13,43 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Later offline checkpoint: product `53105d6`.** Native inspection of `5a4c4ac`
+found the compact Ask input overflowing the window when suggestion chips appeared.
+`53105d6` repairs the layout to one bounded column with scrolling suggestions;
+289 frontend tests passed (one platform skip), production frontend and full
+Tauri/MSI/NSIS builds passed. Installer integrity passed with zero blockers:
+`build/package-53105d6-20260910.json`, SHA-256
+`fb824849e6385e459dcb2bfd55610799fc14d942e73b9fa2a7da9ae048f74d64`.
+The first verifier command omitted Rust from PATH and failed before verification;
+the corrected command passed. This does not prove the new layout natively:
+Escape stopped Computer Use before launch, and Joseph subsequently explicitly
+requested offline-only work while he uses the PC. Do not resume UI control until
+he says he is ready. No PEX process was found at the following read-only check.
+
+The older full offline run completed: **4 failed, 4,426 passed, 16 skipped,
+18 deselected**, 2,137.96s. Its XML is
+`build/full-offline-5a4c4ac-20260910.xml`; it predates the cancellation repair.
+Two failures were packaging contracts (missing Rust PATH and stale one-file
+expectations); both contracts now verify the unpacked runtime. Focused preflight
+passed. Codex echo cleanup had a test synchronization race: Store completion can
+precede the adapter's in-memory acknowledgement. The fixture now waits for the
+actual ingress-sequence acknowledgement before asserting cleanup. The fourth
+failure was a 10-second STOP settle timeout with planner delivered; its focused
+rerun passed without a production timing change, so broad-load stability is not
+claimed. The first narrowed run passed 18 tests. After the cancellation repair
+and echo wait fix, OpenCode idle/lineage, Codex echo and unchanged-workspace STOP
+tests passed **77/77 in 29.23s**. Ruff/diff checks passed. Frontend: **290 passed,
+one platform skip**, production build passed.
+
+Exact assistant `MessageAbortedError` now persists `opencode_turn_aborted: true`,
+holds STOPPED without automatic follow-up across idle/discovery/restart, and
+clears only after concrete tool/file activity. A simultaneous provider limit
+retains BLOCKED priority. Malformed/non-assistant/ordinary errors do not create
+the fence. UI explains cancellation without calling it completion. This is
+source-tested, not yet packaged or natively verified. Idle-only cancellation
+without explicit vendor abort evidence is not distinguishable from ordinary
+completion and is not claimed solved. Do not relabel the old full run as green.
+
 **Native product `5a4c4ac` now verified for the provider-limit repair.** Full
 Tauri build passed; MSI/NSIS verification passed on one bounded retry, retaining
 the first cleanup-EPERM receipt. Native startup needed no Retry, both pet previews

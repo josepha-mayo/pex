@@ -623,10 +623,31 @@ def test_assistant_error_is_lineage_bound_but_not_clean_completion() -> None:
     event = adapter.normalize_sse(session, payload)
 
     assert event.event_type == EventType.ERROR
+    assert event.metadata["opencode_message_aborted"] is True
     lineage = event.metadata[OPENCODE_MESSAGE_LINEAGE_KEY]
     assert lineage["assistant_message_completed"] is False
     assert lineage["assistant_message_error"] is True
     assert event_matches_opencode_delivery(_intervention(session), session, event) is True
+
+
+def test_only_exact_assistant_abort_name_is_projected() -> None:
+    adapter, session = _adapter_session()
+    ordinary = _assistant_payload(session)
+    ordinary["properties"]["info"]["error"] = {"name": "ProviderUnavailableError"}
+    ordinary_event = adapter.normalize_sse(session, ordinary)
+    assert ordinary_event.event_type == EventType.ERROR
+    assert "opencode_message_aborted" not in ordinary_event.metadata
+
+    malformed = _assistant_payload(session)
+    malformed["properties"]["info"]["error"] = {"name": 7}
+    malformed_event = adapter.normalize_sse(session, malformed)
+    assert "opencode_message_aborted" not in malformed_event.metadata
+
+    non_assistant = _assistant_payload(session)
+    non_assistant["properties"]["info"]["role"] = "user"
+    non_assistant["properties"]["info"]["error"] = {"name": "MessageAbortedError"}
+    non_assistant_event = adapter.normalize_sse(session, non_assistant)
+    assert "opencode_message_aborted" not in non_assistant_event.metadata
 
 
 def test_part_after_cache_loss_has_no_authoritative_lineage() -> None:

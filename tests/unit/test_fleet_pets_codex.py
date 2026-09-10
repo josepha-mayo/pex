@@ -1301,9 +1301,13 @@ def test_release_manifest_seals_current_two_pet_evidence_and_archived_review_clo
     }
     archived_ids = ["pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von"]
     assert len(reviews["records"]) == len(archived_ids) * 3
-    assert [row[0] for row in reviews["records"]] == [pet_id for pet_id in archived_ids for _ in range(3)]
+    assert [row[0] for row in reviews["records"]] == [
+        pet_id for pet_id in archived_ids for _ in range(3)
+    ]
     assert all(len(row[1]) == 64 for row in reviews["records"])
-    current_direction_roots = {row["id"]: row["direction_cell_hash_root"] for row in structural["pets"]}
+    current_direction_roots = {
+        row["id"]: row["direction_cell_hash_root"] for row in structural["pets"]
+    }
     assert [row[1] for row in reviews["records"][:3]] == [current_direction_roots["pex"]] * 3
     assert [row[1] for row in reviews["records"][-3:]] == [current_direction_roots["von"]] * 3
     gallery = gallery_path.read_text(encoding="utf-8")
@@ -1390,10 +1394,18 @@ def test_release_preflight_is_structured_and_never_claims_package_readiness():
     assert len(report["git"]["audit_closure_sha256"]) == 64
     assert "cursor_observe_sha256" in report["sidecars"]
     assert report["tauri"]["external_bin"] == [
-        "binaries/pex-bridge",
         "binaries/pex-cursor-hook",
         "binaries/pex-cursor-observe",
     ]
+    # The bridge is an unpacked runtime resource, not an extracting one-file
+    # sidecar. Keep verifying its actual bundle wiring and runtime inventory.
+    tauri = json.loads((repo / "apps/desktop/src-tauri/tauri.conf.json").read_text())
+    assert tauri["bundle"]["resources"] == {
+        "binaries/pex-bridge-runtime/": "pex-bridge-runtime/",
+    }
+    manifest = report["sidecars"]["bridge_runtime_manifest"]
+    runtime_paths = {entry["path"] for entry in manifest["files"]}
+    assert {"pex-bridge.exe", "_internal/python312.dll"} <= runtime_paths
     assert result.returncode == (0 if report["source_ready"] else 2)
     assert bool(report["blockers"]) is (not report["source_ready"])
 

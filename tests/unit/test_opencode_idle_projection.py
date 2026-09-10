@@ -352,6 +352,172 @@ async def test_opencode_free_tier_retry_blocks_without_planning_or_recovery(tmp_
         await store.close()
 
 
+async def test_opencode_exact_message_abort_stays_stopped_until_concrete_work(tmp_path):
+    store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    supervisor = SimpleNamespace(agentcore=None, calls=0)
+    executor = SimpleNamespace(calls=0)
+
+    async def decide(*_args, **_kwargs):
+        supervisor.calls += 1
+        raise AssertionError("an exact aborted turn must not reach planning")
+
+    async def execute(*_args, **_kwargs):
+        executor.calls += 1
+        raise AssertionError("an exact aborted turn must not reach dispatch")
+
+    supervisor.decide = decide
+    executor.execute = execute
+    pipeline.supervisor = supervisor
+    pipeline.executor = executor
+    aborted_payload = _payload(
+        str(tmp_path),
+        "message.updated",
+        properties={
+            "info": {
+                "sessionID": "ses_idle",
+                "id": "assistant-aborted",
+                "role": "assistant",
+                "error": {
+                    "name": "MessageAbortedError",
+                    "data": {"message": "aborted"},
+                },
+            }
+        },
+    )
+    path = store.path
+    try:
+        aborted = await _ingest(pipeline, adapter, session, aborted_payload)
+        persisted = await store.get_session(session.id)
+        processing = await store.get_event_processing(aborted.event_id)
+
+        assert aborted.event_type == EventType.ERROR
+        assert aborted.metadata["opencode_message_aborted"] is True
+        assert persisted is not None and persisted.status == SessionStatus.STOPPED
+        assert persisted.metadata["opencode_turn_aborted"] is True
+        assert processing is not None
+        assert (
+            processing["receipt"]["terminal_reason"]
+            == "opencode_message_aborted_without_followup"
+        )
+        for payload in (
+            _payload(
+                str(tmp_path),
+                "message.updated",
+                properties={
+                    "info": {"sessionID": "ses_idle", "id": "userX", "role": "user"}
+                },
+            ),
+            _payload(str(tmp_path), "session.status", properties={"status": {"type": "idle"}}),
+            _payload(str(tmp_path), "session.idle"),
+        ):
+            payload["id"] = f"{payload['id']}-{len(await store.recent_events(session.id))}"
+            trailing = await _ingest(pipeline, adapter, session, payload)
+            persisted = await store.get_session(session.id)
+            trailing_processing = await store.get_event_processing(trailing.event_id)
+            assert persisted is not None and persisted.status == SessionStatus.STOPPED
+            assert persisted.metadata["opencode_turn_aborted"] is True
+            assert trailing_processing is not None
+            assert (
+                trailing_processing["receipt"]["terminal_reason"]
+                == "opencode_message_aborted_without_followup"
+            )
+        assert supervisor.calls == executor.calls == 0
+    finally:
+        await store.close()
+
+    recovery = Store(path)
+    await recovery.connect()
+    registry = AdapterRegistry()
+    recovered_adapter = registry.opencode
+    recovered_adapter.attach_transport(MemoryHttpTransport())
+    recovered_session = await recovery.get_session(session.id)
+    assert recovered_session is not None
+    recovered_adapter.sessions[recovered_session.id] = recovered_session
+    recovered_pipeline = Pipeline(
+        recovery,
+        registry,
+        EventBus(),
+        Settings.for_test(home=tmp_path, require_auth=False, autonomy="observe"),
+        model=None,
+    )
+    recovered_supervisor = SimpleNamespace(agentcore=None, calls=0)
+
+    async def recovered_decide(*_args, **_kwargs):
+        recovered_supervisor.calls += 1
+        raise AssertionError("persisted aborted turn must not reach planning")
+
+    recovered_supervisor.decide = recovered_decide
+    recovered_pipeline.supervisor = recovered_supervisor
+    try:
+        after_restart = _payload(str(tmp_path), "session.idle")
+        after_restart["id"] = "aborted-after-restart-idle"
+        idle = await _ingest(
+            recovered_pipeline,
+            recovered_adapter,
+            recovered_session,
+            after_restart,
+        )
+        persisted = await recovery.get_session(session.id)
+        processing = await recovery.get_event_processing(idle.event_id)
+        assert persisted is not None and persisted.status == SessionStatus.STOPPED
+        assert persisted.metadata["opencode_turn_aborted"] is True
+        assert processing is not None
+        assert (
+            processing["receipt"]["terminal_reason"]
+            == "opencode_message_aborted_without_followup"
+        )
+        assert recovered_supervisor.calls == 0
+
+        recovered_session.supervision_paused = True
+        await recovery.upsert_session(recovered_session)
+        concrete_work = _payload(
+            str(tmp_path),
+            "file.edited",
+            properties={"file": str(tmp_path / "resumed-after-abort.txt")},
+        )
+        concrete_work["id"] = "aborted-concrete-file-work"
+        await _ingest(recovered_pipeline, recovered_adapter, recovered_session, concrete_work)
+        resumed = await recovery.get_session(session.id)
+        assert resumed is not None and resumed.status == SessionStatus.WORKING
+        assert "opencode_turn_aborted" not in resumed.metadata
+    finally:
+        await recovery.close()
+
+
+async def test_opencode_provider_limit_keeps_priority_over_exact_message_abort(tmp_path):
+    store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    session.status = SessionStatus.BLOCKED
+    session.metadata["opencode_free_tier_limited"] = True
+    session.metadata["opencode_provider_block"] = {"reason": "free_tier_limit"}
+    await store.upsert_session(session)
+    try:
+        abort = _payload(
+            str(tmp_path),
+            "message.updated",
+            properties={
+                "info": {
+                    "sessionID": "ses_idle",
+                    "id": "assistant-aborted-after-limit",
+                    "role": "assistant",
+                    "error": {"name": "MessageAbortedError"},
+                }
+            },
+        )
+        event = await _ingest(pipeline, adapter, session, abort)
+        persisted = await store.get_session(session.id)
+        processing = await store.get_event_processing(event.event_id)
+        assert persisted is not None and persisted.status == SessionStatus.BLOCKED
+        assert persisted.metadata["opencode_free_tier_limited"] is True
+        assert persisted.metadata["opencode_turn_aborted"] is True
+        assert processing is not None
+        assert (
+            processing["receipt"]["terminal_reason"]
+            == "opencode_free_tier_limit_without_followup"
+        )
+    finally:
+        await store.close()
+
+
 async def test_opencode_discovery_cannot_erase_or_mint_provider_fence(tmp_path):
     store, _adapter, session, _pipeline = await _bound_opencode_pipeline(tmp_path)
     session.metadata["opencode_free_tier_limited"] = True
@@ -415,6 +581,26 @@ async def test_opencode_discovery_cannot_erase_or_mint_provider_fence(tmp_path):
         assert created is not None
         assert "opencode_free_tier_limited" not in created.metadata
         assert "opencode_provider_block" not in created.metadata
+
+        aborted = HarnessSession(
+            id="opencode:aborted",
+            harness_type=HarnessType.OPENCODE,
+            vendor_session_id="aborted",
+            project_id=str(tmp_path),
+            cwd=str(tmp_path),
+            status=SessionStatus.STOPPED,
+            metadata={"opencode_turn_aborted": True},
+        )
+        await store.upsert_session(aborted)
+        await store.upsert_session(
+            aborted.model_copy(
+                update={"metadata": {"discovery_observation_only": True}}
+            )
+        )
+        preserved_abort = await store.get_session(aborted.id)
+        assert preserved_abort is not None
+        assert preserved_abort.status == SessionStatus.STOPPED
+        assert preserved_abort.metadata["opencode_turn_aborted"] is True
     finally:
         await store.close()
 
