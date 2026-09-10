@@ -2,6 +2,13 @@
 
 ## Current — 10 September 2026
 
+**Latest package/native checkpoint:** product `fcb624d`, clean verification
+checkout `d50e420` (documentation-only change). Both installer gates pass.
+Native meaningful progress, pause/resume and fresh packaged bridge profile checks
+pass; two-minute native observation completed without a hang. This is not a
+long soak or causal clearance of the previous whole-PC freeze.
+[Receipt and boundaries](docs/demo/evidence/MVP_NATIVE_FCB624D_2026-09-10.md).
+
 The focused shipping scope is [MVP_SHIP_GATE.md](docs/MVP_SHIP_GATE.md):
 OpenCode/Codex App Server, Zen BYOK, Strands, controllable pets and usable UI.
 AgentCore implementation is offline-tested; deployment is optional and unclaimed.

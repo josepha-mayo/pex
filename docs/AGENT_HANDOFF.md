@@ -13,6 +13,23 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Latest: product `fcb624d`, clean package checkout `d50e420` (docs-only).** Both
+installers pass, native progress text is repaired, and pause/resume is verified
+with a read-only persisted-state check. Fresh packaged bridge profile passes
+18 reads, authentication rejection and 11.8-second startup. Two-minute native
+interaction observation completed without a hang; not long-soak freeze clearance.
+See [the full receipt and exact limits](demo/evidence/MVP_NATIVE_FCB624D_2026-09-10.md).
+Normal PEX close and second native reopen both succeeded. PEX is left open on
+the recorded OpenCode workflow; Von selection and hidden-overlay preference persist.
+No model calls were added. 84 focused and 117 wider OpenCode tests pass.
+The first package check stopped only for two uncommitted documentation files;
+after committing them, the clean verification passed. Do not repeat that failed
+attempt as a package-content failure or claim full-source regression after fcb624d.
+
+Next: verify the second reopen, keep the app available for filming, consolidate
+judge-facing materials and finish the demo/submission with appropriate user
+approval. Do not silently turn optional AgentCore deployment into a shipping gate.
+
 **10 September, current checkpoint:** package `1a5eb92` passed both installer
 content/eight-pet checks and native reopening. Receipt
 `build/pex-package-receipt-1a5eb92.json`, SHA-256

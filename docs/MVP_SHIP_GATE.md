@@ -37,15 +37,19 @@ anything on the user's behalf.
   Keep the eight catalog entries; no need to tour all eight in the MVP video.
 - [x] Failed inference is distinguished from a successful quiet review.
 - [x] Newer unverified STOP supersedes obsolete goal success/failure as uncertain.
-- [ ] Remove the remaining raw event-kind progress fallback and verify natively.
+- [x] Remove the remaining raw event-kind progress fallback and verify natively.
 - [x] Complete offline regression on product/test source `1a5eb92`: 4,313 passed,
   16 skipped, 16 deselected, exit 0. Live-provider tests are excluded.
-- [ ] Final package check after the remaining progress-label repair.
-- [ ] Fresh-profile judge setup and bounded idle/reopen/pause checks; report
-  measured stability without claiming the old whole-PC freeze is causally solved.
-- [ ] Final behavioral report must retain failed/invalid attempts. Nine semantic
+- [x] Final package check after the progress-label repair: both installers pass
+  on clean checkout `d50e420` (product source `fcb624d`).
+- [x] Fresh packaged bridge profile, native reopen and pause/resume checks.
+  [Exact evidence and limits](demo/evidence/MVP_NATIVE_FCB624D_2026-09-10.md).
+- [ ] Fresh Windows-user installation and longer idle soak remain unverified;
+  the bounded native observation does not causally clear the old PC freeze.
+- [x] Behavioral report retains failed/invalid attempts. Nine semantic
   quiet cases across runs are not a clean ten-case pass or comparative score.
-- [ ] Review architecture image, public setup and current submission copy.
+- [x] Review architecture image and update the public OpenCode UI setup path.
+- [ ] Finalize current submission copy and judge-facing demo assets.
 - [ ] Record the working path and complete authorized submission.
 
 Formal frozen Cursor/Codex four-arm scoring and its OS-level hidden-evaluator
