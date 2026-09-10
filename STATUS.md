@@ -7,13 +7,12 @@ Contributor Free configuration: real Strands inference, exact provider/model/API
 and typed decision. No worker/UI attached; synthetic input, not a behavioral
 benchmark. [Receipt](docs/demo/evidence/LIVE_ZEN_SUPERVISOR_4329978_2026-09-10.md).
 
-Submission remains **NO-GO**. Latest verified package source is `166a656`, not the
-latest source. [Installer hashes and limitations](docs/demo/evidence/PACKAGE_166A656_2026-09-10.md)
-confirm MSI/NSIS contents and eight-pet inventories, not native behavior.
-The default installer paths now contain a successful `d1b259b` build, including
-HTTP retention/gap fixes and Codex capture budgeting. Those artifacts have not
-passed installer-content verification and do not include the subsequent Zen
-Muse routing repair. Do not apply the historical hashes to the current files.
+Submission remains **NO-GO**. Latest verified package source is `2f5038e`.
+[Installer hashes and limitations](docs/demo/evidence/PACKAGE_2F5038E_2026-09-10.md)
+confirm MSI/NSIS contents and eight-pet inventories, not native behavior. This
+package includes HTTP retention/gap bounds, Codex capture budgeting and the Zen
+Muse routing repair. Default installer paths now contain these verified artifacts;
+older hashes do not describe them.
 
 Source `d53de4c` passed 423 selected backend tests and all 268 desktop tests.
 [Exact combined commands and scope](docs/demo/evidence/OFFLINE_REGRESSION_D53DE4C_2026-09-10.md).

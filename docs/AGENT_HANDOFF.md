@@ -66,15 +66,13 @@ Update this active handoff in place; put detailed receipts in evidence files.
 ## Current source versus package
 
 Last verified Windows package source:
-`166a65661234879bb8ccda48fe180300baf7456c` (historical receipt).
-WARNING: the default artifact paths below were overwritten by a successful
-`d1b259b` build on 10 September. It includes HTTP/Codex memory-retention fixes,
-but has not passed installer-content verification and predates the Zen Muse
-routing fix. Historical 166a656 hashes do not describe the current files.
+`2f5038e2aa36a5b742ada6be3ad34b4e68b3da17`. Includes HTTP/Codex memory-retention
+fixes and Zen Muse routing repair. The default artifact paths below now contain
+this build; historical 166a656/d1b259b hashes do not describe the current files.
 Both MSI/NSIS passed extracted executable/hash and exact pet-inventory checks.
 
-- Receipt: `build/pex-package-receipt-166a656.json`.
-- [Durable hashes, warnings, commands and limitations](demo/evidence/PACKAGE_166A656_2026-09-10.md).
+- Receipt: `build/pex-package-receipt-2f5038e.json`.
+- [Durable hashes, warnings, commands and limitations](demo/evidence/PACKAGE_2F5038E_2026-09-10.md).
 - Desktop: `apps/desktop/src-tauri/target/release/pex-desktop.exe`.
 - MSI: `apps/desktop/src-tauri/target/release/bundle/msi/PEX_0.1.0_x64_en-US.msi`.
 - NSIS: `apps/desktop/src-tauri/target/release/bundle/nsis/PEX_0.1.0_x64-setup.exe`.
@@ -82,6 +80,9 @@ Both MSI/NSIS passed extracted executable/hash and exact pet-inventory checks.
 Verification did not install/open desktop UI; the frozen bridge ran only its
 inventory-only `--verify-bundle` path. Receipt `release_ready:true` is a package
 gate, not submission readiness.
+
+Historical post-166a656 notes below: all described fixes are now in package
+2f5038e; their original source-only statements apply to the earlier checkpoint.
 
 Post-package change: HTTP SSE retention now enforces an 8 MiB aggregate serialized
 payload budget as well as the 1,024-event limit. Eviction preserves absolute
