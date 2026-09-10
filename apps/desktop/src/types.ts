@@ -95,6 +95,7 @@ export type LastAction = {
   session_id: string;
   action: string;
   diagnosis?: string;
+  rationale?: string;
   evidence?: string[];
   result?: string;
   reversible?: boolean;

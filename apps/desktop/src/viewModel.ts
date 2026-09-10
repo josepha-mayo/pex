@@ -9,6 +9,7 @@ import type {
   Goal,
   HatchBaseCandidateRequest,
   Intervention,
+  LastAction,
   LedgerDecision,
   PetSnapshot,
   ProjectIdentityResolutionResponse,
@@ -20,6 +21,16 @@ import type {
 import type { PetMood } from "./pets/atlas";
 
 const LIFECYCLE_ACTIONS = new Set(["START_AGENT", "STOP_AGENT", "FORK_PROBE", "CLEANUP"]);
+
+export function actionExplanation(action?: LastAction | null): string {
+  if (!action) return "No intervention has been recorded for this session.";
+  if (action.rationale?.trim()) return action.rationale.trim();
+  const diagnosis = action.diagnosis?.trim();
+  if (diagnosis && !/^[a-z_][a-z0-9_:.-]*$/.test(diagnosis)) return diagnosis;
+  return action.action === "NOOP"
+    ? "PEX chose not to interrupt. Open its evidence for the recorded reason."
+    : "Open this action's evidence for the recorded reason and outcome.";
+}
 
 export function cursorRejectionReasonCopy(reason: string): string {
   return ({

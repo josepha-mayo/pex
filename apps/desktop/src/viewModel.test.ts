@@ -15,6 +15,7 @@ import {
 
 import {
   BUILT_IN_PET_IDS,
+  actionExplanation,
   HATCH_BASE_CANDIDATE_CONFIRMATION,
   HATCH_BASE_CANDIDATE_DISCLOSURE,
   HATCH_EXTERNAL_IMPORT_DISCLOSURE,
@@ -84,6 +85,14 @@ import {
   undoFailureMessage,
   undoResponsePresentation,
 } from "./viewModel.ts";
+
+test("action explanations prefer recorded reasons without inventing verification", () => {
+  const action = { id: "i", session_id: "s", action: "NOOP" };
+  assert.equal(actionExplanation({ ...action, diagnosis: "strands_structured_decision", rationale: "Both required files are correct." }), "Both required files are correct.");
+  assert.equal(actionExplanation({ ...action, diagnosis: "supervisor_unavailable" }), "PEX chose not to interrupt. Open its evidence for the recorded reason.");
+  assert.equal(actionExplanation({ ...action, diagnosis: "The tests failed." }), "The tests failed.");
+  assert.equal(actionExplanation(null), "No intervention has been recorded for this session.");
+});
 
 import type {
   Intervention,

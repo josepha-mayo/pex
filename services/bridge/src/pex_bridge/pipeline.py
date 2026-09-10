@@ -2439,6 +2439,17 @@ class Pipeline:
             and not _clears_observed_drift(event, goal)
         ):
             session.status = SessionStatus.DRIFTING
+        elif event.harness_type == HarnessType.OPENCODE and event.event_type == EventType.STATUS:
+            observed_status = event.metadata.get("opencode_status")
+            if observed_status == "idle":
+                session.status = SessionStatus.STOPPED
+            elif isinstance(observed_status, str) and observed_status in {"busy", "retry"}:
+                session.status = SessionStatus.WORKING
+            elif live_session is not None:
+                # Diff/session/message metadata is bookkeeping, not evidence
+                # that a stopped worker started doing work again.
+                session.status = live_session.status
+                session.last_activity = live_session.last_activity
         else:
             session.status = SessionStatus.WORKING
 

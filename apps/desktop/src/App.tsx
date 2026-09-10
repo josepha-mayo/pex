@@ -2917,6 +2917,7 @@ function actionForSession(
     session_id: item.session_id,
     action: item.action_taken,
     diagnosis: item.diagnosis,
+    rationale: item.proposed_action?.rationale,
     evidence: item.evidence,
     result: item.action_taken === "CLEANUP" ? item.result : item.outcome || item.result,
     reversible: item.reversible,

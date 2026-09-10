@@ -7,6 +7,27 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+Package `490b82b` passed MSI/NSIS content and eight-pet inventory verification.
+Its **native desktop-owned OpenCode + saved free Zen/Muse + Strands quiet case
+passed**: exact two-file acceptance, one semantic NOOP, all 336 events settled
+(154 complete, 182 record-only), no manual correction or paid fallback. Native
+pet transparency, bubble dismissal and Hide Pet passed; hidden preference was
+restored. This is one behavioral case, not a comparative benchmark or GO.
+
+Follow-up source fixes preserve stopped status across OpenCode bookkeeping and
+show the actual action rationale in Inspector instead of an internal diagnosis
+code. 114 focused backend tests passed; Ruff passed after formatting the new
+test. All 274 desktop tests and production UI build passed. These follow-up
+fixes are not yet in the running `490b82b` binary.
+
+[Current native evidence and limits](demo/evidence/NATIVE_490B82B_2026-09-10.md).
+Next: package the verified status/rationale repair and run native recovery.
+The buffered-old-idle duplicate review after correction remains unresolved.
+The quiet fixture server exited; its temporary data directory remains after
+incomplete profile cleanup. Preserve receipts; never use recursive PID cleanup.
+
+The paragraphs below retain the earlier `2174ad0` checkpoint and are historical.
+
 Package `2174ad0` passed both installer content/inventory gates. Full offline
 suite: **4295 passed, 16 skipped, 16 deselected**, exit 0. Two real, bounded
 Codex Spark + saved free Zen/Muse + local Strands tests passed: incomplete-stop

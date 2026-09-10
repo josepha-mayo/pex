@@ -913,6 +913,12 @@ class OpenCodeAdapter(HarnessAdapter):
                 parent_message_id = bounded_parent_id if bounded_parent_id == raw_parent_id else ""
             except ValueError:
                 parent_message_id = ""
+        completed_user_metadata_update = bool(
+            kind == "message.updated"
+            and role == "user"
+            and message_id
+            and self._completed_terminal_parents.get(session.id) == message_id
+        )
         if kind == "message.updated" and message_id:
             message_key = (session.id, message_id)
             # A fresh full-message frame replaces, rather than supplements,
@@ -924,7 +930,8 @@ class OpenCodeAdapter(HarnessAdapter):
                 self._message_roles[message_key] = role
             if role == "user":
                 self._removed_messages.discard(message_key)
-                self._completed_terminal_parents.pop(session.id, None)
+                if not completed_user_metadata_update:
+                    self._completed_terminal_parents.pop(session.id, None)
             elif role == "assistant" and parent_message_id:
                 if len(self._message_parents) < MAX_MESSAGE_ROLES:
                     self._message_parents[message_key] = parent_message_id
@@ -988,6 +995,11 @@ class OpenCodeAdapter(HarnessAdapter):
                 if state.get("status") == "completed"
                 else EventType.TOOL_CALL
             )
+        elif completed_user_metadata_update:
+            # OpenCode refreshes the original user's message metadata after
+            # completion (for example its diff summary). That is not a new
+            # prompt and must not restart the worker's activity projection.
+            event_type = EventType.STATUS
         elif kind in {"message.updated", "message.part.updated"} and role == "user":
             event_type = EventType.USER_PROMPT
         elif idle_after_exact_terminal:
@@ -1070,6 +1082,12 @@ class OpenCodeAdapter(HarnessAdapter):
             else None
         )
         metadata: dict[str, object] = {"sse_type": kind}
+        if kind == "session.status" and isinstance(props.get("status"), dict):
+            observed_status = props["status"].get("type")
+            if isinstance(observed_status, str) and observed_status in {"idle", "busy", "retry"}:
+                metadata["opencode_status"] = observed_status
+        elif idle_after_exact_terminal:
+            metadata["opencode_status"] = "idle"
         if lineage is not None:
             metadata[OPENCODE_MESSAGE_LINEAGE_KEY] = lineage
         if (

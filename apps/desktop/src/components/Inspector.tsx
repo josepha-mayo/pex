@@ -12,6 +12,7 @@ import type {
   StatusCopy,
 } from "../types";
 import {
+  actionExplanation,
   canAttachPersistentGoal,
   canOpenSession,
   humanize,
@@ -112,12 +113,7 @@ export function Inspector({
     : action.action === "NOOP"
       ? "Stayed quiet"
       : humanize(action.action);
-  const actionWhy = !action
-    ? "No intervention has been recorded for this session."
-    : action.diagnosis ||
-      (action.action === "NOOP"
-        ? "No observed condition justified an intervention."
-        : "The bridge recorded this action without a diagnosis.");
+  const actionWhy = actionExplanation(action);
 
   return (
     <section

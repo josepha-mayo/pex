@@ -2,6 +2,24 @@
 
 ## MVP acceptance checkpoint — 10 September 2026
 
+Latest package `490b82b`: both installer gates passed. Native OpenCode quiet
+completion passed with one real Strands NOOP and all 336 events settled.
+Transparent pet, bubble dismissal and pet hiding passed native checks.
+Status/rationale follow-up: 114 backend tests, Ruff, 274 desktop tests and UI
+production build pass; not yet packaged. [Evidence and exact limits](demo/evidence/NATIVE_490B82B_2026-09-10.md).
+
+- [x] Real Codex source-level same-worker recovery and quiet proofs.
+- [x] Packaged OpenCode connection, goal attachment and quiet completion.
+- [x] Native pet transparency, dismiss and hide controls.
+- [ ] Package status/rationale repair and verify native recovery/outcome.
+- [ ] Repair old-buffered-idle duplicate review without losing new-turn fallback.
+- [ ] Native existing-Codex attachment and required additional behavior cases.
+- [ ] Longer resource/stability check; short sample is not freeze clearance.
+- [ ] Isolated comparative benchmark, no-billing AgentCore deployed proof.
+- [ ] Recording and submission readiness review.
+
+**Still NO-GO.** Earlier checkpoints below are historical, not current holds.
+
 Current checkpoint: package `2174ad0` verified; **4295 offline tests passed**.
 Real Codex Spark + saved free Zen/Muse + local Strands recovery and quiet checks
 both passed, including same-worker correction and `helped: true` outcome.
