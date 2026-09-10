@@ -2,6 +2,23 @@
 
 ## Current — 10 September 2026
 
+**Current corrections:** package `e56a077` includes product `320249b`; installer
+integrity and native startup pass. The bare-progress/stale-verdict defects below
+are repaired and bundled. The formerly failed identifiers review passes its
+separate two-case retest; the earlier failed run remains failed. See the active
+handoff for exact source-bound evidence. First-run OpenCode session instructions
+also now pass 276 desktop tests and production UI build, awaiting bundling.
+
+The log-control retest's two completed reviews were triggered by an exact
+assistant completion (event sequence 587) and subsequent `session.idle` (590).
+The terminal's recorded lineage had `stream_contiguous: false`; the adapter
+deliberately does not use discontinuous lineage to suppress the later STOP.
+An intervening busy/idle status pair also exists. This explains why the current
+deduplication gate did not apply, not the original transport-gap cause. Do not
+remove that safety condition merely to lower review counts. No follow-up was sent.
+
+### Earlier same-day findings (superseded where corrected above)
+
 - Native 1f3a0ea still exposed bare assistant progress text and an obsolete
   incomplete goal verdict after newer no_claims STOP. Source fixes pass 45
   recovery/snapshot/fingerprint tests but are not in that running package yet.

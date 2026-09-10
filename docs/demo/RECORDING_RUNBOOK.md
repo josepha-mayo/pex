@@ -40,6 +40,8 @@ under the official rules refreshed through Devpost on 10 September 2026.
 4. **1:20–2:45 — Same-session recovery.** In one isolated OpenCode session, show stage one
    stopping without `final.txt`, PEX's evidence-bound `SEND_NUDGE`, the follow-up on the identical
    vendor session ID, and the exact required `final.txt` artifact.
+   Label this a controlled two-stage demonstration with a deliberate initial
+   stop, not a naturally occurring failure or a comparative benchmark.
 5. **2:45–3:30 — Real Strands and safety.** Show the sanitized receipt fields
    `used_llm=true` and `runtime=strands-agents`. Explain that Strands proposes a bounded action;
    deterministic evidence and local policy remain authoritative. Show independent-verifier
