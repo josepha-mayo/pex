@@ -13,6 +13,17 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Source update `320249b`:** main supervisor prompt now explicitly reserves a
+decision call within the unchanged three-call budget. 71 tests and independent
+review pass. The previously failed identifiers case and one control both pass a
+new source-level free-Zen/Strands retest: all decisions completed, zero followups,
+exact artifacts before review. This is guidance, not enforced reservation, and
+the control still used two reviews. Prior failures remain preserved.
+[Exact results and native idle sample](demo/evidence/SUPERVISOR_BUDGET_RETEST_2026-09-10.md).
+Native fcb624d also passed a three-minute no-input observation with 335–338 MiB
+private memory and 2.73% of one core; navigation worked afterward. Not freeze
+clearance. PEX was then closed normally; the prompt update now needs bundling.
+
 **Latest: product `fcb624d`, clean package checkout `d50e420` (docs-only).** Both
 installers pass, native progress text is repaired, and pause/resume is verified
 with a read-only persisted-state check. Fresh packaged bridge profile passes
