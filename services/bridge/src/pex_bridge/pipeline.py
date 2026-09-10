@@ -199,6 +199,10 @@ _DURABLE_SESSION_METADATA_KEYS = {
     "speculative_result",
     "human_decision_attention",
 }
+_OPENCODE_PROVIDER_BLOCK_METADATA_KEYS = {
+    "opencode_free_tier_limited",
+    "opencode_provider_block",
+}
 _CONTEXT_TASK_CHARS = 2_000
 _CONTEXT_ACTIVE_FILES = 32
 _MAX_EVENT_PLANNING_SNAPSHOT_BYTES = 2 * 1024 * 1024
@@ -1325,6 +1329,11 @@ class Pipeline:
             return intervention
         if processing["state"] == "failed":
             return intervention
+        receipt = processing.get("receipt")
+        if isinstance(receipt, dict) and receipt.get("terminal_reason") == (
+            "opencode_free_tier_limit_without_followup"
+        ):
+            return intervention
         event, accepted_session, _ = await self._processing_inputs(processing)
         try:
             await self.store.require_session_workspace_current(accepted_session)
@@ -1583,6 +1592,8 @@ class Pipeline:
         if not isinstance(accepted_session, HarnessSession):
             raise RuntimeError("pipeline event is missing its accepted session snapshot")
         session = accepted_session.model_copy(deep=True)
+        # Derive this event-owned control below; never trust a copied snapshot.
+        session.metadata.pop("opencode_provider_block_cleared", None)
         live = await self.store.get_session_for_authority(
             session.id,
             require_goal_binding=processing["goal_id"] is not None,
@@ -1605,9 +1616,26 @@ class Pipeline:
             if not session.project_id:
                 session.project_id = live.project_id
             session.supervision_paused = live.supervision_paused
+            opencode_provider_reset_event = bool(
+                event.harness_type == HarnessType.OPENCODE
+                and event.event_type
+                in {
+                    EventType.TOOL_CALL,
+                    EventType.TOOL_RESULT,
+                    EventType.FILE_EDIT,
+                }
+            )
             for key in _DURABLE_SESSION_METADATA_KEYS:
                 if key in live.metadata:
                     session.metadata[key] = live.metadata[key]
+            for key in _OPENCODE_PROVIDER_BLOCK_METADATA_KEYS:
+                if opencode_provider_reset_event:
+                    session.metadata.pop(key, None)
+                    session.metadata["opencode_provider_block_cleared"] = True
+                elif key in live.metadata:
+                    session.metadata[key] = live.metadata[key]
+                else:
+                    session.metadata.pop(key, None)
             if live.capabilities:
                 session.capabilities = dict(live.capabilities)
                 source = live.metadata.get("capabilities_adapter")
@@ -2412,8 +2440,47 @@ class Pipeline:
             session.id,
             require_goal_binding=goal is not None,
         )
+        status_action = event.metadata.get("opencode_status_action")
+        opencode_free_tier_limited = bool(
+            event.harness_type == HarnessType.OPENCODE
+            and event.event_type == EventType.STATUS
+            and event.metadata.get("opencode_status") == "retry"
+            and isinstance(status_action, dict)
+            and status_action.get("reason") == "free_tier_limit"
+        )
+        opencode_free_tier_fenced = bool(
+            live_session is not None
+            and live_session.metadata.get("opencode_free_tier_limited") is True
+        )
+        opencode_work_reset = bool(
+            event.harness_type == HarnessType.OPENCODE
+            and event.event_type
+            in {
+                # OpenCode can repeat user metadata and role-only assistant
+                # frames. Retain the provider fence until concrete observed
+                # tool/file activity establishes that work really resumed.
+                EventType.TOOL_CALL,
+                EventType.TOOL_RESULT,
+                EventType.FILE_EDIT,
+            }
+        )
+        opencode_free_tier_fenced_event = bool(
+            opencode_free_tier_fenced
+            and event.harness_type == HarnessType.OPENCODE
+            and not opencode_work_reset
+        )
         observation = event.metadata.get("pex_observer_snapshot")
-        if isinstance(observation, dict):
+        if opencode_work_reset and opencode_free_tier_fenced:
+            session.metadata.pop("opencode_free_tier_limited", None)
+            session.metadata.pop("opencode_provider_block", None)
+            session.metadata["opencode_provider_block_cleared"] = True
+        if opencode_free_tier_limited:
+            session.status = SessionStatus.BLOCKED
+            session.metadata["opencode_free_tier_limited"] = True
+            session.metadata["opencode_provider_block"] = dict(status_action)
+        elif opencode_free_tier_fenced_event:
+            session.status = SessionStatus.BLOCKED
+        elif isinstance(observation, dict):
             if (
                 observation.get("schema") != "pex.codex-live-observation.v1"
                 or session.harness_type != HarnessType.CODEX
@@ -2765,9 +2832,13 @@ class Pipeline:
             or self.supervision_paused
             or (goal is not None and goal.paused)
             or cursor_stop_terminated
+            or opencode_free_tier_limited
+            or opencode_free_tier_fenced_event
         ):
             reason = (
-                "cursor_stop_terminated_without_followup"
+                "opencode_free_tier_limit_without_followup"
+                if opencode_free_tier_limited or opencode_free_tier_fenced_event
+                else "cursor_stop_terminated_without_followup"
                 if cursor_stop_terminated
                 else "global_supervision_paused"
                 if self.supervision_paused
@@ -6295,6 +6366,12 @@ class Pipeline:
                             session.status = existing.status
                             session.last_activity = existing.last_activity
                             session.capabilities = existing.capabilities
+                            for key in (
+                                "opencode_free_tier_limited",
+                                "opencode_provider_block",
+                            ):
+                                if key in existing.metadata:
+                                    session.metadata[key] = existing.metadata[key]
                         source = (session.metadata or {}).get("source") or (
                             existing.metadata or {}
                         ).get("source")

@@ -875,6 +875,13 @@ class OpenCodeAdapter(HarnessAdapter):
             field="OpenCode SSE event type",
         )
         props = payload.get("properties") if isinstance(payload.get("properties"), dict) else {}
+        status = props.get("status") if isinstance(props.get("status"), dict) else {}
+        status_message = bounded_observed_text(
+            status.get("message"),
+            field="OpenCode status message",
+            max_chars=MAX_ADAPTER_MESSAGE_CHARS,
+        )
+        status_action = bounded_observed_mapping(status.get("action"))
         part = props.get("part") if isinstance(props.get("part"), dict) else {}
         info = props.get("info") if isinstance(props.get("info"), dict) else {}
         state = part.get("state") if isinstance(part.get("state"), dict) else {}
@@ -1042,6 +1049,7 @@ class OpenCodeAdapter(HarnessAdapter):
             or payload.get("message")
             or props.get("delta")
             or props.get("text")
+            or status_message
             or part.get("text")
             or state.get("output")
             or state.get("error")
@@ -1104,10 +1112,14 @@ class OpenCodeAdapter(HarnessAdapter):
         if transport_text_fallback or text == kind:
             # Explicit false preserves genuine text equal to an event name.
             metadata["transport_text_fallback"] = transport_text_fallback
-        if kind == "session.status" and isinstance(props.get("status"), dict):
-            observed_status = props["status"].get("type")
+        if kind == "session.status":
+            observed_status = status.get("type")
             if isinstance(observed_status, str) and observed_status in {"idle", "busy", "retry"}:
                 metadata["opencode_status"] = observed_status
+                if status_message is not None:
+                    metadata["opencode_status_message"] = status_message
+                if status_action is not None:
+                    metadata["opencode_status_action"] = status_action
         elif idle_after_exact_terminal and not pre_admission_idle:
             metadata["opencode_status"] = "idle"
         if lineage is not None:

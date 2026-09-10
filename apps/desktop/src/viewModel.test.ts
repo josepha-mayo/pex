@@ -42,6 +42,7 @@ import {
   isPendingRequestedHumanDecision,
   isSafelyUndoable,
   meaningfulEvidence,
+  nextExpectedEvent,
   newGoalControlIdempotencyKey,
   moodForState,
   permissionRequestDetails,
@@ -1030,6 +1031,19 @@ test("capability controls and evidence labels fail closed", () => {
   assert.equal(supportsCapability(session, "focus_ui"), false);
   assert.equal(supportsCapability(session, "send_message"), true);
   assert.equal(meaningfulEvidence(session), "No meaningful evidence observed yet.");
+});
+
+test("OpenCode provider limit is actionable without claiming progress or suggesting payment", () => {
+  const session = {
+    id: "opencode:limited", harness_type: "opencode", status: "blocked",
+    last_message: "Old progress", metadata: { opencode_free_tier_limited: true },
+  };
+  assert.match(meaningfulEvidence(session), /free usage limit/);
+  assert.match(meaningfulEvidence(session), /not task completion/);
+  assert.match(nextExpectedEvent(session), /observed tool or file activity/);
+  assert.equal(meaningfulEvidence({ ...session, status: "working" }), "Old progress");
+  assert.equal(meaningfulEvidence({ ...session, harness_type: "codex" }), "Old progress");
+  assert.equal(meaningfulEvidence({ ...session, metadata: {} }), "Old progress");
 });
 
 test("only an exact unresolved permission response is actionable", () => {

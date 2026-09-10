@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.http_json import MemoryHttpTransport
@@ -204,3 +205,280 @@ async def test_opencode_unrelated_status_does_not_invent_activity(tmp_path):
         assert after.last_activity == before.last_activity
     finally:
         await store.close()
+
+
+async def test_opencode_ordinary_retry_preserves_observed_drifting_state(tmp_path):
+    store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    session.status = SessionStatus.DRIFTING
+    session.supervision_paused = True
+    await store.upsert_session(session)
+    try:
+        event = await _ingest(
+            pipeline,
+            adapter,
+            session,
+            _payload(
+                str(tmp_path),
+                "session.status",
+                properties={"status": {"type": "retry"}},
+            ),
+        )
+        persisted = await store.get_session(session.id)
+
+        assert event.metadata["opencode_status"] == "retry"
+        assert persisted is not None and persisted.status == SessionStatus.DRIFTING
+    finally:
+        await store.close()
+
+
+async def test_opencode_free_tier_retry_blocks_without_planning_or_recovery(tmp_path):
+    store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    supervisor = SimpleNamespace(agentcore=None, calls=0)
+    executor = SimpleNamespace(calls=0)
+
+    async def decide(*_args, **_kwargs):
+        supervisor.calls += 1
+        raise AssertionError("provider limit must not reach planning")
+
+    async def execute(*_args, **_kwargs):
+        executor.calls += 1
+        raise AssertionError("provider limit must not reach dispatch")
+
+    supervisor.decide = decide
+    executor.execute = execute
+    pipeline.supervisor = supervisor
+    pipeline.executor = executor
+    payload = _payload(
+        str(tmp_path),
+        "session.status",
+        properties={
+            "status": {
+                "type": "retry",
+                "message": "Free limit reached for this provider.",
+                "action": {
+                    "reason": "free_tier_limit",
+                    "provider": "opencode",
+                    "title": "Free limit reached",
+                    "message": "Upgrade before retrying.",
+                    "label": "subscribe",
+                    "link": "https://opencode.ai/go",
+                },
+            }
+        },
+    )
+    try:
+        event = await _ingest(pipeline, adapter, session, payload)
+        persisted = await store.get_session(session.id)
+        processing = await store.get_event_processing(event.event_id)
+
+        assert event.message_delta == "Free limit reached for this provider."
+        assert event.metadata["opencode_status"] == "retry"
+        assert event.metadata["opencode_status_action"]["reason"] == "free_tier_limit"
+        assert persisted is not None and persisted.status == SessionStatus.BLOCKED
+        assert persisted.metadata["opencode_provider_block"]["label"] == "subscribe"
+        assert processing is not None and processing["state"] == "complete"
+        assert (
+            processing["receipt"]["terminal_reason"]
+            == "opencode_free_tier_limit_without_followup"
+        )
+        assert supervisor.calls == executor.calls == 0
+        assert await pipeline.recover_unfinished_events() == []
+        assert supervisor.calls == executor.calls == 0
+        for payload in (
+            _payload(
+                str(tmp_path),
+                "message.updated",
+                properties={
+                    "info": {
+                        "sessionID": "ses_idle",
+                        "id": "assistant-metadata",
+                        "role": "assistant",
+                    }
+                },
+            ),
+            _payload(
+                str(tmp_path),
+                "message.updated",
+                properties={
+                    "info": {"sessionID": "ses_idle", "id": "userX", "role": "user"}
+                },
+            ),
+            _payload(
+                str(tmp_path),
+                "message.updated",
+                properties={
+                    "info": {"sessionID": "ses_idle", "id": "userX", "role": "user"}
+                },
+            ),
+        ):
+            payload["id"] = f"{payload['id']}-{len(await store.recent_events(session.id))}"
+            await _ingest(pipeline, adapter, session, payload)
+            persisted = await store.get_session(session.id)
+            assert persisted is not None and persisted.status == SessionStatus.BLOCKED
+        fenced_status = _payload(
+            str(tmp_path), "session.status", properties={"status": {"type": "idle"}}
+        )
+        fenced_status["id"] = "fenced-idle-status"
+        await _ingest(pipeline, adapter, session, fenced_status)
+        persisted = await store.get_session(session.id)
+        assert persisted is not None and persisted.status == SessionStatus.BLOCKED
+        trailing_idle = await _ingest(
+            pipeline, adapter, session, _payload(str(tmp_path), "session.idle")
+        )
+        persisted = await store.get_session(session.id)
+        trailing_processing = await store.get_event_processing(trailing_idle.event_id)
+        assert trailing_idle.event_type == EventType.STOP
+        assert persisted is not None and persisted.status == SessionStatus.BLOCKED
+        assert trailing_processing is not None
+        assert (
+            trailing_processing["receipt"]["terminal_reason"]
+            == "opencode_free_tier_limit_without_followup"
+        )
+        assert supervisor.calls == executor.calls == 0
+        session.supervision_paused = True
+        await store.upsert_session(session)
+        concrete_work = _payload(
+            str(tmp_path),
+            "file.edited",
+            properties={"file": str(tmp_path / "resumed-work.txt")},
+        )
+        concrete_work["id"] = "concrete-file-work"
+        await _ingest(pipeline, adapter, session, concrete_work)
+        resumed = await store.get_session(session.id)
+        assert resumed is not None and resumed.status == SessionStatus.WORKING
+        assert "opencode_free_tier_limited" not in resumed.metadata
+        assert "opencode_provider_block" not in resumed.metadata
+    finally:
+        await store.close()
+
+
+async def test_opencode_discovery_cannot_erase_or_mint_provider_fence(tmp_path):
+    store, _adapter, session, _pipeline = await _bound_opencode_pipeline(tmp_path)
+    session.metadata["opencode_free_tier_limited"] = True
+    session.metadata["opencode_provider_block"] = {"reason": "free_tier_limit"}
+    await store.upsert_session(session)
+    try:
+        discovery = session.model_copy(
+            update={
+                "metadata": {
+                    "discovery_observation_only": True,
+                    "title": "discovered",
+                    # This marker is event-processing-only: discovery cannot
+                    # forge a reset for a provider-owned fence.
+                    "opencode_provider_block_cleared": True,
+                }
+            }
+        )
+        await store.upsert_session(discovery)
+        preserved = await store.get_session(session.id)
+        assert preserved is not None
+        assert preserved.metadata["opencode_free_tier_limited"] is True
+        assert preserved.metadata["opencode_provider_block"] == {"reason": "free_tier_limit"}
+        assert "opencode_provider_block_cleared" not in preserved.metadata
+        assert preserved.status == SessionStatus.BLOCKED
+
+        unfenced = HarnessSession(
+            id="opencode:unfenced",
+            harness_type=HarnessType.OPENCODE,
+            vendor_session_id="unfenced",
+            project_id=str(tmp_path),
+            cwd=str(tmp_path),
+            status=SessionStatus.DISCOVERED,
+        )
+        await store.upsert_session(unfenced)
+        await store.upsert_session(
+            unfenced.model_copy(
+                update={
+                    "metadata": {
+                        "discovery_observation_only": True,
+                        "opencode_free_tier_limited": True,
+                        "opencode_provider_block": {"reason": "free_tier_limit"},
+                    }
+                }
+            )
+        )
+        not_minted = await store.get_session(unfenced.id)
+        assert not_minted is not None
+        assert "opencode_free_tier_limited" not in not_minted.metadata
+        assert "opencode_provider_block" not in not_minted.metadata
+        first_discovery = unfenced.model_copy(update={
+            "id": "opencode:first-discovery",
+            "vendor_session_id": "first-discovery",
+            "metadata": {
+                "discovery_observation_only": True,
+                "opencode_free_tier_limited": True,
+                "opencode_provider_block": {"reason": "free_tier_limit"},
+            },
+        })
+        await store.upsert_session(first_discovery)
+        created = await store.get_session(first_discovery.id)
+        assert created is not None
+        assert "opencode_free_tier_limited" not in created.metadata
+        assert "opencode_provider_block" not in created.metadata
+    finally:
+        await store.close()
+
+
+async def test_opencode_free_tier_fence_survives_restart_before_idle(tmp_path):
+    store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    retry = _payload(
+        str(tmp_path),
+        "session.status",
+        properties={
+            "status": {
+                "type": "retry",
+                "message": "Free limit reached for this provider.",
+                "action": {"reason": "free_tier_limit"},
+            }
+        },
+    )
+    path = store.path
+    try:
+        await _ingest(pipeline, adapter, session, retry)
+    finally:
+        await store.close()
+
+    recovery = Store(path)
+    await recovery.connect()
+    registry = AdapterRegistry()
+    recovered_adapter = registry.opencode
+    recovered_adapter.attach_transport(MemoryHttpTransport())
+    recovered_session = await recovery.get_session(session.id)
+    assert recovered_session is not None
+    recovered_adapter.sessions[recovered_session.id] = recovered_session
+    recovered_pipeline = Pipeline(
+        recovery,
+        registry,
+        EventBus(),
+        Settings.for_test(home=tmp_path, require_auth=False, autonomy="observe"),
+        model=None,
+    )
+    supervisor = SimpleNamespace(agentcore=None, calls=0)
+
+    async def decide(*_args, **_kwargs):
+        supervisor.calls += 1
+        raise AssertionError("persisted provider block must not reach planning")
+
+    supervisor.decide = decide
+    recovered_pipeline.supervisor = supervisor
+    try:
+        idle = await _ingest(
+            recovered_pipeline,
+            recovered_adapter,
+            recovered_session,
+            _payload(str(tmp_path), "session.idle"),
+        )
+        persisted = await recovery.get_session(session.id)
+        processing = await recovery.get_event_processing(idle.event_id)
+
+        assert idle.event_type == EventType.STOP
+        assert persisted is not None and persisted.status == SessionStatus.BLOCKED
+        assert persisted.metadata["opencode_free_tier_limited"] is True
+        assert processing is not None
+        assert (
+            processing["receipt"]["terminal_reason"]
+            == "opencode_free_tier_limit_without_followup"
+        )
+        assert supervisor.calls == 0
+    finally:
+        await recovery.close()

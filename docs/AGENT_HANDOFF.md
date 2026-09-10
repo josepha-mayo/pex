@@ -13,6 +13,22 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Provider-limit repair, after the evening native failure:** OpenCode retry
+messages/actions now survive normalization. Exact `free_tier_limit` becomes a
+durable Blocked state with no automatic follow-up, including later idle and
+repeated metadata. Discovery cannot erase or mint the fence, and atomic event
+processing clears it only after observed tool/file activity. This conservative
+reset does not treat a new text prompt as proof that provider access recovered.
+Inspector explains the limit without recommending payment. Generic cancellation
+without provider-limit evidence remains a separate unresolved behavior.
+Broad processing/OpenCode regression: 123 passed in 91.95s; final persistence
+guard rerun: 7 passed in 15.75s; Ruff passed. Frontend build and 288 tests passed
+(one Windows symlink-fixture skip). Offline AgentCore contracts: 183 passed.
+These repairs still need a rebuilt native candidate. Current native test session
+is paused (confirmed in durable state); the owned OpenCode server is stopped.
+No-turn Codex preflight confirmed ChatGPT account + requested Spark availability;
+the next bounded proof must preserve receipts and run against clean source.
+
 **Evening update: product `dbc141a`, verifier `d1da140`.** Both rebuilt installers
 pass integrity verification (zero blockers, 2,375 runtime files), and the native
 selected-session Ask regression passes. See the evening section in
