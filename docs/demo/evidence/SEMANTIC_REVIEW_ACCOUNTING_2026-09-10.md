@@ -35,3 +35,19 @@ Consequently this issue does not change that report: nine valid quiet cases;
 tenth worker recovery observation incomplete after its provider rate limit.
 No new live inference, benchmark score, native UI result or cloud deployment is
 claimed. No archived receipt was rewritten.
+
+## Bind the review to the completion being measured
+
+A further source audit found that the quiescence gate accepted any completed
+review in the session journal. An earlier progress review is not evidence that
+PEX reviewed the observed completion. The gate now requires exactly one complete
+journal row matching the captured first STOP event, session and persistent goal,
+with `used_llm=true` and `inference_status=completed`. A missing, pending,
+record-only, duplicate, wrong-session or wrong-goal row cannot satisfy it.
+This binding is checked both during observation and after the final HTTP rereads.
+The receipt exposes `completion_stop_review_completed` separately.
+
+Completion tests now total **61 passed in 6.46 seconds**, exit 0; Ruff passes.
+Read-only inspection confirms that every archived case's captured first STOP has
+the exact complete model-review binding, so historical conclusions remain
+unchanged. In particular, this does not make the tenth worker generation finish.

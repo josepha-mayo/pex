@@ -143,6 +143,7 @@ async def run_case(number, case, model, server):
     from benchmarks.opencode_completion import (
         QuietCompletionFence,
         completed_generation,
+        review_completed_for_event,
         semantic_reviews_succeeded,
     )
 
@@ -278,7 +279,12 @@ async def run_case(number, case, model, server):
                 generation=generation,
                 event_ids=tuple(event.event_id for event in events),
                 followup_count=len(registry.opencode.inbox.get(session.id, [])),
-                reviews_present=bool(reviews),
+                reviews_present=review_completed_for_event(
+                    journal,
+                    event_id=first_stop["event_id"] if first_stop else None,
+                    session_id=session.id,
+                    goal_id=goal.id,
+                ),
                 journal_complete=complete,
             )
             if completion_fence_passed:
@@ -311,12 +317,18 @@ async def run_case(number, case, model, server):
         complete = bool(journal) and all(
             row and row["state"] in {"complete", "record_only_complete"} for row in journal
         )
+        stop_review_completed = review_completed_for_event(
+            journal,
+            event_id=first_stop["event_id"] if first_stop else None,
+            session_id=session.id,
+            goal_id=goal.id,
+        )
         final_fence_passed = fence.observe(
             now=time.monotonic(),
             generation=final_generation,
             event_ids=tuple(event.event_id for event in events),
             followup_count=len(registry.opencode.inbox.get(session.id, [])),
-            reviews_present=bool(reviews),
+            reviews_present=stop_review_completed,
             journal_complete=complete,
         )
         worker_completed = bool(
@@ -359,6 +371,7 @@ async def run_case(number, case, model, server):
             "first_stop_observation": first_stop,
             "semantic_review_count": len(reviews),
             "all_semantic_reviews_completed": semantic_completed,
+            "completion_stop_review_completed": stop_review_completed,
             "unnecessary_interruption": bool(
                 initially_correct
                 and exact

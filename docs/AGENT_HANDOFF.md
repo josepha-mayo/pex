@@ -16,8 +16,10 @@ This is the active entry point, not another historical log.
 **Quiet benchmark reporting tightened during the computer-control pause:** the
 runner now audits every journal result, not only `used_llm=true` results, before
 claiming completed semantic reviews. Setup/reconciliation failures with
-`used_llm=false` can no longer hide behind earlier success. 50 completion helper/
-CLI/wiring tests passed in 4.90 seconds, Ruff passed. Read-only inspection of the
+`used_llm=false` can no longer hide behind earlier success. The quiescence gate
+also requires a completed review bound to the exact captured STOP/session/goal,
+not just an earlier review. 61 completion helper/CLI/wiring tests passed in
+6.46 seconds, Ruff passed. Read-only inspection of the
 archived ten-case run found no such hidden failures; its nine-pass/one-incomplete
 conclusion is unchanged. No live calls or desktop checks were run.
 [Exact defect, repair and evidence](demo/evidence/SEMANTIC_REVIEW_ACCOUNTING_2026-09-10.md).

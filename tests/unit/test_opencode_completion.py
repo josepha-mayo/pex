@@ -8,6 +8,7 @@ import pytest
 from benchmarks.opencode_completion import (
     QuietCompletionFence,
     completed_generation,
+    review_completed_for_event,
     semantic_reviews_succeeded,
 )
 
@@ -45,6 +46,42 @@ def test_runner_audits_unfiltered_journal_not_only_used_llm_rows():
     runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
     source = runner.read_text(encoding="utf-8")
     assert "semantic_completed = semantic_reviews_succeeded(journal)" in source
+
+
+def completion_review(**changes):
+    row = review()
+    row.update(event_id="stop", session_id="session", goal_id="goal", state="complete")
+    row.update(changes)
+    return row
+
+
+def bound_review(journal, event_id="stop"):
+    return review_completed_for_event(
+        journal, event_id=event_id, session_id="session", goal_id="goal"
+    )
+
+
+def test_earlier_success_does_not_prove_completion_event_review():
+    earlier = completion_review(event_id="progress")
+    assert not bound_review([earlier])
+    assert bound_review([earlier, completion_review()])
+    assert not bound_review([earlier, completion_review(plan=None)])
+    assert not bound_review([completion_review(), completion_review()])
+
+
+@pytest.mark.parametrize("changes", [
+    {"session_id": "other"}, {"goal_id": "other"}, {"state": "planned"},
+    {"state": "record_only_complete"}, {"plan": "bad"},
+    {"plan": review(False, "not_attempted")["plan"]},
+    {"plan": review(True, "failed")["plan"]},
+])
+def test_completion_review_requires_exact_binding_and_finished_inference(changes):
+    assert not bound_review([completion_review(**changes)])
+
+
+@pytest.mark.parametrize("event_id", [None, "", 1])
+def test_completion_event_must_be_observed(event_id):
+    assert not bound_review([completion_review()], event_id)
 
 
 @pytest.mark.parametrize("args,code", [(["--help"], 0), ([], 2), (["--run-name", "../outside"], 2)])
