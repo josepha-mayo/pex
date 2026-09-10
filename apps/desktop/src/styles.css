@@ -1474,7 +1474,10 @@ textarea::placeholder {
 }
 
 .ask-pex-compact {
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  max-height: 42vh;
+  overflow: auto;
   align-items: center;
   gap: 5px 14px;
   margin: 0;
@@ -1484,20 +1487,29 @@ textarea::placeholder {
   background: #0d171c;
 }
 
-.ask-pex-compact > label,
-.ask-pex-compact > p {
+.ask-pex-compact > * {
+  min-width: 0;
   grid-column: 1;
 }
 
-.ask-pex-compact .ask-row,
-.ask-pex-compact output {
-  grid-column: 2;
-  grid-row: 1 / span 2;
+.ask-pex-compact .ask-chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0;
+  padding-bottom: 3px;
+}
+
+.ask-pex-compact .ask-chip {
+  flex: 0 0 auto;
+}
+
+.ask-pex-compact .ask-row input {
+  min-width: 0;
 }
 
 .ask-pex-compact output {
   max-height: 80px;
-  grid-row: 3;
+  overflow-wrap: anywhere;
   overflow: auto;
 }
 

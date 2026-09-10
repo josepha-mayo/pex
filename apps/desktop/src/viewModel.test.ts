@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+test("deck Ask keeps suggestions and input within one bounded column", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const css = await readFile(new URL("./styles.css", import.meta.url), "utf8");
+  const compact = css.slice(css.indexOf(".ask-pex-compact {"), css.indexOf(".now-grid,"));
+  assert.match(compact, /grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(compact, /max-height: 42vh/);
+  assert.match(compact, /\.ask-chips\s*\{[^}]*flex-wrap: nowrap;[^}]*overflow-x: auto;/);
+  assert.match(compact, /\.ask-row input\s*\{\s*min-width: 0;/);
+  assert.doesNotMatch(compact, /grid-column: 2|grid-row:/);
+});
+
 import { animationFrameIndex } from "./pets/atlasMath.ts";
 import {
   BridgeRequestError,
