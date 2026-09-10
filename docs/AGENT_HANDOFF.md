@@ -18,7 +18,10 @@ catalog, selection API, picker and packaging allowlist now exclude the other six
 Old selection migrates to Pex while retaining nickname, scale and legacy import
 metadata. No Codex-home pet scan at startup. Import endpoint rejects with 409;
 generation/import controls, custom roster and hatch polling were removed from
-the desktop. The two picker cards have larger previews and an explicit Selected
+the desktop. Independent review caught the still-callable hatch POST: it now
+rejects with `hatch_disabled_for_mvp` before provider resolution or job creation.
+Capability is explicitly false; authenticated historical job reads are retained.
+The two picker cards have larger previews and an explicit Selected
 label. Original atlas pixels and historical eight-pet review archives are preserved;
 current release manifest/structural evidence/gallery bind only the two shipping pets.
 279 desktop tests, TypeScript/Vite production build, and exact-two asset validation

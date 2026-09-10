@@ -15,7 +15,7 @@ import stat
 import threading
 from contextlib import AsyncExitStack, asynccontextmanager, nullcontext
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -74,20 +74,7 @@ from pex_bridge.pets import (
     starters_by_id,
     validate_codex_v2_atlas,
 )
-from pex_bridge.pets.hatch import (
-    HatchAuthorizationError,
-    HatchConflictError,
-    HatchJob,
-    HatchRegistry,
-    authorize_hatch,
-    run_hatch_job,
-    slugify,
-)
-from pex_bridge.pets.imagegen import (
-    describe_hatch_backend,
-    hatch_image_config,
-    probe_images_endpoint,
-)
+from pex_bridge.pets.hatch import HatchRegistry
 from pex_bridge.pipeline import Pipeline, collapse_promptable_agents
 from pex_bridge.request_limits import RequestBodyLimitMiddleware
 from pex_bridge.startup_trace import mark_startup_phase
@@ -163,8 +150,6 @@ MAX_TOKEN_FILE_BYTES = 4096
 MAX_PET_SETTINGS_BYTES = 1_048_576
 MAX_SUPERVISOR_CHOICE_BYTES = 16_384
 MCP_SESSION_CREDENTIAL_TTL_SECONDS = 86_400
-HATCH_AUTHORIZATION_TTL_MINUTES = 10
-LOCAL_HATCH_OPERATOR_PRINCIPAL = "operator:local"
 _OBSERVE_ONLY_STOP_HOOKS = {
     ("hermes", "on_session_end"),
     ("hermes", "on_session_finalize"),
@@ -4322,7 +4307,7 @@ def create_app() -> FastAPI:
             ],
             "catalog": [_public_pet_definition(p) for p in resolved_catalog],
             "settings": _public_pet_settings(settings),
-            "hatch": describe_hatch_backend(),
+            "hatch": {"generation_ready": False, "reason": "Two-pet MVP; generation disabled."},
             "codex_contract": {
                 "spriteVersionNumber": 2,
                 "cell": [192, 208],
@@ -4396,7 +4381,7 @@ def create_app() -> FastAPI:
 
     @app.get("/v1/pets/hatch/capability")
     async def hatch_capability(_: None = Depends(_require_token)):
-        return probe_images_endpoint()
+        return {"generation_ready": False, "reason": "Two-pet MVP; generation disabled."}
 
     @app.get("/v1/pets/hatch")
     async def list_hatches(_: None = Depends(_require_token)):
@@ -4411,77 +4396,10 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/pets/hatch")
     async def start_hatch(body: HatchIn, _: None = Depends(_require_operator_token)):
-        name = body.display_name.strip()
-        if not name:
-            raise HTTPException(400, "display_name is required")
-        config = hatch_image_config()
-        if config is None:
-            raise HTTPException(
-                409,
-                {
-                    "code": "hatch_provider_unavailable",
-                    "message": (
-                        "No authorized image provider configuration is available; "
-                        "no call was made."
-                    ),
-                },
-            )
-        pet_id = slugify(name)
-        job = HatchJob(
-            id=new_id("hatch_"),
-            pet_id=pet_id,
-            display_name=name,
-            description=body.description.strip(),
-            style_preset=body.style_preset.strip() or "plush",
-            pet_notes=body.pet_notes.strip() or body.description.strip(),
-            status="queued",
-            step="Getting pet ready.",
-            paid_generation_acknowledged=True,
-        )
-        issued_at = datetime.now(UTC)
-        try:
-            authorization = authorize_hatch(
-                job,
-                principal=LOCAL_HATCH_OPERATOR_PRINCIPAL,
-                idempotency_key=body.idempotency_key,
-                config=config,
-                issued_at=issued_at,
-                expires_at=issued_at
-                + timedelta(minutes=HATCH_AUTHORIZATION_TTL_MINUTES),
-            )
-            canonical = state.hatch.create_or_replay(job, authorization)
-        except HatchAuthorizationError as exc:
-            raise HTTPException(
-                400,
-                {
-                    "code": "hatch_authorization_invalid",
-                    "message": str(exc),
-                },
-            ) from exc
-        except HatchConflictError as exc:
-            raise HTTPException(
-                409,
-                {
-                    "code": "hatch_idempotency_conflict",
-                    "message": str(exc),
-                },
-            ) from exc
-
-        active = state.hatch_tasks.get(canonical.id)
-        if canonical.effect_status == "reserved" and (
-            active is None or active.done()
-        ):
-            task = asyncio.create_task(
-                asyncio.to_thread(
-                    run_hatch_job,
-                    state.hatch,
-                    canonical.id,
-                    config=config,
-                ),
-                name=f"hatch:{canonical.id}",
-            )
-            state.track_hatch_background(canonical.id, task)
-        return canonical.public()
+        raise HTTPException(409, {
+            "code": "hatch_disabled_for_mvp",
+            "message": "This MVP supports Pex and Von only; image generation is disabled.",
+        })
 
     @app.get("/v1/sessions")
     async def sessions(

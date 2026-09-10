@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import threading
-import time
-from concurrent.futures import ThreadPoolExecutor
-from io import BytesIO
 
 from fastapi.testclient import TestClient
 from pex_bridge import app as bridge_app
@@ -13,17 +9,9 @@ from pex_bridge.config import Settings
 from pex_bridge.pets.hatch import HatchRegistry
 from pex_bridge.pipeline import Pipeline
 from pex_bridge.store import Store
-from PIL import Image
 
 _OPERATOR_TOKEN = "hatch-operator-test-token-0123456789abcdef"
 _HEADERS = {"Authorization": f"Bearer {_OPERATOR_TOKEN}"}
-_CONFIG = {
-    "provider": "test",
-    "base_url": "https://images.example.test/v1",
-    "api_key": "test-secret",
-    "model_id": "test-image-model",
-    "timeout": 1,
-}
 
 
 def _configure_operator_app(tmp_path, *, require_auth: bool = True) -> TestClient:
@@ -71,88 +59,20 @@ def _request(*, notes: str = "ink navy, cream belly") -> dict[str, object]:
     }
 
 
-def _png_bytes() -> bytes:
-    encoded = BytesIO()
-    Image.new("RGB", (16, 16), (8, 20, 44)).save(encoded, format="PNG")
-    return encoded.getvalue()
+def test_two_pet_mvp_rejects_generation_even_with_a_provider(tmp_path, monkeypatch):
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("two-pet MVP must not resolve a provider or generate art")
 
-
-def test_hatch_operator_exact_replay_schedules_one_provider_call(
-    tmp_path,
-    monkeypatch,
-):
-    generation_started = threading.Event()
-    release_generation = threading.Event()
-    calls = 0
-
-    def generate_png(*_args, **kwargs):
-        nonlocal calls
-        assert kwargs["config"] is _CONFIG
-        calls += 1
-        generation_started.set()
-        assert release_generation.wait(timeout=5)
-        return _png_bytes()
-
-    monkeypatch.setattr(bridge_app, "hatch_image_config", lambda: _CONFIG)
-    monkeypatch.setattr("pex_bridge.pets.hatch.generate_png", generate_png)
-
+    monkeypatch.setattr("pex_bridge.pets.imagegen.hatch_image_config", forbidden)
+    monkeypatch.setattr("pex_bridge.pets.hatch.generate_png", forbidden)
     with _configure_operator_app(tmp_path) as client:
-        barrier = threading.Barrier(3)
-
-        def post_same_request():
-            barrier.wait(timeout=2)
-            return client.post("/v1/pets/hatch", json=_request())
-
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            pending = [pool.submit(post_same_request) for _ in range(2)]
-            barrier.wait(timeout=2)
-            responses = [future.result(timeout=3) for future in pending]
-
-        assert all(response.status_code == 200 for response in responses), [
-            response.text for response in responses
-        ]
-        first_job = responses[0].json()
-        assert responses[1].json()["id"] == first_job["id"]
-        assert first_job["effect_status"] in {"reserved", "dispatching"}
-        assert first_job["jobs_total"] == 1
-        assert first_job["spritesheet"] is None
-        assert generation_started.wait(timeout=2)
-
-        replay = client.post("/v1/pets/hatch", json=_request())
-        assert replay.status_code == 200, replay.text
-        assert replay.json()["id"] == first_job["id"]
-        assert calls == 1
-
-        conflict = client.post(
-            "/v1/pets/hatch",
-            json=_request(notes="changed body under the same key"),
-        )
-        assert conflict.status_code == 409, conflict.text
-        assert conflict.json()["detail"]["code"] == "hatch_idempotency_conflict"
-        assert calls == 1
-
-        release_generation.set()
-        deadline = time.monotonic() + 3
-        completed = None
-        while time.monotonic() < deadline:
-            completed = client.get(f"/v1/pets/hatch/{first_job['id']}")
-            assert completed.status_code == 200, completed.text
-            if completed.json()["status"] == "awaiting_assembly_qa":
-                break
-            time.sleep(0.01)
-        assert completed is not None
-        assert completed.json()["status"] == "awaiting_assembly_qa"
-        assert completed.json()["jobs_complete"] == 1
-        assert completed.json()["spritesheet"] is None
-
-        completed_replay = client.post("/v1/pets/hatch", json=_request())
-        assert completed_replay.status_code == 200, completed_replay.text
-        assert completed_replay.json() == completed.json()
-        assert calls == 1
-
-        listed = client.get("/v1/pets/hatch")
-        assert listed.status_code == 200
-        assert [job["id"] for job in listed.json()["jobs"]] == [first_job["id"]]
+        for _ in range(2):
+            response = client.post("/v1/pets/hatch", json=_request())
+            assert response.status_code == 409
+            assert response.json()["detail"]["code"] == "hatch_disabled_for_mvp"
+        assert client.get("/v1/pets/hatch/capability").json()["generation_ready"] is False
+        assert client.get("/v1/pets/hatch").json() == {"jobs": []}
+        assert not bridge_app.state.hatch_tasks
 
 
 def test_hatch_operator_requires_exact_confirmation_and_bound_provider(
@@ -166,7 +86,7 @@ def test_hatch_operator_requires_exact_confirmation_and_bound_provider(
         config_resolutions += 1
         return None
 
-    monkeypatch.setattr(bridge_app, "hatch_image_config", no_config)
+    monkeypatch.setattr("pex_bridge.pets.imagegen.hatch_image_config", no_config)
 
     def forbidden_provider_call(*_args, **_kwargs):
         raise AssertionError("validation or provider binding failure must not dispatch")
@@ -215,13 +135,12 @@ def test_hatch_operator_requires_exact_confirmation_and_bound_provider(
         unavailable = client.post("/v1/pets/hatch", json=_request())
         assert unavailable.status_code == 409, unavailable.text
         assert unavailable.json()["detail"] == {
-            "code": "hatch_provider_unavailable",
+            "code": "hatch_disabled_for_mvp",
             "message": (
-                "No authorized image provider configuration is available; "
-                "no call was made."
+                "This MVP supports Pex and Von only; image generation is disabled."
             ),
         }
-        assert config_resolutions == 1
+        assert config_resolutions == 0
         assert client.get("/v1/pets/hatch").json() == {"jobs": []}
 
 
@@ -233,8 +152,7 @@ def test_hatch_operator_route_is_closed_when_bridge_auth_is_disabled(
         raise AssertionError("no-auth mode must be rejected before provider resolution")
 
     monkeypatch.setattr(
-        bridge_app,
-        "hatch_image_config",
+        "pex_bridge.pets.imagegen.hatch_image_config",
         forbidden_config_resolution,
     )
 
