@@ -40,6 +40,11 @@ runtime hash is `e68da54a...`; `scripts/smoke_packaged_bridge.py` makes this gat
 repeatable and writes `build/packaged-settings-smoke-16153b3.json`. Visible
 native acceptance remains pending while Joseph uses the PC.
 
+The current-head offline MVP spine also passes 252/252 with unhandled pytest
+thread warnings promoted to failures: goal lifecycle, quiet completion and
+recovery, two-pet APIs, authenticated supervisor settings, Strands policy,
+Zen provider/Ask routing, and local AgentCore. No live provider or AWS call ran.
+
 The final frontend-only delta makes pet visibility storage-safe. Throwing
 WebView `getItem` no longer blanks startup, and throwing `setItem` no longer
 prevents the current-launch hide/show event from reaching the other PEX

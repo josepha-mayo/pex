@@ -129,6 +129,12 @@ def main() -> int:
     binary = args.exe.resolve(strict=True)
     if os.name != "nt" or binary.suffix.lower() != ".exe" or not binary.is_file():
         parser.error("--exe must name an existing Windows executable")
+    runtime_library = binary.parent / "_internal" / "python312.dll"
+    if not runtime_library.is_file():
+        parser.error(
+            "--exe must name the packaged one-directory bridge beside "
+            "_internal/python312.dll"
+        )
 
     from pex_protocol.windows_job import CREATE_SUSPENDED, assign_job_and_resume, close_job
 
