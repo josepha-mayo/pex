@@ -1,5 +1,34 @@
 # PEX code audit coverage — 5 September 2026
 
+## 11 September — shipping OpenCode integration full-file audit
+
+Read `integrations/opencode-plugin/pex-plugin.js` and
+`services/bridge/src/pex_bridge/adapters/opencode.py` end to end against the
+core/recovery specifications. The plugin accepts only a bare loopback origin and
+bounded printable bearer, bounds request/response bytes and JSON depth/nodes,
+keeps its session cache bounded, never blocks worker startup on PEX failure, and
+applies only active session-scoped instruction/tool overlays. It does not write
+OpenCode project configuration or claim permission-hook support.
+
+The production adapter binds every control mutation to the exact discovered
+session/workspace, serializes message sends, preserves delivery uncertainty,
+polls for an exact new user-turn receipt, bounds retained sessions/inbox/hooks/
+permission and lineage state, and treats transport replacement, SSE loss,
+invalid observations and removal-tombstone exhaustion as non-authoritative gaps.
+Completed assistant messages require exact parent lineage and valid terminal
+timestamps; duplicate terminal siblings and their later idle event do not cause
+double semantic dispatch. Exact `MessageAbortedError` evidence remains distinct
+from completion. Pipeline ingestion retries the same normalized event
+idempotently and never replays an old transport into a replacement.
+
+No additional source defect was found in this pass. Verification relevant to
+these files includes the clean 4,440-pass full Python regression (32 skipped),
+the 290-pass desktop suite (one intentional platform skip), and a fresh
+model-free installed OpenCode 1.18.30 production HTTP/session/SSE smoke that
+passed 1/1 in 1.32 seconds and progressed Strong → Deep. The server was owned,
+stopped, and left zero listeners. This audit does not replace the remaining
+packaged, model-backed corrective/quiet journeys.
+
 ## 10 September — preserve artifact-count evidence through AgentCore
 
 Scoped review of cloud request compaction found artifact metadata retained path
@@ -1183,7 +1212,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `integrations/cursor-hook/pex_cursor_observe.py` | Harness / integrity | PENDING |
 | `integrations/hermes-plugin/pex_plugin.py` | Harness / integrity | PENDING |
 | `integrations/hooks/pex_hook.py` | Harness / integrity | PENDING |
-| `integrations/opencode-plugin/pex-plugin.js` | Harness / integrity | PENDING |
+| `integrations/opencode-plugin/pex-plugin.js` | Harness / integrity | FULL READ by main 11 Sep; loopback/auth/request-response/JSON/cache bounds and fail-open worker behavior reviewed; no new defect found |
 | `integrations/qwen-hook/settings.fragment.json` | Harness / integrity | PENDING |
 | `packages/protocol-ts/src/index.ts` | Backend / release cross-review | PENDING |
 | `packages/protocol/pyproject.toml` | Backend / release cross-review | PENDING |
@@ -1230,7 +1259,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `services/bridge/src/pex_bridge/adapters/grok_build.py` | Harness / integrity | PENDING |
 | `services/bridge/src/pex_bridge/adapters/hermes_bin.py` | Harness / integrity | PENDING |
 | `services/bridge/src/pex_bridge/adapters/http_json.py` | Harness / integrity | PENDING |
-| `services/bridge/src/pex_bridge/adapters/opencode.py` | Harness / integrity | PENDING |
+| `services/bridge/src/pex_bridge/adapters/opencode.py` | Harness / integrity | FULL READ by main 11 Sep; session/workspace binding, delivery uncertainty, permissions, overlays, SSE lineage/gaps and retry pump reviewed; no new defect found |
 | `services/bridge/src/pex_bridge/adapters/qwen.py` | Harness / integrity | PENDING |
 | `services/bridge/src/pex_bridge/adapters/strict_json.py` | Harness / integrity | PENDING |
 | `services/bridge/src/pex_bridge/adapters/synthetic.py` | Harness / integrity | PENDING |
@@ -1317,7 +1346,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `tests/contract/test_live_kimi_stop.py` | Test cross-review | PENDING |
 | `tests/contract/test_live_omp_stop.py` | Test cross-review | PENDING |
 | `tests/contract/test_live_opencode_stop.py` | Test cross-review | PENDING |
-| `tests/contract/test_live_opencode.py` | Test cross-review | PENDING |
+| `tests/contract/test_live_opencode.py` | Test cross-review | FULL READ by main 11 Sep; explicit live authorization, bounded Deep wait and owned transport cleanup; model-free production run passed 1/1 |
 | `tests/contract/test_live_qwen_stop.py` | Test cross-review | PENDING |
 | `tests/contract/test_live_supervisor.py` | Test cross-review | PENDING |
 | `tests/contract/test_supervisor_settings.py` | Test cross-review | PENDING |
