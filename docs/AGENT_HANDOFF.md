@@ -35,8 +35,10 @@ package verifier report `release_ready: true` with zero blockers. Receipt
 [Exact package evidence](demo/evidence/PACKAGE_16153B3_2026-09-11.md). Frozen
 bridge lifetime/manifest checks pass 3/3; an isolated authenticated smoke reports
 the default dispatch cap 3 and the correct first Zen hint, with no provider,
-worker, or AWS call and no surviving bridge process. Visible native acceptance
-remains pending while Joseph uses the PC.
+worker, or AWS call and no surviving bridge process. The current exact packaged
+runtime hash is `e68da54a...`; `scripts/smoke_packaged_bridge.py` makes this gate
+repeatable and writes `build/packaged-settings-smoke-16153b3.json`. Visible
+native acceptance remains pending while Joseph uses the PC.
 
 The final frontend-only delta makes pet visibility storage-safe. Throwing
 WebView `getItem` no longer blanks startup, and throwing `setItem` no longer

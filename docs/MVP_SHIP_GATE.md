@@ -43,9 +43,10 @@ anything on the user's behalf.
   `16153b3` passes MSI/NSIS verification with zero blockers and includes exact
   Zen Muse Responses routing with no hidden model fallback.
   [Current hashes and limits](demo/evidence/PACKAGE_16153B3_2026-09-11.md).
-  A headless isolated launch of the packaged frozen bridge also passed: public
-  liveness became ready and authenticated supervisor settings reported the
-  default cap of three, with no provider/worker/AWS call. Visible native Settings
+  A repeatable headless isolated launch of the exact packaged frozen bridge also
+  passed: public identity became ready and authenticated supervisor settings
+  reported the default cap of three and first Zen free-Muse hint, with no
+  provider/worker/AWS call or surviving process. Visible native Settings
   verification remains pending.
 - [x] Repair observed OpenCode free-tier retry/idle follow-up loop in source;
   durable provider block survives refresh/restart and requires tool/file activity
