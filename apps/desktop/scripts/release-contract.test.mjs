@@ -17,7 +17,6 @@ import {
   assertPublicReleaseEvidence,
   assertFrozenBundleInventory,
   assertReleaseBuildSourceClean,
-  assertSchema2EvidenceClosure,
   classifyGitReleaseInputs,
   parseFrozenBundleInventory,
   preflightSnapshotIsStable,
@@ -39,7 +38,9 @@ test("release builder retains only the current two-pet evidence validator", () =
   const source = readFileSync(new URL("./build-sidecar.mjs", import.meta.url), "utf8");
   assert.match(source, /function validateCompactPetReleaseEvidence\(/u);
   assert.doesNotMatch(source, /function validatePetReleaseEvidence\(/u);
+  assert.doesNotMatch(source, /function validateCurrentFleetEvidence\(/u);
   assert.doesNotMatch(source, /exact ordered eight-pet fleet/u);
+  assert.doesNotMatch(source, /exact-eight-direct-animated-playback/u);
   assert.equal((source.match(/validateCompactPetReleaseEvidence\(/gu) ?? []).length, 2);
 });
 
@@ -153,69 +154,6 @@ function wiringFixture() {
     focusPermission: EXPECTED_FOCUS_PERMISSION,
     bridgeRecoveryPermission: EXPECTED_BRIDGE_RECOVERY_PERMISSION,
   };
-}
-
-function evidenceFixture() {
-  const builtInPets = ["pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von"];
-  const requiredPlaybackStates = [
-    "idle",
-    "waving",
-    "jumping",
-    "running",
-    "running-left",
-    "running-right",
-    "failed",
-    "waiting",
-    "review",
-  ];
-  const auditPath = "_audit/release/manifest.json";
-  const playbackPath = "_audit/release/current-20260831/direct-playback-qa.json";
-  const directPlayback = { path: playbackPath, bytes: 11397, sha256: hash("b") };
-  const release = {
-    schema_version: 2,
-    built_in_pet_ids: builtInPets,
-    fleet_audit: { path: auditPath, bytes: 2727, sha256: hash("a") },
-    direct_playback: directPlayback,
-    pets: builtInPets.map((id) => ({
-      id,
-      manifest_sha256: hash("c"),
-      spritesheet_sha256: hash("d"),
-      receipt: `_audit/release/${id}.json`,
-      receipt_sha256: hash("e"),
-    })),
-  };
-  const audit = {
-    schema_version: 2,
-    status: "approved",
-    built_in_pet_count: builtInPets.length,
-    custom_imports_included: false,
-    direct_playback: { ...directPlayback },
-    pets: release.pets.map((pet) => ({
-      id: pet.id,
-      spritesheet_sha256: pet.spritesheet_sha256,
-      release_record: pet.receipt,
-      release_record_sha256: pet.receipt_sha256,
-    })),
-  };
-  const playback = {
-    schema_version: 1,
-    review_kind: "exact-eight-direct-animated-playback",
-    verdict: "pass",
-    scope: {
-      pet_ids: builtInPets,
-      required_states: requiredPlaybackStates,
-      display_cell: "192x208",
-      gif_count: 72,
-    },
-    browser_playback_method: {
-      network_or_provider: false,
-      server: false,
-      sessions_closed: true,
-      canvas_status_used_as_evidence: false,
-    },
-    qualitative_review: { verdict: "pass" },
-  };
-  return { release, audit, playback, builtInPets, requiredPlaybackStates, auditPath, playbackPath };
 }
 
 test("canonical release paths reject traversal and aliases while preserving filename namespaces", () => {
@@ -446,28 +384,5 @@ test("preflight snapshot comparison rejects release, source, and status TOCTOU i
     const changed = structuredClone(stable);
     mutate(changed);
     assert.equal(preflightSnapshotIsStable(changed), false);
-  }
-});
-
-test("schema-2 evidence closure rejects corrupt links and forged playback authority", () => {
-  const fixture = evidenceFixture();
-  assert.doesNotThrow(() => assertSchema2EvidenceClosure(fixture));
-  for (const mutate of [
-    (value) => { value.release.schema_version = 1; },
-    (value) => { value.release.built_in_pet_ids.reverse(); },
-    (value) => { value.release.fleet_audit.path += ".alias"; },
-    (value) => { value.release.direct_playback.bytes = 0; },
-    (value) => { value.release.direct_playback.sha256 = "forged"; },
-    (value) => { value.audit.direct_playback.sha256 = hash("f"); },
-    (value) => { value.audit.pets[0].release_record = "_audit/release/ledger.json"; },
-    (value) => { value.playback.scope.pet_ids.reverse(); },
-    (value) => { value.playback.scope.required_states.pop(); },
-    (value) => { value.playback.browser_playback_method.network_or_provider = true; },
-    (value) => { value.playback.browser_playback_method.canvas_status_used_as_evidence = true; },
-    (value) => { value.playback.qualitative_review.verdict = "loading"; },
-  ]) {
-    const corrupted = structuredClone(fixture);
-    mutate(corrupted);
-    assert.throws(() => assertSchema2EvidenceClosure(corrupted));
   }
 });

@@ -110,14 +110,6 @@ function exactKeys(value, expected) {
     && sameJson(Object.keys(value).sort(), [...expected].sort());
 }
 
-function validArtifactReference(value, expectedPath) {
-  return value?.path === expectedPath
-    && Number.isSafeInteger(value?.bytes)
-    && value.bytes > 0
-    && typeof value?.sha256 === "string"
-    && SHA256.test(value.sha256);
-}
-
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
@@ -345,72 +337,4 @@ export function preflightSnapshotIsStable({
   return releaseInputSha256After === releaseInputSha256Before
     && sourceInputSha256After === sourceInputSha256Before
     && sameJson(statusAfter, statusBefore);
-}
-
-export function assertSchema2EvidenceClosure({
-  release,
-  audit,
-  playback,
-  builtInPets,
-  requiredPlaybackStates,
-  auditPath,
-  playbackPath,
-}) {
-  if (
-    release?.schema_version !== 2
-    || !sameJson(release?.built_in_pet_ids, builtInPets)
-    || !Array.isArray(release?.pets)
-    || release.pets.length !== builtInPets.length
-    || !validArtifactReference(release?.fleet_audit, auditPath)
-    || !validArtifactReference(release?.direct_playback, playbackPath)
-  ) throw new Error("Pet release manifest has an invalid schema-2 evidence closure");
-
-  for (let index = 0; index < builtInPets.length; index += 1) {
-    const id = builtInPets[index];
-    const pet = release.pets[index];
-    if (
-      pet?.id !== id
-      || pet?.receipt !== `_audit/release/${id}.json`
-      || !SHA256.test(pet?.manifest_sha256 ?? "")
-      || !SHA256.test(pet?.spritesheet_sha256 ?? "")
-      || !SHA256.test(pet?.receipt_sha256 ?? "")
-    ) throw new Error(`Pet release manifest closure is invalid for ${id}`);
-  }
-
-  if (
-    audit?.schema_version !== 2
-    || audit?.status !== "approved"
-    || audit?.built_in_pet_count !== builtInPets.length
-    || audit?.custom_imports_included !== false
-    || !Array.isArray(audit?.pets)
-    || audit.pets.length !== builtInPets.length
-    || !sameJson(audit?.direct_playback, release.direct_playback)
-  ) throw new Error("Fleet audit manifest is incomplete or not direct-playback bound");
-
-  for (let index = 0; index < builtInPets.length; index += 1) {
-    const id = builtInPets[index];
-    const pet = audit.pets[index];
-    const releasePet = release.pets[index];
-    if (
-      pet?.id !== id
-      || pet?.spritesheet_sha256 !== releasePet.spritesheet_sha256
-      || pet?.release_record !== releasePet.receipt
-      || pet?.release_record_sha256 !== releasePet.receipt_sha256
-    ) throw new Error(`Fleet audit manifest disagrees with the release manifest for ${id}`);
-  }
-
-  if (
-    playback?.schema_version !== 1
-    || playback?.review_kind !== "exact-eight-direct-animated-playback"
-    || playback?.verdict !== "pass"
-    || !sameJson(playback?.scope?.pet_ids, builtInPets)
-    || !sameJson(playback?.scope?.required_states, requiredPlaybackStates)
-    || playback?.scope?.display_cell !== "192x208"
-    || playback?.scope?.gif_count !== builtInPets.length * requiredPlaybackStates.length
-    || playback?.browser_playback_method?.network_or_provider !== false
-    || playback?.browser_playback_method?.server !== false
-    || playback?.browser_playback_method?.sessions_closed !== true
-    || playback?.browser_playback_method?.canvas_status_used_as_evidence !== false
-    || playback?.qualitative_review?.verdict !== "pass"
-  ) throw new Error("Direct-playback receipt does not certify the exact eight-by-nine runtime matrix");
 }

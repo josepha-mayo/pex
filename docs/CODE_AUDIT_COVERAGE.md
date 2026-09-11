@@ -18,6 +18,24 @@ The complete local AgentCore client/runtime/pipeline/preflight gate passed
 deployment, paid model call, native app, or worker was started. This proves the
 offline boundary contract, not a deployed AgentCore runtime.
 
+## 11 September — residual eight-pet release-chain removal
+
+An end-to-end reread of `apps/desktop/scripts/build-sidecar.mjs` found a second
+unreachable legacy validator that still described the retired schema-2,
+eight-pet playback archive. It had no production caller but retained 340 lines,
+obsolete audit-path constants, an exported closure helper used only by its own
+fixture, and 87 lines of self-only tests. Removed that entire dead chain: **503
+lines deleted, 2 negative source assertions added**. The active schema-4
+`validateCompactPetReleaseEvidence` path, immutable historical visual lineage,
+two-pet allowlist, frozen-bundle verification, PyInstaller exclusions, and
+preflight/package checks remain intact.
+
+`node --check` passed for both release modules; the focused release-contract
+suite passed **14/14**; the exact pet validator returned `pex` and `von`; the
+complete desktop suite passed **289 with one intentional Windows symlink skip**;
+and TypeScript/Vite built **69 modules**. This is source/test evidence; the
+source-hash-changing cleanup requires a fresh package before release promotion.
+
 ## 11 September — shipping OpenCode integration full-file audit
 
 Read `integrations/opencode-plugin/pex-plugin.js` and
@@ -1171,10 +1189,10 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | File | Audit responsibility | Fresh audit status |
 | --- | --- | --- |
 | `apps/desktop/package.json` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
-| `apps/desktop/scripts/build-sidecar.mjs` | UI / release | PENDING |
+| `apps/desktop/scripts/build-sidecar.mjs` | UI / release | FULL READ / REPAIRED 11 Sep; residual dead schema-2/eight-pet branch removed; fresh package required |
 | `apps/desktop/scripts/record_submission_demo.py` | UI / release | REMOVED 11 Sep; stale browser-only recorder targeted retired controls and could not prove the packaged product |
-| `apps/desktop/scripts/release-contract.mjs` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
-| `apps/desktop/scripts/release-contract.test.mjs` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/scripts/release-contract.mjs` | UI / release | FULL READ / REPAIRED 11 Sep; self-only schema-2 closure removed; current contracts green |
+| `apps/desktop/scripts/release-contract.test.mjs` | UI / release | FULL READ / REPAIRED 11 Sep; obsolete fixture removed; negative two-pet source guard retained |
 | `apps/desktop/src-tauri/build.rs` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src-tauri/capabilities/default.json` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src-tauri/capabilities/pet.json` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
