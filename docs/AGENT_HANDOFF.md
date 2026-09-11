@@ -57,6 +57,14 @@ Only the test harness budget is now a bounded 30 seconds for below-normal Window
 suite contention; Ruff passes. Rerun the whole suite from the new source and do
 not count either stopped invocation as green.
 
+A later normal-priority whole-suite attempt stopped at 781 passed/19 skipped
+when a fresh subprocess importing the full bridge/Strands ASGI graph exceeded a
+test-only 15-second wall clock before auth assertions. The exact test passed in
+isolation and the auth file passed 16 with two Windows skips. Only that test's
+subprocess budget is now a bounded 45 seconds; operator-token scrubbing and child
+non-inheritance assertions are unchanged. No production timeout changed. A new
+whole-suite run is still required.
+
 **Prior package source: `204c766`; product change: `7bf591c`.** Product `7bf591c` changes
 the fresh-install supervisor default from unbounded to three durable semantic
 dispatches per worker session. This both bounds BYOK usage and enables the paced

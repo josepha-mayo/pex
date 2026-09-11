@@ -53,3 +53,11 @@ case then passed in isolation and its complete file passed 5/5, so no production
 latency change was justified. The test-only settle budget is now a still-bounded
 30 seconds to tolerate Windows scheduler contention during the below-normal
 broad run. Ruff passes. This second stopped run is also not a pass.
+
+A later normal-priority broad run stopped at 781 passed and 19 skips because a
+fresh subprocess importing the complete bridge/Strands ASGI graph exceeded its
+test-only 15-second wall clock before reaching the auth assertions. The exact
+security test passed in isolation; the full auth file then passed 16 with two
+Windows skips. Its subprocess budget is now a bounded 45 seconds. Operator-token
+scrubbing and child non-inheritance assertions are unchanged; no production
+timeout changed. The stopped broad run is not a pass.

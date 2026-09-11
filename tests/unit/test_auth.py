@@ -132,11 +132,15 @@ child = subprocess.run(
 )
 assert child.returncode == 0
 """
+    # Importing the complete ASGI graph also loads the frozen Strands/provider
+    # surface. Windows process and antivirus contention can exceed 15 seconds
+    # in the full suite; keep the security check bounded without confusing
+    # startup scheduling with an authentication failure.
     completed = subprocess.run(
         [sys.executable, "-c", script],
         capture_output=True,
         text=True,
-        timeout=15,
+        timeout=45,
         check=False,
         env=environment,
     )
