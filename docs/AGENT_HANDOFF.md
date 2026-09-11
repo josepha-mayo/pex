@@ -11,6 +11,14 @@ Maintained checkpoint: 11 September 2026; exact-Zen package and frozen smoke pas
 Verify Git/current files and running processes before relying on this checkpoint.
 This is the active entry point, not another historical log.
 
+Joseph's latest working target is now two days. Keep the critical path narrow:
+do not add integrations, pets, cloud deployment, or speculative UI rewrites. The
+remaining product gate is current-package native acceptance followed by one
+bounded OpenCode recovery/quiet pair, fresh recording assets, and the explicitly
+authorized public release/submission actions. Offline audits on 11 September
+found no new hot polling loop or reproducible source defect in the desktop-owned
+bridge lifecycle; do not churn the accepted package without failing evidence.
+
 ## Latest verified checkpoint — supersedes historical status below
 
 **Current package source: `f585562`; UI product change: `8394b4b`.** The package

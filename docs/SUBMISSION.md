@@ -136,11 +136,12 @@ The concise judge comparison and its evidence boundaries are in
 - Connects through each harness's supported surface and labels the resulting capability at
   runtime. Existing shared sessions may be observe-only; isolated Codex App Server and
   OpenCode HTTP sessions can earn deeper support only after their event transport is healthy.
-  Installed Codex 0.153.4 now has a retained real initialization/discovery/shutdown receipt;
-  installed OpenCode 1.18.29 has retained health/discovery/SSE proof plus a controlled live
-  same-session recovery and a separate quiet-completion sample. The read-only protocol smokes did
-  not mutate a user thread; the isolated recovery diagnostics intentionally created their own
-  proof sessions.
+  Installed Codex 0.153.4 now has a retained real initialization/discovery/shutdown receipt.
+  Installed OpenCode 1.18.30 passes the current production health/discovery/SSE contract repeatedly;
+  the controlled same-session recovery and separate quiet-completion samples were captured on its
+  packaged 1.18.29 ancestor. The read-only 1.18.30 protocol smokes did not mutate a user thread;
+  the isolated recovery diagnostics intentionally created their own proof sessions. Do not blur
+  protocol compatibility and historical model-backed behavior into one current live-run claim.
 - Implements a bounded Strands supervisor with six request-scoped, read-only evidence tools and
   requires a validated structured action. The current OpenCode recovery proves main reasoning,
   independent verification, policy-gated same-session delivery and exact outcome; it does not
