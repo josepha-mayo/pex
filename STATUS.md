@@ -2468,3 +2468,9 @@ This is now the only current filming candidate. Native installed-app visual and
 interaction acceptance is still required when Joseph releases the screen. No
 public release, AWS deployment, comparative-benchmark freeze or submission is
 claimed.
+
+The post-package current-tree AgentCore/BYOK gate passed 332 tests with two
+intentional opt-in skips in 125.83 seconds, with unhandled pytest thread warnings
+promoted to errors. This covers the AgentCore client, pipeline, preflight,
+runtime, supervisor-settings contract, providers and configuration. It made no
+AWS or provider call and is not deployment evidence.

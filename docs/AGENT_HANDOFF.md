@@ -1445,6 +1445,12 @@ Joseph explicitly says the screen is free. Preserve `frozen:false`; do not
 claim AgentCore cloud deployment, publish a release, acknowledge rules or
 submit without the corresponding authority and evidence.
 
+Post-package current-tree verification also passed 332 AgentCore/client/
+pipeline/runtime/preflight plus supervisor-settings/provider/configuration tests
+with two intentional opt-in skips in 125.83 seconds. Thread warnings were
+promoted to errors. No AWS resource or provider call ran; preserve the explicit
+implemented-and-offline-tested, not deployed, claim.
+
 ## Current OpenCode MVP closure: 150ea07
 
 Clean pushed source `150ea07b205776660219dbfb1802ff86b998e8df` now passes
