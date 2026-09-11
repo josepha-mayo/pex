@@ -426,6 +426,13 @@ async def main():
     parser.add_argument(
         "--run-name", required=True, help="New evidence directory name under build/"
     )
+    parser.add_argument(
+        "--case-count",
+        type=int,
+        choices=range(1, len(CASES) + 1),
+        default=len(CASES),
+        help="Maximum consecutive public cases to run (default: all 10)",
+    )
     args = parser.parse_args()
     if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,100}", args.run_name) is None:
         parser.error("--run-name must contain lowercase letters, digits and hyphens only")
@@ -474,6 +481,7 @@ async def main():
     results = []
     error_type = None
     server = None
+    selected_cases = CASES[START_CASE - 1 : START_CASE - 1 + args.case_count]
     try:
         model = load_supervisor_model()
         assert model is not None
@@ -504,7 +512,7 @@ async def main():
                             break
                         except httpx.HTTPError:
                             await asyncio.sleep(0.5)
-            for number, case in enumerate(CASES[START_CASE - 1 :], START_CASE):
+            for number, case in enumerate(selected_cases, START_CASE):
                 receipt = await run_case(number, case, model, server)
                 results.append(receipt)
                 print(json.dumps(receipt), flush=True)
@@ -537,8 +545,8 @@ async def main():
         "source_unchanged": source_commit() == start_commit and source_is_clean(),
         "cases": results,
         "error_type": error_type,
-        "requested_case_count": len(CASES) - START_CASE + 1,
-        "passed": len(results) == len(CASES) - START_CASE + 1
+        "requested_case_count": len(selected_cases),
+        "passed": len(results) == len(selected_cases)
         and all(r["passed"] for r in results)
         and source_commit() == start_commit
         and source_is_clean(),

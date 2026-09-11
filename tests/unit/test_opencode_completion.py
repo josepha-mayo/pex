@@ -121,7 +121,13 @@ def test_completion_event_must_be_observed(event_id):
     assert not bound_review([completion_review()], event_id)
 
 
-@pytest.mark.parametrize("args,code", [(["--help"], 0), ([], 2), (["--run-name", "../outside"], 2)])
+@pytest.mark.parametrize("args,code", [
+    (["--help"], 0),
+    ([], 2),
+    (["--run-name", "../outside"], 2),
+    (["--run-name", "safe", "--case-count", "0"], 2),
+    (["--run-name", "safe", "--case-count", "11"], 2),
+])
 def test_live_runner_requires_explicit_valid_run_name_before_any_work(args, code):
     root = Path(__file__).resolve().parents[2]
     result = subprocess.run(
