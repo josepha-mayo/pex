@@ -2461,7 +2461,8 @@ pinned Rust 1.97.1 and two Cargo jobs. The exclusive package verifier passed
 with `release_ready:true`, zero blockers, and exact source/sidecar/canonical
 desktop hashes. The packaged bridge smoke also passed authenticated settings,
 bridge identity, Zen-free catalog ordering and the three-dispatch cap with zero
-provider calls. [Hashes, commands and claim boundary](docs/demo/evidence/PACKAGE_79D4D18_2026-09-11.md).
+provider calls. The exact packaged bridge also passed all three Windows
+lifetime/standalone contracts in 17.89 seconds. [Hashes, commands and claim boundary](docs/demo/evidence/PACKAGE_79D4D18_2026-09-11.md).
 
 This is now the only current filming candidate. Native installed-app visual and
 interaction acceptance is still required when Joseph releases the screen. No
