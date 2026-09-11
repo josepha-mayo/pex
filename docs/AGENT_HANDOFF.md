@@ -1195,3 +1195,9 @@ Remaining P0 is now entirely live/native: UI and pet interaction plus bounded
 foreground/active-worker stability, then the confirmed-free Zen/OpenCode
 corrective and quiet journeys, fresh screenshots/video, authorized public
 release, and submission. Do not claim AgentCore deployment or a benchmark score.
+
+The installed OpenCode 1.18.30 production HTTP/session/SSE contract was rerun
+after packaging in a fresh empty workspace: 1/1 passed in 1.32 seconds and the
+adapter progressed Strong → Deep after the real event stream connected. The
+owned server stopped, port 4097 had zero listeners, and the empty workspace was
+removed. This used no worker, provider, saved key, browser, or native PEX window.

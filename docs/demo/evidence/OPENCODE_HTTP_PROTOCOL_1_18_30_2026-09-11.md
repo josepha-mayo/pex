@@ -36,3 +36,13 @@ This proves installed-version health, session discovery and SSE capability
 negotiation. It did not create or mutate a worker session, send a prompt, invoke
 a model or supervisor, read a BYOK key, deploy AgentCore, access AWS, run a
 benchmark arm, or launch the native PEX UI.
+
+## Release-candidate recheck
+
+After package `06a0e2b` was built and verified, the same production contract was
+rerun from repository HEAD `bcdac8b` (documentation only beyond the package
+source) against installed OpenCode 1.18.30 in a new empty workspace. The exact
+live contract passed 1/1 in 1.32 seconds, again progressing Strong → Deep after
+the real `/global/event` stream connected. The owned server was interrupted,
+port 4097 had zero remaining listeners, and the empty probe directory was
+removed. This recheck remained model-free and did not read the saved Zen key.
