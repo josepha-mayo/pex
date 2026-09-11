@@ -270,3 +270,24 @@ this document. Follow the user's current scope and action permissions.
 **MVP readiness remains pending the unchecked items above**, not optional AWS
 deployment or completion of every historical expansion. Winning remains an aim,
 not a verifiable engineering guarantee.
+
+## 11 September exact-source supervision refresh
+
+- [x] Current OpenCode quiet completion on `150ea07`: exact artifact and input,
+  one completed Strands/Zen `NOOP`, zero follow-ups, no unnecessary interruption,
+  all events settled, clean owned-server shutdown; 70.31 seconds.
+- [x] Current OpenCode same-session recovery on `150ea07`: exact incomplete first
+  stop, deterministic `missing:final.txt`, independently verified correction,
+  one delivered follow-up, exact final artifact, `goal_evidence_supported`,
+  `helped:true`, final model-backed `NOOP`, clean shutdown; 114.44 seconds.
+- [x] Remove redundant token fragments from the durable OpenCode pump and keep
+  ordinary progress frames record-only; only terminal/error/permission/session
+  boundaries enter the full decision pipeline. Expanded MVP seam: 552 passed,
+  one environment skip.
+- [x] Keep OpenCode capability negotiation fail-closed while allowing its cold
+  session listing up to eight bounded seconds. Capability/OpenCode gate: 144
+  passed; recovery/dispatch gate: 90 passed.
+- [ ] Build and verify a fresh MSI/NSIS from the current source; package `6d18167`
+  is now a verified fallback, not the filming candidate.
+
+[Exact current-source receipts](demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).

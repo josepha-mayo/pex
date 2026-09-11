@@ -2431,3 +2431,25 @@ supervisor-integration, AgentCore client/pipeline/runtime, and deployment-prefli
 200/200 in 17.34 seconds. A fresh read-only deployment preflight remains NO-GO because AWS is
 not authenticated, the current AgentCore CLI and CDK are absent, Docker is stopped, no verified
 ARM64 image exists, and no runtime ARN is configured. No AWS resource or paid inference ran.
+
+## 11 September current-source OpenCode closed-loop pair
+
+Clean pushed source `150ea07` passed both locked OpenCode MVP behaviors using
+Ling 3.0 Flash Fin Free as worker and the saved Zen Muse Spark Contributor Free
+BYOK supervisor through Strands. The controlled incomplete case produced one
+specific same-session correction, exact final state, `goal_evidence_supported`,
+`helped:true`, then a quiet model-backed `NOOP`. The correct-completion case
+produced exact state, one `NOOP`, zero follow-ups and no unnecessary interruption.
+Both sources stayed unchanged and both owned servers exited cleanly.
+
+The accepted pair follows three retained failures that exposed and repaired a
+cold HTTP read bound, redundant token-delta backlog, full decision processing on
+ordinary progress frames, and a two-second OpenCode capability-probe false
+negative. The expanded MVP seam passed 552 tests with one environment skip;
+capability/OpenCode and recovery/dispatch gates passed 144 and 90 tests.
+[Exact receipts and limitations](docs/demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).
+
+The latest verified installers still bind older product source `6d18167`. A
+fresh exact-source package for the current repairs is required before native
+acceptance. AgentCore remains local/offline-tested rather than cloud-deployed,
+and the comparative benchmark remains `frozen:false`.

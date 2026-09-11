@@ -713,3 +713,18 @@ Both installers passed integrity gates, but the first native start missed its
 feedback was then verified. This is not a clean cold-start pass. Cause is not
 established; no security-setting changes, profile deletion or authentication
 weakening are justified. [Chronology and next diagnostic action](docs/demo/evidence/PACKAGE_F575D45_2026-09-10.md).
+
+# 11 September 2026: retained OpenCode diagnostics before 150ea07 pass
+
+Three current-day failures are intentionally retained under `build/` and must
+not be reported as passes: the `2dd6625` quiet run had uncertain cold session
+creation; the `6d493ae`/`2cf4378` quiet runs reached exact output but did not
+observe and finish the semantic stop review before their fence; the `8bcbf6e`
+recovery run produced the exact verified correction but denied delivery after a
+capability-probe timeout. The causal repairs are now covered by unit/integration
+gates, and the exact-source quiet plus recovery pair passes on `150ea07`.
+[Accepted evidence and failure boundaries](docs/demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).
+
+This does not close native desktop acceptance, AgentCore cloud deployment, or
+the unfrozen comparative benchmark. The current verified installers predate
+`150ea07` and must be rebuilt before filming.

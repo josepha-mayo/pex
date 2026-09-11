@@ -1425,3 +1425,36 @@ only after it passes. Do not use computer control while he is working. Do not
 acknowledge Devpost rules on his behalf, deploy paid infrastructure, publish an
 installer, freeze/score the benchmark or submit without the required explicit
 authority and evidence.
+
+## Current OpenCode MVP closure: 150ea07
+
+Clean pushed source `150ea07b205776660219dbfb1802ff86b998e8df` now passes
+the paired free OpenCode supervision behaviors on the same exact source. Quiet
+completion finished in 70.31 seconds with exact output, one Strands/Zen `NOOP`,
+zero follow-ups and all 118 meaningful events settled. Controlled recovery
+finished in 114.44 seconds: PEX observed exact stage one plus missing final,
+deterministically recorded `missing:final.txt`, obtained an independently
+verified `SEND_NUDGE`, delivered exactly one follow-up to the same session,
+observed exact completion, recorded `goal_evidence_supported` and `helped:true`,
+then returned a final model-backed `NOOP`. Both owned servers exited and the
+source remained equal to `origin/main`.
+
+The accepted pair follows four causal repairs: OpenCode cold session responses
+receive a 30-second read bound while connect/write/pool remain eight; redundant
+`message.part.delta` fragments do not enter the durable pump; ordinary progress
+events remain durable/UI-visible but record-only instead of each running a full
+decision; and OpenCode capability negotiation receives an eight-second bounded
+probe rather than a false-negative two-second limit. True probe failure still
+removes control and denies delivery. Verification: 259 OpenCode safety tests
+with one environment skip, 552 expanded MVP seam tests with one environment
+skip, 144 capability/OpenCode tests, 90 recovery/dispatch tests, Ruff and diff
+checks all pass. [Exact evidence](demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).
+
+Immediate next order is fixed: commit this evidence, build MSI/NSIS from the
+clean resulting source with pinned Rust 1.97.1 and two Cargo jobs, run the
+exclusive package verifier and packaged-bridge smoke, then update the hashes.
+When Joseph explicitly releases the screen, run the bounded exact-package
+native acceptance and record the five-minute story. Do not add features, rerun
+paid models, claim AgentCore cloud deployment, freeze the comparative benchmark,
+publish a release, acknowledge rules, or submit without the missing authority
+and evidence.
