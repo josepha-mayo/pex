@@ -18,9 +18,14 @@ automatic follow-up until concrete tool/file activity, while a simultaneous
 free-provider limit keeps Blocked priority. Focused gates include 291 frontend
 tests with one platform skip, 137 OpenCode/Codex continuity tests, 210 BYOK/
 provider/configuration tests with one Windows symlink skip, 183 AgentCore local
-tests with one opt-in cloud skip and 283 benchmark/scoring/Cursor/safety tests.
-Production frontend build passed. The current source full Python regression
-passes 4,436 with 32 skips and zero failures/errors. The benchmark manifest
+tests and a newer 368-test benchmark/scoring/Cursor/safety integrity gate.
+Another 253 Strands/supervisor/trajectory/evidence/outcome tests pass. The broad
+368-test run emitted one aiosqlite thread-shutdown warning; the exact named test
+and the entire 57-test owning Cursor contract passed with that warning category
+promoted to errors, so the warning is retained as non-reproduced. Production
+frontend build passed. The most recent full Python regression passes 4,436 with
+32 skips and zero failures/errors at `dd06443`; it predates the narrow exact-Zen
+change, whose affected slice passes 197 on `f585562`. The benchmark manifest
 remains deliberately unfrozen, so no comparative result or leaderboard rank is
 claimed. Clean-source release preflight exits 0 with current sidecars, exactly
 Pex/Von and verified toolchains/wiring.
@@ -42,7 +47,7 @@ recovery observation, not ten passes or a comparative benchmark score.
 AgentCore remains implemented/tested but not deployed. Current-package native
 validation, final recording and submission are not complete. See the
 [shipping gate](docs/MVP_SHIP_GATE.md) and
-[current package evidence](docs/demo/evidence/PACKAGE_56783BF_2026-09-11.md)
+[current package evidence](docs/demo/evidence/PACKAGE_F585562_2026-09-11.md)
 for remaining work and exact hashes.
 
 ## Historical source-bound checkpoints

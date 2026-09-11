@@ -80,6 +80,13 @@ anything on the user's behalf.
 - [x] Current-tree expanded benchmark integrity rerun: 261 core benchmark/
   Cursor/audit/scoring tests plus 22 policy/speculative tests, 283/283 total.
   Manifest remains honestly unfrozen; this is still not a live score.
+- [x] Post-package integrity expansion on `f585562`: 253 Strands/supervisor/
+  trajectory/evidence/outcome tests, 183 local AgentCore tests and 368 benchmark/
+  Cursor/audit/execution-safety/scoring tests passed. The broad benchmark gate
+  emitted one aiosqlite thread-shutdown warning; the exact named test and then
+  all 57 owning Cursor contracts passed with thread warnings promoted to errors.
+  The warning is retained as non-reproduced and does not justify a speculative
+  product edit. No AWS, provider, worker or native UI call ran.
 - [x] Current-tree full Python regression at `dd06443`: 4,436 passed, 32
   skipped, zero failures/errors in 2,743.56 seconds. Retained JUnit:
   `build/full-offline-dd06443-20260911.xml`, SHA-256

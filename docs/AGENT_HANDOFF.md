@@ -29,6 +29,15 @@ the default dispatch cap 3 and the correct first Zen hint, with no provider,
 worker, or AWS call and no surviving bridge process. Visible native acceptance
 remains pending while Joseph uses the PC.
 
+Fresh post-package contract gates on the same source are also green: 253
+Strands/supervisor/trajectory/evidence/outcome tests, 183 local AgentCore tests,
+and 368 benchmark/Cursor/audit/execution-safety/scoring integrity tests. The
+broad 368-test run emitted one aiosqlite thread-shutdown warning. It did not
+reproduce when the named test was rerun with thread warnings as errors, nor when
+the entire owning Cursor contract passed 57/57 with that policy. Treat this as
+a retained non-reproduced warning, not as a hidden pass or a proven product
+defect. No provider, worker, AWS or native UI call occurred in these gates.
+
 **Previous package source: `56783bf`; UI product change: `8394b4b`.** The floating
 overlay's actor width, remaining status-bubble width and hide-button anchor now
 derive from the same user scale, closing the fixed-126px geometry that could make
