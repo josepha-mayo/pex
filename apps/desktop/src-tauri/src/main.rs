@@ -461,6 +461,7 @@ fn bridge_is_healthy_at_until(address: &SocketAddr, token: &str, deadline: Insta
     false
 }
 
+#[cfg(test)]
 fn bridge_port_state_at(address: &SocketAddr, token: &str) -> Result<BridgePortState, String> {
     bridge_port_state_at_until(address, token, Instant::now() + BRIDGE_PROBE_TIMEOUT)
 }
