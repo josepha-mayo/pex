@@ -146,6 +146,70 @@ async def test_opencode_pump_ingests_idle_as_stop():
     assert "server.connected" not in {event.metadata.get("sse_type") for event, _ in ingested}
 
 
+async def test_opencode_pump_skips_redundant_token_deltas_before_terminal_message():
+    transport = MemoryHttpTransport()
+    adapter = OpenCodeAdapter(transport)
+    ingested: list = []
+    completed = asyncio.Event()
+
+    async def ingest(event, session):
+        ingested.append((event, session))
+        if event.event_type == EventType.STOP:
+            completed.set()
+
+    cwd = "C:/tmp/pex-opencode-deltas"
+    transport.events.append(
+        {
+            "type": "message.updated",
+            "properties": {
+                "cwd": cwd,
+                "info": {"sessionID": "ses_delta_pump", "id": "user-1", "role": "user"},
+            },
+        }
+    )
+    transport.events.extend(
+        {
+            "type": "message.part.delta",
+            "properties": {
+                "cwd": cwd,
+                "info": {
+                    "sessionID": "ses_delta_pump",
+                    "id": "assistant-1",
+                    "role": "assistant",
+                },
+                "delta": f"fragment-{index}",
+            },
+        }
+        for index in range(200)
+    )
+    transport.events.append(
+        {
+            "type": "message.updated",
+            "properties": {
+                "cwd": cwd,
+                "info": {
+                    "sessionID": "ses_delta_pump",
+                    "id": "assistant-1",
+                    "role": "assistant",
+                    "parentID": "user-1",
+                    "finish": "stop",
+                    "time": {"created": 1, "completed": 2},
+                },
+            },
+        }
+    )
+
+    task = adapter.start_pipeline_pump(ingest)
+    try:
+        await asyncio.wait_for(completed.wait(), timeout=3)
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+    assert [event.event_type for event, _ in ingested] == [EventType.USER_PROMPT, EventType.STOP]
+    assert all(event.metadata.get("sse_type") != "message.part.delta" for event, _ in ingested)
+
+
 async def test_opencode_discover_relists_isolated_project_sessions():
     transport = MemoryHttpTransport()
     transport.sessions = [

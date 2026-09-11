@@ -1259,6 +1259,16 @@ class OpenCodeAdapter(HarnessAdapter):
                     if kind in {"server.connected", "server.heartbeat"}:
                         batch_offset = index + 1
                         continue
+                    if kind == "message.part.delta":
+                        # OpenCode emits a token-level delta stream and then
+                        # authoritative complete part/message frames. Sending
+                        # every fragment through the durable pipeline can put
+                        # minutes of duplicate bookkeeping ahead of the exact
+                        # parent-bound terminal message. Skip only the lossy
+                        # fragments; complete reasoning, text, tool, status,
+                        # error, and STOP evidence remain observable.
+                        batch_offset = index + 1
+                        continue
                     session = self._session_for(payload)
                     if session is None:
                         batch_offset = index + 1
