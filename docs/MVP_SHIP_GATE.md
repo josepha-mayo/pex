@@ -32,7 +32,7 @@ anything on the user's behalf.
   atlases pass fresh v2 and runtime-contract validation with zero errors or
   warnings; full desktop is 291 passed with one platform skip and the production
   build passes. [Audit and claim boundary](demo/evidence/PET_UI_AUDIT_8394B4B_2026-09-11.md).
-  Package source `9668bcc` passes clean preflight, full Tauri build, MSI/NSIS
+  Package source `06a0e2b` passes clean preflight, full Tauri build, MSI/NSIS
   verification and isolated packaged-bridge cap smoke. Native overlay
   verification remains pending.
 - [x] Bound fresh-install model use at current source `7bf591c`: three durable
@@ -40,9 +40,9 @@ anything on the user's behalf.
   override retained. Ruff and 126 affected pipeline/settings tests pass;
   provider/source/settings slice passes 156 with one intentional skip. Package
   ancestor source `f585562` passes its affected slice and current package
-  `9668bcc` passes MSI/NSIS verification with zero blockers and includes exact
+  `06a0e2b` passes MSI/NSIS verification with zero blockers and includes exact
   Zen Muse Responses routing with no hidden model fallback.
-  [Current hashes and limits](demo/evidence/PACKAGE_9668BCC_2026-09-11.md).
+  [Current hashes and limits](demo/evidence/PACKAGE_06A0E2B_2026-09-11.md).
   A repeatable headless isolated launch of the exact packaged frozen bridge also
   passed: public identity became ready and authenticated supervisor settings
   reported the default cap of three and first Zen free-Muse hint, with no
@@ -61,14 +61,14 @@ anything on the user's behalf.
 - [x] Make pet hide/restore resilient to unavailable WebView storage. The new
   regression, focused 18-test pet suite, final 290-pass desktop suite (one
   platform skip), production build, Tauri build and MSI/NSIS verifier pass on
-  package source `9668bcc`. Native interaction remains pending.
+  package source `06a0e2b`. Native interaction remains pending.
 - [x] Recheck offline AgentCore contracts: 183 passed, no AWS calls/deployment.
 - [x] Recheck current packaged-runtime lifetime and standalone bundle contract:
   3 passed after removing its stale eight-pet expectation; it now requires the
   exact Pex/Von inventory.
 - [x] Remove retired hatch work from the shipping runtime: the active bridge no
   longer imports or initializes its registry/image stack, and exact package
-  `9668bcc` contains zero hatch/image implementation files.
+  `06a0e2b` contains zero hatch/image implementation files.
 - [x] Rebuild and verify provider-limit repairs natively on `5a4c4ac`:
   first-attempt attach, Blocked state, zero new reviews/nudges after idle.
   [Native evidence](demo/evidence/NATIVE_QUOTA_FENCE_5A4C4AC_2026-09-10.md).
@@ -202,7 +202,7 @@ Rebuild and verify the new MSI/NSIS runtime trees before calling them current.
   opaque PNG. Fresh native gallery screenshots remain part of recording acceptance.
 - [x] Quarantine the stale eight-pet browser screenshots under
   `docs/demo/archive/legacy-eight-pet/` together with the byte-identical legacy
-  WebMs; they are forbidden from the final gallery/video. Fresh package-`9668bcc`
+  WebMs; they are forbidden from the final gallery/video. Fresh package-`06a0e2b`
   captures remain part of native acceptance.
 - [ ] Record the working path and complete authorized submission.
 

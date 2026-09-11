@@ -5,9 +5,9 @@ directory are historical references and must not be presented as final-source pr
 
 ## Current checkpoint — 11 September 2026
 
-- Latest verified MSI/NSIS: source `9668bcc`; receipt
-  `build/pex-package-receipt-9668bcc.json`, SHA-256
-  `27837dcb8263b4f4f32e1c6109f88ad1790d63ffe3fa83e5130c1fecc0df8b80`.
+- Latest verified MSI/NSIS: source `06a0e2b`; receipt
+  `build/pex-package-receipt-06a0e2b.json`, SHA-256
+  `8e59ae84fbd6ca8ad34051d55a74cb2b720b628b37efdf199d88b4e18d3dc00b`.
 - Both installers contain exactly Pex and Von and 2,372 matching bridge-runtime
   files, with zero retired hatch/image implementation paths.
 - Current source passes the full Python regression: 4,440 passed, 32 skipped,
@@ -31,7 +31,7 @@ in this directory showed the retired sparse eight-pet interface and Hatch/Import
 controls. The screenshots and clips are quarantined under
 `archive/legacy-eight-pet/` as historical evidence. None may be used in the
 Devpost gallery, README or final video.
-Capture a fresh package-`9668bcc` set only after native acceptance: Home with a
+Capture a fresh package-`06a0e2b` set only after native acceptance: Home with a
 connected worker and persistent goal, the Pex overlay with its message dismissed
 independently, the two-pet Companion settings with Von selected, the Zen BYOK
 write-only provider state/review cap, and the Inspector's bounded supervision

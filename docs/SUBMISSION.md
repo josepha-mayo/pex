@@ -1,7 +1,7 @@
 # Devpost submission copy
 
 > **Current claim boundary — 11 September 2026:** draft, not submitted. Package
-> source `9668bcc` (base UI product `8394b4b`) passes both installer integrity gates with zero blockers.
+> source `06a0e2b` (base UI product `8394b4b`) passes both installer integrity gates with zero blockers.
 > It routes Zen Muse through Responses and never silently switches model IDs.
 > It ships exactly two companions, Pex and Von. Its newest scale-aware overlay,
 > Ask layout and explicit cancellation behavior still require native
@@ -131,8 +131,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
 - [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean package
-  source `9668bcc` (base UI product `8394b4b`); both installer inventories pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `9668bcc`;
+  source `06a0e2b` (base UI product `8394b4b`); both installer inventories pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `06a0e2b`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run current offline gates: 368 benchmark/scoring/Cursor/safety tests,
   an expanded 387-test Strands/supervisor/trajectory/evidence/outcome gate with
@@ -150,12 +150,12 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [ ] After native acceptance, publish the accepted unsigned installer and its
-  SHA-256 as a public GitHub release/test-build link; do not upload `9668bcc`
+  SHA-256 as a public GitHub release/test-build link; do not upload `06a0e2b`
   before that acceptance or silently replace a release asset
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
 - [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source
-- [ ] Natively verify package source `9668bcc` scale-aware overlay, storage-safe hide/restore, Ask layout, cancellation display, exact Zen default, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 and the contributor-free Zen hint in three isolated authenticated headless restart smokes; then
+- [ ] Natively verify package source `06a0e2b` scale-aware overlay, storage-safe hide/restore, Ask layout, cancellation display, exact Zen default, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 and the contributor-free Zen hint in three isolated authenticated headless restart smokes; then
   record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence includes
   the 200-test contract gate plus an exact-package local `/ping` + `/invocations` protocol

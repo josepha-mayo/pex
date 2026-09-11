@@ -21,7 +21,7 @@ bridge lifecycle; do not churn the accepted package without failing evidence.
 
 ## Latest verified checkpoint — supersedes historical status below
 
-**Current package source: `9668bcc`; base UI product change: `8394b4b`.** The package
+**Current package source: `06a0e2b`; base UI product change: `8394b4b`.** The package
 now contains the exact Zen/Ask correction: the selected Muse model is sent to
 `/v1/responses`, `muse-spark-1.3-contributor-free` is the first Zen suggestion
 and default, and Ask PEX can retry a transient failure once only with that same
@@ -30,9 +30,9 @@ provider/BYOK/settings/security tests passed on ancestor `f585562`; the final
 desktop suite passed 290 with
 one platform skip; production build passed. The clean Tauri build and immutable
 package verifier report `release_ready: true` with zero blockers. Receipt
-`build/pex-package-receipt-9668bcc.json`, SHA-256
-`27837dcb8263b4f4f32e1c6109f88ad1790d63ffe3fa83e5130c1fecc0df8b80`.
-[Exact package evidence](demo/evidence/PACKAGE_9668BCC_2026-09-11.md). The frozen
+`build/pex-package-receipt-06a0e2b.json`, SHA-256
+`8e59ae84fbd6ca8ad34051d55a74cb2b720b628b37efdf199d88b4e18d3dc00b`.
+[Exact package evidence](demo/evidence/PACKAGE_06A0E2B_2026-09-11.md). The frozen
 runtime contains 2,372 files and zero retired hatch/image implementation paths.
 Three sequential isolated authenticated restart smokes report the default
 dispatch cap 3 and the correct first Zen hint, with no provider, worker, or AWS
@@ -112,7 +112,7 @@ under `docs/demo/archive/legacy-eight-pet/`. Do not use them in the gallery or
 final video. Capture a fresh current-package Home/overlay/two-pet Settings/
 BYOK/Inspector set only after native
 acceptance. The public README, STATUS, hackathon track and submission checklist
-now point to package `9668bcc`, base UI product `8394b4b` and the current full-regression
+now point to package `06a0e2b`, base UI product `8394b4b` and the current full-regression
 evidence.
 
 Installed OpenCode advanced to `1.18.30`. A fresh model-free production-adapter
@@ -1119,7 +1119,7 @@ startup. Isolated import proof confirmed all three modules absent from `sys.modu
 Focused tests passed 7/7, the broader app/pet/HTTP gate passed 111/111 with pinned
 Rust on `PATH`, and Ruff passed. Native startup/RSS impact remains unmeasured.
 
-## Latest verified package: 9668bcc
+## Previous verified fallback package: 9668bcc
 
 Exact product source `9668bcc2afb5a080cfa0936d778c2f8c641544fa` now has a verified
 MSI and NSIS candidate. The verifier reports `release_ready:true`, zero blockers;
@@ -1161,5 +1161,37 @@ With the pinned Rust 1.97.1 toolchain on PATH, the complete Python regression
 passes **4,440 with 32 skipped in 2,342.58 seconds**, with unhandled pytest thread
 exceptions promoted to failures. No provider, worker, browser, native PEX window
 or AWS resource ran. [Exact evidence](demo/evidence/FULL_OFFLINE_570964B_2026-09-11.md).
-Rebuild and verify the installers from `570964b` before superseding package
-`9668bcc`; until then, `9668bcc` remains the exact verified package fallback.
+Package `06a0e2b` below supersedes `9668bcc`; retain `9668bcc` only as a verified
+fallback with its own immutable hashes.
+
+## Latest verified package: 06a0e2b
+
+Exact source `06a0e2b2d180b75dfe8ece27c9f55583a282b499` has a fresh verified
+MSI and NSIS. The verifier reports `release_ready:true`, zero blockers; the
+frozen runtime has 2,372 files, exactly Pex/Von, and zero retired hatch/image
+implementation paths. Three sequential isolated bridge restarts passed
+identity/auth/settings with exact Zen Contributor Free first, cap 3, zero
+provider calls, no worker, cloud reasoning off, and zero surviving bridge
+processes.
+
+Artifacts:
+
+- MSI: 111,644,696 bytes, SHA-256 `0d7083418eea9a662333a64e1c1c3c5ec284a566df1619b6b03f00b5ee66ba1c`.
+- NSIS: 98,830,453 bytes, SHA-256 `4df2b82465d530f904196a20dc7655a6359881dc2fe0c585fe275c7445302e1f`.
+- Bridge: 34,459,441 bytes, SHA-256 `fdf48337e4e24af26698a9420dea12a905adc571301b58f93fafaffdde6eabbf`.
+- Receipt: `build/pex-package-receipt-06a0e2b.json`, SHA-256 `8e59ae84fbd6ca8ad34051d55a74cb2b720b628b37efdf199d88b4e18d3dc00b`.
+- Evidence: `docs/demo/evidence/PACKAGE_06A0E2B_2026-09-11.md`.
+
+One additional verifier attempt is preserved as
+`build/pex-package-receipt-06a0e2b-failed-cleanup.json`: installer validation
+completed, but Windows returned `EPERM` removing its temporary extraction tree,
+so that attempt correctly stayed `release_ready:false`. The earlier successful
+receipt above binds the same immutable installer hashes and is not overwritten.
+The cleanup directory remains under the user Temp folder because the attempted
+bounded removal was rejected by the execution policy; it is not part of either
+installer or the repository.
+
+Remaining P0 is now entirely live/native: UI and pet interaction plus bounded
+foreground/active-worker stability, then the confirmed-free Zen/OpenCode
+corrective and quiet journeys, fresh screenshots/video, authorized public
+release, and submission. Do not claim AgentCore deployment or a benchmark score.

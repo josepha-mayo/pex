@@ -2,14 +2,14 @@
 
 ## Current — 11 September 2026
 
-**Current package source: `9668bcc`; base UI product change: `8394b4b`, exactly Pex
+**Current package source: `06a0e2b`; base UI product change: `8394b4b`, exactly Pex
 and Von.** It includes the fresh-install cap of three durable semantic
 dispatches, scale-aware overlay geometry, and the exact Zen Responses repair.
 Muse Contributor Free is the first Zen hint/default; Ask PEX never silently
 switches model IDs and permits only one transient retry of the exact selection.
 The full Tauri build completed and both unsigned installers pass integrity with
-zero blockers. Receipt `build/pex-package-receipt-9668bcc.json`, SHA-256
-`27837dcb8263b4f4f32e1c6109f88ad1790d63ffe3fa83e5130c1fecc0df8b80`.
+zero blockers. Receipt `build/pex-package-receipt-06a0e2b.json`, SHA-256
+`8e59ae84fbd6ca8ad34051d55a74cb2b720b628b37efdf199d88b4e18d3dc00b`.
 The frozen runtime contains zero retired hatch/image implementation files;
 custom import and image-generation write APIs remain disabled.
 
@@ -35,7 +35,7 @@ remains deliberately unfrozen, so no comparative result or leaderboard rank is
 claimed. Clean-source release preflight exits 0 with current sidecars, exactly
 Pex/Von and verified toolchains/wiring.
 
-**Native acceptance of `9668bcc` is pending.** Joseph is using the PC and asked
+**Native acceptance of `06a0e2b` is pending.** Joseph is using the PC and asked
 for command-line work only until he says otherwise. Package integrity does not
 prove the repaired scale-aware overlay, Ask layout, cancellation display,
 active-worker stability or recording readiness. The last native candidate
@@ -52,7 +52,7 @@ recovery observation, not ten passes or a comparative benchmark score.
 AgentCore remains implemented/tested but not deployed. Current-package native
 validation, final recording and submission are not complete. See the
 [shipping gate](docs/MVP_SHIP_GATE.md) and
-[current package evidence](docs/demo/evidence/PACKAGE_9668BCC_2026-09-11.md)
+[current package evidence](docs/demo/evidence/PACKAGE_06A0E2B_2026-09-11.md)
 for remaining work and exact hashes.
 
 ## Historical source-bound checkpoints
