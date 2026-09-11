@@ -31,6 +31,7 @@ import {
   assertSchema2EvidenceClosure,
   assertReleaseBuildSourceClean,
   RELEASE_BUILT_IN_PET_IDS,
+  RETIRED_BRIDGE_DATA_FILES,
   RETIRED_BRIDGE_MODULES,
   classifyGitReleaseInputs,
   parseFrozenBundleInventory,
@@ -1526,6 +1527,9 @@ execFileSync(
 const builtBridgeRuntime = join(dist, "pex-bridge");
 if (!existsSync(builtBridgeRuntime) || !lstatSync(builtBridgeRuntime).isDirectory()) {
   throw new Error(`PyInstaller did not create bridge runtime directory ${builtBridgeRuntime}`);
+}
+for (const relativePath of RETIRED_BRIDGE_DATA_FILES) {
+  rmSync(join(builtBridgeRuntime, "_internal", ...relativePath.split("/")), { force: true });
 }
 const stagedBridgeRuntime = join(repo, "build", "pyinstaller", `pex-bridge-runtime-${triple}.stage`);
 removeSafeDirectory(stagedBridgeRuntime, "Staged bridge runtime");

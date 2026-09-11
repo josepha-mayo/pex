@@ -13,6 +13,10 @@ export const RETIRED_BRIDGE_MODULES = Object.freeze([
   "pex_bridge.pets.imagegen",
 ]);
 
+export const RETIRED_BRIDGE_DATA_FILES = Object.freeze(
+  RETIRED_BRIDGE_MODULES.map((moduleName) => `${moduleName.replaceAll(".", "/")}.py`),
+);
+
 // A secondary Windows file-lock failure must not replace the verification error.
 export function withSynchronousCleanup(operation, cleanup) {
   let result;

@@ -11,6 +11,7 @@ import {
   EXPECTED_PET_PERMISSIONS,
   EXPECTED_SIDECAR_BINS,
   RELEASE_BUILT_IN_PET_IDS,
+  RETIRED_BRIDGE_DATA_FILES,
   RETIRED_BRIDGE_MODULES,
   assertCanonicalRepoRelativePath,
   assertPublicReleaseEvidence,
@@ -48,11 +49,21 @@ test("two-pet package excludes the retired hatch implementation modules", () => 
     "pex_bridge.pets.hatch_store",
     "pex_bridge.pets.imagegen",
   ]);
+  assert.deepEqual(RETIRED_BRIDGE_DATA_FILES, [
+    "pex_bridge/pets/hatch.py",
+    "pex_bridge/pets/hatch_store.py",
+    "pex_bridge/pets/imagegen.py",
+  ]);
   assert.throws(() => RETIRED_BRIDGE_MODULES.push("pex_bridge.pets.atlas"), /not extensible/u);
+  assert.throws(() => RETIRED_BRIDGE_DATA_FILES.push("pex_bridge/pets/atlas.py"), /not extensible/u);
   const source = readFileSync(new URL("./build-sidecar.mjs", import.meta.url), "utf8");
   assert.match(
     source,
     /\.\.\.RETIRED_BRIDGE_MODULES\.flatMap\(\(moduleName\) => \["--exclude-module", moduleName\]\)/u,
+  );
+  assert.match(
+    source,
+    /for \(const relativePath of RETIRED_BRIDGE_DATA_FILES\)[\s\S]*rmSync\(join\(builtBridgeRuntime, "_internal", \.\.\.relativePath\.split\("\/"\)\), \{ force: true \}\)/u,
   );
 });
 
