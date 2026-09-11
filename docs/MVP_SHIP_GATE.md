@@ -26,6 +26,12 @@ anything on the user's behalf.
 
 ## Evidence and remaining work
 
+- [x] Final post-recovery package source `c3cc44c`: clean Tauri build, MSI/NSIS,
+  package verifier `release_ready:true` with zero blockers and both inventories
+  verified, plus three isolated packaged-bridge restarts with authenticated
+  settings, Zen Muse Contributor Free first, cap 3, zero provider calls and no
+  surviving process/listener. It contains the numeric-grounding repair from
+  `a242a84`. [Exact hashes and boundary](demo/evidence/PACKAGE_C3CC44C_2026-09-11.md).
 - [x] Repair scale-dependent overlay geometry at product `8394b4b`: the sprite,
   actor hit area, remaining status-bubble width and fixed hide control now share
   one derived width across the supported 0.8–1.4 range. Both exact shipped pet

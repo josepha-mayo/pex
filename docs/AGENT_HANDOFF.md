@@ -1259,3 +1259,36 @@ attach, and foreground/active-worker resources. Capture fresh screenshots and
 a sub-five-minute demo only after those pass. Do not freeze or score the
 comparative benchmark, claim AgentCore deployment, publish a release, or submit
 without the corresponding evidence and action-time authority.
+
+## Latest verified package: c3cc44c
+
+The immediate rebuild above is complete. Exact source
+`c3cc44c7fd23c8b5268acaa926e20face9f0bc25` produced fresh MSI and NSIS
+installers. The package verifier exited 0 with `release_ready:true`, zero
+blockers, both extracted inventories verified, a 2,372-file frozen runtime, and
+the updated supervisor loop/prompt bytes. Three sequential isolated packaged
+bridge restarts passed authenticated identity/settings with Zen Muse
+Contributor Free first, dispatch cap 3, cloud reasoning and worker attachment
+off, and zero provider calls. No PEX process or checked listener survived.
+
+Artifacts:
+
+- MSI: 111,652,888 bytes, SHA-256 `503fa9540c7d71f94613b2dc911aa0f50d70f3a47187a93eb9acede4e8e09a32`.
+- NSIS: 98,831,110 bytes, SHA-256 `76ac6b5341a1954da974674533306fc0b89e588f108049fd8e80b154e3b2fe5e`.
+- Bridge: 34,459,560 bytes, SHA-256 `2f7bc317498560bc0bfb135e62189ecef73fd023e8fbceef48fc46760e070eee`.
+- Receipt: `build/pex-package-receipt-c3cc44c.json`, SHA-256
+  `69a241f75467c1a7a9ce16e34c8a767312a216fb29c9d56dc06e2dded304c7e4`.
+- Evidence: [package c3cc44c](demo/evidence/PACKAGE_C3CC44C_2026-09-11.md).
+
+The first verifier command omitted pinned Rust from that separate shell and
+failed before writing a receipt; the unchanged binaries passed after Rust
+1.97.1 was explicitly restored to `PATH`. Do not describe that invocation error
+as an installer failure. This package supersedes `06a0e2b` for final acceptance.
+
+Remaining P0 is visible and bounded: when the user says the screen is free,
+verify startup/retry/reopen, transparent Pex/Von overlay, calm motion, fixed
+hide and dismiss controls, Home/Inspector/Deck/Settings, Zen BYOK, real
+OpenCode attachment, and foreground/active-worker resources. Then capture fresh
+screenshots and a sub-five-minute demo. Until then the installer is technically
+verified but not visually accepted. Benchmark remains `frozen:false`; AgentCore
+remains implemented/offline-tested rather than deployed.
