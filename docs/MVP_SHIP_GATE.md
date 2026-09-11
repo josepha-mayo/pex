@@ -8,7 +8,7 @@ feature or formal benchmark has been completed.
 
 ## Actual official requirements
 
-Refreshed from Devpost MCP on 10 September 2026 at 07:27 UTC, event 30317.
+Refreshed from Devpost MCP on 11 September 2026 at 17:16 UTC, event 30317.
 [Official rules](https://agentsforhumans.devpost.com/rules) control.
 
 > Deploying with Amazon Bedrock AgentCore is a smart architectural choice and will strengthen your Technical Implementation score, but it's not required.
@@ -24,8 +24,31 @@ architecture diagram, maximum-five-minute working demo video and AWS Builder ID.
 The live-demo URL is optional. This refresh does not record consent or submit
 anything on the user's behalf.
 
+Judges score five equally weighted areas: Technological Implementation, Design,
+Potential Impact, Creativity & Originality and Presentation. The latest organizer
+announcement advises teams to prioritize deterministic agent behavior over extra
+features, highlighting hooks, guardrails and a steering "buddy agent." The final
+take therefore leads with same-worker recovery, evidence-bound policy and quiet
+completion instead of adding scope.
+
 ## Evidence and remaining work
 
+- [x] Public-repository preflight on 11 September: GitHub reports the repository
+  public on `main` with an MIT license; README and architecture PNG/Mermaid source
+  are present. A broad tracked-source secret scan found only deliberate fake test
+  canaries. No public installer release has been created.
+- [x] Final exact-source Pex/Von audit: both shipping atlases pass strict v2,
+  runtime and transparency validation with zero errors or warnings; the 290-test
+  desktop run has 289 passes and one intentional Windows symlink skip.
+  [Visual/contact-sheet evidence](demo/evidence/TWO_PET_FINAL_AUDIT_8CF2AE7_2026-09-11.md).
+- [x] Broad offline MVP seam: supervisor settings/provider binding, goal control,
+  Ask PEX, OpenCode and Codex recovery/outcome paths, Strands and local AgentCore
+  contracts pass 475 tests with one intentional skip and zero failures.
+  [Exact selection and boundary](demo/evidence/MVP_DEMO_SEAM_C70EFFB_2026-09-11.md).
+- [x] The exact frozen packaged bridge remained stable during a bounded 30-second
+  idle sample: about 0.36% of one CPU core on average, no memory growth, and no
+  surviving process or listener after owned-session shutdown.
+  [Resource evidence](demo/evidence/PACKAGED_BRIDGE_IDLE_899A824_2026-09-11.md).
 - [x] Final post-recovery package source `c3cc44c`: clean Tauri build, MSI/NSIS,
   package verifier `release_ready:true` with zero blockers and both inventories
   verified, plus three isolated packaged-bridge restarts with authenticated

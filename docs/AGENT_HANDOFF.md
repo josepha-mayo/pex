@@ -1357,3 +1357,29 @@ instances/listeners. [Exact sample and limits](demo/evidence/PACKAGED_BRIDGE_IDL
 This rules out an obvious headless idle busy loop or short-window bridge leak.
 It does not prove the complete desktop/WebView/GPU path or active-worker load;
 retain those measurements in the bounded native pass.
+
+## 11 September final two-day submission lock
+
+Joseph has set a stricter internal target of two remaining days. Do not spend
+that window expanding the product. The locked submission story is: two polished
+pets, Zen BYOK, one real OpenCode same-session recovery, the corresponding quiet
+NOOP case, honest Codex App Server support, Strands-backed bounded supervision,
+and the tested local AgentCore-compatible protocol. Cursor and AWS deployment
+remain optional and must not displace native acceptance, recording or submission.
+
+The official Devpost requirements and judging rubric were refreshed at 17:16
+UTC on 11 September in [the focused shipping gate](MVP_SHIP_GATE.md). Five areas
+are equally weighted: Technical Implementation, Design, Potential Impact,
+Creativity & Originality and Presentation. The organizer's latest announcement
+explicitly favors deterministic agent behavior over more features. The
+[recording runbook](demo/RECORDING_RUNBOOK.md) now makes same-worker steering,
+read-only evidence tools, guardrails, quiet completion and source-bound proof
+the center of the five-minute take.
+
+The two updated documents pass `git diff --check`, and every local Markdown link
+they contain resolves. Remaining P0 is unchanged: wait for Joseph to explicitly
+release the screen, then perform the bounded exact-package native pass and record
+only after it passes. Do not use computer control while he is working. Do not
+acknowledge Devpost rules on his behalf, deploy paid infrastructure, publish an
+installer, freeze/score the benchmark or submit without the required explicit
+authority and evidence.

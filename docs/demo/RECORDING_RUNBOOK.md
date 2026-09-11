@@ -3,7 +3,10 @@
 Use the verified OpenCode recovery story, one PEX companion, and a clear persistent
 goal. Mention Codex App Server support separately; do not imply control of an
 arbitrary existing Codex desktop conversation. AgentCore deployment is optional
-under the official rules refreshed through Devpost on 10 September 2026.
+under the official rules refreshed through Devpost on 11 September 2026. The
+organizers' latest guidance favors deterministic agent behavior over extra
+features, so the take must make PEX's evidence checks, guardrails and same-worker
+steering visible.
 
 ## Before recording
 
@@ -51,20 +54,21 @@ under the official rules refreshed through Devpost on 10 September 2026.
    vendor session ID, and the exact required `final.txt` artifact.
    Label this a controlled two-stage demonstration with a deliberate initial
    stop, not a naturally occurring failure or a comparative benchmark.
-5. **2:45–3:30 — Real Strands and safety.** Show the sanitized receipt fields
+5. **2:45–3:25 — Real Strands and safety.** Show the sanitized receipt fields
    `used_llm=true` and `runtime=strands-agents`. Explain that Strands proposes a bounded action;
-   deterministic evidence and local policy remain authoritative. Show independent-verifier
-   fields only if the recorded run actually contains them.
-6. **3:30–4:05 — Restraint.** Show the separate completed OpenCode case, PEX choosing a
+   deterministic evidence and local policy remain authoritative. Describe PEX as a steering
+   supervisor with read-only evidence tools and a same-session delivery path, not a second chat.
+   Show independent-verifier fields only if the recorded run actually contains them.
+6. **3:25–4:00 — Restraint.** Show the separate completed OpenCode case, PEX choosing a
    model-backed `NOOP`, and zero PEX follow-ups. The benefit is fewer unnecessary human
    interruptions, not more agent chatter.
-7. **4:05–4:30 — Engineering evidence.** Briefly show source-bound current offline and
-   behavioral receipts, not a stale hardcoded test count. If useful, show the retained local
-   AgentCore protocol receipt, but say AgentCore is the tested deploy target unless a real AWS
-   Runtime is deployed before filming.
-8. **4:30–4:50 — Honest limits.** Do not show or quote a benchmark lift. PexBench is unfrozen,
+7. **4:00–4:25 — Engineering evidence.** Briefly show the source-bound current two-pet audit,
+   broad MVP seam and bounded packaged-bridge idle profile, not a stale hardcoded test count.
+   If useful, show the retained local AgentCore protocol receipt, but say AgentCore is the
+   tested deploy target unless a real AWS Runtime is deployed before filming.
+8. **4:25–4:45 — Honest limits.** Do not show or quote a benchmark lift. PexBench is unfrozen,
    and there is no public scored leaderboard.
-9. **4:50–5:00 — Close.** “You keep the goal and the irreversible decisions. PEX keeps the
+9. **4:45–5:00 — Close.** “You keep the goal and the irreversible decisions. PEX keeps the
    mechanical supervision quiet.”
 
 ## Immediate rejection checks
