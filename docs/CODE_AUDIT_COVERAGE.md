@@ -71,6 +71,20 @@ evidence-tool, Ask review, and recovery-stop coverage passed **241 tests with 4
 skips in 50.03 seconds**. Provider/network/AWS calls were disabled. This proves
 the offline execution contract, not a live model or deployed AgentCore runtime.
 
+## 11 September — offline goal-to-outcome closed-loop gate
+
+The submission-critical persistent-goal and OpenCode supervision cluster passed
+**244/244 in 80.73 seconds** with unhandled pytest thread exceptions promoted to
+failures. Coverage includes goal lifecycle and operation authority, OpenCode
+pipeline pumping, exact outcome lineage, quiet completion projection, idle
+projection, overlay recovery, event processing, and trajectory review. This
+proves that observed events can produce bound corrections or silence and that
+later state is associated with the exact action lineage in local contracts.
+
+No provider, worker, native UI, browser, or AWS call ran. The gate does not
+replace the required live Zen-backed recovery/quiet journeys on the final
+package.
+
 ## 11 September — shipping OpenCode integration full-file audit
 
 Read `integrations/opencode-plugin/pex-plugin.js` and

@@ -42,6 +42,14 @@ call and no surviving bridge process. The exact packaged bridge SHA-256 is
 `scripts/smoke_packaged_bridge.py` makes this gate repeatable. Visible native
 acceptance remains pending while Joseph uses the PC.
 
+Post-package offline closure on 11 September adds four green gates without
+changing package source: AgentCore client/runtime/pipeline/preflight **183/183**;
+bridge BYOK/auth/lifecycle/two-pet critical paths **143 passed, 3 skipped**;
+Strands/provider/evidence/runtime/recovery **241 passed, 4 skipped**; and the
+goal-to-OpenCode-outcome cluster **244/244**. These used fake/local transports
+and disabled provider/AWS calls. They strengthen the package's offline contract
+but do not clear native UI or live semantic supervision.
+
 The current-head offline MVP spine also passes 259/259 with unhandled pytest
 thread warnings promoted to failures: goal lifecycle, quiet completion and
 recovery, two-pet APIs, authenticated supervisor settings, Strands policy,
