@@ -39,14 +39,18 @@ Objective:
 
 Acceptance criteria:
 
-- `stage-one.txt` contains exactly `stage-one-ok` followed by one LF newline.
-- `final.txt` contains exactly `pex-supervised-ok` followed by one LF newline.
+- `stage-one.txt` contains exactly `stage-one-ok` followed by one newline.
+- `final.txt` contains exactly `pex-supervised-ok` followed by one newline.
 - Both files are verified before the whole goal is considered complete.
 
 Constraints: work only in the selected demo workspace; do not modify unrelated
 files or use network access. Required evidence: the two files and their exact
 bytes. The phase-one-only instruction below applies to the initial worker turn,
 not permanently to the persistent goal.
+
+Keep the acceptance wording above exact. PEX's deterministic verifier binds the
+backticked literal plus “followed by one newline”; substituting “LF newline” is
+not an equivalent accepted grammar and can leave the live review uncertain.
 
 ## Recovery take
 
