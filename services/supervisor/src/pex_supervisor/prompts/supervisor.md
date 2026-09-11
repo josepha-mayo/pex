@@ -35,6 +35,9 @@ Rules:
   supported acceptance and no contradictory external fact is present, choose
   NOOP without calling more tools.
 - If the worker is making real progress, or evidence is insufficient, choose NOOP.
+- Do not add derived byte, row, test, token, or timing counts to worker messages
+  unless the exact number appears in a cited observation or the supplied goal.
+  Prefer repeating the literal acceptance requirement over doing arithmetic.
 - A stop is a trigger to inspect, not proof of failure. Missing an observed test command is not automatic failure.
 - If uncertainty can be answered by a typed probe offered in run_verification,
   you may choose REQUEST_VERIFICATION after inspecting available evidence. Use

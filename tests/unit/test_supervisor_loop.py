@@ -307,6 +307,44 @@ def test_pex_prefixed_specific_nudge_is_stripped():
     assert action.payload["text"] == "Create report.txt containing shipped."
 
 
+def test_worker_message_drops_model_derived_parenthetical_byte_count():
+    action = _action_from_proposal(
+        _request(0.1),
+        {
+            "type": "SEND_NUDGE",
+            "rationale": "final file missing",
+            "evidence": ["final.txt absent"],
+            "payload": {
+                "text": (
+                    "Create final.txt containing exactly `pex-supervised-ok` "
+                    "followed by one newline (14 bytes), then verify both files."
+                )
+            },
+        },
+    )
+
+    assert action.type == InterventionType.SEND_NUDGE
+    assert action.payload["text"] == (
+        "Create final.txt containing exactly `pex-supervised-ok` "
+        "followed by one newline, then verify both files."
+    )
+
+
+def test_worker_message_preserves_non_numeric_parenthetical_context():
+    action = _action_from_proposal(
+        _request(0.1),
+        {
+            "type": "SEND_NUDGE",
+            "rationale": "report missing",
+            "evidence": ["report.txt absent"],
+            "payload": {"text": "Create report.txt (see the acceptance criteria)."},
+        },
+    )
+
+    assert action.type == InterventionType.SEND_NUDGE
+    assert action.payload["text"] == "Create report.txt (see the acceptance criteria)."
+
+
 def test_pex_prefixed_worker_text_is_noop():
     action = _action_from_proposal(
         _request(0.1),

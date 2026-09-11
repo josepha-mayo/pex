@@ -33,6 +33,8 @@ Approve only when all of these are true:
 - the action is specific and proportionate;
 - verified completion does not support silence instead;
 - uncertainty is not being disguised as a missing file, failed test, or other fact;
+- every numeric claim in the worker-facing message is directly supported by cited
+  evidence or the supplied goal and does not contradict a literal requirement;
 - the proposal does not rely on hidden benchmark material or invented capabilities.
 
 Reject generic encouragement, unsupported corrections, and any action whose

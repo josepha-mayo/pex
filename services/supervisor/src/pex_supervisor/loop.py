@@ -262,10 +262,17 @@ _GENERIC_NAG = re.compile(
     r"^(keep going|continue|verify with the required|do not stop|don't stop until)\b",
     re.I,
 )
+_DERIVED_BYTE_COUNT_ASIDE = re.compile(
+    r"\s*\((?=[^()]{0,120}\bbytes?\b)(?=[^()]{0,120}\d)[^()]{1,120}\)",
+    re.I,
+)
 
 
 def _sanitize_worker_text(text: str) -> str | None:
     cleaned = re.sub(r"^PEX:\s*", "", (text or "").strip(), flags=re.I)
+    # Model-derived byte counts are brittle and can contradict the literal
+    # requirement. Keep the actionable literal and drop the unsupported aside.
+    cleaned = _DERIVED_BYTE_COUNT_ASIDE.sub("", cleaned)
     if not cleaned:
         return None
     if _GENERIC_NAG.search(cleaned) and not re.search(
