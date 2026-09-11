@@ -1,11 +1,13 @@
 # Hackathon architecture diagram
 
-## Current submission image — 10 September 2026
+## Current submission image — 11 September 2026
 
 Use [pex-architecture.png](pex-architecture.png), regenerated from
 [pex-architecture.mmd](pex-architecture.mmd) for the focused MVP.
 
-The human owns goals and consequential decisions. PEX observes an attached
+The current PNG is regenerated as an opaque dark image so its light labels stay
+readable on Devpost's light or dark surfaces. The human owns goals and
+consequential decisions. PEX observes an attached
 OpenCode HTTP or Codex App Server worker. Goal-bound evidence feeds the bounded
 Strands supervisor; consequential corrections pass independent verification and
 local policy before same-session delivery. Decisions and outcomes are recorded

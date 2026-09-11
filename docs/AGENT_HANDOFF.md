@@ -29,6 +29,12 @@ the default dispatch cap 3 and the correct first Zen hint, with no provider,
 worker, or AWS call and no surviving bridge process. Visible native acceptance
 remains pending while Joseph uses the PC.
 
+The judge-facing architecture source and PNG were regenerated on 11 September
+as a more compact flow and an opaque dark RGB image that remains legible on
+light Devpost pages. It shows the local evidence → Strands → verifier → policy
+loop, Zen BYOK vault boundary, same-session worker action, durable audit, and
+the optional AgentCore path explicitly marked **NOT DEPLOYED**.
+
 Fresh post-package contract gates on the same source are also green: an expanded
 387-test Strands/supervisor/trajectory/evidence/outcome gate (6 skipped) and 183
 local AgentCore tests (one opt-in live-cloud test skipped) both pass with

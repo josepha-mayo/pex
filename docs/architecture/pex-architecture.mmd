@@ -1,37 +1,45 @@
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"18px","primaryTextColor":"#f4f1e8","lineColor":"#86a7ad","clusterBkg":"#132126","clusterBorder":"#486067","edgeLabelBackground":"#081014"},"flowchart":{"curve":"basis","nodeSpacing":35,"rankSpacing":55}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, Segoe UI, Arial","fontSize":"17px","primaryTextColor":"#f4f7f5","lineColor":"#73939a","edgeLabelBackground":"#0b1317","clusterBkg":"#111d22","clusterBorder":"#385158"},"flowchart":{"curve":"basis","nodeSpacing":42,"rankSpacing":58,"htmlLabels":true}}}%%
 flowchart TB
-  human[Human<br/>owns goals and decisions]
-  ui[PEX desktop + companion<br/>goal, pause, inspect, dismiss]
+  human["<b>Human</b><br/>goals + consequential decisions"]
+  ui["<b>PEX desktop + companion</b><br/>attach · inspect · pause · dismiss"]
 
-  subgraph local[LOCAL PEX · IMPLEMENTED]
+  subgraph local["LOCAL PEX · IMPLEMENTED"]
     direction TB
-    bridge[Bridge + adapters<br/>observe existing workers]
-    evidence[Goal-bound evidence<br/>files, tests, progress]
-    strands[Strands Agents supervisor<br/>bounded structured proposal]
-    verifier[Independent verifier<br/>checks consequential corrections]
-    policy[Local policy guard<br/>allow, deny, or ask human]
-    ledger[(SQLite goal ledger<br/>durable action + outcome audit)]
-    bridge --> evidence --> strands
-    strands -->|correction proposal| verifier --> policy
-    strands -->|NOOP: stay quiet| ledger
-    policy -->|record decision| ledger
+    subgraph observe[" "]
+      direction LR
+      bridge["<b>Bridge + adapters</b><br/>authenticated worker events"]
+      evidence["<b>Goal-bound evidence</b><br/>files · tests · progress"]
+      strands["<b>Strands supervisor</b><br/>bounded structured decision"]
+      bridge --> evidence --> strands
+    end
+    subgraph act[" "]
+      direction RL
+      verifier["<b>Independent verifier</b><br/>checks consequential corrections"]
+      policy["<b>Local policy guard</b><br/>allow · deny · ask human"]
+      audit[("<b>SQLite ledger</b><br/>goal · action · outcome")]
+      verifier --> policy -->|audit| audit
+    end
+    strands -->|specific correction| verifier
+    strands -->|NOOP · stay quiet| audit
   end
 
-  worker[Existing coding worker<br/>OpenCode HTTP / Codex App Server]
-  zen[Zen BYOK model<br/>credential held in local vault]
-  cloud[Optional AgentCore Runtime<br/>implemented + offline-tested<br/>NOT DEPLOYED]
+  worker["<b>Existing coding worker</b><br/>OpenCode HTTP · Codex App Server"]
+  zen["<b>Zen BYOK supervisor model</b><br/>credential stays in OS vault"]
+  cloud["<b>Optional AgentCore Runtime</b><br/>implemented + offline-tested<br/><b>NOT DEPLOYED</b>"]
 
-  human --> ui -->|goal and controls| bridge
-  worker -->|worker events| bridge
-  policy -->|authorized same-session correction| worker
-  policy -->|consequential choice| ui
+  human --> ui -->|goal + controls| bridge
+  worker -->|observed events| bridge
+  policy -->|authorized same-session action| worker
+  policy -->|decision needed| ui
   strands <-->|model inference| zen
   bridge -.->|optional remote proposal path| cloud
 
-  classDef live fill:#173f35,stroke:#67deb1,color:#f4f1e8,stroke-width:2px;
-  classDef normal fill:#17252b,stroke:#72939a,color:#f4f1e8;
-  classDef optional fill:#29261d,stroke:#c9ad61,color:#f4f1e8,stroke-dasharray:5 4;
-  class bridge,evidence,strands,verifier,policy,worker live;
-  class human,ui,ledger,zen normal;
+  classDef core fill:#173f35,stroke:#63ddb0,color:#f4f7f5,stroke-width:2px;
+  classDef surface fill:#17262c,stroke:#7899a0,color:#f4f7f5,stroke-width:1.5px;
+  classDef optional fill:#2b281d,stroke:#d0ae54,color:#fff8df,stroke-width:2px,stroke-dasharray:7 5;
+  class bridge,evidence,strands,verifier,policy,worker core;
+  class human,ui,audit,zen surface;
   class cloud optional;
-  style local fill:#101a1f,stroke:#617b82,color:#f4f1e8
+  style local fill:#0f1a1f,stroke:#527078,color:#f4f7f5,stroke-width:2px
+  style observe fill:transparent,stroke:transparent
+  style act fill:transparent,stroke:transparent
