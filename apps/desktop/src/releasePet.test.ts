@@ -15,6 +15,31 @@ test("visibility feedback follows the other pet window without erasing unrelated
   assert.match(app, /setNote\(petVisibilityNote\(petOverlayVisible\(\)\)\)/u);
 });
 
+test("pet visibility remains operable when WebView storage is unavailable", async (t) => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const events: boolean[] = [];
+  const fakeWindow = new EventTarget() as EventTarget & {
+    localStorage: Pick<Storage, "getItem" | "setItem">;
+  };
+  fakeWindow.localStorage = {
+    getItem: () => { throw new Error("storage unavailable"); },
+    setItem: () => { throw new Error("storage unavailable"); },
+  };
+  fakeWindow.addEventListener("pex-pet-visibility", ((event: CustomEvent<boolean>) => {
+    events.push(event.detail);
+  }) as EventListener);
+  Object.defineProperty(globalThis, "window", { configurable: true, value: fakeWindow });
+  t.after(() => {
+    if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow);
+    else Reflect.deleteProperty(globalThis, "window");
+  });
+
+  const { petOverlayVisible, setPetOverlayVisible } = await import("./releasePet.ts");
+  assert.equal(petOverlayVisible(), true, "storage failure must not crash or hide PEX at startup");
+  assert.doesNotThrow(() => setPetOverlayVisible(false));
+  assert.deepEqual(events, [false], "the other WebView must still receive the current-launch update");
+});
+
 test("pet overlay opts out of an opaque themed canvas", async () => {
   const [petHtml, sharedStyles] = await Promise.all([
     readFile(new URL("../pet.html", import.meta.url), "utf8"),

@@ -15,12 +15,24 @@ export function reconcilePetVisibilityNote(note: string | null, visible: boolean
 }
 
 export function petOverlayVisible(): boolean {
-  return typeof window === "undefined" || window.localStorage.getItem(PET_VISIBLE_KEY) !== "false";
+  if (typeof window === "undefined") return true;
+  try {
+    return window.localStorage.getItem(PET_VISIBLE_KEY) !== "false";
+  } catch {
+    // A blocked/corrupt WebView store must not blank the app. Treat the pet as
+    // visible for this process; the native window remains the source of truth.
+    return true;
+  }
 }
 
 export function setPetOverlayVisible(visible: boolean) {
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(PET_VISIBLE_KEY, String(visible));
+    try {
+      window.localStorage.setItem(PET_VISIBLE_KEY, String(visible));
+    } catch {
+      // Persistence can fail independently of the current-window update. Still
+      // notify both WebViews so Hide/Show remains usable for this launch.
+    }
     window.dispatchEvent(new CustomEvent(PET_VISIBILITY_EVENT, { detail: visible }));
   }
 }
