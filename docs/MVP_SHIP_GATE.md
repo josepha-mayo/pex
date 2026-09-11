@@ -178,8 +178,9 @@ Rebuild and verify the new MSI/NSIS runtime trees before calling them current.
 - [x] Thirty-minute packaged resource observation: 180/180 samples retained,
   followed by responsive restore/navigation/Inspector refresh. PEX was minimized
   at inspection; [precise limits](demo/evidence/RESOURCE_OBSERVATION_2026-09-10.md).
-- [ ] Fresh Windows-user installation and long-running foreground/active-worker
-  stability remain unverified; bounded checks do not causally clear the old PC freeze.
+- [ ] Complete the bounded current-package foreground/active-worker stability
+  gate. A fresh-Windows-user installation and long-duration soak remain honest
+  limitations, but are not prerequisites for this focused local MVP submission.
 - [x] Behavioral report retains failed/invalid attempts. Nine semantic
   quiet cases across runs are not a clean ten-case pass or comparative score.
 - [x] The previously failed identifiers case and one control pass a separate
@@ -188,7 +189,8 @@ Rebuild and verify the new MSI/NSIS runtime trees before calling them current.
 - [x] Public repository and MIT license verified; Devpost registration confirmed.
   No submission or public installer release performed.
 - [x] Review architecture image and update the public OpenCode UI setup path.
-- [ ] Finalize current submission copy and judge-facing demo assets.
+- [x] Finalize current submission copy and the judge-facing architecture source/
+  opaque PNG. Fresh native gallery screenshots remain part of recording acceptance.
 - [x] Quarantine the stale eight-pet browser screenshots under
   `docs/demo/archive/legacy-eight-pet/` together with the byte-identical legacy
   WebMs; they are forbidden from the final gallery/video. Fresh package-`f585562`

@@ -1,6 +1,26 @@
 # Known failures
 
-## Current — 10 September 2026
+## Current — 11 September 2026
+
+- Package source `f585562` (UI product `8394b4b`) is the current two-pet
+  candidate. Clean MSI/NSIS integrity, frozen-bridge identity/settings, exact
+  Zen Responses routing and current offline gates pass. Package integrity is
+  not native interaction or recording evidence.
+- The broad 368-test benchmark/Cursor integrity run emitted one aiosqlite
+  thread-shutdown warning. It did not reproduce in the exact named test, the
+  complete 57-test Cursor contract, or an expanded 387-test supervision gate
+  when that warning category was promoted to errors. Retain it as a
+  non-reproduced warning; do not invent a production fix without evidence.
+- Current-package native UI/UX, idle/active stability, exact Zen settings,
+  OpenCode live recovery/quiet behavior and the final recording are still open.
+  Joseph is using the PC; do not start visible PEX or computer-control checks
+  until he hands the screen back.
+- The public repository is MIT and the architecture asset is current. A public
+  video and an accessible test-build link still need to be supplied before
+  submission. AgentCore remains implemented and offline-tested, not deployed;
+  PexBench remains unfrozen and has no publishable score.
+
+## Latest retained live-behavior failure — 10 September 2026
 
 **Live restraint attempt `739c8d3`:** nine correctly completed tasks received
 completed Strands NOOP reviews and no follow-ups. The tenth worker produced a
