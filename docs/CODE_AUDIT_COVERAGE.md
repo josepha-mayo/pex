@@ -1118,7 +1118,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | --- | --- | --- |
 | `apps/desktop/package.json` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/scripts/build-sidecar.mjs` | UI / release | PENDING |
-| `apps/desktop/scripts/record_submission_demo.py` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
+| `apps/desktop/scripts/record_submission_demo.py` | UI / release | REMOVED 11 Sep; stale browser-only recorder targeted retired controls and could not prove the packaged product |
 | `apps/desktop/scripts/release-contract.mjs` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/scripts/release-contract.test.mjs` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `apps/desktop/src-tauri/build.rs` | UI / release | FULL READ UI/release 5 Sep; findings open; later edits need re-review |

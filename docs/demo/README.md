@@ -130,11 +130,6 @@ show a real packaged native run, not the browser layout reference. Record only a
 native stability passes; otherwise present the current artifacts as a proof-of-concept package,
 not a finished release.
 
-The legacy headless recorder remains available for layout references only:
-
-```powershell
-uv run --no-project --with playwright python apps/desktop/scripts/record_submission_demo.py
-```
-
-It does not prove Tauri, the frozen bridge, a live worker, AgentCore deployment, or a benchmark
-result.
+The obsolete browser-layout recorder was removed. It targeted retired controls and could create
+submission-looking media without exercising Tauri, the frozen bridge, a live worker, Strands, or
+AgentCore. Capture final media only from the accepted native package.
