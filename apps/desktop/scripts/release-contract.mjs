@@ -5,6 +5,14 @@ const SHA256 = /^[0-9a-f]{64}$/u;
 // This is the release allowlist, not the historical-review corpus.
 export const RELEASE_BUILT_IN_PET_IDS = Object.freeze(["pex", "von"]);
 
+// These retired implementation modules are deliberately absent from the two-pet
+// runtime even though PyInstaller collects the rest of pex_bridge for adapters.
+export const RETIRED_BRIDGE_MODULES = Object.freeze([
+  "pex_bridge.pets.hatch",
+  "pex_bridge.pets.hatch_store",
+  "pex_bridge.pets.imagegen",
+]);
+
 // A secondary Windows file-lock failure must not replace the verification error.
 export function withSynchronousCleanup(operation, cleanup) {
   let result;

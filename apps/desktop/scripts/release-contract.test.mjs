@@ -11,6 +11,7 @@ import {
   EXPECTED_PET_PERMISSIONS,
   EXPECTED_SIDECAR_BINS,
   RELEASE_BUILT_IN_PET_IDS,
+  RETIRED_BRIDGE_MODULES,
   assertCanonicalRepoRelativePath,
   assertPublicReleaseEvidence,
   assertFrozenBundleInventory,
@@ -39,6 +40,20 @@ test("release builder retains only the current two-pet evidence validator", () =
   assert.doesNotMatch(source, /function validatePetReleaseEvidence\(/u);
   assert.doesNotMatch(source, /exact ordered eight-pet fleet/u);
   assert.equal((source.match(/validateCompactPetReleaseEvidence\(/gu) ?? []).length, 2);
+});
+
+test("two-pet package excludes the retired hatch implementation modules", () => {
+  assert.deepEqual(RETIRED_BRIDGE_MODULES, [
+    "pex_bridge.pets.hatch",
+    "pex_bridge.pets.hatch_store",
+    "pex_bridge.pets.imagegen",
+  ]);
+  assert.throws(() => RETIRED_BRIDGE_MODULES.push("pex_bridge.pets.atlas"), /not extensible/u);
+  const source = readFileSync(new URL("./build-sidecar.mjs", import.meta.url), "utf8");
+  assert.match(
+    source,
+    /\.\.\.RETIRED_BRIDGE_MODULES\.flatMap\(\(moduleName\) => \["--exclude-module", moduleName\]\)/u,
+  );
 });
 
 test("verification cleanup preserves success and each failure without masking", () => {
