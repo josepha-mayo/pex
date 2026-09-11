@@ -1,14 +1,14 @@
 # Devpost submission copy
 
 > **Current claim boundary — 11 September 2026:** draft, not submitted. Package
-> source `619ea71` (base UI product `8394b4b`) passes both installer integrity gates with zero blockers.
+> source `c3cc44c` (base UI product `8394b4b`) passes both installer integrity gates with zero blockers.
 > It routes Zen Muse through Responses and never silently switches model IDs.
 > It ships exactly two companions, Pex and Von. Its newest scale-aware overlay,
 > Ask layout and explicit cancellation behavior still require native
 > visual/interaction verification.
 > Installers are unsigned. Real packaged
-> OpenCode/Strands recovery and quiet evidence exists on the source revisions
-> recorded in the active handoff; Codex App Server has separate source proofs.
+> OpenCode 1.18.30/Strands recovery and quiet evidence exists on clean source
+> revisions `93dfef3` and `6a1d98b`; Codex App Server has separate source proofs.
 > Native testing is no longer on the old incident hold, but Joseph is currently
 > using the PC; do not start visible PEX/computer-control checks until he hands
 > the screen back. AgentCore is implemented
@@ -59,11 +59,10 @@ The concise judge comparison and its evidence boundaries are in
   runtime. Existing shared sessions may be observe-only; isolated Codex App Server and
   OpenCode HTTP sessions can earn deeper support only after their event transport is healthy.
   Installed Codex 0.153.4 now has a retained real initialization/discovery/shutdown receipt.
-  Installed OpenCode 1.18.30 passes the current production health/discovery/SSE contract repeatedly;
-  the controlled same-session recovery and separate quiet-completion samples were captured on its
-  packaged 1.18.29 ancestor. The read-only 1.18.30 protocol smokes did not mutate a user thread;
-  the isolated recovery diagnostics intentionally created their own proof sessions. Do not blur
-  protocol compatibility and historical model-backed behavior into one current live-run claim.
+  Installed OpenCode 1.18.30 passes the current production health/discovery/SSE contract repeatedly.
+  Separate clean-source 1.18.30 diagnostics capture controlled same-session recovery and quiet
+  completion in isolated public proof sessions. Do not present either single case as a comparative
+  benchmark or natural failure-rate measurement.
 - Implements a bounded Strands supervisor with six request-scoped, read-only evidence tools and
   requires a validated structured action. The current OpenCode recovery proves main reasoning,
   independent verification, policy-gated same-session delivery and exact outcome; it does not
@@ -71,7 +70,7 @@ The concise judge comparison and its evidence boundaries are in
 - Exposes the strict versioned AgentCore Runtime protocol. The exact packaged source passes a
   local `/ping` + `/invocations` end-to-end smoke with a typed session-bound result; local mode
   is deterministic-only and is not an AWS deployment claim.
-- Routes semantic-only interventions through an independent verifier Agent in locally tested contracts; failures and evidence-free approvals become NOOP, while deterministic verification truth remains authoritative. The curated live receipt does not independently prove this tier, so do not call it live-demonstrated unless a judge-readable trace is captured.
+- Routes semantic-only interventions through an independent verifier Agent; failures and evidence-free approvals become NOOP, while deterministic verification truth remains authoritative. The current OpenCode recovery retains the approved verifier decision and its independent observation receipts.
 - Keeps a local policy guard. Cloud can propose; it cannot bypass allow/deny/ask.
 - Surfaces attention as a desktop pet, not another chat transcript.
 
@@ -131,8 +130,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
 - [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean package
-  source `619ea71` (base UI product `8394b4b`); both installer inventories pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `619ea71`;
+  source `c3cc44c` (base UI product `8394b4b`); both installer inventories pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `c3cc44c`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run current offline gates: 368 benchmark/scoring/Cursor/safety tests,
   an expanded 387-test Strands/supervisor/trajectory/evidence/outcome gate with
@@ -150,12 +149,15 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [ ] After native acceptance, publish the accepted unsigned installer and its
-  SHA-256 as a public GitHub release/test-build link; do not upload `619ea71`
+  SHA-256 as a public GitHub release/test-build link; do not upload `c3cc44c`
   before that acceptance or silently replace a release asset
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
 - [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source
-- [ ] Natively verify package source `619ea71` scale-aware overlay, storage-safe hide/restore, Ask layout, cancellation display, exact Zen default, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 and the contributor-free Zen hint in three isolated authenticated headless restart smokes; then
+- [x] Validate current OpenCode 1.18.30 quiet completion on clean `6a1d98b` and
+  causal same-session recovery on clean `93dfef3`, including an independently
+  verified correction, exact outcome, `helped:true`, and final NOOP
+- [ ] Natively verify package source `c3cc44c` scale-aware overlay, storage-safe hide/restore, Ask layout, cancellation display, exact Zen default, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 and the contributor-free Zen hint in three isolated authenticated headless restart smokes; then
   record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence includes
   the 200-test contract gate plus an exact-package local `/ping` + `/invocations` protocol

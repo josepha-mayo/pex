@@ -9,7 +9,7 @@ Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
 OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Package source `619ea71` (base UI product `8394b4b`) ships only Pex and Von,
+Package source `c3cc44c` (base UI product `8394b4b`) ships only Pex and Von,
 defaults fresh installs to three semantic review dispatches per session, and passes both installer
 content/inventory gates. It also routes Zen Muse through Responses and forbids
 silent model fallback. The most recent full Python regression passed 4,440 tests
@@ -19,16 +19,21 @@ slice also passes 197 tests on package ancestor `f585562`. An earlier package pa
 native unpacked-runtime startup, pet transparency, dismissal/hiding and
 selected-session Ask checks; the newest scale-aware overlay, Ask layout and
 explicit-cancellation repairs still need bounded native checks.
-The latest live OpenCode run hit its free-provider quota and is not a benchmark pass;
-provider-limit blocking and idle suppression now pass a native negative-case
-check with zero additional reviews or nudges. Final stability and recording remain.
+Fresh clean-source OpenCode 1.18.30 diagnostics now pass both required behaviors:
+one already-correct task received a model-backed NOOP and zero PEX follow-ups,
+while one controlled incomplete stop received one independently verified
+same-session correction, reached exact final artifacts with `helped:true`, then
+received a final NOOP. These are single public diagnostics, not a benchmark.
+The recovery audit exposed one wrong derived byte-count aside; final package
+`c3cc44c` contains the deterministic sanitation and verifier-prompt repair.
+Final visible stability and recording remain.
 Installed OpenCode 1.18.30 also passes a fresh model-free production HTTP/session/
 SSE smoke, reaching Deep after the real event-stream handshake; this does not
 replace the separate model-backed recovery evidence.
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
-[current package evidence](docs/demo/evidence/PACKAGE_619EA71_2026-09-11.md),
+[current package evidence](docs/demo/evidence/PACKAGE_C3CC44C_2026-09-11.md),
 [current status](STATUS.md), and the source-bound evidence linked there.
 
 ## The pain it removes
@@ -85,7 +90,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for package source `619ea71` (base UI product `8394b4b`) and
+installer candidate exists for package source `c3cc44c` (base UI product `8394b4b`) and
 is not code-signed.
 These instructions cover building from source; package integrity is not native
 acceptance or publisher trust. Current source-bound package evidence is recorded
@@ -238,14 +243,14 @@ STOP intervention must also pass a fresh independent verifier Agent using its
 own observations and invocation. Timeout, malformed output, missing evidence,
 or rejection becomes NOOP. Deterministic verification truth and local policy
 still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
-target, not a deployed-service claim. Historical source `933239a` has a retained real
-OpenCode recovery: main Strands inference inspected the workspace, a separate verifier approved
-the exact missing-artifact finding, policy admitted one same-session correction, and the free
-worker produced the exact final bytes. A separate correctly completed OpenCode task produced a
-model-backed `NOOP` and zero PEX follow-ups. See the
-[recovery](docs/demo/evidence/LIVE_OPENCODE_PEX_CLOSED_LOOP_2026-09-09.md) and
-[quiet](docs/demo/evidence/LIVE_OPENCODE_QUIET_2026-09-09.md) receipts. Real Codex restraint and
-same-thread recovery are also retained on packaged ancestor `9357bb8`. This does not prove the
+target, not a deployed-service claim. Clean source `93dfef3` has a retained real
+OpenCode 1.18.30 recovery: main Strands inference inspected the workspace, a separate verifier
+approved the exact missing-artifact finding, policy admitted one same-session correction, and the
+free worker produced the exact final bytes with `goal_evidence_supported` and `helped:true`. Clean
+source `6a1d98b` has the separate already-correct task: a model-backed `NOOP` and zero PEX
+follow-ups. See the current [recovery](docs/demo/evidence/LIVE_OPENCODE_RECOVERY_93DFEF3_2026-09-11.md)
+and [quiet](docs/demo/evidence/LIVE_OPENCODE_QUIET_6A1D98B_2026-09-11.md) receipts. Real Codex
+restraint and same-thread recovery are retained separately on `e864389`. This does not prove the
 outstanding bounded native stability run, ten-case quiet statistics, AgentCore deployment, or a
 benchmark result.
 
