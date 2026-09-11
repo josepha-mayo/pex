@@ -16,10 +16,15 @@ natural failure frequency or benchmark improvement.
    If that port is already occupied, use a different unused port consistently;
    do not stop an unrelated server.
 3. Select the intended worker model in OpenCode. In PEX, configure the separate
-   supervisor through Settings using your own Zen key, then connect to the
-   server through Connections. Do credential entry off-camera. Verify current
-   provider pricing before making calls; previous free receipts are not a
-   guarantee that today's route is free. Do not permit paid fallback.
+   supervisor through Settings using your own Zen key and the exact
+   `muse-spark-1.3-contributor-free` ID, then connect to the server through
+   Connections. Do credential entry off-camera. Verify current provider pricing
+   and that Zen auto-reload is disabled before making calls; previous free
+   receipts are not a guarantee that today's route is free. Plain
+   `muse-spark-1.3` is paid. The Contributor Free route permits training use, so
+   use only this public throwaway task and never private source or personal data.
+   Do not permit paid fallback. See the
+   [official Zen page](https://opencode.ai/docs/zen).
 4. Select the new OpenCode session in PEX. Confirm its workspace and vendor
    session identity. Attach the goal below before sending the worker prompt.
    Confirm supervision is enabled and the saved review budget permits the

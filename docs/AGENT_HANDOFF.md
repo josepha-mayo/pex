@@ -49,6 +49,14 @@ cleanup. Product code did not change. Port 4097 and the empty probe workspace
 were removed afterward. See
 [OpenCode 1.18.30 evidence](demo/evidence/OPENCODE_HTTP_PROTOCOL_1_18_30_2026-09-11.md).
 
+Official Zen documentation refreshed 11 September still lists
+`muse-spark-1.3-contributor-free` as free on the Responses endpoint, while plain
+`muse-spark-1.3` is paid. It also documents account auto-reload and contributor-
+model prompt/completion training use. Do not make the final live call until the
+signed-in account visibly confirms auto-reload is disabled; use only the public
+throwaway demo workspace and never fall back to the paid ID. The PEX three-
+dispatch cap is a usage bound, not a dollar guarantee.
+
 Current offline reruns after packaging are green: BYOK/provider/configuration
 210 passed with one intentional Windows symlink skip; OpenCode/Codex
 cancellation, lineage and correction 137 passed; AgentCore local contracts 183

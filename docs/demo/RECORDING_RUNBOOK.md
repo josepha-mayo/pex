@@ -20,8 +20,13 @@ under the official rules refreshed through Devpost on 10 September 2026.
   or unrelated Codex/Cursor/Devin process to prepare a recording.
 - Verify current free-provider availability before using the Muse supervisor and an
   isolated OpenCode worker. Historical receipts do not guarantee current pricing or
-  availability. Never reuse the private proof session in a public recording and
-  never switch to a paid fallback.
+  availability. On 11 September, the official Zen page listed
+  `muse-spark-1.3-contributor-free` as free on `/v1/responses`, but also documented
+  account auto-reload and contributor-model training use. Before any take, verify
+  auto-reload is disabled and select the exact Contributor Free ID—plain
+  `muse-spark-1.3` is paid. Use only a public throwaway prompt/workspace. Never
+  reuse the private proof session or switch to a paid fallback. See the
+  [official Zen page](https://opencode.ai/docs/zen).
 - Prepare one tiny workspace whose public acceptance criterion is visible on screen. Do not
   expose API keys, raw private worker state, hidden evaluator data, or local account details.
 - Follow the README's two-terminal OpenCode setup: `serve` keeps the backend
