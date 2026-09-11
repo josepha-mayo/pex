@@ -1905,3 +1905,16 @@ Zen/Muse free catalog defaults, cap 3, and zero provider calls. Complete desktop
 contracts passed 290 with one intentional symlink skip; Rust passed 19/19 and a
 warning-free release check. See
 `docs/demo/evidence/PACKAGE_9668BCC_2026-09-11.md` for hashes and limitations.
+
+## 11 September final two-pet artifact and presentation audit
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/pets/{pex,von}/spritesheet.webp` | REVIEWED / UNCHANGED | Fresh installed `hatch-pet` v2 validation passed both exact source atlases: 1536 x 2288 RGBA, zero errors, warnings, transparent-RGB residue, chroma pixels, or fringe. Parent inspected fresh final contact and direction sheets; no static blocker or justified regeneration was found. |
+| `apps/desktop/src/pets/{pex,von}/pet.json` and `release-manifest.json` | REVIEWED / CURRENT | Exactly two v2 manifests; source hashes match the release manifest and both occur in the current `c3cc44c` package receipt. |
+| `apps/desktop/src/components/PetStage.tsx`, `pets/atlas.tsx`, `releasePet.ts`, `styles.css` | REVIEWED / VERIFIED CONTRACTS | Calm bounded animation, visibility-paused timers, transparent shell, scale-aware fixed hide control, separate persistent message dismissal, and stale visibility-race handling are explicit. Complete desktop contracts passed 289 with one intentional Windows symlink skip and zero failures. |
+
+See `docs/demo/evidence/TWO_PET_FINAL_AUDIT_8CF2AE7_2026-09-11.md` for exact
+hashes, commands, findings, and the remaining native-playback boundary. This is
+parent/static review plus preserved historical independent lineage; it is not a
+new independent visual review or native acceptance claim.

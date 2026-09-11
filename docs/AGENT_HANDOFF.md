@@ -1305,3 +1305,28 @@ Uvicorn process shut down cleanly with no listener remaining. The exercised
 credential, AgentCore cloud Runtime, worker, or native UI was used.
 
 [Exact current receipt and limits](demo/evidence/LOCAL_AGENTCORE_PROTOCOL_1EA1539_2026-09-11.md).
+
+## Final two-pet artifact audit before native acceptance
+
+On clean `8cf2ae7`, the exact Pex and Von source atlases were revalidated using
+the installed `hatch-pet` v2 workflow and bundled workspace Python. Both are
+1536 x 2288 RGBA WebP atlases with 192 x 208 cells, `spriteVersionNumber: 2`,
+zero validator errors/warnings, zero transparent-RGB residue, and zero opaque
+chroma or fringe pixels. Their SHA-256 values exactly match the two-pet release
+manifest and occur in the current `c3cc44c` package receipt. Fresh contact and
+direction sheets received parent visual review; identities, state families,
+opposite gaits, transparency, and cardinal/clockwise gaze semantics had no
+static blocker. No risky regeneration was warranted.
+
+The complete desktop contract command reran 290 tests: 289 passed, zero failed,
+one intentional Windows symlink-permission skip. It covers the transparent
+native canvas contract, scale-aware fixed pet hide button, separate persistent
+status-message dismissal, calm/paused animation, hidden-view timer/poll/socket
+cleanup, visibility races, and exactly two release pets. Exact evidence and
+limitations: [final two-pet audit](demo/evidence/TWO_PET_FINAL_AUDIT_8CF2AE7_2026-09-11.md).
+
+Do not call this native acceptance. The remaining P0 is unchanged and bounded:
+when the user says the screen is free, run only the exact-package PEX checks for
+startup/reopen, transparent overlay, live cadence, fixed hide/message controls,
+Home/Inspector/Deck/Settings, Zen BYOK, OpenCode attachment, and bounded
+foreground/active-worker resources. Then record the sub-five-minute demo.
