@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   boundedRead, boundedReadBatch, boundedSingleFlightRead, coalesceBackgroundRead,
+  createBurstRefreshGate,
   startSerialPolling,
 } from "./readBudget.ts";
 
@@ -126,6 +127,31 @@ test("a failed background read is not cached and explicit reads stay independent
   assert.equal(calls, 3);
 });
 
+test("event-page bursts schedule one trailing refresh and cleanup cancels it", () => {
+  let calls = 0;
+  let scheduled: (() => void) | undefined;
+  let delay = 0;
+  const gate = createBurstRefreshGate(() => { calls += 1; }, 250, (callback, ms) => {
+    scheduled = callback;
+    delay = ms;
+    return () => { scheduled = undefined; };
+  });
+  for (let index = 0; index < 100; index += 1) gate.trigger();
+  assert.equal(delay, 250);
+  assert.ok(scheduled);
+  const first = scheduled as () => void;
+  first();
+  assert.equal(calls, 1);
+  gate.trigger();
+  assert.ok(scheduled);
+  gate.stop();
+  assert.equal(scheduled, undefined);
+  first();
+  assert.equal(calls, 1);
+  gate.trigger();
+  assert.equal(scheduled, undefined);
+});
+
 test("app uses serialized background polls and bounds JSON and asset bodies, not mutations", async () => {
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
@@ -152,8 +178,8 @@ test("goal evidence polling is bound to goal intent, not every session snapshot"
   assert.ok(/cancelled = true;[\s\S]*?controller\.abort\(\);[\s\S]*?stopPolling\(\)/.test(effect));
   assert.match(
     source,
-    /message\.topic === "event_page"[\s\S]*?goalEvidenceRefresh\.current\?\.\(\)/,
-    "committed event pages should wake attached-goal evidence immediately",
+    /message\.topic === "event_page"[\s\S]*?eventDerivedRefresh\.trigger\(\)/,
+    "committed event pages should wake attached-goal evidence without waiting for polling",
   );
 });
 
@@ -180,7 +206,8 @@ test("canonical detail reads are event-first with one slow full reconciliation",
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
   assert.match(source, /const DETAIL_RECONCILIATION_INTERVAL_MS = 32_000/);
-  assert.match(source, /message\.topic === "event_page"[\s\S]*?detailRefresh\.current\?\.\(\)/);
+  assert.match(source, /const eventDerivedRefresh = createBurstRefreshGate\([\s\S]*?detailRefresh\.current\?\.\(\)/);
+  assert.match(source, /message\.topic === "event_page"[\s\S]*?eventDerivedRefresh\.trigger\(\)/);
   assert.match(source, /const refreshDetails = coalesceBackgroundRead/);
   assert.match(source, /let slowDetailsRequested = false/);
   assert.match(source, /const refreshSlowDetails = \(\) => \{\s*slowDetailsRequested = true;\s*return refreshDetails\(\);\s*\}/);
@@ -287,7 +314,7 @@ test("handoff assimilation is event-first with a slow reconciliation and never b
   assert.match(details, /nextHandoffKey !== handoffInterventionKey\.current[\s\S]*?setHandoffAssimilation\(\{\}\)[\s\S]*?handoffAssimilationRefresh\.current\?\.\(\)/);
 
   assert.match(source, /const HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS = 30_000/);
-  assert.match(source, /message\.topic === "event_page"[\s\S]*?handoffAssimilationRefresh\.current\?\.\(\)/);
+  assert.match(source, /const eventDerivedRefresh = createBurstRefreshGate\([\s\S]*?handoffAssimilationRefresh\.current\?\.\(\)/);
   assert.match(source, /setHandoffAssimilation\(\{\}\);\s*const refreshHandoffAssimilation = coalesceBackgroundRead/);
   assert.match(source, /handoffInterventionKey\.current !== requestedKey[\s\S]*?return/);
   assert.match(source, /startSerialPolling\([\s\S]*?refreshHandoffAssimilation,[\s\S]*?HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS/);

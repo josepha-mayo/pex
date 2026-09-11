@@ -118,6 +118,29 @@ export function coalesceBackgroundRead<T>(read: () => Promise<T>): () => Promise
   };
 }
 
+/** Collapse a burst of observation hints into one cancellable trailing refresh. */
+export function createBurstRefreshGate(
+  refresh: () => void,
+  delayMs: number,
+  schedule: Schedule = scheduleTimer,
+): { trigger: () => void; stop: () => void } {
+  let stopped = false;
+  let cancelTimer: (() => void) | undefined;
+  const trigger = () => {
+    if (stopped || cancelTimer) return;
+    cancelTimer = schedule(() => {
+      cancelTimer = undefined;
+      if (!stopped) refresh();
+    }, delayMs);
+  };
+  const stop = () => {
+    stopped = true;
+    cancelTimer?.();
+    cancelTimer = undefined;
+  };
+  return { trigger, stop };
+}
+
 /** A slow refresh never accumulates interval-triggered copies of itself. */
 export function startSerialPolling(
   refresh: (signal: AbortSignal) => Promise<unknown>,

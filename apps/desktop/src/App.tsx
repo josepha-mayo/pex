@@ -27,6 +27,7 @@ import { canEditGoalLedger, goalLedgerKey, readGoalDecisions } from "./goalLedge
 import { usePageVisibility } from "./pageVisibility";
 import {
   boundedRead, boundedReadBatch, boundedSingleFlightRead, coalesceBackgroundRead,
+  createBurstRefreshGate,
   startSerialPolling,
 } from "./readBudget";
 import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun";
@@ -140,6 +141,7 @@ const GOAL_EVIDENCE_RECONCILIATION_INTERVAL_MS = 30_000;
 const HANDOFF_ASSIMILATION_RECONCILIATION_INTERVAL_MS = 30_000;
 const PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS = 30_000;
 const DETAIL_RECONCILIATION_INTERVAL_MS = 32_000;
+const EVENT_DERIVED_REFRESH_DEBOUNCE_MS = 250;
 
 function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
   if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return "local";
@@ -634,6 +636,13 @@ export function App() {
     const refreshBackgroundPet = coalesceBackgroundRead<unknown>(() =>
       cancelled ? Promise.resolve() : refreshPet(controller.signal),
     );
+    const eventDerivedRefresh = createBurstRefreshGate(() => {
+      void goalEvidenceRefresh.current?.();
+      void handoffAssimilationRefresh.current?.();
+      void detailRefresh.current?.();
+      void identityConflictRefresh.current?.();
+      void identityStatusRefresh.current?.();
+    }, EVENT_DERIVED_REFRESH_DEBOUNCE_MS);
     const stopPolling = startSerialPolling(
       refreshBackgroundPet,
       PET_RECONCILIATION_INTERVAL_MS,
@@ -701,13 +710,9 @@ export function App() {
                 } catch {
                   /* Resume remains available for this live socket. */
                 }
-                // Canonical commits wake goal evidence immediately. Bursts
-                // share each evidence effect's one in-flight reconciliation.
-                void goalEvidenceRefresh.current?.();
-                void handoffAssimilationRefresh.current?.();
-                void detailRefresh.current?.();
-                void identityConflictRefresh.current?.();
-                void identityStatusRefresh.current?.();
+                // Persist cursor durability immediately, but collapse a burst
+                // of committed pages into one derived-state refresh fan-out.
+                eventDerivedRefresh.trigger();
               }
             }
           } catch {
@@ -735,6 +740,7 @@ export function App() {
       petRequestSequence.current += 1;
       controller.abort();
       stopPolling();
+      eventDerivedRefresh.stop();
       if (retryTimer != null) window.clearTimeout(retryTimer);
       socket?.close();
     };

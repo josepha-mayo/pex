@@ -1931,7 +1931,8 @@ test("project identity App flow separates summary polling from active candidate 
   assert.match(source, /requestSequence !== identityConflictRequestSequence\.current/);
   assert.match(source, /requestSequence !== identityStatusRequestSequence\.current/);
   assert.match(source, /const PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS = 30_000/);
-  assert.match(source, /message\.topic === "event_page"[\s\S]*?identityConflictRefresh\.current\?\.\(\)[\s\S]*?identityStatusRefresh\.current\?\.\(\)/);
+  assert.match(source, /const eventDerivedRefresh = createBurstRefreshGate\([\s\S]*?identityConflictRefresh\.current\?\.\(\)[\s\S]*?identityStatusRefresh\.current\?\.\(\)/);
+  assert.match(source, /message\.topic === "event_page"[\s\S]*?eventDerivedRefresh\.trigger\(\)/);
   assert.match(source, /const refreshConflicts = coalesceBackgroundRead/);
   assert.match(source, /const refreshStatus = coalesceBackgroundRead/);
   assert.match(source, /refreshConflicts,\s*PROJECT_IDENTITY_RECONCILIATION_INTERVAL_MS/);
