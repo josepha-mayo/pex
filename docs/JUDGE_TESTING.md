@@ -19,6 +19,19 @@ PEX starts without a cloud credential and remains honest about deterministic-
 only observation. A semantic supervision demo requires a model configured by the
 tester. No developer key is bundled.
 
+After a release build, the packaged local bridge defaults can be checked without
+opening PEX or calling a model:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\smoke_packaged_bridge.py `
+  --exe .\apps\desktop\src-tauri\target\release\pex-bridge-runtime\pex-bridge.exe `
+  --output .\build\packaged-settings-smoke.json
+```
+
+The command refuses a loose development executable, uses an isolated temporary
+profile, verifies authenticated identity plus Settings, disables worker/cloud
+attachment, and owns the bridge in a kill-on-close Windows job.
+
 ## Connect OpenCode
 
 From a small throwaway project, keep one local server and its attached terminal
@@ -76,4 +89,3 @@ optional AgentCore endpoint proposes an action.
   an arbitrary private Codex desktop conversation.
 - The installer is unsigned; source and SHA-256 hashes are published with the
   accepted candidate.
-
