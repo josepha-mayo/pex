@@ -6,14 +6,30 @@ claiming deployment. The user's later small-MVP request takes priority over
 historical expansion gates; formal four-arm scores remain unclaimed. The unsafe
 933239a launcher instructions have been removed from the recording runbook.
 
-Maintained checkpoint: 11 September 2026; current-source full Python regression passed.
+Maintained checkpoint: 11 September 2026; exact-Zen package and frozen smoke passed.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files and running processes before relying on this checkpoint.
 This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
-**Current package source: `56783bf`; product change: `8394b4b`.** The floating
+**Current package source: `f585562`; UI product change: `8394b4b`.** The package
+now contains the exact Zen/Ask correction: the selected Muse model is sent to
+`/v1/responses`, `muse-spark-1.3-contributor-free` is the first Zen suggestion
+and default, and Ask PEX can retry a transient failure once only with that same
+model. It never silently changes to a different Zen model. Ruff passed; 197
+provider/BYOK/settings/security tests passed; the desktop suite passed 291 with
+one platform skip; production build passed. The clean Tauri build and immutable
+package verifier report `release_ready: true` with zero blockers. Receipt
+`build/package-f585562-20260911-verified.json`, SHA-256
+`0cb41ee1b7d1b1302142ac19107bde9cf157b06ea22517257105daf0fb9ed49b`.
+[Exact package evidence](demo/evidence/PACKAGE_F585562_2026-09-11.md). Frozen
+bridge lifetime/manifest checks pass 3/3; an isolated authenticated smoke reports
+the default dispatch cap 3 and the correct first Zen hint, with no provider,
+worker, or AWS call and no surviving bridge process. Visible native acceptance
+remains pending while Joseph uses the PC.
+
+**Previous package source: `56783bf`; UI product change: `8394b4b`.** The floating
 overlay's actor width, remaining status-bubble width and hide-button anchor now
 derive from the same user scale, closing the fixed-126px geometry that could make
 the × drift or squeeze the bubble. Full desktop: 291 passed, one platform skip;
@@ -27,7 +43,7 @@ blockers. Receipt `build/package-56783bf-20260911-verified.json`, SHA-256
 [Exact package evidence](demo/evidence/PACKAGE_56783BF_2026-09-11.md). The
 packaged frozen bridge also passed isolated liveness, authenticated settings and
 fresh-install cap-3 checks with no provider/worker/AWS call. Visible native
-acceptance remains pending while Joseph uses the PC.
+acceptance was still pending at that checkpoint; `f585562` supersedes it.
 
 Submission-asset audit found that the five root-level `docs/demo` screenshots
 and two duplicate short WebMs showed the retired sparse eight-pet browser UI and
@@ -36,7 +52,7 @@ under `docs/demo/archive/legacy-eight-pet/`. Do not use them in the gallery or
 final video. Capture a fresh current-package Home/overlay/two-pet Settings/
 BYOK/Inspector set only after native
 acceptance. The public README, STATUS, hackathon track and submission checklist
-now point to package `56783bf`, product `8394b4b` and the current full-regression
+now point to package `f585562`, UI product `8394b4b` and the current full-regression
 evidence.
 
 Installed OpenCode advanced to `1.18.30`. A fresh model-free production-adapter
@@ -81,8 +97,8 @@ allowance assertion and two Windows-contention-sensitive test-only waits. The
 assertion now requires the safe default 3/3 allowance; the bounded fixture and
 fresh-subprocess waits were raised without changing production timeouts or
 runtime behavior. Exact affected-file reruns and Ruff passed before the clean
-whole-suite run. Product/package source remains `56783bf` because every change
-after packaging is test-only or documentation-only.
+whole-suite run. That regression predates the narrow exact-Zen source change;
+the affected provider/BYOK/settings/security slice passes 197 on `f585562`.
 
 **Prior package source: `204c766`; product change: `7bf591c`.** Product `7bf591c` changes
 the fresh-install supervisor default from unbounded to three durable semantic

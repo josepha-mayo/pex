@@ -3,9 +3,10 @@
 Living checklist. Do **not** put secrets, tokens, or account IDs here.
 
 Last updated: 2026-09-11
-Release remains NO-GO. Package source `56783bf` (product `8394b4b`) passes clean
+Release remains NO-GO. Package source `f585562` (UI product `8394b4b`) passes clean
 preflight, full Tauri build, both installer integrity gates and isolated frozen-
-bridge liveness/settings checks. It ships exactly two pets, Pex and Von; both pass
+bridge identity/settings checks. It includes exact Zen Muse Responses routing
+with no hidden model fallback. It ships exactly two pets, Pex and Von; both pass
 structural, atlas and static visual review. Current source passes 4,436 Python
 tests with 32 skips and zero failures/errors. Controlled OpenCode and Codex plus
 provider-live Strands proofs exist on the revisions cited in the active handoff,
@@ -75,6 +76,6 @@ When ready to use the console in-browser:
 Do not pause product work to click consoles. Browser the AWS pages when we need a credential, a deployment, a screenshot, or a published post.
 
 Current product milestone: run the bounded native recovery/idle/two-pet visual gate
-on package `56783bf`, capture the validated OpenCode plus Strands story in that app,
+on package `f585562`, capture the validated OpenCode plus Strands story in that app,
 then record and submit. PexBench remains unfrozen; AgentCore deployment is optional
 and must not be claimed unless actually proven.

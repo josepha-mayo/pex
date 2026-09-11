@@ -32,15 +32,16 @@ anything on the user's behalf.
   atlases pass fresh v2 and runtime-contract validation with zero errors or
   warnings; full desktop is 291 passed with one platform skip and the production
   build passes. [Audit and claim boundary](demo/evidence/PET_UI_AUDIT_8394B4B_2026-09-11.md).
-  Package source `56783bf` passes clean preflight, full Tauri build, MSI/NSIS
+  Package source `f585562` passes clean preflight, full Tauri build, MSI/NSIS
   verification and isolated packaged-bridge cap smoke. Native overlay
   verification remains pending.
 - [x] Bound fresh-install model use at current source `7bf591c`: three durable
   semantic dispatches per worker session by default, explicit Settings/env
   override retained. Ruff and 126 affected pipeline/settings tests pass;
   provider/source/settings slice passes 156 with one intentional skip. Package
-  source `56783bf` passes MSI/NSIS verification with zero blockers.
-  [Current hashes and limits](demo/evidence/PACKAGE_56783BF_2026-09-11.md).
+  source `f585562` passes MSI/NSIS verification with zero blockers and includes
+  exact Zen Muse Responses routing with no hidden model fallback.
+  [Current hashes and limits](demo/evidence/PACKAGE_F585562_2026-09-11.md).
   A headless isolated launch of the packaged frozen bridge also passed: public
   liveness became ready and authenticated supervisor settings reported the
   default cap of three, with no provider/worker/AWS call. Visible native Settings
@@ -179,7 +180,7 @@ Rebuild and verify the new MSI/NSIS runtime trees before calling them current.
 - [ ] Finalize current submission copy and judge-facing demo assets.
 - [x] Quarantine the stale eight-pet browser screenshots under
   `docs/demo/archive/legacy-eight-pet/` together with the byte-identical legacy
-  WebMs; they are forbidden from the final gallery/video. Fresh package-`56783bf`
+  WebMs; they are forbidden from the final gallery/video. Fresh package-`f585562`
   captures remain part of native acceptance.
 - [ ] Record the working path and complete authorized submission.
 

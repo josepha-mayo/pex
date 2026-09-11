@@ -2,13 +2,14 @@
 
 ## Current — 11 September 2026
 
-**Current package source: `56783bf`; product change: `8394b4b`, exactly Pex and
-Von.** It includes the fresh-install cap of three durable semantic dispatches
-per worker session plus scale-aware overlay geometry. It has been rebuilt but
-not natively checked. The full Tauri build completed and both unsigned
-installers pass integrity with zero blockers and 2,375 matching bridge-runtime
-files. Receipt `build/package-56783bf-20260911-verified.json`, SHA-256
-`cacf98bccd87f14673961d1479f13ee0aa791bbbade0f47364695e76f8393e64`.
+**Current package source: `f585562`; UI product change: `8394b4b`, exactly Pex
+and Von.** It includes the fresh-install cap of three durable semantic
+dispatches, scale-aware overlay geometry, and the exact Zen Responses repair.
+Muse Contributor Free is the first Zen hint/default; Ask PEX never silently
+switches model IDs and permits only one transient retry of the exact selection.
+The full Tauri build completed and both unsigned installers pass integrity with
+zero blockers. Receipt `build/package-f585562-20260911-verified.json`, SHA-256
+`0cb41ee1b7d1b1302142ac19107bde9cf157b06ea22517257105daf0fb9ed49b`.
 Custom import and image-generation write APIs remain disabled.
 
 The packaged candidate includes the compact Ask layout repair and an exact
@@ -24,7 +25,7 @@ remains deliberately unfrozen, so no comparative result or leaderboard rank is
 claimed. Clean-source release preflight exits 0 with current sidecars, exactly
 Pex/Von and verified toolchains/wiring.
 
-**Native acceptance of `56783bf` is pending.** Joseph is using the PC and asked
+**Native acceptance of `f585562` is pending.** Joseph is using the PC and asked
 for command-line work only until he says otherwise. Package integrity does not
 prove the repaired scale-aware overlay, Ask layout, cancellation display,
 active-worker stability or recording readiness. The last native candidate
