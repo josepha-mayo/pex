@@ -44,6 +44,12 @@ The current-head offline MVP spine also passes 252/252 with unhandled pytest
 thread warnings promoted to failures: goal lifecycle, quiet completion and
 recovery, two-pet APIs, authenticated supervisor settings, Strands policy,
 Zen provider/Ask routing, and local AgentCore. No live provider or AWS call ran.
+Post-package exact-head checks also pass: desktop 292 with one intentional
+Windows symlink skip, production TypeScript/Vite build with 69 modules, native
+Rust ownership/security/window-close contracts 19/19, and release pet validation
+with exactly `pex` and `von`. The first pet-validator command omitted the pinned
+Rust directory from `PATH` and failed before validation; the corrected documented
+environment passed. This was a toolchain-shell failure, not a product failure.
 
 The final frontend-only delta makes pet visibility storage-safe. Throwing
 WebView `getItem` no longer blanks startup, and throwing `setItem` no longer
