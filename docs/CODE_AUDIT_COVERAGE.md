@@ -36,6 +36,23 @@ complete desktop suite passed **289 with one intentional Windows symlink skip**;
 and TypeScript/Vite built **69 modules**. This is source/test evidence; the
 source-hash-changing cleanup requires a fresh package before release promotion.
 
+## 11 September — bridge lifecycle, BYOK, auth, and two-pet focused audit
+
+Reviewed the reachable startup/shutdown ownership, supervisor settings/BYOK,
+authentication, adapter-pump admission, and two-pet API sections of
+`services/bridge/src/pex_bridge/app.py`. Blocking credential/model preparation
+runs off the event loop; configuration is revision-checked and single-flight;
+secret references and key material stay out of responses; dormant adapters do
+not start polling pumps; shutdown revokes and joins owned work; and retired pet
+mutation routes fail closed without constructing hatch storage. No new defect
+was found in this focused scope. This is not a full-file claim for the 6,533-line
+route module.
+
+The supervisor settings/config, HTTP/WebSocket/MCP auth, shutdown, two-pet API,
+pet snapshot/coalescing/concurrency, and disabled-hatch cluster passed **143
+tests with 3 intentional skips in 44.34 seconds**. Semantic provider calls and
+AWS were disabled; no native UI or worker was opened.
+
 ## 11 September — shipping OpenCode integration full-file audit
 
 Read `integrations/opencode-plugin/pex-plugin.js` and
@@ -1308,7 +1325,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `services/bridge/src/pex_bridge/adapters/synthetic.py` | Harness / integrity | PENDING |
 | `services/bridge/src/pex_bridge/adapters/winfocus.py` | Harness / integrity | PENDING |
 | `services/bridge/src/pex_bridge/agentcore.py` | Backend / release cross-review | FULL READ 11 Sep; 183-test AgentCore gate passed; live deployment remains open |
-| `services/bridge/src/pex_bridge/app.py` | Backend / release cross-review | PENDING |
+| `services/bridge/src/pex_bridge/app.py` | Backend / release cross-review | FOCUSED READ 11 Sep: lifecycle, BYOK, auth, pump ownership, two-pet routes; 143 passed/3 skipped; full-file audit remains open |
 | `services/bridge/src/pex_bridge/ask.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/benchmark_public.py` | Backend / release cross-review | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
 | `services/bridge/src/pex_bridge/bus.py` | Backend / release cross-review | PENDING |
