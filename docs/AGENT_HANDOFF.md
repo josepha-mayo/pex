@@ -6,7 +6,7 @@ claiming deployment. The user's later small-MVP request takes priority over
 historical expansion gates; formal four-arm scores remain unclaimed. The unsafe
 933239a launcher instructions have been removed from the recording runbook.
 
-Maintained checkpoint: 11 September 2026; stripped two-pet package and three frozen restart smokes passed.
+Maintained checkpoint: 11 September 2026; current two-pet package and three frozen restart smokes passed.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files and running processes before relying on this checkpoint.
 This is the active entry point, not another historical log.
@@ -21,23 +21,24 @@ bridge lifecycle; do not churn the accepted package without failing evidence.
 
 ## Latest verified checkpoint — supersedes historical status below
 
-**Current package source: `06a0e2b`; base UI product change: `8394b4b`.** The package
+**Current package source: `619ea71`; base UI product change: `8394b4b`.** The package
 now contains the exact Zen/Ask correction: the selected Muse model is sent to
 `/v1/responses`, `muse-spark-1.3-contributor-free` is the first Zen suggestion
 and default, and Ask PEX can retry a transient failure once only with that same
 model. It never silently changes to a different Zen model. Ruff passed; 197
 provider/BYOK/settings/security tests passed on ancestor `f585562`; the final
-desktop suite passed 290 with
-one platform skip; production build passed. The clean Tauri build and immutable
+desktop suite passed 289 with
+one platform skip after 503 lines of unreachable schema-2/eight-pet release code
+and self-only tests were removed; production build passed. The clean Tauri build and immutable
 package verifier report `release_ready: true` with zero blockers. Receipt
-`build/pex-package-receipt-06a0e2b.json`, SHA-256
-`8e59ae84fbd6ca8ad34051d55a74cb2b720b628b37efdf199d88b4e18d3dc00b`.
-[Exact package evidence](demo/evidence/PACKAGE_06A0E2B_2026-09-11.md). The frozen
+`build/pex-package-receipt-619ea71.json`, SHA-256
+`a32cfb0db8db062baf18bb40fcb23ccea58589bf0c637a7c2103d8f6d181eaf4`.
+[Exact package evidence](demo/evidence/PACKAGE_619EA71_2026-09-11.md). The frozen
 runtime contains 2,372 files and zero retired hatch/image implementation paths.
 Three sequential isolated authenticated restart smokes report the default
 dispatch cap 3 and the correct first Zen hint, with no provider, worker, or AWS
 call and no surviving bridge process. The exact packaged bridge SHA-256 is
-`962b2ebee197865873d1e9b37c09e0e0886e8902df6be350d29f8029378c8ad1`;
+`2db6b3169fff7e52ddce109d01d6dd1d63a00c6376d84e01cf57b76653f1c7d8`;
 `scripts/smoke_packaged_bridge.py` makes this gate repeatable. Visible native
 acceptance remains pending while Joseph uses the PC.
 
