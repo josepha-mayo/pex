@@ -1,5 +1,23 @@
 # PEX code audit coverage — 5 September 2026
 
+## 11 September — AgentCore client boundary full-file audit
+
+Read `services/bridge/src/pex_bridge/agentcore.py` end to end against the core,
+build, and implementation-recovery specifications. The client validates exact
+session/harness/project/goal binding before dispatch, minimizes and redacts the
+cloud request, bounds request and response bodies, rejects duplicate keys and
+non-finite JSON, reconstructs every remote proposal under local policy, requires
+bound independent-verifier evidence for completion and trajectory corrections,
+and treats post-dispatch transport/protocol failures as delivery-uncertain so a
+second semantic model is never started. AgentCore mode fails closed to NOOP for
+definite pre-dispatch/configuration failures; hybrid fallback remains explicit.
+No new defect was found.
+
+The complete local AgentCore client/runtime/pipeline/preflight gate passed
+**183/183 in 12.23 seconds** with fake clients and local fixtures. No AWS request,
+deployment, paid model call, native app, or worker was started. This proves the
+offline boundary contract, not a deployed AgentCore runtime.
+
 ## 11 September — shipping OpenCode integration full-file audit
 
 Read `integrations/opencode-plugin/pex-plugin.js` and
@@ -1271,7 +1289,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `services/bridge/src/pex_bridge/adapters/strict_json.py` | Harness / integrity | PENDING |
 | `services/bridge/src/pex_bridge/adapters/synthetic.py` | Harness / integrity | PENDING |
 | `services/bridge/src/pex_bridge/adapters/winfocus.py` | Harness / integrity | PENDING |
-| `services/bridge/src/pex_bridge/agentcore.py` | Backend / release cross-review | PENDING |
+| `services/bridge/src/pex_bridge/agentcore.py` | Backend / release cross-review | FULL READ 11 Sep; 183-test AgentCore gate passed; live deployment remains open |
 | `services/bridge/src/pex_bridge/app.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/ask.py` | Backend / release cross-review | PENDING |
 | `services/bridge/src/pex_bridge/benchmark_public.py` | Backend / release cross-review | FULL READ UI/release 5 Sep; findings open; later edits need re-review |
