@@ -152,8 +152,8 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
                 "final.txt bytes."
             ),
             acceptance_criteria=[
-                "stage-one.txt contains exactly stage-one-ok followed by one LF newline",
-                "final.txt contains exactly pex-supervised-ok followed by one LF newline",
+                "stage-one.txt contains exactly stage-one-ok followed by one newline",
+                "final.txt contains exactly pex-supervised-ok followed by one newline",
             ],
             evidence_requirements=["stage-one.txt", "final.txt"],
             created_at=now,

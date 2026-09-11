@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 
@@ -95,9 +96,20 @@ def recovery_interventions_succeeded(rows: Any, followups: Any) -> bool:
         return False
     if not all(isinstance(row, dict) for row in rows):
         return False
+    try:
+        stamped = [
+            (datetime.fromisoformat(row["created_at"]), index, row)
+            for index, row in enumerate(rows)
+            if isinstance(row.get("created_at"), str)
+        ]
+    except (KeyError, ValueError):
+        return False
+    if len(stamped) != len(rows) or len({stamp for stamp, _, _ in stamped}) != len(rows):
+        return False
+    ordered = [row for _, _, row in sorted(stamped)]
     corrections = [
         (index, row)
-        for index, row in enumerate(rows)
+        for index, row in enumerate(ordered)
         if row.get("action_taken") != "NOOP"
     ]
     if len(corrections) != 1:
@@ -127,7 +139,7 @@ def recovery_interventions_succeeded(rows: Any, followups: Any) -> bool:
         and verifier.get("status") == "approved"
     ):
         return False
-    for row in rows[correction_index + 1 :]:
+    for row in ordered[correction_index + 1 :]:
         metadata = row.get("metadata")
         verification = metadata.get("verification") if isinstance(metadata, dict) else None
         if (

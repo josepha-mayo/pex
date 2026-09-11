@@ -20,6 +20,7 @@ def recovery_rows():
     text = "Create final.txt and verify it."
     return [
         {
+            "created_at": "2026-09-11T16:09:47Z",
             "action_taken": "SEND_NUDGE",
             "result": "sent",
             "outcome": "goal_evidence_supported",
@@ -34,6 +35,7 @@ def recovery_rows():
             },
         },
         {
+            "created_at": "2026-09-11T16:14:04Z",
             "action_taken": "NOOP",
             "result": "noop",
             "metadata": {
@@ -47,6 +49,8 @@ def recovery_rows():
 
 def test_recovery_requires_exact_helped_correction_then_supported_noop():
     rows, followups = recovery_rows()
+    assert recovery_interventions_succeeded(rows, followups)
+    rows.reverse()  # Store presentation order is newest-first.
     assert recovery_interventions_succeeded(rows, followups)
 
 
@@ -64,7 +68,9 @@ def test_recovery_requires_exact_helped_correction_then_supported_noop():
     lambda rows, followups: rows[1]["metadata"]["verification"].__setitem__(
         "acceptance_status", "unknown"
     ),
-    lambda rows, followups: rows.reverse(),
+    lambda rows, followups: rows[1].__setitem__("created_at", rows[0]["created_at"]),
+    lambda rows, followups: rows[1].__setitem__("created_at", "invalid"),
+    lambda rows, followups: rows.pop(),
 ])
 def test_recovery_rejects_missing_or_ambiguous_causal_proof(mutation):
     rows, followups = recovery_rows()
