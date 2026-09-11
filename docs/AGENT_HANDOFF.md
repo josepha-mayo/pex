@@ -40,6 +40,12 @@ installer. There is no existing GitHub release/tag. Publish the accepted
 installer and checksum only after the native gate passes and Joseph authorizes
 that external release action.
 
+Machine cleanup requested by Joseph is complete: Ollama and its common model
+directories were already absent; the remaining unused WinGet `ggml.llamacpp`
+runtime was found with no related process and successfully uninstalled on 11
+September. `llama-server`, `llama-cli`, and the exact WinGet package now resolve
+absent. No ambiguous shared model cache was deleted.
+
 Fresh post-package contract gates on the same source are also green: an expanded
 387-test Strands/supervisor/trajectory/evidence/outcome gate (6 skipped) and 183
 local AgentCore tests (one opt-in live-cloud test skipped) both pass with
