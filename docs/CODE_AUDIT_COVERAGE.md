@@ -53,6 +53,24 @@ pet snapshot/coalescing/concurrency, and disabled-hatch cluster passed **143
 tests with 3 intentional skips in 44.34 seconds**. Semantic provider calls and
 AWS were disabled; no native UI or worker was opened.
 
+## 11 September — Strands and AgentCore runtime execution audit
+
+Read `services/supervisor/src/pex_supervisor/runtime.py` end to end and reviewed
+the active Strands Agent/verifier construction plus Zen/provider model-loading
+sections in `loop.py` and `providers.py`. The semantic path creates a
+request-scoped Strands Agent with bounded read-only evidence tools, uses a fresh
+verifier Agent for intervention authorization, accounts model calls, and keeps
+side effects behind local policy. The AgentCore entrypoint requires an explicit
+provider/model, validates bounded unique-key finite JSON and exact authority
+binding, and never silently replaces a failed AgentCore server with local HTTP.
+Zen BYOK uses the Responses adapter and a PEX-owned opaque session header. No
+new defect was found in this scope.
+
+Strands runtime/integration, AgentCore runtime, supervisor loop, provider,
+evidence-tool, Ask review, and recovery-stop coverage passed **241 tests with 4
+skips in 50.03 seconds**. Provider/network/AWS calls were disabled. This proves
+the offline execution contract, not a live model or deployed AgentCore runtime.
+
 ## 11 September — shipping OpenCode integration full-file audit
 
 Read `integrations/opencode-plugin/pex-plugin.js` and
@@ -1377,9 +1395,9 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `services/supervisor/src/pex_supervisor/inspect_http.py` | Backend / release cross-review | PENDING |
 | `services/supervisor/src/pex_supervisor/loop.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
 | `services/supervisor/src/pex_supervisor/planner.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
-| `services/supervisor/src/pex_supervisor/providers.py` | Backend / release cross-review | PENDING |
+| `services/supervisor/src/pex_supervisor/providers.py` | Backend / release cross-review | FOCUSED READ 11 Sep: active Zen/Strands model construction and provenance; provider gate green; full-file audit remains open |
 | `services/supervisor/src/pex_supervisor/public_task.py` | Backend / release cross-review | PENDING |
-| `services/supervisor/src/pex_supervisor/runtime.py` | Backend / release cross-review | PENDING |
+| `services/supervisor/src/pex_supervisor/runtime.py` | Backend / release cross-review | FULL READ 11 Sep; strict AgentCore envelope/server path; 241-test combined Strands gate green |
 | `services/supervisor/src/pex_supervisor/search.py` | Backend / release cross-review | PENDING |
 | `services/supervisor/src/pex_supervisor/verify.py` | Backend / release cross-review | PENDING |
 | `services/supervisor/src/pex_supervisor/workspace.py` | Backend / release cross-review | FULL READ backend 5 Sep; findings open; later edits need re-review |
