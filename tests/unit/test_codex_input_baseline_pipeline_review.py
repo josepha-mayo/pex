@@ -22,6 +22,11 @@ from test_codex_subscription import (
 )
 from test_workspace_continuity_pipeline import bound_pipeline as bound_pipeline
 
+# The full Windows suite runs several real Store/background-pump fixtures at
+# once and may be deliberately scheduled below normal priority. Keep this wait
+# bounded, but do not turn ordinary scheduler contention into a product failure.
+SETTLE_TIMEOUT_SECONDS = 30
+
 
 @pytest.fixture(autouse=True)
 def actual_baseline_bootstrap(monkeypatch):
@@ -77,7 +82,7 @@ async def events_settled(bound, count):
                 } for state in states):
                     return sorted(events, key=lambda event: event.metadata["ingress_sequence"])
             await asyncio.sleep(0.01)
-    return await asyncio.wait_for(wait(), 10)
+    return await asyncio.wait_for(wait(), SETTLE_TIMEOUT_SECONDS)
 
 
 def baseline(event):

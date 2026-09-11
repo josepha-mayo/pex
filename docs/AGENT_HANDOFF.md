@@ -50,6 +50,13 @@ the old unlimited review allowance. Product correctly returned the fresh-install
 override; its full file rerun passes 26/26 and Ruff passes. Do not report the
 stopped broad run as green; rerun the whole suite after this correction.
 
+The following fresh broad attempt stopped at 1,261 passed and 21 skipped on a
+10-second Codex input-baseline fixture settle timeout. The exact case passed in
+isolation and its entire file passed 5/5, so production behavior was not changed.
+Only the test harness budget is now a bounded 30 seconds for below-normal Windows
+suite contention; Ruff passes. Rerun the whole suite from the new source and do
+not count either stopped invocation as green.
+
 **Prior package source: `204c766`; product change: `7bf591c`.** Product `7bf591c` changes
 the fresh-install supervisor default from unbounded to three durable semantic
 dispatches per worker session. This both bounds BYOK usage and enables the paced

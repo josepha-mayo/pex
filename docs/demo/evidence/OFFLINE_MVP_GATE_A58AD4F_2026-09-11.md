@@ -45,3 +45,11 @@ was correct. The test now requires the default 3/3 allowance and separately
 proves an explicit 1/1 override. Its complete file rerun passed 26/26 and Ruff
 passed. A fresh whole-suite rerun remains required before calling the broad gate
 green; the stopped run is not a pass.
+
+The next fresh whole-suite attempt stopped at 1,261 passed and 21 skips on a
+10-second async fixture settle timeout in
+`test_stop_then_external_input_same_batch_freezes_distinct_prefixes`. The exact
+case then passed in isolation and its complete file passed 5/5, so no production
+latency change was justified. The test-only settle budget is now a still-bounded
+30 seconds to tolerate Windows scheduler contention during the below-normal
+broad run. Ruff passes. This second stopped run is also not a pass.
