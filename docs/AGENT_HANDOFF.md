@@ -37,6 +37,12 @@ standalone manifest gate passes 3/3. That last gate exposed and removed one stal
 hard-coded eight-pet assertion; it now requires only Pex and Von. No live model
 or AWS call ran in these checks.
 
+Current benchmark integrity also reran green: 261 benchmark/Cursor-hook/audit/
+execution-safety/public-summary/scoring tests plus 22 disjoint policy-scoring and
+speculative-execution tests, 283/283 total. This is contract evidence, not a live
+score; `benchmarks/manifest.yaml` remains honestly `frozen: false`. See
+[current offline MVP gate](demo/evidence/OFFLINE_MVP_GATE_A58AD4F_2026-09-11.md).
+
 **Prior package source: `204c766`; product change: `7bf591c`.** Product `7bf591c` changes
 the fresh-install supervisor default from unbounded to three durable semantic
 dispatches per worker session. This both bounds BYOK usage and enables the paced

@@ -71,6 +71,9 @@ anything on the user's behalf.
   supplied Zen key has zero tracked-source matches and no live call ran.
 - [x] Current benchmark safety/scoring/Cursor-hook contracts: 280 passed in
   284.29s. Manifest remains honestly unfrozen; this is not a benchmark score.
+- [x] Current-tree expanded benchmark integrity rerun: 261 core benchmark/
+  Cursor/audit/scoring tests plus 22 policy/speculative tests, 283/283 total.
+  Manifest remains honestly unfrozen; this is still not a live score.
 
 ### Pre-cap candidate — superseded by package source `204c766`
 
