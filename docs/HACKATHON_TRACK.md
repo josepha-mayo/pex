@@ -7,8 +7,11 @@ Release remains NO-GO. Package source `f585562` (UI product `8394b4b`) passes cl
 preflight, full Tauri build, both installer integrity gates and isolated frozen-
 bridge identity/settings checks. It includes exact Zen Muse Responses routing
 with no hidden model fallback. It ships exactly two pets, Pex and Von; both pass
-structural, atlas and static visual review. Current source passes 4,436 Python
-tests with 32 skips and zero failures/errors. Controlled OpenCode and Codex plus
+structural, atlas and static visual review. The most recent full Python regression
+passes 4,436 tests with 32 skips at `dd06443`; it predates the narrow exact-Zen
+change, whose affected slice passes 197 on `f585562`. Current post-package gates
+also pass 253 Strands/supervisor tests, 183 local AgentCore tests and 368
+benchmark/Cursor/audit integrity tests. Controlled OpenCode and Codex plus
 provider-live Strands proofs exist on the revisions cited in the active handoff,
 but the final-package bounded native interaction/stability run remains open.
 AgentCore is not deployed and the benchmark is unfrozen. Architecture PNG is at

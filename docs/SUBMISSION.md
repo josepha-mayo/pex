@@ -9,10 +9,14 @@
 > Installers are unsigned. Real packaged
 > OpenCode/Strands recovery and quiet evidence exists on the source revisions
 > recorded in the active handoff; Codex App Server has separate source proofs.
-> Native testing is authorized, not on the old hold. AgentCore is implemented
+> Native testing is no longer on the old incident hold, but Joseph is currently
+> using the PC; do not start visible PEX/computer-control checks until he hands
+> the screen back. AgentCore is implemented
 > and offline-tested, not deployed; deployment is optional under refreshed
-> official rules. The current source full Python regression passes 4,436 with
-> 32 skips and zero failures/errors. Installed OpenCode 1.18.30 passes the
+> official rules. The most recent full Python regression passes 4,436 with
+> 32 skips and zero failures/errors at `dd06443`; it predates the narrow
+> exact-Zen change, whose affected slice passes 197 on `f585562`. Installed
+> OpenCode 1.18.30 passes the
 > model-free production HTTP/session/SSE compatibility smoke; this is not a new
 > model-backed recovery run. No frozen comparative score is available. Finish
 > [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
@@ -207,11 +211,13 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   source `f585562` (UI product `8394b4b`); both installer inventories pass with zero package blockers
 - [x] Re-review README and architecture source/PNG against packaged product source `8394b4b`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
-- [x] Re-run current offline gates: 283 benchmark/scoring/Cursor/safety tests,
-  183 AgentCore local tests with one opt-in cloud skip, 291 desktop/UI tests with
-  one platform skip, the production TypeScript/Vite build, and the full Python
-  regression (4,436 passed, 32 skipped); no benchmark arm, AWS resource, or paid
-  call ran
+- [x] Re-run current offline gates: 368 benchmark/scoring/Cursor/safety tests,
+  253 Strands/supervisor/trajectory/evidence/outcome tests, 183 AgentCore local
+  tests, and 291 desktop/UI tests with one platform skip. Production TypeScript/
+  Vite and the Tauri package build passed. The most recent full Python regression
+  (4,436 passed, 32 skipped) is source-bound to `dd06443`; the exact-Zen affected
+  slice passes 197 on package source `f585562`. No benchmark arm, AWS resource,
+  provider call or paid call ran in these current gates.
 - [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases and review their full contact and
   direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
