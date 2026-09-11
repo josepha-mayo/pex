@@ -165,6 +165,16 @@ test("pet picker animates only the selected companion", async () => {
     "picker activity must reach the sprite's existing timer and compositor pause gate");
 });
 
+test("built-in pets avoid bridge atlas transfer while unknown ids keep the fallback", async () => {
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.match(app, /const localSheet = bundledPetSheet\(pet\?\.appearance\?\.id\)/u);
+  assert.match(app, /const bridgeSheet = useBridgeAsset\(\s*localSheet \? undefined/u);
+  const bridgeSprite = app.slice(app.indexOf("function BridgePetSprite("), app.indexOf("function PetRosterButtons("));
+  assert.match(bridgeSprite, /const localSource = bundledPetSheet\(petId\);/u);
+  assert.match(bridgeSprite, /const bridgeSource = useBridgeAsset\(localSource \? undefined : path\);/u);
+  assert.match(bridgeSprite, /const source = localSource \|\| bridgeSource;/u);
+});
+
 test("transparent overlay keeps its message and hide control legible on light desktops", async () => {
   const styles = await readFile(new URL("./styles.css", import.meta.url), "utf8");
   assert.match(

@@ -33,7 +33,7 @@ import {
 import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
-import bundledPexSheet from "./pets/pex/spritesheet.webp";
+import { bundledPetSheet, defaultBundledPetSheet } from "./pets/bundled";
 import { applyPetClickThrough, expandMainSurface, hidePetOverlay, nextPetExpansion, PET_NATIVE_DISMISSED_EVENT, PET_VISIBILITY_EVENT, petClickThroughEnabled, petOverlayVisible, petVisibilityNote, reconcilePetVisibilityNote, releasePetOverlay, setPetOverlayVisible, showPetOverlay } from "./releasePet";
 import {
   advanceBridgeBootstrapStatus,
@@ -1451,10 +1451,17 @@ export function App() {
   const semanticSupervisor = supervisorAvailability({ supervisor, supervisorFresh: settingsAvailable });
   const homeStatus = statusWithFirstRunGuidance(status, setup, Boolean(pet?.paused));
   const mood = moodForState(pet, bridgeError);
+  // Pex and Von are release-hash verified and already bundled with each WebView.
+  // Prefer their stable asset URLs instead of repeatedly transferring and
+  // Pillow-validating multi-megabyte copies through the local bridge. Keep the
+  // authenticated bridge path as a fail-closed fallback for an unknown future id.
+  const localSheet = bundledPetSheet(pet?.appearance?.id)
+    ?? (pet?.appearance?.id ? undefined : defaultBundledPetSheet);
   const bridgeSheet = useBridgeAsset(
-    pet?.appearance?.atlas_ready === true ? pet.appearance.spritesheet_url : undefined,
+    localSheet ? undefined
+      : pet?.appearance?.atlas_ready === true ? pet.appearance.spritesheet_url : undefined,
   );
-  const sheet = bridgeSheet || bundledPexSheet;
+  const sheet = localSheet || bridgeSheet || defaultBundledPetSheet;
   const petName = pet?.settings?.custom_name?.trim() || pet?.appearance?.display_name || "Pex";
   const reducedMotion = useReducedMotion();
   const displayedInterventions = useMemo(
@@ -2671,19 +2678,23 @@ function useBridgeAsset(path?: string): string {
 }
 
 function BridgePetSprite({
+  petId,
   path,
   mood,
   scale,
   reducedMotion,
   active,
 }: {
+  petId: string;
   path: string;
   mood: PetSnapshot["mood"];
   scale: number;
   reducedMotion: boolean;
   active: boolean;
 }) {
-  const source = useBridgeAsset(path);
+  const localSource = bundledPetSheet(petId);
+  const bridgeSource = useBridgeAsset(localSource ? undefined : path);
+  const source = localSource || bridgeSource;
   return source && mood ? (
     <CodexSprite
       active={active}
@@ -2732,6 +2743,7 @@ function PetRosterButtons({
               {ready ? (
                 <BridgePetSprite
                   active={selected}
+                  petId={item.id}
                   path={`/v1/pets/${encodeURIComponent(item.id)}/spritesheet`}
                   mood="idle"
                   scale={0.72}

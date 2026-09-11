@@ -1329,12 +1329,15 @@ test("native pet close is routed to the same durable visibility contract", async
   assert.match(appSource, /onPetVisible=\{\(visible\) => void changePetVisibility\(visible\)\}/u);
 });
 
-test("cold companion renders the bundled Pex atlas before bridge pet state arrives", async () => {
+test("cold companion renders Pex and a selected built-in never flashes the wrong pet", async () => {
   const { readFile } = await import("node:fs/promises");
   const appSource = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
-  assert.match(appSource, /import bundledPexSheet from "\.\/pets\/pex\/spritesheet\.webp"/u);
-  assert.match(appSource, /const bridgeSheet = useBridgeAsset\(/u);
-  assert.match(appSource, /const sheet = bridgeSheet \|\| bundledPexSheet/u);
+  const bundleSource = await readFile(new URL("./pets/bundled.ts", import.meta.url), "utf8");
+  assert.match(bundleSource, /pex:\s*pexSheet/u);
+  assert.match(bundleSource, /von:\s*vonSheet/u);
+  assert.match(appSource, /const localSheet = bundledPetSheet\(pet\?\.appearance\?\.id\)/u);
+  assert.match(appSource, /pet\?\.appearance\?\.id \? undefined : defaultBundledPetSheet/u);
+  assert.match(appSource, /const sheet = localSheet \|\| bridgeSheet \|\| defaultBundledPetSheet/u);
 });
 
 test("pet dragging recognizes vertical and diagonal movement without accidental activation", async () => {
