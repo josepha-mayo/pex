@@ -218,6 +218,92 @@ async def test_pipeline_refreshes_stored_capabilities_from_live_probe(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_pipeline_gives_live_opencode_probe_its_bounded_cold_read_budget(
+    tmp_path, monkeypatch
+):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    registry = AdapterRegistry()
+    adapter = registry.opencode
+    session = HarnessSession(
+        id="opencode:session-1",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="session-1",
+        project_id=str(tmp_path),
+        cwd=str(tmp_path),
+    )
+    adapter.sessions[session.id] = session
+    pipeline = Pipeline(
+        store,
+        registry,
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path),
+    )
+    monkeypatch.setattr(
+        "pex_bridge.pipeline.DEFAULT_CAPABILITY_PROBE_TIMEOUT_SECONDS", 0.01
+    )
+    monkeypatch.setattr(
+        "pex_bridge.pipeline.OPENCODE_CAPABILITY_PROBE_TIMEOUT_SECONDS", 0.2
+    )
+
+    async def delayed_live_probe():
+        await asyncio.sleep(0.05)
+        return AdapterCapabilities(
+            send_message=True,
+            support_label=AdapterSupportLabel.STRONG,
+            notes="bounded live OpenCode probe",
+        )
+
+    monkeypatch.setattr(adapter, "probe", delayed_live_probe)
+    try:
+        assert await pipeline._negotiate_capabilities(session) is True
+        assert session.capabilities["send_message"] is True
+        assert session.capabilities["support_label"] == "strong"
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_still_fails_closed_when_opencode_probe_exceeds_bound(
+    tmp_path, monkeypatch
+):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    registry = AdapterRegistry()
+    adapter = registry.opencode
+    session = HarnessSession(
+        id="opencode:session-timeout",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="session-timeout",
+        project_id=str(tmp_path),
+        cwd=str(tmp_path),
+    )
+    adapter.sessions[session.id] = session
+    pipeline = Pipeline(
+        store,
+        registry,
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path),
+    )
+    monkeypatch.setattr(
+        "pex_bridge.pipeline.OPENCODE_CAPABILITY_PROBE_TIMEOUT_SECONDS", 0.01
+    )
+
+    async def stalled_probe():
+        await asyncio.sleep(60)
+        raise AssertionError("timed-out probe must never finish")
+
+    monkeypatch.setattr(adapter, "probe", stalled_probe)
+    try:
+        assert await pipeline._negotiate_capabilities(session) is True
+        assert session.capabilities["send_message"] is False
+        assert session.capabilities["support_label"] == "unavailable"
+        assert "failed" in session.capabilities["notes"].lower()
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_store_upsert_preserves_negotiated_capabilities(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()

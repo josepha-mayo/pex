@@ -176,6 +176,8 @@ _COMPLETION_SIGNAL = re.compile(
     re.I,
 )
 DESKTOP_DISCOVERY_TIMEOUT_SECONDS = 3.0
+DEFAULT_CAPABILITY_PROBE_TIMEOUT_SECONDS = 2.0
+OPENCODE_CAPABILITY_PROBE_TIMEOUT_SECONDS = 8.0
 LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS = 70.0
 REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS = 30.0
 DESKTOP_REFRESH_MIN_INTERVAL_SECONDS = 8.0
@@ -4092,7 +4094,12 @@ class Pipeline:
             source = "unregistered"
         else:
             try:
-                caps = await asyncio.wait_for(adapter.probe(), timeout=2.0)
+                timeout = (
+                    OPENCODE_CAPABILITY_PROBE_TIMEOUT_SECONDS
+                    if session.harness_type == HarnessType.OPENCODE
+                    else DEFAULT_CAPABILITY_PROBE_TIMEOUT_SECONDS
+                )
+                caps = await asyncio.wait_for(adapter.probe(), timeout=timeout)
             except Exception:
                 caps = AdapterCapabilities(
                     notes="Capability probe failed; controls are unavailable until a later probe."
