@@ -43,6 +43,13 @@ speculative-execution tests, 283/283 total. This is contract evidence, not a liv
 score; `benchmarks/manifest.yaml` remains honestly `frozen: false`. See
 [current offline MVP gate](demo/evidence/OFFLINE_MVP_GATE_A58AD4F_2026-09-11.md).
 
+A below-normal-priority full Python run subsequently reached 3,232 passed and 30
+skipped before stopping on one stale pet-snapshot expectation that still assumed
+the old unlimited review allowance. Product correctly returned the fresh-install
+3/3 allowance. The test now requires 3/3 by default and proves an explicit 1/1
+override; its full file rerun passes 26/26 and Ruff passes. Do not report the
+stopped broad run as green; rerun the whole suite after this correction.
+
 **Prior package source: `204c766`; product change: `7bf591c`.** Product `7bf591c` changes
 the fresh-install supervisor default from unbounded to three durable semantic
 dispatches per worker session. This both bounds BYOK usage and enables the paced

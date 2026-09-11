@@ -34,3 +34,14 @@ declared evidence requirements.
 Native interaction/visual acceptance, live final-package supervision, demo
 recording, AgentCore deployment and submission remain open. AgentCore deployment
 is optional and no uncovered AWS spend was authorized.
+
+## Broader regression continuation
+
+A below-normal-priority full Python run stopped at its first failure after 3,232
+passes and 30 skips. The failure was another stale pre-cap test expectation:
+`test_pet_snapshot_includes_idle_harness_for_prompts` expected an unlimited
+allowance although the shipped fresh-install default is three. Product output
+was correct. The test now requires the default 3/3 allowance and separately
+proves an explicit 1/1 override. Its complete file rerun passed 26/26 and Ruff
+passed. A fresh whole-suite rerun remains required before calling the broad gate
+green; the stopped run is not a pass.
