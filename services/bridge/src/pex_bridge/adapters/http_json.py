@@ -193,8 +193,17 @@ class LiveHttpTransport:
             )
         self._headers = headers
         self._auth = auth
+        # OpenCode reports global health before a newly scoped workspace has
+        # finished its first project/database initialization. Keep connection,
+        # write, and pool acquisition tight, but allow that bounded cold-path
+        # work to finish returning a mutation receipt. A shorter read deadline
+        # makes successful session creation look delivery-uncertain and cannot
+        # be retried safely.
         self._client = httpx.AsyncClient(
-            base_url=self.base_url, timeout=8.0, headers=headers, auth=auth
+            base_url=self.base_url,
+            timeout=httpx.Timeout(connect=8.0, read=30.0, write=8.0, pool=8.0),
+            headers=headers,
+            auth=auth,
         )
         self.events: deque[dict[str, Any]] = deque(maxlen=MAX_HTTP_EVENTS)
         self._event_sizes: deque[int] = deque()

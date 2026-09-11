@@ -195,6 +195,18 @@ async def test_live_http_transport_bounds_buffered_json_responses(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_live_http_transport_allows_bounded_cold_response_without_relaxing_io_limits():
+    transport = LiveHttpTransport("http://127.0.0.1:4096")
+    try:
+        assert transport._client.timeout.connect == 8.0
+        assert transport._client.timeout.write == 8.0
+        assert transport._client.timeout.pool == 8.0
+        assert transport._client.timeout.read == 30.0
+    finally:
+        await transport.aclose()
+
+
+@pytest.mark.asyncio
 async def test_live_http_event_buffer_has_aggregate_payload_budget(monkeypatch):
     monkeypatch.setattr(http_json_module, "MAX_HTTP_EVENT_BUFFER_BYTES", 70, raising=False)
     transport = LiveHttpTransport("http://127.0.0.1:4096")
