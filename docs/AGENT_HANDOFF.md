@@ -29,6 +29,14 @@ packaged frozen bridge also passed isolated liveness, authenticated settings and
 fresh-install cap-3 checks with no provider/worker/AWS call. Visible native
 acceptance remains pending while Joseph uses the PC.
 
+Current offline reruns after packaging are green: BYOK/provider/configuration
+210 passed with one intentional Windows symlink skip; OpenCode/Codex
+cancellation, lineage and correction 137 passed; AgentCore local contracts 183
+passed with the opt-in cloud test skipped. The exact frozen bridge lifetime and
+standalone manifest gate passes 3/3. That last gate exposed and removed one stale
+hard-coded eight-pet assertion; it now requires only Pex and Von. No live model
+or AWS call ran in these checks.
+
 **Prior package source: `204c766`; product change: `7bf591c`.** Product `7bf591c` changes
 the fresh-install supervisor default from unbounded to three durable semantic
 dispatches per worker session. This both bounds BYOK usage and enables the paced

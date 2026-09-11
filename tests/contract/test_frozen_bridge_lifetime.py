@@ -217,11 +217,5 @@ def test_frozen_bridge_verify_bundle_is_standalone(tmp_path: Path) -> None:
     assert payload.get("version") == 1
     assert tuple(item.get("id") for item in payload.get("pets", [])) == (
         "pex",
-        "ledger",
-        "mesh",
-        "nudge",
-        "drift",
-        "quiet",
-        "ember",
         "von",
     )

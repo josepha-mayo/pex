@@ -51,6 +51,9 @@ anything on the user's behalf.
 - [x] Explain provider limit and distinct connection failures in UI; frontend
   build passed, 288 tests passed with one platform skip.
 - [x] Recheck offline AgentCore contracts: 183 passed, no AWS calls/deployment.
+- [x] Recheck current packaged-runtime lifetime and standalone bundle contract:
+  3 passed after removing its stale eight-pet expectation; it now requires the
+  exact Pex/Von inventory.
 - [x] Rebuild and verify provider-limit repairs natively on `5a4c4ac`:
   first-attempt attach, Blocked state, zero new reviews/nudges after idle.
   [Native evidence](demo/evidence/NATIVE_QUOTA_FENCE_5A4C4AC_2026-09-10.md).
