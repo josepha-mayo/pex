@@ -9,7 +9,8 @@ Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
 OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Product `567778b` ships only Pex and Von and passes both installer
+Package source `204c766` (product change `7bf591c`) ships only Pex and Von,
+defaults fresh installs to three semantic review dispatches per session, and passes both installer
 content/inventory gates. Its predecessor passed native unpacked-runtime startup,
 pet transparency, dismissal/hiding and selected-session Ask checks; the newest
 Ask layout and explicit-cancellation repairs still need bounded native checks.
@@ -19,7 +20,7 @@ check with zero additional reviews or nudges. Final stability and recording rema
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
-[current package evidence](docs/demo/evidence/PACKAGE_567778B_2026-09-11.md),
+[current package evidence](docs/demo/evidence/PACKAGE_204C766_2026-09-11.md),
 [current status](STATUS.md), and the source-bound evidence linked there.
 
 ## The pain it removes
@@ -73,7 +74,8 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for product source `567778b` and is not code-signed.
+installer candidate exists for package source `204c766` (product `7bf591c`) and
+is not code-signed.
 These instructions cover building from source; package integrity is not native
 acceptance or publisher trust. Current source-bound package evidence is recorded
 in the [active handoff](docs/AGENT_HANDOFF.md). To build from source,

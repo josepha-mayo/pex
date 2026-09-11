@@ -13,16 +13,21 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
-**Current source: `7bf591c`; last package: `567778b`.** Source `7bf591c` changes
+**Current package source: `204c766`; product change: `7bf591c`.** Product `7bf591c` changes
 the fresh-install supervisor default from unbounded to three durable semantic
 dispatches per worker session. This both bounds BYOK usage and enables the paced
 trajectory-review path. The Settings override remains available. Ruff and 126
 affected pipeline/settings tests pass; the broader provider/source/settings
 slice passes 156 with one intentional provider skip. The desktop suite still
-passes 290 with one platform skip. This source has not been rebuilt or natively
-verified; do not describe the `567778b` installers as containing this cap.
+passes 290 with one platform skip. The full Tauri rebuild and corrected package
+verifier now pass with
+zero blockers and 2,375 matching runtime files. Receipt
+`build/package-204c766-20260911-verified.json`, SHA-256
+`16375f7afc60df94fdc5bec230f5b61bac6c7e1ebdc96124576786369cbcc2ce`.
+[Exact installer hashes and limits](demo/evidence/PACKAGE_204C766_2026-09-11.md).
+Native verification remains pending; do not describe this package as accepted.
 
-**Current packaged candidate: `567778b`.** Clean full Tauri build completed;
+**Pre-cap packaged candidate: `567778b` (superseded by `204c766`).** Its clean full Tauri build completed;
 MSI and NSIS verification passes with zero blockers and 2,375 matching runtime
 files. Receipt `build/package-567778b-20260910-rebuilt.json`, SHA-256
 `9bda2583d3307dd7470002fec4e419f7ba4700a7fd9e9dcb393132222de7185e`.

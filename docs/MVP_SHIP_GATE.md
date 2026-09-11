@@ -29,8 +29,10 @@ anything on the user's behalf.
 - [x] Bound fresh-install model use at current source `7bf591c`: three durable
   semantic dispatches per worker session by default, explicit Settings/env
   override retained. Ruff and 126 affected pipeline/settings tests pass;
-  provider/source/settings slice passes 156 with one intentional skip. Rebuild
-  and native verification remain pending; `567778b` is still the last package.
+  provider/source/settings slice passes 156 with one intentional skip. Package
+  source `204c766` passes MSI/NSIS verification with zero blockers and 2,375
+  matching runtime files. [Hashes and limits](demo/evidence/PACKAGE_204C766_2026-09-11.md).
+  Native verification remains pending.
 - [x] Repair observed OpenCode free-tier retry/idle follow-up loop in source;
   durable provider block survives refresh/restart and requires tool/file activity
   to clear. Processing/OpenCode: 123 passed; final persistence focus: 7 passed.
@@ -55,7 +57,7 @@ anything on the user's behalf.
 - [x] Current benchmark safety/scoring/Cursor-hook contracts: 280 passed in
   284.29s. Manifest remains honestly unfrozen; this is not a benchmark score.
 
-### Latest candidate — supersedes older package descriptions below
+### Pre-cap candidate — superseded by package source `204c766`
 
 Product `567778b` rebuilt successfully; MSI/NSIS verification passes with zero
 blockers and 2,375 matching runtime files. Receipt:

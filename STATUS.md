@@ -2,15 +2,15 @@
 
 ## Current — 11 September 2026
 
-**Current source: `7bf591c`; last packaged candidate: `567778b`, exactly Pex and
-Von.** Source `7bf591c` adds a fresh-install cap of three durable semantic
+**Current package source: `204c766`; product change: `7bf591c`, exactly Pex and
+Von.** Product `7bf591c` adds a fresh-install cap of three durable semantic
 dispatches per worker session; 126 affected pipeline/settings tests and 156
 provider/source/settings tests pass, with one intentional provider skip. It has
-not been rebuilt or natively checked yet. The earlier full Tauri build
-completed and both unsigned installers pass integrity with zero blockers and
+now been rebuilt but not natively checked. The full Tauri build completed and
+both unsigned installers pass integrity with zero blockers and
 2,375 matching bridge-runtime files. Receipt:
-`build/package-567778b-20260910-rebuilt.json`, SHA-256
-`9bda2583d3307dd7470002fec4e419f7ba4700a7fd9e9dcb393132222de7185e`.
+`build/package-204c766-20260911-verified.json`, SHA-256
+`16375f7afc60df94fdc5bec230f5b61bac6c7e1ebdc96124576786369cbcc2ce`.
 Custom import and image-generation write APIs remain disabled.
 
 The packaged candidate includes the compact Ask layout repair and an exact OpenCode
@@ -24,7 +24,7 @@ remains deliberately unfrozen, so no comparative result or leaderboard rank is c
 Tauri/Rust contracts pass 19/19. Clean-source release preflight exits 0 with
 current sidecars, exactly Pex/Von and verified toolchains/wiring.
 
-**Native acceptance of `567778b` is pending.** Joseph is using the PC and asked
+**Native acceptance of `204c766` is pending.** Joseph is using the PC and asked
 for command-line work only until he says otherwise. Package integrity does not
 prove the repaired Ask layout, cancellation display, active-worker stability or
 recording readiness. The last native candidate before these two fixes did start
@@ -40,7 +40,9 @@ recovery observation, not ten passes or a comparative benchmark score.
 
 AgentCore remains implemented/tested but not deployed. Current-package native
 validation, final recording and submission are not complete. See the
-[shipping gate](docs/MVP_SHIP_GATE.md) for remaining work.
+[shipping gate](docs/MVP_SHIP_GATE.md) and
+[current package evidence](docs/demo/evidence/PACKAGE_204C766_2026-09-11.md)
+for remaining work and exact hashes.
 
 ## Historical source-bound checkpoints
 
