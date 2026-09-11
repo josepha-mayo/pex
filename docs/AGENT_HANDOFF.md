@@ -1344,3 +1344,16 @@ This makes native acceptance the critical path; do not widen the offline feature
 scope or rewrite green core logic without a concrete failure. Continue preparing
 the judge journey and failure-safe recording materials while the user owns the
 screen, then run the bounded PEX-only pass as soon as they explicitly release it.
+
+## Packaged bridge idle resource sample
+
+On clean `899a824`, the exact frozen bridge used by package `c3cc44c` ran for a
+bounded 30-second idle sample in an isolated profile and local/no-provider mode.
+CPU advanced 0.109 seconds (about 0.36% of one core on average); private memory
+was 78.4 -> 78.3 MiB; working set 97.2 -> 97.1 MiB; threads 11 -> 8; handles
+259 -> 257. The owned process shut down normally and left zero exact bridge
+instances/listeners. [Exact sample and limits](demo/evidence/PACKAGED_BRIDGE_IDLE_899A824_2026-09-11.md).
+
+This rules out an obvious headless idle busy loop or short-window bridge leak.
+It does not prove the complete desktop/WebView/GPU path or active-worker load;
+retain those measurements in the bounded native pass.

@@ -1927,3 +1927,12 @@ new independent visual review or native acceptance claim.
 
 The exact selection and honest live/native/deployment boundary are recorded in
 `docs/demo/evidence/MVP_DEMO_SEAM_C70EFFB_2026-09-11.md`.
+
+## 11 September packaged bridge idle profile
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src-tauri/binaries/pex-bridge-runtime/pex-bridge.exe` | PROFILED / STABLE IN BOUNDED HEADLESS IDLE | Exact path/PID/listener identity; 30 seconds; 0.109 CPU seconds; private 78.4 -> 78.3 MiB; working set 97.2 -> 97.1 MiB; threads/handles decreased; orderly shutdown and zero surviving exact process/listener. |
+
+See `docs/demo/evidence/PACKAGED_BRIDGE_IDLE_899A824_2026-09-11.md`. This is
+not complete desktop/WebView/GPU or active-worker resource evidence.
