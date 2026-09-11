@@ -338,26 +338,19 @@ async def test_opencode_pump_recovers_after_real_journal_acceptance(tmp_path, mo
     transport.events.extend(
         [
             {
-                "type": "message.updated",
+                "id": "error-one",
+                "type": "session.error",
                 "properties": {
                     "cwd": str(tmp_path),
-                    "info": {
-                        "sessionID": "ses_journal",
-                        "id": "msg_first",
-                        "role": "user",
-                    },
+                    "sessionID": "ses_journal",
                 },
             },
             {
-                "type": "message.updated",
+                "id": "error-two",
+                "type": "session.error",
                 "properties": {
                     "cwd": str(tmp_path),
-                    "info": {
-                        "sessionID": "ses_journal",
-                        "id": "msg_second",
-                        "role": "assistant",
-                        "parentID": "msg_first",
-                    },
+                    "sessionID": "ses_journal",
                 },
             },
             {

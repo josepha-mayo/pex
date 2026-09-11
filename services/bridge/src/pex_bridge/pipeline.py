@@ -1170,32 +1170,24 @@ class Pipeline:
             return await self._drain_event_and_followups(event.event_id)
         if (
             event.harness_type == HarnessType.OPENCODE
-            and event.event_type == EventType.STATUS
             and event.phase == EventPhase.AFTER
-            and event.metadata.get("sse_type") == "message.part.delta"
-            and not event.file_paths
-            and all(
-                value is None
-                for value in (
-                    event.tool_name,
-                    event.tool_input,
-                    event.tool_output_ref,
-                    event.command,
-                    event.diff_ref,
-                    event.approval_request,
-                    event.token_usage,
-                    event.cost,
-                    event.process_state,
-                    event.error,
-                )
-            )
+            and event.event_type
+            not in {
+                EventType.STOP,
+                EventType.ERROR,
+                EventType.PERMISSION_REQUEST,
+                EventType.SESSION_END,
+            }
+            and event.approval_request is None
             and await self.store.get_session_for_authority(session.id) is not None
         ):
-            # Token fragments are observations, not fresh decisions. Running
-            # capability probes and the planner for each fragment can queue
-            # minutes of work ahead of the actual completed-message STOP.
-            # Preserve every redacted event and its immutable processing row;
-            # only full message/part, tool, status and terminal frames plan.
+            # OpenCode's complete message/part/tool frames are authoritative
+            # observations, but they are not individual decisions. Planning
+            # every progress frame serializes capability probes and semantic
+            # work ahead of the completion event that actually requires PEX.
+            # Keep the observations durable and publish them to the UI; reserve
+            # the decision pipeline for terminal, failure, and permission
+            # boundaries. This is the spec's deterministic-triage stage.
             event, _ = await self._prepare_event_acceptance(event, session)
             if await self.store.add_event(event):
                 self._schedule_committed_publication("event", event.model_dump(mode="json"))

@@ -176,10 +176,47 @@ async def test_opencode_deltas_are_durable_record_only_and_do_not_delay_parent_b
         ),
     ],
 )
-async def test_only_plain_opencode_delta_statuses_take_record_only_path(
+async def test_opencode_progress_observations_take_record_only_path(
     tmp_path, monkeypatch, event
 ):
     store, _, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    normal: list[str] = []
+
+    async def normal_path(observed, observed_session):
+        assert observed_session.id == session.id
+        normal.append(observed.event_id)
+        return None
+
+    monkeypatch.setattr(pipeline, "_accept_and_resume_event", normal_path)
+    try:
+        assert await pipeline._ingest_event_locked(event, session) is None
+        assert normal == []
+        assert await store.get_event(event.event_id) is not None
+        processing = await store.get_event_processing(event.event_id)
+        assert processing is not None
+        assert processing["mode"] == "record_only"
+        assert processing["state"] == "record_only_complete"
+    finally:
+        await store.close()
+
+
+@pytest.mark.parametrize(
+    "event_type",
+    [EventType.STOP, EventType.ERROR, EventType.PERMISSION_REQUEST, EventType.SESSION_END],
+)
+async def test_opencode_decision_boundaries_keep_full_pipeline_path(
+    tmp_path, monkeypatch, event_type
+):
+    store, _, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    event = HarnessEvent(
+        event_id=f"decision-{event_type.value}",
+        ts=datetime.now(UTC),
+        harness_type=HarnessType.OPENCODE,
+        session_id=session.id,
+        event_type=event_type,
+        phase=EventPhase.AFTER,
+        metadata={"sse_type": "fixture"},
+    )
     normal: list[str] = []
 
     async def normal_path(observed, observed_session):
