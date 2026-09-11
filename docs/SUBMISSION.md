@@ -18,90 +18,12 @@
 > exact-Zen change, whose affected slice passes 197 on `f585562`. Installed
 > OpenCode 1.18.30 passes the
 > model-free production HTTP/session/SSE compatibility smoke; this is not a new
-> model-backed recovery run. No frozen comparative score is available. Finish
+> model-backed recovery run. A fresh current-head MVP spine passes 252/252 with
+> thread warnings promoted to failures, and the exact packaged bridge reports
+> the cap of three plus the contributor-free Zen hint without a provider call.
+> No frozen comparative score is available. Finish
 > [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
 > equate package integrity or historical green tests with overall readiness.
-
-## Historical evidence context
-
-> **Historical MVP, 9 September WAT:** clean commit `933239a` fixes a concrete UI-polling freeze
-> amplifier by moving the shared Windows process inventory off the event loop. The exact frozen
-> bridge embedded in the new installers held OpenCode `Deep` for 20/20 authenticated polls
-> (median 506.7 ms), the saved Zen BYOK credential completed through Strands Agents 1.53.0, and
-> package verification is `release_ready:true` with zero blockers. A real OpenCode 1.18.29
-> session now also passes the full controlled recovery path: PEX observed incomplete work,
-> Strands + free Muse independently verified the missing artifact, one same-session correction
-> reached the free worker, and the exact final artifact appeared. A separate completed-task run
-> produced a model-backed `NOOP` with zero PEX follow-ups. See
-> [the current MVP receipt](demo/evidence/MVP_RELEASE_2026-09-09.md). PexBench remains unfrozen,
-> AgentCore remains a tested deployment target rather than a deployed AWS runtime, and native
-> Tauri stability still requires the separately authorized bounded smoke.
-
-> **Earlier P0 context: user-reported whole-PC freeze while PEX was idle.** The source now removes
-> multiple hot-poll/resource amplifiers, bounds retained SQLite WAL allocation, and pins the
-> desktop-owned bridge to the normal `~/.pex/pex.sqlite` profile. Those repairs do not prove
-> native stability. PEX has stayed closed since the incident; a fresh bounded native run still
-> requires explicit user approval. Submission remains NO-GO until that run and the video pass.
-
-> **Earlier 9 September package checkpoint, superseded by `933239a`:** exact clean product source `9966a60` produced normal MSI and
-> NSIS installers whose extracted desktop, frozen bridge, Cursor helpers, and eight-pet
-> inventories pass with `release_ready:true` and zero package blockers. The exact receipt is
-> `PACKAGE_RECEIPT_9966A60.json`. The complete repository gate passes 4,175 tests with 34
-> intentional skips, production TypeScript/Vite compilation passes, the eight-task
-> benchmark/Cursor-hook gate passes 201/201, and the offline Strands/AgentCore gate passes all
-> 200 collected tests. Packaged ancestor `9357bb8` retains real Codex Spark plus free
-> Muse/Strands quiet and same-thread recovery evidence. Exact packaged source `9966a60` also
-> passes the real local AgentCore-compatible `/ping` and strict-schema `/invocations` protocol
-> path without a model or cloud call. The
-> benchmark remains unfrozen, AgentCore remains undeployed,
-> and PEX has not been installed or launched after the reported idle whole-PC freeze. Native
-> stability/interaction capture, current live demo, video, and authorized submission remain
-> open. Package integrity does not imply publisher identity or native stability.
-> The fresh command lines, timings, and claim boundary are retained in
-> [the 9 September offline acceptance receipt](demo/evidence/OFFLINE_ACCEPTANCE_2026-09-09.md).
-> Follow
-> [the detailed checkpoint](CHECKPOINT_2026_09_08.md), [handoff](AGENT_HANDOFF.md), and
-> [shipping checklist](SHIP_CHECKLIST.md). Every older "current" block below is historical.
-
-## Historical package and live-proof evidence
-
-> **Current evidence, 7 September 22:30 UTC:** use the top of
-> [the handoff](AGENT_HANDOFF.md) and [shipping checklist](SHIP_CHECKLIST.md).
-> Exact `7a1a5b5` is clean-package green. Native fresh startup/restart, bubble dismissal,
-> pet hide/restore, all-eight roster and Von selection persistence were observed.
-> A remaining canvas CSS repair needs rebuilt native verification; eight-pet full
-> playback and final-source real-worker semantic proof remain open. Overall NO-GO;
-> the user targets 9 September WAT for filming. Older package blocks are historical.
-
-> **6 September package checkpoint — still NO-GO.** Final repository revision
-> `f99fe4399720a223d96f1ad860b34ae175f5d917` has a clean, validated MSI + NSIS
-> package-integrity receipt, but the installers are unsigned, the final native replay was
-> interrupted, the live proof pair remains tied to `5c49c10`, AgentCore is undeployed,
-> PexBench is unfrozen, and the public demo video does not exist yet. Do not submit using
-> package `release_ready: true` as a claim that the overall product is release-ready.
-
-Package receipt SHA-256:
-`23E1FA33736E387C22292D471375E43AC970DD37E3D27319E8D88CA204683C12`.
-The 122,585,088-byte MSI is
-`759A9B2091804603563333C9087AD88ED4BFA60FD60A9BBBE3F89C126B2660DE`; the
-121,294,055-byte NSIS installer is
-`ADD72B18AFF7792D32D5AEAA1BC07C48929E3ED0A45F0AD4CDD896833FF76A69`.
-The receipt has `release_ready: true`, `blockers: []`, and verifies package integrity
-only. Both artifacts report `NotSigned`.
-
-The extracted NSIS fresh-profile run reached **All quiet**, displayed all eight pet
-choices, and rendered the pet transparently. Escape dismissal and Settings restoration
-were proven on the same packaged runtime earlier. A Windows Security Node-automation
-prompt blocked the final all-eight playback and Alt+F4 replay, so the demo must not imply
-those final replays were completed. Backend startup/keyring authority repairs passed the
-final 36-test strict focus after a broader 139-pass/3-skip gate; desktop passed 180/180
-and Rust passed 14. At that historical package checkpoint, the protected `loop.py`
-SHA-256 was
-`392367D79E07448785D3573B4F4E093648EE8303E73BB31032C1923D648B2604`.
-
-> **Draft only — release and submission remain NO-GO.** The real Codex + Strands loop is now validated on source revision `5c49c10`; do not publish or submit until that evidence is recaptured on the final reviewed release candidate, the packaged app is visually reviewed, and the operator gives action-time authorization.
-
-**Honesty that must match README / STATUS:** Bedrock AgentCore Runtime is a deploy target, not a deployed service. The four-arm PexBench manifest stays `frozen: false`; there is no citeable impact score or retained public leaderboard rank. The September 6 Codex receipts are real live closed-loop proof, but they are not packaged-release proof. Do not cite quarantined rows in `benchmarks/results/INVALID_LEAKED_RUNS_DO_NOT_USE/`.
 
 Track: **Professional Agents**  
 Deadline: 14 Sep 2026, 17:00 PDT  
@@ -214,13 +136,15 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run current offline gates: 368 benchmark/scoring/Cursor/safety tests,
   an expanded 387-test Strands/supervisor/trajectory/evidence/outcome gate with
-  6 skips, 183 AgentCore local tests with one opt-in cloud skip, and 291 desktop/
+  6 skips, 183 AgentCore local tests with one opt-in cloud skip, and 292 desktop/
   UI tests with one platform skip. The Strands and AgentCore gates pass with
-  aiosqlite thread warnings promoted to errors. Production TypeScript/
-  Vite and the Tauri package build passed. The most recent full Python regression
+  aiosqlite thread warnings promoted to errors. A current-head 252-test MVP
+  spine also passes under that warning policy. Production TypeScript/Vite and
+  the Tauri package build passed. The most recent full Python regression
   (4,436 passed, 32 skipped) is source-bound to `dd06443`; the exact-Zen affected
-  slice passes 197 on package source `f585562`. No benchmark arm, AWS resource,
-  provider call or paid call ran in these current gates.
+  slice passes 197 on package source `f585562`. The one desktop platform skip is
+  the intentional Windows symlink case. No benchmark arm, AWS resource, provider
+  call or paid call ran in these current gates.
 - [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases and review their full contact and
   direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
