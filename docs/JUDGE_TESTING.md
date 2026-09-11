@@ -24,7 +24,7 @@ opening PEX or calling a model:
 
 ```powershell
 .\.venv\Scripts\python.exe .\scripts\smoke_packaged_bridge.py `
-  --exe .\apps\desktop\src-tauri\target\release\pex-bridge-runtime\pex-bridge.exe `
+  --exe .\apps\desktop\src-tauri\binaries\pex-bridge-runtime\pex-bridge.exe `
   --output .\build\packaged-settings-smoke.json
 ```
 

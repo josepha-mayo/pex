@@ -3,19 +3,21 @@
 Living checklist. Do **not** put secrets, tokens, or account IDs here.
 
 Last updated: 2026-09-11
-Release remains NO-GO. Package source `f585562` (UI product `8394b4b`) passes clean
+Release remains NO-GO pending visible acceptance. Package source `c3cc44c`
+(UI product `8394b4b`) passes clean
 preflight, full Tauri build, both installer integrity gates and isolated frozen-
 bridge identity/settings checks. It includes exact Zen Muse Responses routing
-with no hidden model fallback. It ships exactly two pets, Pex and Von; both pass
+with no hidden model fallback, the three-dispatch default, and the
+numeric-grounding repair found during live recovery review. It ships exactly
+two pets, Pex and Von; both pass
 structural, atlas and static visual review. The most recent full Python regression
-passes 4,436 tests with 32 skips at `dd06443`; it predates the narrow exact-Zen
-change, whose affected slice passes 197 on `f585562`. Current post-package gates
-also pass an expanded 387-test Strands/supervisor gate with 6 skips, 183 local
-AgentCore tests with one opt-in cloud skip, and 368 benchmark/Cursor/audit
-integrity tests. The Strands and AgentCore gates promote aiosqlite thread
-warnings to errors. Controlled OpenCode and Codex plus
-provider-live Strands proofs exist on the revisions cited in the active handoff,
-but the final-package bounded native interaction/stability run remains open.
+passes 4,440 tests with 32 skips at `570964b`; later affected slices include
+92 focused recovery tests, 243 expanded Strands/provider/AgentCore/evidence
+tests with 4 skips, 183 local AgentCore tests with one opt-in cloud skip, and
+368 benchmark/Cursor/audit integrity tests. Controlled OpenCode 1.18.30 quiet
+and causal same-session recovery proofs now exist on clean `6a1d98b` and
+`93dfef3`; the Codex/Strands pair remains separately retained at `e864389`.
+The final-package bounded native interaction/stability run remains open.
 AgentCore is not deployed and the benchmark is unfrozen. Architecture PNG is at
 `docs/architecture/pex-architecture.png`. Do not Submit until the final reviewed source,
 current package/native evidence, video, and required identity fields are verified at
@@ -81,6 +83,6 @@ When ready to use the console in-browser:
 Do not pause product work to click consoles. Browser the AWS pages when we need a credential, a deployment, a screenshot, or a published post.
 
 Current product milestone: run the bounded native recovery/idle/two-pet visual gate
-on package `f585562`, capture the validated OpenCode plus Strands story in that app,
+on package `c3cc44c`, capture the validated OpenCode plus Strands story in that app,
 then record and submit. PexBench remains unfrozen; AgentCore deployment is optional
 and must not be claimed unless actually proven.
