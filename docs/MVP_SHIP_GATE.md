@@ -74,6 +74,12 @@ anything on the user's behalf.
 - [x] Current-tree expanded benchmark integrity rerun: 261 core benchmark/
   Cursor/audit/scoring tests plus 22 policy/speculative tests, 283/283 total.
   Manifest remains honestly unfrozen; this is still not a live score.
+- [x] Current-tree full Python regression at `dd06443`: 4,436 passed, 32
+  skipped, zero failures/errors in 2,743.56 seconds. Retained JUnit:
+  `build/full-offline-dd06443-20260911.xml`, SHA-256
+  `a9aae1f63ad0206df6083b0069b710005683701139fac59ece2238390fa843c2`.
+  Earlier stopped runs are diagnostic history, not accepted passes. No matching
+  PEX or repository pytest process remained after the successful run.
 
 ### Pre-cap candidate — superseded by package source `204c766`
 

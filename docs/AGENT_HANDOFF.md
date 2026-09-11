@@ -6,7 +6,7 @@ claiming deployment. The user's later small-MVP request takes priority over
 historical expansion gates; formal four-arm scores remain unclaimed. The unsafe
 933239a launcher instructions have been removed from the recording runbook.
 
-Maintained checkpoint: 11 September 2026; current-source Codex recovery and quiet checks passed.
+Maintained checkpoint: 11 September 2026; current-source full Python regression passed.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files and running processes before relying on this checkpoint.
 This is the active entry point, not another historical log.
@@ -43,27 +43,18 @@ speculative-execution tests, 283/283 total. This is contract evidence, not a liv
 score; `benchmarks/manifest.yaml` remains honestly `frozen: false`. See
 [current offline MVP gate](demo/evidence/OFFLINE_MVP_GATE_A58AD4F_2026-09-11.md).
 
-A below-normal-priority full Python run subsequently reached 3,232 passed and 30
-skipped before stopping on one stale pet-snapshot expectation that still assumed
-the old unlimited review allowance. Product correctly returned the fresh-install
-3/3 allowance. The test now requires 3/3 by default and proves an explicit 1/1
-override; its full file rerun passes 26/26 and Ruff passes. Do not report the
-stopped broad run as green; rerun the whole suite after this correction.
-
-The following fresh broad attempt stopped at 1,261 passed and 21 skipped on a
-10-second Codex input-baseline fixture settle timeout. The exact case passed in
-isolation and its entire file passed 5/5, so production behavior was not changed.
-Only the test harness budget is now a bounded 30 seconds for below-normal Windows
-suite contention; Ruff passes. Rerun the whole suite from the new source and do
-not count either stopped invocation as green.
-
-A later normal-priority whole-suite attempt stopped at 781 passed/19 skipped
-when a fresh subprocess importing the full bridge/Strands ASGI graph exceeded a
-test-only 15-second wall clock before auth assertions. The exact test passed in
-isolation and the auth file passed 16 with two Windows skips. Only that test's
-subprocess budget is now a bounded 45 seconds; operator-token scrubbing and child
-non-inheritance assertions are unchanged. No production timeout changed. A new
-whole-suite run is still required.
+**Current full Python regression is green on source `dd06443`: 4,436 passed,
+32 skipped, zero failures/errors in 2,743.56 seconds (exit 0).** The retained
+JUnit artifact is `build/full-offline-dd06443-20260911.xml`, 718,224 bytes,
+SHA-256 `a9aae1f63ad0206df6083b0069b710005683701139fac59ece2238390fa843c2`.
+No matching PEX or repository pytest process remained afterward. This clean run
+supersedes three stopped diagnostic attempts: those exposed a stale pre-cap pet
+allowance assertion and two Windows-contention-sensitive test-only waits. The
+assertion now requires the safe default 3/3 allowance; the bounded fixture and
+fresh-subprocess waits were raised without changing production timeouts or
+runtime behavior. Exact affected-file reruns and Ruff passed before the clean
+whole-suite run. Product/package source remains `56783bf` because every change
+after packaging is test-only or documentation-only.
 
 **Prior package source: `204c766`; product change: `7bf591c`.** Product `7bf591c` changes
 the fresh-install supervisor default from unbounded to three durable semantic
