@@ -19,6 +19,9 @@ explicit-cancellation repairs still need bounded native checks.
 The latest live OpenCode run hit its free-provider quota and is not a benchmark pass;
 provider-limit blocking and idle suppression now pass a native negative-case
 check with zero additional reviews or nudges. Final stability and recording remain.
+Installed OpenCode 1.18.30 also passes a fresh model-free production HTTP/session/
+SSE smoke, reaching Deep after the real event-stream handshake; this does not
+replace the separate model-backed recovery evidence.
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),

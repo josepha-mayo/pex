@@ -48,6 +48,11 @@ anything on the user's behalf.
 - [x] Repair observed OpenCode free-tier retry/idle follow-up loop in source;
   durable provider block survives refresh/restart and requires tool/file activity
   to clear. Processing/OpenCode: 123 passed; final persistence focus: 7 passed.
+- [x] Verify installed OpenCode 1.18.30 model-free protocol compatibility through
+  production HTTP/session/SSE transport: corrected bounded live contract passed
+  once plus five consecutive reruns, Strong → Deep in 0.87–0.96 seconds. No
+  session mutation, provider/model call or native UI. The live test now waits for
+  the asynchronous SSE handshake and closes its transport.
 - [x] Explain provider limit and distinct connection failures in UI; frontend
   build passed, 288 tests passed with one platform skip.
 - [x] Recheck offline AgentCore contracts: 183 passed, no AWS calls/deployment.

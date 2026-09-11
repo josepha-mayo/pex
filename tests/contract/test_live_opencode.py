@@ -29,21 +29,29 @@ async def test_live_opencode_attach_is_deep():
     require_live_authorization("PEX_LIVE_OPENCODE")
     if not await _healthy():
         pytest.skip("opencode serve is not listening on 4097")
-    adapter = OpenCodeAdapter(LiveHttpTransport(LIVE))
-    assert (await adapter.probe()).support_label.value == "strong"
+    transport = LiveHttpTransport(LIVE)
+    adapter = OpenCodeAdapter(transport)
 
     async def ingest(*_):
         return None
 
-    task = adapter.start_pipeline_pump(ingest)
+    task: asyncio.Task | None = None
     try:
+        assert (await adapter.probe()).support_label.value == "strong"
+        task = adapter.start_pipeline_pump(ingest)
         caps = await adapter.probe()
+        async with asyncio.timeout(5.0):
+            while caps.support_label.value != "deep":
+                await asyncio.sleep(0.05)
+                caps = await adapter.probe()
         assert caps.support_label.value == "deep"
         sessions = await adapter.discover_sessions()
         assert isinstance(sessions, list)
     finally:
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        await transport.aclose()

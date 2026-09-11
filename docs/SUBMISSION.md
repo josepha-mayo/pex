@@ -11,7 +11,9 @@
 > Native testing is authorized, not on the old hold. AgentCore is implemented
 > and offline-tested, not deployed; deployment is optional under refreshed
 > official rules. The current source full Python regression passes 4,436 with
-> 32 skips and zero failures/errors. No frozen comparative score is available. Finish
+> 32 skips and zero failures/errors. Installed OpenCode 1.18.30 passes the
+> model-free production HTTP/session/SSE compatibility smoke; this is not a new
+> model-backed recovery run. No frozen comparative score is available. Finish
 > [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
 > equate package integrity or historical green tests with overall readiness.
 

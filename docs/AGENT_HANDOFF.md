@@ -33,11 +33,21 @@ Submission-asset audit found that the five root-level `docs/demo` screenshots
 and two duplicate short WebMs showed the retired sparse eight-pet browser UI and
 Hatch/Import controls. The PNGs and byte-identical WebMs are now quarantined
 under `docs/demo/archive/legacy-eight-pet/`. Do not use them in the gallery or
-final video. Capture a fresh current-
-package Home/overlay/two-pet Settings/BYOK/Inspector set only after native
+final video. Capture a fresh current-package Home/overlay/two-pet Settings/
+BYOK/Inspector set only after native
 acceptance. The public README, STATUS, hackathon track and submission checklist
 now point to package `56783bf`, product `8394b4b` and the current full-regression
 evidence.
+
+Installed OpenCode advanced to `1.18.30`. A fresh model-free production-adapter
+smoke on loopback port 4097 now passes the corrected live contract once plus five
+consecutive reruns (0.87–0.96 seconds), progressing Strong → Deep after the
+`/global/event` SSE handshake. The old live test asserted Deep immediately after
+starting an asynchronous pump and failed twice on scheduler timing; it now waits
+at most five seconds for the real condition and closes `LiveHttpTransport` in
+cleanup. Product code did not change. Port 4097 and the empty probe workspace
+were removed afterward. See
+[OpenCode 1.18.30 evidence](demo/evidence/OPENCODE_HTTP_PROTOCOL_1_18_30_2026-09-11.md).
 
 Current offline reruns after packaging are green: BYOK/provider/configuration
 210 passed with one intentional Windows symlink skip; OpenCode/Codex
