@@ -33,6 +33,13 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+- [x] Current source/package `6d18167` renders the exact two verified built-in
+  atlases from stable bundled URLs, removing repeated bridge atlas
+  transfer/Pillow validation and preventing a selected Von from flashing as Pex.
+  Both strict v2 atlas checks pass; desktop contracts pass 291 with one
+  intentional skip; production and full Tauri builds pass; both installer
+  inventories verify with zero blockers; the isolated frozen bridge passes with
+  zero provider calls. [Exact hashes and boundary](demo/evidence/PACKAGE_6D18167_2026-09-11.md).
 - [x] Current source/package `761cbde` coalesces active committed-event bursts
   into one cancellable 250 ms derived-state refresh while persisting event
   cursors immediately. Desktop contracts pass 290 with one intentional skip,

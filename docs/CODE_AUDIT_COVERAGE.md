@@ -1,5 +1,26 @@
 # PEX code audit coverage — 5 September 2026
 
+## 11 September — bundled two-pet rendering and fresh atlas QA
+
+Read the selected-pet, roster-preview, authenticated asset-fetch, atlas timer,
+overlay transparency, status-dismiss and native-hide paths end to end. Both
+built-ins were already release-hash verified but each WebView still fetched and
+Pillow-validated multi-megabyte bridge copies; selected Von could render the Pex
+fallback until that request completed. Source `6d18167` centralizes the exact
+Pex/Von bundle map, uses stable local asset URLs for those IDs, retains the
+authenticated fallback for unknown future IDs, and changes no supervision or
+credential path.
+
+Fresh hatch-pet strict-v2 validation passed both atlases as RGBA `1536x2288`
+with no structural errors/warnings and zero transparent-RGB residue. Generated
+normal-size contact/direction sheets show two coherent identities and complete
+state families. Continuity heuristics retain review warnings (notably Von
+`157.5 -> 180`); no asset was silently regenerated or self-certified as new
+independent/native approval. The full desktop suite passed **291 with one
+intentional skip**, production build passed 71 modules, full Tauri packaging and
+exclusive MSI/NSIS inventories passed, and an isolated frozen-bridge smoke made
+zero provider calls. [Exact package evidence](demo/evidence/PACKAGE_6D18167_2026-09-11.md).
+
 ## 11 September — active event-burst resource repair and exact package
 
 Audited the desktop event path from authenticated WebSocket page receipt through

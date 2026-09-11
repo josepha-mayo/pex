@@ -1378,6 +1378,28 @@ provider calls, and zero surviving exact bridge processes.
 Exact hashes and limitations: [package 761cbde](demo/evidence/PACKAGE_761CBDE_2026-09-11.md).
 Native acceptance remains pending and must target this package, not `c3cc44c`.
 
+## Current package after bundled-pet resource repair: 6d18167
+
+Package `6d18167` supersedes `761cbde`. Pex and Von are already bound by the
+schema-4 release manifest, so both WebViews now use their stable bundled asset
+URLs instead of repeatedly transferring and Pillow-validating the same large
+atlases through the bridge. This also prevents selected Von from briefly showing
+Pex while an asset request resolves. Unknown future IDs retain the authenticated
+bridge fallback. No supervision, event, model or credential behavior changed.
+
+Fresh hatch-pet v2 validation passed both atlases at RGBA `1536x2288` with no
+structural errors/warnings and zero transparent-RGB residue. Normal-size contact
+and direction sheets were inspected; heuristic continuity warnings remain review
+evidence rather than proven defects, and this is not independent/native playback
+approval. The desktop suite passed 291 with one intentional Windows symlink
+skip; production build passed 71 modules. Full Tauri build, exclusive package
+verification and packaged-bridge smoke all passed: `release_ready:true`, zero
+blockers, both inventories verified, 2,372 runtime files, cap 3, Zen Contributor
+Free first, zero provider calls and zero surviving bridge processes.
+
+Exact hashes and limitations: [package 6d18167](demo/evidence/PACKAGE_6D18167_2026-09-11.md).
+Native acceptance must now target `6d18167`.
+
 ## 11 September final two-day submission lock
 
 Joseph has set a stricter internal target of two remaining days. Do not spend
