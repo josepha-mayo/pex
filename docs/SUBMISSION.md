@@ -1,7 +1,7 @@
 # Devpost submission copy
 
 > **Current claim boundary — 11 September 2026:** draft, not submitted. Package
-> source `16153b3` (base UI product `8394b4b`) passes both installer integrity gates with zero blockers.
+> source `9668bcc` (base UI product `8394b4b`) passes both installer integrity gates with zero blockers.
 > It routes Zen Muse through Responses and never silently switches model IDs.
 > It ships exactly two companions, Pex and Von. Its newest scale-aware overlay,
 > Ask layout and explicit cancellation behavior still require native
@@ -18,7 +18,7 @@
 > exact-Zen change, whose affected slice passes 197 on `f585562`. Installed
 > OpenCode 1.18.30 passes the
 > model-free production HTTP/session/SSE compatibility smoke; this is not a new
-> model-backed recovery run. A fresh current-head MVP spine passes 252/252 with
+> model-backed recovery run. A fresh current-head MVP spine passes 259/259 with
 > thread warnings promoted to failures, and the exact packaged bridge reports
 > the cap of three plus the contributor-free Zen hint without a provider call.
 > No frozen comparative score is available. Finish
@@ -131,14 +131,14 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
 - [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean package
-  source `16153b3` (base UI product `8394b4b`); both installer inventories pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `8394b4b`;
+  source `9668bcc` (base UI product `8394b4b`); both installer inventories pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `9668bcc`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run current offline gates: 368 benchmark/scoring/Cursor/safety tests,
   an expanded 387-test Strands/supervisor/trajectory/evidence/outcome gate with
-  6 skips, 183 AgentCore local tests with one opt-in cloud skip, and 292 desktop/
+  6 skips, 183 AgentCore local tests with one opt-in cloud skip, and 290 desktop/
   UI tests with one platform skip. The Strands and AgentCore gates pass with
-  aiosqlite thread warnings promoted to errors. A current-head 252-test MVP
+  aiosqlite thread warnings promoted to errors. A current-head 259-test MVP
   spine also passes under that warning policy. Production TypeScript/Vite and
   the Tauri package build passed. The most recent full Python regression
   (4,436 passed, 32 skipped) is source-bound to `dd06443`; the exact-Zen affected
@@ -150,12 +150,12 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
 - [ ] After native acceptance, publish the accepted unsigned installer and its
-  SHA-256 as a public GitHub release/test-build link; do not upload `16153b3`
+  SHA-256 as a public GitHub release/test-build link; do not upload `9668bcc`
   before that acceptance or silently replace a release asset
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
 - [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source
-- [ ] Natively verify package source `16153b3` scale-aware overlay, storage-safe hide/restore, Ask layout, cancellation display, exact Zen default, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 and the contributor-free Zen hint in an isolated authenticated headless smoke; then
+- [ ] Natively verify package source `9668bcc` scale-aware overlay, storage-safe hide/restore, Ask layout, cancellation display, exact Zen default, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 and the contributor-free Zen hint in three isolated authenticated headless restart smokes; then
   record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence includes
   the 200-test contract gate plus an exact-package local `/ping` + `/invocations` protocol

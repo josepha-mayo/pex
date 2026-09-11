@@ -51,6 +51,7 @@ const desktop = resolve(scriptDir, "..");
 const tauriDir = join(desktop, "src-tauri");
 const binaries = join(tauriDir, "binaries");
 let triple;
+let rustToolchainError = null;
 try {
   triple = execFileSync("rustc", ["--print", "host-tuple"], {
     cwd: repo,
@@ -59,16 +60,20 @@ try {
   if (!triple) throw new Error("rustc did not report a host target triple");
 } catch (error) {
   if (process.argv.includes("--preflight-release")) {
-    process.stdout.write(`${JSON.stringify({
-      schema: "pex.release-preflight.v1",
-      stage: "source",
-      source_ready: false,
-      release_ready: false,
-      blockers: [{ code: "rust_toolchain_unavailable", detail: error.message }],
-    }, null, 2)}\n`);
-    process.exit(2);
+    // A preflight must remain a complete machine-readable audit even when a
+    // toolchain is unavailable. Derive only the artifact naming tuple here;
+    // the missing compiler remains an explicit blocker below.
+    rustToolchainError = error;
+    const architecture = process.arch === "x64" ? "x86_64" : process.arch;
+    const platformSuffix = {
+      win32: "pc-windows-msvc",
+      linux: "unknown-linux-gnu",
+      darwin: "apple-darwin",
+    }[process.platform] ?? `unknown-${process.platform}`;
+    triple = `${architecture}-${platformSuffix}`;
+  } else {
+    throw error;
   }
-  throw error;
 }
 
 const extension = process.platform === "win32" ? ".exe" : "";
@@ -1151,6 +1156,9 @@ function fingerprintFiles(paths) {
 function runReleasePreflight(petSources) {
   const blockers = [];
   const addBlocker = (code, detail) => blockers.push({ code, detail });
+  if (rustToolchainError !== null) {
+    addBlocker("rust_toolchain_unavailable", rustToolchainError.message);
+  }
   const inputs = sourceInputFiles();
   inputs.push(...[...validatedReleaseEvidence.values()].map((entry) => entry.file));
   for (const path of [
@@ -1239,14 +1247,16 @@ function runReleasePreflight(petSources) {
     ["-c", "import platform; print(platform.python_version())"],
     { cwd: repo, encoding: "utf8" },
   ).trim();
-  const rustVersion = execFileSync("rustc", ["--version"], { cwd: repo, encoding: "utf8" }).trim();
+  const rustVersion = rustToolchainError === null
+    ? execFileSync("rustc", ["--version"], { cwd: repo, encoding: "utf8" }).trim()
+    : null;
   const pyinstallerVersion = execFileSync(
     venvPython,
     ["-c", "import importlib.metadata; print(importlib.metadata.version('pyinstaller'))"],
     { cwd: repo, encoding: "utf8" },
   ).trim();
   const uvLock = readFileSync(join(repo, "uv.lock"), "utf8");
-  const toolchainsOk = toolchainsMatch({
+  const toolchainsOk = rustVersion !== null && toolchainsMatch({
     pins: { node: nodePin, python: pythonPin, rust: rustPin },
     active: {
       node: process.versions.node,

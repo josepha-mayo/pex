@@ -2,10 +2,12 @@
 
 ## Current — 11 September 2026
 
-- Package source `16153b3` (base UI product `8394b4b`) is the current two-pet
+- Package source `9668bcc` (base UI product `8394b4b`) is the current two-pet
   candidate. Clean MSI/NSIS integrity, frozen-bridge identity/settings, exact
-  Zen Responses routing and current offline gates pass. Package integrity is
-  not native interaction or recording evidence.
+  Zen Responses routing and current offline gates pass. Its frozen runtime has
+  zero retired hatch/image implementation files, and three sequential isolated
+  bridge restart smokes pass. Package integrity is not native interaction or
+  recording evidence.
 - The broad 368-test benchmark/Cursor integrity run emitted one aiosqlite
   thread-shutdown warning. It did not reproduce in the exact named test, the
   complete 57-test Cursor contract, or an expanded 387-test supervision gate

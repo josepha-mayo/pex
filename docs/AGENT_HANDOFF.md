@@ -6,7 +6,7 @@ claiming deployment. The user's later small-MVP request takes priority over
 historical expansion gates; formal four-arm scores remain unclaimed. The unsafe
 933239a launcher instructions have been removed from the recording runbook.
 
-Maintained checkpoint: 11 September 2026; exact-Zen package and frozen smoke passed.
+Maintained checkpoint: 11 September 2026; stripped two-pet package and three frozen restart smokes passed.
 **Submission status: NO-GO. The full goal remains active.**
 Verify Git/current files and running processes before relying on this checkpoint.
 This is the active entry point, not another historical log.
@@ -21,30 +21,31 @@ bridge lifecycle; do not churn the accepted package without failing evidence.
 
 ## Latest verified checkpoint — supersedes historical status below
 
-**Current package source: `16153b3`; base UI product change: `8394b4b`.** The package
+**Current package source: `9668bcc`; base UI product change: `8394b4b`.** The package
 now contains the exact Zen/Ask correction: the selected Muse model is sent to
 `/v1/responses`, `muse-spark-1.3-contributor-free` is the first Zen suggestion
 and default, and Ask PEX can retry a transient failure once only with that same
 model. It never silently changes to a different Zen model. Ruff passed; 197
-provider/BYOK/settings/security tests passed on ancestor `f585562`; the current
-desktop suite passed 292 with
+provider/BYOK/settings/security tests passed on ancestor `f585562`; the final
+desktop suite passed 290 with
 one platform skip; production build passed. The clean Tauri build and immutable
 package verifier report `release_ready: true` with zero blockers. Receipt
-`build/package-16153b3-20260911-verified.json`, SHA-256
-`c100e58475d8ae6e9910d3b87b56d2f5bde58a1aa20ff1535cb5d1fc0a66bc93`.
-[Exact package evidence](demo/evidence/PACKAGE_16153B3_2026-09-11.md). Frozen
-bridge lifetime/manifest checks pass 3/3; an isolated authenticated smoke reports
-the default dispatch cap 3 and the correct first Zen hint, with no provider,
-worker, or AWS call and no surviving bridge process. The current exact packaged
-runtime hash is `e68da54a...`; `scripts/smoke_packaged_bridge.py` makes this gate
-repeatable and writes `build/packaged-settings-smoke-16153b3.json`. Visible
-native acceptance remains pending while Joseph uses the PC.
+`build/pex-package-receipt-9668bcc.json`, SHA-256
+`27837dcb8263b4f4f32e1c6109f88ad1790d63ffe3fa83e5130c1fecc0df8b80`.
+[Exact package evidence](demo/evidence/PACKAGE_9668BCC_2026-09-11.md). The frozen
+runtime contains 2,372 files and zero retired hatch/image implementation paths.
+Three sequential isolated authenticated restart smokes report the default
+dispatch cap 3 and the correct first Zen hint, with no provider, worker, or AWS
+call and no surviving bridge process. The exact packaged bridge SHA-256 is
+`962b2ebee197865873d1e9b37c09e0e0886e8902df6be350d29f8029378c8ad1`;
+`scripts/smoke_packaged_bridge.py` makes this gate repeatable. Visible native
+acceptance remains pending while Joseph uses the PC.
 
-The current-head offline MVP spine also passes 252/252 with unhandled pytest
+The current-head offline MVP spine also passes 259/259 with unhandled pytest
 thread warnings promoted to failures: goal lifecycle, quiet completion and
 recovery, two-pet APIs, authenticated supervisor settings, Strands policy,
 Zen provider/Ask routing, and local AgentCore. No live provider or AWS call ran.
-Post-package exact-head checks also pass: desktop 292 with one intentional
+Post-package exact-head checks also pass: desktop 290 with one intentional
 Windows symlink skip, production TypeScript/Vite build with 69 modules, native
 Rust ownership/security/window-close contracts 19/19, and release pet validation
 with exactly `pex` and `von`. The first pet-validator command omitted the pinned
@@ -111,7 +112,7 @@ under `docs/demo/archive/legacy-eight-pet/`. Do not use them in the gallery or
 final video. Capture a fresh current-package Home/overlay/two-pet Settings/
 BYOK/Inspector set only after native
 acceptance. The public README, STATUS, hackathon track and submission checklist
-now point to package `16153b3`, base UI product `8394b4b` and the current full-regression
+now point to package `9668bcc`, base UI product `8394b4b` and the current full-regression
 evidence.
 
 Installed OpenCode advanced to `1.18.30`. A fresh model-free production-adapter
