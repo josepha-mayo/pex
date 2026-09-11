@@ -25,7 +25,10 @@ zero blockers and 2,375 matching runtime files. Receipt
 `build/package-204c766-20260911-verified.json`, SHA-256
 `16375f7afc60df94fdc5bec230f5b61bac6c7e1ebdc96124576786369cbcc2ce`.
 [Exact installer hashes and limits](demo/evidence/PACKAGE_204C766_2026-09-11.md).
-Native verification remains pending; do not describe this package as accepted.
+The packaged frozen bridge also passed an isolated headless settings smoke:
+public liveness became ready and authenticated `/v1/supervisor` reported the
+fresh-install cap of three. No provider, worker or AWS call ran. Visible native
+verification remains pending; do not describe this package as accepted.
 
 **Pre-cap packaged candidate: `567778b` (superseded by `204c766`).** Its clean full Tauri build completed;
 MSI and NSIS verification passes with zero blockers and 2,375 matching runtime

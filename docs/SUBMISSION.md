@@ -212,7 +212,7 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
 - [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source
-- [ ] Natively verify package source `204c766` Ask layout, cancellation display, default review cap and bounded stability; then
+- [ ] Natively verify package source `204c766` Ask layout, cancellation display, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 in an isolated authenticated headless smoke; then
   record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence includes
   the 200-test contract gate plus an exact-package local `/ping` + `/invocations` protocol

@@ -32,7 +32,10 @@ anything on the user's behalf.
   provider/source/settings slice passes 156 with one intentional skip. Package
   source `204c766` passes MSI/NSIS verification with zero blockers and 2,375
   matching runtime files. [Hashes and limits](demo/evidence/PACKAGE_204C766_2026-09-11.md).
-  Native verification remains pending.
+  A headless isolated launch of the packaged frozen bridge also passed: public
+  liveness became ready and authenticated supervisor settings reported the
+  default cap of three, with no provider/worker/AWS call. Visible native Settings
+  verification remains pending.
 - [x] Repair observed OpenCode free-tier retry/idle follow-up loop in source;
   durable provider block survives refresh/restart and requires tool/file activity
   to clear. Processing/OpenCode: 123 passed; final persistence focus: 7 passed.
