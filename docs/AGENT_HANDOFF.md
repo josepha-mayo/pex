@@ -1451,6 +1451,12 @@ with two intentional opt-in skips in 125.83 seconds. Thread warnings were
 promoted to errors. No AWS resource or provider call ran; preserve the explicit
 implemented-and-offline-tested, not deployed, claim.
 
+Current-head benchmark follow-through: `test_pexbench.py`, Cursor hooks, policy
+scoring and speculative execution passed 236/236 in 871.91 seconds with thread
+warnings promoted to errors. This is integrity/implementation evidence only.
+No live arm ran, no comparative score exists, and `benchmarks/manifest.yaml`
+must stay `frozen:false`.
+
 ## Current OpenCode MVP closure: 150ea07
 
 Clean pushed source `150ea07b205776660219dbfb1802ff86b998e8df` now passes

@@ -2480,3 +2480,9 @@ clean local tree, public unarchived GitHub repository, MIT detection, current
 README links and a readable architecture PNG. Native acceptance, the public
 demo video, required form fields and submission remain open.
 [Exact preflight](docs/demo/evidence/PUBLIC_SUBMISSION_PREFLIGHT_A553D86_2026-09-11.md).
+
+The current-head benchmark/Cursor/policy contract selection passed 236 tests in
+871.91 seconds with unhandled thread warnings promoted to errors. It covered
+`test_pexbench.py`, Cursor hooks, policy scoring and speculative execution. No
+worker, model, Cursor session, benchmark arm or score ran; the authoritative
+manifest correctly remains `frozen:false`.
