@@ -89,6 +89,60 @@ def semantic_reviews_succeeded(journal: list[Any]) -> bool:
     return completed_model_review
 
 
+def recovery_interventions_succeeded(rows: Any, followups: Any) -> bool:
+    """Require one exact correction, its helped outcome, then quiet completion."""
+    if not isinstance(rows, list) or not isinstance(followups, list) or len(followups) != 1:
+        return False
+    if not all(isinstance(row, dict) for row in rows):
+        return False
+    corrections = [
+        (index, row)
+        for index, row in enumerate(rows)
+        if row.get("action_taken") != "NOOP"
+    ]
+    if len(corrections) != 1:
+        return False
+    correction_index, correction = corrections[0]
+    action = correction.get("proposed_action")
+    payload = action.get("payload") if isinstance(action, dict) else None
+    text = payload.get("text") if isinstance(payload, dict) else None
+    metadata = correction.get("metadata")
+    verifier = metadata.get("independent_verifier") if isinstance(metadata, dict) else None
+    if not (
+        correction.get("action_taken") == "SEND_NUDGE"
+        and isinstance(text, str)
+        and bool(text.strip())
+        and followups == [text]
+        and correction.get("result") == "sent"
+        and correction.get("outcome") == "goal_evidence_supported"
+        and correction.get("helped") is True
+        and isinstance(correction.get("worker_response"), str)
+        and bool(correction["worker_response"])
+        and isinstance(metadata, dict)
+        and metadata.get("used_llm") is True
+        and metadata.get("inference_status") == "completed"
+        and metadata.get("outcome_final") is True
+        and isinstance(verifier, dict)
+        and verifier.get("approved") is True
+        and verifier.get("status") == "approved"
+    ):
+        return False
+    for row in rows[correction_index + 1 :]:
+        metadata = row.get("metadata")
+        verification = metadata.get("verification") if isinstance(metadata, dict) else None
+        if (
+            row.get("action_taken") == "NOOP"
+            and row.get("result") == "noop"
+            and isinstance(metadata, dict)
+            and metadata.get("used_llm") is True
+            and metadata.get("inference_status") == "completed"
+            and isinstance(verification, dict)
+            and verification.get("acceptance_status") == "supported"
+        ):
+            return True
+    return False
+
+
 def completed_generation(
     messages: Any, statuses: Any, session_id: str, *, minimum_user_count: int = 1
 ) -> tuple[str, str] | None:

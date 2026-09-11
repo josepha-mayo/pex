@@ -10,9 +10,66 @@ from benchmarks.opencode_completion import (
     QuietCompletionFence,
     belongs_to_case,
     completed_generation,
+    recovery_interventions_succeeded,
     review_completed_for_event,
     semantic_reviews_succeeded,
 )
+
+
+def recovery_rows():
+    text = "Create final.txt and verify it."
+    return [
+        {
+            "action_taken": "SEND_NUDGE",
+            "result": "sent",
+            "outcome": "goal_evidence_supported",
+            "helped": True,
+            "worker_response": "assistant",
+            "proposed_action": {"payload": {"text": text}},
+            "metadata": {
+                "used_llm": True,
+                "inference_status": "completed",
+                "outcome_final": True,
+                "independent_verifier": {"approved": True, "status": "approved"},
+            },
+        },
+        {
+            "action_taken": "NOOP",
+            "result": "noop",
+            "metadata": {
+                "used_llm": True,
+                "inference_status": "completed",
+                "verification": {"acceptance_status": "supported"},
+            },
+        },
+    ], [text]
+
+
+def test_recovery_requires_exact_helped_correction_then_supported_noop():
+    rows, followups = recovery_rows()
+    assert recovery_interventions_succeeded(rows, followups)
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda rows, followups: followups.append("again"),
+    lambda rows, followups: followups.__setitem__(0, "different"),
+    lambda rows, followups: rows[0].__setitem__("action_taken", "CONTINUE"),
+    lambda rows, followups: rows[0].__setitem__("outcome", "worker_responded"),
+    lambda rows, followups: rows[0].__setitem__("helped", None),
+    lambda rows, followups: rows[0].__setitem__("worker_response", ""),
+    lambda rows, followups: rows[0]["metadata"].__setitem__("outcome_final", False),
+    lambda rows, followups: rows[0]["metadata"]["independent_verifier"].__setitem__(
+        "approved", False
+    ),
+    lambda rows, followups: rows[1]["metadata"]["verification"].__setitem__(
+        "acceptance_status", "unknown"
+    ),
+    lambda rows, followups: rows.reverse(),
+])
+def test_recovery_rejects_missing_or_ambiguous_causal_proof(mutation):
+    rows, followups = recovery_rows()
+    mutation(rows, followups)
+    assert not recovery_interventions_succeeded(rows, followups)
 
 
 @pytest.mark.parametrize("expected,event_session,observed_session,accepted", [
