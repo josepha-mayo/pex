@@ -2,7 +2,7 @@
 
 ## Current — 11 September 2026
 
-- Package source `f585562` (UI product `8394b4b`) is the current two-pet
+- Package source `16153b3` (base UI product `8394b4b`) is the current two-pet
   candidate. Clean MSI/NSIS integrity, frozen-bridge identity/settings, exact
   Zen Responses routing and current offline gates pass. Package integrity is
   not native interaction or recording evidence.

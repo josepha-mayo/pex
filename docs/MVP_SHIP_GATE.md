@@ -32,16 +32,17 @@ anything on the user's behalf.
   atlases pass fresh v2 and runtime-contract validation with zero errors or
   warnings; full desktop is 291 passed with one platform skip and the production
   build passes. [Audit and claim boundary](demo/evidence/PET_UI_AUDIT_8394B4B_2026-09-11.md).
-  Package source `f585562` passes clean preflight, full Tauri build, MSI/NSIS
+  Package source `16153b3` passes clean preflight, full Tauri build, MSI/NSIS
   verification and isolated packaged-bridge cap smoke. Native overlay
   verification remains pending.
 - [x] Bound fresh-install model use at current source `7bf591c`: three durable
   semantic dispatches per worker session by default, explicit Settings/env
   override retained. Ruff and 126 affected pipeline/settings tests pass;
   provider/source/settings slice passes 156 with one intentional skip. Package
-  source `f585562` passes MSI/NSIS verification with zero blockers and includes
-  exact Zen Muse Responses routing with no hidden model fallback.
-  [Current hashes and limits](demo/evidence/PACKAGE_F585562_2026-09-11.md).
+  ancestor source `f585562` passes its affected slice and current package
+  `16153b3` passes MSI/NSIS verification with zero blockers and includes exact
+  Zen Muse Responses routing with no hidden model fallback.
+  [Current hashes and limits](demo/evidence/PACKAGE_16153B3_2026-09-11.md).
   A headless isolated launch of the packaged frozen bridge also passed: public
   liveness became ready and authenticated supervisor settings reported the
   default cap of three, with no provider/worker/AWS call. Visible native Settings
@@ -56,6 +57,10 @@ anything on the user's behalf.
   the asynchronous SSE handshake and closes its transport.
 - [x] Explain provider limit and distinct connection failures in UI; frontend
   build passed, 288 tests passed with one platform skip.
+- [x] Make pet hide/restore resilient to unavailable WebView storage. The new
+  regression, focused 18-test pet suite, full 292-pass desktop suite (one
+  platform skip), production build, Tauri build and MSI/NSIS verifier pass on
+  package source `16153b3`. Native interaction remains pending.
 - [x] Recheck offline AgentCore contracts: 183 passed, no AWS calls/deployment.
 - [x] Recheck current packaged-runtime lifetime and standalone bundle contract:
   3 passed after removing its stale eight-pet expectation; it now requires the
@@ -193,7 +198,7 @@ Rebuild and verify the new MSI/NSIS runtime trees before calling them current.
   opaque PNG. Fresh native gallery screenshots remain part of recording acceptance.
 - [x] Quarantine the stale eight-pet browser screenshots under
   `docs/demo/archive/legacy-eight-pet/` together with the byte-identical legacy
-  WebMs; they are forbidden from the final gallery/video. Fresh package-`f585562`
+  WebMs; they are forbidden from the final gallery/video. Fresh package-`16153b3`
   captures remain part of native acceptance.
 - [ ] Record the working path and complete authorized submission.
 

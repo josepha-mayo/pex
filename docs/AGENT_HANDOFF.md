@@ -21,21 +21,30 @@ bridge lifecycle; do not churn the accepted package without failing evidence.
 
 ## Latest verified checkpoint — supersedes historical status below
 
-**Current package source: `f585562`; UI product change: `8394b4b`.** The package
+**Current package source: `16153b3`; base UI product change: `8394b4b`.** The package
 now contains the exact Zen/Ask correction: the selected Muse model is sent to
 `/v1/responses`, `muse-spark-1.3-contributor-free` is the first Zen suggestion
 and default, and Ask PEX can retry a transient failure once only with that same
 model. It never silently changes to a different Zen model. Ruff passed; 197
-provider/BYOK/settings/security tests passed; the desktop suite passed 291 with
+provider/BYOK/settings/security tests passed on ancestor `f585562`; the current
+desktop suite passed 292 with
 one platform skip; production build passed. The clean Tauri build and immutable
 package verifier report `release_ready: true` with zero blockers. Receipt
-`build/package-f585562-20260911-verified.json`, SHA-256
-`0cb41ee1b7d1b1302142ac19107bde9cf157b06ea22517257105daf0fb9ed49b`.
-[Exact package evidence](demo/evidence/PACKAGE_F585562_2026-09-11.md). Frozen
+`build/package-16153b3-20260911-verified.json`, SHA-256
+`c100e58475d8ae6e9910d3b87b56d2f5bde58a1aa20ff1535cb5d1fc0a66bc93`.
+[Exact package evidence](demo/evidence/PACKAGE_16153B3_2026-09-11.md). Frozen
 bridge lifetime/manifest checks pass 3/3; an isolated authenticated smoke reports
 the default dispatch cap 3 and the correct first Zen hint, with no provider,
 worker, or AWS call and no surviving bridge process. Visible native acceptance
 remains pending while Joseph uses the PC.
+
+The final frontend-only delta makes pet visibility storage-safe. Throwing
+WebView `getItem` no longer blanks startup, and throwing `setItem` no longer
+prevents the current-launch hide/show event from reaching the other PEX
+WebView. Focused pet contracts pass 18/18; the full desktop suite passes 292
+with one platform skip; the production and full Tauri builds pass. The new MSI
+and NSIS pass the immutable verifier with zero blockers. No PEX window was
+opened, so native hide/restore remains in the visible acceptance gate.
 
 The judge-facing architecture source and PNG were regenerated on 11 September
 as a more compact flow and an opaque dark RGB image that remains legible on
@@ -89,7 +98,7 @@ under `docs/demo/archive/legacy-eight-pet/`. Do not use them in the gallery or
 final video. Capture a fresh current-package Home/overlay/two-pet Settings/
 BYOK/Inspector set only after native
 acceptance. The public README, STATUS, hackathon track and submission checklist
-now point to package `f585562`, UI product `8394b4b` and the current full-regression
+now point to package `16153b3`, base UI product `8394b4b` and the current full-regression
 evidence.
 
 Installed OpenCode advanced to `1.18.30`. A fresh model-free production-adapter

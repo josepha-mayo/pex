@@ -2,14 +2,14 @@
 
 ## Current — 11 September 2026
 
-**Current package source: `f585562`; UI product change: `8394b4b`, exactly Pex
+**Current package source: `16153b3`; base UI product change: `8394b4b`, exactly Pex
 and Von.** It includes the fresh-install cap of three durable semantic
 dispatches, scale-aware overlay geometry, and the exact Zen Responses repair.
 Muse Contributor Free is the first Zen hint/default; Ask PEX never silently
 switches model IDs and permits only one transient retry of the exact selection.
 The full Tauri build completed and both unsigned installers pass integrity with
-zero blockers. Receipt `build/package-f585562-20260911-verified.json`, SHA-256
-`0cb41ee1b7d1b1302142ac19107bde9cf157b06ea22517257105daf0fb9ed49b`.
+zero blockers. Receipt `build/package-16153b3-20260911-verified.json`, SHA-256
+`c100e58475d8ae6e9910d3b87b56d2f5bde58a1aa20ff1535cb5d1fc0a66bc93`.
 Custom import and image-generation write APIs remain disabled.
 
 The packaged candidate includes the compact Ask layout repair and an exact
@@ -33,7 +33,7 @@ remains deliberately unfrozen, so no comparative result or leaderboard rank is
 claimed. Clean-source release preflight exits 0 with current sidecars, exactly
 Pex/Von and verified toolchains/wiring.
 
-**Native acceptance of `f585562` is pending.** Joseph is using the PC and asked
+**Native acceptance of `16153b3` is pending.** Joseph is using the PC and asked
 for command-line work only until he says otherwise. Package integrity does not
 prove the repaired scale-aware overlay, Ask layout, cancellation display,
 active-worker stability or recording readiness. The last native candidate
@@ -50,7 +50,7 @@ recovery observation, not ten passes or a comparative benchmark score.
 AgentCore remains implemented/tested but not deployed. Current-package native
 validation, final recording and submission are not complete. See the
 [shipping gate](docs/MVP_SHIP_GATE.md) and
-[current package evidence](docs/demo/evidence/PACKAGE_F585562_2026-09-11.md)
+[current package evidence](docs/demo/evidence/PACKAGE_16153B3_2026-09-11.md)
 for remaining work and exact hashes.
 
 ## Historical source-bound checkpoints
