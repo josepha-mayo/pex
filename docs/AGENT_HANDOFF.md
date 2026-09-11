@@ -1457,6 +1457,11 @@ warnings promoted to errors. This is integrity/implementation evidence only.
 No live arm ran, no comparative score exists, and `benchmarks/manifest.yaml`
 must stay `frozen:false`.
 
+The exact final PEX-only screen procedure is now pinned in
+[the 79d4d18 native acceptance plan](demo/NATIVE_ACCEPTANCE_79D4D18.md). It is a
+plan, not evidence. Follow it only after Joseph releases the screen, and retain
+failures rather than checking items from source/tests alone.
+
 ## Current OpenCode MVP closure: 150ea07
 
 Clean pushed source `150ea07b205776660219dbfb1802ff86b998e8df` now passes
