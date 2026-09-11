@@ -1144,3 +1144,22 @@ acceptance, then confirmed-free live Zen/OpenCode corrective and quiet-completio
 journeys. After those pass, capture the sub-five-minute demo and publish/submit only
 with action-time authorization. AgentCore remains implemented and offline-tested,
 not deployed; benchmark remains `frozen:false` and has no score claim.
+
+## Full-regression repair: 570964b
+
+The full Python suite first exposed one release-preflight failure when the
+ordinary shell could not resolve `rustc`: preflight returned a truncated error
+object instead of its full structured source audit. The release builder now
+derives only the platform artifact tuple in that failure path, retains
+`rust_toolchain_unavailable` as a blocker, emits the complete fleet/Git/sidecar/
+toolchain report, and keeps `source_ready:false`. The exact failed node passes
+without Rust on PATH; desktop tests pass 290 with one intentional platform skip;
+the production frontend build passes. Commit `570964b1eb61ba220aa0edbff3e25a3952994ab6`
+is pushed and clean.
+
+With the pinned Rust 1.97.1 toolchain on PATH, the complete Python regression
+passes **4,440 with 32 skipped in 2,342.58 seconds**, with unhandled pytest thread
+exceptions promoted to failures. No provider, worker, browser, native PEX window
+or AWS resource ran. [Exact evidence](demo/evidence/FULL_OFFLINE_570964B_2026-09-11.md).
+Rebuild and verify the installers from `570964b` before superseding package
+`9668bcc`; until then, `9668bcc` remains the exact verified package fallback.

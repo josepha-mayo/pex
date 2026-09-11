@@ -12,10 +12,10 @@ real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks
 Package source `9668bcc` (base UI product `8394b4b`) ships only Pex and Von,
 defaults fresh installs to three semantic review dispatches per session, and passes both installer
 content/inventory gates. It also routes Zen Muse through Responses and forbids
-silent model fallback. The most recent full Python regression passed 4,436 tests
-with 32 skips and zero failures/errors at `dd06443`; it predates the narrow
-exact-Zen change, whose affected provider/BYOK/settings/security slice passes
-197 tests on package source `f585562`. An earlier package passed
+silent model fallback. The most recent full Python regression passed 4,440 tests
+with 32 skips and zero failures/errors at `570964b`, with unhandled pytest thread
+exceptions promoted to failures. The exact-Zen provider/BYOK/settings/security
+slice also passes 197 tests on package ancestor `f585562`. An earlier package passed
 native unpacked-runtime startup, pet transparency, dismissal/hiding and
 selected-session Ask checks; the newest scale-aware overlay, Ask layout and
 explicit-cancellation repairs still need bounded native checks.

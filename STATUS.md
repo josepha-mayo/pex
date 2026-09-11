@@ -27,9 +27,10 @@ The broad
 368-test run emitted one aiosqlite thread-shutdown warning; the exact named test
 and the entire 57-test owning Cursor contract passed with that warning category
 promoted to errors, so the warning is retained as non-reproduced. Production
-frontend build passed. The most recent full Python regression passes 4,436 with
-32 skips and zero failures/errors at `dd06443`; it predates the narrow exact-Zen
-change, whose affected slice passes 197 on `f585562`. The benchmark manifest
+frontend build passed. The most recent full Python regression passes 4,440 with
+32 skips and zero failures/errors at `570964b`, with unhandled pytest thread
+exceptions promoted to failures. [Exact evidence](docs/demo/evidence/FULL_OFFLINE_570964B_2026-09-11.md).
+The benchmark manifest
 remains deliberately unfrozen, so no comparative result or leaderboard rank is
 claimed. Clean-source release preflight exits 0 with current sidecars, exactly
 Pex/Von and verified toolchains/wiring.

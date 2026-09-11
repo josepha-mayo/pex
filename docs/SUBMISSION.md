@@ -13,9 +13,9 @@
 > using the PC; do not start visible PEX/computer-control checks until he hands
 > the screen back. AgentCore is implemented
 > and offline-tested, not deployed; deployment is optional under refreshed
-> official rules. The most recent full Python regression passes 4,436 with
-> 32 skips and zero failures/errors at `dd06443`; it predates the narrow
-> exact-Zen change, whose affected slice passes 197 on `f585562`. Installed
+> official rules. The most recent full Python regression passes 4,440 with
+> 32 skips and zero failures/errors at `570964b`, with unhandled pytest thread
+> exceptions promoted to failures. Installed
 > OpenCode 1.18.30 passes the
 > model-free production HTTP/session/SSE compatibility smoke; this is not a new
 > model-backed recovery run. A fresh current-head MVP spine passes 259/259 with
@@ -141,7 +141,7 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   aiosqlite thread warnings promoted to errors. A current-head 259-test MVP
   spine also passes under that warning policy. Production TypeScript/Vite and
   the Tauri package build passed. The most recent full Python regression
-  (4,436 passed, 32 skipped) is source-bound to `dd06443`; the exact-Zen affected
+  (4,440 passed, 32 skipped) is source-bound to `570964b`; the exact-Zen affected
   slice passes 197 on package source `f585562`. The one desktop platform skip is
   the intentional Windows symlink case. No benchmark arm, AWS resource, provider
   call or paid call ran in these current gates.

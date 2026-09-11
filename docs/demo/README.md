@@ -10,8 +10,8 @@ directory are historical references and must not be presented as final-source pr
   `27837dcb8263b4f4f32e1c6109f88ad1790d63ffe3fa83e5130c1fecc0df8b80`.
 - Both installers contain exactly Pex and Von and 2,372 matching bridge-runtime
   files, with zero retired hatch/image implementation paths.
-- Current source passes the full Python regression: 4,436 passed, 32 skipped,
-  zero failures/errors on its named earlier source. Focused final-package gates
+- Current source passes the full Python regression: 4,440 passed, 32 skipped,
+  zero failures/errors at `570964b`. Focused final-package gates
   also cover 290 passing frontend tests with
   one platform skip, 137 OpenCode/Codex continuity tests, 210 BYOK/provider/
   configuration tests with one Windows symlink skip, 183 AgentCore local tests
