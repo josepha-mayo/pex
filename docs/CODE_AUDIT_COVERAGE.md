@@ -1,5 +1,27 @@
 # PEX code audit coverage — 5 September 2026
 
+## 11 September — bounded live OpenCode quiet-runner full-file audit
+
+Read `scripts/opencode_quiet_ten.py` and its
+`benchmarks/opencode_completion.py` proof helper end to end before allowing any
+live model run. The runner requires a new validated evidence-directory name and
+a clean source tree, binds the public task, goal, adapter session, observed stop
+event, completed semantic review and latest worker generation to the same case,
+waits through a resettable quiet fence, and stops at the first nonpassing case.
+It retains evidence, never deletes prior runs, and terminates only the exact
+OpenCode server process it started. Receipts contain aggregate token counts and
+model identifiers but no credential; the saved Zen secret is passed only in
+the owned process/model environment and is restored in `finally`. No source
+defect was found in this audit.
+
+The adversarial completion/fence suite passed **71/71 in 13.43 seconds**. It
+rejects stale or incomplete assistant generations, non-idle or malformed worker
+status, mismatched/duplicate completion-event reviews, contradictory later
+inference failures, missing follow-up generations, and activity inside the
+required quiet interval. A tracked-source search found no copy of the supplied
+Zen-key prefix. No worker, provider, native app, browser, AWS request, or paid
+call ran.
+
 ## 11 September — AgentCore client boundary full-file audit
 
 Read `services/bridge/src/pex_bridge/agentcore.py` end to end against the core,
