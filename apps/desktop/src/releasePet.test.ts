@@ -57,8 +57,36 @@ test("floating pet respects the user's small size setting", async () => {
       name: "Pex", sheet: "/pet.webp", mood: "idle", scale: 0.75,
       reducedMotion: true, overlay: true, onActivate: () => {}, onDismiss: () => {},
     }));
+    assert.match(markup, /--pet-overlay-actor-width:98px/u);
     assert.match(markup, /class="sprite-3d" style="width:84px;height:91px;/u);
     assert.match(markup, /aria-label="Hide PEX pet"/u);
+  } finally {
+    await vite.close();
+  }
+});
+
+test("overlay actor, status bubble, and hide control share scale-aware geometry", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createServer } = await import("vite");
+  const vite = await createServer({
+    root: process.cwd(), server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom",
+  });
+  try {
+    const { PetStage } = await vite.ssrLoadModule("/src/components/PetStage.tsx");
+    for (const [scale, width] of [[0.8, 104], [1, 126], [1.4, 171]] as const) {
+      const markup = renderToStaticMarkup(createElement(PetStage, {
+        name: "Pex", sheet: "/pet.webp", mood: "idle", scale,
+        reducedMotion: true, overlay: true,
+        status: { tone: "work", label: "Working", detail: "Watching Codex" },
+        onActivate: () => {}, onDismiss: () => {},
+      }));
+      assert.match(markup, new RegExp(`--pet-overlay-actor-width:${width}px`, "u"));
+    }
+    const styles = await readFile(new URL("./styles.css", import.meta.url), "utf8");
+    assert.match(styles, /\.pet-stage-overlay \.pet-actor\s*\{[\s\S]*?width:\s*var\(--pet-overlay-actor-width, 126px\)/u);
+    assert.match(styles, /\.pet-stage-overlay \.activity-bubble\s*\{[\s\S]*?calc\(100% - var\(--pet-overlay-actor-width, 126px\)\)/u);
+    assert.match(styles, /\.pet-stage-overlay > \.pet-overlay-close\s*\{[\s\S]*?left:\s*calc\(var\(--pet-overlay-actor-width, 126px\) \+ 4px\)/u);
   } finally {
     await vite.close();
   }

@@ -2469,7 +2469,7 @@ html.pet-shell #root {
 .pet-stage-overlay > .pet-overlay-close {
   position: absolute;
   top: 8px;
-  left: 94px;
+  left: calc(var(--pet-overlay-actor-width, 126px) + 4px);
   right: auto;
   z-index: 2;
 }
@@ -2501,12 +2501,12 @@ html.pet-shell #root {
 }
 
 .pet-stage-overlay .pet-actor {
-  width: 126px;
+  width: var(--pet-overlay-actor-width, 126px);
   min-height: 140px;
 }
 
 .pet-stage-overlay .activity-bubble {
-  width: min(138px, calc(100% - 126px));
+  width: min(138px, calc(100% - var(--pet-overlay-actor-width, 126px)));
   min-height: 72px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 24px;

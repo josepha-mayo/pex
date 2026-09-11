@@ -1,4 +1,11 @@
-import { type MouseEvent, type PointerEvent, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  type PointerEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { CodexSprite, lookIndex, type PetMood } from "../pets/atlas";
 import { usePageVisibility } from "../pageVisibility";
@@ -15,6 +22,8 @@ import type { StatusCopy } from "../types";
 
 const HOP_DWELL_MS = 800;
 const HOP_PLAY_MS = 2460;
+const SPRITE_DISPLAY_WIDTH = 112;
+const OVERLAY_ACTOR_GUTTER = 14;
 
 export function PetStage({
   name,
@@ -51,6 +60,13 @@ export function PetStage({
       && readPersistedStatusBubbleKey() === persistentKey;
   }
   const initiallyDismissed = initialDismissal.current;
+  // The companion scale is user-controlled, so the overlay's interaction box
+  // and fixed hide control must follow the rendered sprite instead of a stale
+  // 126px assumption. The status bubble consumes only the remaining width.
+  const overlayActorWidth = Math.max(
+    96,
+    Math.round(SPRITE_DISPLAY_WIDTH * scale) + OVERLAY_ACTOR_GUTTER,
+  );
   const [hop, setHop] = useState(false);
   const [bubbleVisible, setBubbleVisible] = useState(!initiallyDismissed);
   const [dismissedMaterialKey, setDismissedMaterialKey] = useState<string | null>(
@@ -197,7 +213,12 @@ export function PetStage({
   }
 
   return (
-    <div className={`pet-stage ${overlay ? "pet-stage-overlay" : ""}`}>
+    <div
+      className={`pet-stage ${overlay ? "pet-stage-overlay" : ""}`}
+      style={overlay ? ({
+        "--pet-overlay-actor-width": `${overlayActorWidth}px`,
+      } as CSSProperties) : undefined}
+    >
       <button
         ref={actor}
         type="button"
