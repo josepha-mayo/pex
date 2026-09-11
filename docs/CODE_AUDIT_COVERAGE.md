@@ -1208,7 +1208,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `benchmarks/tasks/pexbench_003_permission_spam/metadata.yaml` | Harness / integrity | PENDING |
 | `benchmarks/tasks/pexbench_004_false_claim/metadata.yaml` | Harness / integrity | PENDING |
 | `benchmarks/tasks/pexbench_005_handoff/metadata.yaml` | Harness / integrity | PENDING |
-| `deploy/agentcore/preflight.py` | Backend / release cross-review | PENDING |
+| `deploy/agentcore/preflight.py` | Backend / release cross-review | FULL READ by main 11 Sep; bounded read-only subprocesses, AWS/CLI/CDK/Docker/ARM64/image/secret-ignore/ARN-region gates and separate action authorization reviewed; mocked matrix passes 16/16, no AWS call |
 | `docker-compose.yml` | Backend / release cross-review | PENDING |
 | `fixtures/demo/dataset_before_eval.json` | Backend / release cross-review | PENDING |
 | `fixtures/demo/premature_stop_eval.json` | Backend / release cross-review | PENDING |
@@ -1449,7 +1449,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `tests/unit/test_mcp_auth.py` | Test cross-review | PENDING |
 | `tests/unit/test_named_hook_deadline.py` | Test cross-review | PENDING |
 | `tests/unit/test_observe_security.py` | Test cross-review | PENDING |
-| `tests/unit/test_opencode_fork.py` | Test cross-review | PENDING |
+| `tests/unit/test_opencode_fork.py` | Test cross-review | FULL READ by main 11 Sep; official fork endpoint, child identity/project binding, exact context injection and detached refusal pass 2/2 |
 | `tests/unit/test_opencode_pipeline_pump.py` | Test cross-review | FULL READ by main 11 Sep; event-loop responsiveness, bounded discovery, exact retry, gap and durable-journal idempotency coverage passes 12/12 |
 | `tests/unit/test_operator_effects.py` | Test cross-review | PENDING |
 | `tests/unit/test_operator_handoff_effects.py` | Test cross-review | PENDING |
