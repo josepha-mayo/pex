@@ -26,6 +26,13 @@ anything on the user's behalf.
 
 ## Evidence and remaining work
 
+- [x] Repair scale-dependent overlay geometry at product `8394b4b`: the sprite,
+  actor hit area, remaining status-bubble width and fixed hide control now share
+  one derived width across the supported 0.8–1.4 range. Both exact shipped pet
+  atlases pass fresh v2 and runtime-contract validation with zero errors or
+  warnings; full desktop is 291 passed with one platform skip and the production
+  build passes. [Audit and claim boundary](demo/evidence/PET_UI_AUDIT_8394B4B_2026-09-11.md).
+  Rebuild and native overlay verification remain pending.
 - [x] Bound fresh-install model use at current source `7bf591c`: three durable
   semantic dispatches per worker session by default, explicit Settings/env
   override retained. Ruff and 126 affected pipeline/settings tests pass;

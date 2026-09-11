@@ -13,6 +13,16 @@ This is the active entry point, not another historical log.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**Post-package product source: `8394b4b` (not yet packaged).** The floating
+overlay's actor width, remaining status-bubble width and hide-button anchor now
+derive from the same user scale, closing the fixed-126px geometry that could make
+the × drift or squeeze the bubble. Full desktop: 291 passed, one platform skip;
+production build exit 0. Fresh hatch-pet checks on the exact shipped Pex/Von
+atlases report valid RGBA WebP v2 1536×2288 assets with zero errors/warnings, and
+the runtime contract reports 57 standard frames each with no repair. See
+[two-pet audit](demo/evidence/PET_UI_AUDIT_8394B4B_2026-09-11.md). Rebuild this
+source before native acceptance; package `204c766` does not include this change.
+
 **Current package source: `204c766`; product change: `7bf591c`.** Product `7bf591c` changes
 the fresh-install supervisor default from unbounded to three durable semantic
 dispatches per worker session. This both bounds BYOK usage and enables the paced
