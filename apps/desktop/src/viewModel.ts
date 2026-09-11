@@ -7,7 +7,6 @@ import type {
   ContextItem,
   Fingerprint,
   Goal,
-  HatchBaseCandidateRequest,
   Intervention,
   LastAction,
   LedgerDecision,
@@ -95,87 +94,6 @@ export const BUILT_IN_PET_IDS = [
 ] as const;
 
 const BUILT_IN_PET_ID_SET = new Set<string>(BUILT_IN_PET_IDS);
-
-export const HATCH_BASE_CANDIDATE_DISCLOSURE =
-  "This authorizes exactly one potentially billable image-generation call for one unverified base candidate. It is not an atlas or playable pet; grounded 8x11 assembly and independent mechanical, visual, continuity, and blind-direction QA are still required before import.";
-export const HATCH_BASE_CANDIDATE_CONFIRMATION =
-  "I authorize exactly one potentially billable image-generation call for this unverified base candidate.";
-export const HATCH_EXTERNAL_IMPORT_DISCLOSURE =
-  "Import only an externally assembled Codex v2 pet after its 8x11 atlas and independent QA are complete.";
-
-export type HatchBaseCandidateAttempt = {
-  idempotencyKey: string;
-  requestSignature: string;
-};
-
-const HATCH_IDEMPOTENCY_KEY = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/u;
-
-export function hatchIntentRequiresFreshAcknowledgement(
-  currentValue: string,
-  nextValue: string,
-): boolean {
-  return currentValue !== nextValue;
-}
-
-export function hatchResponseMatchesCurrentAttempt(
-  submitted: HatchBaseCandidateAttempt,
-  current: HatchBaseCandidateAttempt | null,
-): boolean {
-  return current?.idempotencyKey === submitted.idempotencyKey
-    && current.requestSignature === submitted.requestSignature;
-}
-
-export function prepareHatchBaseCandidateAttempt(
-  previous: HatchBaseCandidateAttempt | null,
-  input: {
-    displayName: string;
-    description: string;
-    stylePreset: string;
-    petNotes: string;
-  },
-  nextIdempotencyKey: () => string,
-): { attempt: HatchBaseCandidateAttempt; request: HatchBaseCandidateRequest } | null {
-  const displayName = input.displayName.trim();
-  const description = input.description.trim();
-  const stylePreset = input.stylePreset.trim();
-  const petNotes = input.petNotes.trim();
-  if (
-    !displayName
-    || displayName.length > 128
-    || description.length > 4_096
-    || !stylePreset
-    || stylePreset.length > 64
-    || petNotes.length > 8_192
-    || [displayName, description, stylePreset, petNotes].some(containsControlCharacters)
-  ) return null;
-
-  const requestSignature = JSON.stringify([
-    displayName,
-    description,
-    stylePreset,
-    petNotes,
-  ]);
-  const idempotencyKey = previous?.requestSignature === requestSignature
-    ? previous.idempotencyKey
-    : nextIdempotencyKey();
-  if (!HATCH_IDEMPOTENCY_KEY.test(idempotencyKey)) return null;
-
-  return {
-    attempt: { idempotencyKey, requestSignature },
-    request: {
-      display_name: displayName,
-      description,
-      style_preset: stylePreset,
-      pet_notes: petNotes,
-      idempotency_key: idempotencyKey,
-      confirm_one_base_candidate_call: true,
-    },
-  };
-}
-
-export function newHatchBaseCandidateKey(): string {
-  return `hatch-base-${crypto.randomUUID()}`;
-}
 
 export type UndoAttempt = {
   interventionId: string;

@@ -1098,3 +1098,12 @@ code/tests now. When the user explicitly yields the screen, the next critical ga
 bounded native acceptance on the exact packaged source, followed by the confirmed-free
 Zen/OpenCode recovery and quiet-completion journeys. Keep benchmark scoring NO-GO and
 `frozen:false` until raw, fair, citeable evidence exists.
+
+The next offline cleanup removed 226 compiled/test lines belonging only to the retired
+frontend hatch-generation flow: three unused DTOs plus disclosure, acknowledgement,
+idempotency, request-building, and response-matching helpers. The live two-pet UI had
+no callers for them. Backend import compatibility and catalog parsing were deliberately
+left intact. The existing two-pet source contract now rejects restoration of these
+helpers. Focused view-model tests passed 76/76; complete desktop tests passed 289 with
+one intentional Windows symlink skip; TypeScript/Vite passed. This remains source-only
+until a new exact-source package is built and verified.

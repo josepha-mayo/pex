@@ -198,34 +198,6 @@ export type CatalogPet = {
   source?: "starter" | "imported" | "hatched";
 };
 
-export type HatchJobRow = {
-  id: string;
-  display_name: string;
-  status: string;
-  step: string;
-  jobs_complete: number;
-  jobs_total: number;
-  error?: string | null;
-};
-
-export type HatchBaseCandidateRequest = {
-  display_name: string;
-  description: string;
-  style_preset: string;
-  pet_notes: string;
-  idempotency_key: string;
-  confirm_one_base_candidate_call: true;
-};
-
-export type HatchCap = {
-  ok?: boolean;
-  has_image_endpoint?: boolean;
-  generation_ready?: boolean;
-  provider?: string;
-  reason?: string;
-  note?: string;
-};
-
 export type SupervisorRow = {
   provider: string;
   model_id: string;

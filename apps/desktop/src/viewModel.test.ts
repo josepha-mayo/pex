@@ -28,17 +28,12 @@ import {
   BUILT_IN_PET_IDS,
   actionExplanation,
   recordedActionLabel,
-  HATCH_BASE_CANDIDATE_CONFIRMATION,
-  HATCH_BASE_CANDIDATE_DISCLOSURE,
-  HATCH_EXTERNAL_IMPORT_DISCLOSURE,
   canAttachPersistentGoal,
   canFocusSession,
   canOpenSession,
   safeExternalUrl,
   createGoalPayload,
   goalToDraft,
-  hatchIntentRequiresFreshAcknowledgement,
-  hatchResponseMatchesCurrentAttempt,
   updateGoalPayload,
   currentGoals,
   cursorRejectionReasonCopy,
@@ -58,7 +53,6 @@ import {
   moodForState,
   permissionRequestDetails,
   prepareGoalControlAttempt,
-  prepareHatchBaseCandidateAttempt,
   prepareUndoAttempt,
   prepareProjectIdentityResolutionAttempt,
   projectCompletedOverlayUndo,
@@ -385,116 +379,6 @@ test("the shipping fleet is exactly Pex and Von and legacy imports remain separa
   assert.equal(partitioned.builtIns.every((pet) => pet.atlas_ready), true);
   assert.deepEqual(partitioned.custom.map((pet) => pet.id), ["import:nori"]);
   assert.deepEqual(partitioned.fleetIssues, []);
-});
-
-test("base-candidate hatch retries preserve one bounded idempotency key", () => {
-  let issued = 0;
-  const nextKey = () => `hatch-base-request-${String(++issued).padStart(4, "0")}`;
-  const input = {
-    displayName: " Nori ",
-    description: " Ink-navy fox ",
-    stylePreset: " plush ",
-    petNotes: " Cream belly ",
-  };
-
-  const first = prepareHatchBaseCandidateAttempt(null, input, nextKey);
-  assert.ok(first);
-  assert.deepEqual(first.request, {
-    display_name: "Nori",
-    description: "Ink-navy fox",
-    style_preset: "plush",
-    pet_notes: "Cream belly",
-    idempotency_key: "hatch-base-request-0001",
-    confirm_one_base_candidate_call: true,
-  });
-
-  const exactRetry = prepareHatchBaseCandidateAttempt(first.attempt, input, nextKey);
-  assert.ok(exactRetry);
-  assert.equal(exactRetry.attempt.idempotencyKey, first.attempt.idempotencyKey);
-  assert.equal(issued, 1);
-
-  const changed = prepareHatchBaseCandidateAttempt(
-    exactRetry.attempt,
-    { ...input, petNotes: "Cream belly and blue scarf" },
-    nextKey,
-  );
-  assert.ok(changed);
-  assert.equal(changed.attempt.idempotencyKey, "hatch-base-request-0002");
-  assert.equal(issued, 2);
-});
-
-test("material hatch intent changes require a fresh acknowledgement", async () => {
-  assert.equal(hatchIntentRequiresFreshAcknowledgement("Nori", "Nori"), false);
-  assert.equal(hatchIntentRequiresFreshAcknowledgement("Nori", "Nori II"), true);
-  assert.equal(hatchIntentRequiresFreshAcknowledgement("plush", "clay"), true);
-  assert.equal(
-    hatchIntentRequiresFreshAcknowledgement("ink navy", "ink navy, cream belly"),
-    true,
-  );
-
-
-});
-
-test("an old hatch response cannot clear a newer draft attempt", async () => {
-  const submitted = {
-    idempotencyKey: "hatch-base-request-0001",
-    requestSignature: '["Nori","navy","plush","navy"]',
-  };
-  assert.equal(hatchResponseMatchesCurrentAttempt(submitted, submitted), true);
-  assert.equal(hatchResponseMatchesCurrentAttempt(submitted, null), false);
-  assert.equal(
-    hatchResponseMatchesCurrentAttempt(submitted, {
-      ...submitted,
-      idempotencyKey: "hatch-base-request-0002",
-    }),
-    false,
-  );
-  assert.equal(
-    hatchResponseMatchesCurrentAttempt(submitted, {
-      ...submitted,
-      requestSignature: '["Mori","cream","clay","cream"]',
-    }),
-    false,
-  );
-
-
-});
-
-test("base-candidate hatch request and import copy stay honest", () => {
-  assert.match(HATCH_BASE_CANDIDATE_DISCLOSURE, /exactly one potentially billable/u);
-  assert.match(HATCH_BASE_CANDIDATE_DISCLOSURE, /unverified base candidate/u);
-  assert.match(HATCH_BASE_CANDIDATE_DISCLOSURE, /not an atlas or playable pet/u);
-  assert.doesNotMatch(HATCH_BASE_CANDIDATE_DISCLOSURE, /13/u);
-  assert.match(HATCH_BASE_CANDIDATE_CONFIRMATION, /exactly one potentially billable/u);
-  assert.match(HATCH_EXTERNAL_IMPORT_DISCLOSURE, /externally assembled Codex v2 pet/u);
-  assert.match(HATCH_EXTERNAL_IMPORT_DISCLOSURE, /independent QA/u);
-
-  assert.equal(
-    prepareHatchBaseCandidateAttempt(
-      null,
-      {
-        displayName: "Nori\u0000",
-        description: "fox",
-        stylePreset: "plush",
-        petNotes: "",
-      },
-      () => "hatch-base-request-0001",
-    ),
-    null,
-  );
-  assert.equal(
-    prepareHatchBaseCandidateAttempt(
-      null,
-      {
-        displayName: "Nori",
-        description: "fox",
-        stylePreset: "plush",
-        petNotes: "",
-      },
-      () => "short",
-    ),
-    null,
-  );
 });
 
 test("pet catalog reports backend fleet drift instead of classifying it as custom", () => {
@@ -2069,8 +1953,12 @@ test("two-pet settings have no generation, import controls, or custom roster", a
   const { readFile } = await import("node:fs/promises");
   const settings = await readFile(new URL("./components/SettingsPage.tsx", import.meta.url), "utf8");
   const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const viewModel = await readFile(new URL("./viewModel.ts", import.meta.url), "utf8");
+  const types = await readFile(new URL("./types.ts", import.meta.url), "utf8");
   assert.doesNotMatch(settings, /Generate a base candidate|Import pet|onHatch|onImport/);
   assert.doesNotMatch(app, /custom-pet-roster|hatchOwnPet|\/v1\/pets\/hatch/);
+  assert.doesNotMatch(viewModel, /HatchBaseCandidate|newHatch|prepareHatch|HATCH_BASE/);
+  assert.doesNotMatch(types, /HatchJobRow|HatchBaseCandidateRequest|HatchCap/);
   assert.match(app, /\/2 available/);
   assert.match(settings, /onPetVisible/);
 });

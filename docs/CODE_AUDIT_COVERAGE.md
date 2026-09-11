@@ -1687,3 +1687,18 @@ Current-source sidecar rebuild and bounded native resource proof remain open.
 passed after the deletion. Complete desktop tests, the frontend build, and the two-pet
 validator are rerun before this batch is pushed. This cleanup changes no pet assets,
 runtime profile, credentials, package artifact, or historical receipt.
+
+## 11 September unreachable hatch frontend cleanup
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/src/viewModel.ts` | REVIEWED / REPAIRED | Removed the unused billable base-candidate disclosures, attempt state, idempotency builder, response matcher, and key generator. No production caller existed after the two-pet Settings cut. |
+| `apps/desktop/src/types.ts` | REVIEWED / REPAIRED | Removed the unused hatch job, generation request, and generation-capability DTOs. Catalog source compatibility remains because old imported metadata can still be read without becoming a visible roster. |
+| `apps/desktop/src/viewModel.test.ts` | REVIEWED / REPAIRED | Removed tests for the retired workflow and extended the two-pet source contract to reject reintroduction of hatch helpers and DTOs. |
+
+The focused view-model suite passed 76/76. The complete desktop suite passed 289
+tests with one intentional Windows symlink-permission skip, and the TypeScript/Vite
+build passed with 69 transformed modules. An initial ad-hoc invocation using an
+uninstalled `tsx` loader failed before test collection; the repository's native
+Node 24 command was then used and passed. No backend compatibility route, pet asset,
+credential, runtime profile, or package artifact changed.
