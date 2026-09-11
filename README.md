@@ -58,6 +58,9 @@ PEX does not require work to start inside PEX. Existing tools stay usable. Conte
 
 See [`INTEGRATIONS.md`](INTEGRATIONS.md) for the live matrix.
 
+Judges and evaluators can follow the focused [testing guide](docs/JUDGE_TESTING.md)
+for the two-pet OpenCode/Zen path and its exact claim boundaries.
+
 ## Pets
 
 The desktop is designed around a compact command surface and a separate transparent,
