@@ -88,6 +88,13 @@ anything on the user's behalf.
   before review, one real Muse/Strands `NOOP`, zero follow-ups, all 258 events
   settled, and owned-server cleanup. This is one restraint diagnostic, not a
   ten-case rate or comparative score. [Exact receipt](demo/evidence/LIVE_OPENCODE_QUIET_6A1D98B_2026-09-11.md).
+- [x] Current-source bounded OpenCode recovery at `93dfef3`: controlled exact
+  stage-one stop, one independently verified same-session correction, exact
+  final artifacts, `goal_evidence_supported`, `helped:true`, then a model-backed
+  `NOOP`; all 441 events settled. The pass exposed an incorrect derived byte
+  count in otherwise correct prose. Source `a242a84` deterministically removes
+  such asides and tightens numeric-grounding rules; 92 focused and 243 expanded
+  supervision tests pass. [Exact receipt and limitation](demo/evidence/LIVE_OPENCODE_RECOVERY_93DFEF3_2026-09-11.md).
 - [x] Current benchmark safety/scoring/Cursor-hook contracts: 280 passed in
   284.29s. Manifest remains honestly unfrozen; this is not a benchmark score.
 - [x] Current-tree expanded benchmark integrity rerun: 261 core benchmark/

@@ -1218,3 +1218,44 @@ after packaging in a fresh empty workspace: 1/1 passed in 1.32 seconds and the
 adapter progressed Strong → Deep after the real event stream connected. The
 owned server stopped, port 4097 had zero listeners, and the empty workspace was
 removed. This used no worker, provider, saved key, browser, or native PEX window.
+
+## 11 September current-source live proof and final package delta
+
+Current-source OpenCode quiet behavior passed once on clean `6a1d98b`: exact
+artifact before review, one real Muse/Strands `NOOP`, zero PEX follow-ups, all
+258 events settled, and owned-server cleanup. A separate controlled incomplete
+case on clean `93dfef3` passed the causal recovery contract: exact stage-one
+state and missing final artifact at the first stop; zero prior follow-ups; one
+independently verified, delivered correction in the same OpenCode session;
+exact final artifacts; `goal_evidence_supported`; `helped:true`; then a final
+model-backed `NOOP`. All 441 events settled. Both ran Ling 3.0 Flash Fin Free as
+worker and Muse Spark 1.3 Contributor Free as the saved Zen BYOK supervisor; no
+AWS or paid fallback was enabled. These are single public diagnostics, not a
+comparative benchmark or native acceptance.
+
+The recovery audit caught one presentation defect in the passing raw evidence:
+the supervisor repeated the correct literal but invented a wrong parenthetical
+byte count. Commit `a242a84` deterministically strips model-derived
+parenthetical byte-count asides, instructs the supervisor not to invent derived
+counts, and requires the independent verifier to reject unsupported numeric
+claims. Focused loop/Strands/recovery tests pass 92/92; the expanded
+Strands/provider/AgentCore/evidence gate passes 243 with 4 intentional skips;
+Ruff and diff checks pass. This product fix is newer than package `06a0e2b` and
+therefore requires one final exact-source rebuild and installer verification.
+
+Evidence:
+
+- [Quiet completion](demo/evidence/LIVE_OPENCODE_QUIET_6A1D98B_2026-09-11.md)
+- [Causal recovery, raw limitation, and repair](demo/evidence/LIVE_OPENCODE_RECOVERY_93DFEF3_2026-09-11.md)
+
+Immediate offline order: commit these receipts, build MSI/NSIS from the clean
+resulting source with pinned Rust and two build jobs, run the package verifier
+to a new exclusive receipt, run isolated packaged-bridge identity/settings
+smokes with zero provider calls, then update this handoff with immutable hashes.
+When the user releases the screen, perform only bounded PEX-window checks:
+startup/retry/reopen, transparent two-pet overlay, calm motion, fixed hide and
+message-dismiss controls, Home/Inspector/Deck/Settings, Zen BYOK, OpenCode
+attach, and foreground/active-worker resources. Capture fresh screenshots and
+a sub-five-minute demo only after those pass. Do not freeze or score the
+comparative benchmark, claim AgentCore deployment, publish a release, or submit
+without the corresponding evidence and action-time authority.

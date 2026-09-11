@@ -1,5 +1,32 @@
 # PEX code audit coverage — 5 September 2026
 
+## 11 September — bounded recovery runner and numeric-grounding repair
+
+Read the new `scripts/opencode_recovery_once.py` and its causal predicate in
+`benchmarks/opencode_completion.py` end to end. The runner requires a clean
+source tree and fresh validated evidence root, creates one controlled incomplete
+public task, binds the first stop, goal, session, follow-up generation, final
+stop and observed outcome, retains all evidence, and owns only the exact
+OpenCode server it starts. The predicate sorts interventions by unique valid
+timestamps instead of trusting newest-first presentation order, and requires
+exactly one delivered correction followed by evidence-supported completion and
+a later model-backed `NOOP`. CLI, source-safety and adversarial proof coverage
+passes 88 tests with Ruff and bytecode compilation clean.
+
+The first retained attempt failed honestly because its acceptance wording did
+not match the deterministic exact-content grammar. After repairing the wording
+and timestamp authority, a changed-condition retry on clean `93dfef3` passed:
+one independently verified same-session correction, exact final artifacts,
+`goal_evidence_supported`, `helped:true`, then a final supported `NOOP`; 441
+events settled and the owned server exited. Review of the raw action found that
+the model had added a wrong derived byte count while preserving the correct
+literal. Source `a242a84` now removes model-derived parenthetical byte counts
+from worker-facing text and strengthens both supervisor and verifier numeric
+grounding rules. The focused loop/Strands/recovery gate passed 92/92; the wider
+Strands/provider/AgentCore/evidence gate passed 243 with 4 intentional skips;
+Ruff and `git diff --check` passed. No AWS or native UI was used. This is one
+causal diagnostic, not a comparative benchmark or deployed AgentCore proof.
+
 ## 11 September — bounded live OpenCode quiet-runner full-file audit
 
 Read `scripts/opencode_quiet_ten.py` and its
