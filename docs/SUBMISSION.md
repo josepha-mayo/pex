@@ -129,7 +129,18 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 ## Checklist before clicking Submit
 
+- [ ] Confirm the required **Submitter type** field
+- [ ] Enter the required **Country** field; **Organization** is optional
+- [x] Select **Professional Agents** as the required track
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
+- [ ] Upload `docs/architecture/pex-architecture.png` in the required
+  **Architecture diagram** field
+- [ ] Enter the required **AWS Builder ID** email on the Devpost form
+- [ ] Add the optional live-demo URL only if it is genuinely available and stable
+- [ ] Add concise optional testing instructions from `docs/JUDGE_TESTING.md`
+- [ ] Add the already-published builder.aws.com URL in the optional bonus-blog
+  field after checking that its title contains **Agents for Humans** and that it
+  is accessible while logged out; do not republish it
 - [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean package
   source `c3cc44c` (base UI product `8394b4b`); both installer inventories pass with zero package blockers
 - [x] Re-review README and architecture source/PNG against packaged product source `c3cc44c`;
@@ -147,8 +158,7 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   call or paid call ran in these current gates.
 - [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases and review their full contact and
   direction sheets at original resolution; native playback remains part of the open P0 gate
-- [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
-- [ ] AWS Builder ID email on the Devpost form
+- [ ] Add the required public YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] After native acceptance, publish the accepted unsigned installer and its
   SHA-256 as a public GitHub release/test-build link; do not upload `c3cc44c`
   before that acceptance or silently replace a release asset
