@@ -29,6 +29,13 @@ passed 1/1 in 1.32 seconds and progressed Strong → Deep. The server was owned,
 stopped, and left zero listeners. This audit does not replace the remaining
 packaged, model-backed corrective/quiet journeys.
 
+Full read of `test_opencode_pipeline_pump.py` then confirmed its production-pump
+coverage: desktop discovery stays off the event loop and is rate-bounded; session
+listing does not invent activity; completed batch prefixes are not replayed;
+post-acceptance failures retry the identical event; transport loss marks a gap;
+and a retry after durable journal acceptance settles idempotently. The exact
+file passes 12/12 with unhandled pytest thread exceptions promoted to failures.
+
 ## 10 September — preserve artifact-count evidence through AgentCore
 
 Scoped review of cloud request compaction found artifact metadata retained path
@@ -1443,7 +1450,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `tests/unit/test_named_hook_deadline.py` | Test cross-review | PENDING |
 | `tests/unit/test_observe_security.py` | Test cross-review | PENDING |
 | `tests/unit/test_opencode_fork.py` | Test cross-review | PENDING |
-| `tests/unit/test_opencode_pipeline_pump.py` | Test cross-review | PENDING |
+| `tests/unit/test_opencode_pipeline_pump.py` | Test cross-review | FULL READ by main 11 Sep; event-loop responsiveness, bounded discovery, exact retry, gap and durable-journal idempotency coverage passes 12/12 |
 | `tests/unit/test_operator_effects.py` | Test cross-review | PENDING |
 | `tests/unit/test_operator_handoff_effects.py` | Test cross-review | PENDING |
 | `tests/unit/test_overlay_executor_ledger.py` | Test cross-review | PENDING |
