@@ -2,25 +2,30 @@
 
 ## Current — 11 September 2026
 
-- Package source `06a0e2b` (base UI product `8394b4b`) is the current two-pet
+- Package source `c3cc44c` (base UI product `8394b4b`) is the current two-pet
   candidate. Clean MSI/NSIS integrity, frozen-bridge identity/settings, exact
   Zen Responses routing and current offline gates pass. Its frozen runtime has
   zero retired hatch/image implementation files, and three sequential isolated
-  bridge restart smokes pass. Package integrity is not native interaction or
-  recording evidence.
+  bridge restart smokes pass. This supersedes `06a0e2b`. Package integrity is
+  not native interaction or recording evidence.
 - The broad 368-test benchmark/Cursor integrity run emitted one aiosqlite
   thread-shutdown warning. It did not reproduce in the exact named test, the
   complete 57-test Cursor contract, or an expanded 387-test supervision gate
   when that warning category was promoted to errors. Retain it as a
   non-reproduced warning; do not invent a production fix without evidence.
-- Current-package native UI/UX, idle/active stability, exact Zen settings,
-  OpenCode live recovery/quiet behavior and the final recording are still open.
-  Joseph is using the PC; do not start visible PEX or computer-control checks
-  until he hands the screen back.
+- Current-package native UI/UX, foreground/active-worker stability, exact Zen
+  settings, OpenCode attachment and the final recording are still open. The
+  source-bound OpenCode recovery/quiet pair already passes; the remaining gate
+  is to rehearse that journey through the exact native package. Joseph is using
+  the PC; do not start visible PEX or computer-control checks until he hands the
+  screen back.
 - The public repository is MIT and the architecture asset is current. A public
   video and an accessible test-build link still need to be supplied before
   submission. AgentCore remains implemented and offline-tested, not deployed;
   PexBench remains unfrozen and has no publishable score.
+- Joseph has set a stricter internal target of two remaining days. Do not widen
+  scope: exact-package native acceptance, a clean five-minute take, public
+  installer link and the authorized Devpost submission are the critical path.
 
 ## Latest retained live-behavior failure — 10 September 2026
 
