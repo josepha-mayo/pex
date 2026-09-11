@@ -1117,3 +1117,29 @@ The standalone retired modules remain in source for now but are not imported by 
 startup. Isolated import proof confirmed all three modules absent from `sys.modules`.
 Focused tests passed 7/7, the broader app/pet/HTTP gate passed 111/111 with pinned
 Rust on `PATH`, and Ruff passed. Native startup/RSS impact remains unmeasured.
+
+## Latest verified package: 9668bcc
+
+Exact product source `9668bcc2afb5a080cfa0936d778c2f8c641544fa` now has a verified
+MSI and NSIS candidate. The verifier reports `release_ready:true`, zero blockers;
+the frozen bridge manifest has 2,372 files and zero retired hatch/image files.
+Three sequential isolated bridge restarts passed identity/auth/supervisor checks
+with Zen `muse-spark-1.3-contributor-free`, cap 3, and zero provider calls. Desktop
+contracts passed 290 with one intentional Windows symlink skip. Rust passed 19/19
+and release check/build are warning-free. The combined MVP backend spine passed
+259/259 before packaging-only and test-only Rust changes.
+
+Artifacts:
+
+- MSI: 111,648,792 bytes, SHA-256 `6be4090ab5d4969dd923addbea31234bbb8d4579c32a50e7f7d4c6f5e20f51a2`.
+- NSIS: 98,837,415 bytes, SHA-256 `6bf4154a058ddb6c54be71fd90084953447bb8c45850dca5fd3516cb6ef80db8`.
+- Bridge SHA-256: `962b2ebee197865873d1e9b37c09e0e0886e8902df6be350d29f8029378c8ad1`.
+- Receipt: `build/pex-package-receipt-9668bcc.json`, SHA-256 `27837dcb8263b4f4f32e1c6109f88ad1790d63ffe3fa83e5130c1fecc0df8b80`.
+- Evidence: `docs/demo/evidence/PACKAGE_9668BCC_2026-09-11.md`.
+
+Do not rebuild or modify product source casually: this is the exact verified fallback.
+Remaining P0 work still needs the user's screen: bounded native UI/pet/startup/resource
+acceptance, then confirmed-free live Zen/OpenCode corrective and quiet-completion
+journeys. After those pass, capture the sub-five-minute demo and publish/submit only
+with action-time authorization. AgentCore remains implemented and offline-tested,
+not deployed; benchmark remains `frozen:false` and has no score claim.

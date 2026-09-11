@@ -1718,3 +1718,20 @@ toolchain on `PATH`; scoped Ruff and diff checks passed. The first broader invoc
 had one preflight failure because `rustc` was not on that shell's `PATH`; no product
 test failed, and the corrected exact suite passed. Startup time/RSS improvement is not
 yet measured, and no package or native UI was opened.
+
+## 11 September two-pet package closure
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/scripts/release-contract.mjs` | REVIEWED / EXTENDED | Immutable release constants bind the three retired hatch module names and their collected source-data paths. |
+| `apps/desktop/scripts/build-sidecar.mjs` | REVIEWED / REPAIRED | PyInstaller excludes the retired modules from its archive and removes their exact collected `.py` data files before the runtime manifest is generated. |
+| `apps/desktop/src-tauri/src/main.rs` | REVIEWED / REPAIRED | The convenience bridge-port wrapper used only by native tests is now compiled only under `cfg(test)`; release builds no longer warn about it. |
+
+Exact source `9668bcc2afb5a080cfa0936d778c2f8c641544fa` produced both Windows
+installers. The package verifier reported `release_ready:true` with zero blockers.
+The runtime manifest has 2,372 files and zero retired hatch/image paths. Three
+sequential packaged-bridge restart smokes passed with authenticated identity,
+Zen/Muse free catalog defaults, cap 3, and zero provider calls. Complete desktop
+contracts passed 290 with one intentional symlink skip; Rust passed 19/19 and a
+warning-free release check. See
+`docs/demo/evidence/PACKAGE_9668BCC_2026-09-11.md` for hashes and limitations.
