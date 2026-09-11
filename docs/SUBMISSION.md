@@ -212,8 +212,10 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Re-review README and architecture source/PNG against packaged product source `8394b4b`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run current offline gates: 368 benchmark/scoring/Cursor/safety tests,
-  253 Strands/supervisor/trajectory/evidence/outcome tests, 183 AgentCore local
-  tests, and 291 desktop/UI tests with one platform skip. Production TypeScript/
+  an expanded 387-test Strands/supervisor/trajectory/evidence/outcome gate with
+  6 skips, 183 AgentCore local tests with one opt-in cloud skip, and 291 desktop/
+  UI tests with one platform skip. The Strands and AgentCore gates pass with
+  aiosqlite thread warnings promoted to errors. Production TypeScript/
   Vite and the Tauri package build passed. The most recent full Python regression
   (4,436 passed, 32 skipped) is source-bound to `dd06443`; the exact-Zen affected
   slice passes 197 on package source `f585562`. No benchmark arm, AWS resource,

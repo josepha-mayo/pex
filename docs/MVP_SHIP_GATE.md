@@ -87,6 +87,10 @@ anything on the user's behalf.
   all 57 owning Cursor contracts passed with thread warnings promoted to errors.
   The warning is retained as non-reproduced and does not justify a speculative
   product edit. No AWS, provider, worker or native UI call ran.
+- [x] Warning-as-error follow-through: an expanded 387-test Strands/supervisor/
+  trajectory/evidence/outcome selection passed with 6 skips in 121.17 seconds;
+  183 local AgentCore tests passed with one opt-in live-cloud skip in 17.05
+  seconds. Both promoted aiosqlite thread warnings to errors and remained clean.
 - [x] Current-tree full Python regression at `dd06443`: 4,436 passed, 32
   skipped, zero failures/errors in 2,743.56 seconds. Retained JUnit:
   `build/full-offline-dd06443-20260911.xml`, SHA-256

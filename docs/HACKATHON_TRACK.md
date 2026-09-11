@@ -10,8 +10,10 @@ with no hidden model fallback. It ships exactly two pets, Pex and Von; both pass
 structural, atlas and static visual review. The most recent full Python regression
 passes 4,436 tests with 32 skips at `dd06443`; it predates the narrow exact-Zen
 change, whose affected slice passes 197 on `f585562`. Current post-package gates
-also pass 253 Strands/supervisor tests, 183 local AgentCore tests and 368
-benchmark/Cursor/audit integrity tests. Controlled OpenCode and Codex plus
+also pass an expanded 387-test Strands/supervisor gate with 6 skips, 183 local
+AgentCore tests with one opt-in cloud skip, and 368 benchmark/Cursor/audit
+integrity tests. The Strands and AgentCore gates promote aiosqlite thread
+warnings to errors. Controlled OpenCode and Codex plus
 provider-live Strands proofs exist on the revisions cited in the active handoff,
 but the final-package bounded native interaction/stability run remains open.
 AgentCore is not deployed and the benchmark is unfrozen. Architecture PNG is at

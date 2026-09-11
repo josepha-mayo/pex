@@ -19,7 +19,10 @@ free-provider limit keeps Blocked priority. Focused gates include 291 frontend
 tests with one platform skip, 137 OpenCode/Codex continuity tests, 210 BYOK/
 provider/configuration tests with one Windows symlink skip, 183 AgentCore local
 tests and a newer 368-test benchmark/scoring/Cursor/safety integrity gate.
-Another 253 Strands/supervisor/trajectory/evidence/outcome tests pass. The broad
+An expanded 387-test Strands/supervisor/trajectory/evidence/outcome gate passes
+with 6 skips and aiosqlite thread warnings promoted to errors; the 183-test
+AgentCore gate also passes under that policy with one opt-in live-cloud skip.
+The broad
 368-test run emitted one aiosqlite thread-shutdown warning; the exact named test
 and the entire 57-test owning Cursor contract passed with that warning category
 promoted to errors, so the warning is retained as non-reproduced. Production

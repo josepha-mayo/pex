@@ -29,10 +29,13 @@ the default dispatch cap 3 and the correct first Zen hint, with no provider,
 worker, or AWS call and no surviving bridge process. Visible native acceptance
 remains pending while Joseph uses the PC.
 
-Fresh post-package contract gates on the same source are also green: 253
-Strands/supervisor/trajectory/evidence/outcome tests, 183 local AgentCore tests,
-and 368 benchmark/Cursor/audit/execution-safety/scoring integrity tests. The
-broad 368-test run emitted one aiosqlite thread-shutdown warning. It did not
+Fresh post-package contract gates on the same source are also green: an expanded
+387-test Strands/supervisor/trajectory/evidence/outcome gate (6 skipped) and 183
+local AgentCore tests (one opt-in live-cloud test skipped) both pass with
+aiosqlite thread warnings promoted to errors. The earlier focused 253-test gate
+also passed. In addition, 368 benchmark/Cursor/audit/execution-safety/scoring
+integrity tests passed. The broad 368-test run emitted one aiosqlite
+thread-shutdown warning. It did not
 reproduce when the named test was rerun with thread warnings as errors, nor when
 the entire owning Cursor contract passed 57/57 with that policy. Treat this as
 a retained non-reproduced warning, not as a hidden pass or a proven product
