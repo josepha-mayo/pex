@@ -29,6 +29,16 @@ packaged frozen bridge also passed isolated liveness, authenticated settings and
 fresh-install cap-3 checks with no provider/worker/AWS call. Visible native
 acceptance remains pending while Joseph uses the PC.
 
+Submission-asset audit found that the five root-level `docs/demo` screenshots
+and two duplicate short WebMs showed the retired sparse eight-pet browser UI and
+Hatch/Import controls. The PNGs and byte-identical WebMs are now quarantined
+under `docs/demo/archive/legacy-eight-pet/`. Do not use them in the gallery or
+final video. Capture a fresh current-
+package Home/overlay/two-pet Settings/BYOK/Inspector set only after native
+acceptance. The public README, STATUS, hackathon track and submission checklist
+now point to package `56783bf`, product `8394b4b` and the current full-regression
+evidence.
+
 Current offline reruns after packaging are green: BYOK/provider/configuration
 210 passed with one intentional Windows symlink skip; OpenCode/Codex
 cancellation, lineage and correction 137 passed; AgentCore local contracts 183

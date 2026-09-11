@@ -2,34 +2,34 @@
 
 ## Current — 11 September 2026
 
-**Current package source: `204c766`; product change: `7bf591c`, exactly Pex and
-Von.** Product `7bf591c` adds a fresh-install cap of three durable semantic
-dispatches per worker session; 126 affected pipeline/settings tests and 156
-provider/source/settings tests pass, with one intentional provider skip. It has
-now been rebuilt but not natively checked. The full Tauri build completed and
-both unsigned installers pass integrity with zero blockers and
-2,375 matching bridge-runtime files. Receipt:
-`build/package-204c766-20260911-verified.json`, SHA-256
-`16375f7afc60df94fdc5bec230f5b61bac6c7e1ebdc96124576786369cbcc2ce`.
+**Current package source: `56783bf`; product change: `8394b4b`, exactly Pex and
+Von.** It includes the fresh-install cap of three durable semantic dispatches
+per worker session plus scale-aware overlay geometry. It has been rebuilt but
+not natively checked. The full Tauri build completed and both unsigned
+installers pass integrity with zero blockers and 2,375 matching bridge-runtime
+files. Receipt `build/package-56783bf-20260911-verified.json`, SHA-256
+`cacf98bccd87f14673961d1479f13ee0aa791bbbade0f47364695e76f8393e64`.
 Custom import and image-generation write APIs remain disabled.
 
-The packaged candidate includes the compact Ask layout repair and an exact OpenCode
-`MessageAbortedError` fence: cancellation stays stopped without automatic
-follow-up until concrete tool/file activity, while a simultaneous free-provider
-limit keeps Blocked priority. Focused gates: 290 frontend tests passed with one
-platform skip; 77 OpenCode/Codex continuity tests passed; 228 Ask PEX + offline
-AgentCore tests passed. Production frontend build passed.
-Benchmark safety/scoring and Cursor-hook contracts pass 280/280; the manifest
-remains deliberately unfrozen, so no comparative result or leaderboard rank is claimed.
-Tauri/Rust contracts pass 19/19. Clean-source release preflight exits 0 with
-current sidecars, exactly Pex/Von and verified toolchains/wiring.
+The packaged candidate includes the compact Ask layout repair and an exact
+OpenCode `MessageAbortedError` fence: cancellation stays stopped without
+automatic follow-up until concrete tool/file activity, while a simultaneous
+free-provider limit keeps Blocked priority. Focused gates include 291 frontend
+tests with one platform skip, 137 OpenCode/Codex continuity tests, 210 BYOK/
+provider/configuration tests with one Windows symlink skip, 183 AgentCore local
+tests with one opt-in cloud skip and 283 benchmark/scoring/Cursor/safety tests.
+Production frontend build passed. The current source full Python regression
+passes 4,436 with 32 skips and zero failures/errors. The benchmark manifest
+remains deliberately unfrozen, so no comparative result or leaderboard rank is
+claimed. Clean-source release preflight exits 0 with current sidecars, exactly
+Pex/Von and verified toolchains/wiring.
 
-**Native acceptance of `204c766` is pending.** Joseph is using the PC and asked
+**Native acceptance of `56783bf` is pending.** Joseph is using the PC and asked
 for command-line work only until he says otherwise. Package integrity does not
-prove the repaired Ask layout, cancellation display, active-worker stability or
-recording readiness. The last native candidate before these two fixes did start
-without Retry, loaded Pex and Von, and correctly held a quota-limited OpenCode
-session Blocked without extra reviews or nudges.
+prove the repaired scale-aware overlay, Ask layout, cancellation display,
+active-worker stability or recording readiness. The last native candidate
+before these fixes did start without Retry, loaded Pex and Von, and correctly
+held a quota-limited OpenCode session Blocked without extra reviews or nudges.
 
 **Latest benchmark-accounting source: `93c17bc`.** 61 focused tests pass. Quiet
 completion now requires a successful semantic review bound to the exact STOP,
@@ -41,7 +41,7 @@ recovery observation, not ten passes or a comparative benchmark score.
 AgentCore remains implemented/tested but not deployed. Current-package native
 validation, final recording and submission are not complete. See the
 [shipping gate](docs/MVP_SHIP_GATE.md) and
-[current package evidence](docs/demo/evidence/PACKAGE_204C766_2026-09-11.md)
+[current package evidence](docs/demo/evidence/PACKAGE_56783BF_2026-09-11.md)
 for remaining work and exact hashes.
 
 ## Historical source-bound checkpoints

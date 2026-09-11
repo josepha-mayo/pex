@@ -172,6 +172,10 @@ Rebuild and verify the new MSI/NSIS runtime trees before calling them current.
   No submission or public installer release performed.
 - [x] Review architecture image and update the public OpenCode UI setup path.
 - [ ] Finalize current submission copy and judge-facing demo assets.
+- [x] Quarantine the stale eight-pet browser screenshots under
+  `docs/demo/archive/legacy-eight-pet/` together with the byte-identical legacy
+  WebMs; they are forbidden from the final gallery/video. Fresh package-`56783bf`
+  captures remain part of native acceptance.
 - [ ] Record the working path and complete authorized submission.
 
 Formal frozen Cursor/Codex four-arm scoring and its OS-level hidden-evaluator

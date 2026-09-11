@@ -4,23 +4,25 @@
 
 It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude Code, OpenCode, and other coding agents you already use. It is not another coding harness, not a Kanban board, and not a chat UI that makes you babysit a babysitter.
 
-**MVP in final validation — 10 September 2026.** The shipping focus is OpenCode,
+**MVP in final validation — 11 September 2026.** The shipping focus is OpenCode,
 Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
 OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Package source `204c766` (product change `7bf591c`) ships only Pex and Von,
+Package source `56783bf` (product change `8394b4b`) ships only Pex and Von,
 defaults fresh installs to three semantic review dispatches per session, and passes both installer
-content/inventory gates. Its predecessor passed native unpacked-runtime startup,
-pet transparency, dismissal/hiding and selected-session Ask checks; the newest
-Ask layout and explicit-cancellation repairs still need bounded native checks.
+content/inventory gates. The current source also passes the full Python regression:
+4,436 passed and 32 skipped with zero failures/errors. An earlier package passed
+native unpacked-runtime startup, pet transparency, dismissal/hiding and
+selected-session Ask checks; the newest scale-aware overlay, Ask layout and
+explicit-cancellation repairs still need bounded native checks.
 The latest live OpenCode run hit its free-provider quota and is not a benchmark pass;
 provider-limit blocking and idle suppression now pass a native negative-case
 check with zero additional reviews or nudges. Final stability and recording remain.
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
-[current package evidence](docs/demo/evidence/PACKAGE_204C766_2026-09-11.md),
+[current package evidence](docs/demo/evidence/PACKAGE_56783BF_2026-09-11.md),
 [current status](STATUS.md), and the source-bound evidence linked there.
 
 ## The pain it removes
@@ -74,7 +76,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for package source `204c766` (product `7bf591c`) and
+installer candidate exists for package source `56783bf` (product `8394b4b`) and
 is not code-signed.
 These instructions cover building from source; package integrity is not native
 acceptance or publisher trust. Current source-bound package evidence is recorded

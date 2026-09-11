@@ -5,12 +5,15 @@ directory are historical references and must not be presented as final-source pr
 
 ## Current checkpoint — 11 September 2026
 
-- Latest verified MSI/NSIS: source `567778b`; receipt
-  `build/package-567778b-20260910-rebuilt.json`, SHA-256
-  `9bda2583d3307dd7470002fec4e419f7ba4700a7fd9e9dcb393132222de7185e`.
+- Latest verified MSI/NSIS: source `56783bf`; receipt
+  `build/package-56783bf-20260911-verified.json`, SHA-256
+  `cacf98bccd87f14673961d1479f13ee0aa791bbbade0f47364695e76f8393e64`.
 - Both installers contain exactly Pex and Von and 2,375 matching bridge-runtime files.
-- Focused current gates: 290 frontend passed/one platform skip, 77 supervision and
-  continuity tests passed, and 228 Ask PEX + offline AgentCore tests passed.
+- Current source passes the full Python regression: 4,436 passed, 32 skipped,
+  zero failures/errors. Focused current gates also cover 291 frontend tests with
+  one platform skip, 137 OpenCode/Codex continuity tests, 210 BYOK/provider/
+  configuration tests with one Windows symlink skip, 183 AgentCore local tests
+  with one opt-in cloud skip and 283 benchmark/scoring/Cursor/safety tests.
 - Clean `e864389` retains a fresh real Codex/Strands quiet and same-thread recovery pair.
   Native OpenCode recovery/quiet evidence is retained on its named earlier revisions.
 - Native acceptance of the newest Ask/cancellation repairs is pending while Joseph uses
@@ -18,6 +21,19 @@ directory are historical references and must not be presented as final-source pr
 - No AgentCore deployment, frozen comparative benchmark, final video or submission is
   established. Historical receipts below retain their original limits. Follow
   [the active handoff](../AGENT_HANDOFF.md).
+
+## Screenshot status
+
+The root-level numbered screenshots and duplicate short WebM captures formerly
+in this directory showed the retired sparse eight-pet interface and Hatch/Import
+controls. The screenshots and clips are quarantined under
+`archive/legacy-eight-pet/` as historical evidence. None may be used in the
+Devpost gallery, README or final video.
+Capture a fresh package-`56783bf` set only after native acceptance: Home with a
+connected worker and persistent goal, the Pex overlay with its message dismissed
+independently, the two-pet Companion settings with Von selected, the Zen BYOK
+write-only provider state/review cap, and the Inspector's bounded supervision
+receipt.
 
 ## Historical MVP package
 

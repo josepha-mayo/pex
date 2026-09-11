@@ -10,7 +10,8 @@
 > recorded in the active handoff; Codex App Server has separate source proofs.
 > Native testing is authorized, not on the old hold. AgentCore is implemented
 > and offline-tested, not deployed; deployment is optional under refreshed
-> official rules. No frozen comparative score is available. Finish
+> official rules. The current source full Python regression passes 4,436 with
+> 32 skips and zero failures/errors. No frozen comparative score is available. Finish
 > [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
 > equate package integrity or historical green tests with overall readiness.
 
@@ -203,9 +204,11 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   source `56783bf` (product `8394b4b`); both installer inventories pass with zero package blockers
 - [x] Re-review README and architecture source/PNG against packaged product source `8394b4b`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
-- [x] Re-run the clean 201-test benchmark/Cursor-hook gate, 200-test offline Strands/AgentCore
-  gate, all 260 desktop/UI contracts, and a production TypeScript/Vite build; no benchmark arm,
-  native app, AWS resource, or paid call ran
+- [x] Re-run current offline gates: 283 benchmark/scoring/Cursor/safety tests,
+  183 AgentCore local tests with one opt-in cloud skip, 291 desktop/UI tests with
+  one platform skip, the production TypeScript/Vite build, and the full Python
+  regression (4,436 passed, 32 skipped); no benchmark arm, AWS resource, or paid
+  call ran
 - [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases and review their full contact and
   direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)

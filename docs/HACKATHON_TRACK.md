@@ -2,13 +2,15 @@
 
 Living checklist. Do **not** put secrets, tokens, or account IDs here.
 
-Last updated: 2026-09-08
-Release remains NO-GO. Current source is pushed through `7995f53`; current desktop
-contracts pass 259/259, Rust passes 18/18, and all eight built-in pets pass structural,
-atlas, and static visual review. The 6 September sidecars/installers are stale against
-current source. Controlled Codex + provider-live Strands proof exists at `5c49c10`, but
-the final-revision live pair and bounded post-freeze native run remain open. AgentCore is
-not deployed and the benchmark is unfrozen. Architecture PNG is at
+Last updated: 2026-09-11
+Release remains NO-GO. Package source `56783bf` (product `8394b4b`) passes clean
+preflight, full Tauri build, both installer integrity gates and isolated frozen-
+bridge liveness/settings checks. It ships exactly two pets, Pex and Von; both pass
+structural, atlas and static visual review. Current source passes 4,436 Python
+tests with 32 skips and zero failures/errors. Controlled OpenCode and Codex plus
+provider-live Strands proofs exist on the revisions cited in the active handoff,
+but the final-package bounded native interaction/stability run remains open.
+AgentCore is not deployed and the benchmark is unfrozen. Architecture PNG is at
 `docs/architecture/pex-architecture.png`. Do not Submit until the final reviewed source,
 current package/native evidence, video, and required identity fields are verified at
 action time.
@@ -72,7 +74,7 @@ When ready to use the console in-browser:
 
 Do not pause product work to click consoles. Browser the AWS pages when we need a credential, a deployment, a screenshot, or a published post.
 
-Current product milestone: rebuild all three sidecars from the final reviewed source,
-run the bounded native recovery/idle/all-eight visual gate, recapture the proven Codex +
-Strands pair on that exact revision, then record and submit. PexBench remains unfrozen;
-AgentCore deployment is optional and must not be claimed unless actually proven.
+Current product milestone: run the bounded native recovery/idle/two-pet visual gate
+on package `56783bf`, capture the validated OpenCode plus Strands story in that app,
+then record and submit. PexBench remains unfrozen; AgentCore deployment is optional
+and must not be claimed unless actually proven.
