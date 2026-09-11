@@ -32,13 +32,15 @@ anything on the user's behalf.
   atlases pass fresh v2 and runtime-contract validation with zero errors or
   warnings; full desktop is 291 passed with one platform skip and the production
   build passes. [Audit and claim boundary](demo/evidence/PET_UI_AUDIT_8394B4B_2026-09-11.md).
-  Rebuild and native overlay verification remain pending.
+  Package source `56783bf` passes clean preflight, full Tauri build, MSI/NSIS
+  verification and isolated packaged-bridge cap smoke. Native overlay
+  verification remains pending.
 - [x] Bound fresh-install model use at current source `7bf591c`: three durable
   semantic dispatches per worker session by default, explicit Settings/env
   override retained. Ruff and 126 affected pipeline/settings tests pass;
   provider/source/settings slice passes 156 with one intentional skip. Package
-  source `204c766` passes MSI/NSIS verification with zero blockers and 2,375
-  matching runtime files. [Hashes and limits](demo/evidence/PACKAGE_204C766_2026-09-11.md).
+  source `56783bf` passes MSI/NSIS verification with zero blockers.
+  [Current hashes and limits](demo/evidence/PACKAGE_56783BF_2026-09-11.md).
   A headless isolated launch of the packaged frozen bridge also passed: public
   liveness became ready and authenticated supervisor settings reported the
   default cap of three, with no provider/worker/AWS call. Visible native Settings

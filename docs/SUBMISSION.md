@@ -1,9 +1,10 @@
 # Devpost submission copy
 
 > **Current claim boundary — 11 September 2026:** draft, not submitted. Package
-> source `204c766` (product `7bf591c`) passes both installer integrity gates with zero blockers.
-> It ships exactly two companions, Pex and Von. Its newest Ask layout and explicit
-> cancellation behavior still require native visual/interaction verification.
+> source `56783bf` (product `8394b4b`) passes both installer integrity gates with zero blockers.
+> It ships exactly two companions, Pex and Von. Its newest scale-aware overlay,
+> Ask layout and explicit cancellation behavior still require native
+> visual/interaction verification.
 > Installers are unsigned. Real packaged
 > OpenCode/Strands recovery and quiet evidence exists on the source revisions
 > recorded in the active handoff; Codex App Server has separate source proofs.
@@ -199,8 +200,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
 - [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean package
-  source `204c766` (product `7bf591c`); both installer inventories pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `7bf591c`;
+  source `56783bf` (product `8394b4b`); both installer inventories pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `8394b4b`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run the clean 201-test benchmark/Cursor-hook gate, 200-test offline Strands/AgentCore
   gate, all 260 desktop/UI contracts, and a production TypeScript/Vite build; no benchmark arm,
@@ -212,7 +213,7 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
 - [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source
-- [ ] Natively verify package source `204c766` Ask layout, cancellation display, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 in an isolated authenticated headless smoke; then
+- [ ] Natively verify package source `56783bf` scale-aware overlay, Ask layout, cancellation display, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 in an isolated authenticated headless smoke; then
   record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence includes
   the 200-test contract gate plus an exact-package local `/ping` + `/invocations` protocol
