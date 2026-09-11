@@ -1426,6 +1426,25 @@ acknowledge Devpost rules on his behalf, deploy paid infrastructure, publish an
 installer, freeze/score the benchmark or submit without the required explicit
 authority and evidence.
 
+## Current exact-source package: 79d4d18
+
+Commit `79d4d185a816f5d8b2be732f7b6dfff205d4ce91` built cleanly with
+Rust 1.97.1 and `CARGO_BUILD_JOBS=2`. MSI and NSIS artifacts exist. The
+exclusive verifier passed `release_ready:true` with zero blockers and exact
+source, sidecar and canonical desktop hashes. The packaged bridge smoke passed
+authenticated settings read, verified identity, Zen free model first in the
+catalog, the three-dispatch cap and zero provider calls. Full commands, hashes
+and boundaries are in [the package evidence](demo/evidence/PACKAGE_79D4D18_2026-09-11.md).
+
+The only P0 product gate left before filming is bounded native acceptance of
+this exact package: startup/reopen, transparent Pex and Von surfaces, calm pet
+motion, close-message and hide/restore controls, Home/Inspector/Deck/Settings,
+Zen BYOK display/save/test without exposing the secret, OpenCode attachment,
+Ask PEX layout/cancel, and foreground/idle resource sanity. Run it only after
+Joseph explicitly says the screen is free. Preserve `frozen:false`; do not
+claim AgentCore cloud deployment, publish a release, acknowledge rules or
+submit without the corresponding authority and evidence.
+
 ## Current OpenCode MVP closure: 150ea07
 
 Clean pushed source `150ea07b205776660219dbfb1802ff86b998e8df` now passes

@@ -287,7 +287,11 @@ not a verifiable engineering guarantee.
 - [x] Keep OpenCode capability negotiation fail-closed while allowing its cold
   session listing up to eight bounded seconds. Capability/OpenCode gate: 144
   passed; recovery/dispatch gate: 90 passed.
-- [ ] Build and verify a fresh MSI/NSIS from the current source; package `6d18167`
-  is now a verified fallback, not the filming candidate.
+- [x] Build MSI/NSIS from clean `79d4d18`; exclusive verification reports
+  `release_ready:true` and zero blockers, and packaged-bridge settings smoke
+  passes with verified identity and zero provider calls.
+- [ ] Run native installed-app acceptance on the `79d4d18` package when Joseph
+  explicitly releases the screen; older package `6d18167` is fallback only.
 
 [Exact current-source receipts](demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).
+[Exact package receipts](demo/evidence/PACKAGE_79D4D18_2026-09-11.md).

@@ -2453,3 +2453,17 @@ The latest verified installers still bind older product source `6d18167`. A
 fresh exact-source package for the current repairs is required before native
 acceptance. AgentCore remains local/offline-tested rather than cloud-deployed,
 and the comparative benchmark remains `frozen:false`.
+
+## 11 September current MVP release candidate
+
+Clean commit `79d4d18` built successfully into MSI and NSIS installers with
+pinned Rust 1.97.1 and two Cargo jobs. The exclusive package verifier passed
+with `release_ready:true`, zero blockers, and exact source/sidecar/canonical
+desktop hashes. The packaged bridge smoke also passed authenticated settings,
+bridge identity, Zen-free catalog ordering and the three-dispatch cap with zero
+provider calls. [Hashes, commands and claim boundary](docs/demo/evidence/PACKAGE_79D4D18_2026-09-11.md).
+
+This is now the only current filming candidate. Native installed-app visual and
+interaction acceptance is still required when Joseph releases the screen. No
+public release, AWS deployment, comparative-benchmark freeze or submission is
+claimed.
