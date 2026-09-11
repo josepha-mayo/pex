@@ -198,6 +198,38 @@ def test_live_runner_requires_explicit_valid_run_name_before_any_work(args, code
     assert "usage:" in result.stdout + result.stderr
 
 
+@pytest.mark.parametrize("args,code", [
+    (["--help"], 0),
+    ([], 2),
+    (["--run-name", "../outside"], 2),
+])
+def test_recovery_runner_requires_explicit_valid_run_name_before_any_work(args, code):
+    root = Path(__file__).resolve().parents[2]
+    result = subprocess.run(
+        [sys.executable, str(root / "scripts/opencode_recovery_once.py"), *args],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert result.returncode == code
+    assert "usage:" in result.stdout + result.stderr
+
+
+def test_recovery_runner_uses_strict_causal_proof_and_owned_cleanup_only():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / "scripts/opencode_recovery_once.py").read_text(encoding="utf-8")
+    assert "recovery_interventions_succeeded(serialized_rows, followups)" in source
+    assert 'minimum_user_count=2' in source
+    assert 'first_stop["final_absent"]' in source
+    assert 'first_stop["prior_followup_count"] == 0' in source
+    assert "server.terminate()" in source
+    assert "server.kill()" in source
+    assert "rmtree" not in source
+    assert "taskkill" not in source.lower()
+    assert "Get-CimInstance" not in source
+
+
 def messages():
     return [
         {"info": {"id": "u1", "sessionID": "s", "role": "user", "time": {"created": 1}}},
