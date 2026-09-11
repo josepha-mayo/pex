@@ -69,7 +69,8 @@ The concise judge comparison and its evidence boundaries are in
   claim every tool path was exercised on camera.
 - Exposes the strict versioned AgentCore Runtime protocol. The exact packaged source passes a
   local `/ping` + `/invocations` end-to-end smoke with a typed session-bound result; local mode
-  is deterministic-only and is not an AWS deployment claim.
+  is deterministic-only and is not an AWS deployment claim. See the
+  [current protocol receipt](demo/evidence/LOCAL_AGENTCORE_PROTOCOL_1EA1539_2026-09-11.md).
 - Routes semantic-only interventions through an independent verifier Agent; failures and evidence-free approvals become NOOP, while deterministic verification truth remains authoritative. The current OpenCode recovery retains the approved verifier decision and its independent observation receipts.
 - Keeps a local policy guard. Cloud can propose; it cannot bypass allow/deny/ask.
 - Surfaces attention as a desktop pet, not another chat transcript.

@@ -1292,3 +1292,16 @@ OpenCode attachment, and foreground/active-worker resources. Then capture fresh
 screenshots and a sub-five-minute demo. Until then the installer is technically
 verified but not visually accepted. Benchmark remains `frozen:false`; AgentCore
 remains implemented/offline-tested rather than deployed.
+
+## Current AgentCore-compatible local protocol recheck
+
+On source `1ea1539` (product runtime identical to package `c3cc44c`), the real
+`pex_supervisor.runtime` entrypoint passed its explicit deterministic-only
+`local_http` contract on unused loopback port 18080. `/ping` and
+`/invocations` both returned 200; schema and invocation identity matched; the
+typed `NOOP` remained bound to session `smoke`; `used_llm:false`; and the owned
+Uvicorn process shut down cleanly with no listener remaining. The exercised
+`runtime.py` hash exactly matches the frozen package receipt. No model, AWS
+credential, AgentCore cloud Runtime, worker, or native UI was used.
+
+[Exact current receipt and limits](demo/evidence/LOCAL_AGENTCORE_PROTOCOL_1EA1539_2026-09-11.md).
