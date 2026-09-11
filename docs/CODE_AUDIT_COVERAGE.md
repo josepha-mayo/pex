@@ -1918,3 +1918,12 @@ See `docs/demo/evidence/TWO_PET_FINAL_AUDIT_8CF2AE7_2026-09-11.md` for exact
 hashes, commands, findings, and the remaining native-playback boundary. This is
 parent/static review plus preserved historical independent lineage; it is not a
 new independent visual review or native acceptance claim.
+
+## 11 September broad offline MVP seam
+
+| Seam | Review result | Evidence |
+| --- | --- | --- |
+| Zen BYOK/provider settings -> Strands -> goal control -> OpenCode/Codex -> Ask/outcome -> AgentCore-compatible protocol | VERIFIED OFFLINE | A combined 17-file contract/integration/e2e/unit selection passed 475 tests with one intentional skip and zero failures in 99.50 seconds on clean `c70effb`. |
+
+The exact selection and honest live/native/deployment boundary are recorded in
+`docs/demo/evidence/MVP_DEMO_SEAM_C70EFFB_2026-09-11.md`.

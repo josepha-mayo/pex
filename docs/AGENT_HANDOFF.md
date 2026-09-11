@@ -1330,3 +1330,17 @@ when the user says the screen is free, run only the exact-package PEX checks for
 startup/reopen, transparent overlay, live cadence, fixed hide/message controls,
 Home/Inspector/Deck/Settings, Zen BYOK, OpenCode attachment, and bounded
 foreground/active-worker resources. Then record the sub-five-minute demo.
+
+## Broad offline MVP seam checkpoint
+
+Clean `c70effb` passed a combined 17-file MVP seam regression: **475 passed, 1
+skipped, 0 failed in 99.50 seconds**. The selection crosses supervisor settings
+and provider binding, real Strands integration contracts, persistent goal
+lifecycle/control, canonical Ask PEX, OpenCode completion/outcome/pump, Codex
+same-thread correction, and AgentCore local protocol/authority. Exact command,
+scope, and limits: [offline MVP demo seam](demo/evidence/MVP_DEMO_SEAM_C70EFFB_2026-09-11.md).
+
+This makes native acceptance the critical path; do not widen the offline feature
+scope or rewrite green core logic without a concrete failure. Continue preparing
+the judge journey and failure-safe recording materials while the user owns the
+screen, then run the bounded PEX-only pass as soon as they explicitly release it.
