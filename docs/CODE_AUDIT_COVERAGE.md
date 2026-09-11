@@ -1345,7 +1345,7 @@ Five new paths after the original snapshot bring this ledger to **346 source/con
 | `tests/contract/test_live_hermes_stop.py` | Test cross-review | PENDING |
 | `tests/contract/test_live_kimi_stop.py` | Test cross-review | PENDING |
 | `tests/contract/test_live_omp_stop.py` | Test cross-review | PENDING |
-| `tests/contract/test_live_opencode_stop.py` | Test cross-review | PENDING |
+| `tests/contract/test_live_opencode_stop.py` | Test cross-review | FULL READ by main 11 Sep; explicitly authorized real-supervisor/in-memory-transport contract, completed-inference requirement and probe-owned cleanup reviewed; correctly disclaims real-worker recovery proof |
 | `tests/contract/test_live_opencode.py` | Test cross-review | FULL READ by main 11 Sep; explicit live authorization, bounded Deep wait and owned transport cleanup; model-free production run passed 1/1 |
 | `tests/contract/test_live_qwen_stop.py` | Test cross-review | PENDING |
 | `tests/contract/test_live_supervisor.py` | Test cross-review | PENDING |
