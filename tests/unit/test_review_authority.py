@@ -101,7 +101,7 @@ def test_current_review_can_retry_and_return_bounded_answer(monkeypatch, status)
     assert usage == {"input_tokens": 7, "output_tokens": 3}
     assert kind == "review_answer"
     assert len(calls) == len(checks) == 2
-    assert calls[0] == "explicit-test-model" and calls[1] != calls[0]
+    assert calls == ["explicit-test-model", "explicit-test-model"]
 
 
 def test_copied_context_cannot_reuse_expired_guard(monkeypatch):

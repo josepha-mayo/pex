@@ -199,10 +199,10 @@ def test_openai_provider_constructs_with_installed_dependency(monkeypatch):
     assert model is not None
 
 
-def test_zen_openai_compat_excludes_reasoning_on_follow_up_turns(monkeypatch):
+def test_zen_chat_model_excludes_reasoning_on_follow_up_turns(monkeypatch):
     monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
     monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "zen")
-    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "laguna-s-2.1-free")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "big-pickle")
     monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-key")
     captured: dict = {}
 
@@ -508,6 +508,17 @@ def test_static_catalog_is_deduplicated_and_truthfully_unverified():
     assert len(rows) >= 50
     assert {row["availability"] for row in rows} == {"unverified"}
     assert {row["source"] for row in rows} == {"static_hint"}
+
+
+def test_zen_default_is_the_first_explicit_contributor_free_hint():
+    zen_rows = [row for row in catalog() if row["provider"] == "zen"]
+    expected = "muse-spark-1.3-contributor-free"
+    assert zen_rows[0]["model_id"] == expected
+    assert PROVIDERS["zen"].default_model == expected
+    assert "laguna-s-2.1-free" not in {row["model_id"] for row in zen_rows}
+    assert "muse-spark-1.2-contributor-free" not in {
+        row["model_id"] for row in zen_rows
+    }
 
 
 def test_live_openai_compatible_catalog_is_marked_listed(monkeypatch):

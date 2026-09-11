@@ -46,7 +46,7 @@ _RUNTIME_SCOPE: ContextVar[Any] = ContextVar(
 _RESPONSES_API_MODELS: dict[str, frozenset[str]] = {
     # Zen documents all three Muse IDs on /responses, not /chat/completions.
     # Exact IDs avoid changing the route for unrelated or future models.
-    # https://opencode.ai/docs/zen/ (verified 2026-09-10)
+    # https://opencode.ai/docs/zen/ (verified 2026-09-11)
     "zen": frozenset({
         "muse-spark-1.3-contributor-free", "muse-spark-1.3", "muse-spark-1.2",
     }),
@@ -228,7 +228,7 @@ PROVIDERS: dict[str, ProviderSpec] = {
         "https://opencode.ai/zen/v1",
         ("PEX_SUPERVISOR_API_KEY", "PEX_ZEN_API_KEY", "OPENCODE_API_KEY"),
         ("api_key",),
-        "laguna-s-2.1-free",
+        "muse-spark-1.3-contributor-free",
         "Use an OpenCode API key. Not the default product brain.",
     ),
     "opencode_go": ProviderSpec(

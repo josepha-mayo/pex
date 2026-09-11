@@ -13,7 +13,11 @@ from typing import Any
 
 import httpx
 
-from pex_supervisor.providers import credential_safe_http_client, openai_compat_client_config
+from pex_supervisor.providers import (
+    _generation_api,
+    credential_safe_http_client,
+    openai_compat_client_config,
+)
 from pex_supervisor.review_authority import require_review_authority
 
 
@@ -21,7 +25,6 @@ class InspectUnavailable(RuntimeError):
     """No OpenAI-compatible review endpoint is configured."""
 
 
-_FALLBACK_MODELS = ("hy3-free", "laguna-s-2.1-free", "big-pickle")
 _MAX_RESPONSE_BYTES = 262_144
 _MAX_RESPONSE_CHUNKS = 4_096
 
@@ -64,16 +67,9 @@ def _model_unsupported(status: int, body: str) -> bool:
 
 
 def _candidate_models(cfg: dict[str, Any]) -> list[str]:
-    """Zen free IDs are not OpenRouter/OpenAI model ids. Do not send them there."""
-    models: list[str] = []
+    """Honor the exact configured model; never create hidden billable retries."""
     primary = str(cfg.get("model_id") or "").strip()[:512]
-    if primary:
-        models.append(primary)
-    if cfg.get("provider") == "zen":
-        for item in _FALLBACK_MODELS:
-            if item and item not in models:
-                models.append(item)
-    return models
+    return [primary] if primary else []
 
 
 def _rate_limited(status: int, body: str) -> bool:
@@ -145,6 +141,34 @@ def _parse_response_object(payload: dict[str, Any]) -> dict[str, Any]:
     return _loads_object(str(content))
 
 
+def _parse_responses_object(payload: dict[str, Any]) -> dict[str, Any]:
+    output = payload.get("output")
+    if not isinstance(output, list) or not output:
+        raise ValueError("review model returned no output")
+    text: list[str] = []
+    for item in output[:32]:
+        if not isinstance(item, dict):
+            raise ValueError("review model returned invalid output")
+        if item.get("type") == "function_call":
+            raise ValueError("review content may not contain tool calls")
+        if item.get("type") != "message":
+            continue
+        content = item.get("content")
+        if not isinstance(content, list):
+            raise ValueError("review model returned invalid content")
+        for part in content[:32]:
+            if not isinstance(part, dict):
+                raise ValueError("review model returned invalid content")
+            if part.get("type") == "output_text":
+                value = part.get("text")
+                if not isinstance(value, str):
+                    raise ValueError("review model returned invalid content")
+                text.append(value[:4_000])
+    if not text:
+        raise ValueError("review model returned no output text")
+    return _loads_object("".join(text))
+
+
 def usage_tokens(payload: dict[str, Any]) -> dict[str, int]:
     usage = payload.get("usage") or {}
     if not isinstance(usage, dict):
@@ -182,25 +206,40 @@ def _chat_json(
         raise ValueError("review system prompt exceeds the byte limit")
     if len(user.encode("utf-8", "replace")) > 65_536:
         raise ValueError("review user prompt exceeds the byte limit")
-    url = f"{cfg['base_url'].rstrip('/')}/chat/completions"
     headers = {"Content-Type": "application/json"}
     if cfg.get("api_key"):
         headers["Authorization"] = f"Bearer {cfg['api_key']}"
     timeout = httpx.Timeout(18.0, connect=6.0)
-    models = _candidate_models(cfg)
+    # One bounded retry is allowed for transient transport/provider failures,
+    # but it must use the exact model the operator selected.  Never switch to
+    # a hidden fallback model: that makes consent, cost, and evaluation opaque.
+    models = _candidate_models(cfg) * 2
     last_error = "no supervisor model"
     with credential_safe_http_client(timeout=timeout) as client:
         for model in models:
-            payload = {
-                "model": model,
-                "stream": False,
-                "max_tokens": max_tokens,
-                "temperature": 0.2,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-            }
+            api = _generation_api(str(cfg.get("provider") or ""), model)
+            if api == "responses":
+                url = f"{cfg['base_url'].rstrip('/')}/responses"
+                payload = {
+                    "model": model,
+                    "stream": False,
+                    "max_output_tokens": max_tokens,
+                    "reasoning": {"effort": "low"},
+                    "instructions": system,
+                    "input": user,
+                }
+            else:
+                url = f"{cfg['base_url'].rstrip('/')}/chat/completions"
+                payload = {
+                    "model": model,
+                    "stream": False,
+                    "max_tokens": max_tokens,
+                    "temperature": 0.2,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                }
             try:
                 require_review_authority()
                 with client.stream(
@@ -213,6 +252,8 @@ def _chat_json(
                     ].strip().casefold()
                     if _skip_model(status_code, response_text):
                         last_error = f"model {model} unavailable"
+                        if _model_unsupported(status_code, response_text):
+                            break
                         continue
                     response.raise_for_status()
                     if content_type != "application/json":
@@ -225,18 +266,20 @@ def _chat_json(
                     )
                     if not isinstance(data, dict):
                         raise ValueError("review endpoint returned a non-object response")
-                    parsed = _parse_response_object(data)
+                    parsed = (
+                        _parse_responses_object(data)
+                        if api == "responses"
+                        else _parse_response_object(data)
+                    )
             except httpx.TimeoutException:
                 last_error = f"model {model} timed out"
                 continue
-            except (
-                UnicodeDecodeError,
-                ValueError,
-                json.JSONDecodeError,
-                httpx.HTTPError,
-            ) as exc:
+            except (UnicodeDecodeError, ValueError, json.JSONDecodeError) as exc:
                 last_error = f"model {model} {exc.__class__.__name__}"
-                continue
+                break
+            except httpx.HTTPError as exc:
+                last_error = f"model {model} {exc.__class__.__name__}"
+                break
             return parsed, usage_tokens(data)
     raise RuntimeError(last_error)
 

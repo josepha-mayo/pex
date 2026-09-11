@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import httpx
 import pytest
@@ -9,6 +10,7 @@ from pex_supervisor.inspect_http import (
     _loads_object,
     _model_unsupported,
     _parse_response_object,
+    _parse_responses_object,
     _read_response_text,
     _skip_model,
     complete_review_answer,
@@ -93,16 +95,90 @@ def test_unsupported_model_status_is_retryable():
     assert not _model_unsupported(401, '{"error":{"message":"invalid api key"}}')
 
 
-def test_zen_fallbacks_are_not_sent_to_openrouter():
+def test_review_uses_only_the_exact_configured_model():
     from pex_supervisor.inspect_http import _candidate_models
 
     openrouter = _candidate_models(
         {"provider": "openrouter", "model_id": "anthropic/claude-sonnet-4.6"}
     )
     assert openrouter == ["anthropic/claude-sonnet-4.6"]
-    zen = _candidate_models({"provider": "zen", "model_id": "hy3-free"})
-    assert zen[0] == "hy3-free"
-    assert "laguna-s-2.1-free" in zen
+    zen = _candidate_models(
+        {"provider": "zen", "model_id": "muse-spark-1.3-contributor-free"}
+    )
+    assert zen == ["muse-spark-1.3-contributor-free"]
+    assert _candidate_models({"provider": "zen", "model_id": ""}) == []
+
+
+def test_parse_review_answer_from_responses_output():
+    payload = {
+        "output": [
+            {
+                "type": "message",
+                "content": [
+                    {"type": "output_text", "text": '{"answer":"Bounded."}'}
+                ],
+            }
+        ],
+        "usage": {"input_tokens": 7, "output_tokens": 3},
+    }
+    assert _parse_responses_object(payload) == {"answer": "Bounded."}
+    assert usage_tokens(payload) == {"input_tokens": 7, "output_tokens": 3}
+
+
+def test_responses_review_uses_selected_zen_model_without_fallback(monkeypatch):
+    seen: dict[str, Any] = {}
+    payload = {
+        "output": [
+            {
+                "type": "message",
+                "content": [
+                    {"type": "output_text", "text": '{"answer":"Exact model."}'}
+                ],
+            }
+        ],
+        "usage": {"input_tokens": 4, "output_tokens": 2},
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(
+            200,
+            headers={"content-type": "application/json"},
+            json=payload,
+        )
+
+    transport = httpx.MockTransport(handler)
+    real_client = httpx.Client
+    monkeypatch.setattr(
+        "pex_supervisor.inspect_http.openai_compat_client_config",
+        lambda: {
+            "provider": "zen",
+            "base_url": "https://example.invalid/v1",
+            "model_id": "muse-spark-1.3-contributor-free",
+            "api_key": None,
+        },
+    )
+    monkeypatch.setattr(
+        "pex_supervisor.providers.httpx.Client",
+        lambda **kwargs: real_client(transport=transport, **kwargs),
+    )
+
+    parsed, usage = _chat_json("system", "user")
+
+    assert parsed == {"answer": "Exact model."}
+    assert usage == {"input_tokens": 4, "output_tokens": 2}
+    assert seen == {
+        "path": "/v1/responses",
+        "body": {
+            "model": "muse-spark-1.3-contributor-free",
+            "stream": False,
+            "max_output_tokens": 400,
+            "reasoning": {"effort": "low"},
+            "instructions": "system",
+            "input": "user",
+        },
+    }
 
 
 def test_rate_limit_skips_exhausted_free_model():
