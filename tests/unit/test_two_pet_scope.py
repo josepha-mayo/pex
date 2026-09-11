@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pex_bridge.pets import PetSettings, catalog, shipping_pet_settings
 
 
@@ -31,3 +33,12 @@ def test_current_catalog_does_not_scan_legacy_imports(monkeypatch):
     migrated = shipping_pet_settings(settings)
     assert migrated.selected_id == "pex"
     assert migrated.imports == settings.imports
+
+
+def test_bridge_state_does_not_initialize_retired_hatch_runtime():
+    source = (Path(__file__).parents[2] / "services/bridge/src/pex_bridge/app.py").read_text(
+        encoding="utf-8"
+    )
+    assert "HatchRegistry" not in source
+    assert "self.hatch =" not in source
+    assert "hatch_tasks" not in source

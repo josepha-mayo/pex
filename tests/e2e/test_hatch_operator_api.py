@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-
 from fastapi.testclient import TestClient
 from pex_bridge import app as bridge_app
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings
-from pex_bridge.pets.hatch import HatchRegistry
 from pex_bridge.pipeline import Pipeline
 from pex_bridge.store import Store
 
@@ -38,9 +36,7 @@ def _configure_operator_app(tmp_path, *, require_auth: bool = True) -> TestClien
     bridge_app.state.adapters = adapters
     bridge_app.state.bus = bus
     bridge_app.state.pipeline = Pipeline(store, adapters, bus, settings)
-    bridge_app.state.hatch = HatchRegistry(settings.data_dir / "hatch")
     bridge_app.state.background_tasks = set()
-    bridge_app.state.hatch_tasks = {}
     return TestClient(
         bridge_app.create_app(),
         base_url="http://127.0.0.1",
@@ -69,10 +65,9 @@ def test_two_pet_mvp_rejects_generation_even_with_a_provider(tmp_path, monkeypat
         for _ in range(2):
             response = client.post("/v1/pets/hatch", json=_request())
             assert response.status_code == 409
-            assert response.json()["detail"]["code"] == "hatch_disabled_for_mvp"
+        assert response.json()["detail"]["code"] == "hatch_disabled_for_mvp"
         assert client.get("/v1/pets/hatch/capability").json()["generation_ready"] is False
         assert client.get("/v1/pets/hatch").json() == {"jobs": []}
-        assert not bridge_app.state.hatch_tasks
 
 
 def test_hatch_operator_requires_exact_confirmation_and_bound_provider(

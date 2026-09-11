@@ -1107,3 +1107,13 @@ left intact. The existing two-pet source contract now rejects restoration of the
 helpers. Focused view-model tests passed 76/76; complete desktop tests passed 289 with
 one intentional Windows symlink skip; TypeScript/Vite passed. This remains source-only
 until a new exact-source package is built and verified.
+
+Backend follow-up found that “disabled” hatch generation still loaded the old hatch,
+image-provider, and SQLite registry stack on every bridge start. The active app no
+longer imports or constructs that runtime, tracks hatch tasks, or touches hatch storage
+for compatibility reads. POST remains authenticated, strictly validated, and returns
+the explicit two-pet-MVP 409; capability is false; list is empty; job lookup is 404.
+The standalone retired modules remain in source for now but are not imported by bridge
+startup. Isolated import proof confirmed all three modules absent from `sys.modules`.
+Focused tests passed 7/7, the broader app/pet/HTTP gate passed 111/111 with pinned
+Rust on `PATH`, and Ruff passed. Native startup/RSS impact remains unmeasured.

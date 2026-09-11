@@ -74,7 +74,6 @@ from pex_bridge.pets import (
     starters_by_id,
     validate_codex_v2_atlas,
 )
-from pex_bridge.pets.hatch import HatchRegistry
 from pex_bridge.pipeline import Pipeline, collapse_promptable_agents
 from pex_bridge.request_limits import RequestBodyLimitMiddleware
 from pex_bridge.startup_trace import mark_startup_phase
@@ -755,9 +754,7 @@ class AppState:
         from pex_bridge.codex_shared_attach import SharedCodexAttachments
 
         self.codex_shared_attachments = SharedCodexAttachments()
-        self.hatch = HatchRegistry(self.settings.data_dir / "hatch")
         self.background_tasks: set[asyncio.Task[Any]] = set()
-        self.hatch_tasks: dict[str, asyncio.Task[Any]] = {}
 
     def register_event_socket(
         self,
@@ -821,25 +818,6 @@ class AppState:
                     completed.get_name(),
                     type(exc).__name__,
                 )
-
-        task.add_done_callback(finished)
-
-    def track_hatch_background(
-        self,
-        job_id: str,
-        task: asyncio.Task[Any],
-    ) -> None:
-        """Retain exactly one process-local dispatcher for a canonical hatch job."""
-
-        active = self.hatch_tasks.get(job_id)
-        if active is not None and not active.done():
-            raise RuntimeError("hatch dispatcher is already active")
-        self.hatch_tasks[job_id] = task
-        self.track_background(task)
-
-        def finished(completed: asyncio.Task[Any]) -> None:
-            if self.hatch_tasks.get(job_id) is completed:
-                self.hatch_tasks.pop(job_id, None)
 
         task.add_done_callback(finished)
 
@@ -1187,7 +1165,6 @@ async def _shutdown_runtime_resources() -> None:
     if background:
         await asyncio.gather(*background, return_exceptions=True)
     state.background_tasks.difference_update(background)
-    state.hatch_tasks.clear()
 
     for adapter in state.adapters.all():
         pump = getattr(adapter, "_pump_task", None)
@@ -4386,14 +4363,11 @@ def create_app() -> FastAPI:
 
     @app.get("/v1/pets/hatch")
     async def list_hatches(_: None = Depends(_require_token)):
-        return {"jobs": [job.public() for job in state.hatch.list_jobs()]}
+        return {"jobs": []}
 
     @app.get("/v1/pets/hatch/{job_id}")
     async def get_hatch(job_id: str, _: None = Depends(_require_token)):
-        job = state.hatch.get(job_id)
-        if job is None:
-            raise HTTPException(404, "unknown hatch job")
-        return job.public()
+        raise HTTPException(404, "unknown hatch job")
 
     @app.post("/v1/pets/hatch")
     async def start_hatch(body: HatchIn, _: None = Depends(_require_operator_token)):

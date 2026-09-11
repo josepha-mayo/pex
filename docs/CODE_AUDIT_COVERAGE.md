@@ -1702,3 +1702,19 @@ build passed with 69 transformed modules. An initial ad-hoc invocation using an
 uninstalled `tsx` loader failed before test collection; the repository's native
 Node 24 command was then used and passed. No backend compatibility route, pet asset,
 credential, runtime profile, or package artifact changed.
+
+## 11 September retired hatch startup detachment
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `services/bridge/src/pex_bridge/app.py` | REVIEWED / REPAIRED | Removed the retired hatch package import, per-launch SQLite registry construction, task ledger, task tracker, and shutdown cleanup from the active bridge. Disabled compatibility reads now return an empty job list/404 without opening hatch storage; capability and mutation routes remain explicitly disabled. |
+| `tests/e2e/test_hatch_operator_api.py` | REVIEWED / REPAIRED | Removed obsolete state injection while preserving authentication, strict request validation, zero-provider-call, disabled capability, and empty-history contracts. |
+| `tests/unit/test_two_pet_scope.py` | REVIEWED / EXTENDED | Source contract rejects restoration of `HatchRegistry`, `self.hatch`, or `hatch_tasks` in the active bridge. |
+
+An isolated `python -I` import proved `pex_bridge.pets.hatch`, `imagegen`, and
+`hatch_store` were absent from `sys.modules` after importing the bridge app. Focused
+tests passed 7/7; the broader app/pet/HTTP set passed 111/111 with the pinned Rust
+toolchain on `PATH`; scoped Ruff and diff checks passed. The first broader invocation
+had one preflight failure because `rustc` was not on that shell's `PATH`; no product
+test failed, and the corrected exact suite passed. Startup time/RSS improvement is not
+yet measured, and no package or native UI was opened.
