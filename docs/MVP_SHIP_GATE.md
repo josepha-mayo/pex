@@ -84,6 +84,10 @@ anything on the user's behalf.
   explicit cancellation event remains unproven; native verification pending.
 - [x] Current BYOK/provider configuration gate: 148 passed, one skipped; the
   supplied Zen key has zero tracked-source matches and no live call ran.
+- [x] Current-source bounded OpenCode quiet case at `6a1d98b`: exact artifact
+  before review, one real Muse/Strands `NOOP`, zero follow-ups, all 258 events
+  settled, and owned-server cleanup. This is one restraint diagnostic, not a
+  ten-case rate or comparative score. [Exact receipt](demo/evidence/LIVE_OPENCODE_QUIET_6A1D98B_2026-09-11.md).
 - [x] Current benchmark safety/scoring/Cursor-hook contracts: 280 passed in
   284.29s. Manifest remains honestly unfrozen; this is not a benchmark score.
 - [x] Current-tree expanded benchmark integrity rerun: 261 core benchmark/

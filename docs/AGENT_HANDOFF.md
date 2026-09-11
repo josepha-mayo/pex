@@ -50,6 +50,14 @@ goal-to-OpenCode-outcome cluster **244/244**. These used fake/local transports
 and disabled provider/AWS calls. They strengthen the package's offline contract
 but do not clear native UI or live semantic supervision.
 
+Current source `6a1d98b` now also passes one freshly bounded live OpenCode quiet
+case: exact output existed before the reviewed stop, real free Muse/Strands
+selected `NOOP`, no follow-up was delivered, all 258 events settled, and the
+owned OpenCode 1.18.30 server exited. The runner's new `--case-count 1` limit
+prevents an automatic ten-case quota burn. This is not native-package proof or a
+comparative benchmark. See
+[`LIVE_OPENCODE_QUIET_6A1D98B_2026-09-11.md`](demo/evidence/LIVE_OPENCODE_QUIET_6A1D98B_2026-09-11.md).
+
 The current-head offline MVP spine also passes 259/259 with unhandled pytest
 thread warnings promoted to failures: goal lifecycle, quiet completion and
 recovery, two-pet APIs, authenticated supervisor settings, Strands policy,
