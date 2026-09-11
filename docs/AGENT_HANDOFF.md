@@ -1075,3 +1075,26 @@ Receipts are exclusive-write; never overwrite old evidence.
 
 This handoff cleanup preserves all prior history. It changes no memory files,
 credentials, runtime profiles, user apps or historical receipts.
+
+## 11 September two-day MVP sprint checkpoint
+
+The shipping scope is deliberately narrow: a polished two-pet desktop experience,
+Zen BYOK, OpenCode as the primary live worker path, Codex as the second supported
+path, Strands semantic supervision, the implemented/offline-tested AgentCore route,
+and evidence-backed quiet/corrective behavior. Cursor and a live AgentCore deployment
+remain optional behind the core journey. Do not widen the pet fleet or resurrect
+retired UI/demo paths.
+
+Latest cleanup removed 329 unreachable lines from the old schema-2/eight-pet release
+validator in `apps/desktop/scripts/build-sidecar.mjs`. The active schema-4 compact
+validator still bundles exactly `pex` and `von`; archived eight-pet review hashes are
+retained only as immutable provenance. A release-contract source assertion prevents
+the obsolete validator and error text from returning. Focused release-contract tests
+passed 14/14 and the script parses. Complete desktop gates are rerun before push.
+
+No native PEX window, browser, live provider, worker, or AWS resource was opened in
+this batch because the user is currently using the computer. Continue safe offline
+code/tests now. When the user explicitly yields the screen, the next critical gate is
+bounded native acceptance on the exact packaged source, followed by the confirmed-free
+Zen/OpenCode recovery and quiet-completion journeys. Keep benchmark scoring NO-GO and
+`frozen:false` until raw, fair, citeable evidence exists.

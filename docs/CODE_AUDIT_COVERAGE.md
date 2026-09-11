@@ -1675,3 +1675,15 @@ SQLite timing and whole-machine freeze resolution remain open.
 Focused startup tests passed 15/15, Rust passed 18/18, complete desktop contracts passed 258/258,
 TypeScript exited 0, and Rust formatting passed. No PEX process or database mutation occurred.
 Current-source sidecar rebuild and bounded native resource proof remain open.
+
+## 11 September retired eight-pet release validator cleanup
+
+| Path | Review result | Evidence |
+| --- | --- | --- |
+| `apps/desktop/scripts/build-sidecar.mjs` | REVIEWED / REPAIRED | Removed 329 unreachable lines from the retired schema-2/eight-pet validator. The invoked schema-4 compact validator remains authoritative for the bundled `pex`, `von` fleet; the archived eight-pet review lineage remains intentionally retained as provenance and is not bundled. |
+| `apps/desktop/scripts/release-contract.test.mjs` | REVIEWED / EXTENDED | Source contract requires exactly one current validator definition and one invocation, and rejects restoration of the retired validator or its obsolete eight-pet error text. |
+
+`node --check scripts/build-sidecar.mjs` and the focused 14-test release-contract suite
+passed after the deletion. Complete desktop tests, the frontend build, and the two-pet
+validator are rerun before this batch is pushed. This cleanup changes no pet assets,
+runtime profile, credentials, package artifact, or historical receipt.

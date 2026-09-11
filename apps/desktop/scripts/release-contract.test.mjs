@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -30,6 +31,14 @@ const hash = (character) => character.repeat(64);
 test("release allowlist ships only Pex and Von", () => {
   assert.deepEqual(RELEASE_BUILT_IN_PET_IDS, ["pex", "von"]);
   assert.throws(() => RELEASE_BUILT_IN_PET_IDS.push("ledger"), /not extensible/u);
+});
+
+test("release builder retains only the current two-pet evidence validator", () => {
+  const source = readFileSync(new URL("./build-sidecar.mjs", import.meta.url), "utf8");
+  assert.match(source, /function validateCompactPetReleaseEvidence\(/u);
+  assert.doesNotMatch(source, /function validatePetReleaseEvidence\(/u);
+  assert.doesNotMatch(source, /exact ordered eight-pet fleet/u);
+  assert.equal((source.match(/validateCompactPetReleaseEvidence\(/gu) ?? []).length, 2);
 });
 
 test("verification cleanup preserves success and each failure without masking", () => {
