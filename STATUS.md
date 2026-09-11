@@ -2474,3 +2474,9 @@ intentional opt-in skips in 125.83 seconds, with unhandled pytest thread warning
 promoted to errors. This covers the AgentCore client, pipeline, preflight,
 runtime, supervisor-settings contract, providers and configuration. It made no
 AWS or provider call and is not deployment evidence.
+
+Public submission-material preflight at `a553d86` confirms remote `main` exact,
+clean local tree, public unarchived GitHub repository, MIT detection, current
+README links and a readable architecture PNG. Native acceptance, the public
+demo video, required form fields and submission remain open.
+[Exact preflight](docs/demo/evidence/PUBLIC_SUBMISSION_PREFLIGHT_A553D86_2026-09-11.md).
