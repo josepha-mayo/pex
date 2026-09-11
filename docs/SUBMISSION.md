@@ -224,6 +224,9 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] AWS Builder ID email on the Devpost form
+- [ ] After native acceptance, publish the accepted unsigned installer and its
+  SHA-256 as a public GitHub release/test-build link; do not upload `f585562`
+  before that acceptance or silently replace a release asset
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
 - [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source

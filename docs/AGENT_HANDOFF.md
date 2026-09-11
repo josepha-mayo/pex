@@ -34,6 +34,11 @@ as a more compact flow and an opaque dark RGB image that remains legible on
 light Devpost pages. It shows the local evidence → Strands → verifier → policy
 loop, Zen BYOK vault boundary, same-session worker action, durable audit, and
 the optional AgentCore path explicitly marked **NOT DEPLOYED**.
+The public [judge testing guide](JUDGE_TESTING.md) now gives the exact two-pet
+OpenCode + Zen BYOK evaluation path without bundling a key or claiming a public
+installer. There is no existing GitHub release/tag. Publish the accepted
+installer and checksum only after the native gate passes and Joseph authorizes
+that external release action.
 
 Fresh post-package contract gates on the same source are also green: an expanded
 387-test Strands/supervisor/trajectory/evidence/outcome gate (6 skipped) and 183
