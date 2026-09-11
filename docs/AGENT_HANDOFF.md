@@ -1358,6 +1358,26 @@ This rules out an obvious headless idle busy loop or short-window bridge leak.
 It does not prove the complete desktop/WebView/GPU path or active-worker load;
 retain those measurements in the bounded native pass.
 
+## Current package after active-event burst repair: 761cbde
+
+Package `761cbde` supersedes `c3cc44c`. A busy event stream previously woke up
+to five derived UI refresh families for each committed event page. Cursor
+persistence remains immediate, but those goal/detail/handoff/identity reads now
+share one cancellable 250 ms burst gate. This changes desktop observation load,
+not backend supervision or model dispatch timing.
+
+The complete desktop gate now has 291 tests: 290 passed, zero failed, one
+intentional Windows symlink-permission skip. Production TypeScript/Vite passed.
+The full release build passed with pinned Rust 1.97.1 and two Cargo jobs,
+producing fresh bridge/Cursor sidecars, desktop, MSI and NSIS. The exclusive
+package verifier reports `release_ready:true`, zero blockers, both inventories
+verified and 2,372 runtime files. An isolated packaged-bridge smoke verified
+identity and authenticated settings, cap 3, Zen Contributor Free first, zero
+provider calls, and zero surviving exact bridge processes.
+
+Exact hashes and limitations: [package 761cbde](demo/evidence/PACKAGE_761CBDE_2026-09-11.md).
+Native acceptance remains pending and must target this package, not `c3cc44c`.
+
 ## 11 September final two-day submission lock
 
 Joseph has set a stricter internal target of two remaining days. Do not spend

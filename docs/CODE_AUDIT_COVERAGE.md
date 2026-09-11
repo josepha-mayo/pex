@@ -1,5 +1,29 @@
 # PEX code audit coverage — 5 September 2026
 
+## 11 September — active event-burst resource repair and exact package
+
+Audited the desktop event path from authenticated WebSocket page receipt through
+cursor persistence and each derived REST refresh. The backend can legitimately
+commit and publish short event pages while a worker is active; the desktop was
+immediately fanning every page into five goal, detail, evidence, handoff and
+project-identity refresh families. This was bounded at idle but unnecessarily
+amplified reads during active work. Source `761cbde` keeps cursor persistence
+immediate and adds one cancellable 250 ms trailing gate for only the derived
+state refreshes. Hidden/unmounted surfaces cancel the gate, and model dispatch
+timing and backend supervision are unchanged.
+
+The focused burst contract proves 100 synchronous event notifications produce
+one refresh and that cancellation prevents a trailing call. The complete desktop
+suite passed **290 tests with zero failures and one intentional Windows symlink
+skip**; TypeScript/Vite built 69 modules. A full pinned-Rust Tauri build produced
+fresh bridge/Cursor sidecars, MSI and NSIS. The exclusive package verifier
+reported `release_ready:true`, zero blockers, verified matching inventories and
+2,372 frozen runtime files. An isolated packaged-bridge smoke verified identity,
+authenticated settings, review cap 3, Zen Contributor Free first, zero provider
+calls and no surviving exact bridge process. This proves package content and the
+headless bridge boundary, not native WebView/GPU stability or measured CPU
+improvement; both remain in the native acceptance gate.
+
 ## 11 September — bounded recovery runner and numeric-grounding repair
 
 Read the new `scripts/opencode_recovery_once.py` and its causal predicate in

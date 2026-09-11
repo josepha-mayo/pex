@@ -9,7 +9,7 @@ Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
 OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Package source `c3cc44c` (base UI product `8394b4b`) ships only Pex and Von,
+Package source `761cbde` (base UI product `8394b4b`) ships only Pex and Von,
 defaults fresh installs to three semantic review dispatches per session, and passes both installer
 content/inventory gates. It also routes Zen Muse through Responses and forbids
 silent model fallback. The most recent full Python regression passed 4,440 tests
@@ -25,7 +25,8 @@ while one controlled incomplete stop received one independently verified
 same-session correction, reached exact final artifacts with `helped:true`, then
 received a final NOOP. These are single public diagnostics, not a benchmark.
 The recovery audit exposed one wrong derived byte-count aside; final package
-`c3cc44c` contains the deterministic sanitation and verifier-prompt repair.
+`761cbde` contains the deterministic sanitation and verifier-prompt repair plus
+active event-burst read coalescing.
 Final visible stability and recording remain.
 Installed OpenCode 1.18.30 also passes a fresh model-free production HTTP/session/
 SSE smoke, reaching Deep after the real event-stream handshake; this does not
@@ -33,7 +34,7 @@ replace the separate model-backed recovery evidence.
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
-[current package evidence](docs/demo/evidence/PACKAGE_C3CC44C_2026-09-11.md),
+[current package evidence](docs/demo/evidence/PACKAGE_761CBDE_2026-09-11.md),
 [current status](STATUS.md), and the source-bound evidence linked there.
 
 ## The pain it removes
@@ -90,7 +91,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for package source `c3cc44c` (base UI product `8394b4b`) and
+installer candidate exists for package source `761cbde` (base UI product `8394b4b`) and
 is not code-signed.
 These instructions cover building from source; package integrity is not native
 acceptance or publisher trust. Current source-bound package evidence is recorded

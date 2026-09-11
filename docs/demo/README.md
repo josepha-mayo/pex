@@ -5,9 +5,9 @@ directory are historical references and must not be presented as final-source pr
 
 ## Current checkpoint — 11 September 2026
 
-- Latest verified MSI/NSIS: source `c3cc44c`; receipt
-  `build/pex-package-receipt-c3cc44c.json`, SHA-256
-  `69a241f75467c1a7a9ce16e34c8a767312a216fb29c9d56dc06e2dded304c7e4`.
+- Latest verified MSI/NSIS: source `761cbde`; receipt
+  `build/pex-package-receipt-761cbde.json`, SHA-256
+  `679a35a7f59e4a43e3e348523b0881ecb6f9ffac96e2995c6b415b1aa4a7462a`.
 - Both installers contain exactly Pex and Von and 2,372 matching bridge-runtime
   files, with zero retired hatch/image implementation paths.
 - Current source passes the full Python regression: 4,440 passed, 32 skipped,
@@ -18,8 +18,9 @@ directory are historical references and must not be presented as final-source pr
   with one opt-in cloud skip and 368 benchmark/scoring/Cursor/safety tests.
 - Clean `e864389` retains a real Codex/Strands quiet and same-thread recovery pair.
   Clean `6a1d98b` and `93dfef3` retain current OpenCode 1.18.30 quiet and causal
-  same-session recovery diagnostics; final package `c3cc44c` contains the prose
-  sanitation repair found by reviewing the recovery trace.
+  same-session recovery diagnostics; final package `761cbde` contains the prose
+  sanitation repair found by reviewing the recovery trace and active-event
+  burst coalescing.
 - Native acceptance of the newest Ask/cancellation repairs is pending while Joseph uses
   the PC; do not use Computer Use until he says otherwise.
 - No AgentCore deployment, frozen comparative benchmark, final video or submission is
@@ -33,7 +34,7 @@ in this directory showed the retired sparse eight-pet interface and Hatch/Import
 controls. The screenshots and clips are quarantined under
 `archive/legacy-eight-pet/` as historical evidence. None may be used in the
 Devpost gallery, README or final video.
-Capture a fresh package-`c3cc44c` set only after native acceptance: Home with a
+Capture a fresh package-`761cbde` set only after native acceptance: Home with a
 connected worker and persistent goal, the Pex overlay with its message dismissed
 independently, the two-pet Companion settings with Von selected, the Zen BYOK
 write-only provider state/review cap, and the Inspector's bounded supervision

@@ -33,6 +33,13 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+- [x] Current source/package `761cbde` coalesces active committed-event bursts
+  into one cancellable 250 ms derived-state refresh while persisting event
+  cursors immediately. Desktop contracts pass 290 with one intentional skip,
+  production build and full Tauri release build pass, both installer inventories
+  verify with zero blockers, and the isolated packaged bridge reports cap 3 and
+  the Zen Contributor Free hint with zero provider calls.
+  [Exact hashes and claim boundary](demo/evidence/PACKAGE_761CBDE_2026-09-11.md).
 - [x] Public-repository preflight on 11 September: GitHub reports the repository
   public on `main` with an MIT license; README and architecture PNG/Mermaid source
   are present. A broad tracked-source secret scan found only deliberate fake test

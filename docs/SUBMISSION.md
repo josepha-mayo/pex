@@ -1,9 +1,10 @@
 # Devpost submission copy
 
 > **Current claim boundary — 11 September 2026:** draft, not submitted. Package
-> source `c3cc44c` (base UI product `8394b4b`) passes both installer integrity gates with zero blockers.
+> source `761cbde` (base UI product `8394b4b`) passes both installer integrity gates with zero blockers.
 > It routes Zen Muse through Responses and never silently switches model IDs.
-> It ships exactly two companions, Pex and Von. Its newest scale-aware overlay,
+> It ships exactly two companions, Pex and Von, and coalesces active event-read
+> bursts. Its scale-aware overlay,
 > Ask layout and explicit cancellation behavior still require native
 > visual/interaction verification.
 > Installers are unsigned. Real packaged
@@ -142,8 +143,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   field after checking that its title contains **Agents for Humans** and that it
   is accessible while logged out; do not republish it
 - [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean package
-  source `c3cc44c` (base UI product `8394b4b`); both installer inventories pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `c3cc44c`;
+  source `761cbde` (base UI product `8394b4b`); both installer inventories pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `761cbde`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run current offline gates: 368 benchmark/scoring/Cursor/safety tests,
   an expanded 387-test Strands/supervisor/trajectory/evidence/outcome gate with
@@ -160,7 +161,7 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] Add the required public YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [ ] After native acceptance, publish the accepted unsigned installer and its
-  SHA-256 as a public GitHub release/test-build link; do not upload `c3cc44c`
+  SHA-256 as a public GitHub release/test-build link; do not upload `761cbde`
   before that acceptance or silently replace a release asset
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
@@ -168,7 +169,7 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Validate current OpenCode 1.18.30 quiet completion on clean `6a1d98b` and
   causal same-session recovery on clean `93dfef3`, including an independently
   verified correction, exact outcome, `helped:true`, and final NOOP
-- [ ] Natively verify package source `c3cc44c` scale-aware overlay, storage-safe hide/restore, Ask layout, cancellation display, exact Zen default, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 and the contributor-free Zen hint in three isolated authenticated headless restart smokes; then
+- [ ] Natively verify package source `761cbde` scale-aware overlay, storage-safe hide/restore, Ask layout, cancellation display, exact Zen default, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 and the contributor-free Zen hint in an isolated authenticated headless smoke; then
   record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence includes
   the 200-test contract gate plus an exact-package local `/ping` + `/invocations` protocol

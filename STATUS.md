@@ -2,20 +2,22 @@
 
 ## Current — 11 September 2026
 
-**Current package source: `c3cc44c`; base UI product change: `8394b4b`, exactly Pex
+**Current package source: `761cbde`; base UI product change: `8394b4b`, exactly Pex
 and Von.** It includes the fresh-install cap of three durable semantic
 dispatches, scale-aware overlay geometry, and the exact Zen Responses repair.
 Muse Contributor Free is the first Zen hint/default; Ask PEX never silently
 switches model IDs and permits only one transient retry of the exact selection.
-The full Tauri build completed and both unsigned installers pass integrity with
-zero blockers. Receipt `build/pex-package-receipt-c3cc44c.json`, SHA-256
-`69a241f75467c1a7a9ce16e34c8a767312a216fb29c9d56dc06e2dded304c7e4`.
+The current package also coalesces active event-page bursts into one cancellable
+250 ms derived-state refresh without delaying cursor persistence or backend
+supervision. The full Tauri build completed and both unsigned installers pass integrity with
+zero blockers. Receipt `build/pex-package-receipt-761cbde.json`, SHA-256
+`679a35a7f59e4a43e3e348523b0881ecb6f9ffac96e2995c6b415b1aa4a7462a`.
 The frozen runtime contains zero retired hatch/image implementation files;
 custom import and image-generation write APIs remain disabled.
 
 Current OpenCode 1.18.30 evidence includes one clean-source quiet-completion
 pass at `6a1d98b` and one causal same-session recovery pass at `93dfef3`. The
-recovery trace exposed a wrong derived byte-count aside; package `c3cc44c`
+recovery trace exposed a wrong derived byte-count aside; package `761cbde`
 contains the deterministic sanitation and numeric-grounding repair at
 `a242a84`. Focused supervision/recovery tests pass 92/92 and the expanded
 Strands/provider/AgentCore/evidence gate passes 243 with 4 skips.
@@ -42,7 +44,7 @@ remains deliberately unfrozen, so no comparative result or leaderboard rank is
 claimed. Clean-source release preflight exits 0 with current sidecars, exactly
 Pex/Von and verified toolchains/wiring.
 
-**Native acceptance of `c3cc44c` is pending.** Joseph is using the PC and asked
+**Native acceptance of `761cbde` is pending.** Joseph is using the PC and asked
 for command-line work only until he says otherwise. Package integrity does not
 prove the repaired scale-aware overlay, Ask layout, cancellation display,
 active-worker stability or recording readiness. The last native candidate
@@ -59,7 +61,7 @@ recovery observation, not ten passes or a comparative benchmark score.
 AgentCore remains implemented/tested but not deployed. Current-package native
 validation, final recording and submission are not complete. See the
 [shipping gate](docs/MVP_SHIP_GATE.md) and
-[current package evidence](docs/demo/evidence/PACKAGE_C3CC44C_2026-09-11.md)
+[current package evidence](docs/demo/evidence/PACKAGE_761CBDE_2026-09-11.md)
 for remaining work and exact hashes.
 
 ## Historical source-bound checkpoints
