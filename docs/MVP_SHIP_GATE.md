@@ -33,6 +33,28 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+Current recording candidate: **`103f4ec`**, installed locally with the flat SVG
+logo and supervisor usage receipt. Package verification, authenticated settings
+smoke, three frozen bridge lifetime checks and bounded installed Home/Inspector
+navigation/close checks passed. See
+[current package evidence](demo/evidence/PACKAGE_103F4EC_2026-09-12.md).
+Older candidate rows below are historical checkpoints, including unchecked
+native checks that have been superseded; they are not instructions to reinstall
+an older build.
+
+The remaining submission sequence is a visible recovery/quiet rehearsal on the
+filmed build, the public video, a public download matching that build, completion
+of the existing Devpost draft, and final submission. Public RC1 still contains
+`49385f2`. Use the updated [second-laptop card](demo/SECOND_LAPTOP_ACCEPTANCE.md)
+to copy and hash-check `103f4ec` before recording.
+
+Source continuity was checked from the recorded `deb2b15` live pair to the
+current tree: `services/supervisor`, bridge adapters and `packages/protocol`
+have no changes. The pipeline difference is limited to exposing five existing
+decision usage fields in the pet snapshot. Retained recovery and quiet receipt
+hashes still match their published evidence. This supports using those results
+as behavioral evidence while keeping a fresh filmed rehearsal distinct.
+
 - [x] Fresh release-source OpenCode/Zen/Strands pair on clean `deb2b15`:
   controlled recovery passed in 68.28 seconds with exact first-stop evidence,
   one same-session correction, exact final bytes, settled outcome and clean
