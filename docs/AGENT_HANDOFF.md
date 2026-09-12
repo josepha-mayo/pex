@@ -1523,10 +1523,44 @@ lifetime/bundle checks passed 3/3 with exactly Pex and Von. MSI and NSIS copies
 are retained under `build/release-candidate-4ebebb6`. Exact hashes and boundaries:
 [package 4ebebb6](demo/evidence/PACKAGE_4EBEBB6_2026-09-12.md).
 
-This candidate is not yet installed/native-accepted. Do not film the older
-`79d4d18` install as though it contains this Home change. Native acceptance must
-target the exact `4ebebb6` package, remain confined to PEX, and retain any visual,
-pet-control, startup or resource failure rather than checking it from source tests.
+The NSIS candidate is now installed at
+`C:\Users\JosephMayo\AppData\Local\PEX\pex-desktop.exe` and launches its
+desktop-owned bridge to authenticated ready state. This was not a measured cold
+start: the later health poll observed ready in 0.756 seconds after the launch
+command had already returned. A 20-second full-tree observer retained ten
+samples with ten owned processes: private memory stayed between 325.14 and
+328.56 MB and ended 0.24 MB below its first sample; aggregate working set fell
+13.02 MB from 656.48 MB; lifetime CPU advanced 0.766 seconds. Aggregate working
+set can double-count shared WebView pages. The sample is heavier than ideal but
+shows neither bounded growth nor a runaway loop.
+
+Installed SHA-256 is
+`8caa884e92476d3cb115dbd3d791b809806f7c49b52409e8df36dd9816d48f34`.
+It differs from the receipt's pre-bundle canonical desktop in exactly the three
+bytes that change Tauri's bundle marker from `UNK` to `NSS`; all other bytes are
+identical. Treat this as the expected NSIS transform, not an identity mismatch.
+
+Visible native acceptance is still open because the computer-control host
+continues to expose `apps: []`; do not infer pet motion, hide/restore, Settings
+or overlay acceptance from the production-browser inspection. The installed
+candidate is the correct package for Joseph's manual/native recording pass.
+
+## Current-source MVP backend seam: 4069b11
+
+The final combined submission-critical local selection passes **476 tests with
+one intentional skip and zero failures in 220.44 seconds**. It covers Zen
+BYOK/provider binding, Strands supervision, goals, Ask PEX, OpenCode, Codex and
+the local AgentCore protocol/runtime. An earlier invalid live-run CLI timeout
+was repaired at `4069b11` by validating arguments before importing the full
+runtime. A later single HTTP 503 in the key-rotation contract did not reproduce
+in five consecutive isolated runs, the full 60-test settings file, or the final
+combined run; its assertion now preserves the safe response body if it recurs.
+[Exact selection, chronology and boundaries](demo/evidence/MVP_SEAM_4069B11_2026-09-12.md).
+
+No live secret/provider call, worker mutation or AWS deployment occurred in
+this seam. Fresh formal benchmark readiness still reports `frozen:false`, no
+coherent runs and `can_freeze:false`; do not invent an uplift score. The paired
+real OpenCode quiet/recovery proof remains the honest live behavior demo.
 
 ## Current OpenCode MVP closure: 150ea07
 

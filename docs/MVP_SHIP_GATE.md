@@ -41,8 +41,12 @@ completion instead of adding scope.
   Zen free Muse first, cap three and zero provider calls. The installed/native
   acceptance box remains open.
   [Package evidence and hashes](demo/evidence/PACKAGE_4EBEBB6_2026-09-12.md).
-- [ ] Install and visibly accept exact candidate `4ebebb6`; do not record the
-  older installed `79d4d18` build as if it contained the Home redesign.
+- [ ] Visibly accept exact installed candidate `4ebebb6`. The NSIS installer
+  completed successfully, the installed desktop launched and its authenticated
+  bridge reached ready state. A 20-second full-tree sample held 325.14-328.56 MB
+  private memory across ten processes and ended 0.24 MB below its first sample;
+  it showed no bounded leak/runaway loop. Native visual/pet interaction remains
+  unchecked because the control host still exposed no native app surface.
 
 - [x] Exact installed candidate `79d4d18` passes bridge startup, authenticated
   boundary, ordinary close cleanup, reopen and bounded stability: ready in
@@ -84,6 +88,11 @@ completion instead of adding scope.
   Ask PEX, OpenCode and Codex recovery/outcome paths, Strands and local AgentCore
   contracts pass 475 tests with one intentional skip and zero failures.
   [Exact selection and boundary](demo/evidence/MVP_DEMO_SEAM_C70EFFB_2026-09-11.md).
+- [x] Re-run the current submission-critical backend seam after the Home/package
+  work: **476 passed, 1 skipped, 0 failed in 220.44 seconds**. An invalid-run
+  startup timeout was repaired before imports; one transient key-rotation 503
+  then passed five isolated stress reruns, its full 60-test file and the final
+  combined run. [Current chronology and boundary](demo/evidence/MVP_SEAM_4069B11_2026-09-12.md).
 - [x] The exact frozen packaged bridge remained stable during a bounded 30-second
   idle sample: about 0.36% of one CPU core on average, no memory growth, and no
   surviving process or listener after owned-session shutdown.

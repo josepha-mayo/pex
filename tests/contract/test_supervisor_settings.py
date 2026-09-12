@@ -699,7 +699,7 @@ async def test_named_provider_key_rotation_uses_explicit_displayed_endpoint(
         "base_url": observed.json()["base_url"] if keep_override else None,
         "api_key": "fixture-new-key",
     })
-    assert rotated.status_code == 200
+    assert rotated.status_code == 200, rotated.text
     expected_endpoint = override if keep_override else "https://api.groq.com/openai/v1"
     assert rotated.json()["base_url"] == expected_endpoint
     assert captured[-1]["client_args"]["base_url"] == expected_endpoint

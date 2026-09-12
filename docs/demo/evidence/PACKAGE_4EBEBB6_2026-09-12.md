@@ -62,6 +62,26 @@ The opt-in frozen-bridge lifetime contract then passed 3/3 in 27.12 seconds.
 It covers both bootloader termination paths and the standalone bundle inventory,
 which returned exactly Pex and Von.
 
+## Installed binary and bounded resources
+
+The retained NSIS installer completed silently with exit 0. Its installed
+`pex-desktop.exe` is 17,248,256 bytes with SHA-256
+`8caa884e92476d3cb115dbd3d791b809806f7c49b52409e8df36dd9816d48f34`.
+That differs from the receipt's canonical pre-bundle desktop hash in exactly
+three bytes: Tauri's bundle marker changes from
+`__TAURI_BUNDLE_TYPE_VAR_UNK` to `__TAURI_BUNDLE_TYPE_VAR_NSS`. Every other
+byte is identical. This is the expected NSIS bundle transformation, not stale
+product code.
+
+The installed desktop launched a desktop-owned bridge that answered
+`/health/live` with `{\"ok\":true,\"service\":\"pex-bridge\"}`. A 20-second
+read-only full-tree sample retained ten observations with ten owned processes.
+Private memory stayed between 325.14 and 328.56 MB and ended 0.24 MB below its
+first sample. Aggregate working set began at 656.48 MB and ended 13.02 MB lower;
+lifetime CPU advanced 0.766 seconds. Aggregate working set can double-count
+shared WebView pages. This is a bounded stable sample, not a long-duration leak
+proof, and the footprint remains heavier than ideal.
+
 ## Claim boundary
 
 This is the newest installable, internally verified candidate. It does not prove
