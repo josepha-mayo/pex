@@ -5,8 +5,13 @@ Installed `103f4ec` completed one fresh UI-connected OpenCode recovery: exact
 initial phase one, one model-backed correction, exact final files, final NOOP,
 `helped:true`, all 163 events settled. Five model calls total. Native review
 found Inspector dropping inference receipt fields; source repair and regression
-tests pass (297 desktop tests, one intentional skip). That repair still needs
-packaging and visible verification. This is not a comparative benchmark score.
+tests pass (297 desktop tests, one intentional skip). The `949cb47` repair is now
+package-verified, installed with an exact hash match, and visibly shows the
+correct model/call/token receipt. Ask PEX returns the correct selected-worker
+status; native pet Hide works. A short all-process idle sample is memory-stable
+around 339–344 MiB but CPU is 37.28% of one logical core, so performance is not
+cleared. This is not a comparative benchmark score. See the evidence for exact
+installer hashes and the still-conservative goal-completion label.
 
 Latest live checks: see
 [LIVE_RC2_2026-09-12.md](demo/evidence/LIVE_RC2_2026-09-12.md).
