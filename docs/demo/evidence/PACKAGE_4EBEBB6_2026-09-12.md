@@ -82,6 +82,13 @@ lifetime CPU advanced 0.766 seconds. Aggregate working set can double-count
 shared WebView pages. This is a bounded stable sample, not a long-duration leak
 proof, and the footprint remains heavier than ideal.
 
+A later clean 60-second read-only sample strengthened the idle result. Process
+count remained ten. Full-tree private memory moved from 324.55 MB to 325.04 MB
+(+0.49 MB), aggregate working set moved from 641.67 MB to 643.70 MB (+2.03 MB),
+and lifetime CPU advanced 1.8125 seconds, approximately 3.0% of one logical
+core. The bridge itself stayed near 120.88 MB private. This still is not an
+hours-long leak proof, but it does not show a runaway memory or CPU pattern.
+
 ## Claim boundary
 
 This is the newest installable, internally verified candidate. It does not prove

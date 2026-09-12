@@ -4,7 +4,7 @@
 > product source `4ebebb6` has a verified MSI/NSIS package with zero blockers,
 > exactly two companions (Pex and Von), explicit OpenCode/Codex harness UI, Zen
 > Contributor Free first, and a default three-review cap. The installed process
-> tree stayed stable in a bounded 20-second sample at 325.14-328.56 MB private
+> tree stayed stable in a bounded 60-second sample from 324.55 to 325.04 MB private
 > memory; it is not tiny, but that sample showed no growth/runaway loop. The
 > current focused backend seam passes 476 tests with one intentional skip and
 > zero failures across BYOK, Strands, goals, Ask PEX, OpenCode, Codex, and local

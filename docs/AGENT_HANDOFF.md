@@ -1534,6 +1534,12 @@ samples with ten owned processes: private memory stayed between 325.14 and
 set can double-count shared WebView pages. The sample is heavier than ideal but
 shows neither bounded growth nor a runaway loop.
 
+A fresh 60-second idle observer run after relaunch kept the same ten processes.
+Private memory moved from 324.55 to 325.04 MB (+0.49 MB), aggregate working set
+from 641.67 to 643.70 MB (+2.03 MB), and lifetime CPU advanced 1.8125 seconds
+(about 3.0% of one logical core). This strengthens bounded stability but is not
+an hours-long leak proof.
+
 Installed SHA-256 is
 `8caa884e92476d3cb115dbd3d791b809806f7c49b52409e8df36dd9816d48f34`.
 It differs from the receipt's pre-bundle canonical desktop in exactly the three

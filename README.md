@@ -31,8 +31,8 @@ avoids repeated atlas transfer/validation and wrong-pet startup flashes. It also
 contains the cold OpenCode response bound, token-delta triage, record-only
 progress handling and bounded capability probe used by the accepted same-source
 quiet/recovery pair.
-The exact installed process tree stayed stable in a bounded 20-second sample at
-325.14-328.56 MB private memory across ten processes. Final visible interaction
+The exact installed process tree stayed stable in a bounded 60-second sample,
+moving from 324.55 to 325.04 MB private across ten processes. Final visible interaction
 acceptance and recording remain.
 Installed OpenCode 1.18.30 also passes a fresh model-free production HTTP/session/
 SSE smoke, reaching Deep after the real event-stream handshake; this does not

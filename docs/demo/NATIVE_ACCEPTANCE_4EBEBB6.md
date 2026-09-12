@@ -34,10 +34,9 @@ The package is unsigned. An unknown-publisher warning is expected.
    exact final artifact. Quiet completion must choose model-backed NOOP and send
    zero follow-ups.
 9. During the journey, reject unbounded CPU/memory growth or an unresponsive
-   window. The latest 20-second full-tree sample was stable at 325.14-328.56 MB
+   window. The latest 60-second full-tree sample moved only 324.55-325.04 MB
    private memory across ten processes; this is a reference, not a waiver.
 10. Close PEX normally. Require the bridge listener and owned helpers to exit.
 
 Do not show a credential, private session, hidden evaluator, stale benchmark
 score, or claim an AWS AgentCore deployment. Retain every failed take.
-

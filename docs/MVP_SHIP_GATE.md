@@ -45,7 +45,9 @@ completion instead of adding scope.
   completed successfully, the installed desktop launched and its authenticated
   bridge reached ready state. A 20-second full-tree sample held 325.14-328.56 MB
   private memory across ten processes and ended 0.24 MB below its first sample;
-  it showed no bounded leak/runaway loop. Native visual/pet interaction remains
+  a later 60-second sample held the same ten processes and moved only 324.55 to
+  325.04 MB private (+0.49 MB), with about 3.0% of one logical core. These show
+  no bounded leak/runaway loop. Native visual/pet interaction remains
   unchecked because the control host still exposed no native app surface.
 
 - [x] Exact installed candidate `79d4d18` passes bridge startup, authenticated
