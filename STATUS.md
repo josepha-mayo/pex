@@ -6,8 +6,11 @@
 OpenCode and Codex as the MVP harnesses; Inspector/Deck actions wrap within the
 viewport; Deck attention metrics use a responsive 3/2/1-column layout; the pet's
 labelled hide control is anchored to its status panel instead of floating. Fresh
-production rendering, 294 desktop contracts with one intentional Windows
-symlink skip, and the 71-module production build pass.
+production rendering covers Home, Inspector, Deck, every Settings tab and
+independent status dismissal at 1280 by 720. The requested narrow viewport could
+not be forced by the current browser controller, so native-size acceptance stays
+explicit rather than inferred. 294 desktop contracts with one intentional
+Windows symlink skip and the 71-module production build pass.
 
 The full two-job Tauri build produced retained MSI/NSIS installers. The exclusive
 package verifier reports `release_ready:true`, zero blockers and exact current
@@ -19,6 +22,9 @@ Tauri `UNK` to `NSS` marker and its desktop-owned bridge is healthy. A bounded
 61.82-second startup/idle sample settled at 325.16 MiB private across ten processes;
 this is moderate, not lightweight, but showed settling rather than runaway
 growth. [Exact package evidence](docs/demo/evidence/PACKAGE_392D86E_2026-09-12.md).
+A later 27.29-minute snapshot remained responsive and healthy with ten owned
+processes and 338.95 MiB aggregate private memory. This strengthens bounded
+stability but remains short of an hours-long leak test.
 
 The current submission-critical backend seam passes 476 tests with one
 intentional skip and zero failures across Zen BYOK, provider binding, Strands,
@@ -38,7 +44,8 @@ maximum-five-minute video; public installer URL; and final Devpost form review.
 AgentCore is implemented/tested but not deployed. The formal benchmark remains
 unfrozen, with no citeable score or leaderboard rank. Follow the
 [focused shipping gate](docs/MVP_SHIP_GATE.md) and
-[native acceptance card](docs/demo/NATIVE_ACCEPTANCE_392D86E.md).
+[native acceptance card](docs/demo/NATIVE_ACCEPTANCE_392D86E.md). The shortest
+tomorrow execution order is [the ship card](docs/demo/TOMORROW_SHIP_CARD.md).
 
 ## Historical source-bound checkpoints
 
