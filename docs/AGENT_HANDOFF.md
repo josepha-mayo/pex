@@ -1554,6 +1554,17 @@ exactly matching the previously verified local AgentCore-compatible `/ping` and
 `/invocations` smoke. This carries the strict local protocol evidence to the
 current package without claiming an AWS deployment.
 
+The exact production render received a fresh PEX-only visual sweep on 12
+September: Home, Inspector, Deck, all four Settings tabs, the overlay and the
+independent status dismissal rendered cleanly at 1280 by 720. The prior loose X
+and Deck overflow did not recur. The installed bridge simultaneously answered
+`/health/live` with HTTP 200; one desktop and one bridge root were present. Local
+state selects Von, and the persisted supervisor configuration identifies Zen,
+`muse-spark-1.3-contributor-free`, secret-store auth and cap three without
+printing the secret. This is browser/source preflight, not native transparency,
+drag, motion, hide/restore or shutdown proof. Exact receipt:
+[rendered UI 392d86e](demo/evidence/RENDERED_UI_392D86E_2026-09-12.md).
+
 ## Superseded final responsive package: d2d4879
 
 Clean pushed source `d2d48796549488aa81a8dd5fb98032a48fee9bad`

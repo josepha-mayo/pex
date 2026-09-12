@@ -192,6 +192,13 @@ completion instead of adding scope.
   network evidence, complete immutable raw logs, and synchronous same-session
   Cursor treatment. No comparative score may be claimed. The separate live
   OpenCode recovery/quiet pair remains behavioral evidence only.
+- [x] Exact-source production render preflight at `392d86e`: Home, Inspector,
+  Deck, every Settings tab, pet overlay and independent status dismissal were
+  inspected at 1280 by 720 with no visible overflow, detached close control or
+  broken primary navigation. Live `/health/live` was HTTP 200; persisted state
+  selects Von and Zen Muse Contributor Free through an opaque secret-store
+  reference with cap three. Native transparency, motion, drag, hide/restore and
+  shutdown remain on the ten-minute acceptance card.
 - [x] Post-package integrity expansion on `f585562`: 253 Strands/supervisor/
   trajectory/evidence/outcome tests, 183 local AgentCore tests and 368 benchmark/
   Cursor/audit/execution-safety/scoring tests passed. The broad benchmark gate

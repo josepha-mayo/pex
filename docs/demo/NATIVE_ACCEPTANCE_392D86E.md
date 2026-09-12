@@ -10,6 +10,16 @@ Expected SHA-256:
 
 The package is unsigned. An unknown-publisher warning is expected.
 
+## Production-render preflight already completed
+
+The exact source's Home, Inspector, Deck, every Settings tab, pet overlay and
+independent status-bubble dismissal were inspected at a 1280 by 720 production
+browser viewport on 12 September. No visible overflow, detached close control or
+broken primary navigation remained. This narrows the manual pass below to native
+Tauri behavior; it does not waive transparency, motion, drag, hide/restore,
+click-through or shutdown checks. See
+`evidence/RENDERED_UI_392D86E_2026-09-12.md`.
+
 ## Ten-minute acceptance
 
 1. Start PEX and reject the take if startup shows Retry, freezes, or noticeably
