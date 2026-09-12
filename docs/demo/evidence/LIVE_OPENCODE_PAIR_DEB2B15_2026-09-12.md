@@ -9,7 +9,7 @@ through Strands Agents. Both runs used new isolated XDG profiles, a new owned
 server on port 4098 and public throwaway workspaces. No paid fallback, AWS
 resource, existing user session, native UI or comparative benchmark ran.
 
-Immediately before the calls, the current official OpenCode Zen page still
+Immediately before the calls, the current [official OpenCode Zen page](https://opencode.ai/docs/zen) still
 listed Muse Spark 1.3 Contributor Free as free and mapped it to
 `https://opencode.ai/zen/v1/responses`. The runners independently refused a
 saved provider, model, base URL or secret-store mismatch.
