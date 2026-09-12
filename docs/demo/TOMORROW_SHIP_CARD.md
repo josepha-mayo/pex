@@ -8,8 +8,9 @@ to a paid model.
 ## Live Devpost clock and scope — verified 12 September
 
 The authenticated Devpost account is registered for **Agents for Humans** and
-the event is accepting submissions. It does **not** yet have a PEX project or
-draft submission attached to this hackathon. The official cutoff is
+the event is accepting submissions. At the last live project read it did **not**
+yet have a PEX project or draft submission attached to this hackathon. The
+official cutoff is
 `2026-09-15 00:00 UTC` — **01:00 on 15 September in Lagos** — while Joseph's
 working deadline remains tomorrow so recording and form review have margin.
 
@@ -97,7 +98,8 @@ Get-FileHash .\build\release-candidate-49385f2\PEX_0.1.0_x64-setup.exe -Algorith
 The worktree must be clean, local and remote main must match, and the installer
 hash must equal the value above. Then:
 
-1. complete the explicit Devpost rules-review acknowledgment;
+1. use the already-completed explicit Devpost rules acknowledgment and the
+   pushed root `devpost-submission.md` packet;
 2. create the PEX Devpost project/draft for `agentsforhumans` (registration alone
    did not create one);
 3. upload the accepted unsigned installer plus SHA-256 to a public GitHub release;

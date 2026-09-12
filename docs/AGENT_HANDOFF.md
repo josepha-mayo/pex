@@ -8,9 +8,11 @@ verified and installed. It supersedes `392d86e` because native acceptance found
 snapshot and visibly shows the two current workers. Do not rebuild or broaden
 scope without a new submission blocker. Use
 [`demo/evidence/PACKAGE_49385F2_2026-09-12.md`](demo/evidence/PACKAGE_49385F2_2026-09-12.md)
-and [`demo/TOMORROW_SHIP_CARD.md`](demo/TOMORROW_SHIP_CARD.md). The remaining
-critical path is one public throwaway OpenCode recovery/quiet rehearsal, record
-the maximum-five-minute video, then publish/review/submit. AgentCore remains
+and [`demo/TOMORROW_SHIP_CARD.md`](demo/TOMORROW_SHIP_CARD.md). The public
+throwaway OpenCode recovery/quiet proof is complete. The remaining critical
+path is record the maximum-five-minute video, create and populate the Devpost
+draft, publish the accepted installer if explicitly authorized, review, and
+submit after the separate final confirmation. AgentCore remains
 implemented and locally tested, not AWS-deployed; PexBench remains unfrozen and
 must not be given a score.
 
@@ -33,17 +35,21 @@ Maintained checkpoint: 11 September 2026; current two-pet package and three froz
 Verify Git/current files and running processes before relying on this checkpoint.
 This is the active entry point, not another historical log.
 
-**12 September live Devpost correction:** authenticated read-only results show
+**12 September live Devpost correction:** authenticated results show
 Agents for Humans as `submissions_open` with relationship `registered`, not
-`submitted`; the user's project list contains no PEX project. Therefore neither
-registration nor the local submission copy is a Devpost draft. The official
+`submitted`; the user's project list contained no PEX project at the last live
+read. The official
 cutoff is `2026-09-15T00:00:00Z` (01:00 Lagos), with a required public
 maximum-five-minute video and no required website or zip. Strands is required;
 AgentCore is optional. The latest organizer announcement says to prefer
 determinism over features. Exact receipt:
 [`DEVPOST_PREFLIGHT_2026-09-12.md`](demo/evidence/DEVPOST_PREFLIGHT_2026-09-12.md).
-Do not acknowledge rules, create/update the project, publish, or submit without
-the corresponding user decision/action-time authority.
+Joseph explicitly acknowledged the official rules on 12 September; local state
+records that gate. A root [`devpost-submission.md`](../devpost-submission.md)
+now maps the verified product to every official field and leaves submitter type,
+country, Builder ID and video URL explicit rather than invented. Creating or
+updating the Devpost project, uploading assets, publishing the installer, and
+the final submit remain separate external-write gates.
 
 Joseph's latest working target is now two days. Keep the critical path narrow:
 do not add integrations, pets, cloud deployment, or speculative UI rewrites. The
