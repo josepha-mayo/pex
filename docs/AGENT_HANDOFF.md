@@ -35,7 +35,10 @@ the remaining visual boundary are in
 [`NATIVE_RUNTIME_79D4D18_2026-09-12.md`](demo/evidence/NATIVE_RUNTIME_79D4D18_2026-09-12.md).
 The host computer-control runtime returned `apps: []`, so this is installed
 runtime acceptance, not visual pet/navigation acceptance and not submission
-readiness.
+readiness. The same source subsequently passed 11/11 focused pet/UI contracts
+and a clean 71-module production build. A hidden 1280-by-720 rendered preview
+showed no horizontal overflow on Home, Inspector, Deck, or any of the four
+Settings tabs; this is browser-rendered corroboration, not native-overlay proof.
 
 **Current package source: `619ea71`; base UI product change: `8394b4b`.** The package
 now contains the exact Zen/Ask correction: the selected Muse model is sent to

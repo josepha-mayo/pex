@@ -47,6 +47,22 @@ The live installed bridge then served 100 sequential `/health/live` requests:
 100 succeeded, mean latency was 11.53 ms, p95 was 20.54 ms, bridge working-set
 growth was 0.12 MB and CPU growth was 0.25 seconds.
 
+## Rendered-source corroboration
+
+The package source was rebuilt after the installed run: TypeScript and Vite
+completed with 71 modules and no error. Eleven focused release-pet/UI contracts
+passed, including the exact Pex/Von allowlist, transparent canvas, no continuous
+overlay compositor transform, fixed legible controls, independent keyboard
+buttons, durable message dismissal and native-close visibility routing.
+
+The production frontend was also opened in a hidden local browser at a
+1280-by-720 viewport. Home, Inspector and Deck were all reachable; Companion,
+Supervisor, Connections and Goals settings were all reachable. Automated
+layout measurement reported no document-level horizontal overflow and no
+element whose scroll width exceeded its client width on any of those seven
+surfaces. This corroborates frontend layout only; it is not a substitute for
+the native Tauri/WebView and transparent-overlay observations below.
+
 ## Honest acceptance boundary
 
 This clears installation, bridge startup, authentication rejection, ordinary
