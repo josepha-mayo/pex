@@ -46,6 +46,28 @@ export function actionExplanation(action?: LastAction | null): string {
     : "Open this action's evidence for the recorded reason and outcome.";
 }
 
+function safeUsageCount(value: unknown): number | null {
+  return Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : null;
+}
+
+export function supervisorInferenceReceipt(action?: LastAction | null): string {
+  if (!action) return "No supervisor decision recorded.";
+  if (action.used_llm !== true) {
+    return action.inference_status === "not_attempted"
+      ? "No model call · deterministic or budget-limited review."
+      : "No model call recorded for this decision.";
+  }
+  const calls = safeUsageCount(action.model_call_count);
+  const input = safeUsageCount(action.input_tokens);
+  const output = safeUsageCount(action.output_tokens);
+  const provider = action.provider?.trim() || "Configured provider";
+  const model = action.model_name?.trim() || "model not reported";
+  const usage = input === null || output === null
+    ? "token usage unavailable"
+    : `${input + output} tokens (${input} in · ${output} out)`;
+  return `${provider} · ${model} · ${calls === null ? "call count unavailable" : `${calls} model call${calls === 1 ? "" : "s"}`} · ${usage}`;
+}
+
 export function cursorRejectionReasonCopy(reason: string): string {
   return ({
     malformed_json: "Malformed or ambiguous JSON",

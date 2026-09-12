@@ -6,6 +6,7 @@ import {
   startupRecoverySourceCopy,
 } from "../startupRecovery";
 import type { BridgeBootstrapStatus } from "../types";
+import { BrandMark } from "./BrandMark";
 
 export function StartupRecovery({
   status,
@@ -45,7 +46,7 @@ export function StartupRecovery({
         aria-busy={status.phase === "starting" || retrying}
       >
         <header className="startup-recovery-header">
-          <span className="startup-recovery-mark" aria-hidden="true">PEX</span>
+          <span className="startup-recovery-mark"><BrandMark /></span>
           <div>
             <p className="eyebrow">{copy.eyebrow}</p>
             <h1 ref={heading} tabIndex={-1}>{copy.title}</h1>

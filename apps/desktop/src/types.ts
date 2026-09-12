@@ -104,6 +104,11 @@ export type LastAction = {
   inference_status?: string | null;
   verification_status?: string | null;
   evidence_tools?: string[];
+  provider?: string | null;
+  model_name?: string | null;
+  model_call_count?: number;
+  input_tokens?: number;
+  output_tokens?: number;
 };
 
 export type PetSnapshot = {

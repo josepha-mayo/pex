@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { BrandMark } from "./components/BrandMark";
 import { CommandDeck } from "./components/CommandDeck";
 import type { GoalDraft } from "./components/GoalEditor";
 import {
@@ -2413,7 +2414,7 @@ export function App() {
   return (
     <main className={`main-shell tone-${status.tone}`}>
       <header className="topbar">
-        <span className="wordmark">PEX</span>
+        <BrandMark label />
         <span className="topbar-state" role="status" aria-live="polite">
           <span className="status-dot" aria-hidden="true" />{surface === "compact" ? homeStatus.label : status.label}
         </span>

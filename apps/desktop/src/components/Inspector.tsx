@@ -23,6 +23,7 @@ import {
   nextExpectedEvent,
   partitionLedgerDecisions,
   supervisorReviewAllowanceCopy,
+  supervisorInferenceReceipt,
   titleCase,
 } from "../viewModel";
 
@@ -230,6 +231,12 @@ export function Inspector({
               ]
                 .filter(Boolean)
                 .join(" · ")}
+            </p>
+          ) : null}
+          {action ? (
+            <p className="result-line">
+              <span>Supervisor inference</span>
+              {supervisorInferenceReceipt(action)}
             </p>
           ) : null}
           {evidenceOpen && action?.evidence?.length ? (

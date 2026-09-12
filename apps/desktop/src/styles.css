@@ -290,11 +290,30 @@ p {
   -webkit-app-region: drag;
 }
 
-.wordmark {
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+}
+
+.brand-mark {
+  width: 27px;
+  height: 27px;
+  display: block;
+  object-fit: contain;
+}
+
+.brand-wordmark {
   color: var(--paper);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 820;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
+}
+
+.startup-recovery-mark .brand-mark {
+  width: 42px;
+  height: 42px;
 }
 
 .topbar-state {

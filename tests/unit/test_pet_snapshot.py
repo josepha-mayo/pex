@@ -181,7 +181,15 @@ async def test_pet_snapshot_preserves_failed_review_status_and_reason(tmp_path):
         InterventionType.NOOP,
         result="noop",
         diagnosis="strands_missing_structured_output",
-        metadata={"used_llm": True, "inference_status": "failed"},
+        metadata={
+            "used_llm": True,
+            "inference_status": "failed",
+            "provider": "zen",
+            "model_name": "muse-spark-1.3-contributor-free",
+            "model_call_count": 2,
+            "input_tokens": 120,
+            "output_tokens": 30,
+        },
     )
     await store.add_intervention(review)
     pipeline = Pipeline(
@@ -194,6 +202,11 @@ async def test_pet_snapshot_preserves_failed_review_status_and_reason(tmp_path):
         snap = await pipeline.pet_snapshot()
         assert snap["last_action"]["inference_status"] == "failed"
         assert snap["last_action"]["rationale"] == review.proposed_action.rationale
+        assert snap["last_action"]["provider"] == "zen"
+        assert snap["last_action"]["model_name"] == "muse-spark-1.3-contributor-free"
+        assert snap["last_action"]["model_call_count"] == 2
+        assert snap["last_action"]["input_tokens"] == 120
+        assert snap["last_action"]["output_tokens"] == 30
     finally:
         await store.close()
 

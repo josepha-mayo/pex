@@ -6730,6 +6730,11 @@ class Pipeline:
                     ((last.metadata or {}).get("verification") or {}).get("status")
                 ),
                 "evidence_tools": list((last.metadata or {}).get("evidence_tools") or [])[:12],
+                "provider": (last.metadata or {}).get("provider"),
+                "model_name": (last.metadata or {}).get("model_name"),
+                "model_call_count": (last.metadata or {}).get("model_call_count"),
+                "input_tokens": (last.metadata or {}).get("input_tokens"),
+                "output_tokens": (last.metadata or {}).get("output_tokens"),
             },
             "sessions": sessions_out,
             "ts": now.isoformat(),

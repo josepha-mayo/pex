@@ -102,6 +102,7 @@ import {
   initialCanonicalResources,
   supervisorHonestyCopy,
   supervisorReviewAllowanceCopy,
+  supervisorInferenceReceipt,
   statusCopy,
   settleCanonicalResource,
   starterHarnessInventoryCopy,
@@ -118,6 +119,26 @@ test("action explanations prefer recorded reasons without inventing verification
   assert.equal(actionExplanation({ ...action, diagnosis: "supervisor_unavailable" }), "PEX chose not to interrupt. Open its evidence for the recorded reason.");
   assert.equal(actionExplanation({ ...action, diagnosis: "The tests failed." }), "The tests failed.");
   assert.equal(actionExplanation(null), "No intervention has been recorded for this session.");
+});
+
+test("supervisor inference receipt exposes bounded per-decision usage without inventing cost", () => {
+  const action = { id: "i", session_id: "s", action: "NOOP" };
+  assert.equal(supervisorInferenceReceipt(null), "No supervisor decision recorded.");
+  assert.match(supervisorInferenceReceipt({ ...action, used_llm: false, inference_status: "not_attempted" }), /No model call/);
+  assert.equal(
+    supervisorInferenceReceipt({
+      ...action,
+      used_llm: true,
+      provider: "zen",
+      model_name: "muse-spark-1.3-contributor-free",
+      model_call_count: 2,
+      input_tokens: 120,
+      output_tokens: 30,
+    }),
+    "zen · muse-spark-1.3-contributor-free · 2 model calls · 150 tokens (120 in · 30 out)",
+  );
+  assert.match(supervisorInferenceReceipt({ ...action, used_llm: true }), /call count unavailable · token usage unavailable/);
+  assert.match(supervisorInferenceReceipt({ ...action, used_llm: true, model_call_count: -1 }), /call count unavailable/);
 });
 
 test("failed inference is not presented as a successful quiet review", () => {
