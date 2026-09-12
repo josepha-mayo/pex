@@ -9,7 +9,7 @@ Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
 OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Package source `392d86e` ships only Pex and Von,
+Package source `49385f2` ships only Pex and Von,
 defaults fresh installs to three semantic review dispatches per session, and passes both installer
 content/inventory gates. It also routes Zen Muse through Responses and forbids
 silent model fallback. The current submission-critical backend seam passes 476
@@ -17,31 +17,32 @@ tests with one intentional skip and zero failures across BYOK, Strands, goals,
 Ask PEX, OpenCode, Codex and local AgentCore contracts. The newest Home presents
 OpenCode and Codex as explicit harnesses with a larger companion, an anchored
 labelled pet-hide control, and Inspector/Deck headings that wrap actions within the viewport; its production
-render and full desktop suite pass. Visible native pet/control
-acceptance still needs a manual pass because the current automation host exposes
-no native app surface.
-Fresh clean-source OpenCode 1.18.30 diagnostics now pass both required behaviors:
+render and full desktop suite pass. Native Home and Supervisor Settings were
+directly accepted at the installed window size, Von rendered over a transparent
+desktop overlay, and the unchanged Pex/Von interaction mechanics passed their
+native sweep immediately before the Home-only repair.
+Fresh release-source OpenCode 1.18.30 diagnostics now pass both required behaviors:
 one already-correct task received a model-backed NOOP and zero PEX follow-ups,
 while one controlled incomplete stop received one independently verified
 same-session correction, reached exact final artifacts with `helped:true`, then
 received a final NOOP. These are single public diagnostics, not a benchmark.
 The recovery audit exposed one wrong derived byte-count aside; current package
-`392d86e` contains the deterministic sanitation and verifier-prompt repair,
+`49385f2` contains the deterministic sanitation and verifier-prompt repair,
 active event-burst read coalescing, and bundled built-in pet rendering that
 avoids repeated atlas transfer/validation and wrong-pet startup flashes. It also
 contains the cold OpenCode response bound, token-delta triage, record-only
 progress handling and bounded capability probe used by the accepted same-source
 quiet/recovery pair.
-The exact installed process tree settled at 325.16 MiB private across ten
-processes after a bounded 61.82-second startup/idle sample. Final visible interaction
-acceptance and recording remain.
+The exact installed process tree remained responsive at 343.18 MiB private
+across ten processes during a bounded 2.81-minute sample. This is moderate, not
+lightweight, and not a long-run no-leak claim. Recording remains.
 Installed OpenCode 1.18.30 also passes a fresh model-free production HTTP/session/
 SSE smoke, reaching Deep after the real event-stream handshake; this does not
 replace the separate model-backed recovery evidence.
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
-[current package evidence](docs/demo/evidence/PACKAGE_392D86E_2026-09-12.md),
+[current package evidence](docs/demo/evidence/PACKAGE_49385F2_2026-09-12.md),
 [current status](STATUS.md), and the source-bound evidence linked there.
 
 ## The pain it removes
@@ -98,7 +99,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for package source `392d86e` and
+installer candidate exists for package source `49385f2` and
 is not code-signed.
 These instructions cover building from source; package integrity is not native
 acceptance or publisher trust. Current source-bound package evidence is recorded
@@ -251,15 +252,15 @@ STOP intervention must also pass a fresh independent verifier Agent using its
 own observations and invocation. Timeout, malformed output, missing evidence,
 or rejection becomes NOOP. Deterministic verification truth and local policy
 still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
-target, not a deployed-service claim. Clean source `150ea07` has a retained real
+target, not a deployed-service claim. Clean release source `deb2b15` has a retained real
 OpenCode 1.18.30 recovery: main Strands inference inspected the workspace, a separate verifier
 approved the exact missing-artifact finding, policy admitted one same-session correction, and the
 free worker produced the exact final bytes with `goal_evidence_supported` and `helped:true`. Clean
-source `150ea07` has the separate already-correct task: a model-backed `NOOP` and zero PEX
+source `deb2b15` has the separate already-correct task: model-backed `NOOP` decisions and zero PEX
 follow-ups. See the accepted paired
-[OpenCode evidence](docs/demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md). Real Codex
-restraint and same-thread recovery are retained separately on `e864389`. This does not prove the
- native interaction acceptance, ten-case quiet statistics, AgentCore deployment, or a
+[OpenCode evidence](docs/demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md). Real Codex
+restraint and same-thread recovery are retained separately on `e864389`. This does not prove
+ten-case quiet statistics, AgentCore deployment, or a
 benchmark result.
 
 The cloud supervisor can propose actions. It cannot bypass local policy.
@@ -268,7 +269,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound native OpenCode and separate Codex App Server behavior proofs are retained. Final native/setup checks and the demo/submission remain pending under [the focused MVP gate](docs/MVP_SHIP_GATE.md). Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](docs/SUBMISSION.md).
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound native OpenCode and separate Codex App Server behavior proofs are retained. Recording, public release and Devpost submission remain pending under [the focused MVP gate](docs/MVP_SHIP_GATE.md). Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](docs/SUBMISSION.md).
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)

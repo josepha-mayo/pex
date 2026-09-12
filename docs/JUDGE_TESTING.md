@@ -6,9 +6,10 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Fastest evaluation path
 
-The current installer candidate is unsigned. Its public download link will be
-added only after the final native acceptance run. Until then, build from the
-public source checkout using the pinned prerequisites in the README:
+The current installer candidate is unsigned and has passed its bounded native
+acceptance; its public download link will be added when the accepted binary is
+published. Until then, build from the public source checkout using the pinned
+prerequisites in the README:
 
 ```powershell
 .\scripts\install.ps1
