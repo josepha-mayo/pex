@@ -11,6 +11,18 @@ Maintained checkpoint: 11 September 2026; current two-pet package and three froz
 Verify Git/current files and running processes before relying on this checkpoint.
 This is the active entry point, not another historical log.
 
+**12 September live Devpost correction:** authenticated read-only results show
+Agents for Humans as `submissions_open` with relationship `registered`, not
+`submitted`; the user's project list contains no PEX project. Therefore neither
+registration nor the local submission copy is a Devpost draft. The official
+cutoff is `2026-09-15T00:00:00Z` (01:00 Lagos), with a required public
+maximum-five-minute video and no required website or zip. Strands is required;
+AgentCore is optional. The latest organizer announcement says to prefer
+determinism over features. Exact receipt:
+[`DEVPOST_PREFLIGHT_2026-09-12.md`](demo/evidence/DEVPOST_PREFLIGHT_2026-09-12.md).
+Do not acknowledge rules, create/update the project, publish, or submit without
+the corresponding user decision/action-time authority.
+
 Joseph's latest working target is now two days. Keep the critical path narrow:
 do not add integrations, pets, cloud deployment, or speculative UI rewrites. The
 remaining product gate is current-package native acceptance followed by one

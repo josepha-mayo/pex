@@ -1,6 +1,8 @@
 # Devpost submission copy
 
-> **Current claim boundary — 12 September 2026:** draft, not submitted. Exact
+> **Current claim boundary — 12 September 2026:** submission copy only; the
+> authenticated account is registered, but no PEX Devpost project/draft exists
+> for Agents for Humans and nothing is submitted. Exact
 > product source `392d86e` has a verified MSI/NSIS package with zero blockers,
 > exactly two companions (Pex and Von), explicit OpenCode/Codex harness UI, Zen
 > Contributor Free first, and a default three-review cap. The installed process
@@ -28,6 +30,13 @@ Track: **Professional Agents**
 Deadline: 14 Sep 2026, 17:00 PDT  
 License: MIT  
 Public repo: https://github.com/josepha-mayo/pex (MIT).
+
+Live Devpost preflight: the deadline is `2026-09-15 00:00 UTC` (01:00 on
+15 September in Lagos), the public maximum-five-minute video is required, and a
+website and zip are not required. Strands is required; AgentCore is optional.
+The organizer's 12 September final call recommends making the agent more
+deterministic instead of adding features. Do not edit the project, repository,
+submission, or video after the cutoff.
 
 ## Title
 
@@ -128,6 +137,10 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 ## Checklist before clicking Submit
 
+- [ ] Accept the official rules review explicitly; the agent must not accept it
+  on the submitter's behalf
+- [ ] Create the PEX project/draft for `agentsforhumans`; authenticated read-only
+  Devpost currently shows registration only and no PEX project
 - [ ] Confirm the required **Submitter type** field
 - [ ] Enter the required **Country** field; **Organization** is optional
 - [x] Select **Professional Agents** as the required track

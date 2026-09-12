@@ -5,6 +5,21 @@ recordable and submit-ready MVP. Do not add features, rebuild without a code
 change, run the unfrozen four-arm benchmark, deploy paid AWS resources, or switch
 to a paid model.
 
+## Live Devpost clock and scope — verified 12 September
+
+The authenticated Devpost account is registered for **Agents for Humans** and
+the event is accepting submissions. It does **not** yet have a PEX project or
+draft submission attached to this hackathon. The official cutoff is
+`2026-09-15 00:00 UTC` — **01:00 on 15 September in Lagos** — while Joseph's
+working deadline remains tomorrow so recording and form review have margin.
+
+The live requirements make the public YouTube/Vimeo video mandatory (maximum
+five minutes), but do not require a website or zip. Strands Agents is required.
+Amazon Bedrock AgentCore is optional and must remain described as implemented
+and locally tested, not AWS-deployed. The newest organizer announcement says to
+prioritize deterministic behavior over adding features. After the cutoff, do
+not edit the project, submission, code repository, or video.
+
 ## 1. Accept the installed candidate — 10 minutes
 
 Use the already installed NSIS candidate from product source `392d86e`. The
@@ -82,15 +97,16 @@ The worktree must be clean, local and remote main must match, and the installer
 hash must equal the value above. Then:
 
 1. complete the explicit Devpost rules-review acknowledgment;
-2. upload the accepted unsigned installer plus SHA-256 to a public GitHub release;
-3. upload the final public YouTube/Vimeo video, maximum five minutes;
-4. fill Devpost from `docs/SUBMISSION.md` and `docs/JUDGE_TESTING.md`;
-5. add `docs/architecture/pex-architecture.png`, AWS Builder ID, public repo,
+2. create the PEX Devpost project/draft for `agentsforhumans` (registration alone
+   did not create one);
+3. upload the accepted unsigned installer plus SHA-256 to a public GitHub release;
+4. upload the final public YouTube/Vimeo video, maximum five minutes;
+5. fill Devpost from `docs/SUBMISSION.md` and `docs/JUDGE_TESTING.md`;
+6. add `docs/architecture/pex-architecture.png`, AWS Builder ID, public repo,
    video URL, installer URL and the already-published bonus-post URL;
-6. review the rendered entry and only then confirm the final submission action.
+7. review the rendered entry and only then confirm the final submission action.
 
 External publishing and the final Devpost submit require explicit action-time
 authority. The product must not claim a cloud AgentCore deployment, formal
 benchmark improvement, Cursor leaderboard result, or more than the two shipping
 pets.
-

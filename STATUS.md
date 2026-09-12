@@ -2,6 +2,15 @@
 
 ## Current — 12 September 2026
 
+**Live Devpost preflight:** the authenticated account is registered for Agents
+for Humans and submissions are open, but no PEX project/draft is attached to the
+hackathon. The official cutoff is `2026-09-15 00:00 UTC` (01:00 on 15 September
+in Lagos). The video is required; website and zip are not. Strands is required;
+AgentCore is optional. The latest organizer announcement explicitly prioritizes
+deterministic behavior over adding features. Rules acknowledgment, project
+creation, publishing and final submission remain unperformed external writes.
+See [the exact receipt](docs/demo/evidence/DEVPOST_PREFLIGHT_2026-09-12.md).
+
 **Current installed/package source: `392d86e`, exactly Pex and Von.** Home names
 OpenCode and Codex as the MVP harnesses; Inspector/Deck actions wrap within the
 viewport; Deck attention metrics use a responsive 3/2/1-column layout; the pet's
