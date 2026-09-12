@@ -15,9 +15,12 @@ directory are historical references and must not be presented as final-source pr
   one platform skip, 137 OpenCode/Codex continuity tests, 210 BYOK/provider/
   configuration tests with one Windows symlink skip, 183 AgentCore local tests
   with one opt-in cloud skip and 368 benchmark/scoring/Cursor/safety tests.
+- Clean `deb2b15` retains the freshest release-source OpenCode/Strands quiet
+  and same-thread recovery pair. See
+  [`LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md`](evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
 - Clean `e864389` retains a real Codex/Strands quiet and same-thread recovery pair.
   Clean `6a1d98b` and `93dfef3` retain current OpenCode 1.18.30 quiet and causal
-  same-session recovery diagnostics; final package `392d86e` contains the prose
+  same-session recovery diagnostics; final package `49385f2` contains the prose
   sanitation repair found by reviewing the recovery trace, active-event burst
   coalescing, stable bundled rendering for the exact two pets, and responsive
   Inspector/Deck layout repairs and anchored labelled pet-hide control verified

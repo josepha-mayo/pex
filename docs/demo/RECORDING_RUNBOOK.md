@@ -17,12 +17,12 @@ steering visible.
 - Use the source-specific installer and receipt identified in the active
   [handoff](../AGENT_HANDOFF.md). Do not use old submission folders by habit.
 - Confirm the package receipt still says `release_ready: true` with no blockers.
-  The current candidate is product source `392d86e`; its exact receipt, expected
-  NSIS transform, installed resource sample and installer hashes are in
-  [the package evidence](evidence/PACKAGE_392D86E_2026-09-12.md). Use the
-  [current ten-minute native acceptance](NATIVE_ACCEPTANCE_392D86E.md), not an
-  older package plan.
-- Complete the separately authorized bounded native stability run. Stop if startup, Retry,
+  The current candidate is product source `49385f2`; its exact receipt,
+  installed runtime checks and installer hashes are in
+  [the package evidence](evidence/PACKAGE_49385F2_2026-09-12.md). The fresh
+  current-source recovery/quiet receipts are in
+  [the live pair evidence](evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
+- The bounded native startup/settings/Home/resource checks are complete. Stop if startup, Retry,
   closing, or reopening hangs; retain the failure instead of filming around it.
   **Never run the quarantined 933239a native-smoke launcher.** It uses unsafe
   process cleanup. Close PEX normally through its own window; fixture controllers

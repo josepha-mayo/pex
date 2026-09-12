@@ -14,6 +14,12 @@ the maximum-five-minute video, then publish/review/submit. AgentCore remains
 implemented and locally tested, not AWS-deployed; PexBench remains unfrozen and
 must not be given a score.
 
+Fresh current-source live proof is also complete on clean `deb2b15`: recovery
+passed in 68.28 seconds with one same-session correction and exact final bytes;
+quiet completion passed in 78.33 seconds with model-backed NOOPs and zero
+follow-ups. Both isolated OpenCode servers exited cleanly. See
+[`demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md`](demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
+
 **Shipping scope: [MVP_SHIP_GATE.md](MVP_SHIP_GATE.md).** Current official rules
 make AgentCore deployment optional. Retain its tested implementation without
 claiming deployment. The user's later small-MVP request takes priority over

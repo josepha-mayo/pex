@@ -33,6 +33,13 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+- [x] Fresh release-source OpenCode/Zen/Strands pair on clean `deb2b15`:
+  controlled recovery passed in 68.28 seconds with exact first-stop evidence,
+  one same-session correction, exact final bytes, settled outcome and clean
+  owned-server exit; correct completion passed in 78.33 seconds with exact
+  pre-review output, two model-backed `NOOP` decisions, zero follow-ups and all
+  events settled. [Current live pair](demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
+
 - [x] Current exact candidate `49385f2` repairs the blocking native Home defect:
   against a database containing 63 historical rows, the installed Home now
   shows only the two current promptable workers as **2 available**. Desktop
@@ -175,7 +182,8 @@ completion instead of adding scope.
   [Evidence and limits](demo/evidence/CODEX_LIVE_E864389_2026-09-10.md).
 - [x] Recheck packaged OpenCode quota behavior; the free Ling run remains
   quota-limited, not a passing artifact/recovery benchmark.
-- [ ] Complete final stability, ordinary cancellation and recording checks.
+- [x] Complete final bounded stability and ordinary-close checks. Recording and
+  external publication remain user-facing submission work.
 - [x] Source repair for explicit OpenCode cancellation: persistent no-follow-up
   fence, quota precedence and truthful UI copy; 77 focused backend tests and
   290 frontend tests passed (one platform skip). Idle-only abort without an

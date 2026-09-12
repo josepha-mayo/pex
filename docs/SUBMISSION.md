@@ -13,15 +13,19 @@
 > were also observed. The
 > current focused backend seam passes 476 tests with one intentional skip and
 > zero failures across BYOK, Strands, goals, Ask PEX, OpenCode, Codex, and local
-> AgentCore contracts. Real OpenCode 1.18.30/Zen/Strands same-session recovery
-> and quiet behavior exists on clean source `150ea07`; product changes since it
-> are presentation, observer, test-harness, and documentation changes. The full
+> AgentCore contracts. Fresh OpenCode 1.18.30/Zen/Strands same-session recovery
+> and quiet behavior passes on clean release source `deb2b15`: recovery used one
+> correction and reached exact final bytes, while correct completion produced
+> model-backed NOOPs and zero follow-ups. The full
 > Pex/Von interaction sweep was performed on the immediately preceding package;
 > those mechanics are unchanged by the Home-only repair. AgentCore is implemented and locally
 > tested, not deployed. PexBench remains unfrozen and no comparative score is
 > claimed. Finish
 > [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
 > equate package integrity, browser rendering, or green tests with native acceptance.
+
+Current live-pair receipts and exact hashes are in
+[`LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md`](demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
 
 Current-head benchmark machinery passes 405 integrity, execution-safety,
 immutable-result and Cursor transport tests. The formal four-arm experiment is

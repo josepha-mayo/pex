@@ -12,6 +12,14 @@ Muse first, cap 3 and zero provider calls. Native Home, Supervisor Settings and
 transparent Von rendering were observed. Exact hashes and claim limits:
 [`PACKAGE_49385F2_2026-09-12.md`](docs/demo/evidence/PACKAGE_49385F2_2026-09-12.md).
 
+**Fresh live behavioral gate:** clean `deb2b15` passed one controlled
+OpenCode/Zen/Strands recovery in 68.28 seconds and one correct-completion quiet
+case in 78.33 seconds. Recovery used one same-session correction and reached
+exact final bytes; quiet completion produced model-backed NOOPs and zero
+follow-ups. Both owned servers exited and port 4098 was clean. This is current
+behavioral proof, not a formal benchmark score.
+[`LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md`](docs/demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
+
 **Live Devpost preflight:** the authenticated account is registered for Agents
 for Humans and submissions are open, but no PEX project/draft is attached to the
 hackathon. The official cutoff is `2026-09-15 00:00 UTC` (01:00 on 15 September
