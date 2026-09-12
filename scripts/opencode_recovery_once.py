@@ -204,6 +204,7 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
         complete = False
         semantic_completed = False
         recovery_completed = False
+        recovery_outcome_verified = False
         while time.monotonic() - started < 360:
             if server.poll() is not None:
                 raise RuntimeError("owned server exited")
@@ -250,12 +251,8 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
                 reviews_present=final_review,
                 journal_complete=complete,
             )
-            passed = bool(
-                first_stop
-                and first_stop["stage_exact"]
-                and first_stop["final_absent"]
-                and first_stop["prior_followup_count"] == 0
-                and stage_exact
+            recovery_outcome_verified = bool(
+                stage_exact
                 and final_exact
                 and generation
                 and complete
@@ -263,7 +260,16 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
                 and recovery_completed
                 and quiet
             )
-            if passed:
+            passed = bool(
+                recovery_outcome_verified
+                and first_stop
+                and first_stop["stage_exact"]
+                and first_stop["final_absent"]
+                and first_stop["prior_followup_count"] == 0
+            )
+            # The immutable initial observation cannot improve with more polling.
+            # Retain its failed verdict once the full causal outcome has settled.
+            if recovery_outcome_verified:
                 break
             await asyncio.sleep(1)
 
@@ -277,6 +283,12 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
         receipt = {
             "schema": "pex.live-opencode-recovery.v2",
             "passed": passed,
+            "termination_reason": (
+                "passed" if passed else
+                "initial_conditions_failed" if recovery_outcome_verified else
+                "observation_deadline"
+            ),
+            "recovery_outcome_verified": recovery_outcome_verified,
             "controlled_incomplete_prompt": True,
             "first_stop_observation": first_stop,
             "stage_one_exact": (workspace / "stage-one.txt").is_file()
