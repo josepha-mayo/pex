@@ -29,8 +29,9 @@
 Current live-pair receipts and exact hashes are in
 [`LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md`](demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
 
-Current-head benchmark machinery passes 405 integrity, execution-safety,
-immutable-result and Cursor transport tests. The formal four-arm experiment is
+Current-head benchmark machinery passes 447 integrity, execution-safety,
+immutable-result, Cursor transport/policy and speculative-supervision tests in
+295.53 seconds. The formal four-arm experiment is
 still not frozen and must not be scored: fresh readiness reports no coherent run
 and missing OS-isolated hidden evaluation, complete raw vendor logs and
 synchronous Cursor+PEX treatment.
@@ -184,9 +185,10 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases and review their full contact and
   direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] Add the required public YouTube or Vimeo demo ≤5 minutes (working product + pitch)
-- [ ] After the recording rehearsal, publish the accepted unsigned installer and its
-  SHA-256 as a public GitHub release/test-build link; do not upload `49385f2`
-  before that acceptance or silently replace a release asset
+- [x] Publish the accepted unsigned installer and SHA-256 as
+  [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1),
+  targeted at exact product source `49385f2`; both remote asset digests match
+  the accepted local NSIS/MSI hashes
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
 - [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source

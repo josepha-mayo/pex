@@ -102,7 +102,7 @@ hash must equal the value above. Then:
    pushed root `devpost-submission.md` packet;
 2. create the PEX Devpost project/draft for `agentsforhumans` (registration alone
    did not create one);
-3. upload the accepted unsigned installer plus SHA-256 to a public GitHub release;
+3. use the published [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1), whose remote NSIS/MSI digests match the accepted local hashes;
 4. upload the final public YouTube/Vimeo video, maximum five minutes;
 5. fill Devpost from `docs/SUBMISSION.md` and `docs/JUDGE_TESTING.md`;
 6. add `docs/architecture/pex-architecture.png`, AWS Builder ID, public repo,

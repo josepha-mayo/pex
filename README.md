@@ -100,15 +100,18 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 ## Quick start
 
-### Windows source prerequisites
+### Windows install or source prerequisites
 
-This public repository provides a **source-development bootstrap**, not a packaged installer.
-A verified local Windows
-installer candidate exists for package source `49385f2` and
-is not code-signed.
-These instructions cover building from source; package integrity is not native
-acceptance or publisher trust. Current source-bound package evidence is recorded
-in the [active handoff](docs/AGENT_HANDOFF.md). To build from source,
+The verified, unsigned Windows judge build is published as
+[PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1).
+Use `PEX_0.1.0_x64-setup.exe` for the normal install. It is built from exact
+product source `49385f2`; its SHA-256 is
+`6fb27ff7d4ec986e5b64209b1f00b70cab6593b67daafa42e08add5bd90c6d92`.
+The binary is not code-signed, so Windows may show a publisher warning. Package
+integrity is not indefinite stability or publisher trust; current source-bound
+evidence is recorded in the [active handoff](docs/AGENT_HANDOFF.md).
+
+To build from source instead,
 install Git and `uv`, Node matching [`.node-version`](.node-version),
 and Rust matching [`rust-toolchain.toml`](rust-toolchain.toml). A Windows Tauri
 build also needs the Microsoft C++ build tools and WebView2 runtime. `uv` uses

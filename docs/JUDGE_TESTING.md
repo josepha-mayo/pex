@@ -7,9 +7,14 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 ## Fastest evaluation path
 
 The current installer candidate is unsigned and has passed its bounded native
-acceptance; its public download link will be added when the accepted binary is
-published. Until then, build from the public source checkout using the pinned
-prerequisites in the README:
+acceptance. Download the recommended NSIS installer from
+[PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
+and verify SHA-256
+`6fb27ff7d4ec986e5b64209b1f00b70cab6593b67daafa42e08add5bd90c6d92`.
+Windows may show a publisher warning because this candidate is not code-signed.
+
+To build from the public source checkout instead, use the pinned prerequisites
+in the README:
 
 ```powershell
 .\scripts\install.ps1

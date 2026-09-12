@@ -16,6 +16,18 @@ submit after the separate final confirmation. AgentCore remains
 implemented and locally tested, not AWS-deployed; PexBench remains unfrozen and
 must not be given a score.
 
+**Public release and fresh benchmark gate:** with Joseph's explicit authority,
+[PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
+was published on 12 September, targeting exact product commit `49385f2`.
+GitHub reports the uploaded NSIS and MSI SHA-256 digests as exact matches for the
+accepted local files. A fresh benchmark implementation gate then passed 447/447
+in 295.53 seconds across PexBench integrity, execution safety, immutable rows,
+Cursor capture/delivery/policy and speculative supervision. Formal readiness
+still correctly reports `coherent_runs:[]`, `can_freeze:false`; missing
+OS-isolated hidden evaluation, complete raw vendor logs, controller-verified
+Cursor networking and synchronous Cursor+PEX same-session treatment prohibit a
+headline lift or leaderboard claim.
+
 Fresh current-source live proof is also complete on clean `deb2b15`: recovery
 passed in 68.28 seconds with one same-session correction and exact final bytes;
 quiet completion passed in 78.33 seconds with model-backed NOOPs and zero
