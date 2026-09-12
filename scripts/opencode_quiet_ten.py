@@ -23,17 +23,46 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote
 
-import httpx
-from pex_bridge.adapters import AdapterRegistry
-from pex_bridge.adapters.http_json import LiveHttpTransport
-from pex_bridge.bus import EventBus
-from pex_bridge.config import Settings
-from pex_bridge.pipeline import Pipeline
-from pex_bridge.store import Store, new_id
-from pex_bridge.supervisor_config import KeyringSupervisorSecretStore, load_supervisor_choice
-from pex_protocol.goal import Goal
-from pex_supervisor.providers import load_supervisor_model
-from pydantic_core import to_jsonable_python
+
+def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--run-name", required=True, help="New evidence directory name under build/"
+    )
+    parser.add_argument(
+        "--case-count",
+        type=int,
+        choices=range(1, 11),
+        default=10,
+        help="Maximum consecutive public cases to run (default: all 10)",
+    )
+    args = parser.parse_args()
+    if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,100}", args.run_name) is None:
+        parser.error("--run-name must contain lowercase letters, digits and hyphens only")
+    return parser, args
+
+
+# Invalid/help invocations must not import the PEX, Strands, HTTP or credential
+# stack. Besides being faster, this makes "before any work" a real CLI contract.
+_EARLY_CLI = _parse_cli() if __name__ == "__main__" else None
+
+
+def _load_runtime_dependencies() -> None:
+    global httpx, AdapterRegistry, LiveHttpTransport, EventBus, Settings, Pipeline
+    global Store, new_id, KeyringSupervisorSecretStore, load_supervisor_choice
+    global Goal, load_supervisor_model, to_jsonable_python
+
+    import httpx
+    from pex_bridge.adapters import AdapterRegistry
+    from pex_bridge.adapters.http_json import LiveHttpTransport
+    from pex_bridge.bus import EventBus
+    from pex_bridge.config import Settings
+    from pex_bridge.pipeline import Pipeline
+    from pex_bridge.store import Store, new_id
+    from pex_bridge.supervisor_config import KeyringSupervisorSecretStore, load_supervisor_choice
+    from pex_protocol.goal import Goal
+    from pex_supervisor.providers import load_supervisor_model
+    from pydantic_core import to_jsonable_python
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
@@ -422,20 +451,8 @@ async def run_case(number, case, model, server):
 
 async def main():
     global ROOT
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--run-name", required=True, help="New evidence directory name under build/"
-    )
-    parser.add_argument(
-        "--case-count",
-        type=int,
-        choices=range(1, len(CASES) + 1),
-        default=len(CASES),
-        help="Maximum consecutive public cases to run (default: all 10)",
-    )
-    args = parser.parse_args()
-    if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,100}", args.run_name) is None:
-        parser.error("--run-name must contain lowercase letters, digits and hyphens only")
+    parser, args = _EARLY_CLI or _parse_cli()
+    _load_runtime_dependencies()
     if not source_is_clean():
         parser.error("Commit or otherwise resolve source changes before a live evidence run")
     ROOT = REPO / "build" / args.run_name
