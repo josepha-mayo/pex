@@ -147,6 +147,19 @@ freeze this manifest either; they remain preserved as raw development evidence.
 
 Synthetic smoke remains `not_a_presentation_arm`.
 
+## Current integrity verification
+
+On 12 September 2026, the expanded benchmark/integration selection passed
+**447/447 in 295.53 seconds**. It covers PexBench integrity and execution
+safety, immutable result admission, hidden-evaluator boundaries, Cursor
+capture/delivery/ack/policy, and speculative supervision. The exact command and
+scope are retained in
+[`docs/demo/evidence/BENCHMARK_GATE_2026-09-12.md`](docs/demo/evidence/BENCHMARK_GATE_2026-09-12.md).
+
+The same checkpoint's `four_arm.py readiness` returned exit code 0 while
+correctly reporting `coherent_runs: []`, `can_freeze: false`. Passing the
+integrity implementation does not turn historical partial rows into a result.
+
 ## Next
 
 - Implement synchronous, evidenced same-session Cursor continuation without

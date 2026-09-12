@@ -47,7 +47,7 @@ historical expansion gates; formal four-arm scores remain unclaimed. The unsafe
 933239a launcher instructions have been removed from the recording runbook.
 
 Maintained checkpoint: 11 September 2026; current two-pet package and three frozen restart smokes passed.
-**Submission status: NO-GO. The full goal remains active.**
+**Submission status: draft exists; not submitted. The full goal remains active.**
 Verify Git/current files and running processes before relying on this checkpoint.
 This is the active entry point, not another historical log.
 
