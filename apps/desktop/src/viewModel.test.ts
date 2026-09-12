@@ -1446,6 +1446,22 @@ test("pet renders separate keyboard buttons for status dismissal, activation, an
   }
 });
 
+test("compact home presents the supported MVP harnesses and a readable companion", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const root = dirname(fileURLToPath(import.meta.url));
+  const [app, styles] = await Promise.all([
+    readFile(join(root, "App.tsx"), "utf8"),
+    readFile(join(root, "styles.css"), "utf8"),
+  ]);
+  assert.match(app, /Agent harnesses/u);
+  assert.match(app, /Supported agent harnesses[\s\S]*OpenCode[\s\S]*Codex/u);
+  assert.match(app, /scale=\{0\.94\}/u);
+  assert.match(styles, /\.harness-empty\s*\{/u);
+  assert.match(styles, /\.compact-companion \.pet-actor\s*\{\s*width:\s*128px;\s*min-height:\s*142px;/u);
+});
+
 test("goal editor locks submitted fields only while saving", async () => {
   const { createElement } = await import("react");
   const { renderToStaticMarkup } = await import("react-dom/server");

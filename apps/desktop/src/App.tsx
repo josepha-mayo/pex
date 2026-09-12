@@ -2432,7 +2432,10 @@ export function App() {
           tabIndex={-1}
         >
           <aside className="worker-rail" aria-label="Your workers">
-            <p className="eyebrow">Your workers</p>
+            <div className="worker-rail-heading">
+              <p className="eyebrow">Agent harnesses</p>
+              <span>{sessionStateFresh ? `${sessions.length} live` : "checking"}</span>
+            </div>
             {sessions.slice(0, 8).map((session) => (
               <button key={session.id} type="button" className="worker-choice"
                 aria-pressed={current?.id === session.id}
@@ -2442,6 +2445,13 @@ export function App() {
                 <small>{titleCase(session.status)}</small>
               </button>
             ))}
+            {!sessions.length ? (
+              <div className="harness-empty" aria-label="Supported agent harnesses">
+                <span><i aria-hidden="true">O</i><strong>OpenCode</strong></span>
+                <span><i aria-hidden="true">C</i><strong>Codex</strong></span>
+                <small>{sessionStateFresh ? "No live worker yet" : "Waiting for local state"}</small>
+              </div>
+            ) : null}
             <button type="button" className="ghost" onClick={() => openSettings("connections")}>Connect a worker</button>
           </aside>
           <div className="compact-companion">
@@ -2454,7 +2464,7 @@ export function App() {
               name={petName}
               sheet={sheet}
               mood={mood}
-              scale={0.78}
+              scale={0.94}
               reducedMotion={reducedMotion}
               status={setup ? undefined : homeStatus}
               statusIdentity={pet?.last_action?.id}
@@ -2499,13 +2509,6 @@ export function App() {
           {compactGoalIssue && setup?.state !== "unavailable" ? (
             <p className="canonical-state-warning compact-state-warning" role="status" aria-live="polite">
               {compactGoalIssue} Goal controls stay unavailable until refresh succeeds.
-            </p>
-          ) : null}
-          {!sessions.length && sessionStateFresh ? (
-            <p className="empty-copy compact-empty">
-              Already-open Cursor, Codex, OpenCode, Hermes, and Claude Code sessions are
-              listed in place. A closed harness stays unavailable until its app or API is
-              actually running.
             </p>
           ) : null}
         </section>

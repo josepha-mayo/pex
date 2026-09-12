@@ -264,7 +264,10 @@ p {
   display: grid;
   grid-template-rows: 58px minmax(0, 1fr);
   overflow: hidden;
-  background: #0b1216;
+  background:
+    radial-gradient(circle at 74% 18%, rgba(103, 222, 177, 0.055), transparent 34%),
+    radial-gradient(circle at 18% 88%, rgba(125, 180, 219, 0.04), transparent 32%),
+    #0b1216;
 }
 
 .main-shell::before {
@@ -486,23 +489,30 @@ p {
   padding: 24px;
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: #111a20;
-  box-shadow: none;
+  background: linear-gradient(145deg, rgba(19, 31, 37, 0.98), rgba(14, 23, 28, 0.98));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
 }
 
 .worker-rail { display: grid; align-content: start; gap: 8px; min-width: 0; }
-.worker-rail > .eyebrow { margin: 4px 0 12px; }
+.worker-rail-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 10px; }
+.worker-rail-heading .eyebrow { margin: 0; }
+.worker-rail-heading > span { color: var(--faint); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
 .worker-choice { display: grid; gap: 6px; padding: 12px; border: 1px solid transparent;
   border-radius: 10px; background: transparent; color: var(--paper); text-align: left; }
 .worker-choice[aria-pressed="true"] { background: var(--panel); border-color: var(--line-strong); }
 .worker-choice:hover { background: var(--panel-soft); }
 .worker-choice small, .workspace-heading p { color: var(--muted); overflow-wrap: anywhere; }
 .worker-choice small { font-size: 11px; }
+.harness-empty { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, 0.018); }
+.harness-empty > span { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 30px; color: var(--muted); font-size: 11px; }
+.harness-empty i { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--mint); font-size: 10px; font-style: normal; font-weight: 800; }
+.harness-empty strong { color: var(--paper); font-weight: 650; }
+.harness-empty small { padding-top: 6px; border-top: 1px solid var(--line); color: var(--faint); font-size: 10px; }
 .workspace-heading { border-bottom: 1px solid var(--line); padding-bottom: 16px; }
 .workspace-heading h1 { font-size: 23px; margin: 4px 0 8px; letter-spacing: -0.5px; }
 .workspace-heading p { font-size: 12px; margin: 0; line-height: 1.6; }
-.compact-companion .pet-stage { justify-content: flex-start; }
-.compact-companion .pet-actor { width: 96px; min-height: 116px; }
+.compact-companion .pet-stage { justify-content: center; }
+.compact-companion .pet-actor { width: 128px; min-height: 142px; }
 
 .compact-companion .pet-stage {
   flex-direction: row;
