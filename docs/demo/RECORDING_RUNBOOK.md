@@ -15,8 +15,11 @@ steering visible.
 - Use the source-specific installer and receipt identified in the active
   [handoff](../AGENT_HANDOFF.md). Do not use old submission folders by habit.
 - Confirm the package receipt still says `release_ready: true` with no blockers.
-  The current candidate is product source `79d4d18`; its exact receipt and
-  installer hashes are in [the package evidence](evidence/PACKAGE_79D4D18_2026-09-11.md).
+  The current candidate is product source `4ebebb6`; its exact receipt, expected
+  NSIS transform, installed resource sample and installer hashes are in
+  [the package evidence](evidence/PACKAGE_4EBEBB6_2026-09-12.md). Use the
+  [current ten-minute native acceptance](NATIVE_ACCEPTANCE_4EBEBB6.md), not an
+  older package plan.
 - Complete the separately authorized bounded native stability run. Stop if startup, Retry,
   closing, or reopening hangs; retain the failure instead of filming around it.
   **Never run the quarantined 933239a native-smoke launcher.** It uses unsafe
