@@ -979,8 +979,17 @@ export function App() {
     }
     return Array.from(merged.values());
   }, [deck.sessions, pet?.sessions]);
+  // The detail deck deliberately retains historical sessions. The compact
+  // surface must not relabel that archive as live work: /v1/pet already applies
+  // the bridge's freshness and promptability rules and collapses duplicate
+  // harness rows. Keep explicit Inspector/Deck selections possible, but choose
+  // the default worker from the promptable snapshot.
+  const homeSessions = pet?.sessions || [];
   const availableGoals = useMemo(() => currentGoals(goals), [goals]);
-  const current = selectPrimarySession(sessions, selectedId);
+  const explicitlySelected = selectedId
+    ? sessions.find((session) => session.id === selectedId)
+    : undefined;
+  const current = explicitlySelected || selectPrimarySession(pet ? homeSessions : sessions);
   const attachedGoal = availableGoals.find((goal) => goal.id === current?.goal_id);
   const projectId = current?.project_id || attachedGoal?.project_id || current?.cwd || "";
   const identitySelectedProjectId = identityTargetProjectId ?? projectId;
@@ -2434,9 +2443,9 @@ export function App() {
           <aside className="worker-rail" aria-label="Your workers">
             <div className="worker-rail-heading">
               <p className="eyebrow">Agent harnesses</p>
-              <span>{sessionStateFresh ? `${sessions.length} live` : "checking"}</span>
+              <span>{sessionStateFresh ? `${homeSessions.length} available` : "checking"}</span>
             </div>
-            {sessions.slice(0, 8).map((session) => (
+            {homeSessions.slice(0, 8).map((session) => (
               <button key={session.id} type="button" className="worker-choice"
                 aria-pressed={current?.id === session.id}
                 onClick={() => setSelectedId(session.id)}>
@@ -2445,11 +2454,11 @@ export function App() {
                 <small>{titleCase(session.status)}</small>
               </button>
             ))}
-            {!sessions.length ? (
+            {!homeSessions.length ? (
               <div className="harness-empty" aria-label="Supported agent harnesses">
                 <span><i aria-hidden="true">O</i><strong>OpenCode</strong></span>
                 <span><i aria-hidden="true">C</i><strong>Codex</strong></span>
-                <small>{sessionStateFresh ? "No live worker yet" : "Waiting for local state"}</small>
+                <small>{sessionStateFresh ? "No available worker yet" : "Waiting for local state"}</small>
               </div>
             ) : null}
             <button type="button" className="ghost" onClick={() => openSettings("connections")}>Connect a worker</button>

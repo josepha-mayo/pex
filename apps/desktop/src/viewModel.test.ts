@@ -1476,6 +1476,10 @@ test("compact home presents the supported MVP harnesses and a readable companion
   ]);
   assert.match(app, /Agent harnesses/u);
   assert.match(app, /Supported agent harnesses[\s\S]*OpenCode[\s\S]*Codex/u);
+  assert.match(app, /`\$\{homeSessions\.length\} available`/u);
+  assert.match(app, /homeSessions\.slice\(0, 8\)/u);
+  assert.match(app, /explicitlySelected \|\| selectPrimarySession\(pet \? homeSessions : sessions\)/u);
+  assert.doesNotMatch(app, /`\$\{sessions\.length\} live`/u);
   assert.match(app, /scale=\{0\.94\}/u);
   assert.match(styles, /\.harness-empty\s*\{/u);
   assert.match(styles, /\.compact-companion \.pet-actor\s*\{\s*width:\s*128px;\s*min-height:\s*142px;/u);
