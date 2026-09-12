@@ -1540,6 +1540,16 @@ from 641.67 to 643.70 MB (+2.03 MB), and lifetime CPU advanced 1.8125 seconds
 (about 3.0% of one logical core). This strengthens bounded stability but is not
 an hours-long leak proof.
 
+Installer identity audit found the expected three-byte Tauri `UNK` to `NSS`
+bundle-marker transform, but an isolated `/D=` verification install temporarily
+repointed PEX's shortcuts and uninstall metadata into
+`build/native-install-4ebebb6`. Both shortcuts plus InstallLocation,
+UninstallString and DisplayIcon were explicitly restored and read back against
+`C:\Users\JosephMayo\AppData\Local\PEX`. The ignored temporary copy is not
+running or referenced; it remains 171.18 MiB/2,376 files because its NSIS
+uninstaller returned zero without removing it and the host denied recursive
+deletion. It is disk-only residue, not part of the measured RAM footprint.
+
 Installed SHA-256 is
 `8caa884e92476d3cb115dbd3d791b809806f7c49b52409e8df36dd9816d48f34`.
 It differs from the receipt's pre-bundle canonical desktop in exactly the three
