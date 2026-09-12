@@ -19,6 +19,8 @@ passed in 68.28 seconds with one same-session correction and exact final bytes;
 quiet completion passed in 78.33 seconds with model-backed NOOPs and zero
 follow-ups. Both isolated OpenCode servers exited cleanly. See
 [`demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md`](demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
+The current AgentCore client/runtime/pipeline/preflight selection also passes
+183/183 in 9.80 seconds with live cloud opt-in disabled; no AWS call ran.
 
 **Shipping scope: [MVP_SHIP_GATE.md](MVP_SHIP_GATE.md).** Current official rules
 make AgentCore deployment optional. Retain its tested implementation without

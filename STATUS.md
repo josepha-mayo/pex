@@ -25,6 +25,11 @@ follow-ups. Both owned servers exited and port 4098 was clean. This is current
 behavioral proof, not a formal benchmark score.
 [`LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md`](docs/demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
 
+**Current AgentCore gate:** 183 client/runtime/pipeline/preflight tests passed in
+9.80 seconds with live cloud opt-in disabled. This verifies the implemented
+protocol and local safety boundary; it made no AWS call and is not deployment
+evidence.
+
 **Live Devpost preflight:** the authenticated account is registered for Agents
 for Humans and submissions are open, but no PEX project/draft is attached to the
 hackathon. The official cutoff is `2026-09-15 00:00 UTC` (01:00 on 15 September
