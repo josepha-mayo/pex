@@ -1,5 +1,15 @@
 # PEX active handoff
 
+Fresh live Codex pair on clean `50dd50d`: recovery passed in 84.69 seconds
+with one same-thread correction, exact final artifact, helped true and final
+NOOP; correct completion passed in 38.97 seconds with zero follow-ups. Both
+used Spark workers and saved free Muse via real Strands. All six supervisor
+calls have receipts; both owned app-server processes exited. See
+[Codex live evidence](demo/evidence/LIVE_CODEX_PAIR_50DD50D_2026-09-13.md).
+An additional installed `949cb47` Home/Companion/BYOK visual sweep passed;
+ordinary close removed PEX processes. No new installer or submission occurred.
+Formal benchmark readiness was rerun and still refuses a score.
+
 Current follow-up: Inspector's 32-second reconciliation no longer fetches the
 full Deck, benchmark files or desktop discovery. Those slow reads now run only
 on the Deck surface; Inspector retains intervention/context/attention reads

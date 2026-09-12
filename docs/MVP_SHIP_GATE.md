@@ -33,6 +33,14 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+Latest checkpoint (13 September): installed candidate is `949cb47`, with the
+corrected Inspector inference receipt. Source polling improvement `a98314d`
+has native diagnostic evidence but is not yet packaged. A fresh clean-source
+Codex/Spark + Zen/Muse + Strands pair passed recovery and quiet completion;
+see [current live evidence](demo/evidence/LIVE_CODEX_PAIR_50DD50D_2026-09-13.md).
+Public RC1 remains unchanged. The older recording-candidate paragraph below
+is historical; do not mistake `103f4ec` for the latest installed build.
+
 Current recording candidate: **`103f4ec`**, installed locally with the flat SVG
 logo and supervisor usage receipt. Package verification, authenticated settings
 smoke, three frozen bridge lifetime checks and bounded installed Home/Inspector
