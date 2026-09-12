@@ -33,6 +33,17 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+- [x] Exact-source candidate `4ebebb6` makes Home visibly read as an
+  OpenCode/Codex agent harness, increases companion legibility and tightens the
+  visual hierarchy. Desktop contracts pass 292 with one intentional platform
+  skip; production build passes 71 modules; full Tauri MSI/NSIS build and the
+  exclusive verifier pass with `release_ready:true`, zero blockers, exact Pex/Von,
+  Zen free Muse first, cap three and zero provider calls. The installed/native
+  acceptance box remains open.
+  [Package evidence and hashes](demo/evidence/PACKAGE_4EBEBB6_2026-09-12.md).
+- [ ] Install and visibly accept exact candidate `4ebebb6`; do not record the
+  older installed `79d4d18` build as if it contained the Home redesign.
+
 - [x] Exact installed candidate `79d4d18` passes bridge startup, authenticated
   boundary, ordinary close cleanup, reopen and bounded stability: ready in
   15.297 seconds cold / 7.703 seconds reopen, complete owned-process cleanup in

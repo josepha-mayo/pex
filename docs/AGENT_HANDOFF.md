@@ -1508,6 +1508,26 @@ console host; aggregate working set can double-count shared pages. This is an
 auditability repair, not a product-runtime or installer change, and it does not
 prove long-duration leak freedom beyond the separate bounded stability sample.
 
+## Current agent-harness package: 4ebebb6
+
+Clean pushed source `4ebebb6577029e7370f0e67d58bf35512cf9dfec` replaces the
+sparse Home rail with an explicit OpenCode/Codex harness presentation, canonical
+live/checking state, a larger companion and clearer visual hierarchy. Desktop
+contracts passed 292 with one intentional platform skip; the production build
+passed 71 modules; a fresh production preview was inspected without visible
+overflow. Full Tauri release build completed with pinned Rust 1.97.1 and two
+Cargo jobs. The exclusive verifier returned `release_ready:true` with zero
+blockers, the packaged-settings smoke passed identity/authentication with Zen
+Muse Contributor Free first, cap three and zero provider calls, and frozen-bridge
+lifetime/bundle checks passed 3/3 with exactly Pex and Von. MSI and NSIS copies
+are retained under `build/release-candidate-4ebebb6`. Exact hashes and boundaries:
+[package 4ebebb6](demo/evidence/PACKAGE_4EBEBB6_2026-09-12.md).
+
+This candidate is not yet installed/native-accepted. Do not film the older
+`79d4d18` install as though it contains this Home change. Native acceptance must
+target the exact `4ebebb6` package, remain confined to PEX, and retain any visual,
+pet-control, startup or resource failure rather than checking it from source tests.
+
 ## Current OpenCode MVP closure: 150ea07
 
 Clean pushed source `150ea07b205776660219dbfb1802ff86b998e8df` now passes
