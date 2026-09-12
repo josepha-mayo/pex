@@ -103,6 +103,7 @@ import {
   supervisorHonestyCopy,
   supervisorReviewAllowanceCopy,
   supervisorInferenceReceipt,
+  actionForSession,
   statusCopy,
   settleCanonicalResource,
   starterHarnessInventoryCopy,
@@ -152,6 +153,38 @@ test("failed inference is not presented as a successful quiet review", () => {
   assert.equal(recordedActionLabel({ ...action, diagnosis: "strands_missing_structured_output" }), "Review incomplete");
   assert.equal(recordedActionLabel({ ...action, inference_status: "completed" }), "Stayed quiet");
   assert.notEqual(recordedActionLabel({ ...action, action: "SEND_NUDGE", inference_status: "failed" }), "Review incomplete");
+});
+
+test("Inspector session projection preserves native Strands usage receipts", () => {
+  const session = { id: "opencode:test", harness_type: "opencode", status: "stopped" };
+  const intervention = {
+    id: "native-noop", session_id: session.id, action_taken: "NOOP",
+    metadata: {
+      used_llm: true, inference_status: "completed", provider: "zen",
+      model_name: "muse-spark-1.3-contributor-free", model_call_count: 1,
+      input_tokens: 3305, output_tokens: 487,
+    },
+  };
+  const projected = actionForSession(session, [intervention]);
+  assert.equal(projected?.used_llm, true);
+  assert.equal(supervisorInferenceReceipt(projected),
+    "zen · muse-spark-1.3-contributor-free · 1 model call · 3792 tokens (3305 in · 487 out)");
+  assert.equal(actionForSession(session, [{...intervention, metadata: {...intervention.metadata, used_llm: false, model_call_count: 0}}])?.model_call_count, 0);
+});
+
+test("Inspector never borrows another action's model or verification evidence", () => {
+  const session = { id: "opencode:test", harness_type: "opencode", status: "stopped" };
+  const item = { id: "new", session_id: session.id, action_taken: "NOOP" };
+  const fallback = { id: "old", session_id: session.id, action: "NOOP", used_llm: true,
+    model_call_count: 7, verification_status: "supported", evidence_tools: ["read_file"] };
+  const projected = actionForSession(session, [item], fallback);
+  assert.equal(projected?.used_llm, undefined);
+  assert.equal(projected?.model_call_count, undefined);
+  assert.equal(projected?.verification_status, undefined);
+  assert.equal(projected?.evidence_tools, undefined);
+  assert.match(supervisorInferenceReceipt(projected), /evidence unavailable/);
+  assert.equal(actionForSession(session, [item], {...fallback, id: item.id})?.model_call_count, 7);
+  assert.equal(actionForSession(session, [], {...fallback, session_id: "other"}), null);
 });
 
 import type {
@@ -1231,10 +1264,9 @@ test("Undo retries reuse one bounded key until canonical intent changes", async 
   assert.match(source, /undoAttempts\.current\.get\(id\)/u);
   assert.match(source, /body: JSON\.stringify\(\{ idempotency_key: attempt\.idempotencyKey \}\)/u);
   assert.match(source, /await Promise\.all\(\[refreshPet\(\), loadDetails\(\)\]\)/u);
-  assert.match(
-    source,
-    /result: item\.action_taken === "CLEANUP" \? item\.result : item\.outcome \|\| item\.result/u,
-  );
+  assert.match(source, /actionForSession\(current, displayedInterventions, displayedLastAction\)/u);
+  const session = { id: "s", harness_type: "opencode", status: "stopped" };
+  assert.equal(actionForSession(session, [{id: "i", session_id: "s", action_taken: "CLEANUP", result: "overlay_reverted", outcome: "old_outcome"}])?.result, "overlay_reverted");
 });
 
 test("overlay Undo claims completion only from a delivered canonical projection", async () => {

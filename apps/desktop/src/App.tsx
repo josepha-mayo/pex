@@ -78,7 +78,6 @@ import type {
   HandoffAssimilationStatus,
   HumanDecisionChoice,
   Intervention,
-  LastAction,
   LedgerDecision,
   PetSnapshot,
   PermissionDecision,
@@ -93,6 +92,7 @@ import type {
 } from "./types";
 import {
   canAttachPersistentGoal,
+  actionForSession,
   canFocusSession,
   canOpenSession,
   canonicalResourceIssue,
@@ -2786,36 +2786,4 @@ function surfaceFromHash(): Surface {
   const hash = window.location.hash.replace(/^#\/?/, "");
   if (hash === "inspector" || hash === "deck") return hash;
   return "compact";
-}
-
-function actionForSession(
-  session: SessionRow | undefined,
-  interventions: Intervention[],
-  fallback?: LastAction | null,
-): LastAction | null | undefined {
-  const item = interventions.find((row) => row.session_id === session?.id);
-  if (!item) return fallback?.session_id === session?.id ? fallback : null;
-  const metadata = item.metadata || {};
-  const verification = metadata.verification;
-  const verification_status =
-    verification && typeof verification === "object" && verification !== null && "status" in verification
-      ? String((verification as { status?: unknown }).status || "") || undefined
-      : fallback?.verification_status;
-  const evidence_tools = Array.isArray(metadata.evidence_tools)
-    ? metadata.evidence_tools.filter((row): row is string => typeof row === "string").slice(0, 12)
-    : fallback?.evidence_tools;
-  return {
-    id: item.id,
-    session_id: item.session_id,
-    action: item.action_taken,
-    diagnosis: item.diagnosis,
-    rationale: item.proposed_action?.rationale,
-    inference_status: typeof metadata.inference_status === "string" ? metadata.inference_status : undefined,
-    evidence: item.evidence,
-    result: item.action_taken === "CLEANUP" ? item.result : item.outcome || item.result,
-    reversible: item.reversible,
-    confidence: item.confidence,
-    verification_status,
-    evidence_tools,
-  };
 }

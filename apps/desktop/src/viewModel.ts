@@ -55,7 +55,7 @@ export function supervisorInferenceReceipt(action?: LastAction | null): string {
   if (action.used_llm !== true) {
     return action.inference_status === "not_attempted"
       ? "No model call · deterministic or budget-limited review."
-      : "No model call recorded for this decision.";
+      : "Model-call evidence unavailable for this decision.";
   }
   const calls = safeUsageCount(action.model_call_count);
   const input = safeUsageCount(action.input_tokens);
@@ -66,6 +66,46 @@ export function supervisorInferenceReceipt(action?: LastAction | null): string {
     ? "token usage unavailable"
     : `${input + output} tokens (${input} in · ${output} out)`;
   return `${provider} · ${model} · ${calls === null ? "call count unavailable" : `${calls} model call${calls === 1 ? "" : "s"}`} · ${usage}`;
+}
+
+export function actionForSession(
+  session: SessionRow | undefined,
+  interventions: Intervention[],
+  fallback?: LastAction | null,
+): LastAction | null | undefined {
+  const item = interventions.find((row) => row.session_id === session?.id);
+  if (!item) return fallback?.session_id === session?.id ? fallback : null;
+  // A global pet receipt must never supply evidence for a different action.
+  const matching = fallback?.id === item.id && fallback.session_id === item.session_id
+    ? fallback : undefined;
+  const metadata = item.metadata || {};
+  const verification = metadata.verification;
+  const verification_status =
+    verification && typeof verification === "object" && "status" in verification
+      ? String(verification.status || "") || undefined
+      : matching?.verification_status;
+  return {
+    id: item.id,
+    session_id: item.session_id,
+    action: item.action_taken,
+    diagnosis: item.diagnosis,
+    rationale: item.proposed_action?.rationale,
+    inference_status: typeof metadata.inference_status === "string" ? metadata.inference_status : matching?.inference_status,
+    used_llm: typeof metadata.used_llm === "boolean" ? metadata.used_llm : matching?.used_llm,
+    provider: typeof metadata.provider === "string" ? metadata.provider : matching?.provider,
+    model_name: typeof metadata.model_name === "string" ? metadata.model_name : matching?.model_name,
+    model_call_count: safeUsageCount(metadata.model_call_count) ?? matching?.model_call_count,
+    input_tokens: safeUsageCount(metadata.input_tokens) ?? matching?.input_tokens,
+    output_tokens: safeUsageCount(metadata.output_tokens) ?? matching?.output_tokens,
+    evidence: item.evidence,
+    result: item.action_taken === "CLEANUP" ? item.result : item.outcome || item.result,
+    reversible: item.reversible,
+    confidence: item.confidence,
+    verification_status,
+    evidence_tools: Array.isArray(metadata.evidence_tools)
+      ? metadata.evidence_tools.filter((row): row is string => typeof row === "string").slice(0, 12)
+      : matching?.evidence_tools,
+  };
 }
 
 export function cursorRejectionReasonCopy(reason: string): string {

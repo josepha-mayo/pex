@@ -1,5 +1,13 @@
 # PEX active handoff
 
+Newest native result: [NATIVE_RC2_2026-09-13.md](demo/evidence/NATIVE_RC2_2026-09-13.md).
+Installed `103f4ec` completed one fresh UI-connected OpenCode recovery: exact
+initial phase one, one model-backed correction, exact final files, final NOOP,
+`helped:true`, all 163 events settled. Five model calls total. Native review
+found Inspector dropping inference receipt fields; source repair and regression
+tests pass (297 desktop tests, one intentional skip). That repair still needs
+packaging and visible verification. This is not a comparative benchmark score.
+
 Latest live checks: see
 [LIVE_RC2_2026-09-12.md](demo/evidence/LIVE_RC2_2026-09-12.md).
 On clean `44d488c`, two initially correct OpenCode tasks received zero follow-ups;
