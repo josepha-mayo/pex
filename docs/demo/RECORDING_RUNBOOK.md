@@ -10,6 +10,8 @@ steering visible.
 
 ## Before recording
 
+- Start with the [tomorrow ship card](TOMORROW_SHIP_CARD.md). It is the short
+  execution order; this document remains the detailed shot list.
 - Use the [public rehearsal card](REHEARSAL_CARD.md) for exact persistent-goal,
   worker-prompt and byte-check steps. It is a recipe, not a new passing receipt.
 - Use the source-specific installer and receipt identified in the active

@@ -1565,6 +1565,16 @@ printing the secret. This is browser/source preflight, not native transparency,
 drag, motion, hide/restore or shutdown proof. Exact receipt:
 [rendered UI 392d86e](demo/evidence/RENDERED_UI_392D86E_2026-09-12.md).
 
+A later 27.29-minute installed snapshot remained responsive and healthy with the
+same ten owned processes: 338.95 MiB aggregate private memory, 658.00 MiB
+aggregate working set, 61.469 lifetime CPU seconds and 124.02 MiB bridge private
+memory. The production preview had already been stopped, so it is not included.
+Tomorrow's shortest execution path is now fixed in
+[the ship card](demo/TOMORROW_SHIP_CARD.md): native-only acceptance, one recovery
+and one quiet rehearsal, maximum-five-minute recording, then explicitly
+authorized publishing and submission. No new feature or formal benchmark run is
+on that path.
+
 ## Superseded final responsive package: d2d4879
 
 Clean pushed source `d2d48796549488aa81a8dd5fb98032a48fee9bad`
