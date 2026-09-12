@@ -12,6 +12,14 @@ test("deck Ask keeps suggestions and input within one bounded column", async () 
   assert.doesNotMatch(compact, /grid-column: 2|grid-row:/);
 });
 
+test("surface headings wrap actions instead of widening inspector pages", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const css = await readFile(new URL("./styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.surface-heading\s*\{[^}]*flex-wrap:\s*wrap;/u);
+  assert.match(css, /\.surface-heading\s*>\s*div\s*\{[^}]*min-width:\s*0;[^}]*flex:\s*1 1 520px;/u);
+  assert.match(css, /\.surface-heading\s*>\s*button\s*\{[^}]*flex:\s*0 0 auto;/u);
+});
+
 import { animationFrameIndex } from "./pets/atlasMath.ts";
 import {
   BridgeRequestError,

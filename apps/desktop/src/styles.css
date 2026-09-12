@@ -420,9 +420,19 @@ p {
 
 .surface-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
+}
+
+.surface-heading > div {
+  min-width: 0;
+  flex: 1 1 520px;
+}
+
+.surface-heading > button {
+  flex: 0 0 auto;
 }
 
 .surface-heading h1 {
