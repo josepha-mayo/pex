@@ -10,8 +10,8 @@ scope without a new submission blocker. Use
 [`demo/evidence/PACKAGE_49385F2_2026-09-12.md`](demo/evidence/PACKAGE_49385F2_2026-09-12.md)
 and [`demo/TOMORROW_SHIP_CARD.md`](demo/TOMORROW_SHIP_CARD.md). The public
 throwaway OpenCode recovery/quiet proof is complete. The remaining critical
-path is record the maximum-five-minute video, create and populate the Devpost
-draft, publish the accepted installer if explicitly authorized, review, and
+path is record the maximum-five-minute video, finish the Devpost draft fields
+and required architecture upload, publish the accepted installer if explicitly authorized, review, and
 submit after the separate final confirmation. AgentCore remains
 implemented and locally tested, not AWS-deployed; PexBench remains unfrozen and
 must not be given a score.
@@ -37,8 +37,11 @@ This is the active entry point, not another historical log.
 
 **12 September live Devpost correction:** authenticated results show
 Agents for Humans as `submissions_open` with relationship `registered`, not
-`submitted`; the user's project list contained no PEX project at the last live
-read. The official
+`submitted`. With Joseph's explicit write authorization, Devpost project draft
+`pex-mbcpr4` and submission draft `1179903` were created on 12 September at
+`https://devpost.com/software/pex-mbcpr4`. The privacy-safe Home screenshot was
+uploaded as the project thumbnail with HTTP 200 and entered Devpost processing.
+This is still a draft, not a submission. The official
 cutoff is `2026-09-15T00:00:00Z` (01:00 Lagos), with a required public
 maximum-five-minute video and no required website or zip. Strands is required;
 AgentCore is optional. The latest organizer announcement says to prefer
@@ -46,10 +49,12 @@ determinism over features. Exact receipt:
 [`DEVPOST_PREFLIGHT_2026-09-12.md`](demo/evidence/DEVPOST_PREFLIGHT_2026-09-12.md).
 Joseph explicitly acknowledged the official rules on 12 September; local state
 records that gate. A root [`devpost-submission.md`](../devpost-submission.md)
-now maps the verified product to every official field and leaves submitter type,
-country, Builder ID and video URL explicit rather than invented. Creating or
-updating the Devpost project, uploading assets, publishing the installer, and
-the final submit remain separate external-write gates.
+now maps the verified product to every official field. Submitter type is
+confirmed as Individual and the AWS Builder ID was supplied privately; do not
+copy the email into tracked files. Country, required architecture attachment,
+public video URL, optional installer publication, rendered-form review, and the
+final submit remain open. The final submit remains a separate explicit-
+confirmation gate.
 
 Joseph's latest working target is now two days. Keep the critical path narrow:
 do not add integrations, pets, cloud deployment, or speculative UI rewrites. The

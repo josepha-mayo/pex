@@ -96,7 +96,8 @@ Recording flow:
 
 - Official hackathon: Agents for Humans; submissions close 2026-09-15 00:00 UTC.
 - Track: Professional Agents.
-- Authenticated Devpost account is registered and the official rules were explicitly acknowledged on 2026-09-12.
+- Authenticated Devpost account is registered, the official rules were explicitly acknowledged on 2026-09-12, and project draft `pex-mbcpr4` now exists.
+- The privacy-safe Home screenshot was uploaded successfully as the Devpost project thumbnail and is processing on Devpost.
 - Public repo and MIT license are ready.
 - Architecture PNG exists and is below the official 35 MiB limit.
 - Exact product package source `49385f2` has a zero-blocker MSI/NSIS verification receipt.
@@ -116,13 +117,13 @@ Recording flow:
 
 ## TODO Official Form Fields
 
-- Submitter Type (`27729`, required): TODO — user confirmation required (`Individual`, `Team of Individuals`, or `Organization`).
+- Submitter Type (`27729`, required): `Individual` (confirmed by the user on 2026-09-12).
 - Country of Residence (`27730`, required): TODO — user confirmation required.
 - Organization (`27731`, optional): leave blank unless applicable.
 - Track (`27732`, required): `Professional Agents`.
 - Public repository (`27733`, required): `https://github.com/josepha-mayo/pex`.
 - Architecture diagram (`27734`, required file): upload `docs/architecture/pex-architecture.png` to the Devpost draft.
-- AWS Builder ID (`27735`, required): TODO — confirm the Builder ID email before submission; do not infer it from a login email.
+- AWS Builder ID (`27735`, required): supplied privately by the user on 2026-09-12; do not publish the email in this repository.
 - Live demo (`27736`, optional): omit unless a stable public URL exists.
 - Testing instructions (`28191`, optional): use the concise instructions above and `docs/JUDGE_TESTING.md`.
 - Bonus blog (`27737`, optional): `https://builder.aws.com/content/3IuxELaimn2aM3bayFznibEnnhK/agents-for-humans-teaching-pex-when-to-stay-quiet` (signed-in Published state observed; logged-out reachability still needs confirmation).
