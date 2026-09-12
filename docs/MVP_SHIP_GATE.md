@@ -82,6 +82,10 @@ completion instead of adding scope.
   public on `main` with an MIT license; README and architecture PNG/Mermaid source
   are present. A broad tracked-source secret scan found only deliberate fake test
   canaries. No public installer release has been created.
+- [x] Refresh public preflight on current `bfcde36`: `HEAD == origin/main`, GitHub
+  still reports public/main/MIT, all required repo/setup/testing/architecture
+  assets exist, and key-shaped tracked matches remain test fixtures only.
+  [Current public preflight](demo/evidence/PUBLIC_PREFLIGHT_BFCDE36_2026-09-12.md).
 - [x] Final exact-source Pex/Von audit: both shipping atlases pass strict v2,
   runtime and transparency validation with zero errors or warnings; the 290-test
   desktop run has 289 passes and one intentional Windows symlink skip.

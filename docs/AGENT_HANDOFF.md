@@ -1578,6 +1578,13 @@ this seam. Fresh formal benchmark readiness still reports `frozen:false`, no
 coherent runs and `can_freeze:false`; do not invent an uplift score. The paired
 real OpenCode quiet/recovery proof remains the honest live behavior demo.
 
+Current public preflight on `bfcde36` also passes: local/remote main match,
+GitHub reports public/main/MIT, required README/license/judge/submission and
+architecture assets exist, and common high-entropy prefix matches are confined
+to deliberate test fixtures. The required architecture PNG was visually checked
+and honestly labels AgentCore as not deployed. Public installer and video URLs
+remain missing. [Exact preflight](demo/evidence/PUBLIC_PREFLIGHT_BFCDE36_2026-09-12.md).
+
 ## Current OpenCode MVP closure: 150ea07
 
 Clean pushed source `150ea07b205776660219dbfb1802ff86b998e8df` now passes
@@ -1602,11 +1609,12 @@ with one environment skip, 552 expanded MVP seam tests with one environment
 skip, 144 capability/OpenCode tests, 90 recovery/dispatch tests, Ruff and diff
 checks all pass. [Exact evidence](demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).
 
-Immediate next order is fixed: commit this evidence, build MSI/NSIS from the
-clean resulting source with pinned Rust 1.97.1 and two Cargo jobs, run the
-exclusive package verifier and packaged-bridge smoke, then update the hashes.
-When Joseph explicitly releases the screen, run the bounded exact-package
-native acceptance and record the five-minute story. Do not add features, rerun
-paid models, claim AgentCore cloud deployment, freeze the comparative benchmark,
-publish a release, acknowledge rules, or submit without the missing authority
-and evidence.
+Immediate next order is fixed: manually accept the exact installed `4ebebb6`
+Home/Settings/Pex/Von interaction using
+[the current ten-minute card](demo/NATIVE_ACCEPTANCE_4EBEBB6.md), then complete
+the explicit Devpost rules-review gate, create the local Devpost draft, record
+the maximum-five-minute OpenCode recovery/quiet story, and only then publish the
+accepted installer and submit with the required architecture PNG, AWS Builder
+ID, video URL and bonus-post URL. Do not add features, rerun paid models, claim
+AgentCore cloud deployment, freeze the comparative benchmark, publish a release,
+acknowledge rules, or submit without the missing authority and evidence.
