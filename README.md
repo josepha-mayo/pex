@@ -45,6 +45,11 @@ benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.m
 [current package evidence](docs/demo/evidence/PACKAGE_49385F2_2026-09-12.md),
 [current status](STATUS.md), and the source-bound evidence linked there.
 
+![PEX Home showing two available coding workers and the Von companion](docs/demo/assets/pex-home-49385f2.png)
+
+*Exact installed `49385f2` Home capture. The current-worker rail is
+freshness-filtered; historical sessions remain in Inspector and Deck.*
+
 ## The pain it removes
 
 Running several long-lived coding agents created a new job: remembering the real goal, noticing drift, catching false “done”, approving the same safe test command, copying context between windows, and typing “continue”.

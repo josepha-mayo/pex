@@ -108,6 +108,10 @@ result is only an unverified base candidate, not a playable pet.
 
 ## Demo video voiceover (≤5 minutes)
 
+The privacy-safe installed-app still suitable for the project gallery is
+`docs/demo/assets/pex-home-49385f2.png`. It shows Home, exactly two current
+worker entries and Von without exposing credentials or desktop background.
+
 Timebox. Screen-record Pex (with one quick switch to Von), the inspector, and one isolated
 OpenCode HTTP session. Do not turn the broader integration matrix into a demo tour, and do
 not use leaked benchmark numbers. Use the exact preflight and rejection checks in
