@@ -11,6 +11,9 @@ bridge lifetime is 3/3, and authenticated packaged Settings reports Zen, free
 Muse first, cap 3 and zero provider calls. Native Home, Supervisor Settings and
 transparent Von rendering were observed. Exact hashes and claim limits:
 [`PACKAGE_49385F2_2026-09-12.md`](docs/demo/evidence/PACKAGE_49385F2_2026-09-12.md).
+The installed tree remained responsive with the same ten processes at 25.1
+minutes; its final 20-second delta was +0.12 MiB private and +0.24 MiB working
+set. This is bounded no-runaway evidence, not an indefinite leak claim.
 
 **Fresh live behavioral gate:** clean `deb2b15` passed one controlled
 OpenCode/Zen/Strands recovery in 68.28 seconds and one correct-completion quiet

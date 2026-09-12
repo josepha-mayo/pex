@@ -8,6 +8,8 @@
 > Contributor Free first, and a default three-review cap. The installed process
 > tree remained responsive during a 2.81-minute sample at 343.18 MiB private
 > across ten processes; it is not tiny and this is not a long-run no-leak claim.
+> At 25.1 minutes the same ten-process tree remained responsive; its final
+> 20-second delta was only +0.12 MiB private and +0.24 MiB working set.
 > Native Home now excludes 61 stale historical rows and shows the two current
 > promptable workers. Native Supervisor Settings and transparent Von rendering
 > were also observed. The
