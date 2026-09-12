@@ -1508,7 +1508,35 @@ console host; aggregate working set can double-count shared pages. This is an
 auditability repair, not a product-runtime or installer change, and it does not
 prove long-duration leak freedom beyond the separate bounded stability sample.
 
-## Current agent-harness package: 4ebebb6
+## Current responsive agent-harness package: 067916a
+
+Clean pushed source `067916aa71aa37f5d90e8f85145d35f23da8bd11`
+supersedes `4ebebb6` with a narrow viewport repair: Inspector/Deck heading text
+wraps and its action remains reachable instead of widening or clipping the page.
+Desktop contracts passed 293 with one intentional Windows symlink skip; the
+71-module production build and full Tauri release build passed. The exclusive
+package verifier returned `release_ready:true` with zero blockers. Packaged Zen
+settings smoke passed with Contributor Free first, cap three and zero provider
+calls; frozen bridge lifetime passed 3/3. Retained MSI/NSIS hashes, installed
+identity and exact boundaries are in
+[package 067916a](demo/evidence/PACKAGE_067916A_2026-09-12.md).
+
+An ordinary silent same-version install misleadingly returned zero while leaving
+the predecessor executable. Hash comparison caught it. Explicitly selecting the
+standard `%LOCALAPPDATA%\\PEX` path installed the new binary and restored all
+uninstall metadata. Installed SHA-256 is
+`6a510e8c5dfaf6323133e4227e749bb474ade3173317463e612977cb872e02b5`;
+it differs from canonical `e878bb3f...` only in the expected three-byte Tauri
+`UNK` to `NSS` marker. `/health/live` is healthy. A 60-second startup/idle sample
+settled at ten processes and 377.49 MiB private; the final 35.5 seconds moved
+only +0.36 MiB private with about 3.9% of one logical core. This is moderate but
+not runaway, and is not a long-duration leak proof.
+
+Visible native interaction remains open because computer control still exposes
+no native app surface. Use
+[the 067916a acceptance card](demo/NATIVE_ACCEPTANCE_067916A.md).
+
+## Superseded agent-harness package: 4ebebb6
 
 Clean pushed source `4ebebb6577029e7370f0e67d58bf35512cf9dfec` replaces the
 sparse Home rail with an explicit OpenCode/Codex harness presentation, canonical
@@ -1609,9 +1637,9 @@ with one environment skip, 552 expanded MVP seam tests with one environment
 skip, 144 capability/OpenCode tests, 90 recovery/dispatch tests, Ruff and diff
 checks all pass. [Exact evidence](demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).
 
-Immediate next order is fixed: manually accept the exact installed `4ebebb6`
+Immediate next order is fixed: manually accept the exact installed `067916a`
 Home/Settings/Pex/Von interaction using
-[the current ten-minute card](demo/NATIVE_ACCEPTANCE_4EBEBB6.md), then complete
+[the current ten-minute card](demo/NATIVE_ACCEPTANCE_067916A.md), then complete
 the explicit Devpost rules-review gate, create the local Devpost draft, record
 the maximum-five-minute OpenCode recovery/quiet story, and only then publish the
 accepted installer and submit with the required architecture PNG, AWS Builder

@@ -33,21 +33,22 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
-- [x] Exact-source candidate `4ebebb6` makes Home visibly read as an
+- [x] Exact-source candidate `067916a` makes Home visibly read as an
   OpenCode/Codex agent harness, increases companion legibility and tightens the
-  visual hierarchy. Desktop contracts pass 292 with one intentional platform
+  visual hierarchy and wraps Inspector/Deck actions within the viewport. Desktop
+  contracts pass 293 with one intentional platform
   skip; production build passes 71 modules; full Tauri MSI/NSIS build and the
   exclusive verifier pass with `release_ready:true`, zero blockers, exact Pex/Von,
   Zen free Muse first, cap three and zero provider calls. The installed/native
   acceptance box remains open.
-  [Package evidence and hashes](demo/evidence/PACKAGE_4EBEBB6_2026-09-12.md).
-- [ ] Visibly accept exact installed candidate `4ebebb6`. The NSIS installer
+  [Package evidence and hashes](demo/evidence/PACKAGE_067916A_2026-09-12.md).
+- [ ] Visibly accept exact installed candidate `067916a`. The NSIS installer
   completed successfully, the installed desktop launched and its authenticated
-  bridge reached ready state. A 20-second full-tree sample held 325.14-328.56 MB
-  private memory across ten processes and ended 0.24 MB below its first sample;
-  a later 60-second sample held the same ten processes and moved only 324.55 to
-  325.04 MB private (+0.49 MB), with about 3.0% of one logical core. These show
-  no bounded leak/runaway loop. Native visual/pet interaction remains
+  bridge reached ready state. During the settled portion of a 60-second
+  startup/idle sample, private memory moved only +0.36 MiB and CPU averaged about
+  3.9% of one logical core; final private memory was 377.49 MiB across ten
+  processes. This is moderate, not tiny, but shows no bounded runaway. Native
+  visual/pet interaction remains
   unchecked because the control host still exposed no native app surface.
 
 - [x] Exact installed candidate `79d4d18` passes bridge startup, authenticated
