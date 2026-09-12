@@ -38,6 +38,10 @@ completion instead of adding scope.
   15.297 seconds cold / 7.703 seconds reopen, complete owned-process cleanup in
   2.976 seconds, flat 25-second idle resources, and 100/100 health requests with
   20.54 ms p95. Zen Muse Contributor Free and cap 3 remain secret-store backed.
+  A corrected recursive measurement includes all WebView/helper processes:
+  331.6 MB private memory and about 652 MB aggregate working set across ten
+  processes, flat over 20 seconds at 3.1% of one logical core. This is heavier
+  than ideal but showed no bounded leak or unresponsive window.
   [Installed-runtime evidence and visual boundary](demo/evidence/NATIVE_RUNTIME_79D4D18_2026-09-12.md).
 - [ ] Observe Home/Inspector/Deck/Settings and both Pex/Von overlays on the exact
   installed `79d4d18` candidate. The current computer-control host exposed no
@@ -153,6 +157,12 @@ completion instead of adding scope.
 - [x] Current-tree expanded benchmark integrity rerun: 261 core benchmark/
   Cursor/audit/scoring tests plus 22 policy/speculative tests, 283/283 total.
   Manifest remains honestly unfrozen; this is still not a live score.
+- [x] Fresh 12 September benchmark readiness ran successfully and refused a
+  presentation run: `coherent_runs:[]`, `can_freeze:false`. The blocking
+  infrastructure is OS-isolated hidden evaluation, controller-enforced Cursor
+  network evidence, complete immutable raw logs, and synchronous same-session
+  Cursor treatment. No comparative score may be claimed. The separate live
+  OpenCode recovery/quiet pair remains behavioral evidence only.
 - [x] Post-package integrity expansion on `f585562`: 253 Strands/supervisor/
   trajectory/evidence/outcome tests, 183 local AgentCore tests and 368 benchmark/
   Cursor/audit/execution-safety/scoring tests passed. The broad benchmark gate
