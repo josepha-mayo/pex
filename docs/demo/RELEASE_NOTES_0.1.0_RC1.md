@@ -30,6 +30,10 @@ PEX_0.1.0_x64_en-US.msi
 SHA-256 5C60B8FB322E8F8A187CBB103B58FF852CA09BBC79C7104483836F8E550747D5
 ```
 
+Post-publication verification on 12 September followed the anonymous NSIS asset
+redirect to HTTP 200 with `Content-Length: 101680803`. GitHub's asset metadata
+reports the same SHA-256 digests shown above for both uploaded files.
+
 ## Judge path
 
 Follow [`docs/JUDGE_TESTING.md`](../JUDGE_TESTING.md). PEX ships without a

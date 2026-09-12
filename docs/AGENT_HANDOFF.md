@@ -20,7 +20,9 @@ must not be given a score.
 [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
 was published on 12 September, targeting exact product commit `49385f2`.
 GitHub reports the uploaded NSIS and MSI SHA-256 digests as exact matches for the
-accepted local files. A fresh benchmark implementation gate then passed 447/447
+accepted local files. A separate public NSIS download check followed the GitHub
+redirect to HTTP 200 with the exact 101,680,803-byte content length. A fresh
+benchmark implementation gate then passed 447/447
 in 295.53 seconds across PexBench integrity, execution safety, immutable rows,
 Cursor capture/delivery/policy and speculative supervision. Formal readiness
 still correctly reports `coherent_runs:[]`, `can_freeze:false`; missing
