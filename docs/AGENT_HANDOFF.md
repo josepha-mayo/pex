@@ -39,6 +39,19 @@ readiness. The same source subsequently passed 11/11 focused pet/UI contracts
 and a clean 71-module production build. A hidden 1280-by-720 rendered preview
 showed no horizontal overflow on Home, Inspector, Deck, or any of the four
 Settings tabs; this is browser-rendered corroboration, not native-overlay proof.
+The complete installed process tree was then measured, correcting the earlier
+two-process-only view: 331.6 MB private memory and roughly 652 MB aggregate
+working set across ten desktop/bridge/WebView/helper processes. Over 20 seconds,
+private memory changed by +0.07 MB, working set by -0.41 MB, and the tree used
+3.1% of one logical core with no unresponsive window. It is heavier than ideal
+but did not leak or freeze in that bound.
+
+Same-day `four_arm.py readiness` remains an honest refusal, not a benchmark
+pass: `coherent_runs:[]`, `can_freeze:false`, with missing OS-isolated hidden
+evaluation, controller-enforced Cursor network evidence, complete immutable raw
+logs, and synchronous same-session Cursor treatment. Do not run around those
+gates or cite historical partial rows. The current OpenCode quiet/recovery pair
+is the usable behavioral evidence, not a comparative score.
 
 **Current package source: `619ea71`; base UI product change: `8394b4b`.** The package
 now contains the exact Zen/Ask correction: the selected Muse model is sent to

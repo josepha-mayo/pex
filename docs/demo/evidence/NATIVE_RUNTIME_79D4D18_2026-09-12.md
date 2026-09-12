@@ -43,6 +43,17 @@ Across six foreground-idle samples over 25 seconds:
 - bridge CPU rose from 16.64 to 16.83 seconds;
 - every owned process remained responsive.
 
+Those first figures cover the two PEX executables only. A subsequent recursive
+process-tree audit included WebView2, GPU/utility helpers and the bridge console
+host. The complete ten-process tree used 331.6 MB of private memory and about
+652 MB aggregate working set; aggregate working set includes shared WebView2
+pages and must not be presented as exclusive physical allocation. Across a
+separate 20-second idle interval, private memory changed by +0.07 MB, aggregate
+working set by -0.41 MB, and the full tree consumed 0.62 CPU-seconds (3.1% of
+one logical core). No window-owning process became unresponsive. This is
+heavier than desirable for a small companion, but the bounded sample does not
+show a leak or freeze.
+
 The live installed bridge then served 100 sequential `/health/live` requests:
 100 succeeded, mean latency was 11.53 ms, p95 was 20.54 ms, bridge working-set
 growth was 0.12 MB and CPU growth was 0.25 seconds.
@@ -73,3 +84,20 @@ window. Home/Inspector/Deck/Settings layout, pet transparency and movement,
 message dismissal, hide/restore, keyboard reachability and live OpenCode UI
 attachment still require direct observation on this exact installed candidate.
 No provider call, AWS deployment, release publication or submission occurred.
+
+## Benchmark status refreshed the same day
+
+`benchmarks/four_arm.py readiness` exited 0 and still reported
+`manifest_frozen:false`, `coherent_runs:[]`, `can_freeze:false`. The runner's
+execution preflight refuses a presentation run because the OS-isolated
+worker/PEX plus hidden-evaluator backend is not implemented and Cursor network
+policy lacks a controller-enforced receipt. Additional report blockers include
+incomplete immutable raw harness logs and unavailable synchronous same-session
+Cursor treatment. Do not bypass these gates or cite historical partial rows.
+
+The separate current-source OpenCode pair remains the bounded behavioral proof:
+one exact already-correct case produced a Strands/Zen `NOOP` with zero
+follow-ups, while one deliberately incomplete case received exactly one
+same-session correction, reached exact completion, recorded `helped:true`, and
+then produced a final model-backed `NOOP`. It is evidence that PEX can help and
+can stay quiet, but it is not a comparative lift estimate.
