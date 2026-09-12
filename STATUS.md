@@ -14,6 +14,8 @@ transparent Von rendering were observed. Exact hashes and claim limits:
 The installed tree remained responsive with the same ten processes at 25.1
 minutes; its final 20-second delta was +0.12 MiB private and +0.24 MiB working
 set. This is bounded no-runaway evidence, not an indefinite leak claim.
+Normal close then removed the desktop, owned bridge and port 7420 listener in
+1.367 seconds without a process-tree kill.
 
 **Fresh live behavioral gate:** clean `deb2b15` passed one controlled
 OpenCode/Zen/Strands recovery in 68.28 seconds and one correct-completion quiet
