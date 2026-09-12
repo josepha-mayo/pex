@@ -20,6 +20,17 @@ test("surface headings wrap actions instead of widening inspector pages", async 
   assert.match(css, /\.surface-heading\s*>\s*button\s*\{[^}]*flex:\s*0 0 auto;/u);
 });
 
+test("deck metrics wrap without forcing horizontal overflow", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const css = await readFile(new URL("./styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.deck-heading\s*\{[^}]*flex-wrap:\s*wrap;/u);
+  assert.match(css, /\.deck-heading\s*>\s*p\s*\{[^}]*min-width:\s*0;[^}]*flex:\s*1 1 300px;/u);
+  assert.match(css, /\.attention-metrics\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/u);
+  assert.match(css, /\.attention-metrics\s*>\s*div\s*\{[^}]*min-width:\s*0;/u);
+  assert.match(css, /@media \(max-width:\s*840px\)[\s\S]*?\.attention-metrics\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/u);
+  assert.match(css, /@media \(max-width:\s*560px\)[\s\S]*?\.attention-metrics\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\);/u);
+});
+
 import { animationFrameIndex } from "./pets/atlasMath.ts";
 import {
   BridgeRequestError,
