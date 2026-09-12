@@ -1,5 +1,14 @@
 # PEX active handoff
 
+Latest live checks: see
+[LIVE_RC2_2026-09-12.md](demo/evidence/LIVE_RC2_2026-09-12.md).
+On clean `44d488c`, two initially correct OpenCode tasks received zero follow-ups;
+two worker newline/missing-file errors were repaired with one correction each.
+Both strict runners exited 1 because initial-condition requirements failed in
+the recovery and boolean cases. Preserve those failed verdicts. These were real
+Zen/Strands source-pipeline runs, not desktop-driven tests or comparative scores.
+The owned servers exited cleanly. RC2 release notes are prepared, not published.
+
 ## Urgent current handoff — 12 September 2026
 
 The newest local recording candidate is exact product source `103f4ec`, pushed
