@@ -2,19 +2,26 @@
 
 ## Urgent current handoff — 12 September 2026
 
-The recording candidate is product source `49385f2`, already pushed, built,
-verified and installed. It supersedes `392d86e` because native acceptance found
-63 historical sessions flooding Home; Home now uses the freshness-filtered pet
-snapshot and visibly shows the two current workers. Do not rebuild or broaden
-scope without a new submission blocker. Use
-[`demo/evidence/PACKAGE_49385F2_2026-09-12.md`](demo/evidence/PACKAGE_49385F2_2026-09-12.md)
-and [`demo/TOMORROW_SHIP_CARD.md`](demo/TOMORROW_SHIP_CARD.md). The public
-throwaway OpenCode recovery/quiet proof is complete. The remaining critical
-path is record the maximum-five-minute video, finish the Devpost draft fields
-and required architecture upload, publish the accepted installer if explicitly authorized, review, and
-submit after the separate final confirmation. AgentCore remains
-implemented and locally tested, not AWS-deployed; PexBench remains unfrozen and
-must not be given a score.
+The newest local recording candidate is exact product source `5e2f268`, pushed
+to `origin/main`, clean-built and package-verified. It preserves the accepted
+two-pet OpenCode/Codex MVP while adding a transparent cat-and-orbit PEX identity
+with no heart-shaped face panel and an Inspector receipt for real supervisor
+provider/model/call/token usage. The retained MSI and NSIS both pass exact
+inventory verification; authenticated packaged Zen settings and all 3/3 frozen
+bridge lifetime checks pass. Use
+[`demo/evidence/PACKAGE_5E2F268_2026-09-12.md`](demo/evidence/PACKAGE_5E2F268_2026-09-12.md)
+for hashes, test counts and claim boundaries.
+
+Do not confuse this new local candidate with the already-public release. Public
+`v0.1.0-rc1` remains immutably bound to `49385f2`; no new publish or overwrite
+was performed. `5e2f268` still needs a bounded installed-native visual and
+interaction sweep before promotion. The public throwaway OpenCode recovery and
+quiet proof is complete. The remaining critical path is native acceptance,
+record the maximum-five-minute video, finish the Devpost draft fields and
+required architecture upload, publish the new accepted installer only if
+explicitly authorized, review, and submit after the separate final
+confirmation. AgentCore remains implemented and locally tested, not
+AWS-deployed; PexBench remains unfrozen and must not be given a score.
 
 **Public release and fresh benchmark gate:** with Joseph's explicit authority,
 [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
