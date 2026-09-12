@@ -33,6 +33,17 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+- [x] Current exact candidate `49385f2` repairs the blocking native Home defect:
+  against a database containing 63 historical rows, the installed Home now
+  shows only the two current promptable workers as **2 available**. Desktop
+  contracts pass 294 with one intentional skip, the 71-module production build
+  passes, the full Tauri MSI/NSIS build and exclusive verifier pass with
+  `release_ready:true`, and the frozen packaged bridge passes 3/3 lifetime
+  checks. Native Home, Supervisor Settings and transparent Von rendering were
+  directly observed; Settings shows Zen, free Muse and cap 3. The bounded
+  2.81-minute installed sample stayed responsive at 343.18 MiB private memory
+  across ten owned processes. [Exact package evidence](demo/evidence/PACKAGE_49385F2_2026-09-12.md).
+
 - [x] Exact-source candidate `392d86e` makes Home visibly read as an
   OpenCode/Codex agent harness, increases companion legibility and tightens the
   visual hierarchy, wraps Inspector/Deck actions within the viewport, and gives
@@ -44,14 +55,15 @@ completion instead of adding scope.
   Zen free Muse first, cap three and zero provider calls. The installed/native
   acceptance box remains open.
   [Package evidence and hashes](demo/evidence/PACKAGE_392D86E_2026-09-12.md).
-- [ ] Visibly accept exact installed candidate `392d86e`. The NSIS installer
+- [x] Superseded candidate `392d86e` received its native acceptance before the
+  Home-only `49385f2` repair. The NSIS installer
   completed successfully, the installed desktop launched and its authenticated
   bridge reached ready state. A 61.82-second startup/idle sample settled at
   325.16 MiB private across ten processes; lifetime CPU advanced 1.40625 seconds
   over about 61.5 seconds. This is moderate, not tiny, but shows settling instead of a
   bounded runaway. Native
-  visual/pet interaction remains
-  unchecked because the control host still exposed no native app surface.
+  visual/pet interaction was subsequently checked; retain this row as package
+  history, not as the current acceptance gate.
 
 - [x] Exact installed candidate `79d4d18` passes bridge startup, authenticated
   boundary, ordinary close cleanup, reopen and bounded stability: ready in

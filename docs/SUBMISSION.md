@@ -3,18 +3,21 @@
 > **Current claim boundary — 12 September 2026:** submission copy only; the
 > authenticated account is registered, but no PEX Devpost project/draft exists
 > for Agents for Humans and nothing is submitted. Exact
-> product source `392d86e` has a verified MSI/NSIS package with zero blockers,
+> product source `49385f2` has a verified MSI/NSIS package with zero blockers,
 > exactly two companions (Pex and Von), explicit OpenCode/Codex harness UI, Zen
 > Contributor Free first, and a default three-review cap. The installed process
-> tree settled at 325.16 MiB private across ten processes after 61.82 seconds;
-> it is not tiny, but that sample showed no runaway loop. The
+> tree remained responsive during a 2.81-minute sample at 343.18 MiB private
+> across ten processes; it is not tiny and this is not a long-run no-leak claim.
+> Native Home now excludes 61 stale historical rows and shows the two current
+> promptable workers. Native Supervisor Settings and transparent Von rendering
+> were also observed. The
 > current focused backend seam passes 476 tests with one intentional skip and
 > zero failures across BYOK, Strands, goals, Ask PEX, OpenCode, Codex, and local
 > AgentCore contracts. Real OpenCode 1.18.30/Zen/Strands same-session recovery
 > and quiet behavior exists on clean source `150ea07`; product changes since it
-> are presentation, observer, test-harness, and documentation changes. Visible
-> native pet/interaction acceptance remains open because the current automation
-> host exposes no native app surface. AgentCore is implemented and locally
+> are presentation, observer, test-harness, and documentation changes. The full
+> Pex/Von interaction sweep was performed on the immediately preceding package;
+> those mechanics are unchanged by the Home-only repair. AgentCore is implemented and locally
 > tested, not deployed. PexBench remains unfrozen and no comparative score is
 > claimed. Finish
 > [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
@@ -154,8 +157,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   field after checking that its title contains **Agents for Humans** and that it
   is accessible while logged out; do not republish it
 - [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean package
-  source `392d86e`; both installer inventories pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `392d86e`;
+  source `49385f2`; both installer inventories pass with zero package blockers
+- [x] Re-review README and architecture source/PNG against packaged product source `49385f2`;
   current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
 - [x] Re-run current offline gates: 368 benchmark/scoring/Cursor/safety tests,
   an expanded 387-test Strands/supervisor/trajectory/evidence/outcome gate with
@@ -171,8 +174,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases and review their full contact and
   direction sheets at original resolution; native playback remains part of the open P0 gate
 - [ ] Add the required public YouTube or Vimeo demo ≤5 minutes (working product + pitch)
-- [ ] After native acceptance, publish the accepted unsigned installer and its
-  SHA-256 as a public GitHub release/test-build link; do not upload `392d86e`
+- [ ] After the recording rehearsal, publish the accepted unsigned installer and its
+  SHA-256 as a public GitHub release/test-build link; do not upload `49385f2`
   before that acceptance or silently replace a release asset
 - [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
 - [x] Recapture the validated semantic pair on clean product source `af35707`
@@ -180,7 +183,11 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Validate current OpenCode 1.18.30 quiet completion and causal same-session
   recovery on the same clean source `150ea07`, including an independently
   verified correction, exact outcome, `helped:true`, and final NOOP
-- [ ] Natively verify package source `392d86e` scale-aware overlay, anchored hide control, storage-safe hide/restore, Ask layout, cancellation display, exact Zen default, visible default review cap and bounded stability; the packaged frozen bridge already reports cap 3 and the contributor-free Zen hint in an isolated authenticated headless smoke; then
+- [x] Natively verify package source `49385f2` Home, Supervisor Settings,
+  transparent overlay, exact Zen default, visible review cap and bounded
+  responsiveness; the unchanged Pex/Von switch, restrained drag, anchored hide,
+  bubble dismissal, storage-safe hide/restore and ordinary close were checked
+  immediately before the Home-only repair; then
   record the validated pair in the packaged-app demo
 - [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence includes
   the 200-test contract gate plus an exact-package local `/ping` + `/invocations` protocol

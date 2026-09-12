@@ -22,21 +22,22 @@ not edit the project, submission, code repository, or video.
 
 ## 1. Accept the installed candidate — 10 minutes
 
-Use the already installed NSIS candidate from product source `392d86e`. The
+Use the already installed NSIS candidate from product source `49385f2`. The
 retained installer is:
 
-`build/release-candidate-392d86e/PEX_0.1.0_x64-setup.exe`
+`build/release-candidate-49385f2/PEX_0.1.0_x64-setup.exe`
 
 Expected SHA-256:
 
-`d1757481662c470228f256f39bd2e01e620fbea8986202befd78d0bc384aaa02`
+`6fb27ff7d4ec986e5b64209b1f00b70cab6593b67daafa42e08add5bd90c6d92`
 
-Follow `NATIVE_ACCEPTANCE_392D86E.md` once, visibly. The production-browser sweep
-has already cleared Home, Inspector, Deck, every Settings tab, the anchored
-`× Hide` control and independent status dismissal. Concentrate the manual pass
-on the remaining native-only facts: transparent/always-on-top overlay, restrained
-motion, Pex/Von switch, drag without accidental opening, hide/restore,
-click-through if shown, responsive foreground behavior, and normal shutdown.
+The exact installed candidate has cleared bridge startup, native Home and
+Supervisor Settings, two-current-worker filtering, transparent Von rendering,
+and a bounded resource sample. The unchanged overlay mechanics passed Pex/Von
+switch, restrained drag, independent bubble dismissal, anchored `× Hide`,
+hide/restore and ordinary-close cleanup immediately before the Home-only repair.
+See `evidence/PACKAGE_49385F2_2026-09-12.md`. Concentrate the final recording
+rehearsal on the public throwaway OpenCode recovery and quiet cases.
 
 Stop immediately on Retry, freeze, opaque background, flying control, wrong pet,
 unbounded growth, or a bridge that survives a normal PEX close. Keep the failure;
@@ -90,7 +91,7 @@ Before any external write, confirm:
 git status --short
 git rev-parse HEAD
 git rev-parse origin/main
-Get-FileHash .\build\release-candidate-392d86e\PEX_0.1.0_x64-setup.exe -Algorithm SHA256
+Get-FileHash .\build\release-candidate-49385f2\PEX_0.1.0_x64-setup.exe -Algorithm SHA256
 ```
 
 The worktree must be clean, local and remote main must match, and the installer

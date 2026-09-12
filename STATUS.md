@@ -2,6 +2,16 @@
 
 ## Current — 12 September 2026
 
+**Current installed/package source: `49385f2`, exactly Pex and Von.** It fixes
+Home incorrectly merging 63 historical Deck sessions into the live worker
+surface; the installed Home now shows only two current promptable workers.
+Desktop contracts pass 294 with one intentional skip, production build passes
+71 modules, full MSI/NSIS packaging verifies with zero blockers, the frozen
+bridge lifetime is 3/3, and authenticated packaged Settings reports Zen, free
+Muse first, cap 3 and zero provider calls. Native Home, Supervisor Settings and
+transparent Von rendering were observed. Exact hashes and claim limits:
+[`PACKAGE_49385F2_2026-09-12.md`](docs/demo/evidence/PACKAGE_49385F2_2026-09-12.md).
+
 **Live Devpost preflight:** the authenticated account is registered for Agents
 for Humans and submissions are open, but no PEX project/draft is attached to the
 hackathon. The official cutoff is `2026-09-15 00:00 UTC` (01:00 on 15 September
@@ -11,7 +21,7 @@ deterministic behavior over adding features. Rules acknowledgment, project
 creation, publishing and final submission remain unperformed external writes.
 See [the exact receipt](docs/demo/evidence/DEVPOST_PREFLIGHT_2026-09-12.md).
 
-**Current installed/package source: `392d86e`, exactly Pex and Von.** Home names
+**Superseded package source: `392d86e`, exactly Pex and Von.** Home names
 OpenCode and Codex as the MVP harnesses; Inspector/Deck actions wrap within the
 viewport; Deck attention metrics use a responsive 3/2/1-column layout; the pet's
 labelled hide control is anchored to its status panel instead of floating. Fresh

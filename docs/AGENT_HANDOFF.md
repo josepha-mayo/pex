@@ -1,5 +1,19 @@
 # PEX active handoff
 
+## Urgent current handoff — 12 September 2026
+
+The recording candidate is product source `49385f2`, already pushed, built,
+verified and installed. It supersedes `392d86e` because native acceptance found
+63 historical sessions flooding Home; Home now uses the freshness-filtered pet
+snapshot and visibly shows the two current workers. Do not rebuild or broaden
+scope without a new submission blocker. Use
+[`demo/evidence/PACKAGE_49385F2_2026-09-12.md`](demo/evidence/PACKAGE_49385F2_2026-09-12.md)
+and [`demo/TOMORROW_SHIP_CARD.md`](demo/TOMORROW_SHIP_CARD.md). The remaining
+critical path is one public throwaway OpenCode recovery/quiet rehearsal, record
+the maximum-five-minute video, then publish/review/submit. AgentCore remains
+implemented and locally tested, not AWS-deployed; PexBench remains unfrozen and
+must not be given a score.
+
 **Shipping scope: [MVP_SHIP_GATE.md](MVP_SHIP_GATE.md).** Current official rules
 make AgentCore deployment optional. Retain its tested implementation without
 claiming deployment. The user's later small-MVP request takes priority over
@@ -1746,10 +1760,9 @@ with one environment skip, 552 expanded MVP seam tests with one environment
 skip, 144 capability/OpenCode tests, 90 recovery/dispatch tests, Ruff and diff
 checks all pass. [Exact evidence](demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).
 
-Immediate next order is fixed: manually accept the exact installed `392d86e`
-Home/Settings/Pex/Von interaction using
-[the current ten-minute card](demo/NATIVE_ACCEPTANCE_392D86E.md), then complete
-the explicit Devpost rules-review gate, create the local Devpost draft, record
+Immediate next order is fixed: use the exact installed `49385f2` candidate and
+[its package/native evidence](demo/evidence/PACKAGE_49385F2_2026-09-12.md), then
+complete the explicit Devpost rules-review gate, create the local Devpost draft, record
 the maximum-five-minute OpenCode recovery/quiet story, and only then publish the
 accepted installer and submit with the required architecture PNG, AWS Builder
 ID, video URL and bonus-post URL. Do not add features, rerun paid models, claim
