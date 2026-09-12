@@ -21,6 +21,22 @@ bridge lifecycle; do not churn the accepted package without failing evidence.
 
 ## Latest verified checkpoint — supersedes historical status below
 
+**12 September installed candidate checkpoint:** the current locked release is
+product source `79d4d18`, stored in `build/release-candidate-79d4d18`; repository
+head `30c3ac8` matched `origin/main` and the worktree was clean before the run.
+The exact NSIS candidate installed successfully. The first packaged bridge
+reached ready in 15.297 seconds; a normal window-close message removed the
+desktop, its owned bridge and port 7420 listener in 2.976 seconds; reopen reached
+ready in 7.703 seconds with exactly one bridge/listener. A 25-second idle sample
+was flat and responsive, and 100/100 live health requests passed with 20.54 ms
+p95 and 0.12 MB bridge growth. The installed secret-backed configuration names
+Zen Muse Contributor Free and cap 3 without exposing the key. Exact evidence and
+the remaining visual boundary are in
+[`NATIVE_RUNTIME_79D4D18_2026-09-12.md`](demo/evidence/NATIVE_RUNTIME_79D4D18_2026-09-12.md).
+The host computer-control runtime returned `apps: []`, so this is installed
+runtime acceptance, not visual pet/navigation acceptance and not submission
+readiness.
+
 **Current package source: `619ea71`; base UI product change: `8394b4b`.** The package
 now contains the exact Zen/Ask correction: the selected Muse model is sent to
 `/v1/responses`, `muse-spark-1.3-contributor-free` is the first Zen suggestion

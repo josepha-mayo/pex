@@ -33,6 +33,16 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+- [x] Exact installed candidate `79d4d18` passes bridge startup, authenticated
+  boundary, ordinary close cleanup, reopen and bounded stability: ready in
+  15.297 seconds cold / 7.703 seconds reopen, complete owned-process cleanup in
+  2.976 seconds, flat 25-second idle resources, and 100/100 health requests with
+  20.54 ms p95. Zen Muse Contributor Free and cap 3 remain secret-store backed.
+  [Installed-runtime evidence and visual boundary](demo/evidence/NATIVE_RUNTIME_79D4D18_2026-09-12.md).
+- [ ] Observe Home/Inspector/Deck/Settings and both Pex/Von overlays on the exact
+  installed `79d4d18` candidate. The current computer-control host exposed no
+  native app surface, so do not infer visual acceptance from source tests.
+
 - [x] Current source/package `6d18167` renders the exact two verified built-in
   atlases from stable bundled URLs, removing repeated bridge atlas
   transfer/Pillow validation and preventing a selected Von from flashing as Pex.
