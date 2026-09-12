@@ -68,9 +68,17 @@ records that gate. A root [`devpost-submission.md`](../devpost-submission.md)
 now maps the verified product to every official field. Submitter type is
 confirmed as Individual and the AWS Builder ID was supplied privately; do not
 copy the email into tracked files. Country, required architecture attachment,
-public video URL, optional installer publication, rendered-form review, and the
+public video URL, rendered-form review, and the
 final submit remain open. The final submit remains a separate explicit-
 confirmation gate.
+
+The exact private-safe field mapping is now
+[`demo/DEVPOST_FINAL_PAYLOAD.md`](demo/DEVPOST_FINAL_PAYLOAD.md). Nigeria and
+Individual are confirmed. The Builder ID exists privately but is deliberately
+absent from tracked files. The bonus article URL returns an anonymous HTTP 200,
+but the returned SPA shell contains neither its title nor content ID and exact-
+title search did not surface it, so logged-out article visibility and bonus
+credit remain unverified.
 
 Joseph's latest working target is now two days. Keep the critical path narrow:
 do not add integrations, pets, cloud deployment, or speculative UI rewrites. The
