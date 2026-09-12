@@ -29,8 +29,9 @@ requirements fetched on 12 September 2026 remain authoritative.
 | `27734` | Architecture diagram | Upload `docs/architecture/pex-architecture.png`; do not send as a text answer |
 | `27735` | AWS Builder ID | Use the email Joseph supplied privately; never copy it into Git or chat output |
 
-The architecture file is a 104,099-byte PNG, visually reviewed at its original
-1243×1733 resolution. It shows the goal/evidence/Strands/verifier/policy loop,
+The architecture file is a 104,099-byte PNG with SHA-256
+`6839bdcf9667b3de104e87a675df896a75654ff62adc6111bb619d26b41eae73`,
+visually reviewed at its original 1243×1733 resolution. It shows the goal/evidence/Strands/verifier/policy loop,
 same-session OpenCode/Codex action, Zen BYOK vault boundary, SQLite audit, and
 optional AgentCore Runtime explicitly labeled `NOT DEPLOYED`.
 
