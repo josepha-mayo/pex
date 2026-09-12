@@ -212,6 +212,26 @@ export function PetStage({
     persistStatusBubbleKey(undefined, persistentKey);
   }
 
+  const statusBubble = status && bubbleVisible ? (
+    <div className="activity-bubble" aria-live="polite">
+      <button type="button" className="bubble-content" onClick={onActivate}>
+        <span className="status-dot" aria-hidden="true" />
+        <span>
+          <strong>{status.label}</strong>
+          <small>{status.detail}</small>
+        </span>
+        <span className="bubble-action">Open</span>
+      </button>
+      <button
+        type="button"
+        className="pet-status-dismiss"
+        aria-label="Dismiss PEX status message"
+        title="Dismiss status message"
+        onClick={dismissStatusBubble}
+      >−</button>
+    </div>
+  ) : null;
+
   return (
     <div
       className={`pet-stage ${overlay ? "pet-stage-overlay" : ""}`}
@@ -248,28 +268,14 @@ export function PetStage({
         )}
         <span className="pet-name">{name}</span>
       </button>
-      {status && bubbleVisible ? (
-        <div className="activity-bubble" aria-live="polite">
-          <button type="button" className="bubble-content" onClick={onActivate}>
-            <span className="status-dot" aria-hidden="true" />
-            <span>
-              <strong>{status.label}</strong>
-              <small>{status.detail}</small>
-            </span>
-            <span className="bubble-action">Open</span>
-          </button>
-          <button
-            type="button"
-            className="pet-status-dismiss"
-            aria-label="Dismiss PEX status message"
-            title="Dismiss status message"
-            onClick={dismissStatusBubble}
-          >−</button>
-        </div>
-      ) : null}
       {overlay && onDismiss ? (
-        <button type="button" className="pet-overlay-close" aria-label="Hide PEX pet" title="Hide pet (Esc)" onClick={onDismiss}>×</button>
-      ) : null}
+        <div className="pet-overlay-panel">
+          <button type="button" className="pet-overlay-close" aria-label="Hide PEX pet" title="Hide pet (Esc)" onClick={onDismiss}>
+            <span aria-hidden="true">×</span> Hide
+          </button>
+          {statusBubble}
+        </div>
+      ) : statusBubble}
     </div>
   );
 }

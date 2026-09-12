@@ -110,8 +110,9 @@ test("overlay actor, status bubble, and hide control share scale-aware geometry"
     }
     const styles = await readFile(new URL("./styles.css", import.meta.url), "utf8");
     assert.match(styles, /\.pet-stage-overlay \.pet-actor\s*\{[\s\S]*?width:\s*var\(--pet-overlay-actor-width, 126px\)/u);
-    assert.match(styles, /\.pet-stage-overlay \.activity-bubble\s*\{[\s\S]*?calc\(100% - var\(--pet-overlay-actor-width, 126px\)\)/u);
-    assert.match(styles, /\.pet-stage-overlay > \.pet-overlay-close\s*\{[\s\S]*?left:\s*calc\(var\(--pet-overlay-actor-width, 126px\) \+ 4px\)/u);
+    assert.match(styles, /\.pet-stage-overlay \.activity-bubble\s*\{[\s\S]*?width:\s*100%;[\s\S]*?margin:\s*0;/u);
+    assert.match(styles, /\.pet-overlay-panel\s*\{[\s\S]*?calc\(100% - var\(--pet-overlay-actor-width, 126px\)\)[\s\S]*?align-self:\s*flex-end;/u);
+    assert.match(styles, /\.pet-overlay-close\s*\{[\s\S]*?justify-self:\s*end;[\s\S]*?-webkit-app-region:\s*no-drag;/u);
   } finally {
     await vite.close();
   }

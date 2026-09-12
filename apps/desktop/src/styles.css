@@ -2485,25 +2485,34 @@ html.pet-shell #root {
 }
 
 .pet-overlay-close {
-  width: 24px;
-  height: 24px;
-  padding: 0;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  justify-self: end;
+  padding: 0 9px;
   border: 1px solid rgba(236, 244, 239, 0.22);
   border-radius: 999px;
   color: rgba(238, 245, 240, 0.9);
   background: rgba(12, 19, 24, 0.92);
-  font: 500 17px/1 system-ui, sans-serif;
+  font: 650 10px/1 system-ui, sans-serif;
   cursor: pointer;
-  opacity: 0.72;
+  opacity: 0.86;
   -webkit-app-region: no-drag;
 }
 
-.pet-stage-overlay > .pet-overlay-close {
-  position: absolute;
-  top: 8px;
-  left: calc(var(--pet-overlay-actor-width, 126px) + 4px);
-  right: auto;
-  z-index: 2;
+.pet-overlay-close > span {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.pet-overlay-panel {
+  width: min(150px, calc(100% - var(--pet-overlay-actor-width, 126px)));
+  min-width: 0;
+  display: grid;
+  align-self: flex-end;
+  gap: 6px;
+  margin: 0 0 16px -2px;
 }
 
 .pet-status-dismiss {
@@ -2538,11 +2547,11 @@ html.pet-shell #root {
 }
 
 .pet-stage-overlay .activity-bubble {
-  width: min(138px, calc(100% - var(--pet-overlay-actor-width, 126px)));
+  width: 100%;
   min-height: 72px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 24px;
-  margin: 0 0 16px -2px;
+  margin: 0;
   padding: 10px 10px;
   border-color: rgba(225, 239, 231, 0.24);
   border-radius: 13px;
