@@ -27,6 +27,8 @@ still correctly reports `coherent_runs:[]`, `can_freeze:false`; missing
 OS-isolated hidden evaluation, complete raw vendor logs, controller-verified
 Cursor networking and synchronous Cursor+PEX same-session treatment prohibit a
 headline lift or leaderboard claim.
+Exact command, scope and refusal evidence are recorded in
+[`demo/evidence/BENCHMARK_GATE_2026-09-12.md`](demo/evidence/BENCHMARK_GATE_2026-09-12.md).
 
 Fresh current-source live proof is also complete on clean `deb2b15`: recovery
 passed in 68.28 seconds with one same-session correction and exact final bytes;
