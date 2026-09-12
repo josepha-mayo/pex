@@ -2,9 +2,10 @@
 
 ## Current — 12 September 2026
 
-**Current installed/package source: `d2d4879`, exactly Pex and Von.** Home names
+**Current installed/package source: `392d86e`, exactly Pex and Von.** Home names
 OpenCode and Codex as the MVP harnesses; Inspector/Deck actions wrap within the
-viewport; Deck attention metrics use a responsive 3/2/1-column layout. Fresh
+viewport; Deck attention metrics use a responsive 3/2/1-column layout; the pet's
+labelled hide control is anchored to its status panel instead of floating. Fresh
 production rendering, 294 desktop contracts with one intentional Windows
 symlink skip, and the 71-module production build pass.
 
@@ -15,9 +16,9 @@ sidecars. Authenticated packaged settings return Zen
 attach no worker and make zero provider calls. Frozen bridge lifetime passes 3/3.
 The exact installed binary differs from canonical in only the expected three-byte
 Tauri `UNK` to `NSS` marker and its desktop-owned bridge is healthy. A bounded
-30-second startup/idle sample settled near 371 MiB private across ten processes;
+61.82-second startup/idle sample settled at 325.16 MiB private across ten processes;
 this is moderate, not lightweight, but showed settling rather than runaway
-growth. [Exact package evidence](docs/demo/evidence/PACKAGE_D2D4879_2026-09-12.md).
+growth. [Exact package evidence](docs/demo/evidence/PACKAGE_392D86E_2026-09-12.md).
 
 The current submission-critical backend seam passes 476 tests with one
 intentional skip and zero failures across Zen BYOK, provider binding, Strands,
@@ -32,7 +33,7 @@ maximum-five-minute video; public installer URL; and final Devpost form review.
 AgentCore is implemented/tested but not deployed. The formal benchmark remains
 unfrozen, with no citeable score or leaderboard rank. Follow the
 [focused shipping gate](docs/MVP_SHIP_GATE.md) and
-[native acceptance card](docs/demo/NATIVE_ACCEPTANCE_D2D4879.md).
+[native acceptance card](docs/demo/NATIVE_ACCEPTANCE_392D86E.md).
 
 ## Historical source-bound checkpoints
 

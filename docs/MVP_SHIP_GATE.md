@@ -33,21 +33,22 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
-- [x] Exact-source candidate `d2d4879` makes Home visibly read as an
+- [x] Exact-source candidate `392d86e` makes Home visibly read as an
   OpenCode/Codex agent harness, increases companion legibility and tightens the
   visual hierarchy, wraps Inspector/Deck actions within the viewport, and gives
-  Deck metrics a responsive 3/2/1-column layout. Desktop contracts pass 294 with
+  Deck metrics a responsive 3/2/1-column layout and anchors one labelled pet-hide
+  control to the status panel. Desktop contracts pass 294 with
   one intentional platform
   skip; production build passes 71 modules; full Tauri MSI/NSIS build and the
   exclusive verifier pass with `release_ready:true`, zero blockers, exact Pex/Von,
   Zen free Muse first, cap three and zero provider calls. The installed/native
   acceptance box remains open.
-  [Package evidence and hashes](demo/evidence/PACKAGE_D2D4879_2026-09-12.md).
-- [ ] Visibly accept exact installed candidate `d2d4879`. The NSIS installer
+  [Package evidence and hashes](demo/evidence/PACKAGE_392D86E_2026-09-12.md).
+- [ ] Visibly accept exact installed candidate `392d86e`. The NSIS installer
   completed successfully, the installed desktop launched and its authenticated
-  bridge reached ready state. A 30-second startup/idle sample was settling near
-  371 MiB private across ten processes; after startup CPU advanced 0.3125 seconds
-  over 5.58 seconds. This is moderate, not tiny, but shows settling instead of a
+  bridge reached ready state. A 61.82-second startup/idle sample settled at
+  325.16 MiB private across ten processes; lifetime CPU advanced 1.40625 seconds
+  over about 61.5 seconds. This is moderate, not tiny, but shows settling instead of a
   bounded runaway. Native
   visual/pet interaction remains
   unchecked because the control host still exposed no native app surface.

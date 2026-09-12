@@ -9,14 +9,14 @@ Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
 OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Package source `d2d4879` ships only Pex and Von,
+Package source `392d86e` ships only Pex and Von,
 defaults fresh installs to three semantic review dispatches per session, and passes both installer
 content/inventory gates. It also routes Zen Muse through Responses and forbids
 silent model fallback. The current submission-critical backend seam passes 476
 tests with one intentional skip and zero failures across BYOK, Strands, goals,
 Ask PEX, OpenCode, Codex and local AgentCore contracts. The newest Home presents
-OpenCode and Codex as explicit harnesses with a larger transparent companion,
-and Inspector/Deck headings wrap actions within the viewport; its production
+OpenCode and Codex as explicit harnesses with a larger companion, an anchored
+labelled pet-hide control, and Inspector/Deck headings that wrap actions within the viewport; its production
 render and full desktop suite pass. Visible native pet/control
 acceptance still needs a manual pass because the current automation host exposes
 no native app surface.
@@ -26,14 +26,14 @@ while one controlled incomplete stop received one independently verified
 same-session correction, reached exact final artifacts with `helped:true`, then
 received a final NOOP. These are single public diagnostics, not a benchmark.
 The recovery audit exposed one wrong derived byte-count aside; current package
-`d2d4879` contains the deterministic sanitation and verifier-prompt repair,
+`392d86e` contains the deterministic sanitation and verifier-prompt repair,
 active event-burst read coalescing, and bundled built-in pet rendering that
 avoids repeated atlas transfer/validation and wrong-pet startup flashes. It also
 contains the cold OpenCode response bound, token-delta triage, record-only
 progress handling and bounded capability probe used by the accepted same-source
 quiet/recovery pair.
-The exact installed process tree was settling near 371 MiB private across ten
-processes after a bounded 30-second startup/idle sample. Final visible interaction
+The exact installed process tree settled at 325.16 MiB private across ten
+processes after a bounded 61.82-second startup/idle sample. Final visible interaction
 acceptance and recording remain.
 Installed OpenCode 1.18.30 also passes a fresh model-free production HTTP/session/
 SSE smoke, reaching Deep after the real event-stream handshake; this does not
@@ -41,7 +41,7 @@ replace the separate model-backed recovery evidence.
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
-[current package evidence](docs/demo/evidence/PACKAGE_D2D4879_2026-09-12.md),
+[current package evidence](docs/demo/evidence/PACKAGE_392D86E_2026-09-12.md),
 [current status](STATUS.md), and the source-bound evidence linked there.
 
 ## The pain it removes
@@ -98,7 +98,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for package source `d2d4879` and
+installer candidate exists for package source `392d86e` and
 is not code-signed.
 These instructions cover building from source; package integrity is not native
 acceptance or publisher trust. Current source-bound package evidence is recorded

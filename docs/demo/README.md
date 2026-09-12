@@ -5,9 +5,9 @@ directory are historical references and must not be presented as final-source pr
 
 ## Current checkpoint — 12 September 2026
 
-- Latest verified MSI/NSIS: source `d2d4879`; receipt
-  `apps/desktop/build/pex-package-receipt-d2d4879.json`, SHA-256
-  `30b800b36ffbff654d7ca58f0c1c4b35e282eba99fb40df99d0714173db88c81`.
+- Latest verified MSI/NSIS: source `392d86e`; receipt
+  `build/pex-package-receipt-392d86e-v2.json`, SHA-256
+  `03bee168f98b54b884272a4ab088f5b40ef7186d97723701a7daf622ed282baf`.
 - Both installers contain exactly Pex and Von and pass with zero package blockers.
 - Current source passes the full Python regression: 4,440 passed, 32 skipped,
   zero failures/errors at `570964b`. Focused final-package gates
@@ -17,10 +17,11 @@ directory are historical references and must not be presented as final-source pr
   with one opt-in cloud skip and 368 benchmark/scoring/Cursor/safety tests.
 - Clean `e864389` retains a real Codex/Strands quiet and same-thread recovery pair.
   Clean `6a1d98b` and `93dfef3` retain current OpenCode 1.18.30 quiet and causal
-  same-session recovery diagnostics; final package `d2d4879` contains the prose
+  same-session recovery diagnostics; final package `392d86e` contains the prose
   sanitation repair found by reviewing the recovery trace, active-event burst
   coalescing, stable bundled rendering for the exact two pets, and responsive
-  Inspector/Deck layout repairs verified in the production surface.
+  Inspector/Deck layout repairs and anchored labelled pet-hide control verified
+  in the production surface.
 - Native pet-window interaction acceptance remains pending because the current
   computer-control host exposes no native app surface.
 - No AgentCore deployment, frozen comparative benchmark, final video or submission is
@@ -34,7 +35,7 @@ in this directory showed the retired sparse eight-pet interface and Hatch/Import
 controls. The screenshots and clips are quarantined under
 `archive/legacy-eight-pet/` as historical evidence. None may be used in the
 Devpost gallery, README or final video.
-Capture a fresh package-`d2d4879` set only after native acceptance: Home with a
+Capture a fresh package-`392d86e` set only after native acceptance: Home with a
 connected worker and persistent goal, the Pex overlay with its message dismissed
 independently, the two-pet Companion settings with Von selected, the Zen BYOK
 write-only provider state/review cap, and the Inspector's bounded supervision

@@ -1508,7 +1508,38 @@ console host; aggregate working set can double-count shared pages. This is an
 auditability repair, not a product-runtime or installer change, and it does not
 prove long-duration leak freedom beyond the separate bounded stability sample.
 
-## Current final responsive package: d2d4879
+## Current two-pet control package: 392d86e
+
+Clean pushed source `392d86e910fc8b969eae82140c8f57b930d8f17d`
+supersedes `d2d4879`: the loose unlabelled overlay close glyph is replaced by one
+labelled `× Hide` control anchored to the status panel. The status message still
+dismisses independently, while pet hiding remains discoverable. A production pet
+render was inspected; desktop contracts pass 294 with one intentional Windows
+symlink skip and the 71-module production build passes.
+
+The rebuilt bridge/helpers, optimized desktop, recovered MSI/NSIS bundles,
+exclusive package verifier, packaged Zen settings smoke and frozen bridge lifetime
+all pass. The verifier reports `release_ready:true`, zero blockers and exact
+`UNK/MSI/NSS` marker variants. The smoke selects
+`muse-spark-1.3-contributor-free`, cap three, no worker and zero provider calls;
+frozen lifetime passes 3/3. Retained installers are under
+`build/release-candidate-392d86e`. Exact hashes and the intentionally retained
+failed recovery receipt are documented in
+[package 392d86e](demo/evidence/PACKAGE_392D86E_2026-09-12.md).
+
+The exact NSIS candidate is installed at `%LOCALAPPDATA%\\PEX`. Installed SHA-256
+`e57e57a6df679b4788b504f45a07b76352f9caa7b2cc89afd36604955fb7f058`
+differs from canonical only in the expected three-byte `UNK` to `NSS` marker;
+`/health/live` is healthy. A recursive 61.82-second sample settled from 373.54
+to 325.16 MiB private across ten processes; aggregate working set fell to 621.09
+MiB and CPU advanced about 1.41 seconds over 61.5 seconds. The footprint is
+moderate but did not run away in this bounded sample.
+
+Visible native pet-window interaction remains open because computer control still
+exposes no native app surface. Use
+[the 392d86e acceptance card](demo/NATIVE_ACCEPTANCE_392D86E.md).
+
+## Superseded final responsive package: d2d4879
 
 Clean pushed source `d2d48796549488aa81a8dd5fb98032a48fee9bad`
 supersedes `067916a` after rendered Deck review exposed internal horizontal
@@ -1667,9 +1698,9 @@ with one environment skip, 552 expanded MVP seam tests with one environment
 skip, 144 capability/OpenCode tests, 90 recovery/dispatch tests, Ruff and diff
 checks all pass. [Exact evidence](demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).
 
-Immediate next order is fixed: manually accept the exact installed `d2d4879`
+Immediate next order is fixed: manually accept the exact installed `392d86e`
 Home/Settings/Pex/Von interaction using
-[the current ten-minute card](demo/NATIVE_ACCEPTANCE_D2D4879.md), then complete
+[the current ten-minute card](demo/NATIVE_ACCEPTANCE_392D86E.md), then complete
 the explicit Devpost rules-review gate, create the local Devpost draft, record
 the maximum-five-minute OpenCode recovery/quiet story, and only then publish the
 accepted installer and submit with the required architecture PNG, AWS Builder
