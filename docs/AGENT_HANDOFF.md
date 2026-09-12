@@ -1494,6 +1494,20 @@ The exact final PEX-only screen procedure is now pinned in
 plan, not evidence. Follow it only after Joseph releases the screen, and retain
 failures rather than checking items from source/tests alone.
 
+## Full-tree resource observer correction
+
+The read-only installed-app observer now emits explicit full-tree totals for
+process count, private bytes, aggregate working-set bytes and lifetime CPU, and
+includes private bytes on every owned process row. Its synthetic PID-reuse and
+read-only-command test passes eight identity cases plus static coverage of all
+five required metrics. A live three-sample run against the already-running
+installed `79d4d18` candidate reported ten owned processes, about 350.6-351.2 MB
+private memory and 686.1-686.5 MB aggregate working set. Those figures include
+the desktop process, bridge, WebView renderers/GPU/utility/crash handler and
+console host; aggregate working set can double-count shared pages. This is an
+auditability repair, not a product-runtime or installer change, and it does not
+prove long-duration leak freedom beyond the separate bounded stability sample.
+
 ## Current OpenCode MVP closure: 150ea07
 
 Clean pushed source `150ea07b205776660219dbfb1802ff86b998e8df` now passes

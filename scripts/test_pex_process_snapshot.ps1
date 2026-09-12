@@ -37,4 +37,10 @@ foreach ($name in @('measure_pex_readonly.ps1', 'pex_process_snapshot.psm1')) {
         }
     }
 }
-'PASS: 8 synthetic identity cases and read-only command allowlist; no app processes inspected, launched or terminated.'
+
+$observer = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'measure_pex_readonly.ps1') -Raw
+foreach ($required in @('PrivatePageCount', 'total_working_set_bytes', 'total_private_bytes', 'total_cpu_seconds', 'process_count')) {
+    if ($observer -notmatch [regex]::Escape($required)) { throw "Missing full-tree metric: $required" }
+}
+
+'PASS: 8 synthetic identity cases, full-tree metrics, and read-only command allowlist; no app processes inspected, launched or terminated.'

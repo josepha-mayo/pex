@@ -18,6 +18,7 @@ function Read-ProcessSnapshot {
             Name = $_.Name
             Path = $_.ExecutablePath
             WorkingSetBytes = [long]$_.WorkingSetSize
+            PrivateBytes = [long]$_.PrivatePageCount
             CpuSeconds = ([double]$_.KernelModeTime + [double]$_.UserModeTime) / 10000000
         }
     }
@@ -37,13 +38,25 @@ while ($watch.Elapsed.TotalSeconds -lt $Seconds) {
         [pscustomobject]@{ event = 'root_instance_gone'; seconds = $watch.Elapsed.TotalSeconds } | ConvertTo-Json -Compress
         break
     }
+    [long]$totalWorkingSetBytes = 0
+    [long]$totalPrivateBytes = 0
+    [double]$totalCpuSeconds = 0
+    foreach ($process in $owned) {
+        $totalWorkingSetBytes += [long]$process.WorkingSetBytes
+        $totalPrivateBytes += [long]$process.PrivateBytes
+        $totalCpuSeconds += [double]$process.CpuSeconds
+    }
     # Lifetime counters per process instance, not a misleading sum of deltas
     # across changing PIDs. Shared working-set pages may be counted more than once.
     [pscustomobject]@{
         event = 'sample'
         seconds = [Math]::Round($watch.Elapsed.TotalSeconds, 2)
         read_only = $true
-        processes = @($owned | Select-Object Id, ParentId, CreatedTicks, Name, WorkingSetBytes, CpuSeconds)
+        process_count = $owned.Count
+        total_working_set_bytes = $totalWorkingSetBytes
+        total_private_bytes = $totalPrivateBytes
+        total_cpu_seconds = [Math]::Round($totalCpuSeconds, 4)
+        processes = @($owned | Select-Object Id, ParentId, CreatedTicks, Name, WorkingSetBytes, PrivateBytes, CpuSeconds)
     } | ConvertTo-Json -Depth 4 -Compress
     Start-Sleep -Milliseconds 1000
 }
