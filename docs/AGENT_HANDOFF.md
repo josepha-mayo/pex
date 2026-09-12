@@ -1539,6 +1539,21 @@ Visible native pet-window interaction remains open because computer control stil
 exposes no native app surface. Use
 [the 392d86e acceptance card](demo/NATIVE_ACCEPTANCE_392D86E.md).
 
+Current-head benchmark implementation recheck passes **405/405 in 473.34
+seconds** across PexBench integrity, execution safety, public task packaging,
+Cursor capture/delivery/ack/policy and speculative supervision. Fresh
+`four_arm.py readiness` remains an honest NO-GO: `coherent_runs:[]`,
+`can_freeze:false`, with the OS-isolated hidden-evaluator boundary, complete raw
+vendor logs, controller-verified Cursor network policy and synchronous
+Cursor+PEX same-session treatment still missing. Do not publish an uplift or
+leaderboard rank from historical partial rows.
+
+The package receipt contains `_internal/pex_supervisor/runtime.py` SHA-256
+`23d5c4b6047b01dc8c2120dc7e0d36248e7e8ba2703b72c5c634134d203d9533`,
+exactly matching the previously verified local AgentCore-compatible `/ping` and
+`/invocations` smoke. This carries the strict local protocol evidence to the
+current package without claiming an AWS deployment.
+
 ## Superseded final responsive package: d2d4879
 
 Clean pushed source `d2d48796549488aa81a8dd5fb98032a48fee9bad`

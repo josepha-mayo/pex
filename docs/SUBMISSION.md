@@ -18,6 +18,12 @@
 > [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
 > equate package integrity, browser rendering, or green tests with native acceptance.
 
+Current-head benchmark machinery passes 405 integrity, execution-safety,
+immutable-result and Cursor transport tests. The formal four-arm experiment is
+still not frozen and must not be scored: fresh readiness reports no coherent run
+and missing OS-isolated hidden evaluation, complete raw vendor logs and
+synchronous Cursor+PEX treatment.
+
 Track: **Professional Agents**  
 Deadline: 14 Sep 2026, 17:00 PDT  
 License: MIT  

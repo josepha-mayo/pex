@@ -26,6 +26,11 @@ goals, Ask PEX, OpenCode, Codex and local AgentCore protocol/runtime. The retain
 clean OpenCode 1.18.30 pair proves one independently verified same-session
 recovery with exact outcome and `helped:true`, plus one model-backed quiet NOOP
 with zero follow-ups. These are diagnostics, not a comparative benchmark.
+Current-head benchmark machinery also passes 405 integrity, isolation-policy,
+immutable-row, Cursor capture/delivery and speculative-supervision tests. Fresh
+readiness still correctly refuses to freeze: there is no coherent four-arm run,
+OS-isolated hidden evaluation and complete raw vendor capture are missing, and
+Cursor same-session treatment is not proven.
 
 Submission remains **NO-GO only for the open human-visible/publishing gates**:
 native Pex/Von transparency, motion, dismissal, dragging and hide/restore;
