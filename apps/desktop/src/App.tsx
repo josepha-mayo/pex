@@ -1277,7 +1277,10 @@ export function App() {
 
   useEffect(() => {
     if (!bridgeAvailable || !pageVisible || surface === "compact" || shell !== "main") return;
-    setBench((state) => ({ ...state, loading: state.runs.length === 0 && !state.message }));
+    const includeDeckOnPoll = surface === "deck";
+    if (includeDeckOnPoll) {
+      setBench((state) => ({ ...state, loading: state.runs.length === 0 && !state.message }));
+    }
     let firstRefresh = true;
     let slowDetailsRequested = false;
     const controller = new AbortController();
@@ -1292,7 +1295,9 @@ export function App() {
       }
     });
     const refreshSlowDetails = () => {
-      slowDetailsRequested = true;
+      // Inspector needs current evidence, not benchmark-file scans, the full
+      // command deck and process discovery. Deck reconciles those on entry.
+      slowDetailsRequested = includeDeckOnPoll;
       return refreshDetails();
     };
     detailRefresh.current = refreshDetails;

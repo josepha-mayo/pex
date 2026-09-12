@@ -1,5 +1,13 @@
 # PEX active handoff
 
+Current follow-up: Inspector's 32-second reconciliation no longer fetches the
+full Deck, benchmark files or desktop discovery. Those slow reads now run only
+on the Deck surface; Inspector retains intervention/context/attention reads
+and event-driven refresh. Desktop tests: 298 pass, one intentional symlink
+skip; production frontend build passes. This source-only polling repair is not
+yet packaged or measured natively. Installed `949cb47` remains the last tested
+binary; do not claim an idle-CPU improvement yet.
+
 Newest native result: [NATIVE_RC2_2026-09-13.md](demo/evidence/NATIVE_RC2_2026-09-13.md).
 Installed `103f4ec` completed one fresh UI-connected OpenCode recovery: exact
 initial phase one, one model-backed correction, exact final files, final NOOP,

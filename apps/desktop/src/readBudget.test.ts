@@ -162,6 +162,20 @@ test("app uses serialized background polls and bounds JSON and asset bodies, not
   assert.match(source, /controller\.abort\(\)/);
 });
 
+test("Inspector polling does not request Deck-only benchmark and discovery scans", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const start = source.indexOf('const includeDeckOnPoll = surface === "deck";');
+  const end = source.indexOf('}, [bridgeAvailable, loadDetails, pageVisible, shell, surface]);', start);
+  assert.ok(start > 0 && end > start);
+  const effect = source.slice(start, end);
+  assert.match(effect, /slowDetailsRequested = includeDeckOnPoll;/);
+  assert.doesNotMatch(effect, /slowDetailsRequested = true;/);
+  assert.match(effect, /await loadDetails\(includeSlowDetails, showLoading, controller.signal\)/);
+  assert.match(source, /includeDeck\s*\? bridgeJson<DeckData>\("\/v1\/deck"/);
+  assert.match(source, /includeDeck\s*\? bridgeJson<\{ runs\?/);
+});
+
 test("goal evidence polling is bound to goal intent, not every session snapshot", async () => {
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
@@ -210,7 +224,7 @@ test("canonical detail reads are event-first with one slow full reconciliation",
   assert.match(source, /message\.topic === "event_page"[\s\S]*?eventDerivedRefresh\.trigger\(\)/);
   assert.match(source, /const refreshDetails = coalesceBackgroundRead/);
   assert.match(source, /let slowDetailsRequested = false/);
-  assert.match(source, /const refreshSlowDetails = \(\) => \{\s*slowDetailsRequested = true;\s*return refreshDetails\(\);\s*\}/);
+  assert.match(source, /const refreshSlowDetails = \(\) => \{[\s\S]*?slowDetailsRequested = includeDeckOnPoll;\s*return refreshDetails\(\);\s*\}/);
   assert.match(source, /refreshSlowDetails,\s*DETAIL_RECONCILIATION_INTERVAL_MS/);
   assert.doesNotMatch(source, /loadDetails\(ticks % 4 === 0, ticks === 0, signal\)/);
   assert.doesNotMatch(source, /surface, pet\?\.last_action\?\.id\]\)/);
