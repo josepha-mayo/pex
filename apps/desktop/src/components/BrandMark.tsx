@@ -1,4 +1,4 @@
-import mark from "../assets/pex-mark-v2.png";
+import mark from "../assets/pex-mark.svg";
 
 export function BrandMark({ label = false }: { label?: boolean }) {
   return (

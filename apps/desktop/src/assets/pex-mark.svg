@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="PEX cat">
+  <path
+    fill="#55e6bb"
+    d="M9 25 11 8l15 10a29 29 0 0 1 12 0L53 8l2 17a25 25 0 0 1 2 10c0 15-10 23-25 23S7 50 7 35a25 25 0 0 1 2-10Z"
+  />
+  <circle cx="23" cy="34" r="4" fill="#0b1519" />
+  <circle cx="41" cy="34" r="4" fill="#0b1519" />
+  <path fill="#0b1519" d="M27 43h10l-5 5Z" />
+</svg>

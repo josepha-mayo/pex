@@ -298,8 +298,8 @@ p {
 }
 
 .brand-mark {
-  width: 27px;
-  height: 27px;
+  width: 32px;
+  height: 32px;
   display: block;
   object-fit: contain;
 }
@@ -312,8 +312,8 @@ p {
 }
 
 .startup-recovery-mark .brand-mark {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
 }
 
 .topbar-state {
