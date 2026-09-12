@@ -1,70 +1,38 @@
 # STATUS
 
-## Current — 11 September 2026
+## Current — 12 September 2026
 
-**Current package source: `6d18167`; base UI product change: `8394b4b`, exactly Pex
-and Von.** It includes the fresh-install cap of three durable semantic
-dispatches, scale-aware overlay geometry, and the exact Zen Responses repair.
-Muse Contributor Free is the first Zen hint/default; Ask PEX never silently
-switches model IDs and permits only one transient retry of the exact selection.
-The current package also coalesces active event-page bursts into one cancellable
-250 ms derived-state refresh without delaying cursor persistence or backend
-supervision. It also renders the verified built-in atlases from stable bundled
-URLs, avoiding repeated bridge transfer/validation and a selected-Von startup
-flash. The full Tauri build completed and both unsigned installers pass integrity with
-zero blockers. Receipt `build/pex-package-receipt-6d18167.json`, SHA-256
-`1ba49cc03dc4144bfc6f6e194b7e2c91732d463c7f90453be96d1f5f50b33170`.
-The frozen runtime contains zero retired hatch/image implementation files;
-custom import and image-generation write APIs remain disabled.
+**Current installed/package source: `d2d4879`, exactly Pex and Von.** Home names
+OpenCode and Codex as the MVP harnesses; Inspector/Deck actions wrap within the
+viewport; Deck attention metrics use a responsive 3/2/1-column layout. Fresh
+production rendering, 294 desktop contracts with one intentional Windows
+symlink skip, and the 71-module production build pass.
 
-Current OpenCode 1.18.30 evidence includes one clean-source quiet-completion
-pass at `6a1d98b` and one causal same-session recovery pass at `93dfef3`. The
-recovery trace exposed a wrong derived byte-count aside; package `6d18167`
-contains the deterministic sanitation and numeric-grounding repair at
-`a242a84`. Focused supervision/recovery tests pass 92/92 and the expanded
-Strands/provider/AgentCore/evidence gate passes 243 with 4 skips.
+The full two-job Tauri build produced retained MSI/NSIS installers. The exclusive
+package verifier reports `release_ready:true`, zero blockers and exact current
+sidecars. Authenticated packaged settings return Zen
+`muse-spark-1.3-contributor-free` first, retain the default three-review cap,
+attach no worker and make zero provider calls. Frozen bridge lifetime passes 3/3.
+The exact installed binary differs from canonical in only the expected three-byte
+Tauri `UNK` to `NSS` marker and its desktop-owned bridge is healthy. A bounded
+30-second startup/idle sample settled near 371 MiB private across ten processes;
+this is moderate, not lightweight, but showed settling rather than runaway
+growth. [Exact package evidence](docs/demo/evidence/PACKAGE_D2D4879_2026-09-12.md).
 
-The packaged candidate includes the compact Ask layout repair and an exact
-OpenCode `MessageAbortedError` fence: cancellation stays stopped without
-automatic follow-up until concrete tool/file activity, while a simultaneous
-free-provider limit keeps Blocked priority. Focused gates include 291 frontend
-tests with one platform skip, 137 OpenCode/Codex continuity tests, 210 BYOK/
-provider/configuration tests with one Windows symlink skip, 183 AgentCore local
-tests and a newer 368-test benchmark/scoring/Cursor/safety integrity gate.
-An expanded 387-test Strands/supervisor/trajectory/evidence/outcome gate passes
-with 6 skips and aiosqlite thread warnings promoted to errors; the 183-test
-AgentCore gate also passes under that policy with one opt-in live-cloud skip.
-The broad
-368-test run emitted one aiosqlite thread-shutdown warning; the exact named test
-and the entire 57-test owning Cursor contract passed with that warning category
-promoted to errors, so the warning is retained as non-reproduced. Production
-frontend build passed. The most recent full Python regression passes 4,440 with
-32 skips and zero failures/errors at `570964b`, with unhandled pytest thread
-exceptions promoted to failures. [Exact evidence](docs/demo/evidence/FULL_OFFLINE_570964B_2026-09-11.md).
-The benchmark manifest
-remains deliberately unfrozen, so no comparative result or leaderboard rank is
-claimed. Clean-source release preflight exits 0 with current sidecars, exactly
-Pex/Von and verified toolchains/wiring.
+The current submission-critical backend seam passes 476 tests with one
+intentional skip and zero failures across Zen BYOK, provider binding, Strands,
+goals, Ask PEX, OpenCode, Codex and local AgentCore protocol/runtime. The retained
+clean OpenCode 1.18.30 pair proves one independently verified same-session
+recovery with exact outcome and `helped:true`, plus one model-backed quiet NOOP
+with zero follow-ups. These are diagnostics, not a comparative benchmark.
 
-**Native acceptance of `6d18167` is pending.** Joseph is using the PC and asked
-for command-line work only until he says otherwise. Package integrity does not
-prove the repaired scale-aware overlay, Ask layout, cancellation display,
-active-worker stability or recording readiness. The last native candidate
-before these fixes did start without Retry, loaded Pex and Von, and correctly
-held a quota-limited OpenCode session Blocked without extra reviews or nudges.
-
-**Latest benchmark-accounting source: `93c17bc`.** 61 focused tests pass. Quiet
-completion now requires a successful semantic review bound to the exact STOP,
-session and goal, and rejects hidden failed inference. No new live provider calls
-were made. The archived batch remains nine quiet passes and one incomplete
-recovery observation, not ten passes or a comparative benchmark score.
-[Accounting evidence](docs/demo/evidence/SEMANTIC_REVIEW_ACCOUNTING_2026-09-10.md).
-
-AgentCore remains implemented/tested but not deployed. Current-package native
-validation, final recording and submission are not complete. See the
-[shipping gate](docs/MVP_SHIP_GATE.md) and
-[current package evidence](docs/demo/evidence/PACKAGE_6D18167_2026-09-11.md)
-for remaining work and exact hashes.
+Submission remains **NO-GO only for the open human-visible/publishing gates**:
+native Pex/Von transparency, motion, dismissal, dragging and hide/restore;
+maximum-five-minute video; public installer URL; and final Devpost form review.
+AgentCore is implemented/tested but not deployed. The formal benchmark remains
+unfrozen, with no citeable score or leaderboard rank. Follow the
+[focused shipping gate](docs/MVP_SHIP_GATE.md) and
+[native acceptance card](docs/demo/NATIVE_ACCEPTANCE_D2D4879.md).
 
 ## Historical source-bound checkpoints
 

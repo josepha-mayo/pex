@@ -1508,7 +1508,37 @@ console host; aggregate working set can double-count shared pages. This is an
 auditability repair, not a product-runtime or installer change, and it does not
 prove long-duration leak freedom beyond the separate bounded stability sample.
 
-## Current responsive agent-harness package: 067916a
+## Current final responsive package: d2d4879
+
+Clean pushed source `d2d48796549488aa81a8dd5fb98032a48fee9bad`
+supersedes `067916a` after rendered Deck review exposed internal horizontal
+overflow. Six attention summaries now form a deliberate 3/2/1-column responsive
+grid; metric content and the Deck heading shrink/wrap instead of pushing the
+viewport. Fresh rendered production Deck inspection confirmed the repair.
+Desktop contracts pass 294 with one intentional Windows symlink skip; production
+build passes 71 modules.
+
+The full two-job Tauri build, exclusive package verifier, packaged Zen settings
+smoke and frozen bridge lifetime contract all pass. The verifier reports
+`release_ready:true` and zero blockers; the smoke selects
+`muse-spark-1.3-contributor-free`, cap three, no worker and zero provider calls.
+MSI/NSIS copies are under `build/release-candidate-d2d4879`. Exact hashes and
+boundaries: [package d2d4879](demo/evidence/PACKAGE_D2D4879_2026-09-12.md).
+
+The exact NSIS candidate is installed at `%LOCALAPPDATA%\\PEX`. Installed SHA-256
+`b223762e60d79dfbbc2201ac24d5c01d4b9922778d7392c9808ba3de2b50256a`
+differs from the receipt's canonical desktop only in the expected three-byte
+Tauri `UNK` to `NSS` marker; `/health/live` is healthy. A 30-second startup/idle
+sample settled to ten processes and 370.98 MiB private at its final observation,
+with private memory falling from its 19.85-second peak. After startup, CPU advanced
+0.3125 seconds over 5.58 seconds. This is a moderate footprint, not a lightweight
+one, but the bounded sample shows settling rather than a runaway loop.
+
+Visible native pet-window interaction remains open because computer control still
+exposes no native app surface. Use
+[the d2d4879 acceptance card](demo/NATIVE_ACCEPTANCE_D2D4879.md).
+
+## Superseded responsive agent-harness package: 067916a
 
 Clean pushed source `067916aa71aa37f5d90e8f85145d35f23da8bd11`
 supersedes `4ebebb6` with a narrow viewport repair: Inspector/Deck heading text
@@ -1637,9 +1667,9 @@ with one environment skip, 552 expanded MVP seam tests with one environment
 skip, 144 capability/OpenCode tests, 90 recovery/dispatch tests, Ruff and diff
 checks all pass. [Exact evidence](demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).
 
-Immediate next order is fixed: manually accept the exact installed `067916a`
+Immediate next order is fixed: manually accept the exact installed `d2d4879`
 Home/Settings/Pex/Von interaction using
-[the current ten-minute card](demo/NATIVE_ACCEPTANCE_067916A.md), then complete
+[the current ten-minute card](demo/NATIVE_ACCEPTANCE_D2D4879.md), then complete
 the explicit Devpost rules-review gate, create the local Devpost draft, record
 the maximum-five-minute OpenCode recovery/quiet story, and only then publish the
 accepted installer and submit with the required architecture PNG, AWS Builder

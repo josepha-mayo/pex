@@ -5,7 +5,20 @@ later scope narrows the release target; the extensive historical checklist below
 is retained for audit and does not turn optional AgentCore deployment, Cursor,
 or every research extension into a contest-entry prerequisite.
 
-## MVP acceptance checkpoint — 10 September 2026
+## MVP acceptance checkpoint — 12 September 2026
+
+Current package `d2d4879` is installed and internally verified: exactly Pex/Von,
+responsive Home/Inspector/Deck/Settings presentation, 294 passing desktop
+contracts with one platform skip, production build, MSI/NSIS, strict package
+receipt with zero blockers, packaged Zen/BYOK smoke with zero provider calls,
+and 3/3 frozen lifetime checks. The installed bridge is healthy and a bounded
+resource sample settles near 371 MiB private across ten processes. Remaining
+NO-GO items are visible native pet-window acceptance, the final video, public
+installer URL, and Devpost review/submission. AgentCore remains local/tested and
+the comparative benchmark remains unfrozen.
+[Current package evidence](demo/evidence/PACKAGE_D2D4879_2026-09-12.md).
+
+### Historical checkpoints
 
 Superseding package: `06c6b73` (product `97e84d4`), 276 desktop tests, UI build,
 MSI/NSIS integrity and native onboarding pass. Both installers remain unsigned.

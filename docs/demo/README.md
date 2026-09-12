@@ -3,26 +3,26 @@
 Use the current checkpoint below when preparing the Devpost video. Older files in this
 directory are historical references and must not be presented as final-source proof.
 
-## Current checkpoint — 11 September 2026
+## Current checkpoint — 12 September 2026
 
-- Latest verified MSI/NSIS: source `6d18167`; receipt
-  `build/pex-package-receipt-6d18167.json`, SHA-256
-  `1ba49cc03dc4144bfc6f6e194b7e2c91732d463c7f90453be96d1f5f50b33170`.
-- Both installers contain exactly Pex and Von and 2,372 matching bridge-runtime
-  files, with zero retired hatch/image implementation paths.
+- Latest verified MSI/NSIS: source `d2d4879`; receipt
+  `apps/desktop/build/pex-package-receipt-d2d4879.json`, SHA-256
+  `30b800b36ffbff654d7ca58f0c1c4b35e282eba99fb40df99d0714173db88c81`.
+- Both installers contain exactly Pex and Von and pass with zero package blockers.
 - Current source passes the full Python regression: 4,440 passed, 32 skipped,
   zero failures/errors at `570964b`. Focused final-package gates
-  also cover 290 passing frontend tests with
+  also cover 294 passing frontend tests with
   one platform skip, 137 OpenCode/Codex continuity tests, 210 BYOK/provider/
   configuration tests with one Windows symlink skip, 183 AgentCore local tests
   with one opt-in cloud skip and 368 benchmark/scoring/Cursor/safety tests.
 - Clean `e864389` retains a real Codex/Strands quiet and same-thread recovery pair.
   Clean `6a1d98b` and `93dfef3` retain current OpenCode 1.18.30 quiet and causal
-  same-session recovery diagnostics; final package `6d18167` contains the prose
+  same-session recovery diagnostics; final package `d2d4879` contains the prose
   sanitation repair found by reviewing the recovery trace, active-event burst
-  coalescing, and stable bundled rendering for the exact two pets.
-- Native acceptance of the newest Ask/cancellation repairs is pending while Joseph uses
-  the PC; do not use Computer Use until he says otherwise.
+  coalescing, stable bundled rendering for the exact two pets, and responsive
+  Inspector/Deck layout repairs verified in the production surface.
+- Native pet-window interaction acceptance remains pending because the current
+  computer-control host exposes no native app surface.
 - No AgentCore deployment, frozen comparative benchmark, final video or submission is
   established. Historical receipts below retain their original limits. Follow
   [the active handoff](../AGENT_HANDOFF.md).
@@ -34,7 +34,7 @@ in this directory showed the retired sparse eight-pet interface and Hatch/Import
 controls. The screenshots and clips are quarantined under
 `archive/legacy-eight-pet/` as historical evidence. None may be used in the
 Devpost gallery, README or final video.
-Capture a fresh package-`6d18167` set only after native acceptance: Home with a
+Capture a fresh package-`d2d4879` set only after native acceptance: Home with a
 connected worker and persistent goal, the Pex overlay with its message dismissed
 independently, the two-pet Companion settings with Von selected, the Zen BYOK
 write-only provider state/review cap, and the Inspector's bounded supervision

@@ -9,7 +9,7 @@ Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
 OpenCode + Strands has demonstrated same-worker correction, exact artifact
 recovery, a helped outcome and quiet completion. Codex App Server has separate
 real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Package source `067916a` ships only Pex and Von,
+Package source `d2d4879` ships only Pex and Von,
 defaults fresh installs to three semantic review dispatches per session, and passes both installer
 content/inventory gates. It also routes Zen Muse through Responses and forbids
 silent model fallback. The current submission-critical backend seam passes 476
@@ -26,15 +26,14 @@ while one controlled incomplete stop received one independently verified
 same-session correction, reached exact final artifacts with `helped:true`, then
 received a final NOOP. These are single public diagnostics, not a benchmark.
 The recovery audit exposed one wrong derived byte-count aside; current package
-`067916a` contains the deterministic sanitation and verifier-prompt repair,
+`d2d4879` contains the deterministic sanitation and verifier-prompt repair,
 active event-burst read coalescing, and bundled built-in pet rendering that
 avoids repeated atlas transfer/validation and wrong-pet startup flashes. It also
 contains the cold OpenCode response bound, token-delta triage, record-only
 progress handling and bounded capability probe used by the accepted same-source
 quiet/recovery pair.
-The exact installed process tree settled near 377.5 MiB private across ten
-processes, moving only +0.36 MiB during the final 35.5 seconds of a bounded
-60-second startup/idle sample. Final visible interaction
+The exact installed process tree was settling near 371 MiB private across ten
+processes after a bounded 30-second startup/idle sample. Final visible interaction
 acceptance and recording remain.
 Installed OpenCode 1.18.30 also passes a fresh model-free production HTTP/session/
 SSE smoke, reaching Deep after the real event-stream handshake; this does not
@@ -42,7 +41,7 @@ replace the separate model-backed recovery evidence.
 AgentCore is implemented and tested but **not deployed**;
 deployment is optional under the current contest rules. No formal comparative
 benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
-[current package evidence](docs/demo/evidence/PACKAGE_067916A_2026-09-12.md),
+[current package evidence](docs/demo/evidence/PACKAGE_D2D4879_2026-09-12.md),
 [current status](STATUS.md), and the source-bound evidence linked there.
 
 ## The pain it removes
@@ -99,7 +98,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 This public repository provides a **source-development bootstrap**, not a packaged installer.
 A verified local Windows
-installer candidate exists for package source `067916a` and
+installer candidate exists for package source `d2d4879` and
 is not code-signed.
 These instructions cover building from source; package integrity is not native
 acceptance or publisher trust. Current source-bound package evidence is recorded
