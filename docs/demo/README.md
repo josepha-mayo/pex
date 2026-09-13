@@ -31,6 +31,9 @@ directory are historical references and must not be presented as final-source pr
   unfrozen with no coherent four-arm run or valid score. Final video and final
   submission remain open; the matching RC4 release is public. Follow the
   [active ship gate](../MVP_SHIP_GATE.md).
+- The [MVP behavior scorecard](MVP_BEHAVIOR_SCORECARD.md) consolidates the live
+  recovery, quiet-control, resource, and current implementation evidence while
+  preserving the formal benchmark boundary.
 
 ## Screenshot status
 

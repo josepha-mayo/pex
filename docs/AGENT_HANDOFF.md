@@ -33,7 +33,10 @@ The current live behavioral proof remains the fresh dummy-project OpenCode
 recovery documented below: saved Zen BYOK, real Strands supervision, one
 same-session continuation, exact repaired artifact, causal `helped:true`, then
 `NOOP`, with no paid-provider or AWS fallback. This is behavioral acceptance,
-not a frozen comparative benchmark. PexBench remains honestly unfrozen.
+not a frozen comparative benchmark. `docs/demo/MVP_BEHAVIOR_SCORECARD.md`
+consolidates the OpenCode/Codex recovery pairs, ten-case restraint result,
+resource soak, current implementation gate, and exact evidence links. PexBench
+remains honestly unfrozen.
 
 ## Logged-out Devpost receipt — 13 September 20:22 UTC
 
