@@ -37,11 +37,11 @@ their contract test. Repeat the short visual card on the recording laptop.
 Read [exact package/startup evidence](demo/evidence/PACKAGE_FC20329_2026-09-13.md).
 
 Fresh read-only GitHub preflight found a clean public `main`, MIT license,
-local/remote parity, all required local assets, and zero high-entropy credential
-matches outside explicit test fixtures. RC1 is still the older `49385f2`
-release. RC2 notes are prepared for the unpublished `fc20329` MSI/NSIS; do not
-mix RC1 URLs with current hashes. Read
-[public preflight](demo/evidence/PUBLIC_PREFLIGHT_9581DAC_2026-09-13.md).
+local/remote parity, an exact `D:\PEX-recording-kit-fc20329`, and zero
+high-entropy credential matches in product code or active documentation. RC1 is
+still the older `49385f2` release. RC2 notes are prepared for the unpublished
+`fc20329` MSI/NSIS; do not mix RC1 URLs with current hashes. Read
+[public preflight](demo/evidence/PUBLIC_PREFLIGHT_F188125_2026-09-13.md).
 
 Only two focused MVP submission gates remain: record/inspect a public video no
 longer than five minutes, then publish the exact current installers and finish
