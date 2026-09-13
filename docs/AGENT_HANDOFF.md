@@ -38,6 +38,12 @@ consolidates the OpenCode/Codex recovery pairs, ten-case restraint result,
 resource soak, current implementation gate, and exact evidence links. PexBench
 remains honestly unfrozen.
 
+The refreshed second-laptop bundle is
+`D:\PEX-recording-kit-f2832a8-v5.zip`, 102,250,216 bytes, SHA-256
+`6857a648dbf8ec89edc19b4c4e66fbcfe2a550d9afcbad419b9896e1c2984cfa`.
+It reopens as 24 entries, includes the current behavior scorecard and refreshed
+guides, and all eight `SHA256SUMS.txt` targets recompute exactly.
+
 ## Logged-out Devpost receipt — 13 September 20:22 UTC
 
 The public page `https://devpost.com/software/pex-mbcpr4` was opened in a hidden
