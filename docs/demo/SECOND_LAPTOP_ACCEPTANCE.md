@@ -5,15 +5,14 @@ retain the screenshot/log; do not film around a defect.
 
 ## 1. Download and verify
 
-For the current flat-logo candidate, copy
-`build/release-candidate-0454122/PEX_0.1.0_x64-setup.exe` from the development
-laptop. This candidate has matching installed hashes and authenticated startup;
-the immediately preceding UI passed native overlay/shutdown acceptance, and
-fresh release-source OpenCode plus Codex recovery and quiet proofs remain
-applicable because this delta is branding-only. Do not skip the exact-build
-visual gates below. The
-public [PEX 0.1.0 RC2](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc2)
-contains this exact product commit and installer.
+Download `PEX_0.1.0_x64-setup.exe` from the public
+[PEX 0.1.0 RC4](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4),
+or copy it from `build/release-candidate-f2832a8/` on the development laptop.
+RC4 is exact source `f2832a8651442eb3ee47a508a9c81cc16a82ec5d`.
+Its four installed executables match the exclusive receipt, and the installed
+bridge passed authenticated settings smoke with the same result bytes as the
+packaged candidate. RC3 passed the unchanged native renderer/overlay UX; do not
+skip the exact-build visual gates below for RC4.
 
 ```powershell
 $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
@@ -21,10 +20,10 @@ $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
 (Get-FileHash -LiteralPath $pexInstaller -Algorithm SHA256).Hash
 ```
 
-Expected bytes for `0454122`: `101719219`
+Expected bytes for RC4: `101722399`
 
 Expected SHA-256:
-`E405DBC55646FB08FAF270B9AC0CB99B0C6A2F65A2E9310607FA2E08FF097EB1`
+`63D9F4AE90AC9B3F83F5334B3D3C9ABF8EF3DB7D8BE82E87FF1876F3B007B18A`
 
 The installer is unsigned, so a Windows publisher warning is expected. Reject
 the file if its size or hash differs.

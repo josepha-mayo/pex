@@ -105,6 +105,16 @@ harness, not renderer/pet code. Nevertheless, do not claim an exact RC4 native
 visual acceptance until the RC4 installer is exercised on the recording laptop
 or the user explicitly makes this screen free for PEX-only checks.
 
+RC4 has now passed its non-visual installed-runtime gate on this machine. The
+NSIS completed silently with exit code zero; the installed desktop, bridge,
+Cursor hook and Cursor observer exactly matched the receipt's byte counts and
+SHA-256 hashes. The installed bridge then proved its HMAC challenge identity,
+served authenticated settings, exposed Zen/Muse first and the three-dispatch
+cap, made zero provider calls with worker attachment disabled, and shut down
+without a surviving PEX process. Its smoke receipt is byte-identical to the
+packaged smoke (`04dece60...d24db0`). This does not replace the remaining RC4
+visual/interaction check.
+
 ### Submission boundary and next actions
 
 The focused Windows MVP is public and has live Zen/OpenCode/Strands evidence.
@@ -124,6 +134,13 @@ recording laptop, run the short native checklist, record the live OpenCode Zen
 recovery plus quiet case, capture the architecture/AgentCore implementation
 accurately, and finish the Devpost submission. Do not reopen broad refactors
 before submission unless this exact smoke path reveals a release-blocking bug.
+
+The verified transfer bundle is `D:\PEX-recording-kit-f2832a8-v1.zip`,
+102,037,061 bytes, SHA-256
+`5b01102a69470fe0f06cc3df262f42251c2c2605190868e0362e3ca80479cd72`.
+Its 12-entry inventory was reopened and all installer/receipt/smoke entry hashes
+were recomputed successfully. Start with `START_HERE.md`; the included
+`SECOND_LAPTOP_ACCEPTANCE.md` is updated to RC4.
 
 C: is not full at this checkpoint: 204,205,641,728 bytes (about 190.18 GiB) are
 free. Four Hugging Face caches remain losslessly junctioned from their original
