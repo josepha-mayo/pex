@@ -35,7 +35,7 @@ auditable details live.”
 
 ## 1:15–2:30 — Same-session recovery
 
-[Show stage-one.txt, missing final.txt, the goal evidence, `SEND_NUDGE`, the
+[Show stage-one.txt, missing final.txt, the goal evidence, the one bounded continuation, the
 unchanged vendor session ID, and final.txt after correction.]
 
 “This is a controlled recovery case. I deliberately asked the worker to finish

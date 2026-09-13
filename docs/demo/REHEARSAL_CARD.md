@@ -1,7 +1,7 @@
 # Reproduce the controlled OpenCode demo
 
 This is a manual rehearsal recipe, not a new passing result. It translates the
-[recorded native recovery](evidence/NATIVE_D55E899_2026-09-10.md) into public
+[fresh current-source recovery](evidence/LIVE_OPENCODE_RECOVERY_890D701_2026-09-13.md) into public
 steps without private fixture scripts, credentials, or old session identifiers.
 The intentional first-stage stop demonstrates recovery; it does not measure
 natural failure frequency or benchmark improvement.

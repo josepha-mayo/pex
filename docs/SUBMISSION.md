@@ -22,8 +22,8 @@
 > [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
 > equate package integrity, browser rendering, or green tests with native acceptance.
 
-Current live-pair receipts and exact hashes are in
-[`LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md`](demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md)
+Current live receipts and exact hashes are in
+[`LIVE_OPENCODE_RECOVERY_890D701_2026-09-13.md`](demo/evidence/LIVE_OPENCODE_RECOVERY_890D701_2026-09-13.md)
 and [`LIVE_CODEX_PAIR_A529316_2026-09-13.md`](demo/evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md).
 
 Fresh readiness still reports no coherent four-arm run and `can_freeze:false`.
@@ -118,7 +118,7 @@ not use leaked benchmark numbers. Use the exact preflight and rejection checks i
    visible, then hide and restore the pet from Settings. Switch briefly to Von and open the
    inspector. Show that the companion communicates state without becoming another transcript.
 4. **1:15–2:45 — Live recovery.** In one OpenCode session, show stage one stopping with
-   `final.txt` missing, PEX's specific `SEND_NUDGE`, the second turn on the identical vendor
+   `final.txt` missing, PEX's one evidence-specific continuation, the second turn on the identical vendor
    session ID, and `final.txt = pex-supervised-ok`.
 5. **2:45–3:35 — Strands and safety.** Show the real `used_llm=true`,
    `runtime=strands-agents` receipts and the local deterministic-truth/policy boundary. Then
@@ -155,8 +155,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
 - [ ] Upload `docs/architecture/pex-architecture.png` in the required
   **Architecture diagram** field
-- [ ] Replace the older draft thumbnail with `docs/demo/assets/pex-mark.png`,
-  or with a privacy-safe frame captured from the exact current installer
+- [x] Replace the older draft thumbnail with `docs/demo/assets/pex-mark.png`;
+  the clean mark is now uploaded
 - [ ] Enter the required **AWS Builder ID** email on the Devpost form using the
   submitter-provided address; do not copy credentials or API keys into the form
 - [ ] Add the optional live-demo URL only if it is genuinely available and stable

@@ -17,12 +17,12 @@ steering visible.
 - Use the source-specific installer and receipt identified in the active
   [handoff](../AGENT_HANDOFF.md). Do not use old submission folders by habit.
 - Confirm the package receipt still says `release_ready: true` with no blockers.
-  The current local candidate is product source `fc20329`; its exact receipt,
-  installed runtime checks and installer hashes are in
-  [the package evidence](evidence/PACKAGE_FC20329_2026-09-13.md). Fresh
-  release-source recovery/quiet receipts are in the
-  [OpenCode evidence](evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md) and
-  [Codex evidence](evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md). Later
+  The current local candidate is product source `f2832a8`; its exact receipt,
+  installed runtime checks and installer hashes are in the active handoff and
+  [shipping gate](../MVP_SHIP_GATE.md). Fresh release-source recovery/quiet
+  receipts are in the
+  [OpenCode evidence](evidence/LIVE_OPENCODE_RECOVERY_890D701_2026-09-13.md) and
+  [Codex evidence](evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md). Later
   commits add evidence only; product code remains the packaged source.
 - The bounded native startup/settings/Home/resource checks are complete. Stop if startup, Retry,
   closing, or reopening hangs; retain the failure instead of filming around it.
@@ -59,8 +59,11 @@ steering visible.
 3. **0:55–1:20 — Quiet companion.** Show Pex. Dismiss its message while leaving the pet visible,
    then open Companion Settings and switch once to Von. These are the only two shipping pets.
 4. **1:20–2:45 — Same-session recovery.** In one isolated OpenCode session, show stage one
-   stopping without `final.txt`, PEX's evidence-bound `SEND_NUDGE`, the follow-up on the identical
+   stopping without `final.txt`, PEX's evidence-bound continuation, the follow-up on the identical
    vendor session ID, and the exact required `final.txt` artifact.
+   The audit may name the semantic proposal `SEND_NUDGE` and the delivered
+   operation `CONTINUE_SESSION`; judge the single same-session delivery and
+   verified outcome, not one internal label.
    Label this a controlled two-stage demonstration with a deliberate initial
    stop, not a naturally occurring failure or a comparative benchmark.
 5. **2:45–3:25 — Real Strands and safety.** Show the sanitized receipt fields

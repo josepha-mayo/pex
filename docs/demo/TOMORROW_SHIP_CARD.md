@@ -23,22 +23,22 @@ not edit the project, submission, code repository, or video.
 
 ## 1. Accept the installed candidate — 10 minutes
 
-Use the already installed NSIS candidate from product source `fc20329`. The
+Use the already installed NSIS candidate from product source `f2832a8`. The
 retained installer is:
 
-`build/release-candidate-fc20329/PEX_0.1.0_x64-setup.exe`
+`build/release-candidate-f2832a8/PEX_0.1.0_x64-setup.exe`
 
 Expected SHA-256:
 
-`aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c`
+`63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`
 
 The exact installed candidate has cleared package verification, installed hash
 identity, authenticated startup and a responsive bounded resource sample. The
 immediately preceding UI passed native Home/Settings and ordinary-close cleanup;
 its overlay exposed separate Hide and message-dismiss controls, and Escape hid
 only the pet. Because native computer control was unavailable after reboot,
-repeat that short visual card on exact `fc20329` before filming. Current package
-and startup evidence is in `evidence/PACKAGE_FC20329_2026-09-13.md`. Fresh
+repeat that short visual card on exact `f2832a8` before filming. Current package
+and startup evidence is in the active handoff and `../MVP_SHIP_GATE.md`. Fresh
 release-source OpenCode and Codex recovery/quiet pairs also pass. Concentrate
 the final recording rehearsal on the public throwaway OpenCode recovery and
 quiet cases.
@@ -95,7 +95,7 @@ Before any external write, confirm:
 git status --short
 git rev-parse HEAD
 git rev-parse origin/main
-Get-FileHash .\build\release-candidate-fc20329\PEX_0.1.0_x64-setup.exe -Algorithm SHA256
+Get-FileHash .\build\release-candidate-f2832a8\PEX_0.1.0_x64-setup.exe -Algorithm SHA256
 ```
 
 The worktree must be clean, local and remote main must match, and the installer
@@ -105,9 +105,8 @@ hash must equal the value above. Then:
    pushed root `devpost-submission.md` packet;
 2. continue the existing PEX Devpost project draft `pex-mbcpr4`;
 3. ensure the installer offered to judges matches the filmed build. Public
-   [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
-   still contains `49385f2`; publish the accepted `fc20329` as a new release
-   before using a new public download link, preserving RC1;
+   [PEX 0.1.0 RC4](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4)
+   contains the accepted `f2832a8` installer and matching server-recorded hash;
 4. upload the final public YouTube/Vimeo video, maximum five minutes;
 5. fill Devpost from `docs/SUBMISSION.md` and `docs/JUDGE_TESTING.md`;
 6. add `docs/architecture/pex-architecture.png`, AWS Builder ID, public repo,

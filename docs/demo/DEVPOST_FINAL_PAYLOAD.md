@@ -8,17 +8,15 @@ requirements fetched on 12 September 2026 remain authoritative.
 
 - Name: `PEX`
 - Tagline: `Stop babysitting coding agents. Keep the goals and irreversible decisions.`
-- State: draft
+- State: public project page exists; hackathon submission receipt is still absent
 - Owner: authenticated project author
 - Built with: Strands Agents, Python, Rust, Tauri, React, TypeScript, FastAPI,
   SQLite, OpenCode, Codex, Zen, Amazon Bedrock AgentCore
 - Public repository: `https://github.com/josepha-mayo/pex`
-- Public Windows judge build: RC1 is currently public but contains older
-  product source `49385f2`. Replace this field with the matching RC2 URL only
-  after the verified `fc20329` artifacts are published.
-- Thumbnail: an older privacy-safe Home screenshot is present in the draft.
-  Replace it during final review with `docs/demo/assets/pex-mark.png` or a
-  privacy-safe exact-current-build frame.
+- Public Windows judge build: RC4 is public at
+  `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4` and contains
+  product source `f2832a8` with server-recorded matching hashes.
+- Thumbnail: the clean `docs/demo/assets/pex-mark.png` mark is uploaded.
 
 ## Required custom answers
 
@@ -31,9 +29,9 @@ requirements fetched on 12 September 2026 remain authoritative.
 | `27734` | Architecture diagram | Upload `docs/architecture/pex-architecture.png`; do not send as a text answer |
 | `27735` | AWS Builder ID | Use the email Joseph supplied privately; never copy it into Git or chat output |
 
-The architecture file is a 104,099-byte PNG with SHA-256
-`6839bdcf9667b3de104e87a675df896a75654ff62adc6111bb619d26b41eae73`,
-visually reviewed at its original 1243×1733 resolution. It shows the goal/evidence/Strands/verifier/policy loop,
+The architecture file is a 94,752-byte PNG with SHA-256
+`dea91e42f057aea78a2d7c61add7b36de1ad3fc630a742bfd916e1a016fadd68`,
+visually reviewed at its original 1600×900 resolution. It shows the goal/evidence/Strands/verifier/policy loop,
 same-session OpenCode/Codex action, Zen BYOK vault boundary, SQLite audit, and
 optional AgentCore Runtime explicitly labeled `NOT DEPLOYED`.
 
@@ -59,9 +57,9 @@ demo, and PEX should not mislabel it.
 
 ### Testing instructions (`28191`)
 
-> Download the unsigned Windows judge build from the final RC2 release and
+> Download the unsigned Windows judge build from the RC4 release and
 > verify `PEX_0.1.0_x64-setup.exe` SHA-256 is
-> aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c.
+> 63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a.
 > Start a throwaway OpenCode server with `opencode serve --port 4096`, attach
 > with `opencode attach http://127.0.0.1:4096`, connect PEX to that address,
 > and configure Zen BYOK with the exact
@@ -86,8 +84,7 @@ confirmed. Do not republish a duplicate.
 Before requesting `yes, submit`:
 
 1. Attach the architecture PNG to field `27734`.
-2. Publish the matching `fc20329` RC2 artifacts, independently download them,
-   and confirm the public NSIS hash above before replacing the older RC1 link.
+2. Confirm the already-public `f2832a8` RC4 asset and server-recorded NSIS hash.
 3. Add and independently open the public video URL.
 4. Confirm the private Builder ID value in field `27735`.
 5. Confirm Individual, Nigeria, Professional Agents, and the repository URL in

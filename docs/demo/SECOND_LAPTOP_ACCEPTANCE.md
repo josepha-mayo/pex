@@ -78,8 +78,9 @@ goal, then send the phase-one-only prompt. Do not manually correct the worker.
 Accept only if PEX:
 
 - observes `final.txt` missing;
-- produces one evidence-specific bounded `SEND_NUDGE` for the controlled
-  missing-output case;
+- produces one evidence-specific bounded continuation for the controlled
+  missing-output case (the audit may show `SEND_NUDGE` or
+  `CONTINUE_SESSION` at different pipeline layers);
 - delivers it to the unchanged OpenCode vendor session;
 - observes `final.txt` containing `pex-supervised-ok` plus one newline;
 - records the correction outcome;

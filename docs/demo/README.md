@@ -5,14 +5,14 @@ directory are historical references and must not be presented as final-source pr
 
 ## Current checkpoint — 13 September 2026
 
-- Current installed product source: `fc20329`. The retained NSIS is
-  `build/release-candidate-fc20329/PEX_0.1.0_x64-setup.exe`, 101,712,659 bytes,
-  SHA-256 `aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c`.
+- Current installed product source: `f2832a8`. The retained NSIS is
+  `build/release-candidate-f2832a8/PEX_0.1.0_x64-setup.exe`, 101,722,399 bytes,
+  SHA-256 `63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`.
   Its MSI/NSIS receipt has zero blockers and the installed desktop matches the
-  NSIS payload. See [package/startup evidence](evidence/PACKAGE_FC20329_2026-09-13.md).
+  NSIS payload. See the [active shipping gate](../MVP_SHIP_GATE.md).
 - Both installers contain exactly Pex and Von. The preceding build passed bounded native Home, Settings,
   transparent Von, independent message dismissal, separate overlay Hide/Escape,
-  bridge liveness and ordinary shutdown. Exact `fc20329` passed installation,
+  bridge liveness and ordinary shutdown. Exact `f2832a8` passed installation,
   authenticated startup and responsiveness; repeat the short visual click-through
   on the recording laptop before filming.
 - The current-product non-live Python gate is 4,532 passed, 16 skipped and 18
@@ -21,13 +21,15 @@ directory are historical references and must not be presented as final-source pr
 - Fresh release-source OpenCode and Codex recovery/quiet pairs each prove real
   Zen/Strands inference, one evidence-specific same-session correction, an
   observed helpful outcome, final NOOP, and a separate zero-follow-up control.
-  See the [OpenCode pair](evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md) and
-  [Codex pair](evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
-- A 20-second exact-build sample measured 128.3 MiB private and 175.0 MiB
-  working set for desktop plus bridge. It is bounded evidence, not leak freedom.
+  See the [fresh OpenCode recovery](evidence/LIVE_OPENCODE_RECOVERY_890D701_2026-09-13.md),
+  retained ten-case quiet control, and
+  [Codex pair](evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md).
+- A five-minute exact-build bridge soak peaked at 80.8 MiB private and
+  100.2 MiB working set, with lower final memory and clean shutdown. It is
+  bounded bridge evidence, not full-desktop leak freedom.
 - AgentCore is implemented and locally tested, not deployed. PexBench remains
-  unfrozen with no coherent four-arm run or valid score. Final video, matching
-  public release and final submission remain open. Follow the
+  unfrozen with no coherent four-arm run or valid score. Final video and final
+  submission remain open; the matching RC4 release is public. Follow the
   [active ship gate](../MVP_SHIP_GATE.md).
 
 ## Screenshot status
