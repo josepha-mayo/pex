@@ -66,8 +66,9 @@ file-visibility race. Those causes were repaired before the passing 6ad2b99 run.
 Current tests on this exact lineage include: focused evidence/runtime 196 passed
 with four Windows link-capability skips; protocol/supervisor 127 passed with one
 skip; end-to-end handoff/permissions/roundtrip 82 passed; desktop 303 passed
-with one expected Windows symlink skip; Ruff clean. Mypy is unavailable in the
-environment and must not be claimed.
+with one expected Windows symlink skip; the fresh Strands/AgentCore-focused
+suite passed 243 with one environment skip; Ruff clean. Mypy is unavailable in
+the environment and must not be claimed.
 
 ### Honest submission boundary
 
@@ -79,8 +80,9 @@ this handoff below. Cursor contracts are packaged/tested but there is no fresh
 live Cursor benchmark on 6ad2b99.
 
 Do not call the formal four-arm comparative benchmark complete: current
-readiness is still `frozen:false` with no coherent four-arm run set, so there is
-no defensible comparative score. Do not claim an AWS deployment: AgentCore is
+readiness was re-run from the project virtual environment and still reports
+`frozen:false`, `coherent_runs:[]` and `can_freeze:false`, so there is no
+defensible comparative score. Do not claim an AWS deployment: AgentCore is
 implemented, dependency-packaged and locally tested, but was not deployed or
 invoked in AWS because the user prohibited billable work. The final user-owned
 gates are a brief visual pass/recording on the target laptop and Devpost finish.
