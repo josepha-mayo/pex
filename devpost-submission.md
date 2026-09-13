@@ -122,6 +122,11 @@ Recording flow:
 - AgentCore protocol is locally implemented and tested but not deployed to AWS.
 - PexBench is not frozen, so no comparative score or leaderboard rank is claimed.
 - Live project read after the proof refresh on 2026-09-13 at 19:35 UTC: the project page is published, `video_url:null`, and `submitted_at:null` for this event. The Devpost project page exists, but the hackathon submission has not been sent.
+- Run `python scripts/submission_preflight.py` before the final upload. It exits
+  nonzero and emits machine-readable blockers until the exact release assets,
+  pushed source, public video URL, architecture upload, Builder ID field, and
+  rules acceptance are all present. Manual flags attest form state without
+  storing private account values in the repository.
 
 ## Known Limitations
 
