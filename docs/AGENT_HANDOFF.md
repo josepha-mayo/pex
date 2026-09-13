@@ -1,5 +1,30 @@
 # PEX active handoff
 
+## Current recording package — 0454122
+
+Product source `0454122605d089bb8c790f209f0f747b0eabf274` enlarges the
+flat header mark and Home companion for recording while preserving the tested
+supervisor/adapter implementation. An isolated renderer review at the native
+920 by 700 viewport covered Home, Supervisor, Connections and Companion; it is
+not a native transparent-overlay acceptance substitute.
+
+The exact package is retained at `build/release-candidate-0454122/`. NSIS is
+101,719,219 bytes with SHA-256
+`e405dbc55646fb08faf270b9ac0cb99b0c6a2f65a2e9310607fa2e08ff097eb1`;
+MSI is 114,548,760 bytes with SHA-256
+`65a83dd85c677fdea2d13fab265562da0d0b0176a90bed5b5db3813bc7caa00c`.
+The exclusive receipt reports `release_ready:true` and no blockers. Three
+frozen bridge tests passed, and the authenticated packaged-settings smoke
+verified Zen/Muse catalog discovery with zero provider calls. Read
+[package evidence](demo/evidence/PACKAGE_0454122_2026-09-13.md).
+
+Recording packet: `D:\PEX-recording-kit-0454122.zip`, 216,085,945 bytes,
+SHA-256
+`17f0f4fe2b617498e6d34a356e9e34274b184ce9e776a7b45f3576710e9c63c6`.
+Repeat only the exact installed-window and transparent-overlay visual card on
+the recording laptop, then record/publish/submit. The formal four-arm benchmark
+and AgentCore deployment remain unproven and must not be claimed.
+
 ## Exact-current Codex recovery and quiet control passed — 189f476
 
 Clean `189f4765f9c668af2beda9ca7ba42b4f06c37b81` passed the two
