@@ -1,5 +1,133 @@
 # PEX active handoff
 
+## AUTHORITATIVE CURRENT STATE — f2832a8 / RC4 (2026-09-13)
+
+This section supersedes every older package/status section below it. The clean,
+pushed source and public prerelease tag both resolve to
+`f2832a8651442eb3ee47a508a9c81cc16a82ec5d`:
+https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4
+
+The three binding specifications remain `PEX_CORE_SPEC.md`,
+`PEX_BUILD_SPEC.md`, and `PEX_IMPLEMENTATION_RECOVERY_SPEC.md`. Preserve their
+product boundary: PEX is a separately running, goal-aware closed-loop
+supervisor above existing harnesses, not a prompt suffix, chat wrapper,
+dashboard, or end-only verifier. It must observe legitimate evidence, decide
+whether intervention is justified, act on the same worker when safe, verify the
+result, and avoid consuming human attention or provider calls unnecessarily.
+
+### What changed after RC3
+
+Live OpenCode testing exposed a real permission-lifecycle defect. OpenCode's
+`permission.asked` event supplied `permission`, `patterns`, and `metadata`, but
+the adapter retained only the request id. The supervisor therefore could not
+distinguish a harmless workspace read from an unknown permission and correctly
+failed closed, leaving the worker waiting for a human.
+
+Commit `762b4e2a402544a28eaad39aece8ab1f1d44fac7` repairs the root cause. The
+OpenCode adapter now retains the permission name, bounded path patterns, bash
+command metadata, and other bounded metadata. The planner automatically treats
+only an exact `read` request whose concrete paths stay inside the workspace and
+avoid sensitive names as low risk. External paths, traversal, `.env`, SSH/AWS
+credentials, unknown requests, writes, and shell commands remain human-gated.
+The focused adapter/planner/policy suite passed 98 tests; the broader adapter
+capability/protocol set passed 115; and the OpenCode ingestion/planner/policy
+lifecycle set passed 121. Ruff and diff checks were clean.
+
+Commit `f2832a8651442eb3ee47a508a9c81cc16a82ec5d` adds an explicit allowlisted
+free-worker selector to the immutable recovery harness, so a provider-specific
+free-tier exhaustion can be separated from PEX behavior without silently
+changing the tested contract. This is the exact packaged and tagged source.
+
+### Fresh live Zen BYOK + OpenCode + Strands proof
+
+The hard quietness run is retained at
+`build/quiet-ten-762b4e2-20260913-r1`. It used the saved OpenCode Zen BYOK,
+`muse-spark-1.3-contributor-free` as the PEX supervisor through Strands, and
+`ling-3.0-flash-fin-free` as the worker. All ten independently specified dummy
+projects were already correct when PEX reviewed them. All 10/10 exact artifacts
+and completion fences passed, all events and semantic reviews settled, and PEX
+emitted only `NOOP`: zero follow-ups and zero unnecessary interruptions. Source
+was unchanged and the owned OpenCode server exited. This is strong restraint
+evidence, not a comparative benchmark score.
+
+The first fresh recovery attempt,
+`build/recovery-762b4e2-20260913-r1`, was not a PEX failure: OpenCode emitted an
+explicit `free_tier_limit` for Ling and endpoint-unavailable retries. PEX made
+zero model calls and correctly suppressed a futile follow-up to a
+provider-blocked worker. Keep this as diagnostic evidence, not a passing run.
+
+The rerun `build/recovery-f2832a8-mimo-20260913-r1` passed on exact current
+source with the saved Zen BYOK, `mimo-v2.5-free` worker, Muse Contributor Free
+supervisor, and Strands. It began from a controlled incomplete state whose stage
+artifact was exact, final artifact absent, and prior follow-up count zero. PEX
+observed and reviewed the evidence, sent exactly one evidence-specific
+`SEND_NUDGE` to the same OpenCode session, observed the exact recovered final
+artifact, recorded a successful helped outcome, and stopped with `NOOP`. All
+185 events and semantic reviews settled; actions were exactly `NOOP` and
+`SEND_NUDGE`; source remained unchanged; the owned server exited. The run used
+five PEX calls (13,860 input / 1,290 output tokens) and took 180.7 seconds.
+
+Together these two passing runs prove the MVP behavior the demo needs: PEX can
+monitor a live worker, detect a genuine incomplete stop from external state,
+send one targeted correction, verify that it helped, and remain quiet across
+already-correct work. They do not prove the still-unfrozen four-arm
+Cursor/Codex comparative benchmark.
+
+### Exact RC4 Windows candidate
+
+Desktop tests passed 303 with one expected Windows symlink-capability skip;
+the renderer build passed; the release preflight reports `source_ready:true`,
+current frozen sidecars, exact two-pet inventory (Pex and Von), verified
+toolchains/wiring, and blockers `[]`. The exclusive package verifier reports
+`release_ready:true`, blockers `[]`. Packaged settings smoke verified bridge
+identity, authenticated settings, Zen/Muse-first discovery, the three-call cap,
+zero provider calls, and no worker attachment. Three frozen-bridge lifetime
+tests passed.
+
+The immutable local candidate is
+`build/release-candidate-f2832a8/`. GitHub reports the same byte counts and
+SHA-256 digests for all four public RC4 assets:
+
+- recommended NSIS `PEX_0.1.0_x64-setup.exe`: 101,722,399 bytes,
+  `63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`
+- MSI `PEX_0.1.0_x64_en-US.msi`: 114,556,952 bytes,
+  `4a3b1119e29933405330b51235b59dbd02bfc58245678787b90a6612ee8dd03e`
+- receipt `pex-package-receipt-f2832a8.json`: 1,546,516 bytes,
+  `603ecac3ea09e532ad41f362fd1216670cae9883c45d06f8a3016af505802d90`
+- smoke `packaged-settings-smoke-f2832a8.json`: 429 bytes,
+  `04dece60ce5654c2b50c3bb1f39dbedfff28b53da55fe9b7d4fb96d7dbd24db0`
+
+RC3 already passed the exact 920 by 700 native two-pet UX, overlay dismissal,
+Hide-versus-exit, ordinary close, and approximately 175 MiB combined working
+set checks. RC4 changes supervision permission handling and the benchmark
+harness, not renderer/pet code. Nevertheless, do not claim an exact RC4 native
+visual acceptance until the RC4 installer is exercised on the recording laptop
+or the user explicitly makes this screen free for PEX-only checks.
+
+### Submission boundary and next actions
+
+The focused Windows MVP is public and has live Zen/OpenCode/Strands evidence.
+OpenCode recovery and restraint are proven. Exact-current Codex integration is
+covered by the unchanged adapter path and prior live recovery/quiet evidence;
+Cursor remains contract-tested but lacks a fresh exact-current live run. The
+formal required four-arm comparative benchmark remains incomplete: do not
+invent a score or say it passed. AgentCore integration remains implemented,
+dependency-packaged, and locally tested, but was not deployed or invoked in AWS
+because paid/billable cloud work was not authorized. Do not claim deployment.
+
+Highest-value remaining user-visible work is now bounded: install RC4 on the
+recording laptop, run the short native checklist, record the live OpenCode Zen
+recovery plus quiet case, capture the architecture/AgentCore implementation
+accurately, and finish the Devpost submission. Do not reopen broad refactors
+before submission unless this exact smoke path reveals a release-blocking bug.
+
+C: is not full at this checkpoint: 204,205,641,728 bytes (about 190.18 GiB) are
+free. Four Hugging Face caches remain losslessly junctioned from their original
+C: paths to `D:\C-drive-recovery\huggingface-cache-20260913`; never delete that
+D: directory while the junctions exist. Do not perform broad deletion of the
+user's unrelated data. Measure and request an exact target before any further
+cleanup.
+
 ## AUTHORITATIVE CURRENT STATE — 6ad2b99 / RC3 (2026-09-13)
 
 This section supersedes every older package/status section below it. The clean,
