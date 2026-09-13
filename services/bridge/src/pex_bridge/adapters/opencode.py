@@ -1239,6 +1239,13 @@ class OpenCodeAdapter(HarnessAdapter):
             metadata["opencode_status"] = "idle"
         if lineage is not None:
             metadata[OPENCODE_MESSAGE_LINEAGE_KEY] = lineage
+        if kind == "message.part.updated" and part.get("type") == "tool":
+            call_id = part.get("callID")
+            if isinstance(call_id, str) and call_id:
+                metadata["opencode_tool_call_id"] = call_id[:256]
+            tool_status = state.get("status")
+            if isinstance(tool_status, str) and tool_status:
+                metadata["opencode_tool_status"] = tool_status[:64]
         if (
             assistant_message_completed
             and lineage is not None
@@ -1284,6 +1291,70 @@ class OpenCodeAdapter(HarnessAdapter):
             process_state=process_state,
             metadata=metadata,
         )
+
+    async def _enrich_shell_event(
+        self, event: HarnessEvent, session: HarnessSession
+    ) -> HarnessEvent:
+        """Recover the exact OpenCode exit receipt omitted from some SSE frames."""
+
+        if (
+            event.event_type != EventType.SHELL
+            or event.process_state is not None
+            or event.metadata.get("opencode_tool_status") != "completed"
+            or self.transport is None
+        ):
+            return event
+        lineage = event.metadata.get(OPENCODE_MESSAGE_LINEAGE_KEY)
+        message_id = lineage.get("message_id") if isinstance(lineage, dict) else None
+        call_id = event.metadata.get("opencode_tool_call_id")
+        if not isinstance(message_id, str) or not isinstance(call_id, str):
+            return event
+        try:
+            messages = await self.transport.request(
+                "GET",
+                self._scoped_path(f"/session/{session.vendor_session_id}/message", session.cwd),
+            )
+        except Exception:
+            return event
+        if not isinstance(messages, list):
+            return event
+        for message in messages:
+            if not isinstance(message, dict):
+                continue
+            info = message.get("info")
+            if not isinstance(info, dict) or info.get("id") != message_id:
+                continue
+            parts = message.get("parts")
+            if not isinstance(parts, list):
+                return event
+            for part in parts:
+                if (
+                    not isinstance(part, dict)
+                    or part.get("type") != "tool"
+                    or part.get("callID") != call_id
+                    or part.get("tool") not in {"bash", "shell"}
+                ):
+                    continue
+                state = part.get("state")
+                if not isinstance(state, dict) or state.get("status") != "completed":
+                    return event
+                raw_metadata = state.get("metadata")
+                tool_metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
+                raw_exit = tool_metadata.get("exit")
+                if not isinstance(raw_exit, int) or isinstance(raw_exit, bool):
+                    return event
+                process_state = parse_test_process_state(
+                    event.command,
+                    {
+                        "output": state.get("output"),
+                        "error": state.get("error"),
+                        "exit_code": raw_exit,
+                    },
+                )
+                if process_state is None:
+                    return event
+                return event.model_copy(update={"process_state": process_state})
+        return event
 
     async def pump_into_pipeline(self, ingest) -> None:
         seen = 0
@@ -1385,6 +1456,7 @@ class OpenCodeAdapter(HarnessAdapter):
                     event = self.normalize_sse(
                         session, payload, pre_admission_idle=pre_admission_idle
                     )
+                    event = await self._enrich_shell_event(event, session)
                     pending = (event, session.model_copy(deep=True))
                     ingesting = True
                     await ingest(event, pending[1])

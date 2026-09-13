@@ -131,6 +131,61 @@ def test_opencode_completed_bash_is_typed_shell_with_exact_pytest_exit(tmp_path)
     }
 
 
+async def test_opencode_shell_enrichment_binds_http_message_exit(tmp_path):
+    transport = MemoryHttpTransport()
+    registry = AdapterRegistry()
+    adapter = registry.opencode
+    adapter.attach_transport(transport)
+    session = HarnessSession(
+        id="opencode:ses_delta",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="ses_delta",
+        project_id=str(tmp_path),
+        cwd=str(tmp_path),
+        status=SessionStatus.WORKING,
+        last_activity=datetime.now(UTC),
+    )
+    transport.messages = [
+        {
+            "info": {"id": "assistant"},
+            "parts": [
+                {
+                    "type": "tool",
+                    "tool": "bash",
+                    "callID": "call-pytest",
+                    "state": {
+                        "status": "completed",
+                        "input": {"command": "python -m pytest"},
+                        "output": "FAILED test_csv_utils.py::test_exports\n1 failed",
+                        "metadata": {"exit": 1},
+                    },
+                }
+            ],
+        }
+    ]
+    event = HarnessEvent(
+        event_id="shell",
+        ts=datetime.now(UTC),
+        harness_type=HarnessType.OPENCODE,
+        session_id=session.id,
+        project_id=session.project_id,
+        event_type=EventType.SHELL,
+        phase=EventPhase.AFTER,
+        command="python -m pytest",
+        metadata={
+            OPENCODE_MESSAGE_LINEAGE_KEY: {"message_id": "assistant"},
+            "opencode_tool_call_id": "call-pytest",
+            "opencode_tool_status": "completed",
+        },
+    )
+
+    enriched = await adapter._enrich_shell_event(event, session)
+
+    assert enriched.process_state["pytest"]["exit_code"] == 1
+    assert enriched.process_state["pytest"]["ok"] is False
+    assert transport.calls[-1][0] == "GET"
+
+
 async def test_opencode_deltas_are_durable_record_only_and_do_not_delay_parent_bound_stop(
     tmp_path, monkeypatch
 ):
