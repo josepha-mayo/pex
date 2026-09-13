@@ -1,5 +1,50 @@
 # PEX active handoff
 
+## Current exact source/package and live MVP proof — e4f7e38
+
+Authoritative clean pushed source is
+`e4f7e3879d40173cd47fe8c151dc064bee77ca83`. This supersedes `fc20329` for
+shipping. It includes request-scoped supervisor evidence tools and the live
+harness deadline repair that preserves a full bounded supervision window after
+the worker's first stop.
+
+Fresh real OpenCode + Zen BYOK + Strands recovery passed on this source lineage:
+PEX observed a missing exact artifact, inspected legitimate workspace evidence,
+obtained independent verifier approval, sent one specific correction to the
+same OpenCode session, observed the exact corrected state, recorded
+`helped:true`, and finished with `NOOP`. The paired correct-completion case
+passed with a semantic `NOOP` and zero unnecessary follow-up. The recovery used
+14,138 input / 1,798 output PEX tokens; the quiet case used 5,781 / 671. This is
+real closed-loop behavior evidence, not a frozen comparative benchmark score.
+
+The exact package is retained at `build/release-candidate-e4f7e38/`:
+
+- NSIS: 101,717,661 bytes,
+  `45cce19f2554c4ef7fc201e6a6365d1b7a55cfd461abd1e9e3879d9bc9f8b403`
+- MSI: 114,561,048 bytes,
+  `75c1eb262a4b168da2aa22eee0027c32dca0f05b76ed204d65d354ece99a509b`
+- package receipt: 1,546,516 bytes,
+  `be9502b04dfbd27ad5cd322fa169759a9d29af92dce15212041661daf6b49111`
+
+The exclusive verifier reports `release_ready:true`, blockers `[]`; frozen
+bridge lifetime passes 3/3; desktop passes 303 with one platform skip; focused
+Strands/AgentCore/provider/supervisor tests pass 374 with one environment skip.
+The installed NSIS desktop hash exactly matches its receipt entry. Startup
+produced one desktop plus one owned authenticated bridge; 20-second idle use was
+0.031 aggregate CPU seconds, 177.9 MiB working set and 130.4 MiB private. Closing
+the desktop removed the bridge and left zero PEX processes. Read
+[exact evidence](demo/evidence/PACKAGE_E4F7E38_2026-09-13.md).
+
+Native computer control still exposes no application windows, so repeat the
+short PEX-only visual card on the recording laptop. Formal four-arm benchmark
+readiness remains an honest NO-GO (`frozen:false`, no coherent run set), and AWS
+AgentCore remains locally implemented/tested but not deployed. Do not invent a
+score, deployment, or native visual pass. C: currently has about 66.16 GiB free;
+the installed PEX runtime is only about 0.167 GiB. A safe set of roughly 1.8 GiB
+of top-level Temp files older than seven days was identified, but host policy
+blocked deletion before any file was touched. Goal remains active: visual record,
+public maximum-five-minute video, current installer release and Devpost finish.
+
 ## Current submission packet and remaining gates — post-fc20329
 
 The verified and installed product bytes are source
