@@ -33,6 +33,16 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+Newest installed candidate: **`0ea2639`**, including Markdown-path verification
+and honest timeout presentation. [Package](demo/evidence/PACKAGE_0EA2639_2026-09-13.md)
+passed full build, extraction and installed checks. Fresh clean-source
+[Codex recovery/quiet pair](demo/evidence/LIVE_CODEX_PAIR_0EA2639_2026-09-13.md)
+passed both tests. Fresh [installed OpenCode quiet behavior](demo/evidence/NATIVE_0EA2639_QUIET_2026-09-13.md)
+also passed with unchanged criteria, two real Strands calls and zero corrections.
+Overall goal completion stays uncertain for the unchecked third criterion.
+Intermediate lifecycle UI lag remains open; the older failed run remains failed.
+No comparative score or submission claim.
+
 Current installed candidate: **`32a0499`**. The Hide-position defect is fixed and
 verified in the installed package, not only the diagnostic build. See
 [package acceptance](demo/evidence/PACKAGE_32A0499_2026-09-13.md). Fresh native

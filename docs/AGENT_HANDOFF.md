@@ -1,5 +1,22 @@
 # PEX active handoff
 
+Newest installed candidate: **`0ea2639`**. Full sidecar/native/MSI/NSIS rebuild,
+package verification (zero blockers, first attempt), installed hash and native
+timeout-presentation checks passed. [Package](demo/evidence/PACKAGE_0EA2639_2026-09-13.md).
+Fresh Codex recovery/quiet pair also passed on clean source: 95.26s and 52.06s,
+one same-thread correction with helped true then final NOOP; quiet one NOOP and
+zero follow-ups. [Proof](demo/evidence/LIVE_CODEX_PAIR_0EA2639_2026-09-13.md).
+Fresh installed OpenCode quiet behavior passed with unchanged criteria: exact
+files, two-call real Strands NOOP (19.261s, 8,252 tokens), zero corrections, 138
+settled events. [Native evidence](demo/evidence/NATIVE_0EA2639_QUIET_2026-09-13.md).
+The third unstructured criterion remains unchecked; overall goal completion is
+still uncertain, not falsely verified. Ask PEX correctly answered selected
+worker status. Owned server exited and profiles/evidence were retained.
+Remaining observed UX lag: OpenCode stays Discovered during intermediate
+progress until terminal projection. The report identifies the nonterminal
+record-only fast path as the repair location; preserve its no-model-call
+efficiency and authority guards. Old entries below are historical. RC1 unchanged.
+
 Current installed candidate: **`32a0499`**. Package verification passed on one
 retry after a preserved temporary-cleanup EPERM; unchanged installer bytes.
 Installed native checks now confirm transparent Von, independent message
