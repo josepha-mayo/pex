@@ -78,8 +78,8 @@ goal, then send the phase-one-only prompt. Do not manually correct the worker.
 Accept only if PEX:
 
 - observes `final.txt` missing;
-- produces evidence-specific bounded `SEND_NUDGE` corrections (the bf5a25b
-  installed test needed two: missing output, then CRLF repair);
+- produces one evidence-specific bounded `SEND_NUDGE` for the controlled
+  missing-output case;
 - delivers it to the unchanged OpenCode vendor session;
 - observes `final.txt` containing `pex-supervised-ok` plus one newline;
 - records the correction outcome;

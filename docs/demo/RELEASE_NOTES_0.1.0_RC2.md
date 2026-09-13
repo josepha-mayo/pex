@@ -1,50 +1,49 @@
 # PEX 0.1.0 RC2 — Windows judge build
 
-Draft release notes, not a published release. Built from
-[bf5a25b](https://github.com/josepha-mayo/pex/commit/bf5a25bd319134fb472ac2049d9594e63e307a68).
+Draft release notes, not a published release. Product bytes were built from
+[`1cd42c8`](https://github.com/josepha-mayo/pex/commit/1cd42c8790d72035252cf7d1f94654ec4931fbe3).
+Later commits add evidence and submission assets only.
 
-This update adds a larger, crisp flat cat logo and shows recorded supervisor
-provider, model, call count and token usage in Inspector when available. It
-retains the two companions, Pex and Von, Zen BYOK, OpenCode and Codex App Server
-support, and Strands supervision with local evidence verification.
+PEX is a local goal-aware supervisor for existing coding agents. This focused
+Windows MVP ships exactly two companions, Pex and Von, and supports OpenCode
+HTTP plus Codex App Server. Supervisor inference uses the Strands Agents SDK;
+the verified live path uses a user-supplied Zen credential stored in the OS
+vault and the `muse-spark-1.3-contributor-free` model. PEX does not silently
+select a paid fallback.
 
 Download `PEX_0.1.0_x64-setup.exe` for the recommended Windows installer, or use
-the MSI alternative. These installers are unsigned.
+the MSI alternative. Both installers are unsigned, so Windows may show an
+unknown-publisher warning.
 
 | File | Bytes | SHA-256 |
 | --- | ---: | --- |
-| PEX_0.1.0_x64-setup.exe | 101666925 | `d3f547e24fffde3bb2ad063e54afcfd6e33ec6eba0fc404f9e099fe2930e5b71` |
-| PEX_0.1.0_x64_en-US.msi | 114470936 | `e8cca0986871c0a15fba65bb2de7f90c41d16b84e8080d5e97833ae168ed67ee` |
+| PEX_0.1.0_x64-setup.exe | 101689109 | `81c85b528e0e7aeae57a6c4bc554b08c54302df87f776f034bbec7aa9f36d849` |
+| PEX_0.1.0_x64_en-US.msi | 114499608 | `7254c5aaf88150bd156f33cb24dc01dc380d6273252cda5c85a1194e87191663` |
 
-Both package inventories passed verification. The installed NSIS desktop hash
-matched its receipt; Home, Inspector, Ask PEX and pet Hide were checked natively.
-Inspector visibly shows the correct model and token usage for the retained live
-review. Desktop checks passed 300 tests with one Windows symlink skip; three
-frozen runtime lifetime tests passed.
+Both embedded inventories passed verification with zero blockers. The installed
+bridge hash matches the NSIS payload. Bounded native acceptance covered startup,
+Home and Settings, exactly two pets, transparent Von, independent message
+dismissal, separate overlay Hide/Escape behavior, bridge liveness and ordinary
+cleanup. A 20-second visible-Home sample measured 128.5 MiB private and 178.1
+MiB working set for desktop plus bridge; this is not a long-run leak claim.
+
+The current-product non-live Python gate completed with 4,532 passed, 16 skipped
+and 18 explicit live deselections. Desktop completed with 302 passed and one
+Windows symlink-capability skip. Three frozen bridge lifetime tests passed.
+
+Fresh release-source OpenCode and Codex checks each demonstrated one
+evidence-specific correction delivered to the same worker session, an observed
+helpful outcome, and a final model-backed `NOOP`. Separate already-correct
+controls produced `NOOP` with zero PEX follow-ups. These are bounded behavioral
+proofs, not a comparative productivity benchmark.
+
+AgentCore's versioned `/ping` and `/invocations` runtime contract is implemented
+and locally tested, but no AWS AgentCore deployment is claimed. PexBench remains
+unfrozen and no score or leaderboard rank is claimed. Cursor remains optional
+and observe-only in this focused MVP.
 
 Follow the [judge guide](https://github.com/josepha-mayo/pex/blob/main/docs/JUDGE_TESTING.md)
 and [recording setup](https://github.com/josepha-mayo/pex/blob/main/docs/demo/SECOND_LAPTOP_ACCEPTANCE.md).
-Supply your own supervisor key; credentials are not bundled.
+Supply your own supervisor key; no credential is bundled.
 
-The fresh installed bf5a25b run verified Working during the OpenCode turn, two
-same-session corrections (missing file, then CRLF), exact final artifacts and
-real Strands NOOP. Overall completion remains uncertain for an unchecked
-criterion; second correction helped is null. See the
-[current live report](evidence/NATIVE_BF5A25B_RECOVERY_2026-09-13.md).
-The stationary Hide control and independent message dismissal passed on the
-installed `32a0499` package. A fresh native quiet test on that package produced
-correct files but its independent verifier timed out: it is a failed quiet
-acceptance test, not a pass. This candidate installs the subsequent Markdown-path
-parsing and timeout-presentation repairs. The old failed review now visibly says
-Review Incomplete. A fresh source-level Codex recovery/quiet pair passed on this
-earlier `0ea2639` revision; see [paired evidence](evidence/LIVE_CODEX_PAIR_0EA2639_2026-09-13.md).
-The fresh installed [OpenCode quiet check](evidence/NATIVE_0EA2639_QUIET_2026-09-13.md)
-also passed: exact files, real Strands NOOP, zero corrections. Overall completion
-remains uncertain for an unchecked unstructured requirement. The intermediate
-OpenCode lifecycle display lag is fixed and verified in bf5a25b.
-Short resource samples are bounded evidence, not long-duration freeze clearance.
-AgentCore is implemented and locally
-tested, not AWS-deployed. Cursor is observe-only in this MVP. The formal
-benchmark remains unfrozen, with no comparative productivity score claimed.
-
-RC1 remains available with its original artifacts.
+RC1 remains available with its original, older artifacts.
