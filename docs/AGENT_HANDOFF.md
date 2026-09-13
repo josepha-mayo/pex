@@ -1,5 +1,28 @@
 # PEX active handoff
 
+## Latest: real 23609bc recovery/quiet passed; two further native fixes
+
+Read [23609bc live/package/native report](demo/evidence/LIVE_23609BC_2026-09-13.md).
+Fresh clean-source recovery passed in 93.7s: one independently approved same-
+session correction, exact two files, helped=true, then quiet. Fresh quiet
+control passed in 123.76s: correct before review, zero follow-ups. Full package
+build, three frozen lifetime tests, package zero-blocker verification and
+installation/hash match passed. Installed source is 23609bc, not e989bdd.
+
+Native 23609bc also produced correct ready+LF bytes and two successful real
+Strands NOOPs using the saved vault key. All 229 observed events settled; one
+vendor user message confirmed zero follow-ups. BUT native UI showed two bugs:
+auto-selection changed during goal setup; a late known-user metadata refresh
+after a stream gap incorrectly restored Working after completion.
+
+Both are repaired in source after 23609bc. Regression reproduced the metadata
+failure before repair. Tests: 108 focused cross-layer, then 239 OpenCode-related
+tests passed; desktop 301 passed/one platform skip, build and Ruff passed.
+Do not weaken stream-gap/outcome authority or rewrite user DB history. Native
+worker server and PEX are now closed normally, profiles retained. No running
+test/build handles at this checkpoint. Next: package and freshly accept these
+last fixes; current installed 23609bc does not contain them.
+
 ## Current source checkpoint — native findings repaired, fresh live proof next
 
 Offline session 97129 FINISHED: 4480 passed, one test-fixture logging failure,

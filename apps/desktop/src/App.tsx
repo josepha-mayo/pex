@@ -991,7 +991,9 @@ export function App() {
   const explicitlySelected = selectedId
     ? sessions.find((session) => session.id === selectedId)
     : undefined;
-  const current = explicitlySelected || selectPrimarySession(pet ? homeSessions : sessions);
+  // An explicit selection is an interaction boundary. If it disappears, show
+  // unavailable state instead of silently retargeting an open goal form.
+  const current = selectedId ? explicitlySelected : selectPrimarySession(pet ? homeSessions : sessions);
   const attachedGoal = availableGoals.find((goal) => goal.id === current?.goal_id);
   const projectId = current?.project_id || attachedGoal?.project_id || current?.cwd || "";
   const identitySelectedProjectId = identityTargetProjectId ?? projectId;
@@ -2255,13 +2257,14 @@ export function App() {
     }
   }
 
-  function openInspector(sessionId?: string) {
+  function openInspector(sessionId: string | undefined = current?.id) {
     if (sessionId) setSelectedId(sessionId);
     setSurface("inspector");
     window.location.hash = "inspector";
   }
 
   function showSurface(next: Surface) {
+    if (next !== "compact" && current) setSelectedId(current.id);
     setSurface(next);
     window.location.hash = next;
   }
@@ -2287,7 +2290,7 @@ export function App() {
           mood={mood}
           scale={scale}
           reducedMotion={reducedMotion}
-          status={homeStatus}
+          status={statusWithFirstRunGuidance(status, setup, Boolean(pet?.paused))}
           statusIdentity={pet?.last_action?.id}
           onActivate={() => void expandMainSurface()}
           onDismiss={() => void changePetVisibility(false)}

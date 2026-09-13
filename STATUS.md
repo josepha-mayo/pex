@@ -2,6 +2,15 @@
 
 ## Current — 13 September 2026
 
+**Fresh live source recovery + quiet control passed on 23609bc**, with one
+useful correction/helped=true and zero unnecessary interruptions respectively.
+Verified package installed with matching hash. Native run also produced exact
+file acceptance and two real Strands NOOPs, but exposed auto-selection drift
+in goal setup and late metadata falsely restarting Working. Both are now fixed
+in source; 239 OpenCode-related tests and 301 desktop tests passed (one platform
+skip). Last two repairs still require packaging/native acceptance. See
+[full truthful results](docs/demo/evidence/LIVE_23609BC_2026-09-13.md).
+
 Native findings repaired in source: strict explicit-LF acceptance, bounded
 45-second independent verification (same call/token caps), selected-worker Home
 evidence, and fixture-only ordered command logging. 188 focused backend tests

@@ -104,7 +104,7 @@ test("floating pet uses canonical first-run status instead of raw quiet copy", (
     assert.ok(end > start, "floating pet route boundary must exist");
     const petRoute = app.slice(start, end);
 
-    assert.match(petRoute, /<PetStage[\s\S]*?status=\{homeStatus\}/u);
+    assert.match(petRoute, /<PetStage[\s\S]*?status=\{statusWithFirstRunGuidance\(status, setup, Boolean\(pet\?\.paused\)\)\}/u);
     assert.doesNotMatch(petRoute, /<PetStage[\s\S]*?status=\{status\}/u);
   }
 });

@@ -955,11 +955,16 @@ class OpenCodeAdapter(HarnessAdapter):
                 parent_message_id = bounded_parent_id if bounded_parent_id == raw_parent_id else ""
             except ValueError:
                 parent_message_id = ""
-        completed_user_metadata_update = bool(
+        known_user_metadata_update = bool(
             kind == "message.updated"
             and role == "user"
             and message_id
-            and self._completed_terminal_parents.get(session.id) == message_id
+            and not any((payload.get("text"), payload.get("message"), props.get("delta"),
+                         props.get("text"), part.get("text")))
+            and (
+                self._completed_terminal_parents.get(session.id) == message_id
+                or self._message_roles.get((session.id, message_id)) == "user"
+            )
         )
         if kind == "message.updated" and message_id:
             message_key = (session.id, message_id)
@@ -972,7 +977,7 @@ class OpenCodeAdapter(HarnessAdapter):
                 self._message_roles[message_key] = role
             if role == "user":
                 self._removed_messages.discard(message_key)
-                if not completed_user_metadata_update:
+                if not known_user_metadata_update:
                     self._completed_terminal_parents.pop(session.id, None)
             elif role == "assistant" and parent_message_id:
                 if len(self._message_parents) < MAX_MESSAGE_ROLES:
@@ -1037,10 +1042,13 @@ class OpenCodeAdapter(HarnessAdapter):
                 if state.get("status") == "completed"
                 else EventType.TOOL_CALL
             )
-        elif completed_user_metadata_update:
+        elif known_user_metadata_update:
             # OpenCode refreshes the original user's message metadata after
             # completion (for example its diff summary). That is not a new
             # prompt and must not restart the worker's activity projection.
+            # A previously seen user id suffices for this metadata-only check,
+            # even after a stream gap; it does NOT establish outcome lineage.
+            # New user ids and actual text/part edits remain USER_PROMPT events.
             event_type = EventType.STATUS
         elif kind in {"message.updated", "message.part.updated"} and role == "user":
             event_type = EventType.USER_PROMPT
@@ -1127,6 +1135,8 @@ class OpenCodeAdapter(HarnessAdapter):
             else None
         )
         metadata: dict[str, object] = {"sse_type": kind}
+        if known_user_metadata_update:
+            metadata["transport_text_fallback"] = True
         if transport_text_fallback or text == kind:
             # Explicit false preserves genuine text equal to an event name.
             metadata["transport_text_fallback"] = transport_text_fallback

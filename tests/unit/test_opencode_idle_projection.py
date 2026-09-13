@@ -189,6 +189,36 @@ async def test_opencode_new_user_and_busy_retry_are_explicit_work_resumption(tmp
         await store.close()
 
 
+async def test_known_user_metadata_after_stream_gap_does_not_restart_finished_work(tmp_path):
+    store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    adapter._event_gap_detected = True
+    try:
+        user = _payload(str(tmp_path), "message.updated", properties={
+            "info": {"sessionID": "ses_idle", "id": "userX", "role": "user"},
+        })
+        first = await _ingest(pipeline, adapter, session, user)
+        assert first.event_type == EventType.USER_PROMPT
+        await _ingest(pipeline, adapter, session, _completed_parent(str(tmp_path)))
+        await _ingest(pipeline, adapter, session, _payload(str(tmp_path), "session.idle"))
+        before = await store.get_session(session.id)
+        assert before.status == SessionStatus.STOPPED
+        assert session.id not in adapter._completed_terminal_parents
+        user["properties"]["info"]["summary"] = {"title": "File created"}
+        tail = await _ingest(pipeline, adapter, session, user)
+        assert tail.event_type == EventType.STATUS
+        assert tail.metadata[OPENCODE_MESSAGE_LINEAGE_KEY]["stream_contiguous"] is False
+        assert session.id not in adapter._completed_terminal_parents
+        after = await store.get_session(session.id)
+        assert after.status == SessionStatus.STOPPED
+        assert after.last_activity == before.last_activity
+        # Actual user content edits remain prompts; only repeated metadata is inert.
+        edited = adapter.normalize_sse(session, _payload(str(tmp_path), "message.part.updated",
+            properties={"part": {"messageID": "userX", "type": "text", "text": "New instruction"}}))
+        assert edited.event_type == EventType.USER_PROMPT
+    finally:
+        await store.close()
+
+
 async def test_opencode_discovered_becomes_working_without_planning_every_progress_frame(tmp_path):
     store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
     session.status = SessionStatus.DISCOVERED
