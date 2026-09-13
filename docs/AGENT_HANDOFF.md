@@ -136,11 +136,12 @@ accurately, and finish the Devpost submission. Do not reopen broad refactors
 before submission unless this exact smoke path reveals a release-blocking bug.
 
 The verified transfer bundle is `D:\PEX-recording-kit-f2832a8-v1.zip`,
-102,037,061 bytes, SHA-256
-`5b01102a69470fe0f06cc3df262f42251c2c2605190868e0362e3ca80479cd72`.
+102,037,068 bytes, SHA-256
+`6bf79026cbf2e0666ab0e1c36d55ca71a633e3afe9e3407a48ae36980b522581`.
 Its 12-entry inventory was reopened and all installer/receipt/smoke entry hashes
-were recomputed successfully. Start with `START_HERE.md`; the included
-`SECOND_LAPTOP_ACCEPTANCE.md` is updated to RC4.
+were recomputed successfully. The included submission, judge and laptop cards
+contain no stale RC2/current-candidate references. Start with `START_HERE.md`;
+the included `SECOND_LAPTOP_ACCEPTANCE.md` is updated to RC4.
 
 C: is not full at this checkpoint: 204,205,641,728 bytes (about 190.18 GiB) are
 free. Four Hugging Face caches remain losslessly junctioned from their original

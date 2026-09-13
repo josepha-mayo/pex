@@ -2,21 +2,21 @@
 
 > **Current claim boundary — 13 September 2026:** the authenticated account is
 > registered and PEX project draft `pex-mbcpr4` exists; nothing is finally
-> submitted. Exact product source `fc20329` has a verified MSI/NSIS package with
+> submitted. Exact product source `f2832a8` has a verified MSI/NSIS package with
 > zero blockers, matching installed identity, exactly two companions (Pex and
 > Von), vault-backed Zen BYOK and a default three-review cap. The immediately
 > preceding candidate passed native Home,
 > Settings, transparent Von, independent status dismissal, separate overlay
-> Hide/Escape behavior, bridge liveness and normal cleanup. Exact `fc20329`
-> passed authenticated startup and remained responsive; a 20-second sample
-> measured 128.3 MiB private and 175.0 MiB working set for desktop plus bridge.
-> Its short recording-laptop visual click-through remains required; this is not
-> a long-run leak claim. The complete non-live
-> Python gate is 4,532 passed with 16 skips and 18 explicit live deselections;
-> desktop is 303 passed with one platform skip. Fresh release-source OpenCode
-> and Codex recovery/quiet pairs prove real Zen/Strands same-session correction,
-> observed helpful outcome, final NOOP, and separate zero-follow-up restraint.
-> AgentCore is implemented and locally tested (243 focused tests), not deployed.
+> Hide/Escape behavior, bridge liveness and normal cleanup. Exact `f2832a8`
+> passed a silent install, all four installed executable hashes, authenticated
+> startup/settings, and clean bridge shutdown. Its short recording-laptop visual
+> click-through remains required; this is not a long-run leak claim. Desktop is
+> 303 passed with one platform skip. Fresh exact-current OpenCode recovery and
+> ten-case quietness prove real Zen/Strands same-session correction, observed
+> helpful outcome, final NOOP, and zero unnecessary follow-ups. The unchanged
+> Codex path retains earlier live recovery/quiet evidence. AgentCore is
+> implemented and locally tested (277 exact-current focused tests with four
+> environment skips), not deployed.
 > PexBench remains unfrozen and no comparative score is claimed. Finish
 > [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
 > equate package integrity, browser rendering, or green tests with native acceptance.
@@ -164,37 +164,37 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   field after checking that its title contains **Agents for Humans** and that it
   is accessible while logged out; do not republish it
 - [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean
-  product source `fc20329`; both installer inventories pass with zero blockers,
+  product source `f2832a8`; both installer inventories pass with zero blockers,
   and the installed bridge hash matches the NSIS payload
 - [x] Re-review README and architecture source/PNG against packaged product
-  source `fc20329`; current claims separate package, native, live semantic,
+  source `f2832a8`; current claims separate package, native, live semantic,
   local-contract, and deploy-target evidence
-- [x] Re-run the current non-live Python gate: 4,532 passed, 16 skipped, and 18
-  explicitly live deselections. The desktop gate is 303 passed with the one
-  intentional Windows symlink skip. The focused Strands/AgentCore gate is 243
-  passed. Production TypeScript/Vite and the Tauri package build passed. No
-  benchmark arm, AWS resource, cloud AgentCore invocation, or paid call ran in
-  these gates.
+- [x] Re-run the current focused gates. Desktop is 303 passed with one
+  intentional Windows symlink skip; exact-current Strands/AgentCore is 277
+  passed with four environment skips; OpenCode permission/planner/policy is 121
+  passed. Production TypeScript/Vite and the Tauri package build passed. No AWS
+  resource, cloud AgentCore invocation, or paid call ran in these gates.
 - [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases, review their full
   contact and direction sheets at original resolution, and exercise the bounded
   native overlay flow
 - [ ] Add the required public YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [x] Publish the accepted unsigned installer and SHA-256 as
-  [PEX 0.1.0 RC2](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc2),
-  targeted at exact product source `0454122`; GitHub's server-recorded SHA-256
+  [PEX 0.1.0 RC4](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4),
+  targeted at exact product source `f2832a8`; GitHub's server-recorded SHA-256
   digests, asset sizes and tag target match the accepted local package
-- [ ] Repeat the short package-source `0454122` Home, Supervisor Settings,
+- [ ] Repeat the short package-source `f2832a8` Home, Supervisor Settings,
   transparent Von rendering, exact Zen default, visible review cap, independent
   message dismissal, separate overlay Hide/Escape behavior, bridge liveness,
   ordinary cleanup, and bounded responsiveness on the recording laptop. The
-  preceding UI passed this card; exact `0454122` has passed package verification,
-  frozen bridge lifetime and authenticated settings smoke.
+  unchanged preceding UI passed this card; exact `f2832a8` has passed package
+  verification, installed payload verification, frozen bridge lifetime and
+  authenticated settings smoke.
 - [x] Re-run fresh release-source OpenCode and Codex recovery/quiet pairs with
   vault-backed Zen BYOK and Strands. Each recovery used one same-session
   correction, observed a supported helpful outcome, and ended at NOOP; each
   already-correct control delivered zero follow-ups.
 - [x] Honest disclosure: AgentCore is optional and not deployed; its local
-  `/ping` + `/invocations` contract is included in the focused 243-test gate,
+  `/ping` + `/invocations` contract is included in the focused 277-test gate,
   while controlled OpenCode/Codex plus provider-live Strands evidence exists
   separately
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)
