@@ -6,6 +6,19 @@ implementation and honest behavioral measurement. Cursor is optional. Preserve
 the full specs and historical research checklist; do not pretend every expanded
 feature or formal benchmark has been completed.
 
+## Latest installed verification — 13 September
+
+Installed `bf5a25b`: rebuilt runtime and installers, verified package and installed
+hash, three frozen lifetime tests. Fresh installed OpenCode lifecycle/artifact
+recovery passed: Working appeared during the turn, PEX corrected missing output
+and CRLF bytes in the same worker session, then stayed quiet. Three Strands
+reviews / nine model calls / 35,221 tokens. Overall completion remains uncertain
+for the unchanged unchecked third criterion; this is not a helped-true receipt
+or a comparative score. [Native evidence](demo/evidence/NATIVE_BF5A25B_RECOVERY_2026-09-13.md).
+Updated [second-laptop card](demo/SECOND_LAPTOP_ACCEPTANCE.md) points to these
+exact local installer bytes. Public RC1, optional AWS deployment and submission
+state are unchanged. Older checklist evidence retains its original scope.
+
 ## Actual official requirements
 
 Refreshed from Devpost MCP on 11 September 2026 at 17:16 UTC, event 30317.

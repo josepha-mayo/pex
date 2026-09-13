@@ -42,8 +42,11 @@ unchanged vendor session ID, and final.txt after correction.]
 only stage one, so final.txt is missing. PEX observes that mismatch. Its Strands
 supervisor cites the evidence and proposes one specific correction. Local policy
 allows that bounded action, and PEX sends it to this same OpenCode session—not a
-replacement agent with lost context. The worker creates final.txt, PEX observes
-the exact result, and the outcome is recorded as helpful.”
+replacement agent with lost context. In our latest installed test, the worker
+also needed a second correction for Windows line endings. PEX caught that
+exact-byte mismatch, the worker repaired both files, and PEX then stayed quiet.
+The audit preserves unresolved verification instead of falsely marking the
+whole goal complete.”
 
 ## 2:30–3:15 — Strands and safety
 

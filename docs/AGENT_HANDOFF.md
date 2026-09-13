@@ -1,5 +1,31 @@
 # PEX active handoff
 
+## Current installed candidate and live result
+
+**Installed `bf5a25b`**, full runtime/MSI/NSIS rebuild, first-attempt package
+verification with zero blockers, install exit 0 and exact installed hash match.
+Three frozen lifetime tests passed. [Package](demo/evidence/PACKAGE_BF5A25B_2026-09-13.md).
+The fresh installed OpenCode test confirmed Discovered -> Working in Home,
+then two independently verified same-session corrections (missing final.txt,
+then CRLF mismatch), exact final file bytes, and real Strands NOOP. Three
+reviews, nine model calls, 35,221 tokens, all 262 events settled.
+[Full native result](demo/evidence/NATIVE_BF5A25B_RECOVERY_2026-09-13.md).
+Overall goal completion and second correction helped outcome remain uncertain
+because the unchanged third criterion is unchecked; do not claim helped true.
+Ask PEX selected-worker status passed. Owned OpenCode server exited and evidence
+and profiles were retained; no unrelated Codex task was closed.
+Post-run pet transparency, message dismissal, stationary independent Hide and
+normal PEX shutdown passed. No PEX desktop/bridge process remained afterward.
+All 183 AgentCore unit tests passed again (11.47s); formal readiness still
+returns can_freeze false, not a publishable benchmark score.
+The second-laptop card now names retained `build/release-candidate-bf5a25b/`
+installer. Prior Codex pair and separate OpenCode quiet test below remain
+valid for their explicitly identified source/package, not rerun on bf5a25b.
+Formal four-arm score is still unavailable; AgentCore remains undeployed;
+public RC1 and Devpost submission are unchanged. Goal remains active.
+
+## Prior checkpoint history (superseded where stated above)
+
 Source follow-up fixes the OpenCode lifecycle fast-path regression observed in
 the installed test. Baseline focused suite had four failures (resumption,
 free-tier fencing, aborted-tail handling and restart fencing). Lifecycle/fence
