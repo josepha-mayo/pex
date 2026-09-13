@@ -1,5 +1,20 @@
 # PEX active handoff
 
+## Exact-current Codex recovery and quiet control passed — 189f476
+
+Clean `189f4765f9c668af2beda9ca7ba42b4f06c37b81` passed the two
+unchanged live Codex contract cases in 158.14 seconds using isolated App Server
+processes, pinned `gpt-5.3-codex-spark`, the saved Zen/Muse Contributor Free
+supervisor and Strands. Product code is identical to packaged `e4f7e38`; the
+intervening commit adds package evidence only.
+
+The incomplete worker received one evidence-specific `SEND_NUDGE` in the same
+Codex thread, produced exact `shipped`, recorded `helped:true`, then received a
+final `NOOP`. The correct control produced exact `pong` in one turn and received
+only `NOOP`, with no follow-up. Both proof receipts are validated. Read
+[the current Codex pair](demo/evidence/LIVE_CODEX_PAIR_189F476_2026-09-13.md).
+This is live behavior proof, not the unfrozen four-arm comparative benchmark.
+
 ## Current exact source/package and live MVP proof — e4f7e38
 
 Authoritative clean pushed source is
