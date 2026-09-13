@@ -1,5 +1,40 @@
 # PEX active handoff
 
+## Fail-closed submission gate and C-drive recovery — 13 September 21:55 UTC
+
+Clean pushed source `3dd76c9bd8128a185edb8e420e5119d8bd39c551`
+equals `origin/main`. It adds `scripts/submission_preflight.py` and six focused
+unit tests. The executable gate checks the exact RC4 installer, architecture
+image and project mark by size/SHA-256 (plus architecture PNG dimensions),
+requires a clean pushed tree, checks README/LICENSE/draft presence, rejects
+stale RC2 references across all eight active recording guides, validates a
+public YouTube/Vimeo URL, and requires explicit architecture-upload, Builder
+ID and rules attestations. It never accepts or emits the private Builder ID.
+
+Verification: six new tests passed; the combined current Strands, AgentCore,
+provider, supervisor and submission-preflight gate passed **349/349 in 21.23
+seconds**; scoped Ruff and whitespace checks passed. After the push, the real
+preflight confirmed all three exact artifacts, clean source equality and zero
+stale guide matches. With already-confirmed Builder ID/rules flags, it exits 2
+only for the genuinely open public demo video URL and architecture upload.
+
+The latest C-drive cleanup began at 190.64 GiB free and ended at least 210.55
+GiB free (44.2%), reclaiming about 19.91 GiB. Stale user Temp files older than
+seven days were moved recoverably to
+`D:\C-drive-temp-trash-20260913-old7d` (121,487 files, 15.81 GiB retained on
+D). Locked/in-use entries were skipped. Seven stale PEX diagnostic/release
+folders under `Documents\Codex` were also moved intact to
+`D:\PEX-c-drive-trash-20260913\documents-codex`; three access-restricted or
+partial folders remain. The old `C:\Users\JosephMayo\Projects\pex` checkout is
+absent. Retain `C:\Users\JosephMayo\AppData\Local\PEX` until exact installed
+RC4 native acceptance/recording is complete.
+
+The current live behavioral proof remains the fresh dummy-project OpenCode
+recovery documented below: saved Zen BYOK, real Strands supervision, one
+same-session continuation, exact repaired artifact, causal `helped:true`, then
+`NOOP`, with no paid-provider or AWS fallback. This is behavioral acceptance,
+not a frozen comparative benchmark. PexBench remains honestly unfrozen.
+
 ## Logged-out Devpost receipt — 13 September 20:22 UTC
 
 The public page `https://devpost.com/software/pex-mbcpr4` was opened in a hidden
