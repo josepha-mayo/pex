@@ -1,5 +1,21 @@
 # PEX active handoff
 
+## Fresh current-release Zen/OpenCode/Strands pair passed — 1caa822
+
+Clean `1caa8223cdfa1eb729775ec1ca55b43c4b56208d` passed both unchanged live
+behavior harnesses using the saved Zen BYOK credential,
+`muse-spark-1.3-contributor-free`, Strands Agents, and the free Ling worker.
+The controlled incomplete stop received exactly one justified same-session
+correction, produced both exact artifacts, settled all 118 events, and ended
+quiet in 81.92 seconds. The independently correct control completed one real
+semantic `NOOP`, sent zero follow-ups, settled all 102 events, and passed in
+76.31 seconds. Both owned OpenCode servers exited and source remained clean.
+
+Read [current OpenCode pair](demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md).
+This is strong release behavior evidence, not a four-arm benchmark or AgentCore
+deployment. Next: fresh current-source Codex recovery/quiet pair, benchmark
+readiness, and the remaining submission evidence. Goal stays active.
+
 ## Current verified installer and native acceptance — 1cd42c8
 
 Authoritative checkout is `D:\PEX-work`; pushed source before this documentation
