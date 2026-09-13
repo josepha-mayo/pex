@@ -1,5 +1,25 @@
 # PEX active handoff
 
+## Current readiness truth — 0258f64
+
+Clean `0258f6410f718d22f10bc7dd5b2053fa9d23cac8` passed the focused
+Strands/AgentCore implementation suite: 243/243 in 25.61 seconds. Read-only
+AgentCore preflight remains honestly undeployable/uninvokable: AWS is not
+authenticated, current AgentCore CLI/CDK and a running Docker engine/verified
+ARM64 image are absent, and no Runtime ARN is configured. No AWS resource or
+paid invocation occurred.
+
+Fresh four-arm readiness still reports `manifest_frozen:false`,
+`coherent_runs:[]`, and `can_freeze:false`; Cursor is observe-only and the
+isolated hidden-evaluator/raw-log boundary is incomplete. Do not invent a score.
+Read [readiness boundary](demo/evidence/READINESS_0258F64_2026-09-13.md).
+
+The installed overlay was also exercised: it appeared as one separate PEX pet
+window with distinct Hide and message-dismiss controls; Escape hid only the pet
+and reset visibility off. Main PEX then closed normally and both owned PEX
+processes exited. Goal remains active; next priority is submission/demo evidence
+using the now-proven local MVP, without overstating AgentCore or benchmark.
+
 ## Fresh current-release Codex/Zen/Strands pair passed — 8e99e9f
 
 Clean `8e99e9fef70fb99f302f451f7c7f96d2f76b5ae4` passed the two unchanged
