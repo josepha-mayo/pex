@@ -40,6 +40,15 @@ It has 19 entries and was reopened after creation; all eight entries named in
 its `SHA256SUMS.txt` recomputed exactly. It preserves the RC4 installer and adds
 the fresh OpenCode recovery evidence plus installed-bridge soak evidence.
 
+Fresh release preflight initially failed only because this shell omitted the
+already-installed Rust/Python toolchain paths. Re-run with the repository venv
+and existing Cargo bin passed with `source_ready:true`, Git clean and zero
+blockers. Its release-input digest
+`3cf6732bbbb6ba31e91baf3013bcece1637eba49f3ef032fd61823fd0724c9c1`,
+sidecar-input digest and all three sidecar executable hashes exactly equal the
+immutable RC4 package receipt. Evidence-only commits therefore have not made
+the published installer stale.
+
 ## AUTHORITATIVE CURRENT STATE — f2832a8 / RC4 (2026-09-13)
 
 This section supersedes every older package/status section below it. The clean,

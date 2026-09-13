@@ -37,6 +37,8 @@ The exact package is public as
   package verification, exact installed executable hashes, authenticated bridge
   identity/settings and clean shutdown. The packaged-settings smoke passed with
   no provider calls. Exact installed-window acceptance remains on the recording card.
+  Final-day source preflight also passes with zero blockers; its release-input,
+  sidecar-input and all sidecar executable hashes exactly equal the RC4 receipt.
 
 - [x] **2. Exercise focused native UI, chat and companion controls.**
   Spec: Core §8; Recovery §20–21.
