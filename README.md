@@ -10,10 +10,10 @@ It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude 
 
 **Verified local MVP — 13 September 2026.** The shipping focus is OpenCode,
 Codex App Server, Zen BYOK and exactly two controllable companions, Pex and Von.
-Published product source **`0454122`** has a zero-blocker MSI/NSIS package
-receipt, matching installed-binary identity, 4,532 passing non-live Python
-tests, 303 passing desktop tests with one platform skip, and three passing
-frozen-bridge lifetime tests. The matching RC2 installers are public.
+Published product source **`f2832a8`** has a zero-blocker MSI/NSIS package
+receipt, matching installed-binary identity, 303 passing desktop tests with one
+expected Windows symlink skip, and a 277-test focused Strands/AgentCore gate
+with four environment skips. The matching RC4 installers are public.
 
 Fresh release-source OpenCode and Codex behavior pairs both passed. In each
 harness, PEX used the saved Zen/Muse provider through Strands, detected one
@@ -25,19 +25,18 @@ controlled behavioral examples, not a comparative benchmark.
 The immediately preceding candidate passed native Home/Settings, exactly two
 pets, transparent Von, independent message dismissal, separate overlay Hide,
 Escape-to-hide, bridge liveness and ordinary
-shutdown. The exact `fc20329` install passed authenticated startup and remained
-responsive; a 20-second sample used 1.219 aggregate CPU-seconds and measured
-175.0 MiB working set / 128.3 MiB private across desktop and bridge. A fresh
-recording-laptop visual click-through remains required because native computer
-control was unavailable after reboot. This is bounded evidence, not an
-indefinite leak claim. AgentCore is implemented and locally tested (243 focused
-tests) but
+shutdown. The exact `f2832a8` install passed package identity, authenticated
+bridge startup, saved Zen/Muse settings, and clean shutdown. The prior bounded
+installed sample measured about 178 MiB working set / 129 MiB private across
+desktop and bridge; a fresh RC4 recording-laptop visual click-through remains
+required. This is bounded evidence, not an indefinite leak claim. AgentCore is
+implemented and locally tested but
 **not AWS-deployed**. The formal four-arm benchmark is unfrozen and has no valid
 score. Final recording remains. See the
 [current checklist](docs/MVP_SHIP_GATE.md),
-[package proof](docs/demo/evidence/PACKAGE_0454122_2026-09-13.md),
-[OpenCode pair](docs/demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md), and
-[Codex pair](docs/demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
+[judge guide](docs/JUDGE_TESTING.md),
+[OpenCode evidence](docs/AGENT_HANDOFF.md), and
+[exact-current Codex pair](docs/demo/evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md).
 
 ![PEX Home showing two available coding workers and the Von companion](docs/demo/assets/pex-home-49385f2.png)
 
@@ -97,10 +96,10 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 ### Windows install or source prerequisites
 
 The current verified, unsigned Windows build is published as
-[PEX 0.1.0 RC2](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc2).
+[PEX 0.1.0 RC4](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4).
 Use `PEX_0.1.0_x64-setup.exe` for the normal install. It is built from exact
-product source `0454122`; its SHA-256 is
-`e405dbc55646fb08faf270b9ac0cb99b0c6a2f65a2e9310607fa2e08ff097eb1`.
+product source `f2832a8651442eb3ee47a508a9c81cc16a82ec5d`; its SHA-256 is
+`63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`.
 The binary is not code-signed, so Windows may show a publisher warning. Package
 integrity is not indefinite stability or publisher trust; current source-bound
 evidence is recorded in the [active handoff](docs/AGENT_HANDOFF.md).
@@ -275,7 +274,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound native OpenCode and separate Codex App Server behavior proofs are retained. The matching RC2 release is public; recording and Devpost submission remain pending under [the focused MVP gate](docs/MVP_SHIP_GATE.md). Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](docs/SUBMISSION.md).
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound native OpenCode and separate Codex App Server behavior proofs are retained. The matching [RC4 release](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4) is public; recording and Devpost submission remain pending under [the focused MVP gate](docs/MVP_SHIP_GATE.md). Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](docs/SUBMISSION.md).
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)

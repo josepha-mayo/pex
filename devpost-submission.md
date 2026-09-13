@@ -57,11 +57,11 @@ Required upload asset: `docs/architecture/pex-architecture.png`.
 
 ## Testing Instructions
 
-1. On Windows, clone `https://github.com/josepha-mayo/pex` and follow the pinned prerequisites in the README.
-2. Run `./scripts/install.ps1`, then `npm --prefix apps/desktop run tauri dev`.
+1. On Windows, download the exact RC4 installer from `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4` and install it. The installer is unsigned, so Windows may show a publisher warning.
+2. For a source run instead, clone `https://github.com/josepha-mayo/pex`, follow the pinned prerequisites in the README, run `./scripts/install.ps1`, then `npm --prefix apps/desktop run tauri dev`.
 3. Start a throwaway OpenCode worker with `opencode serve --port 4096` and attach a terminal using `opencode attach http://127.0.0.1:4096`.
 4. In PEX Settings → Connections, connect OpenCode at `http://127.0.0.1:4096`.
-5. In Settings → Supervisor, select Zen, enter `muse-spark-1.3-contributor-free`, provide your own Zen API key, keep the review limit at 3, and save.
+5. In Settings → Supervisor, select Zen, enter `muse-spark-1.3-contributor-free`, provide your own Zen API key, keep the review limit at 3, and save. The key is write-only in the UI and stored through the operating-system credential vault.
 6. Attach a persistent goal to the discovered worker. Verify that already-correct work stays quiet and that an intentionally missing artifact causes an evidence-specific correction to the same session. Observe the actual outcome: provider retries or additional output defects may require further review within the cap. Do not treat an uncertain result as completion.
 7. Inspect the goal, evidence, decision, delivery, and outcome in Inspector. Pause supervision and verify no new semantic dispatch occurs.
 
@@ -105,20 +105,22 @@ Recording flow:
 
 ## Submission Readiness Notes
 
-- Official hackathon: Agents for Humans; live requirements/dates refreshed on 2026-09-13 at 01:47 UTC. Submissions close 2026-09-15 00:00 UTC / 01:00 Lagos.
+- Official hackathon: Agents for Humans; live requirements, dates, project state, announcements, and judging criteria refreshed through Devpost on 2026-09-13 at 19:28 UTC. Submissions close 2026-09-15 00:00 UTC / 01:00 Lagos.
 - Track: Professional Agents.
 - Authenticated Devpost account is registered, the official rules were explicitly acknowledged on 2026-09-12, and project draft `pex-mbcpr4` now exists.
 - The privacy-safe older Home screenshot was uploaded as the initial Devpost
   thumbnail. Replace it with the current flat PEX mark or a current-build frame
   during final form review; do not present the older screenshot as package proof.
 - Public repo and MIT license are ready.
-- Public unsigned Windows RC1: `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1`. This is older `49385f2`, not the latest tested installer.
+- Public unsigned Windows RC4: `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4`, targeting exact product source `f2832a8651442eb3ee47a508a9c81cc16a82ec5d`.
+- RC4 installer: 101,722,399 bytes; SHA-256 `63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`. Its packaged receipt, installed executable hashes, authenticated bridge identity, and packaged settings smoke all passed.
 - Architecture PNG exists and is below the official 35 MiB limit.
-- Current locally installed product source `fc20329` has a zero-blocker MSI/NSIS receipt, installed hash match, authenticated startup, and bounded resource acceptance. Its exact-build visual card remains; copy/hash instructions: `docs/demo/SECOND_LAPTOP_ACCEPTANCE.md`. A matching public release remains to be made; do not overwrite RC1 artifacts.
-- Fresh release-source OpenCode and Codex recovery/quiet receipts are retained under `docs/demo/evidence/`, each bound to its exact source. They are not a comparative benchmark or full-spec certification.
+- Exact-current OpenCode proof includes a ten-case already-correct run with ten `NOOP` decisions and zero follow-ups, plus a recovery run with one `SEND_NUDGE`, exact repaired output, `helped:true`, and a final `NOOP` in the same worker session.
+- Exact-current Codex proof is retained at `docs/demo/evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md`: recovery produced one same-thread `SEND_NUDGE`, exact `shipped`, `helped:true`, then `NOOP`; the quiet control produced exact `pong`, only `NOOP`, and zero follow-ups.
+- The focused local Strands/AgentCore gate passed 277 tests with four environment skips. The desktop suite passed 303 tests with one expected Windows symlink skip.
 - AgentCore protocol is locally implemented and tested but not deployed to AWS.
 - PexBench is not frozen, so no comparative score or leaderboard rank is claimed.
-- Live project read on 2026-09-13: `state:draft`, `published_at:null`, `video_url:null`, and `submitted_at:null` for this event. No external changes were made in this preparation pass.
+- Live project read on 2026-09-13 at 19:28 UTC: `state:draft`, `published_at:null`, `video_url:null`, and `submitted_at:null` for this event. Nothing has been submitted.
 
 ## Known Limitations
 
@@ -145,7 +147,7 @@ Recording flow:
 - AWS Builder ID (`27735`, required): supplied privately by the user on 2026-09-12; do not publish the email in this repository.
 - Live demo (`27736`, optional): omit unless a stable public URL exists.
 - Testing instructions (`28191`, optional): use the concise instructions above and `docs/JUDGE_TESTING.md`.
-- Older public RC1 installer: `https://github.com/josepha-mayo/pex/releases/download/v0.1.0-rc1/PEX_0.1.0_x64-setup.exe`; SHA-256 `6fb27ff7d4ec986e5b64209b1f00b70cab6593b67daafa42e08add5bd90c6d92`. TODO: publish a distinct release matching the filmed build and update this link/hash.
+- Current public RC4 installer: `https://github.com/josepha-mayo/pex/releases/download/v0.1.0-rc4/PEX_0.1.0_x64-setup.exe`; SHA-256 `63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`.
 - Bonus blog (`27737`, optional): `https://builder.aws.com/content/3IuxELaimn2aM3bayFznibEnnhK/agents-for-humans-teaching-pex-when-to-stay-quiet` (signed-in Published state observed; logged-out reachability still needs confirmation).
 - Demo video (required deliverable): TODO — public YouTube or Vimeo URL, no longer than 5 minutes.
 - Codex session ID: not requested by the current official form; omit.
