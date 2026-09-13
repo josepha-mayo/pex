@@ -1,5 +1,21 @@
 # PEX active handoff
 
+## Active verification handle and newest installed package
+
+Installed **e989bdd** after full rebuild, zero-blocker package verification,
+installer exit 0 and exact desktop hash match. Three frozen lifetime tests
+passed. Artifacts: `build/release-candidate-e989bdd/`. Fresh clean-source live
+quiet control also passed: two semantic NOOPs, zero follow-ups, 290 settled
+events, and all 270 record-only rows now have the project binding. This is one
+fresh case, not a rerun of the older ten-case batch. Details in the repair report.
+
+**Full offline regression is currently running in exec session 97129**, output
+`build/offline-e989bdd.xml`. Resume that exact handle; do not restart based on
+an observation timeout. Product source has not changed. Fresh native UI
+acceptance on this installation is still pending (app has not been launched
+after install). Next: finish regression, then fresh native worker progress/
+quiet check, update recording card/current package, and matching release/demo.
+
 ## New source repair: live progress now retains its authority binding
 
 The stale progress finding below was traced using read-only inspection of the
