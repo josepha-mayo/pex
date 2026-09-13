@@ -84,7 +84,7 @@ def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
     # combined observation remains request-bound, read-only, redacted and
     # independently citable.
     if request.event.event_type == EventType.STOP:
-        selected = {"get_recent_events", "inspect_acceptance", "run_verification"}
+        selected = {"inspect_acceptance"}
     else:
         selected = {
             "get_recent_events",

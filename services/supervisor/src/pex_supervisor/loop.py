@@ -726,7 +726,7 @@ def _uncertain_verification_only(
     acceptance_status = str(verification.get("acceptance_status") or "unavailable")
     return (
         bool(referenced_tools)
-        and referenced_tools <= {"get_goal", "run_verification"}
+        and referenced_tools <= {"get_goal", "inspect_acceptance", "run_verification"}
         and verification_status in {"no_claims", "uncertain", "unavailable"}
         and acceptance_status in {"uncertain", "unavailable"}
     )

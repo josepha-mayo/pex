@@ -64,6 +64,7 @@ EXPECTED_FINAL = b"pex-supervised-ok\n"
 INITIAL_PROOF_SECONDS = 360
 POST_STOP_SETTLEMENT_SECONDS = 180
 MAX_PROOF_SECONDS = 540
+INITIAL_STAGE_SETTLE_SECONDS = 2.0
 
 
 def write_json(path: Path, value: object) -> None:
@@ -136,6 +137,18 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
         if event.event_type.value == "stop" and first_stop is None:
             stage = workspace / "stage-one.txt"
             final = workspace / "final.txt"
+            # OpenCode can publish its terminal event a few milliseconds before
+            # Windows exposes the worker's already-completed write to this
+            # process. PEX has not ingested the STOP yet, so no correction can
+            # occur during this bounded settle interval. Capture the real
+            # pre-supervision state instead of a filesystem visibility race.
+            settle_deadline = time.monotonic() + INITIAL_STAGE_SETTLE_SECONDS
+            while time.monotonic() < settle_deadline:
+                if final.exists() or (
+                    stage.is_file() and stage.read_bytes() == EXPECTED_STAGE
+                ):
+                    break
+                await asyncio.sleep(0.05)
             first_stop = {
                 "event_id": event.event_id,
                 "session_id": event.session_id,

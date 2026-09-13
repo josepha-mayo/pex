@@ -209,14 +209,14 @@ def test_model_tool_profile_omits_irrelevant_high_cost_schemas():
     tools = build_evidence_tools(request, [], tool_names=selected)
 
     assert [item.tool_name for item in tools] == list(selected)
-    assert selected == ("get_recent_events", "inspect_acceptance", "run_verification")
+    assert selected == ("inspect_acceptance",)
     assert "inspect_workspace" not in selected
-    assert "run_verification" in selected
+    assert "run_verification" not in selected
     assert "get_context" not in selected
     assert "inspect_process" not in selected
     assert "web_search" not in selected
     assert "scrape_url" not in selected
-    assert len(selected) == 3
+    assert len(selected) == 1
 
 
 def test_model_tool_profile_adds_only_observed_optional_surfaces():

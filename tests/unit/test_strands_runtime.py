@@ -30,8 +30,9 @@ class FakeStructuredModel(Model):
         verifier_approved: bool = True,
         verifier_evidence: list[str] | None = None,
         evidence_tool_calls: int | None = None,
+        evidence_tool_name: str = "inspect_acceptance",
         verifier_evidence_tool_calls: int = 0,
-        verifier_evidence_tool_name: str = "run_verification",
+        verifier_evidence_tool_name: str = "inspect_acceptance",
         message: str | None = None,
         cite_evidence: bool = True,
     ) -> None:
@@ -47,6 +48,7 @@ class FakeStructuredModel(Model):
             if evidence_tool_calls is None
             else evidence_tool_calls
         )
+        self.evidence_tool_name = evidence_tool_name
         self.verifier_evidence_tool_calls = verifier_evidence_tool_calls
         self.verifier_evidence_tool_name = verifier_evidence_tool_name
         self.message = message
@@ -91,7 +93,9 @@ class FakeStructuredModel(Model):
             (spec for spec in specs if spec["name"] == "IndependentVerifierDecision"),
             None,
         )
-        evidence_tool_name = self.verifier_evidence_tool_name if verifier else "run_verification"
+        evidence_tool_name = (
+            self.verifier_evidence_tool_name if verifier else self.evidence_tool_name
+        )
         evidence_tool = next(
             (spec for spec in specs if spec["name"] == evidence_tool_name),
             None,
@@ -248,7 +252,7 @@ async def test_real_strands_agent_can_call_bounded_evidence_tool_before_decision
 
     assert result.action.type.value == "NOOP"
     assert result.inference_status == "completed"
-    assert result.evidence_tools == ["run_verification"]
+    assert result.evidence_tools == ["inspect_acceptance"]
     assert result.model_call_count == 2
     assert len(model.captured_messages) == 2
     assert "workspace_observed" in model.captured_messages[1]
@@ -568,7 +572,7 @@ async def test_completed_noop_after_tool_call_is_not_replaced_by_stale_probe_req
 
     assert result.action.type.value == "NOOP"
     assert result.inference_status == "completed"
-    assert result.evidence_tools == ["run_verification"]
+    assert result.evidence_tools == ["inspect_acceptance"]
     assert result.model_call_count == 2
     assert "deterministic_truth_preserved" not in result.diagnosis
 
@@ -712,7 +716,7 @@ async def test_supported_claim_alone_cannot_suppress_semantic_intervention():
         "SEND_NUDGE",
         verifier_approved=True,
         verifier_evidence_tool_calls=1,
-        verifier_evidence_tool_name="get_recent_events",
+        verifier_evidence_tool_name="inspect_acceptance",
     )
 
     result = await decide_async(request, model=model)
@@ -740,7 +744,7 @@ async def test_same_type_semantic_action_keeps_model_wording_after_verification(
         message=semantic_text,
         verifier_approved=True,
         verifier_evidence_tool_calls=1,
-        verifier_evidence_tool_name="get_recent_events",
+        verifier_evidence_tool_name="inspect_acceptance",
     )
 
     result = await decide_async(request, model=model)
@@ -765,7 +769,7 @@ async def test_verifier_rejection_never_restores_non_noop_preplan():
         verifier_approved=False,
         verifier_evidence=["proposal not supported"],
         verifier_evidence_tool_calls=1,
-        verifier_evidence_tool_name="get_recent_events",
+        verifier_evidence_tool_name="inspect_acceptance",
     )
 
     result = await decide_async(request, model=model)
@@ -782,11 +786,17 @@ async def test_verifier_rejection_never_restores_non_noop_preplan():
 @pytest.mark.asyncio
 async def test_semantic_only_intervention_requires_independent_verifier_approval():
     request = _request(0.1)
+    request.scores.features["verification"] = {
+        "status": "acceptance_gap",
+        "acceptance_status": "unsatisfied",
+        "acceptance_evidence": ["missing:report.txt"],
+        "missing_files": ["report.txt"],
+    }
     model = FakeStructuredModel(
         "SEND_NUDGE",
         verifier_approved=True,
         verifier_evidence_tool_calls=1,
-        verifier_evidence_tool_name="get_recent_events",
+        verifier_evidence_tool_name="inspect_acceptance",
     )
 
     result = await decide_async(request, model=model)
@@ -795,12 +805,12 @@ async def test_semantic_only_intervention_requires_independent_verifier_approval
     assert "independent_verifier_approved" in result.diagnosis
     assert result.model_call_count == 4
     assert len(model.captured_messages) == 4
-    assert "get_recent_events" in result.evidence_tools
+    assert "inspect_acceptance" in result.evidence_tools
     assert result.independent_verifier is not None
     assert result.independent_verifier.approved is True
     assert result.independent_verifier.status == "approved"
     assert result.independent_verifier.model_call_count == 2
-    assert result.independent_verifier.evidence_tools == ["get_recent_events"]
+    assert result.independent_verifier.evidence_tools == ["inspect_acceptance"]
     assert any("independent_verifier_status=approved" in item for item in result.traces)
 
 
@@ -823,7 +833,7 @@ async def test_uncertain_verification_receipt_alone_cannot_authorize_interventio
     assert result.action.type.value == "NOOP"
     assert "independent_verifier_rejected" in result.diagnosis
     assert result.model_call_count == 4
-    assert "run_verification" in result.evidence_tools
+    assert "inspect_acceptance" in result.evidence_tools
     assert any("independent_verifier_status=uncertain_evidence" in item for item in result.traces)
 
 
@@ -833,10 +843,17 @@ async def test_verifier_budget_reserves_a_verdict_or_fails_closed(evidence_calls
     model = FakeStructuredModel(
         "SEND_NUDGE",
         verifier_evidence_tool_calls=evidence_calls,
-        verifier_evidence_tool_name="get_recent_events",
+        verifier_evidence_tool_name="inspect_acceptance",
     )
 
-    result = await decide_async(_request(0.1), model=model)
+    request = _request(0.1)
+    request.scores.features["verification"] = {
+        "status": "acceptance_gap",
+        "acceptance_status": "unsatisfied",
+        "acceptance_evidence": ["missing:report.txt"],
+        "missing_files": ["report.txt"],
+    }
+    result = await decide_async(request, model=model)
 
     verifier = result.independent_verifier
     assert verifier is not None
