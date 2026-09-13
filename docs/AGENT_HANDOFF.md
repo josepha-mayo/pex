@@ -47,7 +47,9 @@ Strands/AgentCore/provider/supervisor tests pass 374 with one environment skip.
 The installed NSIS desktop hash exactly matches its receipt entry. Startup
 produced one desktop plus one owned authenticated bridge; 20-second idle use was
 0.031 aggregate CPU seconds, 177.9 MiB working set and 130.4 MiB private. Closing
-the desktop removed the bridge and left zero PEX processes. Read
+the desktop removed the bridge and left zero PEX processes. An isolated frozen
+settings smoke verified authenticated identity, Zen/Muse first, cap three and
+zero provider calls. Read
 [exact evidence](demo/evidence/PACKAGE_E4F7E38_2026-09-13.md).
 
 Native computer control still exposes no application windows, so repeat the
