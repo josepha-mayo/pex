@@ -1613,9 +1613,9 @@ test("compact home presents the supported MVP harnesses and a readable companion
   assert.match(app, /if \(sessionId\) setSelectedId\(sessionId\)/u);
   assert.match(app, /if \(next !== "compact" && current\) setSelectedId\(current.id\)/u);
   assert.doesNotMatch(app, /`\$\{sessions\.length\} live`/u);
-  assert.match(app, /scale=\{0\.94\}/u);
+  assert.match(app, /scale=\{1\.08\}/u);
   assert.match(styles, /\.harness-empty\s*\{/u);
-  assert.match(styles, /\.compact-companion \.pet-actor\s*\{\s*width:\s*128px;\s*min-height:\s*142px;/u);
+  assert.match(styles, /\.compact-companion \.pet-actor\s*\{\s*width:\s*148px;\s*min-height:\s*164px;/u);
 });
 
 test("goal editor locks submitted fields only while saving", async () => {

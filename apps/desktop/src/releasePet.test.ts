@@ -82,8 +82,8 @@ test("brand mark stays flat, harness-led, and legible at app scale", async () =>
     "the harness status node must retain its check");
   assert.doesNotMatch(mark, /(?:linearGradient|radialGradient|filter|heart)/iu,
     "the shipping mark must stay flat and avoid the rejected heart motif");
-  assert.match(styles, /\.brand-mark\s*\{[\s\S]*?width:\s*36px;[\s\S]*?height:\s*36px;/u);
-  assert.match(styles, /\.startup-recovery-mark \.brand-mark\s*\{[\s\S]*?width:\s*54px;[\s\S]*?height:\s*54px;/u);
+  assert.match(styles, /\.brand-mark\s*\{[\s\S]*?width:\s*42px;[\s\S]*?height:\s*42px;/u);
+  assert.match(styles, /\.startup-recovery-mark \.brand-mark\s*\{[\s\S]*?width:\s*64px;[\s\S]*?height:\s*64px;/u);
 });
 
 test("floating pet respects the user's small size setting", async () => {

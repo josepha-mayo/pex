@@ -2486,7 +2486,7 @@ export function App() {
               name={petName}
               sheet={sheet}
               mood={mood}
-              scale={0.94}
+              scale={1.08}
               reducedMotion={reducedMotion}
               status={setup ? undefined : homeStatus}
               statusIdentity={action?.id}
