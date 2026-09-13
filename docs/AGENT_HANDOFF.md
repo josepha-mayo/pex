@@ -1,5 +1,38 @@
 # PEX active handoff
 
+## 13 September final-day refresh — 890d701
+
+Clean pushed source `890d7012e38a0c352d98f6d57c0870168c990046`
+repassed the desktop gate (303 passed, one Windows symlink-capability skip) and
+the production TypeScript/Vite build. A hidden 1280px browser render confirmed
+the current Home and Settings structure without controlling the user's visible
+desktop: a clear OpenCode/Codex harness rail, transparent Pex presentation,
+Pex/Von-only Companion settings, scale, desktop visibility and click-through
+controls. Browser fallback cannot authenticate the Tauri-owned bridge, so this
+is source-render evidence, not exact installed-window acceptance.
+
+The local Strands/AgentCore implementation slice repassed 243 tests in 16.91s.
+Fresh formal-benchmark readiness still correctly reports
+`manifest_frozen:false`, `coherent_runs:[]`, and `can_freeze:false`; do not emit
+or claim a comparative score.
+
+A fresh current-source OpenCode recovery diagnostic passed in 83.98 seconds.
+With Zen `mimo-v2.5-free` as the worker and saved Zen
+`muse-spark-1.3-contributor-free` through Strands as PEX, it observed an exact
+phase-one stop with the final artifact absent, issued exactly one
+`CONTINUE_SESSION` to the same OpenCode session, verified the exact final
+artifact and causal helped outcome, settled all 112 observed events/reviews,
+and ended with `NOOP`. The owned server exited and the source stayed unchanged.
+See
+`docs/demo/evidence/LIVE_OPENCODE_RECOVERY_890D701_2026-09-13.md` and retained
+`build/recovery-current-20260913-r2`.
+
+C: is not near capacity: the refresh measured 190.73 GiB free (40%). Four
+loose PEX build helpers totaling 112.56 MiB were moved recoverably from the
+user Temp directory to
+`D:\PEX-c-drive-trash-20260913\temp-loose-files`. The installed RC4 under
+LocalAppData was retained for the exact native acceptance/recording check.
+
 ## AUTHORITATIVE CURRENT STATE — f2832a8 / RC4 (2026-09-13)
 
 This section supersedes every older package/status section below it. The clean,

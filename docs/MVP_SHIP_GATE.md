@@ -65,6 +65,10 @@ The exact package is public as
   `build/recovery-f2832a8-mimo-20260913-r1`: exact initial incomplete state,
   one same-session correction, exact repaired artifact, helped outcome, 185
   settled events, then `NOOP`. The active handoff records hashes and boundaries.
+  A fresh clean-source rerun at `890d701` independently passed in 83.98 seconds:
+  one `CONTINUE_SESSION`, exact repaired artifact, causal outcome verified, all
+  112 events settled, then `NOOP`; see
+  `demo/evidence/LIVE_OPENCODE_RECOVERY_890D701_2026-09-13.md`.
 
 - [x] **5. Preserve distinct Codex recovery and quiet evidence.**
   Spec: Recovery §12–13.
