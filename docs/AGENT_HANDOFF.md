@@ -56,11 +56,13 @@ Native computer control still exposes no application windows, so repeat the
 short PEX-only visual card on the recording laptop. Formal four-arm benchmark
 readiness remains an honest NO-GO (`frozen:false`, no coherent run set), and AWS
 AgentCore remains locally implemented/tested but not deployed. Do not invent a
-score, deployment, or native visual pass. C: currently has about 66.16 GiB free;
-the installed PEX runtime is only about 0.167 GiB. A safe set of roughly 1.8 GiB
-of top-level Temp files older than seven days was identified, but host policy
-blocked deletion before any file was touched. Goal remains active: visual record,
-public maximum-five-minute video, current installer release and Devpost finish.
+score, deployment, or native visual pass. C: now has about 72.58 GiB free; the
+installed PEX runtime is only about 0.167 GiB. Exactly 2,606 old top-level Temp
+files (1.797 GiB) moved to `D:\C-drive-recovery\temp-old-20260913`. About 4.62
+GiB of npm cache moved to `D:\C-drive-recovery\npm-cache-20260913`; an active
+process locked the remaining 0.529 GiB, which was left untouched. Goal remains
+active: visual record, public maximum-five-minute video, current installer
+release and Devpost finish.
 
 ## Current submission packet and remaining gates — post-fc20329
 
