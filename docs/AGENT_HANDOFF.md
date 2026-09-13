@@ -1,5 +1,30 @@
 # PEX active handoff
 
+## Tracked-secret gate and live Devpost refresh — 13 September 22:08 UTC
+
+Clean pushed source `9153260bdb68835a29c70a2ac1603af92c8ce3f1`
+equals `origin/main`. A privacy scan found and redacted the private Builder ID
+email from the historical handoff. The submission preflight now scans every
+tracked file for common API-key, AWS-access-key, private-key and consumer-email
+patterns. Intentional test canaries are permitted only by exact reviewed
+SHA-256; any new test token also blocks. Reports contain path, line and pattern
+class, never the matched value. The recording kit itself had zero hits.
+
+Verification: eight submission-preflight tests and 29 focused privacy tests
+passed; the current Strands, AgentCore, provider, supervisor, policy and
+preflight cluster passed **372/372 in 21.76 seconds**; scoped Ruff and whitespace
+checks passed. The clean post-push real preflight reports all exact assets
+passing, zero stale-guide matches, zero sensitive-data hits, and exactly two
+blockers: missing public YouTube/Vimeo video URL and unattached architecture.
+
+Authenticated Devpost refresh at 21:06 UTC: project `pex-mbcpr4` remains
+published but `video_url:null` and `submitted_at:null`; submissions remain open
+until `2026-09-15T00:00:00Z`. The current description and required-field set are
+unchanged. The public GitHub RC4 release remains reachable with correct
+recovery/quietness claims and hashes. The candidate Builder article URL was not
+found by exact public search, so do not count or submit it as bonus evidence
+until its logged-out rendered article is independently confirmed.
+
 ## Fail-closed submission gate and C-drive recovery — 13 September 21:55 UTC
 
 Clean pushed source `3dd76c9bd8128a185edb8e420e5119d8bd39c551`
