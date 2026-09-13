@@ -57,7 +57,11 @@ def _load_runtime_dependencies() -> None:
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 ORIGIN = "http://127.0.0.1:4098"
-WORKER_MODEL = "ling-3.0-flash-fin-free"
+# Keep the diagnostic on an explicitly free, current small/fast route.  The
+# previous Ling endpoint produced repeated upstream-unavailable retries during
+# the final submission rehearsal, consuming almost the whole bounded proof
+# window before PEX could review the repaired completion.
+WORKER_MODEL = "nemotron-3.5-lightning-free"
 SUPERVISOR_MODEL = "muse-spark-1.3-contributor-free"
 EXPECTED_STAGE = b"stage-one-ok\n"
 EXPECTED_FINAL = b"pex-supervised-ok\n"
