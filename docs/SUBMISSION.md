@@ -181,8 +181,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [ ] Add the required public YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [x] Publish the accepted unsigned installer and SHA-256 as
   [PEX 0.1.0 RC2](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc2),
-  targeted at exact product source `0454122`; remote asset sizes and the tag
-  target match the accepted local NSIS/MSI package
+  targeted at exact product source `0454122`; GitHub's server-recorded SHA-256
+  digests, asset sizes and tag target match the accepted local package
 - [ ] Repeat the short package-source `0454122` Home, Supervisor Settings,
   transparent Von rendering, exact Zen default, visible review cap, independent
   message dismissal, separate overlay Hide/Escape behavior, bridge liveness,

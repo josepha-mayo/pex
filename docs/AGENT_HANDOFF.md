@@ -17,6 +17,8 @@ The exclusive receipt reports `release_ready:true` and no blockers. Three
 frozen bridge tests passed, and the authenticated packaged-settings smoke
 verified Zen/Muse catalog discovery with zero provider calls. Read
 [package evidence](demo/evidence/PACKAGE_0454122_2026-09-13.md).
+GitHub's live release API reports matching SHA-256 digests and byte counts for
+all four RC2 assets, and the tag resolves to exact product source `0454122`.
 
 Recording packet: `D:\PEX-recording-kit-0454122.zip`, 216,085,945 bytes,
 SHA-256
