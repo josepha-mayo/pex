@@ -98,7 +98,7 @@ tests passed. A fresh exact-current AgentCore/Strands-focused gate then passed
 
 The immutable local candidate is
 `build/release-candidate-f2832a8/`. GitHub reports the same byte counts and
-SHA-256 digests for all four public RC4 assets:
+SHA-256 digests for all four core RC4 package assets:
 
 - recommended NSIS `PEX_0.1.0_x64-setup.exe`: 101,722,399 bytes,
   `63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`
@@ -108,6 +108,10 @@ SHA-256 digests for all four public RC4 assets:
   `603ecac3ea09e532ad41f362fd1216670cae9883c45d06f8a3016af505802d90`
 - smoke `packaged-settings-smoke-f2832a8.json`: 429 bytes,
   `04dece60ce5654c2b50c3bb1f39dbedfff28b53da55fe9b7d4fb96d7dbd24db0`
+
+RC4 also exposes the two judge-facing assets with GitHub-matching hashes:
+`pex-architecture.png` is 94,752 bytes / `dea91e42...fadd68`; `pex-mark.png`
+is 99,348 bytes / `61ff1179...09795`.
 
 RC3 already passed the exact 920 by 700 native two-pet UX, overlay dismissal,
 Hide-versus-exit, ordinary close, and approximately 175 MiB combined working
