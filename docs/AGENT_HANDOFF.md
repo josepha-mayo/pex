@@ -1,5 +1,28 @@
 # PEX active handoff
 
+## Active full-suite handle and corrected shipping documents
+
+Full offline suite is RUNNING in exec **17215**, started from 80f0237 with all
+five live markers excluded. Re-poll that exact handle before inferring status;
+receipt target `build/offline-80f0237.xml`. At latest observation it reached
+23% with multiple failure markers. Do not restart it or call it green.
+
+One failure independently reproduced: existing Cursor correct-completion
+fixture writes shipped+LF but objective says exactly shipped; verifier now
+correctly returns contradicted. After the full run finishes, make the positive
+fixture byte-exact and retain negative coverage, without weakening verification.
+New separate `test_cursor_exact_completion.py`: three hook/ingest contract cases
+pass (exact, newline rejection, BOM rejection; no fake observe-only delivery).
+It was added AFTER the full run collected tests and is NOT included in that
+receipt. Product source remains unchanged during the full run; documentation
+and this separate new test were added afterward.
+
+README, shipping gate and second-laptop acceptance card now point to installed
+268d39a, exact 101673009-byte setup EXE and SHA256
+53999befa550d8d1c780d3490fd75dfc165e5d16eaf35a89b023ce6c09df564b.
+Eight setup/README contracts passed. No new release/submission or app launch
+in this checkpoint. PEX remains closed, Goal active.
+
 ## Latest source work: truthful Ask explanation and corrected profiling
 
 Read [Ask/idle report](demo/evidence/ASK_AND_IDLE_2026-09-13.md).

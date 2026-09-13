@@ -19,12 +19,14 @@ app termination, fabricated benchmark score or false completion claim.
 
 ## Current candidate
 
-Installed product source: **`352d317fdda1ca6a8983e27ad896dd7afbcd6783`**.
+Installed product source: **`268d39ab59eb86332b1df2c3a53c64fd9c314c78`**.
 Later documentation commits do not change these installer bytes.
-Local NSIS: `build/release-candidate-352d317/PEX_0.1.0_x64-setup.exe`.
-Bytes: `101669843`; SHA-256:
-`9a6bdca0641564d6f066577d736277a22a86cfb461f85d5e3e352384b52c2149`.
-[Package and live proof](demo/evidence/LIVE_ACCEPTANCE_352D317_2026-09-13.md).
+Local NSIS: `build/release-candidate-268d39a/PEX_0.1.0_x64-setup.exe`.
+Bytes: `101673009`; SHA-256:
+`53999befa550d8d1c780d3490fd75dfc165e5d16eaf35a89b023ce6c09df564b`.
+[Package and live proof](demo/evidence/LIVE_268D39A_2026-09-13.md).
+Ask partial-evidence explanation is newer source-only work. Full offline run
+started on 80f0237 is in progress; no all-green claim is made.
 Public RC1 contains older `49385f2`; do not film it as this build.
 
 ## Sequenced acceptance checklist
@@ -36,6 +38,8 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   Evidence: bf5a25b package proof; three frozen lifetime tests passed.
   Follow-up complete on 352d317: Cursor replay-activity repair rebuilt,
   installed and natively checked; zero false working count on startup.
+  Superseded by 268d39a: full rebuild, three frozen tests, zero-blocker package
+  verification, installed hash match and native startup/normal close passed.
 
 - [x] **2. Exercise focused native UI, chat and companion controls.**
   Spec: Core §8; Recovery §20–21.
@@ -44,7 +48,11 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   Evidence: bf5a25b package/native reports. Bounded checks do not cover every
   UI edge case or every scale on both pets.
   352d317 repeated the native controls, but exposed stale progress copy on the
-  retained recovery session. That finding remains open; UI is not perfect.
+  retained recovery session. That finding required the later repair below;
+  these bounded checks do not establish perfect UI behavior.
+  Later 927106a native check confirmed selected-worker progress and stopped
+  status after completion. Overall completion remains unconfirmed when no
+  claims are extracted; source Ask copy now explains the supported file checks.
 
 - [x] **3. Use saved Zen BYOK in real Strands supervision.**
   Spec: Core §4.1; Recovery §6.
@@ -66,7 +74,9 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   Spec: Recovery §12–13.
   Acceptance: supported real App Server, same-thread continuation, persistent
   goal/evidence, real Strands, quiet control with zero follow-ups.
-  Evidence: [clean-source 0ea2639 pair](demo/evidence/LIVE_CODEX_PAIR_0EA2639_2026-09-13.md).
+  Latest evidence: [unchanged 268d39a pair](demo/evidence/LIVE_268D39A_2026-09-13.md),
+  two passed in 161.20s after the exact-objective fix. Prior 927106a quiet BOM
+  failure remains recorded, with negative before/after regressions.
   This proves that source and owned App Server surface, not arbitrary existing
   Codex desktop-thread control or a bf5a25b native Codex run.
 
@@ -79,6 +89,8 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   public artifact tasks passed real semantic reviews, zero follow-ups, 33 model
   calls / 128320 supervisor tokens. Not a Codex batch, native desktop batch,
   representative coding score or comparative four-arm benchmark.
+  Later installed 927106a quiet: exact ready+LF stable through 321 seconds,
+  one real Strands NOOP, zero follow-ups, all 77 observed events settled.
 
 - [x] **7. Verify AgentCore implementation without inventing deployment.**
   Spec: build AgentCore path and user requirement.
@@ -90,10 +102,12 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   Spec: Recovery §25, §27.
   Acceptance: full offline Python and desktop suites pass; repair/rerun actual
   failures and preserve exact source, failed attempts and exclusions.
-  Full result: 4,474 passed, one README contract failed, 16 skipped, 18 deselected;
-  retained `build/offline-d4f6507.xml`. README fixed; eight setup contracts pass.
-  Desktop: 300 passed, one skip. Subsequent Cursor source repair needs its own
-  final regression/package acceptance. Do not relabel the failed full receipt.
+  Prior e989bdd full result: 4480 passed, one setup-fixture logging failure,
+  16 skipped, 18 deselected; original receipt retained and fixture repaired.
+  Full 80f0237 suite is currently running (exec 17215, `build/offline-80f0237.xml`).
+  An early Cursor fixture mismatch is independently reproduced: it writes an
+  extra newline against an exact-content objective. Preserve the run and repair
+  the fixture, not the stricter verifier. Desktop: 301 passed, one skip.
 
 - [x] **9. Measure bounded installed resource behavior.**
   Spec: usable desktop MVP; user-reported whole-PC freeze.
@@ -102,6 +116,9 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   Evidence: bf5a25b active 362–406 MiB private, settled interactive 380–408 MiB,
   approximately 1.84% total CPU on this 12-thread machine. Short samples do not
   prove leak freedom or clear the historical whole-PC-freeze report.
+  Updated corrected profile on 268d39a: visible 13.163% of one core/322.33 MiB
+  private; after minimize 2.435%/322.96 MiB. Earlier PowerShell CPU values were
+  coarsely rounded by an integer overload; memory numbers were unaffected.
 
 - [ ] **10. Record and inspect exact-build recovery/quiet demo.**
   Spec: Recovery §26; official working-demo requirement.

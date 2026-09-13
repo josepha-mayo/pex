@@ -6,8 +6,11 @@ retain the screenshot/log; do not film around a defect.
 ## 1. Download and verify
 
 For the current flat-logo candidate, copy
-`build/release-candidate-352d317/PEX_0.1.0_x64-setup.exe` from the development
-laptop. This candidate has been installed and visually checked locally. The
+`build/release-candidate-268d39a/PEX_0.1.0_x64-setup.exe` from the development
+laptop. This candidate has matching installed hashes and a native startup
+check; its source passed real Codex recovery and quiet tests. Full native
+OpenCode acceptance is version-bound to 927106a, so do not skip the gates
+below on the second laptop. The newer Ask reply change is source-only. The
 public [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
 still contains the older `49385f2` build; downloading it will not include the
 new logo or supervisor usage receipt.
@@ -18,10 +21,10 @@ $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
 (Get-FileHash -LiteralPath $pexInstaller -Algorithm SHA256).Hash
 ```
 
-Expected bytes for `352d317`: `101669843`
+Expected bytes for `268d39a`: `101673009`
 
 Expected SHA-256:
-`9A6BDCA0641564D6F066577D736277A22A86CFB461F85D5E3E352384B52C2149`
+`53999BEFA550D8D1C780D3490FD75DFC165E5D16EAF35A89B023CE6C09DF564B`
 
 The installer is unsigned, so a Windows publisher warning is expected. Reject
 the file if its size or hash differs.
@@ -122,7 +125,8 @@ email, private task content, or unrelated desktop windows. Say:
 
 - Strands is used live;
 - AgentCore is implemented and locally tested, not deployed;
-- PexBench integrity passed, but no comparative score is claimed;
+- PexBench is unfrozen and formal benchmark gates remain unmet; no comparative
+  score is claimed;
 - the recovery is controlled behavioral evidence, not a natural failure-rate
   measurement.
 

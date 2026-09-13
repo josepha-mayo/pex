@@ -6,28 +6,32 @@ It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude 
 
 **MVP in final validation — 13 September 2026.** The shipping focus is OpenCode,
 Codex App Server, Zen BYOK and exactly two controllable companions, Pex and Von.
-Current locally installed candidate **`bf5a25b`** has a verified rebuilt runtime
-and MSI/NSIS package, a flat logo, visible inference usage, and an OpenCode
-lifecycle fix verified in the native UI. Public RC1 is an older build.
+Current locally installed candidate **`268d39a`** has a verified rebuilt runtime
+and MSI/NSIS package, a flat logo, visible inference usage, and exact-file
+objective verification. Public RC1 is an older build. The newer source-only
+Ask explanation change is not yet in that installer.
 
-In the latest installed live test, PEX corrected a missing file and then a CRLF
-byte mismatch in the same OpenCode session. Both files reached exact required
-bytes and real Strands then chose NOOP. The audit retained uncertainty about an
-unchecked verification criterion instead of declaring the whole goal complete.
-Three bounded reviews used nine model calls and 35,221 tokens. A separate
-installed quiet control and clean-source Codex recovery/quiet pair passed on
-`0ea2639`; each receipt states its exact scope. These are controlled behavioral
-examples, not a comparative benchmark or arbitrary Codex desktop-thread control.
+Fresh Codex recovery and quiet-completion checks both passed on `268d39a`:
+one useful same-thread correction followed by NOOP, and a separate already-
+correct task with no follow-up. A preceding real BOM failure exposed the
+exact-objective bug; the failed receipt and before/after regression tests remain.
+On `927106a`, OpenCode source recovery passed and installed OpenCode quiet
+acceptance produced exact bytes, one real Strands NOOP and zero follow-ups.
+These are controlled behavioral examples, not a comparative benchmark or
+arbitrary Codex desktop-thread control. Each receipt states its exact scope.
 
 Native Home/Inspector/Settings, selected-worker Ask PEX, transparent Von,
 independent message dismissal, stationary Hide and ordinary shutdown were
-checked. Settled interactive private memory measured about 380–408 MiB; short
-checks do not prove leak freedom or clear a prior whole-PC-freeze report.
+checked on explicitly recorded builds. Corrected `268d39a` idle samples measured
+322–323 MiB private memory and about 13.2% of one CPU core with Home visible,
+2.4% after minimizing PEX. Short samples do not prove leak freedom or clear a
+prior whole-PC-freeze report; visible-window overhead still needs investigation.
 AgentCore is implemented and locally tested but **not AWS-deployed**. Final
 recording and matching public release remain. See the
 [current checklist](docs/MVP_SHIP_GATE.md),
-[package proof](docs/demo/evidence/PACKAGE_BF5A25B_2026-09-13.md) and
-[live result](docs/demo/evidence/NATIVE_BF5A25B_RECOVERY_2026-09-13.md).
+[package and Codex proof](docs/demo/evidence/LIVE_268D39A_2026-09-13.md),
+[native OpenCode result](docs/demo/evidence/LIVE_927106A_2026-09-13.md) and
+[corrected idle measurements](docs/demo/evidence/ASK_AND_IDLE_2026-09-13.md).
 
 ![PEX Home showing two available coding workers and the Von companion](docs/demo/assets/pex-home-49385f2.png)
 
@@ -95,7 +99,7 @@ The binary is not code-signed, so Windows may show a publisher warning. Package
 integrity is not indefinite stability or publisher trust; current source-bound
 evidence is recorded in the [active handoff](docs/AGENT_HANDOFF.md).
 
-The newer locally tested `bf5a25b` installer is not yet a public release. Use
+The newer locally tested `268d39a` installer is not yet a public release. Use
 the [exact-build recording card](docs/demo/SECOND_LAPTOP_ACCEPTANCE.md) when
 copying it from the development laptop, or build current source below.
 
