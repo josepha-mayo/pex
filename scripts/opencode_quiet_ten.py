@@ -186,6 +186,7 @@ async def run_case(number, case, model, server):
         QuietCompletionFence,
         belongs_to_case,
         completed_generation,
+        retryable_provider_abort,
         review_completed_for_event,
         semantic_reviews_succeeded,
     )
@@ -351,6 +352,7 @@ async def run_case(number, case, model, server):
             vendor,
             minimum_user_count=1 + len(registry.opencode.inbox.get(session.id, [])),
         )
+        infrastructure_abort_reason = retryable_provider_abort(messages, vendor)
         # HTTP reads yield to the event pump. Recheck the journal and action
         # identities afterwards; never seal stale rows from before these reads.
         events = await store.recent_events(session.id, limit=1000)
@@ -416,6 +418,7 @@ async def run_case(number, case, model, server):
             "worker_completion_fence_passed": worker_completed,
             "latest_completed_generation": final_generation,
             "observation_incomplete": not worker_completed,
+            "infrastructure_abort_reason": infrastructure_abort_reason,
             "initially_correct_before_pex_review": initially_correct,
             "first_stop_observation": first_stop,
             "semantic_review_count": len(reviews),
@@ -577,6 +580,14 @@ async def main():
         "source_unchanged": source_commit() == start_commit and source_is_clean(),
         "cases": results,
         "error_type": error_type,
+        "infrastructure_abort_reason": next(
+            (
+                receipt.get("infrastructure_abort_reason")
+                for receipt in results
+                if receipt.get("infrastructure_abort_reason")
+            ),
+            None,
+        ),
         "requested_case_count": len(selected_cases),
         "passed": len(results) == len(selected_cases)
         and all(r["passed"] for r in results)

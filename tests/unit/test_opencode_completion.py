@@ -11,6 +11,7 @@ from benchmarks.opencode_completion import (
     belongs_to_case,
     completed_generation,
     recovery_interventions_succeeded,
+    retryable_provider_abort,
     review_completed_for_event,
     semantic_reviews_succeeded,
 )
@@ -339,6 +340,59 @@ def test_invalid_latest_response(field, value):
     rows = messages()
     rows[-1]["info"][field] = value
     assert completed_generation(rows, {}, "s") is None
+
+
+def test_retryable_provider_outage_is_an_infrastructure_abort():
+    rows = messages()
+    rows[-1]["info"]["error"] = {
+        "name": "APIError",
+        "data": {"statusCode": 503, "isRetryable": True, "responseBody": "secret"},
+    }
+    rows[-1]["info"].pop("finish")
+
+    assert retryable_provider_abort(rows, "s") == "worker_provider_unavailable"
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        None,
+        {"name": "APIError", "data": {"statusCode": 400, "isRetryable": True}},
+        {"name": "APIError", "data": {"statusCode": 503, "isRetryable": False}},
+        {"name": "Other", "data": {"statusCode": 503, "isRetryable": True}},
+        {"name": "APIError", "data": {"statusCode": True, "isRetryable": True}},
+    ],
+)
+def test_non_retryable_or_ambiguous_worker_error_is_not_provider_abort(error):
+    rows = messages()
+    rows[-1]["info"]["error"] = error
+    assert retryable_provider_abort(rows, "s") is None
+
+
+def test_only_latest_selected_session_generation_can_abort_run():
+    rows = messages()
+    older = deepcopy(rows[-1])
+    older["info"]["error"] = {
+        "name": "APIError",
+        "data": {"statusCode": 503, "isRetryable": True},
+    }
+    older["info"]["time"] = {"created": 1.5, "completed": 1.75}
+    rows.insert(1, older)
+    rows.append(
+        {
+            "info": {
+                "id": "foreign",
+                "sessionID": "other",
+                "role": "assistant",
+                "time": {"created": 99},
+                "error": {
+                    "name": "APIError",
+                    "data": {"statusCode": 503, "isRetryable": True},
+                },
+            }
+        }
+    )
+    assert retryable_provider_abort(rows, "s") is None
 
 
 @pytest.mark.parametrize("rows", [None, [], [None], [{"info": None}]])

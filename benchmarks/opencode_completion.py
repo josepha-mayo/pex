@@ -215,6 +215,48 @@ def completed_generation(
     return user["id"], assistant["id"]
 
 
+def retryable_provider_abort(messages: Any, session_id: str) -> str | None:
+    """Classify a terminal worker-provider outage without treating it as task failure.
+
+    Keep the classification intentionally narrow. A malformed response, model
+    refusal, or ordinary worker error is not infrastructure evidence. Only the
+    newest assistant generation for the selected session may establish a
+    retryable HTTP/provider abort, and no provider response body is returned.
+    """
+    if not isinstance(messages, list) or not isinstance(session_id, str) or not session_id:
+        return None
+    assistants: list[dict[str, Any]] = []
+    for message in messages:
+        info = message.get("info") if isinstance(message, dict) else None
+        if not isinstance(info, dict) or info.get("sessionID") != session_id:
+            continue
+        stamp = info.get("time")
+        if (
+            info.get("role") == "assistant"
+            and isinstance(info.get("id"), str)
+            and info["id"]
+            and isinstance(stamp, dict)
+            and _timestamp(stamp.get("created"))
+        ):
+            assistants.append(info)
+    if not assistants:
+        return None
+    latest = max(assistants, key=lambda info: (info["time"]["created"], info["id"]))
+    error = latest.get("error")
+    data = error.get("data") if isinstance(error, dict) else None
+    status = data.get("statusCode") if isinstance(data, dict) else None
+    retryable = data.get("isRetryable") if isinstance(data, dict) else None
+    if (
+        isinstance(error, dict)
+        and error.get("name") == "APIError"
+        and type(status) is int
+        and status in {408, 425, 429} | set(range(500, 600))
+        and retryable is True
+    ):
+        return "worker_provider_unavailable"
+    return None
+
+
 @dataclass
 class QuietCompletionFence:
     """Reset quiescence on new generation, event, action, or unsettled work."""
