@@ -1,21 +1,45 @@
 # PEX active handoff
 
-## Current submission packet and remaining gates — post-9581dac
+## Current submission packet and remaining gates — post-fc20329
 
-The verified product bytes remain source `1cd42c8`; all later commits are
-evidence/submission-material changes only. Active README, judge guide, Devpost
-copy, recording runbook, second-laptop card and RC2 release notes now agree on
-the current installer hashes and the fresh OpenCode/Codex recovery-plus-quiet
-pairs. A new versioned flat PEX mark is tracked as
-`docs/demo/assets/pex-mark.png` plus editable SVG: true alpha, 1024×1024, no
-heart motif or surrounding glow, and readable at 32×32. Do not replace the
-verified installer icon without rebuilding and repeating the package/native
-gate.
+The verified and installed product bytes are source
+`fc20329794a6a453868ca01ea903b4c41f471475`. The flat PEX harness mark is now
+shipped in the desktop header, startup-recovery surface, Windows executable and
+both installer icon sets. Its tracked PNG/SVG has true alpha, no heart, no blue
+aura or gradient, and remains legible at 32 px. The generated-image draft with
+a fake checkerboard was rejected; the shipped mark is deterministic vector
+art. Desktop tests pass 303 with one Windows symlink-capability skip, the
+production frontend build passes, the exact frozen bridge passes 3/3 and the
+exclusive package receipt reports `release_ready:true` with zero blockers.
+
+Retained candidate: `build/release-candidate-fc20329/`.
+
+- NSIS: 101,712,659 bytes,
+  `aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c`
+- MSI: 114,561,048 bytes,
+  `da223af2e251d3cd030fdb3af6a3918fabb5889d6636967739ed864320b94519`
+- package receipt: 1,546,516 bytes,
+  `3e8afb0821a80cf413a0e65374102b0facf78660d10ffc5707592d9a76a3f0fe`
+- installed desktop: 17,272,832 bytes,
+  `10c2c618a510708aaca7cdf238f132f378403964d1c2b0fdd7e0c0f993c4a5e1`,
+  exact NSIS receipt match.
+
+Post-reboot command-side acceptance started the exact installed desktop. It and
+its single owned bridge child remained responsive; the bridge listened on
+`127.0.0.1:7420` and returned 401 to unauthenticated `/health`, as required. A
+20-second sample measured 1.219 aggregate CPU seconds, 175.0 MiB working set
+and 128.3 MiB private memory. Native app control was not exposed to the current
+computer-control session after reboot, so do not call this a fresh visual click
+through. The immediately preceding candidate passed Home/Settings, exactly two
+pets, transparent overlay, independent message dismissal, Hide/Escape and
+ordinary close; `fc20329` changes only the reviewed brand/CSS/icon assets and
+their contract test. Repeat the short visual card on the recording laptop.
+Read [exact package/startup evidence](demo/evidence/PACKAGE_FC20329_2026-09-13.md).
 
 Fresh read-only GitHub preflight found a clean public `main`, MIT license,
 local/remote parity, all required local assets, and zero high-entropy credential
 matches outside explicit test fixtures. RC1 is still the older `49385f2`
-release. RC2 notes are prepared for the unpublished `1cd42c8` MSI/NSIS; do not
+release. RC2 notes are prepared for the unpublished `fc20329` MSI/NSIS; do not
 mix RC1 URLs with current hashes. Read
 [public preflight](demo/evidence/PUBLIC_PREFLIGHT_9581DAC_2026-09-13.md).
 
@@ -76,7 +100,7 @@ This is strong release behavior evidence, not a four-arm benchmark or AgentCore
 deployment. Next: fresh current-source Codex recovery/quiet pair, benchmark
 readiness, and the remaining submission evidence. Goal stays active.
 
-## Current verified installer and native acceptance — 1cd42c8
+## Previous verified installer and native acceptance — 1cd42c8
 
 Authoritative checkout is `D:\PEX-work`; pushed source before this documentation
 checkpoint is `1cd42c8790d72035252cf7d1f94654ec4931fbe3`. A fresh clean Tauri build
@@ -97,10 +121,11 @@ bridge measured 178.1 MiB working set and 128.5 MiB private. This is bounded
 evidence, not a leak proof.
 
 Read [package/native evidence](demo/evidence/PACKAGE_1CD42C8_2026-09-13.md).
-The retained candidate is `build/release-candidate-1cd42c8`. Next: run fresh
-current-build Zen/OpenCode and Codex recovery/quiet acceptance, then update
-benchmark readiness. AWS AgentCore remains locally implemented/tested but
-undeployed; formal benchmark results remain unfrozen. Goal stays active.
+The retained historical candidate is `build/release-candidate-1cd42c8`.
+Fresh Zen/OpenCode and Codex recovery/quiet acceptance and benchmark-readiness
+checks were completed later and are summarized above. AWS AgentCore remains
+locally implemented/tested but undeployed; formal benchmark results remain
+unfrozen. Goal stays active.
 
 ## Current source green on the complete offline gate — 8220857
 

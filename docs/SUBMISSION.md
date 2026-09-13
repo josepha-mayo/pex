@@ -2,15 +2,18 @@
 
 > **Current claim boundary — 13 September 2026:** the authenticated account is
 > registered and PEX project draft `pex-mbcpr4` exists; nothing is finally
-> submitted. Exact product source `1cd42c8` has a verified MSI/NSIS package with
+> submitted. Exact product source `fc20329` has a verified MSI/NSIS package with
 > zero blockers, matching installed identity, exactly two companions (Pex and
-> Von), vault-backed Zen BYOK and a default three-review cap. Native Home,
+> Von), vault-backed Zen BYOK and a default three-review cap. The immediately
+> preceding candidate passed native Home,
 > Settings, transparent Von, independent status dismissal, separate overlay
-> Hide/Escape behavior, bridge liveness and normal cleanup passed. A 20-second
-> visible-Home sample measured 128.5 MiB private and 178.1 MiB working set for
-> desktop plus bridge; this is not a long-run leak claim. The complete non-live
+> Hide/Escape behavior, bridge liveness and normal cleanup. Exact `fc20329`
+> passed authenticated startup and remained responsive; a 20-second sample
+> measured 128.3 MiB private and 175.0 MiB working set for desktop plus bridge.
+> Its short recording-laptop visual click-through remains required; this is not
+> a long-run leak claim. The complete non-live
 > Python gate is 4,532 passed with 16 skips and 18 explicit live deselections;
-> desktop is 302 passed with one platform skip. Fresh release-source OpenCode
+> desktop is 303 passed with one platform skip. Fresh release-source OpenCode
 > and Codex recovery/quiet pairs prove real Zen/Strands same-session correction,
 > observed helpful outcome, final NOOP, and separate zero-follow-up restraint.
 > AgentCore is implemented and locally tested (243 focused tests), not deployed.
@@ -161,13 +164,13 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   field after checking that its title contains **Agents for Humans** and that it
   is accessible while logged out; do not republish it
 - [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean
-  product source `1cd42c8`; both installer inventories pass with zero blockers,
+  product source `fc20329`; both installer inventories pass with zero blockers,
   and the installed bridge hash matches the NSIS payload
 - [x] Re-review README and architecture source/PNG against packaged product
-  source `1cd42c8`; current claims separate package, native, live semantic,
+  source `fc20329`; current claims separate package, native, live semantic,
   local-contract, and deploy-target evidence
 - [x] Re-run the current non-live Python gate: 4,532 passed, 16 skipped, and 18
-  explicitly live deselections. The desktop gate is 302 passed with the one
+  explicitly live deselections. The desktop gate is 303 passed with the one
   intentional Windows symlink skip. The focused Strands/AgentCore gate is 243
   passed. Production TypeScript/Vite and the Tauri package build passed. No
   benchmark arm, AWS resource, cloud AgentCore invocation, or paid call ran in
@@ -180,10 +183,12 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1),
   targeted at exact product source `49385f2`; both remote asset digests match
   the accepted local NSIS/MSI hashes
-- [x] Natively verify package source `1cd42c8` Home, Supervisor Settings,
+- [ ] Repeat the short package-source `fc20329` Home, Supervisor Settings,
   transparent Von rendering, exact Zen default, visible review cap, independent
   message dismissal, separate overlay Hide/Escape behavior, bridge liveness,
-  ordinary cleanup, and bounded responsiveness
+  ordinary cleanup, and bounded responsiveness on the recording laptop. The
+  preceding UI passed this card; exact `fc20329` has already passed installed
+  identity, authenticated startup and bounded responsiveness.
 - [x] Re-run fresh release-source OpenCode and Codex recovery/quiet pairs with
   vault-backed Zen BYOK and Strands. Each recovery used one same-session
   correction, observed a supported helpful outcome, and ended at NOOP; each

@@ -17,9 +17,9 @@ steering visible.
 - Use the source-specific installer and receipt identified in the active
   [handoff](../AGENT_HANDOFF.md). Do not use old submission folders by habit.
 - Confirm the package receipt still says `release_ready: true` with no blockers.
-  The current local candidate is product source `1cd42c8`; its exact receipt,
+  The current local candidate is product source `fc20329`; its exact receipt,
   installed runtime checks and installer hashes are in
-  [the package evidence](evidence/PACKAGE_1CD42C8_2026-09-13.md). Fresh
+  [the package evidence](evidence/PACKAGE_FC20329_2026-09-13.md). Fresh
   release-source recovery/quiet receipts are in the
   [OpenCode evidence](evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md) and
   [Codex evidence](evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md). Later

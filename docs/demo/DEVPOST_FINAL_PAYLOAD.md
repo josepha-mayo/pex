@@ -15,7 +15,7 @@ requirements fetched on 12 September 2026 remain authoritative.
 - Public repository: `https://github.com/josepha-mayo/pex`
 - Public Windows judge build: RC1 is currently public but contains older
   product source `49385f2`. Replace this field with the matching RC2 URL only
-  after the verified `1cd42c8` artifacts are published.
+  after the verified `fc20329` artifacts are published.
 - Thumbnail: an older privacy-safe Home screenshot is present in the draft.
   Replace it during final review with `docs/demo/assets/pex-mark.png` or a
   privacy-safe exact-current-build frame.
@@ -61,7 +61,7 @@ demo, and PEX should not mislabel it.
 
 > Download the unsigned Windows judge build from the final RC2 release and
 > verify `PEX_0.1.0_x64-setup.exe` SHA-256 is
-> 81c85b528e0e7aeae57a6c4bc554b08c54302df87f776f034bbec7aa9f36d849.
+> aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c.
 > Start a throwaway OpenCode server with `opencode serve --port 4096`, attach
 > with `opencode attach http://127.0.0.1:4096`, connect PEX to that address,
 > and configure Zen BYOK with the exact
@@ -86,7 +86,7 @@ confirmed. Do not republish a duplicate.
 Before requesting `yes, submit`:
 
 1. Attach the architecture PNG to field `27734`.
-2. Publish the matching `1cd42c8` RC2 artifacts, independently download them,
+2. Publish the matching `fc20329` RC2 artifacts, independently download them,
    and confirm the public NSIS hash above before replacing the older RC1 link.
 3. Add and independently open the public video URL.
 4. Confirm the private Builder ID value in field `27735`.

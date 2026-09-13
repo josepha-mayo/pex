@@ -114,7 +114,7 @@ Recording flow:
 - Public repo and MIT license are ready.
 - Public unsigned Windows RC1: `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1`. This is older `49385f2`, not the latest tested installer.
 - Architecture PNG exists and is below the official 35 MiB limit.
-- Current locally installed product source `1cd42c8` has a zero-blocker MSI/NSIS receipt, installed hash match, and bounded native acceptance. Copy/hash instructions: `docs/demo/SECOND_LAPTOP_ACCEPTANCE.md`. A matching public release remains to be made; do not overwrite RC1 artifacts.
+- Current locally installed product source `fc20329` has a zero-blocker MSI/NSIS receipt, installed hash match, authenticated startup, and bounded resource acceptance. Its exact-build visual card remains; copy/hash instructions: `docs/demo/SECOND_LAPTOP_ACCEPTANCE.md`. A matching public release remains to be made; do not overwrite RC1 artifacts.
 - Fresh release-source OpenCode and Codex recovery/quiet receipts are retained under `docs/demo/evidence/`, each bound to its exact source. They are not a comparative benchmark or full-spec certification.
 - AgentCore protocol is locally implemented and tested but not deployed to AWS.
 - PexBench is not frozen, so no comparative score or leaderboard rank is claimed.

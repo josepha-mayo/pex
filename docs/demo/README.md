@@ -5,23 +5,25 @@ directory are historical references and must not be presented as final-source pr
 
 ## Current checkpoint — 13 September 2026
 
-- Current installed product source: `1cd42c8`. The retained NSIS is
-  `build/release-candidate-1cd42c8/PEX_0.1.0_x64-setup.exe`, 101,689,109 bytes,
-  SHA-256 `81c85b528e0e7aeae57a6c4bc554b08c54302df87f776f034bbec7aa9f36d849`.
-  Its MSI/NSIS receipt has zero blockers and the installed bridge matches the
-  NSIS payload. See [package/native evidence](evidence/PACKAGE_1CD42C8_2026-09-13.md).
-- Both installers contain exactly Pex and Von. Bounded native Home, Settings,
+- Current installed product source: `fc20329`. The retained NSIS is
+  `build/release-candidate-fc20329/PEX_0.1.0_x64-setup.exe`, 101,712,659 bytes,
+  SHA-256 `aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c`.
+  Its MSI/NSIS receipt has zero blockers and the installed desktop matches the
+  NSIS payload. See [package/startup evidence](evidence/PACKAGE_FC20329_2026-09-13.md).
+- Both installers contain exactly Pex and Von. The preceding build passed bounded native Home, Settings,
   transparent Von, independent message dismissal, separate overlay Hide/Escape,
-  bridge liveness and ordinary shutdown passed.
+  bridge liveness and ordinary shutdown. Exact `fc20329` passed installation,
+  authenticated startup and responsiveness; repeat the short visual click-through
+  on the recording laptop before filming.
 - The current-product non-live Python gate is 4,532 passed, 16 skipped and 18
-  explicit live deselections. Desktop is 302 passed with one Windows symlink
+  explicit live deselections. Desktop is 303 passed with one Windows symlink
   skip; the focused Strands/AgentCore gate is 243 passed.
 - Fresh release-source OpenCode and Codex recovery/quiet pairs each prove real
   Zen/Strands inference, one evidence-specific same-session correction, an
   observed helpful outcome, final NOOP, and a separate zero-follow-up control.
   See the [OpenCode pair](evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md) and
   [Codex pair](evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
-- A 20-second visible-Home sample measured 128.5 MiB private and 178.1 MiB
+- A 20-second exact-build sample measured 128.3 MiB private and 175.0 MiB
   working set for desktop plus bridge. It is bounded evidence, not leak freedom.
 - AgentCore is implemented and locally tested, not deployed. PexBench remains
   unfrozen with no coherent four-arm run or valid score. Final video, matching

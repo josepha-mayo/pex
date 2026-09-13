@@ -23,22 +23,25 @@ not edit the project, submission, code repository, or video.
 
 ## 1. Accept the installed candidate — 10 minutes
 
-Use the already installed NSIS candidate from product source `1cd42c8`. The
+Use the already installed NSIS candidate from product source `fc20329`. The
 retained installer is:
 
-`build/release-candidate-1cd42c8/PEX_0.1.0_x64-setup.exe`
+`build/release-candidate-fc20329/PEX_0.1.0_x64-setup.exe`
 
 Expected SHA-256:
 
-`81c85b528e0e7aeae57a6c4bc554b08c54302df87f776f034bbec7aa9f36d849`
+`aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c`
 
-The exact installed candidate has cleared package verification, authenticated
-settings smoke, native Home/Settings and ordinary-close cleanup. The current
-overlay exposed separate Hide and message-dismiss controls; Escape hid only the
-pet and reset visibility off. Current package/native evidence and the bounded
-resource sample are in `evidence/PACKAGE_1CD42C8_2026-09-13.md`. Fresh release-
-source OpenCode and Codex recovery/quiet pairs also pass. Concentrate the final
-recording rehearsal on the public throwaway OpenCode recovery and quiet cases.
+The exact installed candidate has cleared package verification, installed hash
+identity, authenticated startup and a responsive bounded resource sample. The
+immediately preceding UI passed native Home/Settings and ordinary-close cleanup;
+its overlay exposed separate Hide and message-dismiss controls, and Escape hid
+only the pet. Because native computer control was unavailable after reboot,
+repeat that short visual card on exact `fc20329` before filming. Current package
+and startup evidence is in `evidence/PACKAGE_FC20329_2026-09-13.md`. Fresh
+release-source OpenCode and Codex recovery/quiet pairs also pass. Concentrate
+the final recording rehearsal on the public throwaway OpenCode recovery and
+quiet cases.
 
 Stop immediately on Retry, freeze, opaque background, flying control, wrong pet,
 unbounded growth, or a bridge that survives a normal PEX close. Keep the failure;
@@ -92,7 +95,7 @@ Before any external write, confirm:
 git status --short
 git rev-parse HEAD
 git rev-parse origin/main
-Get-FileHash .\build\release-candidate-1cd42c8\PEX_0.1.0_x64-setup.exe -Algorithm SHA256
+Get-FileHash .\build\release-candidate-fc20329\PEX_0.1.0_x64-setup.exe -Algorithm SHA256
 ```
 
 The worktree must be clean, local and remote main must match, and the installer
@@ -103,7 +106,7 @@ hash must equal the value above. Then:
 2. continue the existing PEX Devpost project draft `pex-mbcpr4`;
 3. ensure the installer offered to judges matches the filmed build. Public
    [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
-   still contains `49385f2`; publish the accepted `1cd42c8` as a new release
+   still contains `49385f2`; publish the accepted `fc20329` as a new release
    before using a new public download link, preserving RC1;
 4. upload the final public YouTube/Vimeo video, maximum five minutes;
 5. fill Devpost from `docs/SUBMISSION.md` and `docs/JUDGE_TESTING.md`;

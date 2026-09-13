@@ -13,9 +13,12 @@ and verify SHA-256
 `6fb27ff7d4ec986e5b64209b1f00b70cab6593b67daafa42e08add5bd90c6d92`.
 Windows may show a publisher warning because this candidate is not code-signed.
 
-Latest locally tested candidate: `1cd42c8`. Its rebuilt installer, installed
-native flow, and fresh release-source OpenCode/Codex recovery plus quiet pairs
-passed bounded checks; a matching public release is pending.
+Latest locally tested candidate: `fc20329`. Its rebuilt installer, installed
+identity, authenticated startup and bounded resources passed. The immediately
+preceding UI passed native flow, and fresh release-source OpenCode/Codex recovery
+plus quiet pairs remain source-applicable because the latest delta is
+branding-only. Repeat the exact-build visual card before filming; a matching
+public release is pending.
 See [exact-copy/hash instructions](demo/SECOND_LAPTOP_ACCEPTANCE.md), or build
 current source below. Do not treat RC1 as the newer filmed candidate.
 

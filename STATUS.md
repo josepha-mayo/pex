@@ -2,18 +2,20 @@
 
 ## Current — 13 September 2026
 
-**Authoritative local MVP:** installed product source `1cd42c8`; later pushed
-commits through `16610d3` are evidence-only. The complete non-live Python gate
+**Authoritative local MVP:** installed product source `fc20329`. The complete non-live Python gate
 is 4,532 passed, 16 skipped and 18 explicit live-marker deselections. Desktop
-tests are 302 passed with one Windows symlink-capability skip; frozen bridge
+tests are 303 passed with one Windows symlink-capability skip; frozen bridge
 lifetime/standalone acceptance is 3/3. Fresh MSI/NSIS package verification has
 zero blockers, and the installed desktop hash matches the NSIS receipt.
 
-Native acceptance confirms Home/Settings, exactly Pex and Von, transparent Von,
+The immediately preceding candidate's native acceptance confirms Home/Settings,
+exactly Pex and Von, transparent Von,
 independent message dismissal, separate overlay Hide/Escape behavior, live
-bridge health and ordinary shutdown with no surviving PEX process. A bounded
-20-second visible-Home sample measured 178.1 MiB combined working set, 128.5
-MiB private and 0.22 CPU-seconds. It is not a long-duration leak proof.
+bridge health and ordinary shutdown with no surviving PEX process. Exact
+`fc20329` installation identity, authenticated startup and responsiveness pass.
+A bounded 20-second sample measured 175.0 MiB combined working set, 128.3 MiB
+private and 1.219 CPU-seconds. A fresh recording-laptop visual click-through is
+still required; this is not a long-duration leak proof.
 
 Fresh current-release OpenCode and Codex recovery/quiet pairs passed with real
 vault-backed Zen/Muse inference through Strands: one justified same-session

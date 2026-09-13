@@ -1,8 +1,7 @@
 # PEX 0.1.0 RC2 — Windows judge build
 
 Draft release notes, not a published release. Product bytes were built from
-[`1cd42c8`](https://github.com/josepha-mayo/pex/commit/1cd42c8790d72035252cf7d1f94654ec4931fbe3).
-Later commits add evidence and submission assets only.
+[`fc20329`](https://github.com/josepha-mayo/pex/commit/fc20329794a6a453868ca01ea903b4c41f471475).
 
 PEX is a local goal-aware supervisor for existing coding agents. This focused
 Windows MVP ships exactly two companions, Pex and Von, and supports OpenCode
@@ -17,18 +16,22 @@ unknown-publisher warning.
 
 | File | Bytes | SHA-256 |
 | --- | ---: | --- |
-| PEX_0.1.0_x64-setup.exe | 101689109 | `81c85b528e0e7aeae57a6c4bc554b08c54302df87f776f034bbec7aa9f36d849` |
-| PEX_0.1.0_x64_en-US.msi | 114499608 | `7254c5aaf88150bd156f33cb24dc01dc380d6273252cda5c85a1194e87191663` |
+| PEX_0.1.0_x64-setup.exe | 101712659 | `aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c` |
+| PEX_0.1.0_x64_en-US.msi | 114561048 | `da223af2e251d3cd030fdb3af6a3918fabb5889d6636967739ed864320b94519` |
 
 Both embedded inventories passed verification with zero blockers. The installed
-bridge hash matches the NSIS payload. Bounded native acceptance covered startup,
-Home and Settings, exactly two pets, transparent Von, independent message
+desktop hash matches the NSIS payload. The immediately preceding candidate's
+bounded native acceptance covered startup, Home and Settings, exactly two pets,
+transparent Von, independent message
 dismissal, separate overlay Hide/Escape behavior, bridge liveness and ordinary
 cleanup. A 20-second visible-Home sample measured 128.5 MiB private and 178.1
-MiB working set for desktop plus bridge; this is not a long-run leak claim.
+MiB working set for desktop plus bridge. Exact `fc20329` passed authenticated
+startup and a 20-second 175.0 MiB working-set / 128.3 MiB private sample; a
+fresh visual click-through remains required. Neither sample is a long-run leak
+claim.
 
 The current-product non-live Python gate completed with 4,532 passed, 16 skipped
-and 18 explicit live deselections. Desktop completed with 302 passed and one
+and 18 explicit live deselections. Desktop completed with 303 passed and one
 Windows symlink-capability skip. Three frozen bridge lifetime tests passed.
 
 Fresh release-source OpenCode and Codex checks each demonstrated one

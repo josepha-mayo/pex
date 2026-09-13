@@ -6,10 +6,12 @@ retain the screenshot/log; do not film around a defect.
 ## 1. Download and verify
 
 For the current flat-logo candidate, copy
-`build/release-candidate-1cd42c8/PEX_0.1.0_x64-setup.exe` from the development
-laptop. This candidate has matching installed hashes, native startup/overlay/
-shutdown acceptance, and fresh release-source OpenCode plus Codex recovery and
-quiet proofs. Do not skip the clean-laptop gates below. The
+`build/release-candidate-fc20329/PEX_0.1.0_x64-setup.exe` from the development
+laptop. This candidate has matching installed hashes and authenticated startup;
+the immediately preceding UI passed native overlay/shutdown acceptance, and
+fresh release-source OpenCode plus Codex recovery and quiet proofs remain
+applicable because this delta is branding-only. Do not skip the exact-build
+visual gates below. The
 public [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
 still contains the older `49385f2` build; downloading it will not include the
 current fixes and evidence.
@@ -20,10 +22,10 @@ $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
 (Get-FileHash -LiteralPath $pexInstaller -Algorithm SHA256).Hash
 ```
 
-Expected bytes for `1cd42c8`: `101689109`
+Expected bytes for `fc20329`: `101712659`
 
 Expected SHA-256:
-`81C85B528E0E7AEAE57A6C4BC554B08C54302DF87F776F034BBEC7AA9F36D849`
+`AEE5A212997DC4A493CEC5A812344AF04AED539EF219EE5DDBC78EA33781629C`
 
 The installer is unsigned, so a Windows publisher warning is expected. Reject
 the file if its size or hash differs.

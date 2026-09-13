@@ -19,14 +19,13 @@ app termination, fabricated benchmark score or false completion claim.
 
 ## Current candidate
 
-Installed product source: **`1cd42c8790d72035252cf7d1f94654ec4931fbe3`**.
-Later documentation commits do not change these installer bytes.
-Local NSIS: `build/release-candidate-1cd42c8/PEX_0.1.0_x64-setup.exe`.
-Bytes: `101689109`; SHA-256:
-`81c85b528e0e7aeae57a6c4bc554b08c54302df87f776f034bbec7aa9f36d849`.
-[Package and native proof](demo/evidence/PACKAGE_1CD42C8_2026-09-13.md).
-The complete current-product non-live gate is green; later commits are evidence
-only. Public RC1 contains older `49385f2`; do not film it as this build.
+Installed product source: **`fc20329794a6a453868ca01ea903b4c41f471475`**.
+Local NSIS: `build/release-candidate-fc20329/PEX_0.1.0_x64-setup.exe`.
+Bytes: `101712659`; SHA-256:
+`aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c`.
+[Package and startup proof](demo/evidence/PACKAGE_FC20329_2026-09-13.md).
+The complete current-product non-live gate is green. Public RC1 contains older
+`49385f2`; do not film it as this build.
 
 ## Sequenced acceptance checklist
 
@@ -34,17 +33,21 @@ only. Public RC1 contains older `49385f2`; do not film it as this build.
   Spec: Recovery §27 engineering discipline.
   Acceptance: rebuilt runtime/desktop, verified MSI/NSIS inventories, installed
   hash match, startup/normal close and no surviving PEX process.
-  Current evidence: 1cd42c8 full rebuild, three frozen tests, zero-blocker
-  package verification, installed hash match and native startup/normal close.
+  Current evidence: fc20329 full rebuild, three frozen tests, zero-blocker
+  package verification, installed hash match and authenticated native startup.
+  Native-close control was unavailable after reboot; forced cleanup left zero
+  PEX processes.
 
 - [x] **2. Exercise focused native UI, chat and companion controls.**
   Spec: Core §8; Recovery §20–21.
   Acceptance: Home/Inspector/Settings, exactly two pets, transparent Von,
   independent message dismissal and stationary Hide; selected-worker Ask PEX.
-  Current evidence: installed 1cd42c8 Home/Settings, exactly two companions,
+  Current evidence: immediately preceding installed candidate Home/Settings, exactly two companions,
   transparent Von, independent message dismissal, separate overlay Hide,
-  Escape-to-hide/reset, bridge liveness and ordinary cleanup. These remain
-  bounded checks, not every scale/monitor configuration.
+  Escape-to-hide/reset, bridge liveness and ordinary cleanup. `fc20329` changes
+  only reviewed brand/icon assets and their test, but still requires a short
+  exact-build visual click-through before recording. These remain bounded checks,
+  not every scale/monitor configuration.
 
 - [x] **3. Use saved Zen BYOK in real Strands supervision.**
   Spec: Core §4.1; Recovery §6.
@@ -91,16 +94,19 @@ only. Public RC1 contains older `49385f2`; do not film it as this build.
   Acceptance: full offline Python and desktop suites pass; repair/rerun actual
   failures and preserve exact source, failed attempts and exclusions.
   Current result: 4,532 passed, 16 skipped, 18 explicit live-marker
-  deselections, zero failures/errors in 3,020.82 seconds. Desktop: 302 passed,
-  one Windows symlink-capability skip. See the current offline receipt.
+  deselections, zero failures/errors in 3,020.82 seconds. Desktop after the
+  branding delta: 303 passed, one Windows symlink-capability skip. See the
+  current offline and package receipts.
 
 - [x] **9. Measure bounded installed resource behavior.**
   Spec: usable desktop MVP; user-reported whole-PC freeze.
   Acceptance: PEX-owned measurement during live work, responsive post-run
   navigation and normal cleanup.
-  Current installed 1cd42c8 visible-Home sample over 20 seconds: 0.22 aggregate
-  CPU-seconds, 178.1 MiB working set and 128.5 MiB private for desktop + bridge.
-  Short samples do not prove leak freedom or erase the historical freeze report.
+  Current installed `fc20329` sample over 20 seconds: 1.219 aggregate
+  CPU-seconds, 175.0 MiB working set and 128.3 MiB private for desktop + bridge;
+  both processes remained responsive. The unavailable native close control
+  required forced cleanup, which left zero survivors. Short samples do not prove
+  leak freedom or erase the historical freeze report.
 
 - [ ] **10. Record and inspect exact-build recovery/quiet demo.**
   Spec: Recovery §26; official working-demo requirement.

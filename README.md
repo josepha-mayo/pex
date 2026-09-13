@@ -10,9 +10,9 @@ It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude 
 
 **Verified local MVP — 13 September 2026.** The shipping focus is OpenCode,
 Codex App Server, Zen BYOK and exactly two controllable companions, Pex and Von.
-Installed product source **`1cd42c8`** has a zero-blocker MSI/NSIS package
+Installed product source **`fc20329`** has a zero-blocker MSI/NSIS package
 receipt, matching installed-binary identity, 4,532 passing non-live Python
-tests, 302 passing desktop tests with one platform skip, and three passing
+tests, 303 passing desktop tests with one platform skip, and three passing
 frozen-bridge lifetime tests. Public RC1 is an older build.
 
 Fresh release-source OpenCode and Codex behavior pairs both passed. In each
@@ -22,16 +22,20 @@ worker session, verified the outcome, and then stayed quiet. Separate correctly
 completed controls produced model-backed `NOOP` and zero follow-ups. These are
 controlled behavioral examples, not a comparative benchmark.
 
-Native Home/Settings, exactly two pets, transparent Von, independent message
-dismissal, separate overlay Hide, Escape-to-hide, bridge liveness and ordinary
-shutdown passed on the installed candidate. A 20-second visible-Home sample
-used 0.22 aggregate CPU-seconds and measured 178.1 MiB working set / 128.5 MiB
-private across desktop and bridge. This is bounded evidence, not an indefinite
-leak claim. AgentCore is implemented and locally tested (243 focused tests) but
+The immediately preceding candidate passed native Home/Settings, exactly two
+pets, transparent Von, independent message dismissal, separate overlay Hide,
+Escape-to-hide, bridge liveness and ordinary
+shutdown. The exact `fc20329` install passed authenticated startup and remained
+responsive; a 20-second sample used 1.219 aggregate CPU-seconds and measured
+175.0 MiB working set / 128.3 MiB private across desktop and bridge. A fresh
+recording-laptop visual click-through remains required because native computer
+control was unavailable after reboot. This is bounded evidence, not an
+indefinite leak claim. AgentCore is implemented and locally tested (243 focused
+tests) but
 **not AWS-deployed**. The formal four-arm benchmark is unfrozen and has no valid
 score. Final recording and matching public release remain. See the
 [current checklist](docs/MVP_SHIP_GATE.md),
-[package/native proof](docs/demo/evidence/PACKAGE_1CD42C8_2026-09-13.md),
+[package/startup proof](docs/demo/evidence/PACKAGE_FC20329_2026-09-13.md),
 [OpenCode pair](docs/demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md), and
 [Codex pair](docs/demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
 
@@ -101,7 +105,7 @@ The binary is not code-signed, so Windows may show a publisher warning. Package
 integrity is not indefinite stability or publisher trust; current source-bound
 evidence is recorded in the [active handoff](docs/AGENT_HANDOFF.md).
 
-The newer locally tested `1cd42c8` installer is not yet a public release. Use
+The newer locally tested `fc20329` installer is not yet a public release. Use
 the [exact-build recording card](docs/demo/SECOND_LAPTOP_ACCEPTANCE.md) when
 copying it from the development laptop, or build current source below.
 
