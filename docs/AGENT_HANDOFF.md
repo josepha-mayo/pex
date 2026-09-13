@@ -20,14 +20,26 @@ verified Zen/Muse catalog discovery with zero provider calls. Read
 GitHub's live release API reports matching SHA-256 digests and byte counts for
 all four RC2 assets, and the tag resolves to exact product source `0454122`.
 
-Current recording packet: `D:\PEX-recording-kit-0454122-v2.zip`, 216,085,967 bytes,
+Current recording packet: `D:\PEX-recording-kit-0454122-v3.zip`, 216,087,499 bytes,
 SHA-256
-`cde35b4a9284125e2c31779f7f3f311058d0b82b1374a1161b260ec30b2081c0`.
-The earlier non-v2 archive predates public RC2 wording; retain it as history but
-use v2 for transfer.
+`4df6937514e386d8f38c4717a45a8fa98040bb9f40ad2873a16a0e65152cda4d`.
+It adds the final current-source OpenCode recovery/quiet evidence to v2. Use v3
+for transfer; retain earlier archives only as history.
+The exact RC2 was subsequently installed: all four payload hashes matched the
+NSIS receipt, `/health/live` returned the verified PEX service, desktop and
+bridge were responsive at about 176 MiB combined working set, and ordinary
+window close left zero PEX processes.
 Repeat only the exact installed-window and transparent-overlay visual card on
 the recording laptop, then record/publish/submit. The formal four-arm benchmark
 and AgentCore deployment remain unproven and must not be claimed.
+
+## Final OpenCode recovery and quiet control passed — 694d452
+
+Clean source `694d452ede277a1b6e84bf835ce0409ca1ffcf8c` passed a fresh
+isolated pair with the saved Zen BYOK, Muse Contributor Free and Strands.
+Recovery sent one same-session correction and verified both exact artifacts;
+the correct control recorded one semantic `NOOP` and zero follow-ups. Read
+[the final OpenCode pair](demo/evidence/LIVE_OPENCODE_FINAL_694D452_2026-09-13.md).
 
 ## Exact-current Codex recovery and quiet control passed — 189f476
 
