@@ -1,5 +1,86 @@
 # PEX active handoff
 
+## AUTHORITATIVE CURRENT STATE — 6ad2b99 / RC3 (2026-09-13)
+
+This section supersedes every older package/status section below it. The clean,
+pushed product source is `6ad2b995669b23cc98e5bac6269b1ad8483d1c00` and
+`origin/main` resolves to the same commit. Public Windows prerelease:
+https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc3
+
+RC3 contains four uploaded assets whose GitHub-reported byte counts and SHA-256
+digests exactly match the retained local candidate at
+`build/release-candidate-6ad2b99/`:
+
+- recommended NSIS: `PEX_0.1.0_x64-setup.exe`, 101,723,178 bytes,
+  `436a126c7e98d2dc96d743b992a7a8e276c5563cd445885985ea340baeac76ec`
+- MSI: `PEX_0.1.0_x64_en-US.msi`, 114,552,856 bytes,
+  `383a46a0cb037bf80983ff2d853d6d5afa1414ce10dbf2733f110a0af39883c5`
+- exclusive package receipt: `pex-package-receipt-6ad2b99.json`, 1,546,516
+  bytes, `d21f16af368e0fdf3d84cf7582440a750916954101fe226e9fd0136294a2aa69`
+- packaged settings smoke: `packaged-settings-smoke-6ad2b99.json`, 429
+  bytes, `aa9d526e047eab4369195b903c003d53a628a2fa5e06be06cf802a84d0eaed0d`
+
+The exact package receipt reports `release_ready:true` with blockers `[]`.
+The exact NSIS was installed and all four installed payload hashes matched its
+receipt. The installed bridge returned authenticated healthy state; after 15
+seconds both processes remained responsive at about 175.3 MiB combined working
+set (bridge 142.6 MiB, desktop 32.7 MiB). Ordinary window close left zero PEX
+processes. Three frozen-bridge lifetime tests passed. Packaged-settings smoke
+verified identity plus Zen/Muse ordering and a three-call cap with zero provider
+calls and no worker attachment.
+
+### Current product behavior proof
+
+The final isolated live OpenCode run is
+`build/one-surface-final-6ad2b99-20260913`. It used the saved OpenCode Zen BYOK,
+Muse Contributor Free supervisor and Strands. Starting from a controlled
+incomplete project (`stage_exact:true`, final artifact absent, zero prior
+follow-ups), PEX inspected request-bound evidence, obtained independent verifier
+approval, sent exactly one evidence-specific `SEND_NUDGE` to the same worker
+session, observed the exact recovered files, recorded a helped causal outcome,
+and then emitted a final quiet `NOOP`. All 288 events and semantic reviews
+settled; source remained unchanged and the owned server exited. Runtime was
+186.42 seconds and PEX used five provider calls totaling 13,857 input / 1,277
+output tokens. The five calls are the current honest minimum path: main inspect
+and decision, independent verifier inspect and verdict, then final quiet
+decision.
+
+The immediately preceding live attempts are diagnostic history, not passes:
+`usage-batched-0b6966e` exposed a missing verifier allowlist;
+`usage-batched-fixed-25ddc49` recovered correctly through `CONTINUE_SESSION` but
+the old harness accepted only `SEND_NUDGE`; `usage-compact-final-f8d8bdb`
+recovered and stayed quiet but its immutable first-stop snapshot hit a Windows
+file-visibility race. Those causes were repaired before the passing 6ad2b99 run.
+
+Current tests on this exact lineage include: focused evidence/runtime 196 passed
+with four Windows link-capability skips; protocol/supervisor 127 passed with one
+skip; end-to-end handoff/permissions/roundtrip 82 passed; desktop 303 passed
+with one expected Windows symlink skip; Ruff clean. Mypy is unavailable in the
+environment and must not be claimed.
+
+### Honest submission boundary
+
+This is submission-ready evidence for the focused two-pet Windows MVP: packaged
+UI, OpenCode and Codex adapters, destination-bound Zen BYOK, Strands closed-loop
+supervision, independent evidence verification, and the locally implemented
+AgentCore route. Earlier exact-current Codex recovery/quiet evidence remains in
+this handoff below. Cursor contracts are packaged/tested but there is no fresh
+live Cursor benchmark on 6ad2b99.
+
+Do not call the formal four-arm comparative benchmark complete: current
+readiness is still `frozen:false` with no coherent four-arm run set, so there is
+no defensible comparative score. Do not claim an AWS deployment: AgentCore is
+implemented, dependency-packaged and locally tested, but was not deployed or
+invoked in AWS because the user prohibited billable work. The final user-owned
+gates are a brief visual pass/recording on the target laptop and Devpost finish.
+The active goal remains open until submission.
+
+C: currently has about 194.33 GiB free and D: about 534.31 GiB free. Four large
+Hugging Face caches were moved losslessly to
+`D:\C-drive-recovery\huggingface-cache-20260913` and their original C: paths are
+verified junctions. Never delete that D: recovery directory while those
+junctions are in use. Broad C: deletion is neither necessary nor authorized.
+
 ## Current recording package — 0454122
 
 Product source `0454122605d089bb8c790f209f0f747b0eabf274` enlarges the
