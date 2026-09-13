@@ -4,34 +4,32 @@
 
 It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude Code, OpenCode, and other coding agents you already use. It is not another coding harness, not a Kanban board, and not a chat UI that makes you babysit a babysitter.
 
-**MVP in final validation — 13 September 2026.** The shipping focus is OpenCode,
+**Verified local MVP — 13 September 2026.** The shipping focus is OpenCode,
 Codex App Server, Zen BYOK and exactly two controllable companions, Pex and Von.
-Current locally installed candidate **`268d39a`** has a verified rebuilt runtime
-and MSI/NSIS package, a flat logo, visible inference usage, and exact-file
-objective verification. Public RC1 is an older build. The newer source-only
-Ask explanation change is not yet in that installer.
+Installed product source **`1cd42c8`** has a zero-blocker MSI/NSIS package
+receipt, matching installed-binary identity, 4,532 passing non-live Python
+tests, 302 passing desktop tests with one platform skip, and three passing
+frozen-bridge lifetime tests. Public RC1 is an older build.
 
-Fresh Codex recovery and quiet-completion checks both passed on `268d39a`:
-one useful same-thread correction followed by NOOP, and a separate already-
-correct task with no follow-up. A preceding real BOM failure exposed the
-exact-objective bug; the failed receipt and before/after regression tests remain.
-On `927106a`, OpenCode source recovery passed and installed OpenCode quiet
-acceptance produced exact bytes, one real Strands NOOP and zero follow-ups.
-These are controlled behavioral examples, not a comparative benchmark or
-arbitrary Codex desktop-thread control. Each receipt states its exact scope.
+Fresh release-source OpenCode and Codex behavior pairs both passed. In each
+harness, PEX used the saved Zen/Muse provider through Strands, detected one
+genuinely incomplete stop, sent one evidence-specific correction to the same
+worker session, verified the outcome, and then stayed quiet. Separate correctly
+completed controls produced model-backed `NOOP` and zero follow-ups. These are
+controlled behavioral examples, not a comparative benchmark.
 
-Native Home/Inspector/Settings, selected-worker Ask PEX, transparent Von,
-independent message dismissal, stationary Hide and ordinary shutdown were
-checked on explicitly recorded builds. Corrected `268d39a` idle samples measured
-322–323 MiB private memory and about 13.2% of one CPU core with Home visible,
-2.4% after minimizing PEX. Short samples do not prove leak freedom or clear a
-prior whole-PC-freeze report; visible-window overhead still needs investigation.
-AgentCore is implemented and locally tested but **not AWS-deployed**. Final
-recording and matching public release remain. See the
+Native Home/Settings, exactly two pets, transparent Von, independent message
+dismissal, separate overlay Hide, Escape-to-hide, bridge liveness and ordinary
+shutdown passed on the installed candidate. A 20-second visible-Home sample
+used 0.22 aggregate CPU-seconds and measured 178.1 MiB working set / 128.5 MiB
+private across desktop and bridge. This is bounded evidence, not an indefinite
+leak claim. AgentCore is implemented and locally tested (243 focused tests) but
+**not AWS-deployed**. The formal four-arm benchmark is unfrozen and has no valid
+score. Final recording and matching public release remain. See the
 [current checklist](docs/MVP_SHIP_GATE.md),
-[package and Codex proof](docs/demo/evidence/LIVE_268D39A_2026-09-13.md),
-[native OpenCode result](docs/demo/evidence/LIVE_927106A_2026-09-13.md) and
-[corrected idle measurements](docs/demo/evidence/ASK_AND_IDLE_2026-09-13.md).
+[package/native proof](docs/demo/evidence/PACKAGE_1CD42C8_2026-09-13.md),
+[OpenCode pair](docs/demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md), and
+[Codex pair](docs/demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
 
 ![PEX Home showing two available coding workers and the Von companion](docs/demo/assets/pex-home-49385f2.png)
 
@@ -99,7 +97,7 @@ The binary is not code-signed, so Windows may show a publisher warning. Package
 integrity is not indefinite stability or publisher trust; current source-bound
 evidence is recorded in the [active handoff](docs/AGENT_HANDOFF.md).
 
-The newer locally tested `268d39a` installer is not yet a public release. Use
+The newer locally tested `1cd42c8` installer is not yet a public release. Use
 the [exact-build recording card](docs/demo/SECOND_LAPTOP_ACCEPTANCE.md) when
 copying it from the development laptop, or build current source below.
 

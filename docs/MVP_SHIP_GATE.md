@@ -19,15 +19,14 @@ app termination, fabricated benchmark score or false completion claim.
 
 ## Current candidate
 
-Installed product source: **`268d39ab59eb86332b1df2c3a53c64fd9c314c78`**.
+Installed product source: **`1cd42c8790d72035252cf7d1f94654ec4931fbe3`**.
 Later documentation commits do not change these installer bytes.
-Local NSIS: `build/release-candidate-268d39a/PEX_0.1.0_x64-setup.exe`.
-Bytes: `101673009`; SHA-256:
-`53999befa550d8d1c780d3490fd75dfc165e5d16eaf35a89b023ce6c09df564b`.
-[Package and live proof](demo/evidence/LIVE_268D39A_2026-09-13.md).
-Ask partial-evidence explanation is newer source-only work. Full offline run
-started on 80f0237 is in progress; no all-green claim is made.
-Public RC1 contains older `49385f2`; do not film it as this build.
+Local NSIS: `build/release-candidate-1cd42c8/PEX_0.1.0_x64-setup.exe`.
+Bytes: `101689109`; SHA-256:
+`81c85b528e0e7aeae57a6c4bc554b08c54302df87f776f034bbec7aa9f36d849`.
+[Package and native proof](demo/evidence/PACKAGE_1CD42C8_2026-09-13.md).
+The complete current-product non-live gate is green; later commits are evidence
+only. Public RC1 contains older `49385f2`; do not film it as this build.
 
 ## Sequenced acceptance checklist
 
@@ -35,48 +34,41 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   Spec: Recovery §27 engineering discipline.
   Acceptance: rebuilt runtime/desktop, verified MSI/NSIS inventories, installed
   hash match, startup/normal close and no surviving PEX process.
-  Evidence: bf5a25b package proof; three frozen lifetime tests passed.
-  Follow-up complete on 352d317: Cursor replay-activity repair rebuilt,
-  installed and natively checked; zero false working count on startup.
-  Superseded by 268d39a: full rebuild, three frozen tests, zero-blocker package
-  verification, installed hash match and native startup/normal close passed.
+  Current evidence: 1cd42c8 full rebuild, three frozen tests, zero-blocker
+  package verification, installed hash match and native startup/normal close.
 
 - [x] **2. Exercise focused native UI, chat and companion controls.**
   Spec: Core §8; Recovery §20–21.
   Acceptance: Home/Inspector/Settings, exactly two pets, transparent Von,
   independent message dismissal and stationary Hide; selected-worker Ask PEX.
-  Evidence: bf5a25b package/native reports. Bounded checks do not cover every
-  UI edge case or every scale on both pets.
-  352d317 repeated the native controls, but exposed stale progress copy on the
-  retained recovery session. That finding required the later repair below;
-  these bounded checks do not establish perfect UI behavior.
-  Later 927106a native check confirmed selected-worker progress and stopped
-  status after completion. Overall completion remains unconfirmed when no
-  claims are extracted; source Ask copy now explains the supported file checks.
+  Current evidence: installed 1cd42c8 Home/Settings, exactly two companions,
+  transparent Von, independent message dismissal, separate overlay Hide,
+  Escape-to-hide/reset, bridge liveness and ordinary cleanup. These remain
+  bounded checks, not every scale/monitor configuration.
 
 - [x] **3. Use saved Zen BYOK in real Strands supervision.**
   Spec: Core §4.1; Recovery §6.
   Acceptance: vault credential, selected provider/model, genuine inference,
   usage displayed, no fallback or key disclosure.
-  Evidence: installed bf5a25b Muse Contributor Free, cap three. A dispatch may
-  make multiple API calls; cap three is not a token cap.
+  Current evidence: fresh 1caa822 OpenCode and 8e99e9f Codex pairs used saved
+  Muse Contributor Free through Strands with cap three. A dispatch may make
+  multiple API calls; cap three is not a token cap.
 
 - [x] **4. Verify OpenCode lifecycle and same-session artifact recovery.**
   Spec: Core §3; Recovery §2, §10–11.
   Acceptance: Working during activity; independently approved correction;
   same worker repairs output; final quiet review is genuine.
-  Evidence: [installed recovery](demo/evidence/NATIVE_BF5A25B_RECOVERY_2026-09-13.md):
-  missing-file and CRLF corrections, exact bytes, Strands NOOP, 262 settled
-  events. Overall completion remains uncertain for the unchecked third
-  criterion; second correction helped is null, not true.
+  Evidence: [fresh release-source pair](demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md):
+  exact initial incomplete state, one same-session correction, exact final
+  artifacts, helped outcome, 118 settled events, then quiet.
 
 - [x] **5. Preserve distinct Codex recovery and quiet evidence.**
   Spec: Recovery §12–13.
   Acceptance: supported real App Server, same-thread continuation, persistent
   goal/evidence, real Strands, quiet control with zero follow-ups.
-  Latest evidence: [unchanged 268d39a pair](demo/evidence/LIVE_268D39A_2026-09-13.md),
-  two passed in 161.20s after the exact-objective fix. Prior 927106a quiet BOM
-  failure remains recorded, with negative before/after regressions.
+  Latest evidence: [fresh release-source pair](demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md),
+  two passed in 145.36s: one helpful same-thread correction followed by NOOP,
+  and one supported NOOP with no follow-up.
   This proves that source and owned App Server surface, not arbitrary existing
   Codex desktop-thread control or a bf5a25b native Codex run.
 
@@ -84,41 +76,31 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   Spec: Recovery §8, §13–14.
   Acceptance: correct output before review, completed Strands NOOP, no follow-up;
   preserve failed attempts separately.
-  Evidence: [installed 0ea2639 quiet](demo/evidence/NATIVE_0EA2639_QUIET_2026-09-13.md).
-  Additional 352d317 source-Pipeline batch: all ten consecutive already-correct
-  public artifact tasks passed real semantic reviews, zero follow-ups, 33 model
-  calls / 128320 supervisor tokens. Not a Codex batch, native desktop batch,
-  representative coding score or comparative four-arm benchmark.
-  Later installed 927106a quiet: exact ready+LF stable through 321 seconds,
-  one real Strands NOOP, zero follow-ups, all 77 observed events settled.
+  Evidence: the current OpenCode quiet control had exact output before review,
+  one real semantic NOOP, zero follow-ups and 102 settled events. It is one
+  control, not a statistical false-positive estimate or comparative benchmark.
 
 - [x] **7. Verify AgentCore implementation without inventing deployment.**
   Spec: build AgentCore path and user requirement.
   Acceptance: local client/runtime/pipeline/preflight contracts.
-  Evidence: 183 tests passed on 13 September in 11.47s. AWS deployment remains
-  unverified; no cost-incurring deployment is authorized by this checklist.
+  Evidence: 243 focused tests passed in 25.61s. Current read-only preflight is
+  undeployable/uninvokable; AWS is unauthenticated and no deployment occurred.
 
-- [ ] **8. Finish current-source broad regression.**
+- [x] **8. Finish current-source broad regression.**
   Spec: Recovery §25, §27.
   Acceptance: full offline Python and desktop suites pass; repair/rerun actual
   failures and preserve exact source, failed attempts and exclusions.
-  Prior e989bdd full result: 4480 passed, one setup-fixture logging failure,
-  16 skipped, 18 deselected; original receipt retained and fixture repaired.
-  Full 80f0237 suite is currently running (exec 17215, `build/offline-80f0237.xml`).
-  An early Cursor fixture mismatch is independently reproduced: it writes an
-  extra newline against an exact-content objective. Preserve the run and repair
-  the fixture, not the stricter verifier. Desktop: 301 passed, one skip.
+  Current result: 4,532 passed, 16 skipped, 18 explicit live-marker
+  deselections, zero failures/errors in 3,020.82 seconds. Desktop: 302 passed,
+  one Windows symlink-capability skip. See the current offline receipt.
 
 - [x] **9. Measure bounded installed resource behavior.**
   Spec: usable desktop MVP; user-reported whole-PC freeze.
   Acceptance: PEX-owned measurement during live work, responsive post-run
   navigation and normal cleanup.
-  Evidence: bf5a25b active 362–406 MiB private, settled interactive 380–408 MiB,
-  approximately 1.84% total CPU on this 12-thread machine. Short samples do not
-  prove leak freedom or clear the historical whole-PC-freeze report.
-  Updated corrected profile on 268d39a: visible 13.163% of one core/322.33 MiB
-  private; after minimize 2.435%/322.96 MiB. Earlier PowerShell CPU values were
-  coarsely rounded by an integer overload; memory numbers were unaffected.
+  Current installed 1cd42c8 visible-Home sample over 20 seconds: 0.22 aggregate
+  CPU-seconds, 178.1 MiB working set and 128.5 MiB private for desktop + bridge.
+  Short samples do not prove leak freedom or erase the historical freeze report.
 
 - [ ] **10. Record and inspect exact-build recovery/quiet demo.**
   Spec: Recovery §26; official working-demo requirement.
