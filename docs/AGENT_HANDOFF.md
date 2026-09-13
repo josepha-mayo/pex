@@ -34,11 +34,14 @@ user Temp directory to
 LocalAppData was retained for the exact native acceptance/recording check.
 
 The refreshed transfer bundle is
-`D:\PEX-recording-kit-f2832a8-v3.zip`, 102,231,240 bytes, SHA-256
-`21b5ae2134ac4dae8c019ec8cd509ca887074c675613aef001294a2c888e8215`.
-It has 19 entries and was reopened after creation; all eight entries named in
-its `SHA256SUMS.txt` recomputed exactly. It preserves the RC4 installer and adds
-the fresh OpenCode recovery evidence plus installed-bridge soak evidence.
+`D:\PEX-recording-kit-f2832a8-v4.zip`, 102,247,762 bytes, SHA-256
+`8c28864512bce2883de167bc769bc56ac6e2ac8e48575d4ace10ef2395a930b4`.
+It has 23 entries and was reopened after creation; all eight entries named in
+its `SHA256SUMS.txt` recomputed exactly. It preserves the RC4 installer, adds
+the fresh OpenCode recovery and installed-bridge soak evidence, replaces every
+active guide with its RC4-aligned copy, and includes the previously missing
+recording runbook, ship card, final Devpost payload and MVP gate. A scan of all
+bundled active guides found zero obsolete RC2 package/evidence identifiers.
 
 Fresh release preflight initially failed only because this shell omitted the
 already-installed Rust/Python toolchain paths. Re-run with the repository venv

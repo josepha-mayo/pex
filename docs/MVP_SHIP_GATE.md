@@ -151,9 +151,10 @@ bounded examples. Winning is an aim, never an engineering guarantee. Keep the
 persistent goal active while requirements remain unproven.
 
 Current verified recording transfer bundle:
-`D:\PEX-recording-kit-f2832a8-v3.zip`, 102,231,240 bytes, SHA-256
-`21b5ae2134ac4dae8c019ec8cd509ca887074c675613aef001294a2c888e8215`.
-Its checksum inventory was reopened and verified after creation.
+`D:\PEX-recording-kit-f2832a8-v4.zip`, 102,247,762 bytes, SHA-256
+`8c28864512bce2883de167bc769bc56ac6e2ac8e48575d4ace10ef2395a930b4`.
+Its 23-entry inventory and checksum list were reopened and verified after
+creation; all bundled active guides are RC4-aligned.
 
 ## Official submission boundary
 
