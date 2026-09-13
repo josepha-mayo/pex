@@ -1,5 +1,14 @@
 # Known failures
 
+## Latest repair verification — 268d39a
+
+Exact-objective regression fixed without changing the original live Codex
+test/prompt/assertion. Nine failing unit cases now reject BOM/extra content;
+fresh unchanged Codex pair passed 2/2, matching package installed and startup
+checked. This does not erase the 927106a failure below. Completion reporting,
+passive resources and formal benchmark gaps remain open. See
+`docs/demo/evidence/LIVE_268D39A_2026-09-13.md` for exact evidence boundaries.
+
 ## 13 September — live 927106a findings
 
 - Codex pair: recovery passed; quiet control FAILED on BOM+pong. PEX's contains

@@ -1,5 +1,26 @@
 # PEX active handoff
 
+## Latest: 268d39a Codex pair passed; verified package installed
+
+Read [268d39a results](demo/evidence/LIVE_268D39A_2026-09-13.md), then the
+927106a failure/native report below. Original Codex tests and prompts unchanged:
+two passed in 161.20s after exact-objective repair; recovery SEND_NUDGE -> NOOP,
+helped=true, quiet one NOOP/no follow-up. Source remained clean and unchanged.
+155 focused cross-layer checks, 301 desktop checks/one skip, three frozen
+lifetime checks, full build and zero-blocker package verification passed.
+Installer exited zero; installed hash matched. Latest retained installer is
+`build/release-candidate-268d39a/PEX_0.1.0_x64-setup.exe`. Native startup and
+normal close passed. Full native OpenCode live check remains on 927106a.
+
+All live/build/install handles in this turn finished. PEX was closed normally;
+no unrelated Codex task was killed. No public release or submission changed.
+Next product work: completion reporting (no_claims), targeted idle CPU/RAM
+profiling, latest full offline suite, and required submission evidence. Formal
+benchmark still cannot freeze; AgentCore remains locally tested/undeployed.
+Goal ACTIVE. Do not mark the whole app perfect from these bounded passes.
+
+The next checkpoint below was superseded by this completed verification.
+
 ## Newest checkpoint: 927106a native acceptance; Codex BOM failure repaired in source
 
 Read [latest live evidence](demo/evidence/LIVE_927106A_2026-09-13.md) first.

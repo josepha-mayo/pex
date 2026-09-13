@@ -2,6 +2,15 @@
 
 ## Current — 13 September 2026
 
+**Latest installed: 268d39a.** [Fresh proof](docs/demo/evidence/LIVE_268D39A_2026-09-13.md):
+original Codex recovery and quiet tests both passed after exact-objective repair
+(161.20s), with actual Strands/saved Zen and unchanged source. Full package,
+three frozen bridge tests, installer verification/hash match, native startup
+and normal close passed. 155 focused cross-layer checks and 301 desktop checks
+passed (one platform skip). Full native OpenCode quiet proof is on 927106a.
+Completion reporting, performance, formal comparative benchmarking and final
+submission evidence remain open. All checkpoints below are historical.
+
 Newest: [927106a native/live evidence and failure repair](docs/demo/evidence/LIVE_927106A_2026-09-13.md).
 Native OpenCode/saved BYOK/Strands: exact file, stopped state, one NOOP, zero
 follow-ups, 77 settled events. Fresh OpenCode and Codex recovery passed.
