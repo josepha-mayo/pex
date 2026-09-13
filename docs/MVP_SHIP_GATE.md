@@ -115,6 +115,9 @@ only. Public RC1 contains older `49385f2`; do not film it as this build.
   architecture/thumbnail, video URL, correct Builder ID/individual details,
   reviewed draft and final submission receipt after authorized submit.
   Existing draft: `https://devpost.com/software/pex-mbcpr4`, not submitted.
+  Current read-only repository/material check:
+  [public preflight](demo/evidence/PUBLIC_PREFLIGHT_9581DAC_2026-09-13.md).
+  A clean transparent project mark is ready at `demo/assets/pex-mark.png`.
   Do not replace RC1's immutable bytes or claim publication from local files.
 
 ## Full-objective work still open

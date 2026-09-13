@@ -1,5 +1,29 @@
 # PEX active handoff
 
+## Current submission packet and remaining gates — post-9581dac
+
+The verified product bytes remain source `1cd42c8`; all later commits are
+evidence/submission-material changes only. Active README, judge guide, Devpost
+copy, recording runbook, second-laptop card and RC2 release notes now agree on
+the current installer hashes and the fresh OpenCode/Codex recovery-plus-quiet
+pairs. A new versioned flat PEX mark is tracked as
+`docs/demo/assets/pex-mark.png` plus editable SVG: true alpha, 1024×1024, no
+heart motif or surrounding glow, and readable at 32×32. Do not replace the
+verified installer icon without rebuilding and repeating the package/native
+gate.
+
+Fresh read-only GitHub preflight found a clean public `main`, MIT license,
+local/remote parity, all required local assets, and zero high-entropy credential
+matches outside explicit test fixtures. RC1 is still the older `49385f2`
+release. RC2 notes are prepared for the unpublished `1cd42c8` MSI/NSIS; do not
+mix RC1 URLs with current hashes. Read
+[public preflight](demo/evidence/PUBLIC_PREFLIGHT_9581DAC_2026-09-13.md).
+
+Only two focused MVP submission gates remain: record/inspect a public video no
+longer than five minutes, then publish the exact current installers and finish
+the existing Devpost draft. The user said they would handle those external
+steps later, so no release/form/video mutation was performed. Goal stays active.
+
 ## Current readiness truth — 0258f64
 
 Clean `0258f6410f718d22f10bc7dd5b2053fa9d23cac8` passed the focused
