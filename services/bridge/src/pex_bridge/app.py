@@ -5966,6 +5966,20 @@ def create_app() -> FastAPI:
                     "Completion is uncertain; PEX has no current-intent supported STOP evidence."
                 ),
             }[str(completion["status"])]
+            latest = completion.get("latest_evidence")
+            if (
+                completion["status"] == "uncertain"
+                and completion.get("reason") == "no_current_supported_completion_evidence"
+                and isinstance(latest, dict)
+                and latest.get("fresh") is True
+                and latest.get("verification_status") == "uncertain"
+                and latest.get("acceptance_status") == "supported"
+            ):
+                answer = (
+                    "The latest review verified the file acceptance checks. "
+                    "Overall goal completion is still unconfirmed; there is no supported "
+                    "completion verdict for the current goal."
+                )
             return {"answer": answer, "completion": completion}
         # Match Ask's one selected review workspace. A model may inspect this
         # target only under server-owned publication authority, never metadata

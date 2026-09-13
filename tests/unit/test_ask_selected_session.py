@@ -241,6 +241,41 @@ async def test_ask_selected_completion_uses_only_selected_goal(ask_client, monke
     assert response.json()["answer"] == "Not yet. Newer work is active on this goal."
 
 
+@pytest.mark.parametrize("status,reason,fresh,acceptance,partial", [
+    ("uncertain", "no_current_supported_completion_evidence", True, "supported", True),
+    ("uncertain", "no_current_supported_completion_evidence", False, "supported", False),
+    ("uncertain", "no_current_supported_completion_evidence", True, "unsatisfied", False),
+    ("uncertain", "goal_not_currently_executable", True, "supported", False),
+    ("in_progress", "newer_active_session_work", True, "supported", False),
+])
+@pytest.mark.asyncio
+async def test_ask_completion_explains_only_fresh_partial_file_acceptance(
+    ask_client, monkeypatch, status, reason, fresh, acceptance, partial,
+):
+    goal = await _goal(ask_client, "current goal")
+    selected = await _opencode_session(goal, "partial", SessionStatus.STOPPED)
+    projection = {
+        "status": status, "reason": reason,
+        "latest_evidence": {
+            "fresh": fresh, "verification_status": "uncertain",
+            "acceptance_status": acceptance,
+        },
+    }
+    monkeypatch.setattr(
+        state.store, "goal_completion_projection", AsyncMock(return_value=projection),
+    )
+    response = await ask_client.post("/v1/ask", json={
+        "question": "is the task complete?", "session_id": selected.id,
+    })
+    assert response.status_code == 200
+    assert response.json()["completion"] == projection
+    answer = response.json()["answer"]
+    assert ("verified the file acceptance checks" in answer) is partial
+    if partial:
+        assert "Overall goal completion is still unconfirmed" in answer
+        assert not answer.startswith("Yes")
+
+
 @pytest.mark.asyncio
 async def test_ask_selected_bound_workspace_runs_guard_for_selected_session(
     bound_pipeline, monkeypatch,

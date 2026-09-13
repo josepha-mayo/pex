@@ -1,5 +1,24 @@
 # PEX active handoff
 
+## Latest source work: truthful Ask explanation and corrected profiling
+
+Read [Ask/idle report](demo/evidence/ASK_AND_IDLE_2026-09-13.md).
+Ask PEX now exposes fresh supported file acceptance while retaining uncertain
+overall completion; stale/non-executable/unmet evidence cannot use that copy.
+32 HTTP/canonical/authority tests passed, Ruff and diff passed. This answer-copy
+repair is newer than installed 268d39a; no completion verdict was promoted.
+
+Corrected PowerShell CPU sampler to explicit double arithmetic: the earlier
+Math.Max overload rounded deltas. Old CPU figures are coarse, memory unaffected.
+Installed 268d39a: Home visible 13.163% one core/322.33 MiB private, after minimize
+2.435%/322.96 MiB. Largest visible CPU: native desktop + WebView main, not sprite
+renderer. Bounded samples only, not causal/leak proof. PEX closed normally.
+
+Next: full offline suite on this source, then package the accumulated fixes.
+Keep native 268d39a and earlier live receipts explicitly version-bound. Goal
+remains active; performance/claim completion/formal benchmark/submission remain
+open. All prior checkpoint sections below are historical where superseded.
+
 ## Latest: 268d39a Codex pair passed; verified package installed
 
 Read [268d39a results](demo/evidence/LIVE_268D39A_2026-09-13.md), then the

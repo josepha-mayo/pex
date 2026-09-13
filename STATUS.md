@@ -2,6 +2,14 @@
 
 ## Current — 13 September 2026
 
+Newest source: Ask completion now explains supported file checks without
+promoting uncertain overall completion; 32 authority/canonical tests pass.
+[Corrected idle profile](docs/demo/evidence/ASK_AND_IDLE_2026-09-13.md): earlier
+PowerShell CPU values were coarsely rounded. Installed 268d39a measured 13.163%
+one-core CPU visible / 2.435% after minimize, private memory 322–323 MiB. No
+performance optimization or leak claim. Latest Ask change is not packaged yet;
+next gate is full offline regression.
+
 **Latest installed: 268d39a.** [Fresh proof](docs/demo/evidence/LIVE_268D39A_2026-09-13.md):
 original Codex recovery and quiet tests both passed after exact-objective repair
 (161.20s), with actual Strands/saved Zen and unchanged source. Full package,
