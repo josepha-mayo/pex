@@ -1,5 +1,16 @@
 # PEX active handoff
 
+## Logged-out Devpost receipt — 13 September 20:22 UTC
+
+The public page `https://devpost.com/software/pex-mbcpr4` was opened in a hidden
+logged-out browser and rendered the correct title, tagline, current product
+story, GitHub/RC4 links, creator attribution and honest Strands/Zen/two-pet/
+AgentCore/benchmark boundaries. Its public 333×222 thumbnail derivative visibly
+shows the simple mint/navy cat/check mark without a heart motif. No video or
+architecture diagram was exposed and no hackathon-submission receipt exists;
+the portfolio page is public but the contest entry remains incomplete. See
+`docs/demo/evidence/PUBLIC_DEVPOST_PAGE_2026-09-13.md`.
+
 ## Final recording-path audit — 75abfcb
 
 The eight active recording/submission guides were audited after the v4 kit was
