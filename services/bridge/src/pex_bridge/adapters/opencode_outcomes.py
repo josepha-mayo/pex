@@ -61,6 +61,7 @@ _DESCENDANT_EVENT_TYPES = frozenset(
         EventType.TOOL_CALL,
         EventType.TOOL_RESULT,
         EventType.TOOL_FAILURE,
+        EventType.SHELL,
         EventType.ERROR,
         EventType.STOP,
     }
@@ -273,6 +274,7 @@ def event_matches_opencode_delivery(
             EventType.TOOL_CALL,
             EventType.TOOL_RESULT,
             EventType.TOOL_FAILURE,
+            EventType.SHELL,
         }
         and lineage["assistant_message_completed"] is False
         and lineage["assistant_message_error"] is False

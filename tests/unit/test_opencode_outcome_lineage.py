@@ -262,7 +262,7 @@ def test_assistant_part_inherits_only_an_observed_exact_parent() -> None:
         },
     )
 
-    assert part.event_type == EventType.TOOL_RESULT
+    assert part.event_type == EventType.SHELL
     assert event_matches_opencode_delivery(_intervention(session), session, part) is True
     assert part.metadata[OPENCODE_MESSAGE_LINEAGE_KEY]["source_event_type"] == (
         "message.part.updated"

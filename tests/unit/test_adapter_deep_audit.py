@@ -228,6 +228,45 @@ async def test_live_http_event_buffer_has_aggregate_payload_budget(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_opencode_discards_token_deltas_before_transport_gap_accounting():
+    transport = LiveHttpTransport("http://127.0.0.1:4096")
+    adapter = OpenCodeAdapter()
+    try:
+        adapter.attach_transport(transport)
+        for index in range(2_000):
+            transport._record_event({
+                "directory": "C:/project",
+                "payload": {
+                    "type": "message.part.delta",
+                    "properties": {"delta": f"token-{index}"},
+                },
+            })
+        terminal = {
+            "directory": "C:/project",
+            "payload": {"type": "message.updated", "properties": {"id": "done"}},
+        }
+        transport._record_event(terminal)
+
+        assert transport.events_since(0) == (1, [terminal], 0)
+        assert transport._event_buffer_bytes > 0
+    finally:
+        await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_live_http_rejects_late_or_invalid_sse_discard_policy():
+    transport = LiveHttpTransport("http://127.0.0.1:4096")
+    try:
+        with pytest.raises(ValueError, match="bounded set"):
+            transport.discard_sse_event_types({""})
+        await transport.ensure_sse("/event")
+        with pytest.raises(RuntimeError, match="before streaming"):
+            transport.discard_sse_event_types({"message.part.delta"})
+    finally:
+        await transport.aclose()
+
+
+@pytest.mark.asyncio
 async def test_live_http_event_size_accounting_survives_count_eviction(monkeypatch):
     monkeypatch.setattr(http_json_module, "MAX_HTTP_EVENTS", 2)
     transport = LiveHttpTransport("http://127.0.0.1:4096")

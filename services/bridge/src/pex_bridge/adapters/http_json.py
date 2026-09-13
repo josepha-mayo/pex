@@ -212,6 +212,26 @@ class LiveHttpTransport:
         self._events_ready = asyncio.Event()
         self._sse_tasks: dict[str, asyncio.Task] = {}
         self.connected_sse_paths: set[str] = set()
+        self._discarded_sse_event_types: frozenset[str] = frozenset()
+
+    def discard_sse_event_types(self, event_types: set[str] | frozenset[str]) -> None:
+        """Discard explicitly non-semantic SSE types before buffer accounting."""
+
+        if self._sse_tasks:
+            raise RuntimeError("SSE discard policy must be configured before streaming")
+        if (
+            not isinstance(event_types, (set, frozenset))
+            or len(event_types) > 32
+            or any(
+                not isinstance(item, str)
+                or not item
+                or len(item) > 128
+                or any(ord(char) < 0x20 or ord(char) == 0x7F for char in item)
+                for item in event_types
+            )
+        ):
+            raise ValueError("SSE discard types must be a bounded set of event names")
+        self._discarded_sse_event_types = frozenset(event_types)
 
     async def request(
         self,
@@ -351,6 +371,13 @@ class LiveHttpTransport:
         self._events_ready.set()
 
     def _record_event(self, payload: dict[str, Any]) -> None:
+        inner = payload.get("payload")
+        event = inner if isinstance(inner, dict) else payload
+        if event.get("type") in self._discarded_sse_event_types:
+            # These frames are intentionally excluded before cursor and byte
+            # accounting, so they cannot evict authoritative events or create
+            # a false observation gap.
+            return
         # Bound aggregate serialized payload, not just event count. The decoder
         # separately bounds object depth/nodes/text; this is not an RSS estimate.
         size = len(strict_json_dumps(payload, separators=(",", ":")).encode("utf-8"))

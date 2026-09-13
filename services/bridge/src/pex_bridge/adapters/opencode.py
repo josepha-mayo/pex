@@ -107,6 +107,12 @@ class OpenCodeAdapter(HarnessAdapter):
             self._removed_messages.clear()
             self._completed_terminal_parents.clear()
             self._prompt_event_boundaries.clear()
+        discard = getattr(transport, "discard_sse_event_types", None)
+        if callable(discard):
+            # Token deltas are intentionally not normalized by this adapter;
+            # discard them before the bounded transport queue so they cannot
+            # evict complete tool/message/STOP evidence and break lineage.
+            discard({"message.part.delta"})
         self.transport = transport
 
     def _pumping(self) -> bool:
