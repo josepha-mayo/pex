@@ -97,14 +97,15 @@ Native computer control still exposes no application windows, so repeat the
 short PEX-only visual card on the recording laptop. Formal four-arm benchmark
 readiness remains an honest NO-GO (`frozen:false`, no coherent run set), and AWS
 AgentCore remains locally implemented/tested but not deployed. Do not invent a
-score, deployment, or native visual pass. C: now has about 72.58 GiB free; the
-installed PEX runtime is only about 0.167 GiB. Exactly 2,606 old top-level Temp
-files (1.797 GiB) moved to `D:\C-drive-recovery\temp-old-20260913`. About 4.62
-GiB of npm cache moved to `D:\C-drive-recovery\npm-cache-20260913`; later
-bounded remainder moves raised C: free space to about 73.44 GiB. Cross-volume
-directory moves twice stopped mid-tree on changing/missing paths, so the final
-0.320 GiB npm-cache remainder was left untouched; moved portions remain
-recoverable under `D:\C-drive-recovery\npm-cache-remainder*-20260913`. Goal
+score, deployment, or native visual pass. C: now has 197.67 GiB free; the
+installed PEX runtime is only about 0.167 GiB. Earlier Temp/npm moves remain
+recoverable under `D:\C-drive-recovery`. The actual large consumer was four
+Hugging Face/WhestBench dataset caches totaling about 126 GiB. After their
+active process exited, they moved to
+`D:\C-drive-recovery\huggingface-cache-20260913`; their four original C: paths
+are verified readable junctions, so no dataset was deleted and callers retain
+the same paths. Do not delete that recovery directory while the junctions are
+in use. Goal
 remains active: exact installed visual card, public maximum-five-minute video
 and Devpost finish. Matching RC2 is now public.
 
