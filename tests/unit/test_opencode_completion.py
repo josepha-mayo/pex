@@ -14,6 +14,11 @@ from benchmarks.opencode_completion import (
     review_completed_for_event,
     semantic_reviews_succeeded,
 )
+from scripts.opencode_quiet_ten import (
+    CASE_TIMEOUT_SECONDS,
+    POST_STOP_REVIEW_GRACE_SECONDS,
+    _case_deadline,
+)
 
 
 def recovery_rows():
@@ -146,6 +151,17 @@ def test_runner_audits_unfiltered_journal_not_only_used_llm_rows():
     runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
     source = runner.read_text(encoding="utf-8")
     assert "semantic_completed = semantic_reviews_succeeded(journal)" in source
+
+
+def test_quiet_runner_reserves_a_full_review_window_after_late_worker_stop():
+    started = 100.0
+
+    assert _case_deadline(started, None) == started + CASE_TIMEOUT_SECONDS
+    assert _case_deadline(started, started + 10.0) == started + CASE_TIMEOUT_SECONDS
+    late_stop = started + CASE_TIMEOUT_SECONDS - 5.0
+    assert _case_deadline(started, late_stop) == (
+        late_stop + POST_STOP_REVIEW_GRACE_SECONDS
+    )
 
 
 def completion_review(**changes):

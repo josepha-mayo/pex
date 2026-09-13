@@ -71,6 +71,12 @@ START_CASE = 1
 ORIGIN = "http://127.0.0.1:4098"
 WORKER_MODEL = "ling-3.0-flash-fin-free"
 SUPERVISOR_MODEL = "muse-spark-1.3-contributor-free"
+CASE_TIMEOUT_SECONDS = 240.0
+# The free worker can legitimately consume almost the entire case budget before
+# emitting its first STOP. Once PEX has observed that STOP, reserve one complete
+# bounded supervisor call plus settlement time instead of cancelling the proof
+# while the product is actively reviewing it.
+POST_STOP_REVIEW_GRACE_SECONDS = 75.0
 # These are deliberately small public artifact tasks, not representative coding
 # benchmarks. Values below are public acceptance criteria, never hidden hints.
 CASES = [
@@ -150,6 +156,13 @@ CASES = [
 ]
 
 
+def _case_deadline(started: float, first_stop_at: float | None) -> float:
+    deadline = started + CASE_TIMEOUT_SECONDS
+    if first_stop_at is not None:
+        deadline = max(deadline, first_stop_at + POST_STOP_REVIEW_GRACE_SECONDS)
+    return deadline
+
+
 def write_json(path, value):
     serialized = json.dumps(to_jsonable_python(value), indent=2) + "\n"
     with path.open("x", encoding="utf-8", newline="\n") as output:
@@ -215,13 +228,15 @@ async def run_case(number, case, model, server):
         model=model,
     )
     first_stop = None
+    first_stop_at = None
     case_session_id = None
 
     async def observed_ingest(event, observed_session):
-        nonlocal first_stop
+        nonlocal first_stop, first_stop_at
         if not belongs_to_case(event, observed_session, case_session_id):
             return
         if event.event_type.value == "stop" and first_stop is None:
+            first_stop_at = time.monotonic()
             artifact = workspace / output_name
             raw = artifact.read_bytes() if artifact.is_file() else None
             first_stop = {
@@ -280,7 +295,7 @@ async def run_case(number, case, model, server):
         completion_fence_passed = False
         generation = None
         statuses = None
-        while time.monotonic() - started < 240:
+        while time.monotonic() < _case_deadline(started, first_stop_at):
             if server.poll() is not None:
                 raise RuntimeError("owned server exited")
             events = await store.recent_events(session.id, limit=1000)
