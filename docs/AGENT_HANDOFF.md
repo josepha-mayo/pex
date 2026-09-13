@@ -1,5 +1,20 @@
 # PEX active handoff
 
+## Final recording-path audit — 75abfcb
+
+The eight active recording/submission guides were audited after the v4 kit was
+built. Stale RC2 `fc20329` paths, hash, old live-evidence links and obsolete
+public-release instructions were replaced with RC4 `f2832a8`, current OpenCode
+recovery/Codex evidence and the public RC4 URL. Recovery acceptance now checks
+one evidence-grounded same-session continuation and verified outcome instead of
+depending on whether a particular layer labels it `SEND_NUDGE` or
+`CONTINUE_SESSION`. The architecture attachment is correctly recorded as
+1600×900, 94,752 bytes, SHA-256
+`dea91e42f057aea78a2d7c61add7b36de1ad3fc630a742bfd916e1a016fadd68`.
+The active claim scan found no stale RC2 package/evidence identifiers. Old
+screenshots that remain in README/submission copy are explicitly labeled as
+historical and must not be used as exact-RC4 visual proof.
+
 ## 13 September final-day refresh — 890d701
 
 Clean pushed source `890d7012e38a0c352d98f6d57c0870168c990046`
