@@ -17,14 +17,13 @@ steering visible.
 - Use the source-specific installer and receipt identified in the active
   [handoff](../AGENT_HANDOFF.md). Do not use old submission folders by habit.
 - Confirm the package receipt still says `release_ready: true` with no blockers.
-  The current local candidate is product source `103f4ec`; its exact receipt,
+  The current local candidate is product source `1cd42c8`; its exact receipt,
   installed runtime checks and installer hashes are in
-  [the package evidence](evidence/PACKAGE_103F4EC_2026-09-12.md). The retained
-  recovery/quiet receipts are in
-  [the live pair evidence](evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
-  The supervisor, adapter and protocol source is unchanged since that pair;
-  the bridge difference only exposes recorded usage metadata to the UI. This
-  establishes source continuity, not a new installed-worker rehearsal.
+  [the package evidence](evidence/PACKAGE_1CD42C8_2026-09-13.md). Fresh
+  release-source recovery/quiet receipts are in the
+  [OpenCode evidence](evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md) and
+  [Codex evidence](evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md). Later
+  commits add evidence only; product code remains the packaged source.
 - The bounded native startup/settings/Home/resource checks are complete. Stop if startup, Retry,
   closing, or reopening hangs; retain the failure instead of filming around it.
   **Never run the quarantined 933239a native-smoke launcher.** It uses unsafe

@@ -13,8 +13,9 @@ and verify SHA-256
 `6fb27ff7d4ec986e5b64209b1f00b70cab6593b67daafa42e08add5bd90c6d92`.
 Windows may show a publisher warning because this candidate is not code-signed.
 
-Latest locally tested candidate: `bf5a25b`. Its rebuilt installer and installed
-OpenCode recovery passed bounded checks; a matching public release is pending.
+Latest locally tested candidate: `1cd42c8`. Its rebuilt installer, installed
+native flow, and fresh release-source OpenCode/Codex recovery plus quiet pairs
+passed bounded checks; a matching public release is pending.
 See [exact-copy/hash instructions](demo/SECOND_LAPTOP_ACCEPTANCE.md), or build
 current source below. Do not treat RC1 as the newer filmed candidate.
 
@@ -85,9 +86,8 @@ auto-reload before testing. PEX never silently changes to another model ID.
 - A deliberately incomplete task produces an evidence-specific correction on
   the same OpenCode session; PEX observes the resulting artifact before calling
   the intervention helpful.
-- Additional defects may require further bounded review. In the latest run,
-  PEX caught CRLF after a missing-file correction. Exact artifacts alone do not
-  establish full goal completion when another criterion remains unchecked.
+- Additional defects may require further bounded review. PEX never promotes an
+  intervention to helpful until its observed outcome is supported.
 - Pausing supervision prevents new semantic dispatches.
 
 The Inspector exposes the goal, evidence, structured decision, delivery state,

@@ -22,7 +22,14 @@ PEX targets professionals who already use coding agents and want leverage withou
 
 The production supervision path uses the Strands Agents SDK as the reasoning layer. Six request-scoped, read-only evidence tools expose the worker state, persistent goal, artifacts, verification results, prior decisions, and policy context. Strands must return a validated structured action such as `NOOP` or `SEND_NUDGE`; evidence-free approvals and unsupported actions collapse safely to `NOOP`. A local deterministic verifier and policy guard remain authoritative, so a model recommendation cannot bypass a denial or invent successful verification.
 
-The focused live OpenCode proof uses Zen BYOK with `muse-spark-1.3-contributor-free`. In the latest installed recovery test (`bf5a25b`), PEX first corrected a missing file, then caught and corrected Windows CRLF endings that violated exact-byte requirements. The same OpenCode session repaired both files, followed by a genuine Strands `NOOP`. These three review dispatches made nine model calls and used 35,221 tokens. The extra verification criterion remained unchecked, so the audit correctly retained uncertainty about overall goal completion rather than marking the second correction helped true. A separate installed `0ea2639` already-correct control produced real Strands NOOP with zero follow-ups. No paid fallback model is silently selected.
+Fresh release-source OpenCode and Codex proofs use Zen BYOK with
+`muse-spark-1.3-contributor-free`. For each worker, PEX independently detected
+one genuinely incomplete stop, sent one evidence-specific correction to the
+same session, observed the exact requested result, marked the intervention
+helpful, and ended with `NOOP`. Separate already-correct controls produced real
+model-backed `NOOP` decisions and zero follow-ups. No paid fallback model is
+silently selected. These are bounded behavioral proofs, not a comparative
+productivity benchmark.
 
 PEX also implements a versioned Amazon Bedrock AgentCore Runtime-compatible `/ping` and `/invocations` contract. That protocol is locally tested; this submission does not claim a live AWS AgentCore deployment.
 
@@ -101,8 +108,8 @@ Recording flow:
 - Public repo and MIT license are ready.
 - Public unsigned Windows RC1: `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1`. This is older `49385f2`, not the latest tested installer.
 - Architecture PNG exists and is below the official 35 MiB limit.
-- Current locally installed product source `bf5a25b` has a zero-blocker MSI/NSIS receipt and installed hash match. Copy/hash instructions: `docs/demo/SECOND_LAPTOP_ACCEPTANCE.md`. A matching public release remains to be made; do not overwrite RC1 artifacts.
-- Current installed OpenCode recovery and prior separate quiet/Codex receipts are retained under `docs/demo/evidence/`, each bound to its exact source/package. They are not a comparative benchmark or full-spec certification.
+- Current locally installed product source `1cd42c8` has a zero-blocker MSI/NSIS receipt, installed hash match, and bounded native acceptance. Copy/hash instructions: `docs/demo/SECOND_LAPTOP_ACCEPTANCE.md`. A matching public release remains to be made; do not overwrite RC1 artifacts.
+- Fresh release-source OpenCode and Codex recovery/quiet receipts are retained under `docs/demo/evidence/`, each bound to its exact source. They are not a comparative benchmark or full-spec certification.
 - AgentCore protocol is locally implemented and tested but not deployed to AWS.
 - PexBench is not frozen, so no comparative score or leaderboard rank is claimed.
 - Live project read on 2026-09-13: `state:draft`, `published_at:null`, `video_url:null`, and `submitted_at:null` for this event. No external changes were made in this preparation pass.
@@ -115,8 +122,11 @@ Recording flow:
 - AgentCore is a locally tested deployment target, not a live AWS deployment claim.
 - The formal four-arm PexBench experiment is unfrozen, so this submission makes no productivity-uplift claim.
 - The release installer is unsigned.
-- Current goal-completion proof remains uncertain when acceptance includes an unchecked criterion; exact artifact recovery is not automatically full-goal verification.
-- Bounded installed resource checks measured roughly 380–408 MiB private memory during settled interaction. Short checks do not establish leak freedom or clear a prior whole-PC-freeze report.
+- Full-spec cross-harness context transfer, Cursor same-session control, and a
+  deployed AgentCore Runtime remain outside this focused MVP proof.
+- The current bounded installed sample measured 128.5 MiB private and 178.1 MiB
+  working set across desktop and bridge. Short checks do not establish leak
+  freedom or erase the prior whole-PC-freeze report.
 
 ## TODO Official Form Fields
 

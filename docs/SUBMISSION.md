@@ -1,40 +1,30 @@
 # Devpost submission copy
 
-> **Current claim boundary — 12 September 2026:** submission copy only; the
-> authenticated account is registered, but no PEX Devpost project/draft exists
-> for Agents for Humans and nothing is submitted. Exact
-> product source `49385f2` has a verified MSI/NSIS package with zero blockers,
-> exactly two companions (Pex and Von), explicit OpenCode/Codex harness UI, Zen
-> Contributor Free first, and a default three-review cap. The installed process
-> tree remained responsive during a 2.81-minute sample at 343.18 MiB private
-> across ten processes; it is not tiny and this is not a long-run no-leak claim.
-> At 25.1 minutes the same ten-process tree remained responsive; its final
-> 20-second delta was only +0.12 MiB private and +0.24 MiB working set.
-> Native Home now excludes 61 stale historical rows and shows the two current
-> promptable workers. Native Supervisor Settings and transparent Von rendering
-> were also observed. The
-> current focused backend seam passes 476 tests with one intentional skip and
-> zero failures across BYOK, Strands, goals, Ask PEX, OpenCode, Codex, and local
-> AgentCore contracts. Fresh OpenCode 1.18.30/Zen/Strands same-session recovery
-> and quiet behavior passes on clean release source `deb2b15`: recovery used one
-> correction and reached exact final bytes, while correct completion produced
-> model-backed NOOPs and zero follow-ups. The full
-> Pex/Von interaction sweep was performed on the immediately preceding package;
-> those mechanics are unchanged by the Home-only repair. AgentCore is implemented and locally
-> tested, not deployed. PexBench remains unfrozen and no comparative score is
-> claimed. Finish
+> **Current claim boundary — 13 September 2026:** the authenticated account is
+> registered and PEX project draft `pex-mbcpr4` exists; nothing is finally
+> submitted. Exact product source `1cd42c8` has a verified MSI/NSIS package with
+> zero blockers, matching installed identity, exactly two companions (Pex and
+> Von), vault-backed Zen BYOK and a default three-review cap. Native Home,
+> Settings, transparent Von, independent status dismissal, separate overlay
+> Hide/Escape behavior, bridge liveness and normal cleanup passed. A 20-second
+> visible-Home sample measured 128.5 MiB private and 178.1 MiB working set for
+> desktop plus bridge; this is not a long-run leak claim. The complete non-live
+> Python gate is 4,532 passed with 16 skips and 18 explicit live deselections;
+> desktop is 302 passed with one platform skip. Fresh release-source OpenCode
+> and Codex recovery/quiet pairs prove real Zen/Strands same-session correction,
+> observed helpful outcome, final NOOP, and separate zero-follow-up restraint.
+> AgentCore is implemented and locally tested (243 focused tests), not deployed.
+> PexBench remains unfrozen and no comparative score is claimed. Finish
 > [the focused MVP gate](MVP_SHIP_GATE.md) before recording/submitting. Do not
 > equate package integrity, browser rendering, or green tests with native acceptance.
 
 Current live-pair receipts and exact hashes are in
-[`LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md`](demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
+[`LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md`](demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md)
+and [`LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md`](demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
 
-Current-head benchmark machinery passes 447 integrity, execution-safety,
-immutable-result, Cursor transport/policy and speculative-supervision tests in
-295.53 seconds. The formal four-arm experiment is
-still not frozen and must not be scored: fresh readiness reports no coherent run
-and missing OS-isolated hidden evaluation, complete raw vendor logs and
-synchronous Cursor+PEX treatment.
+Fresh readiness still reports no coherent four-arm run and `can_freeze:false`.
+The formal experiment must not be scored while OS-isolated hidden evaluation,
+complete immutable raw logs and synchronous Cursor+PEX treatment are absent.
 
 Track: **Professional Agents**  
 Deadline: 14 Sep 2026, 17:00 PDT  
@@ -153,55 +143,51 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 
 - [ ] Accept the official rules review explicitly; the agent must not accept it
   on the submitter's behalf
-- [ ] Create the PEX project/draft for `agentsforhumans`; authenticated read-only
-  Devpost currently shows registration only and no PEX project
-- [ ] Confirm the required **Submitter type** field
-- [ ] Enter the required **Country** field; **Organization** is optional
+- [x] Create the PEX project/draft for `agentsforhumans`; the current draft slug
+  is `pex-mbcpr4` and it remains unsubmitted
+- [ ] Confirm the required **Submitter type** field is **Individual**
+- [ ] Enter the required **Country** field as **Nigeria**; **Organization** is optional
 - [x] Select **Professional Agents** as the required track
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
 - [ ] Upload `docs/architecture/pex-architecture.png` in the required
   **Architecture diagram** field
-- [ ] Enter the required **AWS Builder ID** email on the Devpost form
+- [ ] Enter the required **AWS Builder ID** email on the Devpost form using the
+  submitter-provided address; do not copy credentials or API keys into the form
 - [ ] Add the optional live-demo URL only if it is genuinely available and stable
 - [ ] Add concise optional testing instructions from `docs/JUDGE_TESTING.md`
 - [ ] Add the already-published builder.aws.com URL in the optional bonus-blog
   field after checking that its title contains **Agents for Humans** and that it
   is accessible while logged out; do not republish it
-- [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean package
-  source `49385f2`; both installer inventories pass with zero package blockers
-- [x] Re-review README and architecture source/PNG against packaged product source `49385f2`;
-  current claims separate package, historical semantic-live, local-contract, and deploy-target evidence
-- [x] Re-run current offline gates: 368 benchmark/scoring/Cursor/safety tests,
-  an expanded 387-test Strands/supervisor/trajectory/evidence/outcome gate with
-  6 skips, 183 AgentCore local tests with one opt-in cloud skip, and 290 desktop/
-  UI tests with one platform skip. The Strands and AgentCore gates pass with
-  aiosqlite thread warnings promoted to errors. A current-head 259-test MVP
-  spine also passes under that warning policy. Production TypeScript/Vite and
-  the Tauri package build passed. The most recent full Python regression
-  (4,440 passed, 32 skipped) is source-bound to `570964b`; the exact-Zen affected
-  slice passes 197 on package source `f585562`. The one desktop platform skip is
-  the intentional Windows symlink case. No benchmark arm, AWS resource, provider
-  call or paid call ran in these current gates.
-- [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases and review their full contact and
-  direction sheets at original resolution; native playback remains part of the open P0 gate
+- [x] Build the unpacked bridge runtime, Cursor helpers and installers from clean
+  product source `1cd42c8`; both installer inventories pass with zero blockers,
+  and the installed bridge hash matches the NSIS payload
+- [x] Re-review README and architecture source/PNG against packaged product
+  source `1cd42c8`; current claims separate package, native, live semantic,
+  local-contract, and deploy-target evidence
+- [x] Re-run the current non-live Python gate: 4,532 passed, 16 skipped, and 18
+  explicitly live deselections. The desktop gate is 302 passed with the one
+  intentional Windows symlink skip. The focused Strands/AgentCore gate is 243
+  passed. Production TypeScript/Vite and the Tauri package build passed. No
+  benchmark arm, AWS resource, cloud AgentCore invocation, or paid call ran in
+  these gates.
+- [x] Re-validate Pex and Von as 1536x2288, 11-row v2 atlases, review their full
+  contact and direction sheets at original resolution, and exercise the bounded
+  native overlay flow
 - [ ] Add the required public YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [x] Publish the accepted unsigned installer and SHA-256 as
   [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1),
   targeted at exact product source `49385f2`; both remote asset digests match
   the accepted local NSIS/MSI hashes
-- [x] Validate a real authenticated same-thread intervention/NOOP and observed outcome on exact packaged source `9357bb8`
-- [x] Recapture the validated semantic pair on clean product source `af35707`
-- [x] Rebuild/package `9357bb8` and recapture the semantic quiet/recovery pair on that exact source
-- [x] Validate current OpenCode 1.18.30 quiet completion and causal same-session
-  recovery on the same clean source `150ea07`, including an independently
-  verified correction, exact outcome, `helped:true`, and final NOOP
-- [x] Natively verify package source `49385f2` Home, Supervisor Settings,
-  transparent overlay, exact Zen default, visible review cap and bounded
-  responsiveness; the unchanged Pex/Von switch, restrained drag, anchored hide,
-  bubble dismissal, storage-safe hide/restore and ordinary close were checked
-  immediately before the Home-only repair; then
-  record the validated pair in the packaged-app demo
-- [x] Honest disclosure: AgentCore is optional and not deployed; AgentCore evidence includes
-  the 200-test contract gate plus an exact-package local `/ping` + `/invocations` protocol
-  smoke, while controlled local Codex + provider-live Strands evidence exists separately
+- [x] Natively verify package source `1cd42c8` Home, Supervisor Settings,
+  transparent Von rendering, exact Zen default, visible review cap, independent
+  message dismissal, separate overlay Hide/Escape behavior, bridge liveness,
+  ordinary cleanup, and bounded responsiveness
+- [x] Re-run fresh release-source OpenCode and Codex recovery/quiet pairs with
+  vault-backed Zen BYOK and Strands. Each recovery used one same-session
+  correction, observed a supported helpful outcome, and ended at NOOP; each
+  already-correct control delivered zero follow-ups.
+- [x] Honest disclosure: AgentCore is optional and not deployed; its local
+  `/ping` + `/invocations` contract is included in the focused 243-test gate,
+  while controlled OpenCode/Codex plus provider-live Strands evidence exists
+  separately
 - [ ] No leaked 1/5 vs 4/5 numbers anywhere on Devpost (keep this true on the form)
