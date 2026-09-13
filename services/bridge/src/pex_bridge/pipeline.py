@@ -1170,6 +1170,45 @@ class Pipeline:
             if processing["mode"] != "pipeline":
                 return self._receipt_intervention(processing)
             return await self._drain_event_and_followups(event.event_id)
+        opencode_live = (
+            await self.store.get_session_for_authority(session.id)
+            if event.harness_type == HarnessType.OPENCODE else None
+        )
+        opencode_projection_boundary = False
+        if opencode_live is not None:
+            observed_status = event.metadata.get("opencode_status")
+            status_action = event.metadata.get("opencode_status_action")
+            opencode_projection_boundary = (
+                opencode_live.metadata.get("opencode_free_tier_limited") is True
+                or opencode_live.metadata.get("opencode_turn_aborted") is True
+                or event.event_type == EventType.USER_PROMPT
+                or (
+                    event.event_type == EventType.STATUS
+                    and (
+                        (
+                            observed_status == "idle"
+                            and opencode_live.status != SessionStatus.STOPPED
+                        )
+                        or (
+                            observed_status in ("busy", "retry")
+                            and opencode_live.status not in {
+                                SessionStatus.WORKING, SessionStatus.DRIFTING,
+                            }
+                        )
+                        or (
+                            observed_status == "retry"
+                            and isinstance(status_action, dict)
+                            and status_action.get("reason") == "free_tier_limit"
+                        )
+                    )
+                )
+                or (
+                    event.event_type in {
+                        EventType.TOOL_CALL, EventType.TOOL_RESULT, EventType.FILE_EDIT,
+                    }
+                    and opencode_live.status != SessionStatus.WORKING
+                )
+            )
         if (
             event.harness_type == HarnessType.OPENCODE
             and event.phase == EventPhase.AFTER
@@ -1181,7 +1220,8 @@ class Pipeline:
                 EventType.SESSION_END,
             }
             and event.approval_request is None
-            and await self.store.get_session_for_authority(session.id) is not None
+            and opencode_live is not None
+            and not opencode_projection_boundary
         ):
             # OpenCode's complete message/part/tool frames are authoritative
             # observations, but they are not individual decisions. Planning
@@ -1189,7 +1229,8 @@ class Pipeline:
             # work ahead of the completion event that actually requires PEX.
             # Keep the observations durable and publish them to the UI; reserve
             # the decision pipeline for terminal, failure, and permission
-            # boundaries. This is the spec's deterministic-triage stage.
+            # boundaries and lifecycle/fence transitions. Repeated working
+            # frames remain cheap, but must not hide busy, quota or abort state.
             event, _ = await self._prepare_event_acceptance(event, session)
             if await self.store.add_event(event):
                 self._schedule_committed_publication("event", event.model_dump(mode="json"))

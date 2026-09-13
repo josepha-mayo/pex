@@ -33,6 +33,12 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+OpenCode lifecycle-lag source repair: 199 OpenCode unit tests pass, including
+the formerly failing resumption/quota/abort/restart cases. Repeated busy frames
+stay record-only rather than invoking planning per frame. A further 80 selected
+journal/recovery checks pass. Installed `0ea2639` has not yet received this fix;
+do not mark the native lifecycle display gate passed from source tests alone.
+
 Newest installed candidate: **`0ea2639`**, including Markdown-path verification
 and honest timeout presentation. [Package](demo/evidence/PACKAGE_0EA2639_2026-09-13.md)
 passed full build, extraction and installed checks. Fresh clean-source

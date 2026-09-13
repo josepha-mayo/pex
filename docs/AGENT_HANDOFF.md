@@ -1,5 +1,16 @@
 # PEX active handoff
 
+Source follow-up fixes the OpenCode lifecycle fast-path regression observed in
+the installed test. Baseline focused suite had four failures (resumption,
+free-tier fencing, aborted-tail handling and restart fencing). Lifecycle/fence
+transitions now use the existing guarded projection path, while ordinary
+working progress stays record-only. Existing nine lifecycle tests pass; a new
+test proves Discovered -> Working preserves an explicitly CAS-paused session
+and 20 later busy frames do not re-enter planning. All 199 OpenCode unit tests,
+80 selected lifecycle/delta/journal/recovery tests, Ruff and diff checks pass.
+This fix is source-only until rebuilt-package/native acceptance is recorded;
+installed `0ea2639` and its previous live proof remain unchanged.
+
 Newest installed candidate: **`0ea2639`**. Full sidecar/native/MSI/NSIS rebuild,
 package verification (zero blockers, first attempt), installed hash and native
 timeout-presentation checks passed. [Package](demo/evidence/PACKAGE_0EA2639_2026-09-13.md).

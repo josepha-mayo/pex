@@ -189,6 +189,48 @@ async def test_opencode_new_user_and_busy_retry_are_explicit_work_resumption(tmp
         await store.close()
 
 
+async def test_opencode_discovered_becomes_working_without_planning_every_progress_frame(tmp_path):
+    store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    session.status = SessionStatus.DISCOVERED
+    await store.upsert_session(session)
+    control = await store.get_session_control_state(session.id)
+    await store.set_session_supervision_paused(
+        session.id, paused=True, expected_control_revision=control["control_revision"],
+    )
+    assert (await store.get_session(session.id)).supervision_paused is True
+    original = pipeline._accept_and_resume_event
+    planned = []
+
+    async def counted(event, accepted_session):
+        planned.append(event.event_id)
+        return await original(event, accepted_session)
+
+    pipeline._accept_and_resume_event = counted
+    try:
+        busy = await _ingest(
+            pipeline, adapter, session,
+            _payload(str(tmp_path), "session.status", properties={"status": {"type": "busy"}}),
+        )
+        working = await store.get_session(session.id)
+        assert working.status == SessionStatus.WORKING
+        assert working.supervision_paused is True
+        assert working.goal_id == session.goal_id
+        assert planned == [busy.event_id]
+
+        for index in range(20):
+            payload = _payload(
+                str(tmp_path), "session.status", properties={"status": {"type": "busy"}}
+            )
+            payload["id"] = f"progress-{index}"
+            event = await _ingest(pipeline, adapter, session, payload)
+            assert (await store.get_event_processing(event.event_id))["mode"] == "record_only"
+        assert planned == [busy.event_id]
+        assert (await store.get_session(session.id)).status == SessionStatus.WORKING
+    finally:
+        await pipeline.close_presentations()
+        await store.close()
+
+
 async def test_opencode_unrelated_status_does_not_invent_activity(tmp_path):
     store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
     try:
