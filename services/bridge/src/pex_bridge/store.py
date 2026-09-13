@@ -15649,6 +15649,16 @@ class Store:
                     )
                     if outcome is None or outcome[0] is None:
                         continue
+                    # Preserve file-acceptance evidence separately from the
+                    # overall STOP verdict. Ownership was validated above; a
+                    # supported file check must not promote an uncertain STOP.
+                    payload = _strict_json_loads(str(intervention_row["json"]))["payload"]
+                    verification = (payload.get("metadata") or {}).get("verification")
+                    acceptance_status = (
+                        verification.get("acceptance_status")
+                        if isinstance(verification, dict)
+                        else None
+                    )
                     try:
                         accepted_revision, accepted_hash = _validate_goal_intent_scalar_pair(
                             event_row["accepted_goal_intent_revision"],
@@ -15670,6 +15680,7 @@ class Store:
                             "session_id": str(event_row["session_id"]),
                             "intervention_id": intervention_id,
                             "verification_status": outcome[0],
+                            "acceptance_status": acceptance_status,
                             "accepted_at": str(event_row["accepted_at"]),
                             "event_ts": str(event_row["event_ts"]),
                             "accept_seq": int(event_row["accept_seq"]),

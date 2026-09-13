@@ -1,5 +1,31 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { goalCompletionCopy } from "./completionPresentation.ts";
+import type { GoalCompletion } from "./types";
+
+test("completion copy separates current file acceptance from overall completion", () => {
+  const goal = { id: "goal-a", title: "Report", objective: "Finish", intent_revision: 2, intent_hash: "hash-a" };
+  const receipt: GoalCompletion = {
+    schema: "pex.goal-completion.v1", goal_id: goal.id, project_id: "project-a",
+    goal_intent_revision: 2, goal_intent_hash: "hash-a", status: "uncertain",
+    reason: "no_current_supported_completion_evidence", as_of: "2026-09-13T00:00:00Z",
+    stale_evidence_excluded: 0, active_session_ids: [], worker_narration_used: false,
+    benchmark_evidence: false,
+    latest_evidence: { fresh: true, verification_status: "uncertain", acceptance_status: "supported" },
+  };
+  assert.equal(goalCompletionCopy(goal, receipt, true), "File acceptance is supported by the latest review; overall goal completion remains unconfirmed.");
+  assert.match(goalCompletionCopy(goal, receipt, false), /offline/);
+  for (const change of [{ goal_id: "other" }, { goal_intent_revision: 1 }, { goal_intent_hash: "other" }]) {
+    assert.match(goalCompletionCopy(goal, { ...receipt, ...change }, true), /Waiting for completion evidence/);
+  }
+  for (const latest_evidence of [null, { ...receipt.latest_evidence!, fresh: false }, { ...receipt.latest_evidence!, acceptance_status: "uncertain" }]) {
+    assert.match(goalCompletionCopy(goal, { ...receipt, latest_evidence }, true), /will not infer it from narration/);
+  }
+  assert.match(goalCompletionCopy(goal, { ...receipt, reason: "goal_not_currently_executable" }, true), /will not infer/);
+  assert.match(goalCompletionCopy(goal, { ...receipt, status: "verified_complete" }, true), /^Verified complete/);
+  assert.match(goalCompletionCopy(goal, { ...receipt, status: "incomplete" }, true), /unmet acceptance/);
+  assert.match(goalCompletionCopy(goal, { ...receipt, status: "in_progress" }, true), /Work is active/);
+});
 
 test("deck Ask keeps suggestions and input within one bounded column", async () => {
   const { readFile } = await import("node:fs/promises");
@@ -798,8 +824,7 @@ test("offline state immediately suppresses stale agent prompts", async () => {
   assert.match(app, /canonicalStateAvailable=\{inspectorCanonicalStateAvailable\}/);
   assert.match(app, /attentionMetrics\?\.current_pending\.items \|\| deck\.interventions \|\| \[\]/);
   assert.match(inspector, /canonicalStateAvailable \? askPexQuestions\(sessions, action, current\) : \[\]/);
-  assert.match(inspector, /Verified complete for the current persistent intent\./);
-  assert.match(inspector, /PEX will not infer it from narration\./);
+  assert.match(inspector, /goalCompletionCopy\(goal, completion, canonicalStateAvailable\)/);
   assert.match(app, /\/v1\/goals\/\$\{goalId\}\/completion/);
   assert.match(deck, /questions=\{error \? \[\] : askPexQuestions\(sessions, interventions\[0\]\)\}/);
   assert.match(deck, /Cached · last observed/);

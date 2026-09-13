@@ -172,6 +172,11 @@ export type GoalCompletion = {
   as_of: string;
   stale_evidence_excluded: number;
   active_session_ids: string[];
+  latest_evidence?: {
+    fresh: boolean;
+    verification_status: string;
+    acceptance_status?: string | null;
+  } | null;
   worker_narration_used: false;
   benchmark_evidence: false;
 };

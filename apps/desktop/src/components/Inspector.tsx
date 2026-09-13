@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode, RefObject } from "react";
 import type { GoalDraft } from "./GoalEditor";
 import { GoalEditor } from "./GoalEditor";
 import { AskPex } from "./AskPex";
+import { goalCompletionCopy } from "../completionPresentation";
 import type {
   Goal,
   GoalCompletion,
@@ -294,15 +295,7 @@ export function Inspector({
         {goal ? (
           <>
             <p className="note" role="status">
-              {!canonicalStateAvailable
-                ? "Goal completion unavailable while canonical state is offline."
-                : completion?.status === "verified_complete"
-                  ? "Verified complete for the current persistent intent."
-                  : completion?.status === "incomplete"
-                    ? "Current evidence shows unmet acceptance requirements."
-                    : completion?.status === "in_progress"
-                      ? "Work is active; completion is not yet established."
-                      : "Completion remains uncertain; PEX will not infer it from narration."}
+              {goalCompletionCopy(goal, completion, canonicalStateAvailable)}
             </p>
             <div className="goal-boundaries">
               <Boundary label="Acceptance" values={goal.acceptance_criteria} />

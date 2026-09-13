@@ -1,5 +1,17 @@
 # PEX active handoff
 
+Current source follow-up explains the completion distinction without changing
+completion policy. The bound goal projection now exposes file `acceptance_status`
+separately from its overall STOP verdict. Inspector shows file acceptance as
+supported but overall completion unconfirmed only for fresh evidence bound to
+the displayed goal ID, intent revision and hash. Offline/stale/paused cases
+remain conservative. The existing uncertain-STOP regression was preserved,
+not changed to declare success. Desktop 299 pass/one skip, frontend build
+74 modules, recovery-loop 19 pass. Reading the retained real Codex quiet-run
+database reproduced `uncertain` plus fresh `acceptance_status:supported`,
+confirming the two distinct conclusions. No new provider call or data repair
+was performed. This explanation is source-only, not yet in installed `c0b8860`.
+
 Newest installed candidate: **`c0b8860`**, now including the Inspector polling
 fix. Full MSI/NSIS build and extraction verifier pass, zero blockers; installed
 NSIS hash matches. Home/Inspector canonical refresh and normal close checked.

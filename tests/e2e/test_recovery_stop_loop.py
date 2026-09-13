@@ -124,6 +124,7 @@ async def test_newer_unverified_stop_supersedes_old_completion_verdict(
     after = (await client.get(f"/v1/goals/{goal['id']}/completion")).json()
     assert after["status"] == "uncertain"
     assert after["latest_evidence"]["verification_status"] == "uncertain"
+    assert after["latest_evidence"]["acceptance_status"] == "supported"
 
 
 @pytest.mark.asyncio
