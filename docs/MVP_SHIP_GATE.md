@@ -40,7 +40,7 @@ The exact package is public as
   Final-day source preflight also passes with zero blockers; its release-input,
   sidecar-input and all sidecar executable hashes exactly equal the RC4 receipt.
 
-- [x] **2. Exercise focused native UI, chat and companion controls.**
+- [ ] **2. Exercise focused native UI, chat and companion controls.**
   Spec: Core §8; Recovery §20–21.
   Acceptance: Home/Inspector/Settings, exactly two pets, transparent Von,
   independent message dismissal and stationary Hide; selected-worker Ask PEX.
@@ -142,6 +142,10 @@ The exact package is public as
   The clean project mark is now the uploaded Devpost thumbnail. Matching RC4
   installers, architecture and verification assets are public on GitHub. The
   required Devpost architecture attachment, video and final submission remain pending.
+  The fail-closed `scripts/submission_preflight.py` now verifies exact assets,
+  clean pushed source, active-guide freshness and tracked-file privacy. Its
+  clean post-push run reports zero artifact, stale-reference or sensitive-data
+  failures and blocks only on the video URL and architecture-upload attestation.
 
 ## Full-objective work still open
 
@@ -157,10 +161,11 @@ bounded examples. Winning is an aim, never an engineering guarantee. Keep the
 persistent goal active while requirements remain unproven.
 
 Current verified recording transfer bundle:
-`D:\PEX-recording-kit-f2832a8-v4.zip`, 102,247,762 bytes, SHA-256
-`8c28864512bce2883de167bc769bc56ac6e2ac8e48575d4ace10ef2395a930b4`.
-Its 23-entry inventory and checksum list were reopened and verified after
-creation; all bundled active guides are RC4-aligned.
+`D:\PEX-recording-kit-f2832a8-v5.zip`, 102,250,216 bytes, SHA-256
+`6857a648dbf8ec89edc19b4c4e66fbcfe2a550d9afcbad419b9896e1c2984cfa`.
+Its 24-entry inventory and checksum list were reopened and verified after
+creation; all eight sealed entries match and the MVP behavior scorecard is
+included.
 
 ## Official submission boundary
 
