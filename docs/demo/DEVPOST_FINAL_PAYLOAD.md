@@ -15,8 +15,9 @@ requirements fetched on 12 September 2026 remain authoritative.
 - Public repository: `https://github.com/josepha-mayo/pex`
 - Public Windows judge build:
   `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1`
-- Thumbnail: privacy-safe PEX Home screenshot uploaded successfully; Devpost
-  returned HTTP 200 and processing state.
+- Thumbnail: an older privacy-safe Home screenshot is present in the draft.
+  Replace it during final review with `docs/demo/assets/pex-mark.png` or a
+  privacy-safe exact-current-build frame.
 
 ## Required custom answers
 

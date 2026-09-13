@@ -3,33 +3,30 @@
 Use the current checkpoint below when preparing the Devpost video. Older files in this
 directory are historical references and must not be presented as final-source proof.
 
-## Current checkpoint — 12 September 2026
+## Current checkpoint — 13 September 2026
 
-- Latest verified MSI/NSIS: source `392d86e`; receipt
-  `build/pex-package-receipt-392d86e-v2.json`, SHA-256
-  `03bee168f98b54b884272a4ab088f5b40ef7186d97723701a7daf622ed282baf`.
-- Both installers contain exactly Pex and Von and pass with zero package blockers.
-- Current source passes the full Python regression: 4,440 passed, 32 skipped,
-  zero failures/errors at `570964b`. Focused final-package gates
-  also cover 294 passing frontend tests with
-  one platform skip, 137 OpenCode/Codex continuity tests, 210 BYOK/provider/
-  configuration tests with one Windows symlink skip, 183 AgentCore local tests
-  with one opt-in cloud skip and 368 benchmark/scoring/Cursor/safety tests.
-- Clean `deb2b15` retains the freshest release-source OpenCode/Strands quiet
-  and same-thread recovery pair. See
-  [`LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md`](evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
-- Clean `e864389` retains a real Codex/Strands quiet and same-thread recovery pair.
-  Clean `6a1d98b` and `93dfef3` retain current OpenCode 1.18.30 quiet and causal
-  same-session recovery diagnostics; final package `49385f2` contains the prose
-  sanitation repair found by reviewing the recovery trace, active-event burst
-  coalescing, stable bundled rendering for the exact two pets, and responsive
-  Inspector/Deck layout repairs and anchored labelled pet-hide control verified
-  in the production surface.
-- Native pet-window interaction acceptance remains pending because the current
-  computer-control host exposes no native app surface.
-- No AgentCore deployment, frozen comparative benchmark, final video or submission is
-  established. Historical receipts below retain their original limits. Follow
-  [the active handoff](../AGENT_HANDOFF.md).
+- Current installed product source: `1cd42c8`. The retained NSIS is
+  `build/release-candidate-1cd42c8/PEX_0.1.0_x64-setup.exe`, 101,689,109 bytes,
+  SHA-256 `81c85b528e0e7aeae57a6c4bc554b08c54302df87f776f034bbec7aa9f36d849`.
+  Its MSI/NSIS receipt has zero blockers and the installed bridge matches the
+  NSIS payload. See [package/native evidence](evidence/PACKAGE_1CD42C8_2026-09-13.md).
+- Both installers contain exactly Pex and Von. Bounded native Home, Settings,
+  transparent Von, independent message dismissal, separate overlay Hide/Escape,
+  bridge liveness and ordinary shutdown passed.
+- The current-product non-live Python gate is 4,532 passed, 16 skipped and 18
+  explicit live deselections. Desktop is 302 passed with one Windows symlink
+  skip; the focused Strands/AgentCore gate is 243 passed.
+- Fresh release-source OpenCode and Codex recovery/quiet pairs each prove real
+  Zen/Strands inference, one evidence-specific same-session correction, an
+  observed helpful outcome, final NOOP, and a separate zero-follow-up control.
+  See the [OpenCode pair](evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md) and
+  [Codex pair](evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
+- A 20-second visible-Home sample measured 128.5 MiB private and 178.1 MiB
+  working set for desktop plus bridge. It is bounded evidence, not leak freedom.
+- AgentCore is implemented and locally tested, not deployed. PexBench remains
+  unfrozen with no coherent four-arm run or valid score. Final video, matching
+  public release and final submission remain open. Follow the
+  [active ship gate](../MVP_SHIP_GATE.md).
 
 ## Screenshot status
 
@@ -38,9 +35,15 @@ in this directory showed the retired sparse eight-pet interface and Hatch/Import
 controls. The screenshots and clips are quarantined under
 `archive/legacy-eight-pet/` as historical evidence. None may be used in the
 Devpost gallery, README or final video.
-Capture a fresh package-`392d86e` set only after native acceptance: Home with a
-connected worker and persistent goal, the Pex overlay with its message dismissed
-independently, the two-pet Companion settings with Von selected, the Zen BYOK
+The flat submission mark is [`assets/pex-mark.png`](assets/pex-mark.png), with
+an editable vector source at [`assets/pex-mark.svg`](assets/pex-mark.svg). It has
+true transparency, no heart motif or surrounding glow, and remains readable at
+small icon sizes. The older `assets/pex-home-49385f2.png` is a privacy-safe draft
+thumbnail only; it is not current-package proof.
+
+For the final gallery/video, capture the exact current installer: Home with a
+connected worker and persistent goal, the Pex or Von overlay with its message
+dismissed independently, the two-pet Companion settings, the Zen BYOK
 write-only provider state/review cap, and the Inspector's bounded supervision
 receipt.
 

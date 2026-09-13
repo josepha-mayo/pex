@@ -255,16 +255,14 @@ STOP intervention must also pass a fresh independent verifier Agent using its
 own observations and invocation. Timeout, malformed output, missing evidence,
 or rejection becomes NOOP. Deterministic verification truth and local policy
 still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
-target, not a deployed-service claim. Clean release source `deb2b15` has a retained real
-OpenCode 1.18.30 recovery: main Strands inference inspected the workspace, a separate verifier
-approved the exact missing-artifact finding, policy admitted one same-session correction, and the
-free worker produced the exact final bytes with `goal_evidence_supported` and `helped:true`. Clean
-source `deb2b15` has the separate already-correct task: model-backed `NOOP` decisions and zero PEX
-follow-ups. See the accepted paired
-[OpenCode evidence](docs/demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md). Real Codex
-restraint and same-thread recovery are retained separately on `e864389`. This does not prove
-ten-case quiet statistics, AgentCore deployment, or a
-benchmark result.
+target, not a deployed-service claim. Fresh release-source OpenCode and Codex
+pairs each retain one evidence-specific same-session recovery, an observed
+`helped:true` outcome, a final model-backed `NOOP`, and a separate already-correct
+control with zero PEX follow-ups. See the current
+[OpenCode evidence](docs/demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md)
+and [Codex evidence](docs/demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
+These bounded pairs do not prove broad quiet statistics, AgentCore deployment,
+or a comparative benchmark result.
 
 The cloud supervisor can propose actions. It cannot bypass local policy.
 
