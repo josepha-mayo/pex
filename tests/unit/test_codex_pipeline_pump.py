@@ -1124,7 +1124,7 @@ async def test_codex_recovery_observes_same_thread_outcome_appended_during_stop(
     class RepairingTransport(CodexAppServerTransport):
         async def request(self, method, params=None):
             if method == "turn/start":
-                (worker / "report.txt").write_text("shipped\n", encoding="utf-8")
+                (worker / "report.txt").write_text("shipped", encoding="utf-8")
             return await super().request(method, params)
 
     transport = RepairingTransport()
@@ -1220,7 +1220,7 @@ async def test_codex_outcome_waits_for_the_exact_delivered_turn(tmp_path):
                 return await super().request(method, params)
             params = params or {}
             self.turns.append(params)
-            (worker / "report.txt").write_text("shipped\n", encoding="utf-8")
+            (worker / "report.txt").write_text("shipped", encoding="utf-8")
             self.notifications.append(
                 {
                     "method": "turn/completed",

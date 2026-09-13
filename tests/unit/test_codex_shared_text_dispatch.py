@@ -383,8 +383,9 @@ async def test_post_enqueue_cancellation_owns_close_through_repeated_cancel(tmp_
 async def test_timeout_after_write_is_unknown_and_settles_close(tmp_path):
     channel = TextChannel()
     channel.hold_response = True
-    transport = make_transport(tmp_path, channel, request_timeout_s=0.1)
+    transport = make_transport(tmp_path, channel)
     await transport.ensure_ready()
+    transport.request_timeout_s = 0.1
     with pytest.raises(SharedCodexDeliveryUncertainError):
         await transport._dispatch_text(**dispatch_args(transport))
     assert channel.closed
@@ -454,8 +455,9 @@ async def test_close_failure_does_not_relabel_unknown_as_successful_cleanup(tmp_
 
     channel = FailingClose()
     channel.hold_response = True
-    transport = make_transport(tmp_path, channel, request_timeout_s=0.1)
+    transport = make_transport(tmp_path, channel)
     await transport.ensure_ready()
+    transport.request_timeout_s = 0.1
     with pytest.raises(SharedCodexDeliveryUncertainError):
         await transport._dispatch_text(**dispatch_args(transport))
     assert channel.close_calls == 1
@@ -498,8 +500,9 @@ async def test_authority_change_while_waiting_for_write_lock_is_rejected(tmp_pat
 @pytest.mark.asyncio
 async def test_timeout_before_write_is_rejection_not_unknown(tmp_path):
     channel = TextChannel()
-    transport = make_transport(tmp_path, channel, request_timeout_s=0.1)
+    transport = make_transport(tmp_path, channel)
     await transport.ensure_ready()
+    transport.request_timeout_s = 0.1
     await transport._protocol_lock.acquire()
     try:
         with pytest.raises(SharedCodexTextDispatchRejected):

@@ -90,7 +90,7 @@ async def test_newer_unverified_stop_supersedes_old_completion_verdict(
         evidence_requirements=["report.txt"],
     )
     if initially_complete:
-        (worker / "report.txt").write_text("shipped\n", encoding="utf-8")
+        (worker / "report.txt").write_text("shipped", encoding="utf-8")
     first = await client.post(
         "/v1/synthetic/events",
         json={"session_id": session.id, "event_type": "stop", "message": "I am done."},
@@ -98,7 +98,7 @@ async def test_newer_unverified_stop_supersedes_old_completion_verdict(
     assert first.status_code == 200
     before = (await client.get(f"/v1/goals/{goal['id']}/completion")).json()
     assert before["status"] == ("verified_complete" if initially_complete else "incomplete")
-    (worker / "report.txt").write_text("shipped\n", encoding="utf-8")
+    (worker / "report.txt").write_text("shipped", encoding="utf-8")
     # A new attached worker has no earlier narration to re-extract as a claim.
     later_session = adapter.seed_session(vendor_id="later-no-claims", cwd=str(worker))
     await state.store.upsert_session(later_session)
@@ -412,7 +412,7 @@ async def test_premature_stop_continues_then_verifies_completion(client: AsyncCl
     assert "missing" in text.lower()
     assert not text.startswith("PEX:")
 
-    (worker / "report.txt").write_text("shipped\n", encoding="utf-8")
+    (worker / "report.txt").write_text("shipped", encoding="utf-8")
     progress = await client.post(
         "/v1/synthetic/events",
         json={

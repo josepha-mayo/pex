@@ -342,7 +342,7 @@ async def test_new_input_while_transport_write_lock_waits_refuses_before_enqueue
 
 @pytest.mark.asyncio
 async def test_lost_ack_remains_delivery_uncertain_and_is_not_resent(tmp_path: Path) -> None:
-    adapter, channel = await attached(tmp_path, request_timeout_s=0.1)
+    adapter, channel = await attached(tmp_path)
     channel.hold_dispatch_response = True
     with pytest.raises(SharedCodexDeliveryUncertainError):
         await adapter._dispatch_claimed_text(**dispatch_args(adapter))
