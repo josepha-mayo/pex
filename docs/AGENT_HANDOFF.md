@@ -18,16 +18,18 @@ preflight confirmed all three exact artifacts, clean source equality and zero
 stale guide matches. With already-confirmed Builder ID/rules flags, it exits 2
 only for the genuinely open public demo video URL and architecture upload.
 
-The latest C-drive cleanup began at 190.64 GiB free and ended at least 210.55
-GiB free (44.2%), reclaiming about 19.91 GiB. Stale user Temp files older than
+The latest C-drive cleanup began at 190.64 GiB free and measured 210.09 GiB
+free (44.1%) after completion, reclaiming about 19.45 GiB despite normal live
+disk fluctuation. Stale user Temp files older than
 seven days were moved recoverably to
 `D:\C-drive-temp-trash-20260913-old7d` (121,487 files, 15.81 GiB retained on
 D). Locked/in-use entries were skipped. Seven stale PEX diagnostic/release
 folders under `Documents\Codex` were also moved intact to
-`D:\PEX-c-drive-trash-20260913\documents-codex`; three access-restricted or
-partial folders remain. The old `C:\Users\JosephMayo\Projects\pex` checkout is
-absent. Retain `C:\Users\JosephMayo\AppData\Local\PEX` until exact installed
-RC4 native acceptance/recording is complete.
+`D:\PEX-c-drive-trash-20260913\documents-codex`. Three source directory shells
+remain because they contain skipped junction/metadata structure, but they hold
+zero regular files. The old `C:\Users\JosephMayo\Projects\pex` checkout is
+absent. Retain `C:\Users\JosephMayo\AppData\Local\PEX` (about 171 MiB) until
+exact installed RC4 native acceptance/recording is complete.
 
 The current live behavioral proof remains the fresh dummy-project OpenCode
 recovery documented below: saved Zen BYOK, real Strands supervision, one
