@@ -6,12 +6,17 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Fastest evaluation path
 
-The current installer candidate is unsigned and has passed its bounded native
-acceptance. Download the recommended NSIS installer from
+The public RC1 installer is an older unsigned build with its own bounded native
+acceptance. It does not contain all current-source fixes. Download its NSIS from
 [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
 and verify SHA-256
 `6fb27ff7d4ec986e5b64209b1f00b70cab6593b67daafa42e08add5bd90c6d92`.
 Windows may show a publisher warning because this candidate is not code-signed.
+
+Latest locally tested candidate: `bf5a25b`. Its rebuilt installer and installed
+OpenCode recovery passed bounded checks; a matching public release is pending.
+See [exact-copy/hash instructions](demo/SECOND_LAPTOP_ACCEPTANCE.md), or build
+current source below. Do not treat RC1 as the newer filmed candidate.
 
 To build from the public source checkout instead, use the pinned prerequisites
 in the README:
@@ -77,9 +82,12 @@ auto-reload before testing. PEX never silently changes to another model ID.
 - Pex and Von are the only available companions.
 - A genuinely complete task produces a model-backed **NOOP** and no worker
   follow-up.
-- A deliberately incomplete task produces one evidence-specific correction on
+- A deliberately incomplete task produces an evidence-specific correction on
   the same OpenCode session; PEX observes the resulting artifact before calling
   the intervention helpful.
+- Additional defects may require further bounded review. In the latest run,
+  PEX caught CRLF after a missing-file correction. Exact artifacts alone do not
+  establish full goal completion when another criterion remains unchecked.
 - Pausing supervision prevents new semantic dispatches.
 
 The Inspector exposes the goal, evidence, structured decision, delivery state,

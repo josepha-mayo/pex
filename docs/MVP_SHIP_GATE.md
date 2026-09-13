@@ -1,452 +1,136 @@
-# PEX focused MVP shipping gate
+# PEX current MVP shipping gate
 
-This is the shipping scope from the user's later request: usable UI/UX, exactly
-two pets (Pex and Von), Zen BYOK, OpenCode/Codex, Strands supervision, AgentCore
-implementation and honest behavioral measurement. Cursor is optional. Preserve
-the full specs and historical research checklist; do not pretend every expanded
-feature or formal benchmark has been completed.
+Updated 13 September 2026. Superseded checkpoints are preserved in
+[MVP_SHIP_GATE_HISTORY.md](MVP_SHIP_GATE_HISTORY.md), not active instructions.
 
-## Latest installed verification — 13 September
+## Authority and scope
 
-Installed `bf5a25b`: rebuilt runtime and installers, verified package and installed
-hash, three frozen lifetime tests. Fresh installed OpenCode lifecycle/artifact
-recovery passed: Working appeared during the turn, PEX corrected missing output
-and CRLF bytes in the same worker session, then stayed quiet. Three Strands
-reviews / nine model calls / 35,221 tokens. Overall completion remains uncertain
-for the unchanged unchecked third criterion; this is not a helped-true receipt
-or a comparative score. [Native evidence](demo/evidence/NATIVE_BF5A25B_RECOVERY_2026-09-13.md).
-Updated [second-laptop card](demo/SECOND_LAPTOP_ACCEPTANCE.md) points to these
-exact local installer bytes. Public RC1, optional AWS deployment and submission
-state are unchanged. Older checklist evidence retains its original scope.
+Read [core](PEX_CORE_SPEC.md), [build](PEX_BUILD_SPEC.md),
+[recovery](PEX_IMPLEMENTATION_RECOVERY_SPEC.md) and [handoff](AGENT_HANDOFF.md).
+The user's later shipping scope is UI/UX, exactly Pex and Von, Zen BYOK,
+OpenCode/Codex, real Strands supervision, AgentCore implementation and honest
+behavioral measurement. Cursor is optional for this MVP. Full-spec research
+obligations remain open, not redefined away.
 
-## Actual official requirements
+Work autonomously on authorized local changes, audit after each change, retain
+failed evidence and push verified updates. Native control stays confined to
+PEX/installer when authorized. No paid fallback, uncovered AWS spend, unrelated
+app termination, fabricated benchmark score or false completion claim.
 
-Refreshed from Devpost MCP on 11 September 2026 at 17:16 UTC, event 30317.
-[Official rules](https://agentsforhumans.devpost.com/rules) control.
+## Current candidate
 
-> Deploying with Amazon Bedrock AgentCore is a smart architectural choice and will strengthen your Technical Implementation score, but it's not required.
+Installed product source: **`bf5a25bd319134fb472ac2049d9594e63e307a68`**.
+Later documentation commits do not change these installer bytes.
+Local NSIS: `build/release-candidate-bf5a25b/PEX_0.1.0_x64-setup.exe`.
+Bytes: `101666925`; SHA-256:
+`d3f547e24fffde3bb2ad063e54afcfd6e33ec6eba0fc404f9e099fe2930e5b71`.
+[Package proof](demo/evidence/PACKAGE_BF5A25B_2026-09-13.md).
+Public RC1 contains older `49385f2`; do not film it as this build.
 
-Keep the tested AgentCore implementation and honestly disclose it as undeployed.
-Do not treat optional cloud deployment as a prerequisite to submitting the local
-Strands MVP, and do not incur uncovered AWS charges for it.
+## Sequenced acceptance checklist
 
-Submission closes 15 September 2026 at 00:00 UTC / 01:00 Africa/Lagos
-(14 September, 17:00 PDT). The official requirements include a working Strands
-project, public source/setup/assets with MIT or Apache license, README,
-architecture diagram, maximum-five-minute working demo video and AWS Builder ID.
-The live-demo URL is optional. This refresh does not record consent or submit
-anything on the user's behalf.
+- [x] **1. Build and verify the actual installer.**
+  Spec: Recovery §27 engineering discipline.
+  Acceptance: rebuilt runtime/desktop, verified MSI/NSIS inventories, installed
+  hash match, startup/normal close and no surviving PEX process.
+  Evidence: bf5a25b package proof; three frozen lifetime tests passed.
+  Follow-up: newly discovered Cursor replay-activity fix is source-only and
+  must receive its own rebuilt-package acceptance before being advertised.
 
-Judges score five equally weighted areas: Technological Implementation, Design,
-Potential Impact, Creativity & Originality and Presentation. The latest organizer
-announcement advises teams to prioritize deterministic agent behavior over extra
-features, highlighting hooks, guardrails and a steering "buddy agent." The final
-take therefore leads with same-worker recovery, evidence-bound policy and quiet
-completion instead of adding scope.
+- [x] **2. Exercise focused native UI, chat and companion controls.**
+  Spec: Core §8; Recovery §20–21.
+  Acceptance: Home/Inspector/Settings, exactly two pets, transparent Von,
+  independent message dismissal and stationary Hide; selected-worker Ask PEX.
+  Evidence: bf5a25b package/native reports. Bounded checks do not cover every
+  UI edge case or every scale on both pets.
 
-## Evidence and remaining work
+- [x] **3. Use saved Zen BYOK in real Strands supervision.**
+  Spec: Core §4.1; Recovery §6.
+  Acceptance: vault credential, selected provider/model, genuine inference,
+  usage displayed, no fallback or key disclosure.
+  Evidence: installed bf5a25b Muse Contributor Free, cap three. A dispatch may
+  make multiple API calls; cap three is not a token cap.
 
-OpenCode lifecycle-lag source repair: 199 OpenCode unit tests pass, including
-the formerly failing resumption/quota/abort/restart cases. Repeated busy frames
-stay record-only rather than invoking planning per frame. A further 80 selected
-journal/recovery checks pass. Installed `0ea2639` has not yet received this fix;
-do not mark the native lifecycle display gate passed from source tests alone.
+- [x] **4. Verify OpenCode lifecycle and same-session artifact recovery.**
+  Spec: Core §3; Recovery §2, §10–11.
+  Acceptance: Working during activity; independently approved correction;
+  same worker repairs output; final quiet review is genuine.
+  Evidence: [installed recovery](demo/evidence/NATIVE_BF5A25B_RECOVERY_2026-09-13.md):
+  missing-file and CRLF corrections, exact bytes, Strands NOOP, 262 settled
+  events. Overall completion remains uncertain for the unchecked third
+  criterion; second correction helped is null, not true.
 
-Newest installed candidate: **`0ea2639`**, including Markdown-path verification
-and honest timeout presentation. [Package](demo/evidence/PACKAGE_0EA2639_2026-09-13.md)
-passed full build, extraction and installed checks. Fresh clean-source
-[Codex recovery/quiet pair](demo/evidence/LIVE_CODEX_PAIR_0EA2639_2026-09-13.md)
-passed both tests. Fresh [installed OpenCode quiet behavior](demo/evidence/NATIVE_0EA2639_QUIET_2026-09-13.md)
-also passed with unchanged criteria, two real Strands calls and zero corrections.
-Overall goal completion stays uncertain for the unchecked third criterion.
-Intermediate lifecycle UI lag remains open; the older failed run remains failed.
-No comparative score or submission claim.
+- [x] **5. Preserve distinct Codex recovery and quiet evidence.**
+  Spec: Recovery §12–13.
+  Acceptance: supported real App Server, same-thread continuation, persistent
+  goal/evidence, real Strands, quiet control with zero follow-ups.
+  Evidence: [clean-source 0ea2639 pair](demo/evidence/LIVE_CODEX_PAIR_0EA2639_2026-09-13.md).
+  This proves that source and owned App Server surface, not arbitrary existing
+  Codex desktop-thread control or a bf5a25b native Codex run.
 
-Current installed candidate: **`32a0499`**. The Hide-position defect is fixed and
-verified in the installed package, not only the diagnostic build. See
-[package acceptance](demo/evidence/PACKAGE_32A0499_2026-09-13.md). Fresh native
-quiet-completion acceptance failed due to independent-verifier timeout despite
-correct files. [Retained failure and source fixes](demo/evidence/NATIVE_32A0499_QUIET_2026-09-13.md).
-New fixes pass offline checks but still need rebuilt-package live acceptance.
+- [x] **6. Preserve a separate already-correct OpenCode control.**
+  Spec: Recovery §8, §13–14.
+  Acceptance: correct output before review, completed Strands NOOP, no follow-up;
+  preserve failed attempts separately.
+  Evidence: [installed 0ea2639 quiet](demo/evidence/NATIVE_0EA2639_QUIET_2026-09-13.md).
+  Not full-goal verification or a clean ten-case false-positive-rate claim.
 
-Latest installed candidate: **`c7e2f97`**, superseding the candidate notes below.
-Package and native checks, including independent message dismissal and pet Hide,
-pass. [Exact evidence](demo/evidence/PACKAGE_C7E2F97_2026-09-13.md) includes
-honest resource measurements and remaining limits. The recording card now names
-its exact retained installer. No new public release or submission has occurred.
+- [x] **7. Verify AgentCore implementation without inventing deployment.**
+  Spec: build AgentCore path and user requirement.
+  Acceptance: local client/runtime/pipeline/preflight contracts.
+  Evidence: 183 tests passed on 13 September in 11.47s. AWS deployment remains
+  unverified; no cost-incurring deployment is authorized by this checklist.
 
-Current installed/recording candidate is now **`c0b8860`**, superseding the
-historical paragraphs below. It packages the Inspector polling fix and passes
-the extraction verifier, installed hash check and bounded Home/Inspector sweep.
-See [exact package evidence](demo/evidence/PACKAGE_C0B8860_2026-09-13.md).
-Rendering overhead and completion-label uncertainty remain open. Public RC1
-still points to its original artifacts.
+- [ ] **8. Finish current-source broad regression.**
+  Spec: Recovery §25, §27.
+  Acceptance: full offline Python and desktop suites pass; repair/rerun actual
+  failures and preserve exact source, failed attempts and exclusions.
+  Full result: 4,474 passed, one README contract failed, 16 skipped, 18 deselected;
+  retained `build/offline-d4f6507.xml`. README fixed; eight setup contracts pass.
+  Desktop: 300 passed, one skip. Subsequent Cursor source repair needs its own
+  final regression/package acceptance. Do not relabel the failed full receipt.
 
-Latest checkpoint (13 September): installed candidate is `949cb47`, with the
-corrected Inspector inference receipt. Source polling improvement `a98314d`
-has native diagnostic evidence but is not yet packaged. A fresh clean-source
-Codex/Spark + Zen/Muse + Strands pair passed recovery and quiet completion;
-see [current live evidence](demo/evidence/LIVE_CODEX_PAIR_50DD50D_2026-09-13.md).
-Public RC1 remains unchanged. The older recording-candidate paragraph below
-is historical; do not mistake `103f4ec` for the latest installed build.
+- [x] **9. Measure bounded installed resource behavior.**
+  Spec: usable desktop MVP; user-reported whole-PC freeze.
+  Acceptance: PEX-owned measurement during live work, responsive post-run
+  navigation and normal cleanup.
+  Evidence: bf5a25b active 362–406 MiB private, settled interactive 380–408 MiB,
+  approximately 1.84% total CPU on this 12-thread machine. Short samples do not
+  prove leak freedom or clear the historical whole-PC-freeze report.
 
-Current recording candidate: **`103f4ec`**, installed locally with the flat SVG
-logo and supervisor usage receipt. Package verification, authenticated settings
-smoke, three frozen bridge lifetime checks and bounded installed Home/Inspector
-navigation/close checks passed. See
-[current package evidence](demo/evidence/PACKAGE_103F4EC_2026-09-12.md).
-Older candidate rows below are historical checkpoints, including unchecked
-native checks that have been superseded; they are not instructions to reinstall
-an older build.
+- [ ] **10. Record and inspect exact-build recovery/quiet demo.**
+  Spec: Recovery §26; official working-demo requirement.
+  Acceptance: publicly playable video ≤5 minutes, genuine recovery and separate
+  quiet case, readable evidence/usage, no private unrelated content.
+  Follow [second-laptop card](demo/SECOND_LAPTOP_ACCEPTANCE.md) and
+  [voiceover](demo/VOICEOVER_SCRIPT.md); describe actual uncertainty. Fresh-user
+  installation and longer soak remain limitations, not fabricated passes.
 
-The remaining submission sequence is a visible recovery/quiet rehearsal on the
-filmed build, the public video, a public download matching that build, completion
-of the existing Devpost draft, and final submission. Public RC1 still contains
-`49385f2`. Use the updated [second-laptop card](demo/SECOND_LAPTOP_ACCEPTANCE.md)
-to copy and hash-check `103f4ec` before recording.
+- [ ] **11. Publish matching artifacts and complete Devpost handoff.**
+  Acceptance: current public download/hash, public MIT source/setup,
+  architecture/thumbnail, video URL, correct Builder ID/individual details,
+  reviewed draft and final submission receipt after authorized submit.
+  Existing draft: `https://devpost.com/software/pex-mbcpr4`, not submitted.
+  Do not replace RC1's immutable bytes or claim publication from local files.
 
-Source continuity was checked from the recorded `deb2b15` live pair to the
-current tree: `services/supervisor`, bridge adapters and `packages/protocol`
-have no changes. The pipeline difference is limited to exposing five existing
-decision usage fields in the pet snapshot. Retained recovery and quiet receipt
-hashes still match their published evidence. This supports using those results
-as behavioral evidence while keeping a fresh filmed rehearsal distinct.
+## Full-objective work still open
 
-- [x] Fresh release-source OpenCode/Zen/Strands pair on clean `deb2b15`:
-  controlled recovery passed in 68.28 seconds with exact first-stop evidence,
-  one same-session correction, exact final bytes, settled outcome and clean
-  owned-server exit; correct completion passed in 78.33 seconds with exact
-  pre-review output, two model-backed `NOOP` decisions, zero follow-ups and all
-  events settled. [Current live pair](demo/evidence/LIVE_OPENCODE_PAIR_DEB2B15_2026-09-12.md).
+Formal four-arm benchmark is unfrozen. Readiness refresh on 13 September at
+01:40:19 UTC says `can_freeze:false`: isolated hidden-evaluator boundary,
+immutable complete vendor logs, controlled same-session Cursor treatment and
+network receipts, and one coherent 32-cell result set remain absent. Exit 0
+means a report was produced, not that the benchmark passed.
 
-- [x] Current exact candidate `49385f2` repairs the blocking native Home defect:
-  against a database containing 63 historical rows, the installed Home now
-  shows only the two current promptable workers as **2 available**. Desktop
-  contracts pass 294 with one intentional skip, the 71-module production build
-  passes, the full Tauri MSI/NSIS build and exclusive verifier pass with
-  `release_ready:true`, and the frozen packaged bridge passes 3/3 lifetime
-  checks. Native Home, Supervisor Settings and transparent Von rendering were
-  directly observed; Settings shows Zen, free Muse and cap 3. The bounded
-  2.81-minute installed sample stayed responsive at 343.18 MiB private memory
-  across ten owned processes. [Exact package evidence](demo/evidence/PACKAGE_49385F2_2026-09-12.md).
+The recovery specification's complete live behavior matrix, broad provider/
+adapter coverage and full goal-completion proof are not established by these
+bounded examples. Winning is an aim, never an engineering guarantee. Keep the
+persistent goal active while requirements remain unproven.
 
-- [x] Exact-source candidate `392d86e` makes Home visibly read as an
-  OpenCode/Codex agent harness, increases companion legibility and tightens the
-  visual hierarchy, wraps Inspector/Deck actions within the viewport, and gives
-  Deck metrics a responsive 3/2/1-column layout and anchors one labelled pet-hide
-  control to the status panel. Desktop contracts pass 294 with
-  one intentional platform
-  skip; production build passes 71 modules; full Tauri MSI/NSIS build and the
-  exclusive verifier pass with `release_ready:true`, zero blockers, exact Pex/Von,
-  Zen free Muse first, cap three and zero provider calls. The installed/native
-  acceptance box remains open.
-  [Package evidence and hashes](demo/evidence/PACKAGE_392D86E_2026-09-12.md).
-- [x] Superseded candidate `392d86e` received its native acceptance before the
-  Home-only `49385f2` repair. The NSIS installer
-  completed successfully, the installed desktop launched and its authenticated
-  bridge reached ready state. A 61.82-second startup/idle sample settled at
-  325.16 MiB private across ten processes; lifetime CPU advanced 1.40625 seconds
-  over about 61.5 seconds. This is moderate, not tiny, but shows settling instead of a
-  bounded runaway. Native
-  visual/pet interaction was subsequently checked; retain this row as package
-  history, not as the current acceptance gate.
+## Official submission boundary
 
-- [x] Exact installed candidate `79d4d18` passes bridge startup, authenticated
-  boundary, ordinary close cleanup, reopen and bounded stability: ready in
-  15.297 seconds cold / 7.703 seconds reopen, complete owned-process cleanup in
-  2.976 seconds, flat 25-second idle resources, and 100/100 health requests with
-  20.54 ms p95. Zen Muse Contributor Free and cap 3 remain secret-store backed.
-  A corrected recursive measurement includes all WebView/helper processes:
-  331.6 MB private memory and about 652 MB aggregate working set across ten
-  processes, flat over 20 seconds at 3.1% of one logical core. This is heavier
-  than ideal but showed no bounded leak or unresponsive window.
-  [Installed-runtime evidence and visual boundary](demo/evidence/NATIVE_RUNTIME_79D4D18_2026-09-12.md).
-- [ ] Observe Home/Inspector/Deck/Settings and both Pex/Von overlays on the exact
-  installed `79d4d18` candidate. The current computer-control host exposed no
-  native app surface, so do not infer visual acceptance from source tests.
-
-- [x] Current source/package `6d18167` renders the exact two verified built-in
-  atlases from stable bundled URLs, removing repeated bridge atlas
-  transfer/Pillow validation and preventing a selected Von from flashing as Pex.
-  Both strict v2 atlas checks pass; desktop contracts pass 291 with one
-  intentional skip; production and full Tauri builds pass; both installer
-  inventories verify with zero blockers; the isolated frozen bridge passes with
-  zero provider calls. [Exact hashes and boundary](demo/evidence/PACKAGE_6D18167_2026-09-11.md).
-- [x] Current source/package `761cbde` coalesces active committed-event bursts
-  into one cancellable 250 ms derived-state refresh while persisting event
-  cursors immediately. Desktop contracts pass 290 with one intentional skip,
-  production build and full Tauri release build pass, both installer inventories
-  verify with zero blockers, and the isolated packaged bridge reports cap 3 and
-  the Zen Contributor Free hint with zero provider calls.
-  [Exact hashes and claim boundary](demo/evidence/PACKAGE_761CBDE_2026-09-11.md).
-- [x] Public-repository preflight on 11 September: GitHub reports the repository
-  public on `main` with an MIT license; README and architecture PNG/Mermaid source
-  are present. A broad tracked-source secret scan found only deliberate fake test
-  canaries. No public installer release has been created.
-- [x] Refresh public preflight on current `bfcde36`: `HEAD == origin/main`, GitHub
-  still reports public/main/MIT, all required repo/setup/testing/architecture
-  assets exist, and key-shaped tracked matches remain test fixtures only.
-  [Current public preflight](demo/evidence/PUBLIC_PREFLIGHT_BFCDE36_2026-09-12.md).
-- [x] Final exact-source Pex/Von audit: both shipping atlases pass strict v2,
-  runtime and transparency validation with zero errors or warnings; the 290-test
-  desktop run has 289 passes and one intentional Windows symlink skip.
-  [Visual/contact-sheet evidence](demo/evidence/TWO_PET_FINAL_AUDIT_8CF2AE7_2026-09-11.md).
-- [x] Broad offline MVP seam: supervisor settings/provider binding, goal control,
-  Ask PEX, OpenCode and Codex recovery/outcome paths, Strands and local AgentCore
-  contracts pass 475 tests with one intentional skip and zero failures.
-  [Exact selection and boundary](demo/evidence/MVP_DEMO_SEAM_C70EFFB_2026-09-11.md).
-- [x] Re-run the current submission-critical backend seam after the Home/package
-  work: **476 passed, 1 skipped, 0 failed in 220.44 seconds**. An invalid-run
-  startup timeout was repaired before imports; one transient key-rotation 503
-  then passed five isolated stress reruns, its full 60-test file and the final
-  combined run. [Current chronology and boundary](demo/evidence/MVP_SEAM_4069B11_2026-09-12.md).
-- [x] The exact frozen packaged bridge remained stable during a bounded 30-second
-  idle sample: about 0.36% of one CPU core on average, no memory growth, and no
-  surviving process or listener after owned-session shutdown.
-  [Resource evidence](demo/evidence/PACKAGED_BRIDGE_IDLE_899A824_2026-09-11.md).
-- [x] Final post-recovery package source `c3cc44c`: clean Tauri build, MSI/NSIS,
-  package verifier `release_ready:true` with zero blockers and both inventories
-  verified, plus three isolated packaged-bridge restarts with authenticated
-  settings, Zen Muse Contributor Free first, cap 3, zero provider calls and no
-  surviving process/listener. It contains the numeric-grounding repair from
-  `a242a84`. [Exact hashes and boundary](demo/evidence/PACKAGE_C3CC44C_2026-09-11.md).
-- [x] Repair scale-dependent overlay geometry at product `8394b4b`: the sprite,
-  actor hit area, remaining status-bubble width and fixed hide control now share
-  one derived width across the supported 0.8–1.4 range. Both exact shipped pet
-  atlases pass fresh v2 and runtime-contract validation with zero errors or
-  warnings; full desktop is 291 passed with one platform skip and the production
-  build passes. [Audit and claim boundary](demo/evidence/PET_UI_AUDIT_8394B4B_2026-09-11.md).
-  Package source `619ea71` passes clean preflight, full Tauri build, MSI/NSIS
-  verification and isolated packaged-bridge cap smoke. Native overlay
-  verification remains pending.
-- [x] Bound fresh-install model use at current source `7bf591c`: three durable
-  semantic dispatches per worker session by default, explicit Settings/env
-  override retained. Ruff and 126 affected pipeline/settings tests pass;
-  provider/source/settings slice passes 156 with one intentional skip. Package
-  ancestor source `f585562` passes its affected slice and current package
-  `619ea71` passes MSI/NSIS verification with zero blockers and includes exact
-  Zen Muse Responses routing with no hidden model fallback.
-  [Current hashes and limits](demo/evidence/PACKAGE_619EA71_2026-09-11.md).
-  A repeatable headless isolated launch of the exact packaged frozen bridge also
-  passed: public identity became ready and authenticated supervisor settings
-  reported the default cap of three and first Zen free-Muse hint, with no
-  provider/worker/AWS call or surviving process. Visible native Settings
-  verification remains pending.
-- [x] Repair observed OpenCode free-tier retry/idle follow-up loop in source;
-  durable provider block survives refresh/restart and requires tool/file activity
-  to clear. Processing/OpenCode: 123 passed; final persistence focus: 7 passed.
-- [x] Verify installed OpenCode 1.18.30 model-free protocol compatibility through
-  production HTTP/session/SSE transport: corrected bounded live contract passed
-  once plus five consecutive reruns, Strong → Deep in 0.87–0.96 seconds. No
-  session mutation, provider/model call or native UI. The live test now waits for
-  the asynchronous SSE handshake and closes its transport.
-- [x] Explain provider limit and distinct connection failures in UI; frontend
-  build passed, 288 tests passed with one platform skip.
-- [x] Make pet hide/restore resilient to unavailable WebView storage. The new
-  regression, focused 18-test pet suite, final 290-pass desktop suite (one
-  platform skip), production build, Tauri build and MSI/NSIS verifier pass on
-  package source `619ea71`. Native interaction remains pending.
-- [x] Recheck offline AgentCore contracts: 183 passed, no AWS calls/deployment.
-- [x] Recheck current packaged-runtime lifetime and standalone bundle contract:
-  3 passed after removing its stale eight-pet expectation; it now requires the
-  exact Pex/Von inventory.
-- [x] Remove retired hatch work from the shipping runtime: the active bridge no
-  longer imports or initializes its registry/image stack, and exact package
-  `619ea71` contains zero hatch/image implementation files.
-- [x] Rebuild and verify provider-limit repairs natively on `5a4c4ac`:
-  first-attempt attach, Blocked state, zero new reviews/nudges after idle.
-  [Native evidence](demo/evidence/NATIVE_QUOTA_FENCE_5A4C4AC_2026-09-10.md).
-- [x] Clean-source Codex/Strands quiet + recovery pair at `e864389`: 1 passed in
-  79.19s and 1 passed in 193.45s, validated receipts and same-thread recovery.
-  [Evidence and limits](demo/evidence/CODEX_LIVE_E864389_2026-09-10.md).
-- [x] Recheck packaged OpenCode quota behavior; the free Ling run remains
-  quota-limited, not a passing artifact/recovery benchmark.
-- [x] Complete final bounded stability and ordinary-close checks. Recording and
-  external publication remain user-facing submission work.
-- [x] Source repair for explicit OpenCode cancellation: persistent no-follow-up
-  fence, quota precedence and truthful UI copy; 77 focused backend tests and
-  290 frontend tests passed (one platform skip). Idle-only abort without an
-  explicit cancellation event remains unproven; native verification pending.
-- [x] Current BYOK/provider configuration gate: 148 passed, one skipped; the
-  supplied Zen key has zero tracked-source matches and no live call ran.
-- [x] Current-source bounded OpenCode quiet case at `6a1d98b`: exact artifact
-  before review, one real Muse/Strands `NOOP`, zero follow-ups, all 258 events
-  settled, and owned-server cleanup. This is one restraint diagnostic, not a
-  ten-case rate or comparative score. [Exact receipt](demo/evidence/LIVE_OPENCODE_QUIET_6A1D98B_2026-09-11.md).
-- [x] Current-source bounded OpenCode recovery at `93dfef3`: controlled exact
-  stage-one stop, one independently verified same-session correction, exact
-  final artifacts, `goal_evidence_supported`, `helped:true`, then a model-backed
-  `NOOP`; all 441 events settled. The pass exposed an incorrect derived byte
-  count in otherwise correct prose. Source `a242a84` deterministically removes
-  such asides and tightens numeric-grounding rules; 92 focused and 243 expanded
-  supervision tests pass. [Exact receipt and limitation](demo/evidence/LIVE_OPENCODE_RECOVERY_93DFEF3_2026-09-11.md).
-- [x] Current benchmark safety/scoring/Cursor-hook contracts: 280 passed in
-  284.29s. Manifest remains honestly unfrozen; this is not a benchmark score.
-- [x] Current-tree expanded benchmark integrity rerun: 261 core benchmark/
-  Cursor/audit/scoring tests plus 22 policy/speculative tests, 283/283 total.
-  Manifest remains honestly unfrozen; this is still not a live score.
-- [x] Fresh 12 September benchmark readiness ran successfully and refused a
-  presentation run: `coherent_runs:[]`, `can_freeze:false`. The blocking
-  infrastructure is OS-isolated hidden evaluation, controller-enforced Cursor
-  network evidence, complete immutable raw logs, and synchronous same-session
-  Cursor treatment. No comparative score may be claimed. The separate live
-  OpenCode recovery/quiet pair remains behavioral evidence only.
-- [x] Exact-source production render preflight at `392d86e`: Home, Inspector,
-  Deck, every Settings tab, pet overlay and independent status dismissal were
-  inspected at 1280 by 720 with no visible overflow, detached close control or
-  broken primary navigation. Live `/health/live` was HTTP 200; persisted state
-  selects Von and Zen Muse Contributor Free through an opaque secret-store
-  reference with cap three. Native transparency, motion, drag, hide/restore and
-  shutdown remain on the ten-minute acceptance card.
-- [x] Post-package integrity expansion on `f585562`: 253 Strands/supervisor/
-  trajectory/evidence/outcome tests, 183 local AgentCore tests and 368 benchmark/
-  Cursor/audit/execution-safety/scoring tests passed. The broad benchmark gate
-  emitted one aiosqlite thread-shutdown warning; the exact named test and then
-  all 57 owning Cursor contracts passed with thread warnings promoted to errors.
-  The warning is retained as non-reproduced and does not justify a speculative
-  product edit. No AWS, provider, worker or native UI call ran.
-- [x] Warning-as-error follow-through: an expanded 387-test Strands/supervisor/
-  trajectory/evidence/outcome selection passed with 6 skips in 121.17 seconds;
-  183 local AgentCore tests passed with one opt-in live-cloud skip in 17.05
-  seconds. Both promoted aiosqlite thread warnings to errors and remained clean.
-- [x] Current-tree full Python regression at `dd06443`: 4,436 passed, 32
-  skipped, zero failures/errors in 2,743.56 seconds. Retained JUnit:
-  `build/full-offline-dd06443-20260911.xml`, SHA-256
-  `a9aae1f63ad0206df6083b0069b710005683701139fac59ece2238390fa843c2`.
-  Earlier stopped runs are diagnostic history, not accepted passes. No matching
-  PEX or repository pytest process remained after the successful run.
-
-### Pre-cap candidate — superseded by package source `204c766`
-
-Product `567778b` rebuilt successfully; MSI/NSIS verification passes with zero
-blockers and 2,375 matching runtime files. Receipt:
-`build/package-567778b-20260910-rebuilt.json`, SHA-256
-`9bda2583d3307dd7470002fec4e419f7ba4700a7fd9e9dcb393132222de7185e`.
-It includes the bounded Ask layout and explicit cancellation repairs. Native
-verification of those two newest behaviors remains pending. Its predecessor
-started without Retry, loaded both pets, attached OpenCode first attempt and
-held the quota fence across cancellation/idle with no extra review/intervention.
-This is not a fresh-user install or blanket stability claim.
-[Exact installer hashes, bounded test gates and claim boundary](demo/evidence/PACKAGE_567778B_2026-09-11.md).
-
-### 10 September evening: current package and live recheck
-
-Product `dbc141a` was rebuilt with the full Tauri build (exit 0). The verifier
-cleanup-receipt fix is `d1da140`; its MSI/NSIS verification passed with zero
-blockers and 2,375 matching runtime files. Receipt:
-`build/package-d1da140-20260910.json`, SHA-256
-`6394c80025cbdf7ebc05742c3e7e2b995b8f9e0aeb033c2c3009885f8d0ee97d`.
-The prior verifier attempt failed on temporary-directory cleanup (EPERM), and
-must not be reported as a pass. These are integrity checks, not a fresh-user
-installation or complete MVP acceptance.
-
-The rebuilt native Ask correctly answered for the selected synthetic OpenCode
-session instead of an older worker. Both shipping pets remain Pex and Von.
-The native OpenCode attach first failed confirmation; a bounded retry succeeded.
-Independent local probe returned Strong in roughly one second. The first
-failure's cause is not yet proven.
-
-The isolated Ling free worker then returned `Free usage exceeded` without
-creating the required `status.txt`. PEX received 40 events and recorded one
-Strands/Zen model review. This is not a successful benchmark or recovery proof.
-After aborting the owned session, another worker prompt appeared; the exact
-owned server was stopped and its runner exited 0 to prevent further retries.
-Audit provider-limit visibility and supervision after cancellation before
-repeating this check. Do not substitute a paid model or reset the review budget.
-
-Historical checkpoint below is retained; it does not supersede this update.
-
-Latest installer pair remains `4de1db8`, with exactly Pex and Von. Its integrity
-passed but native startup and Retry exceeded the unchanged 60-second deadline.
-The replacement unpacked runtime in source `be67a91` now starts the release
-desktop without Retry, with `ready` at 5.109 seconds after Python entry. Both
-pets are transparent, dismissible and independently hideable. This is one
-native check, not a fresh-Windows-user installation or prolonged stability proof.
-Native BYOK save/catalog, OpenCode connection and synthetic goal attachment also
-passed. Ask PEX exposed selected-session leakage from an older OpenCode worker;
-the fix is under regression review and not yet in the running package.
-Rebuild and verify the new MSI/NSIS runtime trees before calling them current.
-[Current package evidence](demo/evidence/TWO_PET_PACKAGE_2026-09-10.md).
-
-- [x] Resume PEX-only checks after permission; recorded startup failure retained.
-- [x] Diagnose startup extraction delay; native unpacked-runtime launch and both pets checked.
-- [ ] Verify new MSI/NSIS startup and rerun corrected Ask/session flows.
-
-- [x] Native OpenCode connection and persistent goal attachment.
-- [x] Real native Strands correction to the same OpenCode worker, exact recovery
-  artifacts, helped outcome, then NOOP; see native d55e899 evidence.
-- [x] Real Codex App Server recovery and quiet source proofs; describe that
-  supported surface honestly, not arbitrary desktop-thread control.
-- [x] Saved Zen vault credential used in real free-route inference; never publish
-  keys or raw private receipts. BYOK configuration is not a billing guarantee.
-- [x] Native transparent Von, bubble dismissal and pet hiding demonstrated.
-  September 10 scope override: ship only Pex (owl) and Von (cat), per Joseph's
-  latest request. Retain historical eight-pet evidence as history, not current proof.
-- [x] Failed inference is distinguished from a successful quiet review.
-- [x] Newer unverified STOP supersedes obsolete goal success/failure as uncertain.
-- [x] Remove the remaining raw event-kind progress fallback and verify natively.
-- [x] Complete offline regression on current source `aba8d38`: 4,336 passed,
-  16 skipped, 18 deselected, exit 0. Live-provider/desktop tests are excluded.
-  [Exact evidence and retained failed attempts](demo/evidence/OFFLINE_REGRESSION_2026-09-10.md).
-- [x] Both installers pass on clean checkout `e56a077` (product `320249b`),
-  including the progress-label and supervisor-budget guidance repairs. Native
-  startup and recorded OpenCode selection pass. Installers remain unsigned.
-- [x] Fresh packaged bridge profile, native reopen and pause/resume checks.
-  [Exact evidence and limits](demo/evidence/MVP_NATIVE_FCB624D_2026-09-10.md).
-- [x] Thirty-minute packaged resource observation: 180/180 samples retained,
-  followed by responsive restore/navigation/Inspector refresh. PEX was minimized
-  at inspection; [precise limits](demo/evidence/RESOURCE_OBSERVATION_2026-09-10.md).
-- [ ] Complete the bounded current-package foreground/active-worker stability
-  gate. A fresh-Windows-user installation and long-duration soak remain honest
-  limitations, but are not prerequisites for this focused local MVP submission.
-- [x] Behavioral report retains failed/invalid attempts. Nine semantic
-  quiet cases across runs are not a clean ten-case pass or comparative score.
-- [x] The previously failed identifiers case and one control pass a separate
-  two-case source retest, with completed Strands decisions and no followups.
-  This does not retroactively make the original batch pass.
-- [x] Public repository and MIT license verified; Devpost registration confirmed.
-  No submission or public installer release performed.
-- [x] Review architecture image and update the public OpenCode UI setup path.
-- [x] Finalize current submission copy and the judge-facing architecture source/
-  opaque PNG. Fresh native gallery screenshots remain part of recording acceptance.
-- [x] Quarantine the stale eight-pet browser screenshots under
-  `docs/demo/archive/legacy-eight-pet/` together with the byte-identical legacy
-  WebMs; they are forbidden from the final gallery/video. Fresh package-`619ea71`
-  captures remain part of native acceptance.
-- [ ] Record the working path and complete authorized submission.
-
-Formal frozen Cursor/Codex four-arm scoring and its OS-level hidden-evaluator
-boundary remain unfulfilled research/spec work, not an official contest-entry
-requirement. Do not publish a formal PexBench score or claim full-spec completion.
-Docker startup currently fails on its own inaccessible sailor-ingest.sock; no
-Docker data deletion, security-setting change or VM workaround is authorized by
-this document. Follow the user's current scope and action permissions.
-
-**MVP readiness remains pending the unchecked items above**, not optional AWS
-deployment or completion of every historical expansion. Winning remains an aim,
-not a verifiable engineering guarantee.
-
-## 11 September exact-source supervision refresh
-
-- [x] Current OpenCode quiet completion on `150ea07`: exact artifact and input,
-  one completed Strands/Zen `NOOP`, zero follow-ups, no unnecessary interruption,
-  all events settled, clean owned-server shutdown; 70.31 seconds.
-- [x] Current OpenCode same-session recovery on `150ea07`: exact incomplete first
-  stop, deterministic `missing:final.txt`, independently verified correction,
-  one delivered follow-up, exact final artifact, `goal_evidence_supported`,
-  `helped:true`, final model-backed `NOOP`, clean shutdown; 114.44 seconds.
-- [x] Remove redundant token fragments from the durable OpenCode pump and keep
-  ordinary progress frames record-only; only terminal/error/permission/session
-  boundaries enter the full decision pipeline. Expanded MVP seam: 552 passed,
-  one environment skip.
-- [x] Keep OpenCode capability negotiation fail-closed while allowing its cold
-  session listing up to eight bounded seconds. Capability/OpenCode gate: 144
-  passed; recovery/dispatch gate: 90 passed.
-- [x] Build MSI/NSIS from clean `79d4d18`; exclusive verification reports
-  `release_ready:true` and zero blockers, and packaged-bridge settings smoke
-  passes with verified identity and zero provider calls.
-- [ ] Run native installed-app acceptance on the `79d4d18` package when Joseph
-  explicitly releases the screen; older package `6d18167` is fallback only.
-
-[Exact current-source receipts](demo/evidence/LIVE_OPENCODE_PAIR_150EA07_2026-09-11.md).
-[Exact package receipts](demo/evidence/PACKAGE_79D4D18_2026-09-11.md).
+Live organizer refresh 13 September at 01:47 UTC: deadline 15 September 00:00 UTC /
+01:00 Africa/Lagos. Live demo URL and AWS AgentCore deployment are optional;
+working Strands project, public source/license/setup, architecture, ≤5-minute
+video and Builder ID are required. Recheck
+[official rules](https://agentsforhumans.devpost.com/rules) before submission.
+Do not infer authorization to spend or submit from this document.

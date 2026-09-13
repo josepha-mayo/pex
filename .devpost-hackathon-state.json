@@ -15,10 +15,10 @@
     "ai_usage": "Strands Agents evaluates bounded local evidence and returns validated NOOP or same-session intervention decisions; local verification and policy remain authoritative.",
     "codex_usage": "Codex helped audit the three binding specifications, repair and test the product, build release candidates, and produce evidence-grounded submission material."
   },
-  "current_stage": "submit-project",
+  "current_stage": "prepare-submission",
   "completed_stages": ["start-hackathon", "review", "resources", "prepare-submission"],
   "rules_acknowledged": true,
   "learning": { "status": "not-started", "current_step": "", "completed_steps": [], "plan_file": "", "checklist_file": "" },
-  "submission": { "draft_file": "devpost-submission.md", "status": "needs-work" },
+  "submission": { "draft_file": "devpost-submission.md", "status": "drafting" },
   "next_command": "prepare-submission"
 }

@@ -113,6 +113,7 @@ class CursorAdapter(HarnessAdapter):
         self.isolated_agent_messages: list[str] = []
         self.last_turn_id: str | None = None
         self._last_hook_at: float | None = None
+        self._hook_activity_revision = 0
         self._active_hook: ContextVar[tuple[str, str, str] | None] = ContextVar(
             f"pex_cursor_active_hook_{id(self)}", default=None
         )
@@ -257,6 +258,7 @@ class CursorAdapter(HarnessAdapter):
         return list(self.sessions.values())
 
     def upsert_from_hook(self, payload: dict) -> HarnessSession:
+        self._hook_activity_revision += 1
         self._last_hook_at = time.monotonic()
         vendor_id = _cursor_vendor_id(payload)
         session_id = f"cursor:{vendor_id}"

@@ -1317,10 +1317,12 @@ async def apply_cursor_hook(payload: dict) -> dict[str, Any]:
 
 async def _prepare_cursor_hook(payload: dict) -> tuple[HarnessSession, HarnessEvent]:
     adapter = state.adapters.cursor
+    previous_hook_at = adapter._last_hook_at
     try:
         session = adapter.upsert_from_hook(payload)
     except (TypeError, ValueError) as exc:
         raise HTTPException(422, str(exc)) from exc
+    prepared_hook_revision = adapter._hook_activity_revision
     existing = await state.store.get_session_for_authority(session.id)
     if existing:
         session.goal_id = existing.goal_id
@@ -1333,6 +1335,17 @@ async def _prepare_cursor_hook(payload: dict) -> tuple[HarnessSession, HarnessEv
         event = adapter.normalize_hook(payload, session)
     except (TypeError, ValueError) as exc:
         raise HTTPException(422, str(exc)) from exc
+    if existing is not None and await state.store.get_event(event.event_id) is not None:
+        # Inbox replays/retries are not new worker activity. Keep the current
+        # authoritative session rather than reviving an old Working projection
+        # before the pipeline recognizes the duplicate. The incoming event is
+        # still validated by ingestion, including conflicting duplicate payloads.
+        retained = existing.model_copy(deep=True)
+        if adapter.sessions.get(session.id) is session:
+            adapter.sessions[session.id] = retained
+        if adapter._hook_activity_revision == prepared_hook_revision:
+            adapter._last_hook_at = previous_hook_at
+        return retained, event
     await state.store.upsert_session(session)
     return session, event
 

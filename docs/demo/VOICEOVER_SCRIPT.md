@@ -84,12 +84,13 @@ AWS deployment.”
 
 ## 4:20–4:35 — Honest close
 
-[Return to Von or Pex beside the verified goal.]
+[Return to Von or Pex beside the observed goal and its truthful completion state.]
 
 “The formal comparative benchmark is not frozen, so I am not claiming an uplift
 or leaderboard score. What this demo proves is narrower and useful: PEX can see
-an incomplete goal, make one evidence-grounded same-session correction, verify
-the outcome, and stay quiet when the work is already done. You keep the goal and
+an incomplete goal, make bounded evidence-grounded same-session corrections,
+check the resulting artifacts, and stay quiet when no correction is justified.
+Unresolved completion evidence stays visible. You keep the goal and
 dangerous approvals. PEX keeps the mechanical supervision quiet.”
 
 ## Final export checks

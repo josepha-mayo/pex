@@ -4,50 +4,34 @@
 
 It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude Code, OpenCode, and other coding agents you already use. It is not another coding harness, not a Kanban board, and not a chat UI that makes you babysit a babysitter.
 
-**MVP in final validation — 12 September 2026.** The shipping focus is OpenCode,
-Codex App Server, Zen BYOK and a small, controllable desktop companion. Native
-OpenCode + Strands has demonstrated same-worker correction, exact artifact
-recovery, a helped outcome and quiet completion. Codex App Server has separate
-real recovery/quiet proofs; this is not control of arbitrary Codex desktop tasks.
-Package source `49385f2` ships only Pex and Von,
-defaults fresh installs to three semantic review dispatches per session, and passes both installer
-content/inventory gates. It also routes Zen Muse through Responses and forbids
-silent model fallback. The current submission-critical backend seam passes 476
-tests with one intentional skip and zero failures across BYOK, Strands, goals,
-Ask PEX, OpenCode, Codex and local AgentCore contracts. The newest Home presents
-OpenCode and Codex as explicit harnesses with a larger companion, an anchored
-labelled pet-hide control, and Inspector/Deck headings that wrap actions within the viewport; its production
-render and full desktop suite pass. Native Home and Supervisor Settings were
-directly accepted at the installed window size, Von rendered over a transparent
-desktop overlay, and the unchanged Pex/Von interaction mechanics passed their
-native sweep immediately before the Home-only repair.
-Fresh release-source OpenCode 1.18.30 diagnostics now pass both required behaviors:
-one already-correct task received a model-backed NOOP and zero PEX follow-ups,
-while one controlled incomplete stop received one independently verified
-same-session correction, reached exact final artifacts with `helped:true`, then
-received a final NOOP. These are single public diagnostics, not a benchmark.
-The recovery audit exposed one wrong derived byte-count aside; current package
-`49385f2` contains the deterministic sanitation and verifier-prompt repair,
-active event-burst read coalescing, and bundled built-in pet rendering that
-avoids repeated atlas transfer/validation and wrong-pet startup flashes. It also
-contains the cold OpenCode response bound, token-delta triage, record-only
-progress handling and bounded capability probe used by the accepted same-source
-quiet/recovery pair.
-The exact installed process tree remained responsive at 343.18 MiB private
-across ten processes during a bounded 2.81-minute sample. This is moderate, not
-lightweight, and not a long-run no-leak claim. Recording remains.
-Installed OpenCode 1.18.30 also passes a fresh model-free production HTTP/session/
-SSE smoke, reaching Deep after the real event-stream handshake; this does not
-replace the separate model-backed recovery evidence.
-AgentCore is implemented and tested but **not deployed**;
-deployment is optional under the current contest rules. No formal comparative
-benchmark score is claimed. See [the focused shipping gate](docs/MVP_SHIP_GATE.md),
-[current package evidence](docs/demo/evidence/PACKAGE_49385F2_2026-09-12.md),
-[current status](STATUS.md), and the source-bound evidence linked there.
+**MVP in final validation — 13 September 2026.** The shipping focus is OpenCode,
+Codex App Server, Zen BYOK and exactly two controllable companions, Pex and Von.
+Current locally installed candidate **`bf5a25b`** has a verified rebuilt runtime
+and MSI/NSIS package, a flat logo, visible inference usage, and an OpenCode
+lifecycle fix verified in the native UI. Public RC1 is an older build.
+
+In the latest installed live test, PEX corrected a missing file and then a CRLF
+byte mismatch in the same OpenCode session. Both files reached exact required
+bytes and real Strands then chose NOOP. The audit retained uncertainty about an
+unchecked verification criterion instead of declaring the whole goal complete.
+Three bounded reviews used nine model calls and 35,221 tokens. A separate
+installed quiet control and clean-source Codex recovery/quiet pair passed on
+`0ea2639`; each receipt states its exact scope. These are controlled behavioral
+examples, not a comparative benchmark or arbitrary Codex desktop-thread control.
+
+Native Home/Inspector/Settings, selected-worker Ask PEX, transparent Von,
+independent message dismissal, stationary Hide and ordinary shutdown were
+checked. Settled interactive private memory measured about 380–408 MiB; short
+checks do not prove leak freedom or clear a prior whole-PC-freeze report.
+AgentCore is implemented and locally tested but **not AWS-deployed**. Final
+recording and matching public release remain. See the
+[current checklist](docs/MVP_SHIP_GATE.md),
+[package proof](docs/demo/evidence/PACKAGE_BF5A25B_2026-09-13.md) and
+[live result](docs/demo/evidence/NATIVE_BF5A25B_RECOVERY_2026-09-13.md).
 
 ![PEX Home showing two available coding workers and the Von companion](docs/demo/assets/pex-home-49385f2.png)
 
-*Exact installed `49385f2` Home capture. The current-worker rail is
+*Earlier installed `49385f2` Home capture, not the newest logo/build. The worker rail is
 freshness-filtered; historical sessions remain in Inspector and Deck.*
 
 ## The pain it removes
@@ -102,7 +86,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 ### Windows install or source prerequisites
 
-The verified, unsigned Windows judge build is published as
+The earlier verified, unsigned Windows build is published as
 [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1).
 Use `PEX_0.1.0_x64-setup.exe` for the normal install. It is built from exact
 product source `49385f2`; its SHA-256 is
@@ -111,8 +95,13 @@ The binary is not code-signed, so Windows may show a publisher warning. Package
 integrity is not indefinite stability or publisher trust; current source-bound
 evidence is recorded in the [active handoff](docs/AGENT_HANDOFF.md).
 
+The newer locally tested `bf5a25b` installer is not yet a public release. Use
+the [exact-build recording card](docs/demo/SECOND_LAPTOP_ACCEPTANCE.md) when
+copying it from the development laptop, or build current source below.
+
 To build from source instead,
-install Git and `uv`, Node matching [`.node-version`](.node-version),
+use the development workflow below; it is not a packaged installer.
+Install Git and `uv`, Node matching [`.node-version`](.node-version),
 and Rust matching [`rust-toolchain.toml`](rust-toolchain.toml). A Windows Tauri
 build also needs the Microsoft C++ build tools and WebView2 runtime. `uv` uses
 the Python version in [`.python-version`](.python-version) and installs the

@@ -1,5 +1,29 @@
 # PEX active handoff
 
+**New source repair pending packaging:** native bf5a25b displayed a Cursor row
+with September 5 events but a September 13 activity timestamp. Replayed observer
+hooks refreshed Working state before duplicate detection. `_prepare_cursor_hook`
+now preserves recorded activity/status on replay and protects concurrent genuine
+hooks with a revision counter; incoming events still get normal validation.
+[Detailed failure/repair](demo/evidence/REGRESSION_AND_CURSOR_REPLAY_2026-09-13.md).
+Installed bf5a25b remains unchanged; do not call this new fix natively verified.
+All 276 final Cursor/hook/credential/event/setup checks passed (59.79s), with
+zero XML failures/errors/skips; Ruff and diff checks pass. Next action is a full
+runtime/installer rebuild and native stale-row acceptance, then the coherent
+ten-case restraint runner. Do not reuse an old ignored runner or overwrite receipts.
+
+Current todo authority is now the concise [MVP_SHIP_GATE.md](MVP_SHIP_GATE.md).
+All former shipping-gate checkpoints were preserved in
+[MVP_SHIP_GATE_HISTORY.md](MVP_SHIP_GATE_HISTORY.md), with relative evidence
+links intact. README, judge guide, RC2 notes and local Devpost draft now identify
+the real bf5a25b candidate rather than treating public RC1 as current.
+Live Devpost read on 13 September confirmed draft/no video/no final timestamp;
+no external publication occurred. Full offline regression on `d4f6507` finished:
+4,474 passed, one README contract failed, 16 skipped, 18 deselected. Retained XML
+is `build/offline-d4f6507.xml`. Wording repaired; all eight setup contracts pass.
+Desktop rerun passed 300 with one symlink skip. Product code stayed unchanged
+during that full run; the Cursor replay repair above followed afterward.
+
 ## Current installed candidate and live result
 
 **Installed `bf5a25b`**, full runtime/MSI/NSIS rebuild, first-attempt package

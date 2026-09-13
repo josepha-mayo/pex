@@ -1,6 +1,34 @@
 # STATUS
 
-## Current — 12 September 2026
+## Current — 13 September 2026
+
+Installed product: **`bf5a25b`**, verified rebuilt runtime/MSI/NSIS and installed
+hash. [Package](docs/demo/evidence/PACKAGE_BF5A25B_2026-09-13.md).
+Native OpenCode now shows Working during activity. A real installed test made
+two independently verified same-session corrections (missing output, then CRLF),
+reached exact artifacts and ended with Strands NOOP. Overall completion and
+second-correction helped remain uncertain for the unchecked third criterion.
+[Evidence](docs/demo/evidence/NATIVE_BF5A25B_RECOVERY_2026-09-13.md).
+Native Ask PEX and pet transparency/dismissal/Hide/shutdown passed bounded checks.
+
+Current desktop suite: 300 passed, one Windows symlink skip. AgentCore local
+suite: 183 passed; AWS deployment remains unverified. Full Python offline
+regression on `d4f6507`: 4,474 passed, one README contract failed, 16 skipped,
+18 deselected. The wording was repaired and all eight setup contracts pass.
+The full failed receipt is retained, not relabeled green.
+
+New source-only repair prevents replayed Cursor observer hooks from reviving
+old Working/activity state; concurrent genuine hooks remain authoritative.
+It still needs rebuilt-package/native acceptance. See
+[regression and repair](docs/demo/evidence/REGRESSION_AND_CURSOR_REPLAY_2026-09-13.md).
+
+Use [the current checklist](docs/MVP_SHIP_GATE.md), not the historical installer
+entries below. Public RC1 remains older `49385f2`. Latest Devpost live read on
+13 September reports a draft with no video or final submission timestamp.
+Recording, matching public release and authorized final entry remain open.
+Formal four-arm benchmark cannot freeze; no comparative score is claimed.
+
+## Historical checkpoint — 12 September 2026
 
 **Current installed/package source: `49385f2`, exactly Pex and Von.** It fixes
 Home incorrectly merging 63 historical Deck sessions into the live worker
