@@ -10,12 +10,14 @@ patterns. Intentional test canaries are permitted only by exact reviewed
 SHA-256; any new test token also blocks. Reports contain path, line and pattern
 class, never the matched value. The recording kit itself had zero hits.
 
-Verification: eight submission-preflight tests and 29 focused privacy tests
+Verification: nine submission-preflight tests and 29 focused privacy tests
 passed; the current Strands, AgentCore, provider, supervisor, policy and
-preflight cluster passed **372/372 in 21.76 seconds**; scoped Ruff and whitespace
+preflight cluster passed **373/373 in 21.74 seconds**; scoped Ruff and whitespace
 checks passed. The clean post-push real preflight reports all exact assets
 passing, zero stale-guide matches, zero sensitive-data hits, and exactly two
-blockers: missing public YouTube/Vimeo video URL and unattached architecture.
+external deliverables with three enforced conditions: a valid public
+YouTube/Vimeo video URL, logged-out playback attestation, and attached
+architecture. The URL alone cannot make the gate green.
 
 Authenticated Devpost refresh at 21:06 UTC: project `pex-mbcpr4` remains
 published but `video_url:null` and `submitted_at:null`; submissions remain open

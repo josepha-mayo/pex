@@ -145,7 +145,8 @@ The exact package is public as
   The fail-closed `scripts/submission_preflight.py` now verifies exact assets,
   clean pushed source, active-guide freshness and tracked-file privacy. Its
   clean post-push run reports zero artifact, stale-reference or sensitive-data
-  failures and blocks only on the video URL and architecture-upload attestation.
+  failures and blocks only on a valid video URL, logged-out playback attestation,
+  and architecture-upload attestation.
 
 ## Full-objective work still open
 
