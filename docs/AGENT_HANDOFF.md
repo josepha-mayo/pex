@@ -1,5 +1,31 @@
 # PEX active handoff
 
+## Current verified installer and native acceptance — 1cd42c8
+
+Authoritative checkout is `D:\PEX-work`; pushed source before this documentation
+checkpoint is `1cd42c8790d72035252cf7d1f94654ec4931fbe3`. A fresh clean Tauri build
+produced MSI and NSIS installers. The v2 package receipt reports
+`release_ready: true`, zero blockers, and verified embedded inventories. The
+NSIS candidate installed successfully, and its installed desktop hash exactly
+matches the receipt. Frozen bridge lifetime/standalone acceptance passed 3/3;
+desktop tests passed 302 with one Windows symlink-capability skip.
+
+PEX-only native acceptance confirmed bridge liveness, exactly two built-in pets
+(Pex and Von), the transparent companion stage, and an independent message
+dismiss control that leaves the pet present. Zen/Muse BYOK is configured through
+a write-only field backed by the OS vault, with a visible three-dispatch session
+limit. Connections exposes both the OpenCode server flow and existing Codex
+observer flow, while truthfully reporting no current Codex observer attachment.
+A 20-second visible-Home sample used 0.22 aggregate CPU-seconds; desktop plus
+bridge measured 178.1 MiB working set and 128.5 MiB private. This is bounded
+evidence, not a leak proof.
+
+Read [package/native evidence](demo/evidence/PACKAGE_1CD42C8_2026-09-13.md).
+The retained candidate is `build/release-candidate-1cd42c8`. Next: run fresh
+current-build Zen/OpenCode and Codex recovery/quiet acceptance, then update
+benchmark readiness. AWS AgentCore remains locally implemented/tested but
+undeployed; formal benchmark results remain unfrozen. Goal stays active.
+
 ## Current source green on the complete offline gate — 8220857
 
 Authoritative checkout is `D:\PEX-work`; pushed source is
