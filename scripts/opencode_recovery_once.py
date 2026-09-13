@@ -61,6 +61,9 @@ WORKER_MODEL = "ling-3.0-flash-fin-free"
 SUPERVISOR_MODEL = "muse-spark-1.3-contributor-free"
 EXPECTED_STAGE = b"stage-one-ok\n"
 EXPECTED_FINAL = b"pex-supervised-ok\n"
+INITIAL_PROOF_SECONDS = 360
+POST_STOP_SETTLEMENT_SECONDS = 180
+MAX_PROOF_SECONDS = 540
 
 
 def write_json(path: Path, value: object) -> None:
@@ -123,9 +126,11 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
     )
     first_stop: dict | None = None
     case_session_id: str | None = None
+    started = time.monotonic()
+    deadline = started + INITIAL_PROOF_SECONDS
 
     async def observed_ingest(event, observed_session) -> None:
-        nonlocal first_stop
+        nonlocal deadline, first_stop
         if not belongs_to_case(event, observed_session, case_session_id):
             return
         if event.event_type.value == "stop" and first_stop is None:
@@ -139,11 +144,18 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
                 "final_absent": not final.exists(),
                 "prior_followup_count": len(registry.opencode.inbox.get(event.session_id, [])),
             }
+            # A slow free worker must not consume the supervisor's entire
+            # settlement window before the first actionable STOP exists. Keep
+            # the proof globally bounded while reserving time for the real
+            # correction, outcome observation, and quiet final review.
+            deadline = min(
+                started + MAX_PROOF_SECONDS,
+                max(deadline, time.monotonic() + POST_STOP_SETTLEMENT_SECONDS),
+            )
             write_json(root / "first-stop-observation.json", first_stop)
         await pipeline.ingest_event(event, observed_session)
 
     pump = registry.opencode.start_pipeline_pump(observed_ingest)
-    started = time.monotonic()
     receipt: dict = {}
     try:
         async with asyncio.timeout(15):
@@ -205,7 +217,7 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
         semantic_completed = False
         recovery_completed = False
         recovery_outcome_verified = False
-        while time.monotonic() - started < 360:
+        while time.monotonic() < deadline:
             if server.poll() is not None:
                 raise RuntimeError("owned server exited")
             events = await store.recent_events(session.id, limit=1000)
