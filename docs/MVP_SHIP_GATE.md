@@ -33,6 +33,12 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+Latest installed candidate: **`c7e2f97`**, superseding the candidate notes below.
+Package and native checks, including independent message dismissal and pet Hide,
+pass. [Exact evidence](demo/evidence/PACKAGE_C7E2F97_2026-09-13.md) includes
+honest resource measurements and remaining limits. The recording card now names
+its exact retained installer. No new public release or submission has occurred.
+
 Current installed/recording candidate is now **`c0b8860`**, superseding the
 historical paragraphs below. It packages the Inspector polling fix and passes
 the extraction verifier, installed hash check and bounded Home/Inspector sweep.

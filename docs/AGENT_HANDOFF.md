@@ -1,5 +1,15 @@
 # PEX active handoff
 
+Newest installed candidate: **`c7e2f97`**. Full MSI/NSIS build, extraction
+verification, installed hash check and native Home/Inspector/pet checks passed.
+The completion explanation is now installed, not source-only. Message dismissal
+and pet Hide work independently; Hide still shifts when the message disappears.
+Settled visible Home measured 321–324 MiB private memory and 16.14% of one core
+(about 1.35% of this 12-logical-processor machine). No causal speedup or long-run
+freeze claim. See [current package evidence](demo/evidence/PACKAGE_C7E2F97_2026-09-13.md).
+Older installed/source-only paragraphs below are historical checkpoints.
+Public RC1 is unchanged; filmed rehearsal/video/submission remain outstanding.
+
 Rendering follow-up: removed the extra CSS drop-shadow and continuous
 breathing/listening transforms from all sprite surfaces, including Home and
 the picker. Existing bounded atlas-frame animation, pointer interaction,
