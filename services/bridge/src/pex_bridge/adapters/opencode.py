@@ -49,6 +49,7 @@ from pex_bridge.adapters.opencode_outcomes import (
     opencode_message_lineage,
 )
 from pex_bridge.adapters.strict_json import strict_json_dumps
+from pex_bridge.shell_state import parse_test_process_state
 
 OPENCODE_DESKTOP_IMAGES = ("OpenCode.exe", "opencode.exe")
 
@@ -201,6 +202,7 @@ class OpenCodeAdapter(HarnessAdapter):
         return AdapterCapabilities(
             observe_messages=deep,
             observe_tool_calls=deep,
+            observe_shell=deep,
             observe_session_status=connected or desktop,
             observe_file_edits=deep,
             observe_permissions=deep,
@@ -1167,6 +1169,35 @@ class OpenCodeAdapter(HarnessAdapter):
         tool_input = bounded_observed_mapping(
             permission_metadata if permission and permission_metadata else state.get("input")
         )
+        command = _optional_bounded_text(
+            permission_command
+            if isinstance(permission_command, str)
+            else tool_input.get("command")
+            if tool_input is not None
+            else None,
+            field="SSE command",
+        )
+        process_state = None
+        if (
+            kind == "message.part.updated"
+            and part.get("type") == "tool"
+            and part.get("tool") in {"bash", "shell"}
+        ):
+            # OpenCode exposes the real process exit in state.metadata.exit.
+            # Preserve it as typed shell state so an earlier PEX verification
+            # request can bind to the exact later command result. Do not infer
+            # a passing exit from narration or a pytest summary.
+            event_type = EventType.SHELL
+            raw_tool_metadata = state.get("metadata")
+            tool_metadata = raw_tool_metadata if isinstance(raw_tool_metadata, dict) else {}
+            shell_payload: dict[str, object] = {
+                "output": state.get("output"),
+                "error": state.get("error"),
+            }
+            raw_exit = tool_metadata.get("exit")
+            if isinstance(raw_exit, int) and not isinstance(raw_exit, bool):
+                shell_payload["exit_code"] = raw_exit
+            process_state = parse_test_process_state(command, shell_payload)
         lineage = (
             opencode_message_lineage(
                 session=session,
@@ -1238,14 +1269,7 @@ class OpenCodeAdapter(HarnessAdapter):
                 field="SSE tool name",
             ),
             tool_input=tool_input,
-            command=_optional_bounded_text(
-                permission_command
-                if isinstance(permission_command, str)
-                else tool_input.get("command")
-                if tool_input is not None
-                else None,
-                field="SSE command",
-            ),
+            command=command,
             file_paths=(
                 permission_paths
                 if permission_paths
@@ -1257,6 +1281,7 @@ class OpenCodeAdapter(HarnessAdapter):
             ),
             error=_optional_bounded_text(state.get("error"), field="SSE error"),
             approval_request={"request_id": request_id} if permission and request_id else None,
+            process_state=process_state,
             metadata=metadata,
         )
 

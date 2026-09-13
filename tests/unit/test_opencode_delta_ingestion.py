@@ -85,6 +85,52 @@ def _completed_assistant_payload(cwd: str) -> dict:
     }
 
 
+def test_opencode_completed_bash_is_typed_shell_with_exact_pytest_exit(tmp_path):
+    registry = AdapterRegistry()
+    adapter = registry.opencode
+    session = HarnessSession(
+        id="opencode:ses_delta",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="ses_delta",
+        project_id=str(tmp_path),
+        cwd=str(tmp_path),
+        status=SessionStatus.WORKING,
+        last_activity=datetime.now(UTC),
+    )
+    payload = {
+        "id": "pytest-result",
+        "type": "message.part.updated",
+        "properties": {
+            "cwd": str(tmp_path),
+            "info": {"sessionID": "ses_delta", "id": "assistant", "role": "assistant"},
+            "part": {
+                "type": "tool",
+                "tool": "bash",
+                "state": {
+                    "status": "completed",
+                    "input": {"command": "python -m pytest --tb=short"},
+                    "output": "FAILED test_csv_utils.py::test_exports\n1 failed in 0.2s",
+                    "metadata": {"exit": 1},
+                },
+            },
+        },
+    }
+
+    event = adapter.normalize_sse(session, payload)
+
+    assert event.event_type == EventType.SHELL
+    assert event.command == "python -m pytest --tb=short"
+    assert event.process_state == {
+        "pytest": {
+            "ok": False,
+            "output": "FAILED test_csv_utils.py::test_exports\n1 failed in 0.2s",
+            "exit_code": 1,
+            "failed_count": 1,
+            "failed": "test_csv_utils.py::test_exports",
+        }
+    }
+
+
 async def test_opencode_deltas_are_durable_record_only_and_do_not_delay_parent_bound_stop(
     tmp_path, monkeypatch
 ):
