@@ -181,6 +181,21 @@ test("failed inference is not presented as a successful quiet review", () => {
   assert.notEqual(recordedActionLabel({ ...action, action: "SEND_NUDGE", inference_status: "failed" }), "Review incomplete");
 });
 
+test("independent verifier failures are not successful quiet reviews", () => {
+  const session = { id: "opencode:quiet", harness_type: "opencode", status: "stopped" };
+  for (const failure of ["timeout", "missing_structured_output", "failed:RuntimeError"]) {
+    const projected = actionForSession(session, [{
+      id: "failed-review", session_id: session.id, action_taken: "NOOP",
+      diagnosis: "strands_structured_decision:independent_verifier_rejected",
+      evidence: [`independent_verifier:${failure}`],
+      metadata: { used_llm: true, inference_status: "completed" },
+    }]);
+    assert.equal(recordedActionLabel(projected), "Review incomplete");
+    if (failure === "timeout") assert.match(actionExplanation(projected), /timed out/);
+  }
+  assert.equal(recordedActionLabel({id: "valid", session_id: session.id, action: "NOOP", evidence: ["independent_verifier:rejected"]}), "Stayed quiet");
+});
+
 test("Inspector session projection preserves native Strands usage receipts", () => {
   const session = { id: "opencode:test", harness_type: "opencode", status: "stopped" };
   const intervention = {

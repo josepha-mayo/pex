@@ -917,6 +917,16 @@ def _missing_file_verdict(
 
 
 def _expected_content(raw: str) -> tuple[str, str, bool] | None:
+    # Markdown code spans around the path are formatting, not part of the
+    # filename. Normalize only a complete leading path span; preserve literal
+    # quoting and reject unsupported/unsafe paths through the existing checks.
+    raw = raw.strip()
+    quoted_path = re.match(r"^`(?P<path>[^`\r\n]+)`(?=\s)", raw)
+    if quoted_path is not None:
+        path = quoted_path.group("path")
+        if not FILE_TOKEN.fullmatch(path) or not _visible_goal_path(path):
+            return None
+        raw = path + raw[quoted_path.end():]
     exact = FILE_EXACT_CONTENT.fullmatch(raw.strip())
     if exact is not None:
         path = exact.group("path")
@@ -1361,6 +1371,7 @@ def verify_claims(
             )
     acceptance_gap = _goal_file_verdict(None, goal, workspace)
     acceptance_status = acceptance_gap.get("status")
+    acceptance_evidence = list(acceptance_gap.get("evidence") or [])
     if acceptance_gap.get("status") == "supported":
         acceptance_gap = None
     if (
@@ -1447,6 +1458,7 @@ def verify_claims(
     return {
         "status": status,
         "acceptance_status": acceptance_status,
+        "acceptance_evidence": acceptance_evidence,
         "verdicts": verdicts,
         "correction": None if chosen is None else chosen.get("correction"),
         "evidence": [] if chosen is None else list(chosen.get("evidence") or []),

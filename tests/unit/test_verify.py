@@ -842,6 +842,56 @@ def test_exact_content_without_newline_requires_whole_file(tmp_path, content, su
 
 
 @pytest.mark.parametrize(
+    "content,expected", [(b"ready\n", "supported"), (b"ready\r\n", "unsatisfied")]
+)
+def test_markdown_path_exact_acceptance_without_completion_claim(tmp_path, content, expected):
+    (tmp_path / "report.txt").write_bytes(content)
+    result = verify_claims(
+        [],
+        [],
+        _goal(
+            acceptance_criteria=["`report.txt` contains exactly `ready` followed by one newline."],
+            evidence_requirements=[],
+        ),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert result["acceptance_status"] == expected
+    assert result["status"] == ("no_claims" if expected == "supported" else "acceptance_gap")
+    assert result["acceptance_evidence"]
+
+
+def test_unrecognized_goal_requirement_keeps_exact_files_uncertain_and_explains_why(tmp_path):
+    (tmp_path / "report.txt").write_bytes(b"ready\n")
+    criterion = "Both files are verified before the whole goal is considered complete."
+    result = verify_claims(
+        [],
+        [],
+        _goal(
+            acceptance_criteria=[
+                "`report.txt` contains exactly `ready` followed by one newline.",
+                criterion,
+            ],
+            evidence_requirements=[],
+        ),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert result["status"] == "no_claims"
+    assert result["acceptance_status"] == "uncertain"
+    assert "equals:report.txt:ready\n" in result["acceptance_evidence"]
+    assert f"unchecked:{criterion}" in result["acceptance_evidence"]
+    assert result["correction"] is None
+
+
+@pytest.mark.parametrize(
+    "path", ["../outside.txt", "/outside.txt", "C:/outside.txt", "report.txt` extra `"]
+)
+def test_quoted_unsafe_or_malformed_path_is_not_file_acceptance(path):
+    from pex_supervisor.verify import _expected_content
+
+    assert _expected_content(f"`{path}` contains exactly `ready`.") is None
+
+
+@pytest.mark.parametrize(
     "criterion,content,status",
     [
         ('report.txt contains exactly "ready.done".', b"ready.done", "supported"),

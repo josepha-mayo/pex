@@ -33,6 +33,13 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+Current installed candidate: **`32a0499`**. The Hide-position defect is fixed and
+verified in the installed package, not only the diagnostic build. See
+[package acceptance](demo/evidence/PACKAGE_32A0499_2026-09-13.md). Fresh native
+quiet-completion acceptance failed due to independent-verifier timeout despite
+correct files. [Retained failure and source fixes](demo/evidence/NATIVE_32A0499_QUIET_2026-09-13.md).
+New fixes pass offline checks but still need rebuilt-package live acceptance.
+
 Latest installed candidate: **`c7e2f97`**, superseding the candidate notes below.
 Package and native checks, including independent message dismissal and pet Hide,
 pass. [Exact evidence](demo/evidence/PACKAGE_C7E2F97_2026-09-13.md) includes

@@ -1,5 +1,19 @@
 # PEX active handoff
 
+Current installed candidate: **`32a0499`**. Package verification passed on one
+retry after a preserved temporary-cleanup EPERM; unchanged installer bytes.
+Installed native checks now confirm transparent Von, independent message
+dismissal and a stationary Hide control. Initial normal close left no PEX
+process. See [exact package evidence](demo/evidence/PACKAGE_32A0499_2026-09-13.md).
+The second-laptop card names this installer. Older candidate notes below are
+historical. Fresh native quiet acceptance **FAILED**: exact files in 31 seconds,
+but the independent verifier timed out. Zero correction is not a successful
+quiet review. [Full result and repairs](demo/evidence/NATIVE_32A0499_QUIET_2026-09-13.md).
+Source repairs recognize Markdown-quoted file paths, retain acceptance evidence
+without weakening uncertain completion, and show verifier timeouts as Review
+incomplete. 96 verifier / 300 desktop (one skip) / 214 selected backend tests
+pass; frontend build passes. These follow-up changes are not yet installed.
+
 Newest installed candidate: **`c7e2f97`**. Full MSI/NSIS build, extraction
 verification, installed hash check and native Home/Inspector/pet checks passed.
 The completion explanation is now installed, not source-only. Message dismissal

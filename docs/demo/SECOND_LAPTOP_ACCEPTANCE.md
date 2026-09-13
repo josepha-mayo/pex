@@ -6,7 +6,7 @@ retain the screenshot/log; do not film around a defect.
 ## 1. Download and verify
 
 For the current flat-logo candidate, copy
-`build/release-candidate-c7e2f97/PEX_0.1.0_x64-setup.exe` from the development
+`build/release-candidate-32a0499/PEX_0.1.0_x64-setup.exe` from the development
 laptop. This candidate has been installed and visually checked locally. The
 public [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
 still contains the older `49385f2` build; downloading it will not include the
@@ -18,10 +18,10 @@ $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
 (Get-FileHash -LiteralPath $pexInstaller -Algorithm SHA256).Hash
 ```
 
-Expected bytes for `c7e2f97`: `101665624`
+Expected bytes for `32a0499`: `101672562`
 
 Expected SHA-256:
-`27071F47662679BA4D765AB40C34AF1AB6E73BE9D39C3E6DDF686837E2F9236F`
+`1E60C0EA6AC3F1DA5A75B5764778C01400C5C0E40F27B100CAFDAA87E4A25688`
 
 The installer is unsigned, so a Windows publisher warning is expected. Reject
 the file if its size or hash differs.

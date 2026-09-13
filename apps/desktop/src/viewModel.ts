@@ -27,6 +27,11 @@ export function actionReviewIncomplete(action?: LastAction | null): boolean {
     || action.diagnosis === "strands_missing_structured_output"
     || action.diagnosis === "strands_timeout"
     || Boolean(action.diagnosis?.startsWith("strands_failed:"))
+    || Boolean(action.evidence?.some((item) =>
+      item === "independent_verifier:timeout"
+      || item === "independent_verifier:missing_structured_output"
+      || item.startsWith("independent_verifier:failed:")
+    ))
   );
 }
 
@@ -38,6 +43,9 @@ export function recordedActionLabel(action?: LastAction | null): string {
 
 export function actionExplanation(action?: LastAction | null): string {
   if (!action) return "No intervention has been recorded for this session.";
+  if (actionReviewIncomplete(action) && action.evidence?.includes("independent_verifier:timeout")) {
+    return "Independent verification timed out. PEX sent no correction; this is not a successful quiet review.";
+  }
   if (action.rationale?.trim()) return action.rationale.trim();
   const diagnosis = action.diagnosis?.trim();
   if (diagnosis && !/^[a-z_][a-z0-9_:.-]*$/.test(diagnosis)) return diagnosis;
