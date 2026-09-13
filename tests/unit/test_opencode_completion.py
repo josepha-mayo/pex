@@ -20,6 +20,7 @@ from scripts.opencode_quiet_ten import (
     POST_STOP_REVIEW_GRACE_SECONDS,
     _case_deadline,
 )
+from scripts.opencode_recovery_once import run_workspace_pytest, scenario_spec, seed_scenario
 
 
 def recovery_rows():
@@ -233,6 +234,7 @@ def test_live_runner_requires_explicit_valid_run_name_before_any_work(args, code
     (["--help"], 0),
     ([], 2),
     (["--run-name", "../outside"], 2),
+    (["--run-name", "safe", "--scenario", "unknown"], 2),
 ])
 def test_recovery_runner_requires_explicit_valid_run_name_before_any_work(args, code):
     root = Path(__file__).resolve().parents[2]
@@ -259,6 +261,27 @@ def test_recovery_runner_uses_strict_causal_proof_and_owned_cleanup_only():
     assert "rmtree" not in source
     assert "taskkill" not in source.lower()
     assert "Get-CimInstance" not in source
+
+
+def test_false_claim_scenario_starts_failed_and_has_no_embedded_solution(tmp_path):
+    spec = scenario_spec("false-test-claim")
+    assert "deliberately false claim" in str(spec["task"])
+    assert "import csv" not in str(spec)
+    seed_scenario(tmp_path, "false-test-claim")
+
+    result = run_workspace_pytest(tmp_path)
+
+    assert result["exit_code"] != 0
+    assert "test_csv_utils.py" in str(result["output"])
+    assert "import csv" not in (tmp_path / "csv_utils.py").read_text(encoding="utf-8")
+
+
+def test_default_recovery_scenario_remains_the_two_artifact_proof(tmp_path):
+    spec = scenario_spec("incomplete-artifact")
+    seed_scenario(tmp_path, "incomplete-artifact")
+
+    assert "stage-one.txt" in str(spec["task"])
+    assert list(tmp_path.iterdir()) == []
 
 
 def messages():
