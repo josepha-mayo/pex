@@ -178,6 +178,7 @@ def test_evidence_tools_are_request_scoped_read_only_and_audited():
         "get_session_state",
         "get_recent_events",
         "get_scores",
+        "inspect_acceptance",
         "get_context",
         "get_context_items",
         "get_decisions",
@@ -208,18 +209,19 @@ def test_model_tool_profile_omits_irrelevant_high_cost_schemas():
     tools = build_evidence_tools(request, [], tool_names=selected)
 
     assert [item.tool_name for item in tools] == list(selected)
-    assert "inspect_workspace" in selected
+    assert selected == ("get_recent_events", "inspect_acceptance", "run_verification")
+    assert "inspect_workspace" not in selected
     assert "run_verification" in selected
     assert "get_context" not in selected
     assert "inspect_process" not in selected
     assert "web_search" not in selected
     assert "scrape_url" not in selected
-    assert len(selected) == 7
+    assert len(selected) == 3
 
 
 def test_model_tool_profile_adds_only_observed_optional_surfaces():
     request = _request(0.1)
-    request.scores.features["claims"] = ["public release claim"]
+    request.scores.features["public_claims"] = ["public release claim"]
     request.scores.features["abandoned_background"] = {"running": True}
 
     selected = select_evidence_tool_names(request)
@@ -229,6 +231,64 @@ def test_model_tool_profile_adds_only_observed_optional_surfaces():
     assert "scrape_url" in selected
     with pytest.raises(ValueError, match="unknown evidence tools"):
         build_evidence_tools(request, [], tool_names=["send_harness_message"])
+
+
+def test_acceptance_tool_batches_verification_events_and_required_files(tmp_path):
+    request = _request(0.1)
+    request.session.cwd = str(tmp_path)
+    request.goal.acceptance_criteria = [
+        "report.txt contains exactly ready followed by one newline."
+    ]
+    request.scores.features["verification"] = {
+        "status": "contradicted",
+        "acceptance_status": "unsatisfied",
+        "verdicts": [{"evidence": ["missing:report.txt"]}],
+    }
+    (tmp_path / "report.txt").write_bytes(b"ready\n")
+    collector = EvidenceObservationCollector(
+        request, stage="main", invocation_id="batched-acceptance",
+    )
+    tool = next(
+        item for item in build_evidence_tools(request, [], collector=collector)
+        if item.tool_name == "inspect_acceptance"
+    )
+
+    rendered = tool()
+    observed = json.loads(rendered)
+
+    assert observed["verification"]["acceptance_status"] == "unsatisfied"
+    assert observed["recent_events"][-1]["event_id"] == request.event.event_id
+    assert observed["required_files"] == [{
+        "path": "report.txt", "bytes": 6, "text": "ready\n", "observed": True,
+    }]
+    assert collector.observations[0].tool_name == "inspect_acceptance"
+    assert collector.observations[0].output == rendered
+
+
+def test_acceptance_tool_never_reads_bound_workspace_without_invocation_authority(
+    tmp_path, monkeypatch,
+):
+    request = _request(0.1)
+    request.session.cwd = str(tmp_path)
+    request.session.metadata = {"workspace_binding": {"root": str(tmp_path)}}
+    request.goal.acceptance_criteria = ["report.txt must exist"]
+
+    def unexpected(*_args, **_kwargs):
+        pytest.fail("workspace read occurred without invocation authority")
+
+    monkeypatch.setattr("pex_supervisor.workspace.read_visible", unexpected)
+    tool = next(
+        item for item in build_evidence_tools(request, [])
+        if item.tool_name == "inspect_acceptance"
+    )
+
+    observed = json.loads(tool())
+
+    assert observed["required_files"] == [{
+        "path": "report.txt",
+        "observed": False,
+        "error": "workspace_authority_unavailable",
+    }]
 
 
 def test_evidence_tools_omit_raw_local_and_adapter_payloads_and_bound_output():

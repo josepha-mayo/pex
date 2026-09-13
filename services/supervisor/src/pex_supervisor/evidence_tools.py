@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from pex_protocol.enums import EventType
 from pex_protocol.redaction import redact_mapping
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import (
@@ -53,6 +54,7 @@ _EVIDENCE_TOOL_ORDER = (
     "get_session_state",
     "get_recent_events",
     "get_scores",
+    "inspect_acceptance",
     "get_context",
     "get_context_items",
     "get_decisions",
@@ -76,15 +78,23 @@ def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
     authorize an intervention.
     """
 
-    selected = {
-        "get_recent_events",
-        "get_scores",
-        "inspect_workspace",
-        "inspect_git",
-        "inspect_file",
-        "inspect_artifact",
-        "run_verification",
-    }
+    # Semantic inference currently runs on STOP. Give that hot path one
+    # purpose-built read instead of resending seven overlapping tool schemas and
+    # encouraging small BYOK models to spend separate turns touring them. The
+    # combined observation remains request-bound, read-only, redacted and
+    # independently citable.
+    if request.event.event_type == EventType.STOP:
+        selected = {"get_recent_events", "inspect_acceptance", "run_verification"}
+    else:
+        selected = {
+            "get_recent_events",
+            "get_scores",
+            "inspect_workspace",
+            "inspect_git",
+            "inspect_file",
+            "inspect_artifact",
+            "run_verification",
+        }
     context = request.supervisor_context
     if context is not None and context.offered_context_ids:
         selected.add("get_context_items")
@@ -93,7 +103,10 @@ def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
     features = request.scores.features or {}
     if features.get("abandoned_background"):
         selected.add("inspect_process")
-    if features.get("claims"):
+    # Completion claims are local facts and must not add two public-web schemas
+    # to every STOP. A producer must explicitly classify a public claim before
+    # those tools are exposed.
+    if features.get("public_claims"):
         selected.update(("web_search", "scrape_url"))
     return tuple(name for name in _EVIDENCE_TOOL_ORDER if name in selected)
 
@@ -484,6 +497,69 @@ def build_evidence_tools(
                 },
             },
         )
+
+    @tool(
+        name="inspect_acceptance",
+        description=(
+            "Inspect the current STOP against its supplied acceptance contract in one "
+            "bounded read: deterministic verification, recent worker evidence, and "
+            "visible required-file previews. Prefer this single tool for STOP review."
+        ),
+    )
+    def inspect_acceptance() -> str:
+        from pex_supervisor.trajectory import trajectory_review_candidate
+        from pex_supervisor.verify import required_files
+        from pex_supervisor.workspace import PRUNED_DIRECTORIES, read_visible
+
+        candidate = trajectory_review_candidate(request)
+        source_ids = set(candidate.event_ids) if candidate else set()
+        selected_events = {event.event_id: event for event in request.recent_events[-12:]}
+        for event in [*request.recent_events, request.event]:
+            if event.event_id in source_ids or event.event_id == request.event.event_id:
+                selected_events[event.event_id] = event
+
+        payload: dict[str, object] = {
+            "verification": (request.scores.features or {}).get("verification")
+            or {"status": "unavailable", "reason": "no local verification receipt"},
+            "recent_events": [
+                _event_view(event)
+                for event in sorted(selected_events.values(), key=lambda item: item.ts)
+            ],
+            "required_files": [],
+        }
+        names = required_files(request.goal)[:6]
+        cwd = request.session.cwd
+        if not names:
+            return record("inspect_acceptance", payload)
+        if not cwd or not _workspace_read_allowed(request.session):
+            payload["required_files"] = [
+                {"path": name, "observed": False, "error": "workspace_authority_unavailable"}
+                for name in names
+            ]
+            return record("inspect_acceptance", payload)
+
+        observations: list[dict[str, object]] = []
+        for name in names:
+            rel = _safe_relpath(name)
+            if not rel or any(
+                part.startswith(".") or part.casefold() in PRUNED_DIRECTORIES
+                for part in (rel.split("/") if rel else [])
+            ):
+                observations.append({"path": name, "observed": False, "error": "path rejected"})
+                continue
+            observed = read_visible(Path(cwd), rel, limit=600)
+            observations.append({**observed, "observed": "error" not in observed})
+
+        # A copied context cannot retain workspace authority after invocation.
+        # Discard all bytes if the root changed or authority was revoked during
+        # the bounded reads.
+        if not _workspace_read_allowed(request.session):
+            observations = [
+                {"path": name, "observed": False, "error": "workspace_authority_unavailable"}
+                for name in names
+            ]
+        payload["required_files"] = observations
+        return record("inspect_acceptance", payload)
 
     @tool(
         name="get_context",
@@ -945,6 +1021,7 @@ def build_evidence_tools(
         get_session_state,
         get_recent_events,
         get_scores,
+        inspect_acceptance,
         get_context,
         get_context_items,
         get_decisions,

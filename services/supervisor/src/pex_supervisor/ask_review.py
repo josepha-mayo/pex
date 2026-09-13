@@ -183,6 +183,7 @@ def review_tool_names() -> tuple[str, ...]:
         "get_session_state",
         "get_recent_events",
         "get_scores",
+        "inspect_acceptance",
         "get_context",
         "get_context_items",
         "get_decisions",

@@ -1027,6 +1027,7 @@ async def run_independent_verifier_async(
             "get_recent_events",
             "get_scores",
             "get_session_state",
+            "inspect_acceptance",
             "inspect_workspace",
             "inspect_git",
             "inspect_file",
