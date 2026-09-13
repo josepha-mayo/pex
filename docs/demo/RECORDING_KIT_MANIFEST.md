@@ -17,7 +17,8 @@ unsigned, so a Windows unknown-publisher warning is expected.
 
 ## Recording order
 
-1. Read `SECOND_LAPTOP_ACCEPTANCE.md` and stop on its first failed gate.
+1. Read `MVP_BEHAVIOR_SCORECARD.md`, then `SECOND_LAPTOP_ACCEPTANCE.md`; stop
+   on the acceptance checklist's first failed gate.
 2. Use `REHEARSAL_CARD.md` verbatim for one controlled OpenCode recovery and
    one separate already-correct quiet case.
 3. Follow `RECORDING_RUNBOOK.md` and `VOICEOVER_SCRIPT.md`; the public video must
@@ -28,3 +29,7 @@ unsigned, so a Windows unknown-publisher warning is expected.
 
 The public RC4 release contains these exact product bytes. Do not substitute an
 older prerelease when recording the current candidate.
+
+Before the final Devpost action, run `python scripts/submission_preflight.py`
+from a clean clone of the repository. It must report `ready:true`; the script
+is repository-bound and therefore is not duplicated inside this recording kit.
