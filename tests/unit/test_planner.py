@@ -3,8 +3,17 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from pex_protocol.actions import InterventionType
-from pex_protocol.enums import Authority, EventPhase, EventType, HarnessType, SessionStatus
+from pex_bridge.policy.engine import PolicyEngine
+from pex_protocol.actions import InterventionType, RiskLevel
+from pex_protocol.enums import (
+    Authority,
+    AutonomyLevel,
+    EventPhase,
+    EventType,
+    HarnessType,
+    PolicyVerdict,
+    SessionStatus,
+)
 from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorRequest, TrajectoryScores
@@ -92,6 +101,45 @@ def test_pre_tool_use_permission_is_brokered():
     )
     action = plan_deterministic(request)
     assert action.type == InterventionType.RESPOND_PERMISSION
+
+
+def test_workspace_local_read_permission_is_low_risk():
+    request = SupervisorRequest(
+        session=_session().model_copy(update={"cwd": "C:/project"}),
+        goal=_goal(),
+        event=_event(
+            EventType.PERMISSION_REQUEST,
+            phase=EventPhase.BEFORE,
+            tool_name="read",
+            file_paths=["C:/project/src/main.py"],
+            approval_request={"request_id": "perm-read"},
+        ),
+        scores=TrajectoryScores(),
+    )
+    action = plan_deterministic(request)
+    assert action.type == InterventionType.RESPOND_PERMISSION
+    assert action.risk == RiskLevel.LOW
+    assert PolicyEngine(AutonomyLevel.MANAGE).decide(action) == PolicyVerdict.ALLOW
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["C:/outside/private.txt", "../outside.txt", "C:/project/.env"],
+)
+def test_external_or_sensitive_read_permission_stays_medium_risk(path):
+    request = SupervisorRequest(
+        session=_session().model_copy(update={"cwd": "C:/project"}),
+        goal=_goal(),
+        event=_event(
+            EventType.PERMISSION_REQUEST,
+            phase=EventPhase.BEFORE,
+            tool_name="read",
+            file_paths=[path],
+            approval_request={"request_id": "perm-read"},
+        ),
+        scores=TrajectoryScores(),
+    )
+    assert plan_deterministic(request).risk == RiskLevel.MEDIUM
 
 
 def test_eval_command_does_not_invent_missing_dataset_evidence():

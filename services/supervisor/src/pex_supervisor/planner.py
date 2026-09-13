@@ -69,6 +69,36 @@ _TYPED_VERIFICATION_KINDS = {
     "service_health",
 }
 
+_SENSITIVE_READ_PATH = re.compile(
+    r"(?:^|/)(?:\.env(?:\.|$)|id_rsa(?:\.|$)|credentials(?:\.|/|$)|"
+    r"auth\.json$|\.aws(?:/|$)|\.ssh(?:/|$))",
+    re.IGNORECASE,
+)
+
+
+def _safe_workspace_read_permission(request: SupervisorRequest) -> bool:
+    """Recognize only a concrete, workspace-local OpenCode read request."""
+
+    event = request.event
+    if str(event.tool_name or "").strip().casefold() != "read" or not event.file_paths:
+        return False
+    workspace = str(request.session.cwd or "").replace("\\", "/").rstrip("/")
+    if not workspace:
+        return False
+    workspace_folded = workspace.casefold()
+    for raw_path in event.file_paths:
+        path = str(raw_path or "").replace("\\", "/").strip()
+        if not path or _SENSITIVE_READ_PATH.search(path):
+            return False
+        if ".." in PurePosixPath(path).parts:
+            return False
+        absolute = path.startswith("/") or bool(re.match(r"^[a-zA-Z]:/", path))
+        if absolute:
+            folded = path.rstrip("/").casefold()
+            if folded != workspace_folded and not folded.startswith(f"{workspace_folded}/"):
+                return False
+    return True
+
 
 def _verification_request_copy(kind: str, relative_targets: list[str], evidence: list[str]) -> str:
     named = ", ".join(relative_targets)
@@ -513,6 +543,7 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
         }
         and event.phase == EventPhase.BEFORE
     ):
+        safe_workspace_read = _safe_workspace_read_permission(request)
         return ProposedAction(
             type=InterventionType.RESPOND_PERMISSION,
             session_id=request.session.id,
@@ -532,7 +563,7 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
                 *(f"path:{path}" for path in event.file_paths),
             ],
             confidence=0.7,
-            risk=RiskLevel.MEDIUM,
+            risk=RiskLevel.LOW if safe_workspace_read else RiskLevel.MEDIUM,
             reversible=False,
         )
 

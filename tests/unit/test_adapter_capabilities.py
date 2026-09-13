@@ -774,11 +774,38 @@ async def test_http_permission_events_are_pre_action_with_request_ids():
                 "id": "permission-1",
                 "sessionID": "s1",
                 "cwd": "C:/project",
+                "permission": "read",
+                "patterns": ["C:/project/src/main.py"],
+                "metadata": {"filePath": "C:/project/src/main.py"},
+                "always": ["C:/project/src/*"],
             },
         },
     )
     assert opencode.phase == EventPhase.BEFORE
     assert opencode.approval_request == {"request_id": "permission-1"}
+    assert opencode.tool_name == "read"
+    assert opencode.file_paths == ["C:/project/src/main.py"]
+    assert opencode.tool_input == {"filePath": "C:/project/src/main.py"}
+
+    opencode_bash = opencode_adapter.normalize_sse(
+        opencode_session,
+        {
+            "id": "evt-bash",
+            "type": "permission.asked",
+            "properties": {
+                "id": "permission-bash",
+                "sessionID": "s1",
+                "cwd": "C:/project",
+                "permission": "bash",
+                "patterns": ["pytest -q"],
+                "metadata": {"command": "pytest -q"},
+                "always": [],
+            },
+        },
+    )
+    assert opencode_bash.tool_name == "bash"
+    assert opencode_bash.command == "pytest -q"
+    assert opencode_bash.file_paths == []
 
     qwen_adapter = QwenAdapter(MemoryHttpTransport())
     qwen_session = HarnessSession(

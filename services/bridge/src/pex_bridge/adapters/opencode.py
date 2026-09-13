@@ -58,6 +58,7 @@ MAX_TRACKED_SESSIONS = 1_024
 MAX_INBOX_MESSAGES = 1_000
 MAX_HOOK_RECEIPTS = 10_000
 MAX_PERMISSION_REQUESTS = 10_000
+MAX_PERMISSION_PATTERNS = 64
 MAX_MESSAGE_ROLES = 10_000
 MAX_PATH_CHARS = 4_096
 PROMPT_RECEIPT_POLL_ATTEMPTS = 10
@@ -1087,6 +1088,55 @@ class OpenCodeAdapter(HarnessAdapter):
         if transport_text_fallback:
             text = kind
         permission = kind in {"permission.asked", "permission.updated"}
+        raw_permission_name = (
+            props.get("permission")
+            if kind == "permission.asked"
+            else props.get("type")
+            if kind == "permission.updated"
+            else None
+        )
+        try:
+            permission_name = (
+                bounded_adapter_id(raw_permission_name, field="OpenCode permission name")
+                if isinstance(raw_permission_name, str) and raw_permission_name
+                else ""
+            )
+        except ValueError:
+            permission_name = ""
+        raw_permission_patterns = (
+            props.get("patterns")
+            if isinstance(props.get("patterns"), list)
+            else props.get("pattern")
+            if isinstance(props.get("pattern"), list)
+            else [props.get("pattern")]
+            if isinstance(props.get("pattern"), str)
+            else []
+        )
+        permission_paths: list[str] = []
+        if (
+            permission
+            and permission_name
+            in {"read", "edit", "glob", "grep", "list", "external_directory"}
+            and len(raw_permission_patterns) <= MAX_PERMISSION_PATTERNS
+        ):
+            try:
+                permission_paths = [
+                    _bounded_path(item)
+                    for item in raw_permission_patterns
+                    if isinstance(item, str) and item
+                ]
+            except ValueError:
+                # Malformed or oversized scope must remain visible as an
+                # ambiguous permission, never become a routine auto-approval.
+                permission_paths = []
+        permission_metadata = (
+            props.get("metadata") if isinstance(props.get("metadata"), dict) else {}
+        )
+        permission_command = (
+            permission_metadata.get("command")
+            if permission and permission_name == "bash"
+            else None
+        )
         try:
             request_id = (
                 bounded_adapter_id(
@@ -1114,7 +1164,9 @@ class OpenCodeAdapter(HarnessAdapter):
             )
             if replied_id:
                 self._permission_requests.discard((session.id, replied_id))
-        tool_input = bounded_observed_mapping(state.get("input"))
+        tool_input = bounded_observed_mapping(
+            permission_metadata if permission and permission_metadata else state.get("input")
+        )
         lineage = (
             opencode_message_lineage(
                 session=session,
@@ -1181,16 +1233,28 @@ class OpenCodeAdapter(HarnessAdapter):
                 else EventPhase.AFTER
             ),
             message_delta=_optional_bounded_text(text, field="SSE message"),
-            tool_name=_optional_bounded_text(part.get("tool"), field="SSE tool name"),
-            tool_input=tool_input,
-            command=(
-                _optional_bounded_text(tool_input.get("command"), field="SSE command")
-                if tool_input is not None
-                else None
+            tool_name=_optional_bounded_text(
+                permission_name if permission_name else part.get("tool"),
+                field="SSE tool name",
             ),
-            file_paths=[_bounded_path(props["file"])]
-            if kind == "file.edited" and isinstance(props.get("file"), str) and props.get("file")
-            else [],
+            tool_input=tool_input,
+            command=_optional_bounded_text(
+                permission_command
+                if isinstance(permission_command, str)
+                else tool_input.get("command")
+                if tool_input is not None
+                else None,
+                field="SSE command",
+            ),
+            file_paths=(
+                permission_paths
+                if permission_paths
+                else [_bounded_path(props["file"])]
+                if kind == "file.edited"
+                and isinstance(props.get("file"), str)
+                and props.get("file")
+                else []
+            ),
             error=_optional_bounded_text(state.get("error"), field="SSE error"),
             approval_request={"request_id": request_id} if permission and request_id else None,
             metadata=metadata,
