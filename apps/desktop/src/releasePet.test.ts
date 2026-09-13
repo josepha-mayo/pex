@@ -69,6 +69,23 @@ test("pet startup preserves native transparency without the mismatched JS setter
     "JS color/value mismatch must not overwrite native transparency");
 });
 
+test("brand mark stays flat, harness-led, and legible at app scale", async () => {
+  const [mark, styles] = await Promise.all([
+    readFile(new URL("./assets/pex-mark.svg", import.meta.url), "utf8"),
+    readFile(new URL("./styles.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(mark, /viewBox="0 0 1024 1024"/u);
+  assert.match(mark, /<ellipse cx="512" cy="548" rx="430" ry="270"/u,
+    "the supervision harness must remain part of the mark");
+  assert.match(mark, /<circle cx="821" cy="740" r="108"/u);
+  assert.match(mark, /m780 741 28 29 57-66/u,
+    "the harness status node must retain its check");
+  assert.doesNotMatch(mark, /(?:linearGradient|radialGradient|filter|heart)/iu,
+    "the shipping mark must stay flat and avoid the rejected heart motif");
+  assert.match(styles, /\.brand-mark\s*\{[\s\S]*?width:\s*36px;[\s\S]*?height:\s*36px;/u);
+  assert.match(styles, /\.startup-recovery-mark \.brand-mark\s*\{[\s\S]*?width:\s*54px;[\s\S]*?height:\s*54px;/u);
+});
+
 test("floating pet respects the user's small size setting", async () => {
   const { createElement } = await import("react");
   const { renderToStaticMarkup } = await import("react-dom/server");
