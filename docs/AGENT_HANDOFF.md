@@ -20,9 +20,11 @@ verified Zen/Muse catalog discovery with zero provider calls. Read
 GitHub's live release API reports matching SHA-256 digests and byte counts for
 all four RC2 assets, and the tag resolves to exact product source `0454122`.
 
-Recording packet: `D:\PEX-recording-kit-0454122.zip`, 216,085,945 bytes,
+Current recording packet: `D:\PEX-recording-kit-0454122-v2.zip`, 216,085,967 bytes,
 SHA-256
-`17f0f4fe2b617498e6d34a356e9e34274b184ce9e776a7b45f3576710e9c63c6`.
+`cde35b4a9284125e2c31779f7f3f311058d0b82b1374a1161b260ec30b2081c0`.
+The earlier non-v2 archive predates public RC2 wording; retain it as history but
+use v2 for transfer.
 Repeat only the exact installed-window and transparent-overlay visual card on
 the recording laptop, then record/publish/submit. The formal four-arm benchmark
 and AgentCore deployment remain unproven and must not be claimed.
