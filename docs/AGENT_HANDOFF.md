@@ -1,5 +1,27 @@
 # PEX active handoff
 
+## Current source green on the complete offline gate — 8220857
+
+Authoritative checkout is `D:\PEX-work`; pushed source is
+`82208576ed3c474dd903d24e2d3e7adb04b9c15f`. The deterministic exact-file and
+shared-Codex timeout fixtures were repaired without weakening production
+verification or dispatch authority. The four affected files pass 114/114.
+
+The fresh complete non-live suite then passed: **4,532 passed, 16 skipped, 18
+live tests deselected, zero failures/errors in 3,020.82 seconds**. JUnit
+`build/offline-8220857.xml` reports 4,548 collected, 0 failures, 0 errors and 16
+skips. The run used D-drive temp and fresh bytecode. A copied zero-filled
+`opentelemetry-sdk` directory was repaired at the locked 1.44.0 version before
+the successful run; fresh Strands import and `pip check` passed. This environment
+repair is untracked. Exact receipt and boundaries:
+[offline gate 8220857](demo/evidence/OFFLINE_GATE_8220857_2026-09-13.md).
+
+Next: build fresh sidecars and installers from this exact source, verify the
+package, install it, and complete PEX-only native plus fresh live behavior
+acceptance. Installed 268d39a and its live receipts remain historical and
+version-bound. AWS AgentCore is still not deployed and formal benchmark
+readiness still cannot freeze; do not claim either. Goal remains active.
+
 ## D-drive migration and Home selection repair
 
 Authoritative checkout is now `D:\PEX-work` at `0c9e9d4` plus the current
