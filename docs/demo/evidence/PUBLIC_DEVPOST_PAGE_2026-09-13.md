@@ -34,3 +34,11 @@ The official rules refreshed the same day still require a public repository
 with README and open-source license, architecture diagram, public YouTube or
 Vimeo video no longer than five minutes, AWS Builder ID and a working Strands
 project. AgentCore deployment and a live-demo URL remain optional.
+
+## Public repository preflight
+
+The GitHub API independently reported `josepha-mayo/pex` as `PUBLIC` with
+default branch `main` and detected license `MIT License`. It served both
+`README.md` (16,096 bytes) and `LICENSE` (1,073 bytes). Remote `main` and the
+clean local checkout both resolved to
+`31ee1d78f1b50017a12135209669c7a12c361721` at verification time.

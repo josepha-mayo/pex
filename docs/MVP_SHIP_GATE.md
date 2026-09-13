@@ -135,6 +135,8 @@ The exact package is public as
   repository/RC4 links and the clean processed thumbnail; it exposed no video
   or architecture attachment and no hackathon-submission receipt. See
   `demo/evidence/PUBLIC_DEVPOST_PAGE_2026-09-13.md`.
+  GitHub independently reports the repository public, detects the MIT license,
+  serves README/LICENSE and matched clean local/remote `main` at the check.
   Current read-only repository/material check:
   [public preflight](demo/evidence/PUBLIC_PREFLIGHT_9581DAC_2026-09-13.md).
   The clean project mark is now the uploaded Devpost thumbnail. Matching RC4
