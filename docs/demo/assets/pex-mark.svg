@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">PEX supervisor mark</title>
+  <desc id="desc">A dark cat face held by a mint supervision orbit with a check node.</desc>
+  <g fill="none" stroke="#50e3b8" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="512" cy="548" rx="430" ry="270" stroke-width="42"/>
+  </g>
+  <path fill="#0b1728" d="M181 449 205 135l231 151a345 345 0 0 1 152 0l231-151 24 314c38 73 57 151 57 232 0 194-174 281-388 281S124 875 124 681c0-81 19-159 57-232Z"/>
+  <path fill="#50e3b8" d="m238 237 20 172 128-90-148-82Zm548 0-148 82 128 90 20-172Z"/>
+  <circle cx="363" cy="560" r="68" fill="#50e3b8"/>
+  <circle cx="661" cy="560" r="68" fill="#50e3b8"/>
+  <circle cx="376" cy="544" r="28" fill="#0b1728"/>
+  <circle cx="648" cy="544" r="28" fill="#0b1728"/>
+  <path fill="#f4f7f5" d="m512 632-43-31h86l-43 31Z"/>
+  <path d="M464 670q48 58 96 0" fill="none" stroke="#f4f7f5" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="821" cy="740" r="108" fill="#50e3b8"/>
+  <circle cx="821" cy="740" r="73" fill="#0b1728"/>
+  <path d="m780 741 28 29 57-66" fill="none" stroke="#50e3b8" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

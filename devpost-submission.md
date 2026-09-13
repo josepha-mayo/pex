@@ -93,7 +93,11 @@ Recording flow:
 
 ## Screenshot Shot List
 
-1. Capture a privacy-safe Home view of the exact current installer with Von and the intended worker selected. `docs/demo/assets/pex-home-49385f2.png` is an older-build thumbnail, not current-build proof.
+1. Use the clean transparent `docs/demo/assets/pex-mark.png` as the project
+   mark. Capture a separate privacy-safe Home view of the exact current
+   installer with Von and the intended worker selected.
+   `docs/demo/assets/pex-home-49385f2.png` is an older-build screenshot, not
+   current-build proof.
 2. Supervisor Settings showing Zen, `muse-spark-1.3-contributor-free`, and review limit 3, with the key obscured.
 3. Inspector showing the incomplete goal, evidence, structured `SEND_NUDGE`, and same-session delivery.
 4. Inspector showing repaired artifacts and the actual observed outcome, including uncertainty where present.
@@ -104,7 +108,9 @@ Recording flow:
 - Official hackathon: Agents for Humans; live requirements/dates refreshed on 2026-09-13 at 01:47 UTC. Submissions close 2026-09-15 00:00 UTC / 01:00 Lagos.
 - Track: Professional Agents.
 - Authenticated Devpost account is registered, the official rules were explicitly acknowledged on 2026-09-12, and project draft `pex-mbcpr4` now exists.
-- The privacy-safe Home screenshot was uploaded successfully as the Devpost project thumbnail and is processing on Devpost.
+- The privacy-safe older Home screenshot was uploaded as the initial Devpost
+  thumbnail. Replace it with the current flat PEX mark or a current-build frame
+  during final form review; do not present the older screenshot as package proof.
 - Public repo and MIT license are ready.
 - Public unsigned Windows RC1: `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1`. This is older `49385f2`, not the latest tested installer.
 - Architecture PNG exists and is below the official 35 MiB limit.

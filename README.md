@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/demo/assets/pex-mark.svg" alt="PEX supervisor mark" width="176" />
+</p>
+
 # PEX
 
 **PEX turns you from a full-time manager of AI agents into the owner of goals and decisions.**

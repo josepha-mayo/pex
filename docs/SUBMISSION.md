@@ -151,6 +151,8 @@ after the live path is on camera and keep **Agents for Humans** in each title.
 - [x] Public MIT repository is pushed; verify exact `HEAD == origin/main` again at submission time
 - [ ] Upload `docs/architecture/pex-architecture.png` in the required
   **Architecture diagram** field
+- [ ] Replace the older draft thumbnail with `docs/demo/assets/pex-mark.png`,
+  or with a privacy-safe frame captured from the exact current installer
 - [ ] Enter the required **AWS Builder ID** email on the Devpost form using the
   submitter-provided address; do not copy credentials or API keys into the form
 - [ ] Add the optional live-demo URL only if it is genuinely available and stable
