@@ -1,5 +1,15 @@
 # PEX active handoff
 
+Rendering follow-up: removed the extra CSS drop-shadow and continuous
+breathing/listening transforms from all sprite surfaces, including Home and
+the picker. Existing bounded atlas-frame animation, pointer interaction,
+transparency and reduced-motion behavior remain. Removed unused keyframes and
+expanded the rendering contract test beyond just the overlay. Desktop 299 pass,
+one intentional skip; 74-module frontend build passes. This is a targeted
+rendering-cost reduction candidate, not a measured CPU or freeze fix yet.
+Package/native measurement must cover this together with the completion-copy
+change below. Installed `c0b8860` remains unchanged until that acceptance.
+
 Current source follow-up explains the completion distinction without changing
 completion policy. The bound goal projection now exposes file `acceptance_status`
 separately from its overall STOP verdict. Inspector shows file acceptance as

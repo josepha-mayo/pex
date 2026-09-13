@@ -917,7 +917,10 @@ p {
   display: grid;
   place-items: end center;
   overflow: visible;
-  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.28));
+  /* The atlas already animates the character. Keep it transparent without a
+     second display-rate transform or per-frame shadow filter. */
+  animation: none;
+  filter: none;
 }
 
 .sprite-clip {
@@ -934,22 +937,6 @@ p {
   image-rendering: auto;
   pointer-events: none;
   will-change: transform;
-}
-
-.mood-idle .sprite-3d,
-.mood-observing .sprite-3d {
-  animation: pet-breathe 3.4s ease-in-out infinite;
-}
-
-.mood-decision .sprite-3d,
-.mood-warning .sprite-3d {
-  animation: pet-listen 1.7s ease-in-out infinite;
-}
-
-/* The transparent always-on-top WebView already advances bounded sprite frames.
-   Avoid a second continuous transform that keeps desktop composition active. */
-.pet-stage-overlay .sprite-3d {
-  animation: none;
 }
 
 /* Inspector */
@@ -2611,17 +2598,6 @@ html.pet-shell #root {
 .pet-stage-overlay .bubble-action {
   grid-column: 2;
   font-size: 9px;
-}
-
-@keyframes pet-breathe {
-  0%, 100% { transform: translateY(0) scaleY(1); }
-  50% { transform: translateY(-2px) scaleY(1.015); }
-}
-
-@keyframes pet-listen {
-  0%, 100% { transform: rotate(0); }
-  35% { transform: rotate(-1.5deg); }
-  70% { transform: rotate(1.5deg); }
 }
 
 @media (max-width: 840px) {
