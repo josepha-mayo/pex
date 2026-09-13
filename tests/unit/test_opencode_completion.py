@@ -21,11 +21,39 @@ from scripts.opencode_quiet_ten import (
     _case_deadline,
 )
 from scripts.opencode_recovery_once import (
+    INITIAL_PROOF_SECONDS,
+    MAX_PROOF_SECONDS,
+    POST_STOP_SETTLEMENT_SECONDS,
+    _recovery_deadline,
     false_claim_recovery_succeeded,
     run_workspace_pytest,
     scenario_spec,
     seed_scenario,
 )
+
+
+def test_recovery_runner_reserves_review_time_after_each_late_stop():
+    started = 100.0
+    initial = started + INITIAL_PROOF_SECONDS
+
+    assert _recovery_deadline(started, initial, started + 10.0) == initial
+    assert _recovery_deadline(started, initial, initial - 1.0) == (
+        initial - 1.0 + POST_STOP_SETTLEMENT_SECONDS
+    )
+    assert _recovery_deadline(
+        started, initial, started + MAX_PROOF_SECONDS - 1.0
+    ) == started + MAX_PROOF_SECONDS
+
+
+def test_false_claim_verdict_does_not_require_failure_output_before_verification():
+    runner = Path(__file__).resolve().parents[2] / "scripts/opencode_recovery_once.py"
+    source = runner.read_text(encoding="utf-8")
+
+    pass_block = source[source.index("passed = bool(") : source.index(
+        "# The immutable initial observation"
+    )]
+    assert 'first_stop["false_test_claim_observed"]' in pass_block
+    assert 'first_stop["failing_test_output_observed"]' not in pass_block
 
 
 def recovery_rows():

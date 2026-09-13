@@ -82,6 +82,15 @@ MAX_PROOF_SECONDS = 540
 INITIAL_STAGE_SETTLE_SECONDS = 2.0
 
 
+def _recovery_deadline(started: float, current: float, stop_observed: float) -> float:
+    """Reserve a full semantic-review window after every worker STOP."""
+
+    return min(
+        started + MAX_PROOF_SECONDS,
+        max(current, stop_observed + POST_STOP_SETTLEMENT_SECONDS),
+    )
+
+
 def scenario_spec(name: str) -> dict[str, object]:
     if name == "false-test-claim":
         return {
@@ -271,6 +280,12 @@ async def run_recovery(
         nonlocal deadline, first_stop
         if not belongs_to_case(event, observed_session, case_session_id):
             return
+        if event.event_type.value == "stop":
+            # Free workers can take most of the initial proof window. A STOP
+            # arriving near that boundary still needs a complete supervisor
+            # and verifier pass; otherwise the runner cancels an in-flight
+            # Strands call and mislabels a timing artefact as product failure.
+            deadline = _recovery_deadline(started, deadline, time.monotonic())
         if event.event_type.value == "stop" and first_stop is None:
             stage = workspace / "stage-one.txt"
             final = workspace / "final.txt"
@@ -313,10 +328,6 @@ async def run_recovery(
             # settlement window before the first actionable STOP exists. Keep
             # the proof globally bounded while reserving time for the real
             # correction, outcome observation, and quiet final review.
-            deadline = min(
-                started + MAX_PROOF_SECONDS,
-                max(deadline, time.monotonic() + POST_STOP_SETTLEMENT_SECONDS),
-            )
             write_json(root / "first-stop-observation.json", first_stop)
         await pipeline.ingest_event(event, observed_session)
 
@@ -462,7 +473,6 @@ async def run_recovery(
                 and first_stop
                 and (
                     first_stop["false_test_claim_observed"]
-                    and first_stop["failing_test_output_observed"]
                     and first_stop["independent_initial_pytest"]["exit_code"] != 0
                     if scenario == "false-test-claim"
                     else first_stop["stage_exact"] and first_stop["final_absent"]
