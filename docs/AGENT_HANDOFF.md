@@ -29,6 +29,17 @@ processes. Three frozen-bridge lifetime tests passed. Packaged-settings smoke
 verified identity plus Zen/Muse ordering and a three-call cap with zero provider
 calls and no worker attachment.
 
+A fresh native click-through of this exact installed RC3 then passed. Home and
+Settings rendered at the 920 by 700 native viewport; Companion exposed exactly
+Pex and Von (2/2); Supervisor showed Zen, the destination-bound
+`https://opencode.ai/zen/v1` endpoint, write-only OS-vault credential state and
+the three-dispatch limit; Connections exposed the OpenCode serve/attach flow and
+the existing-thread Codex flow. The Home status card dismissed independently.
+The transparent pet window appeared separately, its status card dismissed
+independently, Hide removed only the overlay, and standard app close left no PEX
+window or process. The pointer halo in automation captures belongs to the test
+driver and is not rendered by PEX.
+
 ### Current product behavior proof
 
 The final isolated live OpenCode run is
@@ -75,7 +86,8 @@ invoked in AWS because the user prohibited billable work. The final user-owned
 gates are a brief visual pass/recording on the target laptop and Devpost finish.
 The active goal remains open until submission.
 
-C: currently has about 194.33 GiB free and D: about 534.31 GiB free. Four large
+C: currently has about 193.58 GiB free (40.6% of the 476.65 GiB volume) and D:
+about 534.31 GiB free. Four large
 Hugging Face caches were moved losslessly to
 `D:\C-drive-recovery\huggingface-cache-20260913` and their original C: paths are
 verified junctions. Never delete that D: recovery directory while those
