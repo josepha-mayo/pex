@@ -118,9 +118,15 @@ def _verification_request_copy(kind: str, relative_targets: list[str], evidence:
             else "the full pytest suite"
         )
         missing = f"No attributable terminal result for {scope} is visible{after_edit}."
+        standalone = (
+            " Use one standalone `python -m pytest -q` command; do not pipe it, "
+            "chain another command, or append an exit-code echo."
+            if not relative_targets
+            else " Run pytest as one standalone command; do not pipe or chain it."
+        )
         return (
             f"The test-backed completion criterion is unresolved: {missing} "
-            f"Run {scope} from the current project root now. Return the exact "
+            f"Run {scope} from the current project root now.{standalone} Return the exact "
             "command, terminal exit code, and first failing test node if it fails. "
             "Do not claim completion until that result is visible."
         )

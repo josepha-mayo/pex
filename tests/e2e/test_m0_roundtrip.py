@@ -226,6 +226,7 @@ async def test_m0_event_to_action_roundtrip(client: AsyncClient):
     assert gathering["execution"] is None
     assert body["inbox"][-1].startswith("The test-backed completion criterion is unresolved:")
     assert "Run the full pytest suite from the current project root now." in body["inbox"][-1]
+    assert "standalone `python -m pytest -q`" in body["inbox"][-1]
 
     pet = await client.get("/v1/pet")
     body = pet.json()

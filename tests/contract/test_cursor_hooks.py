@@ -98,6 +98,8 @@ async def test_cursor_stop_hook_requests_exact_missing_test_evidence(
     assert isinstance(followup, str)
     assert "No attributable terminal result for the full pytest suite is visible" in followup
     assert "Run the full pytest suite from the current project root" in followup
+    assert "standalone `python -m pytest -q`" in followup
+    assert "do not pipe it, chain another command" in followup
     assert "exact command, terminal exit code" in followup
     assert not followup.startswith("PEX:")
     # Recovery Test 4 permits a deterministic, evidence-specific continuation after
