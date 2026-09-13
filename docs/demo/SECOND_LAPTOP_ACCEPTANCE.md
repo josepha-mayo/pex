@@ -6,7 +6,7 @@ retain the screenshot/log; do not film around a defect.
 ## 1. Download and verify
 
 For the current flat-logo candidate, copy
-`build/release-candidate-bf5a25b/PEX_0.1.0_x64-setup.exe` from the development
+`build/release-candidate-352d317/PEX_0.1.0_x64-setup.exe` from the development
 laptop. This candidate has been installed and visually checked locally. The
 public [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
 still contains the older `49385f2` build; downloading it will not include the
@@ -18,10 +18,10 @@ $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
 (Get-FileHash -LiteralPath $pexInstaller -Algorithm SHA256).Hash
 ```
 
-Expected bytes for `bf5a25b`: `101666925`
+Expected bytes for `352d317`: `101669843`
 
 Expected SHA-256:
-`D3F547E24FFFDE3BB2AD063E54AFCFD6E33EC6EBA0FC404F9E099FE2930E5B71`
+`9A6BDCA0641564D6F066577D736277A22A86CFB461F85D5E3E352384B52C2149`
 
 The installer is unsigned, so a Windows publisher warning is expected. Reject
 the file if its size or hash differs.
@@ -76,7 +76,8 @@ goal, then send the phase-one-only prompt. Do not manually correct the worker.
 Accept only if PEX:
 
 - observes `final.txt` missing;
-- produces one evidence-specific `SEND_NUDGE`;
+- produces evidence-specific bounded `SEND_NUDGE` corrections (the bf5a25b
+  installed test needed two: missing output, then CRLF repair);
 - delivers it to the unchanged OpenCode vendor session;
 - observes `final.txt` containing `pex-supervised-ok` plus one newline;
 - records the correction outcome;

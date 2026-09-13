@@ -1,5 +1,29 @@
 # PEX active handoff
 
+## Latest: installed 352d317 and ten live quiet controls passed
+
+Full rebuild, first-attempt package verification (zero blockers), install exit
+0 and installed hash match. Native startup now shows zero working workers;
+stale Cursor no longer inflates the count. Transparent Von, independent bubble
+dismissal/fixed Hide, retained BYOK settings, selected-worker Ask PEX and normal
+shutdown passed. Installed artifacts: `build/release-candidate-352d317/`.
+[Exact evidence and hashes](demo/evidence/LIVE_ACCEPTANCE_352D317_2026-09-13.md).
+
+The coherent `quiet-ten-352d317-20260913` batch passed all ten consecutive live
+OpenCode source-Pipeline tasks on clean unchanged source: correct before review,
+14 real semantic reviews, 33 model calls, 128320 supervisor tokens, 1628 settled
+events, zero follow-ups. Owned server exited; full evidence retained. This is
+NOT native desktop supervision or the formal comparative four-arm benchmark.
+
+New native finding remains OPEN: old bf5a25b recovery's Home bubble / Latest
+meaningful progress shows the prior CRLF correction although the latest review
+correctly says Stayed Quiet after repair. Trace event/display provenance and
+add a regression; do not hide or rewrite historical evidence. The Cursor repair
+below IS now packaged and natively accepted. Full regression, matching public
+release/video/final submission and broader goal obligations remain open.
+
+## Previous source-only checkpoint (now packaged as above)
+
 **New source repair pending packaging:** native bf5a25b displayed a Cursor row
 with September 5 events but a September 13 activity timestamp. Replayed observer
 hooks refreshed Working state before duplicate detection. `_prepare_cursor_hook`

@@ -19,12 +19,12 @@ app termination, fabricated benchmark score or false completion claim.
 
 ## Current candidate
 
-Installed product source: **`bf5a25bd319134fb472ac2049d9594e63e307a68`**.
+Installed product source: **`352d317fdda1ca6a8983e27ad896dd7afbcd6783`**.
 Later documentation commits do not change these installer bytes.
-Local NSIS: `build/release-candidate-bf5a25b/PEX_0.1.0_x64-setup.exe`.
-Bytes: `101666925`; SHA-256:
-`d3f547e24fffde3bb2ad063e54afcfd6e33ec6eba0fc404f9e099fe2930e5b71`.
-[Package proof](demo/evidence/PACKAGE_BF5A25B_2026-09-13.md).
+Local NSIS: `build/release-candidate-352d317/PEX_0.1.0_x64-setup.exe`.
+Bytes: `101669843`; SHA-256:
+`9a6bdca0641564d6f066577d736277a22a86cfb461f85d5e3e352384b52c2149`.
+[Package and live proof](demo/evidence/LIVE_ACCEPTANCE_352D317_2026-09-13.md).
 Public RC1 contains older `49385f2`; do not film it as this build.
 
 ## Sequenced acceptance checklist
@@ -34,8 +34,8 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   Acceptance: rebuilt runtime/desktop, verified MSI/NSIS inventories, installed
   hash match, startup/normal close and no surviving PEX process.
   Evidence: bf5a25b package proof; three frozen lifetime tests passed.
-  Follow-up: newly discovered Cursor replay-activity fix is source-only and
-  must receive its own rebuilt-package acceptance before being advertised.
+  Follow-up complete on 352d317: Cursor replay-activity repair rebuilt,
+  installed and natively checked; zero false working count on startup.
 
 - [x] **2. Exercise focused native UI, chat and companion controls.**
   Spec: Core §8; Recovery §20–21.
@@ -43,6 +43,8 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   independent message dismissal and stationary Hide; selected-worker Ask PEX.
   Evidence: bf5a25b package/native reports. Bounded checks do not cover every
   UI edge case or every scale on both pets.
+  352d317 repeated the native controls, but exposed stale progress copy on the
+  retained recovery session. That finding remains open; UI is not perfect.
 
 - [x] **3. Use saved Zen BYOK in real Strands supervision.**
   Spec: Core §4.1; Recovery §6.
@@ -73,7 +75,10 @@ Public RC1 contains older `49385f2`; do not film it as this build.
   Acceptance: correct output before review, completed Strands NOOP, no follow-up;
   preserve failed attempts separately.
   Evidence: [installed 0ea2639 quiet](demo/evidence/NATIVE_0EA2639_QUIET_2026-09-13.md).
-  Not full-goal verification or a clean ten-case false-positive-rate claim.
+  Additional 352d317 source-Pipeline batch: all ten consecutive already-correct
+  public artifact tasks passed real semantic reviews, zero follow-ups, 33 model
+  calls / 128320 supervisor tokens. Not a Codex batch, native desktop batch,
+  representative coding score or comparative four-arm benchmark.
 
 - [x] **7. Verify AgentCore implementation without inventing deployment.**
   Spec: build AgentCore path and user requirement.

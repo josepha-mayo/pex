@@ -2,6 +2,19 @@
 
 ## Current — 13 September 2026
 
+Newest installed package: **`352d317`**, full rebuild, package verification with
+zero blockers, install/hash/native startup accepted. Ten consecutive real
+OpenCode/Strands quiet controls passed on clean unchanged source: zero follow-ups,
+14 reviews, 33 model calls, 128320 supervisor tokens, 1628 settled events.
+[Exact live/package evidence](docs/demo/evidence/LIVE_ACCEPTANCE_352D317_2026-09-13.md).
+Pet transparency/dismissal/fixed Hide, saved BYOK, native Ask PEX and normal
+shutdown passed. Stale Cursor no longer inflates the working count. New OPEN
+finding: old recovery's latest-progress text shows a prior correction despite
+the latest review correctly saying Stayed Quiet. Not a perfect-UI claim.
+This batch is not native desktop supervision or a comparative benchmark.
+
+### Earlier bf5a25b recovery and regression evidence
+
 Installed product: **`bf5a25b`**, verified rebuilt runtime/MSI/NSIS and installed
 hash. [Package](docs/demo/evidence/PACKAGE_BF5A25B_2026-09-13.md).
 Native OpenCode now shows Working during activity. A real installed test made
@@ -17,9 +30,9 @@ regression on `d4f6507`: 4,474 passed, one README contract failed, 16 skipped,
 18 deselected. The wording was repaired and all eight setup contracts pass.
 The full failed receipt is retained, not relabeled green.
 
-New source-only repair prevents replayed Cursor observer hooks from reviving
+The repair now installed in 352d317 prevents replayed Cursor observer hooks from reviving
 old Working/activity state; concurrent genuine hooks remain authoritative.
-It still needs rebuilt-package/native acceptance. See
+Rebuilt-package/native startup acceptance is recorded above. See
 [regression and repair](docs/demo/evidence/REGRESSION_AND_CURSOR_REPLAY_2026-09-13.md).
 
 Use [the current checklist](docs/MVP_SHIP_GATE.md), not the historical installer
