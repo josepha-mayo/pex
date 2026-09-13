@@ -5,19 +5,34 @@ import { assertBridgeRuntimeMatches } from "./bridge-runtime-contract.mjs";
 const SHA256 = /^[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
 const BUNDLE_MARKER_PREFIX = Buffer.from("__TAURI_BUNDLE_TYPE_VAR_", "ascii");
+const TRANSIENT_WINDOWS_CLEANUP_CODES = new Set(["EBUSY", "ENOTEMPTY", "EPERM"]);
 
-export function recordPackageCleanup(cleanup, blockers) {
-  try {
-    cleanup();
-  } catch (error) {
-    // Retain verification results even when Windows still holds extracted files.
-    const code = typeof error?.code === "string" && /^[A-Z0-9_]+$/u.test(error.code)
-      ? error.code : "unknown";
-    blockers.push({
-      code: "package_cleanup_failed",
-      detail: `Temporary extraction cleanup failed (${code}); artifacts remain for diagnosis.`,
-    });
+function sleepSynchronously(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+export function recordPackageCleanup(cleanup, blockers, options = {}) {
+  const maxAttempts = options.maxAttempts ?? 8;
+  const retryDelayMs = options.retryDelayMs ?? 500;
+  const sleep = options.sleep ?? sleepSynchronously;
+  let finalError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      cleanup();
+      return;
+    } catch (error) {
+      finalError = error;
+      if (!TRANSIENT_WINDOWS_CLEANUP_CODES.has(error?.code) || attempt === maxAttempts) break;
+      sleep(retryDelayMs);
+    }
   }
+  // Retain verification results even when Windows still holds extracted files.
+  const code = typeof finalError?.code === "string" && /^[A-Z0-9_]+$/u.test(finalError.code)
+    ? finalError.code : "unknown";
+  blockers.push({
+    code: "package_cleanup_failed",
+    detail: `Temporary extraction cleanup failed (${code}); artifacts remain for diagnosis.`,
+  });
 }
 
 function exactKeys(value, expected) {

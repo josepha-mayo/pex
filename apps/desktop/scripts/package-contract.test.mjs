@@ -16,13 +16,28 @@ const hash = (character) => character.repeat(64);
 
 test("package cleanup preserves earlier blockers and permits receipt emission", () => {
   const blockers = [{ code: "msi_verification_failed", detail: "original failure" }];
-  recordPackageCleanup(() => { throw Object.assign(new Error("private path"), { code: "EPERM" }); }, blockers);
+  recordPackageCleanup(
+    () => { throw Object.assign(new Error("private path"), { code: "EPERM" }); },
+    blockers,
+    { maxAttempts: 1 },
+  );
   assert.deepEqual(blockers.map((entry) => entry.code), ["msi_verification_failed", "package_cleanup_failed"]);
   assert.match(blockers[1].detail, /EPERM/);
   assert.doesNotMatch(blockers[1].detail, /private path/);
   const clean = [];
   recordPackageCleanup(() => {}, clean);
   assert.deepEqual(clean, []);
+});
+
+test("package cleanup retries transient Windows locks without recording a blocker", () => {
+  const blockers = [];
+  let attempts = 0;
+  recordPackageCleanup(() => {
+    attempts += 1;
+    if (attempts < 3) throw Object.assign(new Error("locked"), { code: "EPERM" });
+  }, blockers, { maxAttempts: 3, retryDelayMs: 0, sleep: () => {} });
+  assert.equal(attempts, 3);
+  assert.deepEqual(blockers, []);
 });
 const hashBuffer = (value) => createHash("sha256").update(value).digest("hex");
 const embedded = () => Object.fromEntries(PACKAGE_BINARIES.map(
