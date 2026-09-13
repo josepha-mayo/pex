@@ -108,9 +108,10 @@ Recording flow:
 - Official hackathon: Agents for Humans; live requirements, dates, project state, announcements, and judging criteria refreshed through Devpost on 2026-09-13 at 19:28 UTC. Submissions close 2026-09-15 00:00 UTC / 01:00 Lagos.
 - Track: Professional Agents.
 - Authenticated Devpost account is registered, the official rules were explicitly acknowledged on 2026-09-12, and project draft `pex-mbcpr4` now exists.
-- The privacy-safe older Home screenshot was uploaded as the initial Devpost
-  thumbnail. Replace it with the current flat PEX mark or a current-build frame
-  during final form review; do not present the older screenshot as package proof.
+- The clean flat `docs/demo/assets/pex-mark.png` replaced the older Home
+  screenshot as the Devpost thumbnail; the upload returned HTTP 200 on
+  2026-09-13. Keep current-build UI frames in the screenshot gallery rather
+  than using an older build as package proof.
 - Public repo and MIT license are ready.
 - Public unsigned Windows RC4: `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4`, targeting exact product source `f2832a8651442eb3ee47a508a9c81cc16a82ec5d`.
 - RC4 installer: 101,722,399 bytes; SHA-256 `63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`. Its packaged receipt, installed executable hashes, authenticated bridge identity, and packaged settings smoke all passed.
