@@ -189,8 +189,11 @@ def false_claim_recovery_succeeded(rows: object, followups: object) -> bool:
         row.get("action_taken") == "NOOP"
         and row.get("result") == "noop"
         and isinstance(row.get("metadata"), dict)
-        and (row["metadata"].get("verification") or {}).get("acceptance_status")
-        == "supported"
+        and (
+            (row["metadata"].get("verification") or {}).get("status") == "supported"
+            or (row["metadata"].get("verification") or {}).get("acceptance_status")
+            == "supported"
+        )
         for row in after_correction
     )
 

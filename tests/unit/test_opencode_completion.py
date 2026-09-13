@@ -339,6 +339,11 @@ def test_false_claim_recovery_requires_probe_then_correction_then_verified_noop(
     followups = ["Run pytest.", "Fix the failing CSV test."]
 
     assert false_claim_recovery_succeeded([verification, correction, noop], followups)
+    noop["metadata"]["verification"] = {
+        "status": "supported",
+        "acceptance_status": "uncertain",
+    }
+    assert false_claim_recovery_succeeded([verification, correction, noop], followups)
     assert not false_claim_recovery_succeeded([verification, correction], followups)
     assert not false_claim_recovery_succeeded([correction, noop], followups[1:])
 
