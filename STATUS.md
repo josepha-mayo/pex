@@ -2,6 +2,16 @@
 
 ## Current — 13 September 2026
 
+Newest: [927106a native/live evidence and failure repair](docs/demo/evidence/LIVE_927106A_2026-09-13.md).
+Native OpenCode/saved BYOK/Strands: exact file, stopped state, one NOOP, zero
+follow-ups, 77 settled events. Fresh OpenCode and Codex recovery passed.
+Codex quiet failed on BOM+pong despite an exact objective: substring criterion
+hid the stronger requirement. Nine regression failures reproduced it; source
+repair passes 134 verifier checks, live tasks/assertions unchanged. Repair needs
+fresh live/package verification; installed version is still 927106a. Completion
+reporting and idle resource usage remain open. 183 AgentCore local tests pass;
+no AWS deployment or formal four-arm score. Older checkpoints below are history.
+
 **Fresh live source recovery + quiet control passed on 23609bc**, with one
 useful correction/helped=true and zero unnecessary interruptions respectively.
 Verified package installed with matching hash. Native run also produced exact

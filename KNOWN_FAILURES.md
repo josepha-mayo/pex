@@ -1,5 +1,22 @@
 # Known failures
 
+## 13 September — live 927106a findings
+
+- Codex pair: recovery passed; quiet control FAILED on BOM+pong. PEX's contains
+  criterion failed to enforce the stronger exact-file objective. Nine new unit
+  failures reproduced this. Source now preserves a supported exact objective;
+  134 verifier tests pass. Original live test/assertion remains unchanged;
+  fresh live and installed proof are still required for the repair.
+- Native OpenCode completed exact ready+LF and remained stopped/quiet, but
+  Inspector/Ask PEX still report overall completion unconfirmed when the
+  supervisor extracts no claims. File acceptance is separately shown supported.
+- A 30-second native settled sample used 382.23 MiB private memory and 19.95%
+  one-core CPU. Not a long-duration idle/leak result; performance remains open.
+- Formal benchmark remains unfrozen; AgentCore is locally tested, undeployed.
+  Details and immutable failure receipts: `docs/demo/evidence/LIVE_927106A_2026-09-13.md`.
+
+Older checkpoints below are historical, not the current installed version.
+
 ## Current — 11 September 2026
 
 - Package source `6d18167` (base UI product `8394b4b`) is the current two-pet

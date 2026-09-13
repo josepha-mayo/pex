@@ -38,7 +38,7 @@ FILE_CONTAINS = re.compile(
 )
 FILE_EXACT_CONTENT = re.compile(
     r"(?P<path>(?![A-Za-z]:)(?!/)[A-Za-z0-9._/-]{1,240}\.[A-Za-z0-9]{1,12})"
-    r"\s+(?:contains?|containing)\s+exactly\s+"
+    r"\s+(?:contains?|containing)\s+exactly\s+(?:the\s+word\s+)?"
     r"(?P<literal>`[^`\r\n]*`|\"[^\"\r\n]*\"|'[^'\r\n]*'|[A-Za-z0-9_/-]+)"
     r"(?P<newline>\s+followed\s+by\s+(?:one|a single|a|1)\s+"
     r"(?:newline|LF\s+newline(?:\s+\(U\+000A\))?(?:,\s+no\s+CR)?))?[.;]?",
@@ -1029,6 +1029,13 @@ def _goal_file_verdict(
     unresolved: list[str] = []
     checks: list[tuple[str, str, bool]] = []
     row_checks: list[tuple[str, int]] = []
+    # The acceptance list cannot weaken an explicit exact-file objective.
+    # Reuse the whole-string parser: compound/unsupported prose is not guessed,
+    # and ordinary "contains" objectives do not become byte-exact requirements.
+    objective = re.sub(r"^(?:create|write|update)\s+", "", goal.objective.strip(), flags=re.I)
+    objective_check = _expected_content(objective)
+    if objective_check is not None and objective_check[2]:
+        checks.append(objective_check)
     for raw in goal.acceptance_criteria:
         criterion = str(raw or "").strip()
         if not criterion:

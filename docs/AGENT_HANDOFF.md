@@ -1,5 +1,30 @@
 # PEX active handoff
 
+## Newest checkpoint: 927106a native acceptance; Codex BOM failure repaired in source
+
+Read [latest live evidence](demo/evidence/LIVE_927106A_2026-09-13.md) first.
+Installed 927106a package matched its receipt; native OpenCode goal/BYOK/Strands
+run wrote exact ready+LF, stayed Stopped, one real NOOP, zero follow-ups,
+77 settled events, stable through 321 seconds. Explicit selection remained
+attached throughout native goal entry. Ask PEX overall completion remains
+uncertain despite supported file acceptance (no extracted claims, not a gap).
+Resource sample: 382.23 MiB private, 734.41 MiB summed working set, 19.95% one
+core. PEX/owned server closed normally; do not claim lightweight/perfect.
+
+Fresh OpenCode source recovery passed: 67.5s, one useful correction, helped=true,
+then NOOP. Fresh Codex pair on 927106a: recovery passed; quiet FAILED because
+Spark wrote BOM+pong. Exact objective was weakened by contains criterion.
+Nine regressions reproduced that bug. Source now preserves a narrowly parsed
+exact-file objective; 134 verifier tests and Ruff passed. Original live tasks
+and strict assertion were not changed. This newest repair is NOT installed yet.
+Focused cross-layer handle 95139 finished: 155 passed, 3975 deselected in 21.56s.
+Next: commit/push source, rerun bounded
+unchanged Codex pair, build/verify/install matching package. Preserve failed run.
+183 local AgentCore tests passed; AWS undeployed. Formal four-arm still cannot
+freeze or report a score. Goal active; submission/release unchanged.
+
+Everything below is historical and superseded where contradicted above.
+
 ## Latest: real 23609bc recovery/quiet passed; two further native fixes
 
 Read [23609bc live/package/native report](demo/evidence/LIVE_23609BC_2026-09-13.md).
