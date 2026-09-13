@@ -84,10 +84,13 @@ AgentCore remains locally implemented/tested but not deployed. Do not invent a
 score, deployment, or native visual pass. C: now has about 72.58 GiB free; the
 installed PEX runtime is only about 0.167 GiB. Exactly 2,606 old top-level Temp
 files (1.797 GiB) moved to `D:\C-drive-recovery\temp-old-20260913`. About 4.62
-GiB of npm cache moved to `D:\C-drive-recovery\npm-cache-20260913`; an active
-process locked the remaining 0.529 GiB, which was left untouched. Goal remains
-active: visual record, public maximum-five-minute video, current installer
-release and Devpost finish.
+GiB of npm cache moved to `D:\C-drive-recovery\npm-cache-20260913`; later
+bounded remainder moves raised C: free space to about 73.44 GiB. Cross-volume
+directory moves twice stopped mid-tree on changing/missing paths, so the final
+0.320 GiB npm-cache remainder was left untouched; moved portions remain
+recoverable under `D:\C-drive-recovery\npm-cache-remainder*-20260913`. Goal
+remains active: exact installed visual card, public maximum-five-minute video
+and Devpost finish. Matching RC2 is now public.
 
 ## Current submission packet and remaining gates — post-fc20329
 
