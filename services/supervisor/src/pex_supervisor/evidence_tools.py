@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Callable, Iterator, MutableSequence
+from collections.abc import Callable, Collection, Iterator, MutableSequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -47,6 +47,55 @@ _SCORE_FEATURES = {
     "span_seconds",
     "pytest_failed",
 }
+
+_EVIDENCE_TOOL_ORDER = (
+    "get_goal",
+    "get_session_state",
+    "get_recent_events",
+    "get_scores",
+    "get_context",
+    "get_context_items",
+    "get_decisions",
+    "inspect_workspace",
+    "inspect_git",
+    "inspect_file",
+    "inspect_artifact",
+    "inspect_process",
+    "run_verification",
+    "web_search",
+    "scrape_url",
+)
+
+
+def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
+    """Offer only evidence surfaces that can matter to this exact review.
+
+    Tool schemas are repeated on every model cycle. Keeping unrelated public-web,
+    process and durable-context tools out of ordinary local reviews reduces BYOK
+    token use without removing the workspace and verifier evidence needed to
+    authorize an intervention.
+    """
+
+    selected = {
+        "get_recent_events",
+        "get_scores",
+        "inspect_workspace",
+        "inspect_git",
+        "inspect_file",
+        "inspect_artifact",
+        "run_verification",
+    }
+    context = request.supervisor_context
+    if context is not None and context.offered_context_ids:
+        selected.add("get_context_items")
+    if context is not None and context.offered_decision_ids:
+        selected.add("get_decisions")
+    features = request.scores.features or {}
+    if features.get("abandoned_background"):
+        selected.add("inspect_process")
+    if features.get("claims"):
+        selected.update(("web_search", "scrape_url"))
+    return tuple(name for name in _EVIDENCE_TOOL_ORDER if name in selected)
 
 
 @dataclass
@@ -273,6 +322,7 @@ def build_evidence_tools(
     used_tools: MutableSequence[str],
     *,
     collector: EvidenceObservationCollector | None = None,
+    tool_names: Collection[str] | None = None,
 ) -> list[object]:
     """Build fresh read-only tools bound to one validated request."""
 
@@ -890,7 +940,7 @@ def build_evidence_tools(
 
         return record("scrape_url", fetch_url(_clip(url, 500)), {"url": url})
 
-    return [
+    tools = [
         get_goal,
         get_session_state,
         get_recent_events,
@@ -907,3 +957,12 @@ def build_evidence_tools(
         web_search,
         scrape_url,
     ]
+    if tool_names is None:
+        return tools
+    if isinstance(tool_names, (str, bytes)):
+        raise TypeError("tool_names must be a collection of exact tool names")
+    selected = frozenset(tool_names)
+    unknown = selected.difference(_EVIDENCE_TOOL_ORDER)
+    if unknown:
+        raise ValueError(f"unknown evidence tools: {sorted(unknown)!r}")
+    return [item for item in tools if item.tool_name in selected]

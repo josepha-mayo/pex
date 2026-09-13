@@ -26,7 +26,10 @@ from pex_protocol.supervisor import (
 from pydantic import BaseModel, ConfigDict, Field
 
 from pex_supervisor.evidence_observations import EvidenceObservationCollector
-from pex_supervisor.evidence_tools import build_evidence_tools
+from pex_supervisor.evidence_tools import (
+    build_evidence_tools,
+    select_evidence_tool_names,
+)
 from pex_supervisor.planner import plan_deterministic
 from pex_supervisor.providers import describe_backend, load_supervisor_model
 
@@ -229,6 +232,7 @@ def _format_user(request: SupervisorRequest) -> str:
     claims = request.scores.features.get("claims") if request.scores.features else []
     verification = request.scores.features.get("verification") if request.scores.features else {}
     context = request.supervisor_context
+    evidence_tools = select_evidence_tool_names(request)
     rendered = (
         "Normalized supervision request.\n"
         f"Harness: {request.session.harness_type}\n"
@@ -247,12 +251,8 @@ def _format_user(request: SupervisorRequest) -> str:
         "Offered durable decisions: "
         f"count={len(context.offered_decision_ids) if context else 0} "
         f"first_ids={list(context.offered_decision_ids[:3]) if context else []}\n"
-        "Page through get_context_items and get_decisions, or query an exact offered ID, "
-        "for durable project/goal context. "
-        "Query inspect_workspace, inspect_git, inspect_file, inspect_artifact, "
-        "inspect_process, and run_verification for repo, diff, tests, artifacts, "
-        "and process state. Use web_search or scrape_url only for a public claim "
-        "the worker cited. Do not assume those facts without a tool result.\n"
+        f"Available evidence tools: {list(evidence_tools)}. Use only tools actually "
+        "offered for this request and do not assume facts without a tool result.\n"
         "Return exactly one validated structured decision."
     )
     return _redact_request_text(request, rendered)
@@ -496,7 +496,12 @@ def build_agent(
         # These request-scoped tools expose bounded redacted evidence. Some make
         # fresh read-only workspace/public-web observations; none execute worker
         # code, touch a harness, mutate PEX, or read hidden benchmark material.
-        "tools": build_evidence_tools(request, observed_tools, collector=collector),
+        "tools": build_evidence_tools(
+            request,
+            observed_tools,
+            collector=collector,
+            tool_names=select_evidence_tool_names(request),
+        ),
         "callback_handler": None,
     }
     if model is not None:
@@ -516,7 +521,12 @@ def build_verifier_agent(
 
     return Agent(
         system_prompt=_verifier_system_prompt(),
-        tools=build_evidence_tools(request, used_tools, collector=collector),
+        tools=build_evidence_tools(
+            request,
+            used_tools,
+            collector=collector,
+            tool_names=select_evidence_tool_names(request),
+        ),
         callback_handler=None,
         model=model,
     )
@@ -536,6 +546,7 @@ def _format_verifier_user(
     )[:8_000]
     features = request.scores.features or {}
     context = request.supervisor_context
+    evidence_tools = select_evidence_tool_names(request)
     rendered = (
         "Independently verify this proposed intervention.\n"
         f"Harness={request.session.harness_type.value} session={_clip(request.session.id, 200)}\n"
@@ -551,12 +562,8 @@ def _format_verifier_user(
         f"count={len(context.offered_decision_ids) if context else 0} "
         f"first_ids={list(context.offered_decision_ids[:3]) if context else []}\n"
         f"Proposal={proposal_json}\n"
-        "Page through get_context_items and get_decisions, or query an exact offered ID, "
-        "when durable context or user decisions justify the proposal. Query "
-        "inspect_workspace, inspect_git, inspect_file, "
-        "inspect_artifact, "
-        "inspect_process, and run_verification when local state is required. "
-        "Use web_search or scrape_url only for a public claim the worker cited. "
+        f"Available evidence tools: {list(evidence_tools)}. Use only tools actually "
+        "offered for this request. "
         "Approve or reject; do not propose or execute a different action."
     )
     return _redact_request_text(request, rendered)

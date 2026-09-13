@@ -5,7 +5,10 @@ import json
 import pytest
 from pex_protocol.enums import EventType
 from pex_supervisor.evidence_observations import EvidenceObservationCollector
-from pex_supervisor.evidence_tools import build_evidence_tools
+from pex_supervisor.evidence_tools import (
+    build_evidence_tools,
+    select_evidence_tool_names,
+)
 from pex_supervisor.verify import verify_claims
 from test_supervisor_loop import _request
 
@@ -196,6 +199,36 @@ def test_evidence_tools_are_request_scoped_read_only_and_audited():
         name in {"send_harness_message", "apply_overlay", "respond_permission"}
         for name in used
     )
+
+
+def test_model_tool_profile_omits_irrelevant_high_cost_schemas():
+    request = _request(0.1)
+
+    selected = select_evidence_tool_names(request)
+    tools = build_evidence_tools(request, [], tool_names=selected)
+
+    assert [item.tool_name for item in tools] == list(selected)
+    assert "inspect_workspace" in selected
+    assert "run_verification" in selected
+    assert "get_context" not in selected
+    assert "inspect_process" not in selected
+    assert "web_search" not in selected
+    assert "scrape_url" not in selected
+    assert len(selected) == 7
+
+
+def test_model_tool_profile_adds_only_observed_optional_surfaces():
+    request = _request(0.1)
+    request.scores.features["claims"] = ["public release claim"]
+    request.scores.features["abandoned_background"] = {"running": True}
+
+    selected = select_evidence_tool_names(request)
+
+    assert "inspect_process" in selected
+    assert "web_search" in selected
+    assert "scrape_url" in selected
+    with pytest.raises(ValueError, match="unknown evidence tools"):
+        build_evidence_tools(request, [], tool_names=["send_harness_message"])
 
 
 def test_evidence_tools_omit_raw_local_and_adapter_payloads_and_bound_output():
