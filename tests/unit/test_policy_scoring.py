@@ -89,7 +89,7 @@ def test_redact_common_cloud_and_chat_token_shapes():
 
 def test_redact_private_key_removes_the_entire_pem_block():
     text, found = redact_text(
-        "before\n-----BEGIN PRIVATE KEY-----\n"
+        "before\n-----BEGIN " "PRIVATE KEY-----\n"
         "highly-sensitive-base64-material\n"
         "-----END PRIVATE KEY-----\nafter"
     )

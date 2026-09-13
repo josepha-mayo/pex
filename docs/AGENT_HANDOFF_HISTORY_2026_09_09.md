@@ -3588,7 +3588,7 @@ That is now the **only** execution workstream. Not AWS. Not AgentCore. Not build
 - Contest: **AWS + Devpost Agents for Humans**, track **Professional Agents**.
 - Deadline: **14 Sep 2026 17:00 PDT**.
 - Devpost: `https://agentsforhumans.devpost.com/`.
-- Operator email on record: **ayandajoseph390@gmail.com**.
+- Operator email on record: supplied privately; intentionally redacted from Git.
 - **Do not Devpost-submit** unless the operator explicitly says submit at action time.
 - Winning, per BUILD, is **not** “the model got smarter.” Winning is: a human can run agents they already use; PEX babysits; **measured delta** with vs without PEX on premature stop / drift / false completion.
 - No scored public leaderboard is retained. Do not invent a rank.

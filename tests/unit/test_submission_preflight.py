@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import struct
 import sys
@@ -66,6 +67,46 @@ def test_stale_scan_reports_missing_guides_and_old_receipts(tmp_path, monkeypatc
         {"path": "one.md", "pattern": "fc20329"},
         {"path": "two.md", "pattern": "missing"},
     ]
+
+
+def test_sensitive_scan_redacts_values_and_ignores_test_canaries(tmp_path):
+    module = _load_preflight()
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "docs" / "public.md").write_text(
+        "credential sk-abcdefghijklmnopqrstuvwxyz",
+        encoding="utf-8",
+    )
+    (tmp_path / "tests" / "fixture.py").write_text(
+        "token = 'sk-this-is-an-intentional-test-secret'",
+        encoding="utf-8",
+    )
+
+    def runner(_root, *_args):
+        return 0, "docs/public.md\ntests/fixture.py"
+
+    canary = "sk-this-is-an-intentional-test-secret"
+    module.SAFE_TEST_API_KEY_HASHES = frozenset(
+        {hashlib.sha256(canary.encode("utf-8")).hexdigest()}
+    )
+    result = module.scan_tracked_sensitive_data(tmp_path, runner)
+    assert result == {
+        "readable": True,
+        "hits": [{"path": "docs/public.md", "line": 1, "class": "api_key"}],
+    }
+    assert "abcdefghijklmnopqrstuvwxyz" not in str(result)
+
+
+def test_sensitive_scan_fails_closed_when_git_listing_is_unavailable(tmp_path):
+    module = _load_preflight()
+
+    def runner(_root, *_args):
+        return 1, ""
+
+    assert module.scan_tracked_sensitive_data(tmp_path, runner) == {
+        "readable": False,
+        "hits": [],
+    }
 
 
 def test_git_check_requires_clean_tree_and_exact_remote_equality(tmp_path):

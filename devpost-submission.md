@@ -125,8 +125,9 @@ Recording flow:
 - Run `python scripts/submission_preflight.py` before the final upload. It exits
   nonzero and emits machine-readable blockers until the exact release assets,
   pushed source, public video URL, architecture upload, Builder ID field, and
-  rules acceptance are all present. Manual flags attest form state without
-  storing private account values in the repository.
+  rules acceptance are all present. It also scans tracked non-test files for
+  common credential, private-key, and consumer-email patterns. Manual flags
+  attest form state without storing private account values in the repository.
 
 ## Known Limitations
 

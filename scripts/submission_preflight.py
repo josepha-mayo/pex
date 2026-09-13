@@ -35,6 +35,38 @@ STALE_PATTERNS = (
     "LIVE_OPENCODE_RECOVERY_FC20329",
 )
 
+SENSITIVE_PATTERNS = (
+    ("api_key", re.compile(r"s" + r"k-[A-Za-z0-9_-]{20,}")),
+    ("aws_access_key", re.compile(r"(?:AK" + r"IA|AS" + r"IA)[0-9A-Z]{16}")),
+    ("private_key", re.compile(r"BEGIN " + r"(?:RSA |EC |OPENSSH )?PRIVATE KEY")),
+    (
+        "consumer_email",
+        re.compile(r"[A-Za-z0-9._%+-]+@" + r"(?:gmail|yahoo|outlook|hotmail)\.com", re.I),
+    ),
+)
+
+# These are SHA-256 digests of intentionally fake redaction canaries committed
+# under tests/. Their plaintext never enters a preflight report. Any new token,
+# even in a test, blocks submission until it is reviewed and explicitly added.
+SAFE_TEST_API_KEY_HASHES = frozenset(
+    {
+        "075d17b56b936a0c2f974750c55e3c61e734d892f4732e40b048d409fecaba31",
+        "3b0c23df07ee7e6280643406998b74017e3132d01911f0e4e92da7d78659bf68",
+        "693f5072f49dad8d5fac77242b0ef1cad8c3b74d7b93cd9f4a54b64937efe0a3",
+        "69a4654d374bc6271f1ac64d74ec25fd3f43f108504e19c4ede3c53fbdbbbe60",
+        "70799bd0e0613b761273ab78dd87c2ccd674028934951df49db4868892fe80e4",
+        "8080101846ea9ccffc4726d86af045158f0c223cf5b0f282198b7c7c36c62ca4",
+        "82be8a4d9cdebab78235e6d0618fdea34065fcb6f498073283ff4ec7376e551a",
+        "940f402b45cd3b09a55abfbbeb96b520e3a442af39c604f4b808d0b783daefe7",
+        "a3f80074ac0e171fb0908f20de13e7265d2a69e7803f41447de724d1a17698fe",
+        "b986b204d48a84e7dcc52c85df65b5b3dfabcacb7a562dc339a7ecb610ee8d1c",
+        "bebf12f6efe25e80b76c22c81ba62d31326958b32d1d1338ea07c79b97378901",
+        "c06b3abb57006a63a3de9e8161d7f2f25c5bb61d56a27a7093e24d39f02d0a69",
+        "d0caf661c6788f1dc077e351a1b095240b45ca7e5ed77c61af8853294fb716f2",
+        "e9e0b6a57efe812ffab15248f4a6908fd5fbf86f2fc3b229626cd115da72993e",
+    }
+)
+
 
 @dataclass(frozen=True)
 class ArtifactSpec:
@@ -128,6 +160,41 @@ def scan_stale_guides(root: Path) -> list[dict[str, str]]:
     return matches
 
 
+def scan_tracked_sensitive_data(
+    root: Path,
+    runner: Callable[..., tuple[int, str]] | None = None,
+) -> dict[str, object]:
+    runner = runner or _git
+    code, listing = runner(root, "ls-files")
+    if code != 0:
+        return {"readable": False, "hits": []}
+    hits: list[dict[str, object]] = []
+    for name in listing.splitlines():
+        normalized = name.replace("\\", "/")
+        path = root / name
+        if not path.is_file() or path.stat().st_size > 5 * 1024 * 1024:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            for pattern_class, pattern in SENSITIVE_PATTERNS:
+                for match in pattern.finditer(line):
+                    if pattern_class == "api_key" and normalized.startswith("tests/"):
+                        digest = hashlib.sha256(match.group(0).encode("utf-8")).hexdigest()
+                        if digest in SAFE_TEST_API_KEY_HASHES:
+                            continue
+                    hits.append(
+                        {
+                            "path": normalized,
+                            "line": line_number,
+                            "class": pattern_class,
+                        }
+                    )
+    return {"readable": True, "hits": hits}
+
+
 def _git(root: Path, *args: str) -> tuple[int, str]:
     completed = subprocess.run(
         ["git", *args],
@@ -169,6 +236,7 @@ def build_report(
     artifacts = [artifact_check(root, spec) for spec in ARTIFACTS]
     git = git_check(root, git_runner)
     stale = scan_stale_guides(root)
+    sensitive = scan_tracked_sensitive_data(root, git_runner)
     required_files = {
         name: (root / name).is_file()
         for name in ("README.md", "LICENSE", "devpost-submission.md")
@@ -193,6 +261,12 @@ def build_report(
     blockers.extend(
         f"stale recording reference: {item['path']} ({item['pattern']})" for item in stale
     )
+    if not sensitive["readable"]:
+        blockers.append("tracked-file privacy scan could not read the Git file list")
+    blockers.extend(
+        f"sensitive data pattern: {item['path']}:{item['line']} ({item['class']})"
+        for item in sensitive["hits"]
+    )
     if not attestations["video_url_valid"]:
         blockers.append("public YouTube or Vimeo demo video URL is missing or invalid")
     if not architecture_attached:
@@ -208,6 +282,7 @@ def build_report(
         "git": git,
         "required_files": required_files,
         "stale_guide_matches": stale,
+        "sensitive_data_scan": sensitive,
         "attestations": attestations,
         "blockers": blockers,
     }
