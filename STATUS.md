@@ -2,6 +2,12 @@
 
 ## Current — 13 September 2026
 
+New source repair binds fresh OpenCode record-only progress to its validated
+project identity, correcting the cause of stale progress projection without
+promoting unbound history. 319 targeted tests passed; Ruff/diff pass. Packaging
+and fresh native acceptance still required.
+[Repair proof](docs/demo/evidence/PROGRESS_BINDING_REPAIR_2026-09-13.md).
+
 Newest installed package: **`352d317`**, full rebuild, package verification with
 zero blockers, install/hash/native startup accepted. Ten consecutive real
 OpenCode/Strands quiet controls passed on clean unchanged source: zero follow-ups,

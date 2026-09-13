@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from pex_bridge.adapters import AdapterRegistry
@@ -196,6 +196,86 @@ async def test_opencode_progress_observations_take_record_only_path(
         assert processing is not None
         assert processing["mode"] == "record_only"
         assert processing["state"] == "record_only_complete"
+        # Durable progress must remain visible through the same immutable
+        # goal/project boundary used by Home and Inspector, without planning.
+        visible = await store.recent_events_for_authority(
+            session.id,
+            goal_id=session.goal_id,
+            project_id=session.project_id,
+            harness_type=session.harness_type,
+        )
+        assert event.event_id in {item.event_id for item in visible}
+    finally:
+        await store.close()
+
+
+async def test_fresh_progress_replaces_old_prompt_in_authoritative_pet_snapshot(tmp_path):
+    store, _, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    old = HarnessEvent(
+        event_id="old-correction", ts=datetime.now(UTC) - timedelta(seconds=10),
+        harness_type=session.harness_type, session_id=session.id,
+        goal_id=session.goal_id, project_id=session.project_id,
+        event_type=EventType.USER_PROMPT, phase=EventPhase.AFTER,
+        message_delta="Repair the missing output file.",
+    )
+    fresh = old.model_copy(update={
+        "event_id": "fresh-worker-result", "ts": datetime.now(UTC),
+        "event_type": EventType.AGENT_RESPONSE,
+        "message_delta": "Output file written; exact bytes checked.",
+        "metadata": {"sse_type": "message.part.updated"},
+    })
+    try:
+        await store.add_event(old, bind_observation=True)
+        await pipeline._ingest_event_locked(fresh, session)
+        snapshot = await pipeline.pet_snapshot()
+        displayed = next(row for row in snapshot["sessions"] if row["id"] == session.id)
+        assert displayed["last_message"] == fresh.message_delta
+        assert snapshot["last_message"] == fresh.message_delta
+        assert await store.list_interventions(session.id) == []
+    finally:
+        await store.close()
+
+
+async def test_live_progress_replay_does_not_promote_unbound_history(tmp_path):
+    store, _, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    event = HarnessEvent(
+        event_id="historical-progress", ts=datetime.now(UTC),
+        harness_type=session.harness_type, session_id=session.id,
+        goal_id=session.goal_id, project_id=session.project_id,
+        event_type=EventType.AGENT_RESPONSE, phase=EventPhase.AFTER,
+        message_delta="Historical worker response.",
+        metadata={"sse_type": "message.part.updated"},
+    )
+    try:
+        assert await store.add_event(event)
+        await pipeline._ingest_event_locked(event, session)
+        processing = await store.get_event_processing(event.event_id)
+        assert processing["accepted_project_binding"] is None
+        assert await store.recent_events_for_authority(
+            session.id, goal_id=session.goal_id, project_id=session.project_id,
+            harness_type=session.harness_type,
+        ) == []
+    finally:
+        await store.close()
+
+
+@pytest.mark.parametrize("mismatch", ["goal", "harness"])
+async def test_bound_progress_rejects_changed_identity_without_inserting(tmp_path, mismatch):
+    store, _, session, _ = await _bound_opencode_pipeline(tmp_path)
+    event = HarnessEvent(
+        event_id="wrong-identity-progress", ts=datetime.now(UTC),
+        harness_type=HarnessType.CODEX if mismatch == "harness" else session.harness_type,
+        session_id=session.id,
+        goal_id="other-goal" if mismatch == "goal" else session.goal_id,
+        project_id=session.project_id,
+        event_type=EventType.AGENT_RESPONSE, phase=EventPhase.AFTER,
+        message_delta="This must not become current progress.",
+    )
+    try:
+        with pytest.raises(ValueError, match="identity mismatch"):
+            await store.add_event(event, bind_observation=True)
+        assert await store.get_event(event.event_id) is None
+        assert await store.get_event_processing(event.event_id) is None
     finally:
         await store.close()
 

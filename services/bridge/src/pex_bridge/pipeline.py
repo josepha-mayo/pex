@@ -1232,7 +1232,7 @@ class Pipeline:
             # boundaries and lifecycle/fence transitions. Repeated working
             # frames remain cheap, but must not hide busy, quota or abort state.
             event, _ = await self._prepare_event_acceptance(event, session)
-            if await self.store.add_event(event):
+            if await self.store.add_event(event, bind_observation=True):
                 self._schedule_committed_publication("event", event.model_dump(mode="json"))
             return None
         return await self._accept_and_resume_event(event, session)

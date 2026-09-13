@@ -1,5 +1,19 @@
 # PEX active handoff
 
+## New source repair: live progress now retains its authority binding
+
+The stale progress finding below was traced using read-only inspection of the
+real session: final assistant text and byte-check results existed, but the
+fast-path record-only rows lacked accepted_project_binding. Authoritative
+projection therefore excluded them. Fixed at insertion, not by weakening
+authority reads: opt-in Store.add_event binding in the validated transaction,
+only for fresh live OpenCode progress. No semantic work or worker effects.
+Duplicate historical events remain unbound; no user DB rows were rewritten.
+[Repair and regression evidence](demo/evidence/PROGRESS_BINDING_REPAIR_2026-09-13.md).
+Final targeted suite: 319 passed in 82.95s; Ruff/diff pass. Next: rebuild this
+source and verify a FRESH native worker response replaces its prior instruction.
+Installed 352d317 and its ten-case batch remain distinct earlier evidence.
+
 ## Latest: installed 352d317 and ten live quiet controls passed
 
 Full rebuild, first-attempt package verification (zero blockers), install exit

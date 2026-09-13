@@ -17824,7 +17824,14 @@ class Store:
             )
         return recovered
 
-    async def add_event(self, event: HarnessEvent) -> bool:
+    async def add_event(
+        self, event: HarnessEvent, *, bind_observation: bool = False,
+    ) -> bool:
+        """Retain an event; optionally bind fresh live progress for projection.
+
+        This does not reserve a semantic decision or worker-effect authority.
+        Historical inserts and duplicate replays never gain a new binding.
+        """
         supplied_event = event.model_copy(deep=True)
         async with self._write_lock:
             try:
@@ -17841,6 +17848,8 @@ class Store:
                     else None
                 )
                 session_binding: str | None = None
+                if bind_observation and session is None:
+                    raise ValueError("live observation requires an existing session")
                 if session is not None:
                     if (
                         session.id != session_row["id"]
@@ -17936,6 +17945,18 @@ class Store:
                     "INSERT INTO events(event_id, session_id, ts, json) VALUES (?, ?, ?, ?)",
                     (event.event_id, event.session_id, event.ts.isoformat(), serialized),
                 )
+                if bind_observation and event.goal_id is not None:
+                    # Session, goal and project were checked in this same write
+                    # transaction. Carry that identity into the record-only row
+                    # created by the insert trigger so current projections can
+                    # show the progress. Do not weaken authority reads or backfill
+                    # unbound history on replay; duplicate returns occur above.
+                    await self.db.execute(
+                        "UPDATE event_processing SET accepted_project_binding = ? "
+                        "WHERE event_id = ? AND mode = 'record_only' "
+                        "AND state = 'record_only_complete'",
+                        (goal_binding.project_binding, event.event_id),
+                    )
                 await self.db.commit()
                 return True
             except Exception:
