@@ -795,6 +795,40 @@ export function meaningfulEvidence(session?: SessionRow): string {
   return "No meaningful evidence observed yet.";
 }
 
+export function selectedWorkerStatus(
+  fleet: StatusCopy,
+  session: SessionRow | undefined,
+  action: LastAction | null | undefined,
+  fresh: boolean,
+  paused: boolean,
+): StatusCopy {
+  // Home's heading and Open action target this worker, not the fleet's latest
+  // speaker. Never borrow another session's progress or intervention evidence.
+  if (!session || fleet.tone === "offline") return fleet;
+  if (!fresh) return { tone: "offline", label: "Checking local state", detail: "This worker's current state is unavailable." };
+  if (paused || session.supervision_paused) {
+    return { tone: "quiet", label: "Supervision paused", detail: "PEX will not intervene for this worker while supervision is paused." };
+  }
+  const ownAction = action?.session_id === session.id ? action : null;
+  if (actionReviewIncomplete(ownAction)) {
+    return { tone: "watch", label: "Review incomplete", detail: actionExplanation(ownAction) };
+  }
+  if (ownAction?.action === "NOOP" && ownAction.diagnosis === "supervisor_dispatch_budget_exhausted") {
+    return { tone: "watch", label: "Review skipped", detail: "This worker reached its review limit. PEX did not verify its stop." };
+  }
+  if (ownAction?.action === "NOOP" && ownAction.diagnosis === "supervisor_unavailable") {
+    return { tone: "watch", label: "Review unavailable", detail: "No supervisor was available for this worker's last review. Completion is not verified." };
+  }
+  const tone: StatusCopy["tone"] = session.status === "needs_decision" ? "need"
+    : ["blocked", "error", "drifting"].includes(session.status) ? "watch"
+    : ["working", "verifying"].includes(session.status) ? "work" : "quiet";
+  return {
+    tone,
+    label: `${titleCase(session.harness_type)} · ${humanize(session.status)}`,
+    detail: meaningfulEvidence(session),
+  };
+}
+
 export function nextExpectedEvent(session?: SessionRow): string {
   if (openCodeProviderBlocked(session)) {
     return "Restore provider access in OpenCode and resume work there. PEX waits for observed tool or file activity before resuming supervision.";

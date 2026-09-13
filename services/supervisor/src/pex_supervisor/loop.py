@@ -931,10 +931,13 @@ async def run_independent_verifier_async(
     )
     if wall_timeout is None:
         try:
-            wall_timeout = float(os.environ.get("PEX_VERIFIER_WALL_TIMEOUT", "25"))
+            wall_timeout = float(os.environ.get("PEX_VERIFIER_WALL_TIMEOUT", "45"))
         except ValueError:
-            wall_timeout = 25.0
-    wall_timeout = _bounded_wall_timeout(wall_timeout, default=25.0)
+            wall_timeout = 45.0
+    # A tool round plus structured verdict can exceed 25s on the free provider.
+    # Allow that round to finish without adding retries, calls, or token budget.
+    # The outer local dispatch deadline still bounds the combined review.
+    wall_timeout = _bounded_wall_timeout(wall_timeout, default=45.0, maximum=45.0)
     try:
         result = await asyncio.wait_for(asyncio.shield(invocation), timeout=wall_timeout)
     except TimeoutError:

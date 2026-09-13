@@ -40,7 +40,8 @@ FILE_EXACT_CONTENT = re.compile(
     r"(?P<path>(?![A-Za-z]:)(?!/)[A-Za-z0-9._/-]{1,240}\.[A-Za-z0-9]{1,12})"
     r"\s+(?:contains?|containing)\s+exactly\s+"
     r"(?P<literal>`[^`\r\n]*`|\"[^\"\r\n]*\"|'[^'\r\n]*'|[A-Za-z0-9_/-]+)"
-    r"(?P<newline>\s+followed\s+by\s+(?:one|a single|a|1)\s+newline)?[.;]?",
+    r"(?P<newline>\s+followed\s+by\s+(?:one|a single|a|1)\s+"
+    r"(?:newline|LF\s+newline(?:\s+\(U\+000A\))?(?:,\s+no\s+CR)?))?[.;]?",
     re.I,
 )
 FILE_ROWS = re.compile(

@@ -119,6 +119,7 @@ import {
   type ProjectIdentityResolutionAttempt,
   reconnectDelay,
   selectPrimarySession,
+  selectedWorkerStatus,
   mergeSessionObservation,
   sessionGoalAttachmentPayload,
   splitPetCatalog,
@@ -1464,7 +1465,6 @@ export function App() {
     goalFresh: goalStateFresh,
   });
   const semanticSupervisor = supervisorAvailability({ supervisor, supervisorFresh: settingsAvailable });
-  const homeStatus = statusWithFirstRunGuidance(status, setup, Boolean(pet?.paused));
   const mood = moodForState(pet, bridgeError);
   // Pex and Von are release-hash verified and already bundled with each WebView.
   // Prefer their stable asset URLs instead of repeatedly transferring and
@@ -1496,6 +1496,10 @@ export function App() {
   const action = useMemo(
     () => actionForSession(current, displayedInterventions, displayedLastAction),
     [current, displayedInterventions, displayedLastAction],
+  );
+  const homeStatus = statusWithFirstRunGuidance(
+    selectedWorkerStatus(status, current, action, sessionStateFresh, Boolean(pet?.paused)),
+    setup, Boolean(pet?.paused),
   );
 
   async function openSession(session?: SessionRow) {
@@ -2482,7 +2486,7 @@ export function App() {
               scale={0.94}
               reducedMotion={reducedMotion}
               status={setup ? undefined : homeStatus}
-              statusIdentity={pet?.last_action?.id}
+              statusIdentity={action?.id}
               onActivate={() => openInspector()}
             />
             <div

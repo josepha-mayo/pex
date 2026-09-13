@@ -2,6 +2,25 @@
 
 ## Current — 13 September 2026
 
+Native findings repaired in source: strict explicit-LF acceptance, bounded
+45-second independent verification (same call/token caps), selected-worker Home
+evidence, and fixture-only ordered command logging. 188 focused backend tests
+and 140 cross-layer checks passed; desktop 301 passed/one symlink skip; frontend
+production build and Ruff passed. Full e989bdd run finished at 4480 passed,
+one fixture failure, 16 skipped, 18 deselected; failed XML retained. New source
+still needs fresh live/package acceptance. Installed app is closed.
+
+Latest installed source is **e989bdd**. Native goal/connection, fresh worker
+progress and truthful incomplete-review/chat display passed. **Live recovery
+failed:** wrong worker file remained wrong after an independent-verifier
+timeout; no correction was sent. Owned worker server exited normally, evidence
+retained. [Native result](docs/demo/evidence/NATIVE_E989BDD_2026-09-13.md).
+The full offline regression is still running (session 97129) and has displayed
+one failure. New explicit-LF parser regressions reproduce a separate gap
+(20 failed, 5 passed before repair). Submission readiness is not established.
+
+### Earlier checkpoints (superseded where noted above)
+
 New source repair binds fresh OpenCode record-only progress to its validated
 project identity, correcting the cause of stale progress projection without
 promoting unbound history. 319 targeted tests passed; Ruff/diff pass. Packaging

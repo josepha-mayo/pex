@@ -303,7 +303,7 @@ test("Home setup routes reuse guarded connection and goal flows without writing 
   assert.match(route, /openInspector\(\)/);
   assert.doesNotMatch(route, /bridgeJson|POST|PATCH|setGoalDraft|setEditingGoalId/);
   assert.match(inspector, /data-goal-setup="true" tabIndex=\{-1\}/);
-  assert.match(app, /statusWithFirstRunGuidance\(status, setup, Boolean\(pet\?\.paused\)\)/);
+  assert.match(app, /statusWithFirstRunGuidance\(\s*selectedWorkerStatus\(status, current, action, sessionStateFresh, Boolean\(pet\?\.paused\)\),\s*setup, Boolean\(pet\?\.paused\),?\s*\)/);
 });
 
 test("loading activation refreshes only canonical status without replacing a settings draft", () => {

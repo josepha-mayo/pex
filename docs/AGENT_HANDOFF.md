@@ -1,5 +1,43 @@
 # PEX active handoff
 
+## Current source checkpoint — native findings repaired, fresh live proof next
+
+Offline session 97129 FINISHED: 4480 passed, one test-fixture logging failure,
+16 skipped, 18 deselected. Original failed receipt retained. The fixture now
+records ordered fake commands in memory. New explicit LF parser and bounded
+45-second independent verifier window are implemented without bypassing
+verification or adding retry/model/token budgets. Home now uses selected-worker
+progress/review rather than fleet message fallback. Tests: 188 focused backend,
+then 140 cross-layer checks passed; desktop 301 passed/one Windows symlink skip;
+production frontend build, Ruff and diff pass. No full-suite green claim.
+
+Installed e989bdd remains the failed native run below. New source must be
+committed, run through fresh real recovery/quiet proof, rebuilt and natively
+accepted. PEX and the owned native worker server are now closed. No active
+shell test handles remain from this checkpoint.
+
+## Latest native run: e989bdd recovery FAILED; do not call it a quiet pass
+
+The installed app was launched and tested with a fresh real OpenCode worker,
+native goal attachment and saved Zen/Strands supervision. Fresh progress now
+displays correctly. Worker wrote `readx\n` instead of `ready\n`; independent
+verification timed out, no correction was sent, and the file stayed wrong for
+the entire ten-minute observation. Inspector and Ask PEX truthfully report
+uncertain completion. Raw fixture cleanup confirms only its owned server exited;
+all profiles/evidence retained. See
+[native failure report](demo/evidence/NATIVE_E989BDD_2026-09-13.md).
+
+Full offline session **97129** is still running; at 84% it showed one failure,
+whose details must be read at completion. Do not restart or call it green.
+Production source remains e989bdd. A new, separately run regression file
+`tests/unit/test_verify_explicit_lf.py` reproduces the native criterion-parser
+gap: **20 failed, 5 passed** before repair. It was added after the full suite's
+collection and is not part of that running full-suite receipt.
+
+Next: finish that full run, fix its failure and explicit LF acceptance parsing,
+test selected-session Home status (currently uses fleet-wide detail), then
+fresh live recovery and quiet acceptance with packaged matching source.
+
 ## Active verification handle and newest installed package
 
 Installed **e989bdd** after full rebuild, zero-blocker package verification,

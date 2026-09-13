@@ -22,19 +22,17 @@ def _powershell() -> str:
 
 
 def _run_setup_with_fake_commands(tmp_path: Path, *, fail_stage: str = "") -> dict:
-    log_path = tmp_path / "commands.tsv"
     result_path = tmp_path / "result.json"
     caller = tmp_path / "caller"
     caller.mkdir()
     escaped = {
         "install": str(ROOT / "scripts" / "install.ps1").replace("'", "''"),
-        "log": str(log_path).replace("'", "''"),
         "result": str(result_path).replace("'", "''"),
         "caller": str(caller).replace("'", "''"),
         "fail": fail_stage.replace("'", "''"),
     }
     wrapper = f"""
-$global:PexSetupLog = '{escaped['log']}'
+$global:PexSetupCommands = New-Object 'System.Collections.Generic.List[string]'
 $global:PexSetupFail = '{escaped['fail']}'
 function global:Invoke-PexSetupFake {{
     param([string]$Name, [object[]]$PassedArguments)
@@ -43,7 +41,7 @@ function global:Invoke-PexSetupFake {{
     if ($Name -eq 'npm' -and $PassedArguments[-1] -eq 'prepare:sidecar') {{
         $stage = 'npm-prepare'
     }}
-    Add-Content -LiteralPath $global:PexSetupLog -Encoding UTF8 -Value (
+    $global:PexSetupCommands.Add(
         (@($Name) + @($PassedArguments)) -join "`t"
     )
     if ($global:PexSetupFail -eq $stage) {{
@@ -67,7 +65,8 @@ try {{
     $failure = $_.Exception.Message
 }}
 $after = (Get-Location).Path
-@{{ before = $before; after = $after; failure = $failure }} |
+@{{ before = $before; after = $after; failure = $failure;
+    command_lines = @($global:PexSetupCommands.ToArray()) }} |
     ConvertTo-Json -Compress |
     Set-Content -LiteralPath '{escaped['result']}' -Encoding UTF8
 """
@@ -83,7 +82,7 @@ $after = (Get-Location).Path
     receipt = json.loads(result_path.read_text(encoding="utf-8-sig"))
     receipt["commands"] = [
         line.split("\t")
-        for line in log_path.read_text(encoding="utf-8-sig").splitlines()
+        for line in receipt.pop("command_lines")
         if line
     ]
     return receipt

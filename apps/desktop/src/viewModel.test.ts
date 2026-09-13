@@ -115,6 +115,7 @@ import {
   channelStatusCopy,
   reconnectDelay,
   selectPrimarySession,
+  selectedWorkerStatus,
   mergeSessionObservation,
   sessionGoalAttachmentPayload,
   splitPetCatalog,
@@ -139,6 +140,23 @@ import {
   undoFailureMessage,
   undoResponsePresentation,
 } from "./viewModel.ts";
+
+test("selected Home status never borrows the fleet's progress or review", () => {
+  const fleet = { tone: "work", label: "1 working", detail: "OTHER WORKER CORRECTION" } as const;
+  const worker = { id: "opencode:fresh", harness_type: "opencode", status: "idle" };
+  const other = { id: "old", session_id: "opencode:other", action: "NOOP", evidence: ["independent_verifier:timeout"] };
+  assert.equal(selectedWorkerStatus(fleet, worker, other, true, false).detail, "No meaningful evidence observed yet.");
+  const own = { ...worker, last_message: "Fresh actual output", status: "working" };
+  assert.equal(selectedWorkerStatus(fleet, own, other, true, false).detail, "Fresh actual output");
+  assert.equal(selectedWorkerStatus(fleet, own, other, false, false).tone, "offline");
+  assert.match(selectedWorkerStatus(fleet, own, other, true, true).label, /paused/);
+  assert.equal(selectedWorkerStatus(fleet, own, { ...other, session_id: own.id }, true, false).label, "Review incomplete");
+  for (const [diagnosis, label] of [["supervisor_dispatch_budget_exhausted", "Review skipped"], ["supervisor_unavailable", "Review unavailable"]]) {
+    assert.equal(selectedWorkerStatus(fleet, own, { id: "own", session_id: own.id, action: "NOOP", diagnosis }, true, false).label, label);
+  }
+  const offline = { ...fleet, tone: "offline" } as const;
+  assert.deepEqual(selectedWorkerStatus(offline, own, null, true, false), offline);
+});
 
 test("action explanations prefer recorded reasons without inventing verification", () => {
   const action = { id: "i", session_id: "s", action: "NOOP" };

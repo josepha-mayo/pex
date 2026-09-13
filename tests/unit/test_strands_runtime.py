@@ -432,7 +432,8 @@ def test_wall_timeouts_are_finite_and_bounded():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("configured,expected", [
-    (None, 25.0), ("invalid", 25.0), ("999", 25.0), ("10", 10.0),
+    (None, 45.0), ("invalid", 45.0), ("999", 45.0), ("10", 10.0),
+    ("25", 25.0), ("nan", 45.0), ("inf", 45.0), ("-1", 1.0),
 ])
 async def test_independent_verifier_default_and_override_remain_bounded(
     monkeypatch, configured, expected,
