@@ -180,15 +180,15 @@ after the live path is on camera and keep **Agents for Humans** in each title.
   native overlay flow
 - [ ] Add the required public YouTube or Vimeo demo ≤5 minutes (working product + pitch)
 - [x] Publish the accepted unsigned installer and SHA-256 as
-  [PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1),
-  targeted at exact product source `49385f2`; both remote asset digests match
-  the accepted local NSIS/MSI hashes
-- [ ] Repeat the short package-source `fc20329` Home, Supervisor Settings,
+  [PEX 0.1.0 RC2](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc2),
+  targeted at exact product source `0454122`; remote asset sizes and the tag
+  target match the accepted local NSIS/MSI package
+- [ ] Repeat the short package-source `0454122` Home, Supervisor Settings,
   transparent Von rendering, exact Zen default, visible review cap, independent
   message dismissal, separate overlay Hide/Escape behavior, bridge liveness,
   ordinary cleanup, and bounded responsiveness on the recording laptop. The
-  preceding UI passed this card; exact `fc20329` has already passed installed
-  identity, authenticated startup and bounded responsiveness.
+  preceding UI passed this card; exact `0454122` has passed package verification,
+  frozen bridge lifetime and authenticated settings smoke.
 - [x] Re-run fresh release-source OpenCode and Codex recovery/quiet pairs with
   vault-backed Zen BYOK and Strands. Each recovery used one same-session
   correction, observed a supported helpful outcome, and ended at NOOP; each

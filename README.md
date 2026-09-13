@@ -10,10 +10,10 @@ It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude 
 
 **Verified local MVP — 13 September 2026.** The shipping focus is OpenCode,
 Codex App Server, Zen BYOK and exactly two controllable companions, Pex and Von.
-Installed product source **`fc20329`** has a zero-blocker MSI/NSIS package
+Published product source **`0454122`** has a zero-blocker MSI/NSIS package
 receipt, matching installed-binary identity, 4,532 passing non-live Python
 tests, 303 passing desktop tests with one platform skip, and three passing
-frozen-bridge lifetime tests. Public RC1 is an older build.
+frozen-bridge lifetime tests. The matching RC2 installers are public.
 
 Fresh release-source OpenCode and Codex behavior pairs both passed. In each
 harness, PEX used the saved Zen/Muse provider through Strands, detected one
@@ -33,9 +33,9 @@ control was unavailable after reboot. This is bounded evidence, not an
 indefinite leak claim. AgentCore is implemented and locally tested (243 focused
 tests) but
 **not AWS-deployed**. The formal four-arm benchmark is unfrozen and has no valid
-score. Final recording and matching public release remain. See the
+score. Final recording remains. See the
 [current checklist](docs/MVP_SHIP_GATE.md),
-[package/startup proof](docs/demo/evidence/PACKAGE_FC20329_2026-09-13.md),
+[package proof](docs/demo/evidence/PACKAGE_0454122_2026-09-13.md),
 [OpenCode pair](docs/demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md), and
 [Codex pair](docs/demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
 
@@ -96,18 +96,17 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 ### Windows install or source prerequisites
 
-The earlier verified, unsigned Windows build is published as
-[PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1).
+The current verified, unsigned Windows build is published as
+[PEX 0.1.0 RC2](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc2).
 Use `PEX_0.1.0_x64-setup.exe` for the normal install. It is built from exact
-product source `49385f2`; its SHA-256 is
-`6fb27ff7d4ec986e5b64209b1f00b70cab6593b67daafa42e08add5bd90c6d92`.
+product source `0454122`; its SHA-256 is
+`e405dbc55646fb08faf270b9ac0cb99b0c6a2f65a2e9310607fa2e08ff097eb1`.
 The binary is not code-signed, so Windows may show a publisher warning. Package
 integrity is not indefinite stability or publisher trust; current source-bound
 evidence is recorded in the [active handoff](docs/AGENT_HANDOFF.md).
 
-The newer locally tested `fc20329` installer is not yet a public release. Use
-the [exact-build recording card](docs/demo/SECOND_LAPTOP_ACCEPTANCE.md) when
-copying it from the development laptop, or build current source below.
+Use the [exact-build recording card](docs/demo/SECOND_LAPTOP_ACCEPTANCE.md)
+before filming this release, or build current source below.
 
 To build from source instead,
 use the development workflow below; it is not a packaged installer.
@@ -274,7 +273,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound native OpenCode and separate Codex App Server behavior proofs are retained. Recording, public release and Devpost submission remain pending under [the focused MVP gate](docs/MVP_SHIP_GATE.md). Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](docs/SUBMISSION.md).
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound native OpenCode and separate Codex App Server behavior proofs are retained. The matching RC2 release is public; recording and Devpost submission remain pending under [the focused MVP gate](docs/MVP_SHIP_GATE.md). Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](docs/SUBMISSION.md).
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)

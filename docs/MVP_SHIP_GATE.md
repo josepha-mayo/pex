@@ -19,13 +19,13 @@ app termination, fabricated benchmark score or false completion claim.
 
 ## Current candidate
 
-Installed product source: **`fc20329794a6a453868ca01ea903b4c41f471475`**.
-Local NSIS: `build/release-candidate-fc20329/PEX_0.1.0_x64-setup.exe`.
-Bytes: `101712659`; SHA-256:
-`aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c`.
-[Package and startup proof](demo/evidence/PACKAGE_FC20329_2026-09-13.md).
-The complete current-product non-live gate is green. Public RC1 contains older
-`49385f2`; do not film it as this build.
+Published product source: **`0454122605d089bb8c790f209f0f747b0eabf274`**.
+Local NSIS: `build/release-candidate-0454122/PEX_0.1.0_x64-setup.exe`.
+Bytes: `101719219`; SHA-256:
+`e405dbc55646fb08faf270b9ac0cb99b0c6a2f65a2e9310607fa2e08ff097eb1`.
+[Package proof](demo/evidence/PACKAGE_0454122_2026-09-13.md).
+The exact package is public as
+[PEX 0.1.0 RC2](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc2).
 
 ## Sequenced acceptance checklist
 
@@ -33,10 +33,9 @@ The complete current-product non-live gate is green. Public RC1 contains older
   Spec: Recovery §27 engineering discipline.
   Acceptance: rebuilt runtime/desktop, verified MSI/NSIS inventories, installed
   hash match, startup/normal close and no surviving PEX process.
-  Current evidence: fc20329 full rebuild, three frozen tests, zero-blocker
-  package verification, installed hash match and authenticated native startup.
-  Native-close control was unavailable after reboot; forced cleanup left zero
-  PEX processes.
+  Current evidence: 0454122 full rebuild, three frozen tests and zero-blocker
+  package verification. The packaged-settings smoke passed with no provider
+  calls. Exact installed-window acceptance remains part of the recording card.
 
 - [x] **2. Exercise focused native UI, chat and companion controls.**
   Spec: Core §8; Recovery §20–21.
@@ -44,8 +43,8 @@ The complete current-product non-live gate is green. Public RC1 contains older
   independent message dismissal and stationary Hide; selected-worker Ask PEX.
   Current evidence: immediately preceding installed candidate Home/Settings, exactly two companions,
   transparent Von, independent message dismissal, separate overlay Hide,
-  Escape-to-hide/reset, bridge liveness and ordinary cleanup. `fc20329` changes
-  only reviewed brand/icon assets and their test, but still requires a short
+  Escape-to-hide/reset, bridge liveness and ordinary cleanup. `0454122` enlarges
+  only the brand/Home companion presentation, but still requires a short
   exact-build visual click-through before recording. These remain bounded checks,
   not every scale/monitor configuration.
 
@@ -102,7 +101,7 @@ The complete current-product non-live gate is green. Public RC1 contains older
   Spec: usable desktop MVP; user-reported whole-PC freeze.
   Acceptance: PEX-owned measurement during live work, responsive post-run
   navigation and normal cleanup.
-  Current installed `fc20329` sample over 20 seconds: 1.219 aggregate
+  Current installed predecessor sample over 20 seconds: 1.219 aggregate
   CPU-seconds, 175.0 MiB working set and 128.3 MiB private for desktop + bridge;
   both processes remained responsive. The unavailable native close control
   required forced cleanup, which left zero survivors. Short samples do not prove
@@ -124,7 +123,8 @@ The complete current-product non-live gate is green. Public RC1 contains older
   Current read-only repository/material check:
   [public preflight](demo/evidence/PUBLIC_PREFLIGHT_9581DAC_2026-09-13.md).
   A clean transparent project mark is ready at `demo/assets/pex-mark.png`.
-  Do not replace RC1's immutable bytes or claim publication from local files.
+  Matching RC2 installers and verification receipts are now public. Video and
+  final Devpost submission are still pending.
 
 ## Full-objective work still open
 

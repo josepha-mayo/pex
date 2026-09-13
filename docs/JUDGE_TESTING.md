@@ -6,21 +6,19 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Fastest evaluation path
 
-The public RC1 installer is an older unsigned build with its own bounded native
-acceptance. It does not contain all current-source fixes. Download its NSIS from
-[PEX 0.1.0 RC1](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1)
+Download the current unsigned NSIS from
+[PEX 0.1.0 RC2](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc2)
 and verify SHA-256
-`6fb27ff7d4ec986e5b64209b1f00b70cab6593b67daafa42e08add5bd90c6d92`.
+`e405dbc55646fb08faf270b9ac0cb99b0c6a2f65a2e9310607fa2e08ff097eb1`.
 Windows may show a publisher warning because this candidate is not code-signed.
 
-Latest locally tested candidate: `fc20329`. Its rebuilt installer, installed
-identity, authenticated startup and bounded resources passed. The immediately
-preceding UI passed native flow, and fresh release-source OpenCode/Codex recovery
-plus quiet pairs remain source-applicable because the latest delta is
-branding-only. Repeat the exact-build visual card before filming; a matching
-public release is pending.
+Current published candidate: `0454122`. Its rebuilt installer, frozen bridge,
+authenticated settings surface and package inventory passed. Fresh OpenCode and
+Codex recovery plus quiet pairs remain source-applicable because the latest
+delta is presentation-only. Repeat the exact-build installed visual card before
+filming.
 See [exact-copy/hash instructions](demo/SECOND_LAPTOP_ACCEPTANCE.md), or build
-current source below. Do not treat RC1 as the newer filmed candidate.
+current source below.
 
 To build from the public source checkout instead, use the pinned prerequisites
 in the README:
