@@ -1,0 +1,25 @@
+{
+  "authenticated_supervisor_read": true,
+  "bridge_sha256": "38638f4e91c3c9ea1016e22f56060e87285ebdf1ef29061ed22f7834041fd211",
+  "cloud_reasoning": false,
+  "first_catalog_model": "muse-spark-1.3-contributor-free",
+  "first_catalog_provider": "zen",
+  "identity_verified": true,
+  "max_dispatches_per_session": 3,
+  "provider_calls": 0,
+  "schema": "pex.packaged-settings-smoke.v1",
+  "soak": {
+    "cpu_seconds": 2.578125,
+    "identity_checks": 274,
+    "observed_seconds": 300.016,
+    "peak_private_bytes": 84713472,
+    "peak_working_set_bytes": 105033728,
+    "private_delta_bytes": -610304,
+    "requested_seconds": 300.0,
+    "sample_interval_seconds": 1.0,
+    "samples": 274,
+    "settings_checks": 28,
+    "working_set_delta_bytes": -380928
+  },
+  "worker_attachment": false
+}

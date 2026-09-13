@@ -19,13 +19,13 @@ app termination, fabricated benchmark score or false completion claim.
 
 ## Current candidate
 
-Published product source: **`0454122605d089bb8c790f209f0f747b0eabf274`**.
-Local NSIS: `build/release-candidate-0454122/PEX_0.1.0_x64-setup.exe`.
-Bytes: `101719219`; SHA-256:
-`e405dbc55646fb08faf270b9ac0cb99b0c6a2f65a2e9310607fa2e08ff097eb1`.
-[Package proof](demo/evidence/PACKAGE_0454122_2026-09-13.md).
+Published product source: **`f2832a8651442eb3ee47a508a9c81cc16a82ec5d`**.
+Local NSIS: `build/release-candidate-f2832a8/PEX_0.1.0_x64-setup.exe`.
+Bytes: `101722399`; SHA-256:
+`63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`.
+The package receipt and installed smoke are retained beside that candidate.
 The exact package is public as
-[PEX 0.1.0 RC2](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc2).
+[PEX 0.1.0 RC4](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4).
 
 ## Sequenced acceptance checklist
 
@@ -33,9 +33,10 @@ The exact package is public as
   Spec: Recovery §27 engineering discipline.
   Acceptance: rebuilt runtime/desktop, verified MSI/NSIS inventories, installed
   hash match, startup/normal close and no surviving PEX process.
-  Current evidence: 0454122 full rebuild, three frozen tests and zero-blocker
-  package verification. The packaged-settings smoke passed with no provider
-  calls. Exact installed-window acceptance remains part of the recording card.
+  Current evidence: f2832a8 full rebuild, three frozen tests, zero-blocker
+  package verification, exact installed executable hashes, authenticated bridge
+  identity/settings and clean shutdown. The packaged-settings smoke passed with
+  no provider calls. Exact installed-window acceptance remains on the recording card.
 
 - [x] **2. Exercise focused native UI, chat and companion controls.**
   Spec: Core §8; Recovery §20–21.
@@ -43,33 +44,34 @@ The exact package is public as
   independent message dismissal and stationary Hide; selected-worker Ask PEX.
   Current evidence: immediately preceding installed candidate Home/Settings, exactly two companions,
   transparent Von, independent message dismissal, separate overlay Hide,
-  Escape-to-hide/reset, bridge liveness and ordinary cleanup. `0454122` enlarges
-  only the brand/Home companion presentation, but still requires a short
-  exact-build visual click-through before recording. These remain bounded checks,
-  not every scale/monitor configuration.
+  Escape-to-hide/reset, bridge liveness and ordinary cleanup. RC4 changes the
+  OpenCode permission lifecycle and benchmark harness rather than the renderer,
+  but still requires a short exact-build visual click-through before recording.
+  These remain bounded checks, not every scale/monitor configuration.
 
 - [x] **3. Use saved Zen BYOK in real Strands supervision.**
   Spec: Core §4.1; Recovery §6.
   Acceptance: vault credential, selected provider/model, genuine inference,
   usage displayed, no fallback or key disclosure.
-  Current evidence: fresh 1caa822 OpenCode and 8e99e9f Codex pairs used saved
-  Muse Contributor Free through Strands with cap three. A dispatch may make
-  multiple API calls; cap three is not a token cap.
+  Current evidence: exact-current f2832a8 OpenCode and a529316 Codex pairs used
+  saved Muse Contributor Free through Strands with cap three. A dispatch may
+  make multiple API calls; cap three is not a token cap.
 
 - [x] **4. Verify OpenCode lifecycle and same-session artifact recovery.**
   Spec: Core §3; Recovery §2, §10–11.
   Acceptance: Working during activity; independently approved correction;
   same worker repairs output; final quiet review is genuine.
-  Evidence: [fresh release-source pair](demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md):
-  exact initial incomplete state, one same-session correction, exact final
-  artifacts, helped outcome, 118 settled events, then quiet.
+  Evidence: exact f2832a8 recovery retained under
+  `build/recovery-f2832a8-mimo-20260913-r1`: exact initial incomplete state,
+  one same-session correction, exact repaired artifact, helped outcome, 185
+  settled events, then `NOOP`. The active handoff records hashes and boundaries.
 
 - [x] **5. Preserve distinct Codex recovery and quiet evidence.**
   Spec: Recovery §12–13.
   Acceptance: supported real App Server, same-thread continuation, persistent
   goal/evidence, real Strands, quiet control with zero follow-ups.
-  Latest evidence: [fresh release-source pair](demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md),
-  two passed in 145.36s: one helpful same-thread correction followed by NOOP,
+  Latest evidence: [exact-current pair](demo/evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md),
+  two passed in 161.12s: one helpful same-thread correction followed by NOOP,
   and one supported NOOP with no follow-up.
   This proves that source and owned App Server surface, not arbitrary existing
   Codex desktop-thread control or a bf5a25b native Codex run.
@@ -78,34 +80,37 @@ The exact package is public as
   Spec: Recovery §8, §13–14.
   Acceptance: correct output before review, completed Strands NOOP, no follow-up;
   preserve failed attempts separately.
-  Evidence: the current OpenCode quiet control had exact output before review,
-  one real semantic NOOP, zero follow-ups and 102 settled events. It is one
-  control, not a statistical false-positive estimate or comparative benchmark.
+  Evidence: exact-current `build/quiet-ten-762b4e2-20260913-r1` ran ten
+  independently specified already-correct dummy projects: ten exact artifacts,
+  only `NOOP`, zero follow-ups. This is a false-positive behavior sample, not a
+  comparative productivity benchmark.
 
 - [x] **7. Verify AgentCore implementation without inventing deployment.**
   Spec: build AgentCore path and user requirement.
   Acceptance: local client/runtime/pipeline/preflight contracts.
-  Evidence: 243 focused tests passed in 25.61s. Current read-only preflight is
-  undeployable/uninvokable; AWS is unauthenticated and no deployment occurred.
+  Evidence: 277 focused tests passed with four environment skips. The local
+  AgentCore Runtime-compatible contract is implemented; no AWS deployment occurred.
 
 - [x] **8. Finish current-source broad regression.**
   Spec: Recovery §25, §27.
   Acceptance: full offline Python and desktop suites pass; repair/rerun actual
   failures and preserve exact source, failed attempts and exclusions.
-  Current result: 4,532 passed, 16 skipped, 18 explicit live-marker
-  deselections, zero failures/errors in 3,020.82 seconds. Desktop after the
-  branding delta: 303 passed, one Windows symlink-capability skip. See the
-  current offline and package receipts.
+  Current result: the last broad source suite passed 4,532 tests with 16 skips
+  and 18 explicit live-marker deselections. After the final product delta,
+  affected OpenCode lifecycle/planner/policy suites passed 121 tests, the
+  focused Strands/AgentCore gate passed 277 with four skips, and desktop passed
+  303 with one Windows symlink-capability skip. Package preflight remained green.
 
 - [x] **9. Measure bounded installed resource behavior.**
   Spec: usable desktop MVP; user-reported whole-PC freeze.
   Acceptance: PEX-owned measurement during live work, responsive post-run
   navigation and normal cleanup.
-  Current installed predecessor sample over 20 seconds: 1.219 aggregate
-  CPU-seconds, 175.0 MiB working set and 128.3 MiB private for desktop + bridge;
-  both processes remained responsive. The unavailable native close control
-  required forced cleanup, which left zero survivors. Short samples do not prove
-  leak freedom or erase the historical freeze report.
+  Current RC4 bridge-only soak ran 300.016 seconds with 274 authenticated
+  identity checks, 28 authenticated settings checks, zero provider calls and
+  clean shutdown. It used 2.578 CPU-seconds, peaked at 100.2 MiB working set /
+  80.8 MiB private, and ended 372 KiB / 596 KiB lower than its first sample.
+  See `demo/evidence/INSTALLED_BRIDGE_SOAK_F2832A8_2026-09-13.json`. This does
+  not replace a full desktop soak or erase the historical whole-PC-freeze report.
 
 - [ ] **10. Record and inspect exact-build recovery/quiet demo.**
   Spec: Recovery §26; official working-demo requirement.
@@ -119,12 +124,12 @@ The exact package is public as
   Acceptance: current public download/hash, public MIT source/setup,
   architecture/thumbnail, video URL, correct Builder ID/individual details,
   reviewed draft and final submission receipt after authorized submit.
-  Existing draft: `https://devpost.com/software/pex-mbcpr4`, not submitted.
+  Existing public project: `https://devpost.com/software/pex-mbcpr4`, not submitted.
   Current read-only repository/material check:
   [public preflight](demo/evidence/PUBLIC_PREFLIGHT_9581DAC_2026-09-13.md).
-  A clean transparent project mark is ready at `demo/assets/pex-mark.png`.
-  Matching RC2 installers and verification receipts are now public. Video and
-  final Devpost submission are still pending.
+  The clean project mark is now the uploaded Devpost thumbnail. Matching RC4
+  installers, architecture and verification assets are public on GitHub. The
+  required Devpost architecture attachment, video and final submission remain pending.
 
 ## Full-objective work still open
 
@@ -141,7 +146,7 @@ persistent goal active while requirements remain unproven.
 
 ## Official submission boundary
 
-Live organizer refresh 13 September at 01:47 UTC: deadline 15 September 00:00 UTC /
+Live organizer refresh 13 September at 19:28 UTC: deadline 15 September 00:00 UTC /
 01:00 Africa/Lagos. Live demo URL and AWS AgentCore deployment are optional;
 working Strands project, public source/license/setup, architecture, ≤5-minute
 video and Builder ID are required. Recheck
