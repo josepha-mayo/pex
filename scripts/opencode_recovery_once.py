@@ -165,7 +165,8 @@ def false_claim_recovery_succeeded(rows: object, followups: object) -> bool:
         return False
     if not all(isinstance(row, dict) for row in rows):
         return False
-    active = [row for row in rows if row.get("action_taken") != "NOOP"]
+    ordered = sorted(rows, key=lambda row: str(row.get("created_at") or ""))
+    active = [row for row in ordered if row.get("action_taken") != "NOOP"]
     if len(active) != 2 or len(followups) != 2:
         return False
     verification, correction = active
@@ -184,7 +185,7 @@ def false_claim_recovery_succeeded(rows: object, followups: object) -> bool:
         and correction.get("helped") is True
     ):
         return False
-    after_correction = rows[rows.index(correction) + 1 :]
+    after_correction = ordered[ordered.index(correction) + 1 :]
     return any(
         row.get("action_taken") == "NOOP"
         and row.get("result") == "noop"

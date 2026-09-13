@@ -339,6 +339,9 @@ def test_false_claim_recovery_requires_probe_then_correction_then_verified_noop(
     followups = ["Run pytest.", "Fix the failing CSV test."]
 
     assert false_claim_recovery_succeeded([verification, correction, noop], followups)
+    for index, row in enumerate((verification, correction, noop)):
+        row["created_at"] = f"2026-09-13T22:0{index}:00Z"
+    assert false_claim_recovery_succeeded([noop, correction, verification], followups)
     noop["metadata"]["verification"] = {
         "status": "supported",
         "acceptance_status": "uncertain",
