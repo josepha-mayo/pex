@@ -33,6 +33,13 @@ completion instead of adding scope.
 
 ## Evidence and remaining work
 
+Current installed/recording candidate is now **`c0b8860`**, superseding the
+historical paragraphs below. It packages the Inspector polling fix and passes
+the extraction verifier, installed hash check and bounded Home/Inspector sweep.
+See [exact package evidence](demo/evidence/PACKAGE_C0B8860_2026-09-13.md).
+Rendering overhead and completion-label uncertainty remain open. Public RC1
+still points to its original artifacts.
+
 Latest checkpoint (13 September): installed candidate is `949cb47`, with the
 corrected Inspector inference receipt. Source polling improvement `a98314d`
 has native diagnostic evidence but is not yet packaged. A fresh clean-source

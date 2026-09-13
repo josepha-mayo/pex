@@ -1,5 +1,14 @@
 # PEX active handoff
 
+Newest installed candidate: **`c0b8860`**, now including the Inspector polling
+fix. Full MSI/NSIS build and extraction verifier pass, zero blockers; installed
+NSIS hash matches. Home/Inspector canonical refresh and normal close checked.
+Desktop 298 pass/one skip; local AgentCore 183 pass; frozen lifetime 3 pass.
+See [current package receipt](demo/evidence/PACKAGE_C0B8860_2026-09-13.md)
+for hashes and per-process resource attribution. No public release changed.
+Rendering overhead and conservative goal-completion label remain open; do not
+treat the historical diagnostic-only packaging statements below as current.
+
 Fresh live Codex pair on clean `50dd50d`: recovery passed in 84.69 seconds
 with one same-thread correction, exact final artifact, helped true and final
 NOOP; correct completion passed in 38.97 seconds with zero follow-ups. Both
