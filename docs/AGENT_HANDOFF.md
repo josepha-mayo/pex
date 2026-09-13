@@ -1,5 +1,21 @@
 # PEX active handoff
 
+## Fresh current-release Codex/Zen/Strands pair passed — 8e99e9f
+
+Clean `8e99e9fef70fb99f302f451f7c7f96d2f76b5ae4` passed the two unchanged
+live Codex contract tests in 145.36 seconds using pinned
+`gpt-5.3-codex-spark`, the saved vault-backed Zen/Muse supervisor, and Strands.
+PEX detected the empty recovery artifact, delivered one evidence-specific
+same-thread correction, verified `shipped`, recorded `helped: true`, and ended
+with `NOOP`. The independent correct-completion control wrote `pong` and
+received only `NOOP`, with no follow-up delivery. JUnit is 2/2; both owned
+app-server PIDs exited and the pre-existing Codex process was untouched.
+
+Read [current Codex pair](demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
+Together with the OpenCode pair below, current-release local supervision proof
+now covers both requested workers. Next: rerun formal benchmark readiness and
+AgentCore deployability checks, preserving their honest blockers. Goal active.
+
 ## Fresh current-release Zen/OpenCode/Strands pair passed — 1caa822
 
 Clean `1caa8223cdfa1eb729775ec1ca55b43c4b56208d` passed both unchanged live
