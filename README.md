@@ -244,7 +244,9 @@ release CLI; it exists only inside explicit in-process Python test harnesses via
 
 ![PEX architecture](docs/architecture/pex-architecture.png)
 
-Editable diagram: [Mermaid source](docs/architecture/pex-architecture.mmd).
+Editable references: [SVG](docs/architecture/pex-architecture.svg) and
+[Mermaid](docs/architecture/pex-architecture.mmd). Regenerate the submission
+PNG with `python scripts/render_architecture.py`.
 
 User input is the pet and persistent goals. Each semantic inspection can create a
 fresh bounded Strands supervisor with request-scoped, read-only evidence tools

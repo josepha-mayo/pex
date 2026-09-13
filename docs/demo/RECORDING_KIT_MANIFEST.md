@@ -1,15 +1,15 @@
 # PEX recording-kit manifest
 
 Prepared for the focused Windows MVP built from product source
-`fc20329794a6a453868ca01ea903b4c41f471475`.
+`f2832a8651442eb3ee47a508a9c81cc16a82ec5d`.
 
 ## Verify before installing
 
 | File | Bytes | SHA-256 |
 | --- | ---: | --- |
-| `PEX_0.1.0_x64-setup.exe` | 101712659 | `aee5a212997dc4a493cec5a812344af04aed539ef219ee5ddbc78ea33781629c` |
-| `PEX_0.1.0_x64_en-US.msi` | 114561048 | `da223af2e251d3cd030fdb3af6a3918fabb5889d6636967739ed864320b94519` |
-| `pex-architecture.png` | 104099 | `6839bdcf9667b3de104e87a675df896a75654ff62adc6111bb619d26b41eae73` |
+| `PEX_0.1.0_x64-setup.exe` | 101722399 | `63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a` |
+| `PEX_0.1.0_x64_en-US.msi` | 114556952 | `4a3b1119e29933405330b51235b59dbd02bfc58245678787b90a6612ee8dd03e` |
+| `pex-architecture.png` | 94752 | `dea91e42f057aea78a2d7c61add7b36de1ad3fc630a742bfd916e1a016fadd68` |
 | `pex-mark.png` | 99348 | `61ff11794df490525b95a3e7b83c6c635e641f01c50f1a0cb8187f1276709795` |
 
 Reject any copied file whose byte count or SHA-256 differs. The installers are
@@ -26,5 +26,5 @@ unsigned, so a Windows unknown-publisher warning is expected.
 5. Say that Strands is used live, AgentCore is implemented and locally tested
    but not deployed, and PexBench is unfrozen with no valid comparative score.
 
-The public RC1 release contains older product bytes. Do not substitute it for
-this kit when recording the current candidate.
+The public RC4 release contains these exact product bytes. Do not substitute an
+older prerelease when recording the current candidate.

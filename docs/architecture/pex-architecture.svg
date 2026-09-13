@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">PEX supervised-agent architecture</title>
+  <desc id="desc">A local closed loop observes OpenCode or Codex, gathers goal-bound evidence, asks a Strands supervisor and independent verifier, applies local policy, and either stays quiet or sends one authorized correction. AgentCore is shown as optional and not deployed.</desc>
+  <defs>
+    <style>
+      .title{font:700 42px 'Segoe UI',Arial,sans-serif;fill:#f4faf7}.sub{font:400 20px 'Segoe UI',Arial,sans-serif;fill:#9eb3b7}
+      .h{font:700 22px 'Segoe UI',Arial,sans-serif;fill:#f4faf7}.b{font:400 17px 'Segoe UI',Arial,sans-serif;fill:#b8c9cc}.small{font:600 15px 'Segoe UI',Arial,sans-serif;fill:#9eb3b7}
+      .card{fill:#122229;stroke:#55727a;stroke-width:2}.core{fill:#11372f;stroke:#4ee0ad;stroke-width:2.5}.optional{fill:#28261d;stroke:#d5b253;stroke-width:2.5;stroke-dasharray:9 7}
+      .container{fill:#0b171c;stroke:#36545d;stroke-width:2}.line{fill:none;stroke:#76939b;stroke-width:2.2}.accent{fill:none;stroke:#4ee0ad;stroke-width:2.6}.dash{fill:none;stroke:#d5b253;stroke-width:2.2;stroke-dasharray:8 7}
+      .labelbg{fill:#071116}.green{fill:#55e4b3}.gold{fill:#e0bd63}
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#76939b"/></marker>
+    <marker id="arrowAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#4ee0ad"/></marker>
+    <marker id="arrowGold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#d5b253"/></marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#071116"/>
+  <circle cx="62" cy="61" r="13" fill="#35ddb0"/>
+  <text x="88" y="72" class="title">PEX</text>
+  <text x="190" y="69" class="sub">the independent supervisor above your coding agents</text>
+
+  <rect x="48" y="152" width="300" height="120" rx="18" class="card"/>
+  <text x="198" y="194" text-anchor="middle" class="h">Human</text>
+  <text x="198" y="225" text-anchor="middle" class="b">sets goals</text>
+  <text x="198" y="248" text-anchor="middle" class="b">makes consequential decisions</text>
+
+  <rect x="48" y="332" width="300" height="134" rx="18" class="card"/>
+  <text x="198" y="374" text-anchor="middle" class="h">PEX desktop + pets</text>
+  <text x="198" y="405" text-anchor="middle" class="b">attach · inspect · pause</text>
+  <text x="198" y="430" text-anchor="middle" class="b">quiet unless you are needed</text>
+
+  <rect x="48" y="618" width="300" height="132" rx="18" class="card"/>
+  <text x="198" y="661" text-anchor="middle" class="h">Zen BYOK model</text>
+  <text x="198" y="693" text-anchor="middle" class="b">Muse through Strands</text>
+  <text x="198" y="718" text-anchor="middle" class="b">credential stays in OS vault</text>
+
+  <rect x="398" y="124" width="790" height="696" rx="26" class="container"/>
+  <text x="438" y="170" class="small">LOCAL PEX · IMPLEMENTED</text>
+
+  <rect x="456" y="206" width="300" height="108" rx="16" class="core"/>
+  <text x="606" y="248" text-anchor="middle" class="h">Bridge + adapters</text>
+  <text x="606" y="279" text-anchor="middle" class="b">authenticated worker events</text>
+
+  <rect x="830" y="206" width="300" height="108" rx="16" class="core"/>
+  <text x="980" y="248" text-anchor="middle" class="h">Goal-bound evidence</text>
+  <text x="980" y="279" text-anchor="middle" class="b">files · tests · progress</text>
+
+  <rect x="456" y="405" width="300" height="108" rx="16" class="core"/>
+  <text x="606" y="447" text-anchor="middle" class="h">Strands supervisor</text>
+  <text x="606" y="478" text-anchor="middle" class="b">bounded typed proposal</text>
+
+  <rect x="830" y="405" width="300" height="108" rx="16" class="core"/>
+  <text x="980" y="447" text-anchor="middle" class="h">Independent verifier</text>
+  <text x="980" y="478" text-anchor="middle" class="b">checks consequential corrections</text>
+
+  <rect x="642" y="594" width="300" height="108" rx="16" class="core"/>
+  <text x="792" y="636" text-anchor="middle" class="h">Local policy guard</text>
+  <text x="792" y="667" text-anchor="middle" class="b">allow · deny · ask human</text>
+
+  <rect x="932" y="714" width="208" height="82" rx="34" class="card"/>
+  <text x="1036" y="744" text-anchor="middle" class="h" font-size="19">Audit ledger</text>
+  <text x="1036" y="773" text-anchor="middle" class="small">goal · action · outcome</text>
+
+  <rect x="1252" y="222" width="300" height="146" rx="20" class="core"/>
+  <text x="1402" y="266" text-anchor="middle" class="h">Existing coding worker</text>
+  <text x="1402" y="302" text-anchor="middle" class="b">OpenCode HTTP</text>
+  <text x="1402" y="329" text-anchor="middle" class="b">Codex App Server</text>
+
+  <rect x="1252" y="610" width="300" height="152" rx="20" class="optional"/>
+  <text x="1402" y="653" text-anchor="middle" class="h">AgentCore Runtime (optional)</text>
+  <text x="1402" y="688" text-anchor="middle" class="b">implemented + locally tested</text>
+  <text x="1402" y="724" text-anchor="middle" class="h gold">NOT DEPLOYED</text>
+
+  <path d="M198 272V332" class="line" marker-end="url(#arrow)"/>
+  <path d="M348 399H414Q432 399 432 381V278Q432 260 456 260" class="line" marker-end="url(#arrow)"/>
+  <text x="368" y="373" class="small">goal + controls</text>
+
+  <path d="M756 260H830" class="accent" marker-end="url(#arrowAccent)"/>
+  <path d="M980 314V353Q980 371 962 371H624Q606 371 606 405" class="accent" marker-end="url(#arrowAccent)"/>
+  <path d="M756 459H830" class="accent" marker-end="url(#arrowAccent)"/>
+  <path d="M980 513V547Q980 565 962 565H810Q792 565 792 594" class="accent" marker-end="url(#arrowAccent)"/>
+
+  <path d="M1252 282H1210V190H606V206" class="line" marker-end="url(#arrow)"/>
+  <rect x="945" y="176" width="130" height="26" class="labelbg"/>
+  <text x="1010" y="195" text-anchor="middle" class="small">observed events</text>
+
+  <path d="M942 648H1192V332H1252" class="accent" marker-end="url(#arrowAccent)"/>
+  <rect x="1042" y="626" width="225" height="28" class="labelbg"/>
+  <text x="1154" y="646" text-anchor="middle" class="small green">authorized correction</text>
+
+  <path d="M642 648H382Q360 648 360 626V443Q360 421 348 421" class="line" marker-end="url(#arrow)"/>
+  <rect x="370" y="628" width="163" height="28" class="labelbg"/>
+  <text x="451" y="648" text-anchor="middle" class="small">decision needed</text>
+
+  <path d="M348 684H410Q432 684 432 662V477Q432 459 456 459" class="line" marker-end="url(#arrow)"/>
+  <rect x="365" y="667" width="124" height="27" class="labelbg"/>
+  <text x="427" y="686" text-anchor="middle" class="small">inference</text>
+
+  <path d="M606 513V744Q606 758 624 758H932" class="line" marker-end="url(#arrow)"/>
+  <rect x="632" y="736" width="160" height="28" class="labelbg"/>
+  <text x="712" y="756" text-anchor="middle" class="small green">correct → NOOP</text>
+  <path d="M942 684L970 714" class="line" marker-end="url(#arrow)"/>
+
+  <path d="M756 286H1180V686H1252" class="dash" marker-end="url(#arrowGold)"/>
+  <rect x="1147" y="531" width="121" height="45" class="labelbg"/>
+  <text x="1207" y="549" text-anchor="middle" class="small gold">optional remote</text>
+  <text x="1207" y="568" text-anchor="middle" class="small gold">proposal path</text>
+  <path d="M1252 668H1208V540H606V513" class="dash" marker-end="url(#arrowGold)"/>
+
+  <text x="48" y="850" class="sub">Observe → reason → verify → act → observe again</text>
+  <text x="1552" y="850" text-anchor="end" class="sub">Typed actions. Local policy stays authoritative.</text>
+</svg>

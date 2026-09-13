@@ -1,45 +1,37 @@
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, Segoe UI, Arial","fontSize":"17px","primaryTextColor":"#f4f7f5","lineColor":"#73939a","edgeLabelBackground":"#0b1317","clusterBkg":"#111d22","clusterBorder":"#385158"},"flowchart":{"curve":"basis","nodeSpacing":42,"rankSpacing":58,"htmlLabels":true}}}%%
-flowchart TB
-  human["<b>Human</b><br/>goals + consequential decisions"]
-  ui["<b>PEX desktop + companion</b><br/>attach · inspect · pause · dismiss"]
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, Segoe UI, Arial","fontSize":"18px","primaryTextColor":"#f5fbf8","lineColor":"#78949b","edgeLabelBackground":"#071116","clusterBkg":"#0d1b21","clusterBorder":"#34515a"},"flowchart":{"curve":"linear","nodeSpacing":45,"rankSpacing":70,"htmlLabels":true}}}%%
+flowchart LR
+  human["<b>Human</b><br/>sets goals · makes consequential decisions"]
+  ui["<b>PEX desktop + 2 companions</b><br/>attach · inspect · pause · dismiss"]
+  zen["<b>Zen BYOK model</b><br/>credential remains in OS vault"]
 
   subgraph local["LOCAL PEX · IMPLEMENTED"]
     direction TB
-    subgraph observe[" "]
-      direction LR
-      bridge["<b>Bridge + adapters</b><br/>authenticated worker events"]
-      evidence["<b>Goal-bound evidence</b><br/>files · tests · progress"]
-      strands["<b>Strands supervisor</b><br/>bounded structured decision"]
-      bridge --> evidence --> strands
-    end
-    subgraph act[" "]
-      direction RL
-      verifier["<b>Independent verifier</b><br/>checks consequential corrections"]
-      policy["<b>Local policy guard</b><br/>allow · deny · ask human"]
-      audit[("<b>SQLite ledger</b><br/>goal · action · outcome")]
-      verifier --> policy -->|audit| audit
-    end
-    strands -->|specific correction| verifier
-    strands -->|NOOP · stay quiet| audit
+    bridge["<b>Bridge + adapters</b><br/>authenticated worker events"]
+    evidence["<b>Goal-bound evidence</b><br/>files · tests · progress"]
+    strands["<b>Strands supervisor</b><br/>bounded typed proposal"]
+    verifier["<b>Independent verifier</b><br/>checks consequential corrections"]
+    policy["<b>Local policy guard</b><br/>allow · deny · ask human"]
+    ledger[("<b>Audit ledger</b><br/>goal · action · outcome")]
+    bridge --> evidence --> strands --> verifier --> policy
+    strands -->|correct work: NOOP| ledger
+    policy -->|audit| ledger
   end
 
   worker["<b>Existing coding worker</b><br/>OpenCode HTTP · Codex App Server"]
-  zen["<b>Zen BYOK supervisor model</b><br/>credential stays in OS vault"]
-  cloud["<b>Optional AgentCore Runtime</b><br/>implemented + offline-tested<br/><b>NOT DEPLOYED</b>"]
+  agentcore["<b>Optional AgentCore Runtime</b><br/>implemented + locally tested<br/><b>NOT DEPLOYED</b>"]
 
   human --> ui -->|goal + controls| bridge
   worker -->|observed events| bridge
-  policy -->|authorized same-session action| worker
-  policy -->|decision needed| ui
+  policy -->|one authorized same-session correction| worker
+  policy -->|real decision only| ui
   strands <-->|model inference| zen
-  bridge -.->|optional remote proposal path| cloud
+  bridge -.->|optional remote proposal path| agentcore
+  agentcore -.-> strands
 
-  classDef core fill:#173f35,stroke:#63ddb0,color:#f4f7f5,stroke-width:2px;
-  classDef surface fill:#17262c,stroke:#7899a0,color:#f4f7f5,stroke-width:1.5px;
-  classDef optional fill:#2b281d,stroke:#d0ae54,color:#fff8df,stroke-width:2px,stroke-dasharray:7 5;
+  classDef core fill:#123a32,stroke:#4ee0ad,color:#f5fbf8,stroke-width:2px;
+  classDef surface fill:#13242b,stroke:#6d8d96,color:#f5fbf8,stroke-width:1.5px;
+  classDef optional fill:#29271e,stroke:#d8b456,color:#fff7dc,stroke-width:2px,stroke-dasharray:7 5;
   class bridge,evidence,strands,verifier,policy,worker core;
-  class human,ui,audit,zen surface;
-  class cloud optional;
-  style local fill:#0f1a1f,stroke:#527078,color:#f4f7f5,stroke-width:2px
-  style observe fill:transparent,stroke:transparent
-  style act fill:transparent,stroke:transparent
+  class human,ui,zen,ledger surface;
+  class agentcore optional;
+  style local fill:#0b181d,stroke:#35535c,color:#f5fbf8,stroke-width:2px

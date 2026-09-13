@@ -1,9 +1,11 @@
 # Hackathon architecture diagram
 
-## Current submission image — 11 September 2026
+## Current submission image — 13 September 2026
 
-Use [pex-architecture.png](pex-architecture.png), regenerated from
-[pex-architecture.mmd](pex-architecture.mmd) for the focused MVP.
+Use [pex-architecture.png](pex-architecture.png), a flat 1600 by 900 image
+regenerated deterministically by `scripts/render_architecture.py`. Editable
+references are [SVG](pex-architecture.svg) and
+[Mermaid](pex-architecture.mmd).
 
 The current PNG is regenerated as an opaque dark image so its light labels stay
 readable on Devpost's light or dark surfaces. The human owns goals and
