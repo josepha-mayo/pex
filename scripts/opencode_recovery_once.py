@@ -28,6 +28,16 @@ from urllib.parse import quote
 def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-name", required=True)
+    parser.add_argument(
+        "--worker-model",
+        choices=(
+            "ling-3.0-flash-fin-free",
+            "mimo-v2.5-free",
+            "nemotron-3-ultra-free",
+            "nemotron-3.5-lightning-free",
+        ),
+        default="ling-3.0-flash-fin-free",
+    )
     args = parser.parse_args()
     if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,100}", args.run_name) is None:
         parser.error("--run-name must contain lowercase letters, digits and hyphens only")
@@ -57,7 +67,6 @@ def _load_runtime_dependencies() -> None:
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 ORIGIN = "http://127.0.0.1:4098"
-WORKER_MODEL = "ling-3.0-flash-fin-free"
 SUPERVISOR_MODEL = "muse-spark-1.3-contributor-free"
 EXPECTED_STAGE = b"stage-one-ok\n"
 EXPECTED_FINAL = b"pex-supervised-ok\n"
@@ -83,7 +92,13 @@ def source_is_clean() -> bool:
     ).strip()
 
 
-async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes]) -> dict:
+async def run_recovery(
+    root: Path,
+    model: object,
+    server: subprocess.Popen[bytes],
+    *,
+    worker_model: str,
+) -> dict:
     from benchmarks.opencode_completion import (
         QuietCompletionFence,
         belongs_to_case,
@@ -211,7 +226,7 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
             "POST",
             registry.opencode._scoped_path(f"/session/{vendor}/prompt_async", str(workspace)),
             json={
-                "model": {"providerID": "opencode", "modelID": WORKER_MODEL},
+                "model": {"providerID": "opencode", "modelID": worker_model},
                 "parts": [{"type": "text", "text": task}],
             },
         )
@@ -334,7 +349,7 @@ async def run_recovery(root: Path, model: object, server: subprocess.Popen[bytes
             "output_tokens": sum(row.get("output_tokens") or 0 for row in reviews),
             "model_call_count": sum(row.get("model_call_count") or 0 for row in reviews),
             "wall_seconds": round(time.monotonic() - started, 2),
-            "worker_model": WORKER_MODEL,
+            "worker_model": worker_model,
             "supervisor_model": SUPERVISOR_MODEL,
             "comparative_benchmark": False,
             "native_desktop_supervision": False,
@@ -439,7 +454,7 @@ async def main() -> int:
                             break
                         except httpx.HTTPError:
                             await asyncio.sleep(0.5)
-            receipt = await run_recovery(root, model, server)
+            receipt = await run_recovery(root, model, server, worker_model=args.worker_model)
     except Exception as exc:
         error_type = type(exc).__name__
         write_json(
