@@ -143,6 +143,7 @@ def test_report_requires_every_manual_submission_gate(tmp_path, monkeypatch):
     report = module.build_report(
         tmp_path,
         video_url=None,
+        video_publicly_playable=False,
         architecture_attached=False,
         builder_id_confirmed=False,
         rules_accepted=False,
@@ -150,6 +151,38 @@ def test_report_requires_every_manual_submission_gate(tmp_path, monkeypatch):
     )
     assert report["ready"] is False
     assert "public YouTube or Vimeo" in " ".join(report["blockers"])
+    assert "logged-out demo video playback" in " ".join(report["blockers"])
     assert "architecture diagram" in " ".join(report["blockers"])
     assert "AWS Builder ID" in " ".join(report["blockers"])
     assert "official rules" in " ".join(report["blockers"])
+
+
+def test_report_requires_playability_even_for_valid_video_url(tmp_path, monkeypatch):
+    module = _load_preflight()
+    monkeypatch.setattr(module, "ARTIFACTS", ())
+    monkeypatch.setattr(module, "ACTIVE_GUIDES", ())
+    monkeypatch.setattr(
+        module,
+        "scan_tracked_sensitive_data",
+        lambda *_args: {"readable": True, "hits": []},
+    )
+    for name in ("README.md", "LICENSE", "devpost-submission.md"):
+        (tmp_path / name).write_text("present", encoding="utf-8")
+
+    def git_runner(_root, *args):
+        if args == ("status", "--porcelain"):
+            return 0, ""
+        return 0, "a" * 40
+
+    report = module.build_report(
+        tmp_path,
+        video_url="https://youtu.be/example",
+        video_publicly_playable=False,
+        architecture_attached=True,
+        builder_id_confirmed=True,
+        rules_accepted=True,
+        git_runner=git_runner,
+    )
+    assert report["attestations"]["video_url_valid"] is True
+    assert report["attestations"]["video_publicly_playable"] is False
+    assert report["blockers"] == ["logged-out demo video playback is not attested"]

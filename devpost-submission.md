@@ -127,7 +127,8 @@ Recording flow:
   pushed source, public video URL, architecture upload, Builder ID field, and
   rules acceptance are all present. It also scans tracked non-test files for
   common credential, private-key, and consumer-email patterns. Manual flags
-  attest form state without storing private account values in the repository.
+  attest form state and logged-out video playability without storing private
+  account values in the repository.
 
 ## Known Limitations
 

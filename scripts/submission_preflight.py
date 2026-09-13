@@ -228,6 +228,7 @@ def build_report(
     root: Path,
     *,
     video_url: str | None,
+    video_publicly_playable: bool,
     architecture_attached: bool,
     builder_id_confirmed: bool,
     rules_accepted: bool,
@@ -243,6 +244,7 @@ def build_report(
     }
     attestations = {
         "video_url_valid": validate_video_url(video_url),
+        "video_publicly_playable": video_publicly_playable,
         "architecture_attached": architecture_attached,
         "builder_id_confirmed": builder_id_confirmed,
         "rules_accepted": rules_accepted,
@@ -269,6 +271,8 @@ def build_report(
     )
     if not attestations["video_url_valid"]:
         blockers.append("public YouTube or Vimeo demo video URL is missing or invalid")
+    if not video_publicly_playable:
+        blockers.append("logged-out demo video playback is not attested")
     if not architecture_attached:
         blockers.append("architecture diagram upload is not attested")
     if not builder_id_confirmed:
@@ -292,6 +296,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fail-closed PEX Devpost submission preflight.")
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--video-url")
+    parser.add_argument("--video-publicly-playable", action="store_true")
     parser.add_argument("--architecture-attached", action="store_true")
     parser.add_argument("--builder-id-confirmed", action="store_true")
     parser.add_argument("--rules-accepted", action="store_true")
@@ -303,6 +308,7 @@ def main() -> int:
     report = build_report(
         args.root.resolve(),
         video_url=args.video_url,
+        video_publicly_playable=args.video_publicly_playable,
         architecture_attached=args.architecture_attached,
         builder_id_confirmed=args.builder_id_confirmed,
         rules_accepted=args.rules_accepted,
