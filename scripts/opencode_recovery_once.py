@@ -255,6 +255,7 @@ async def run_recovery(
                 "false_test_claim_observed": any(
                     "All tests passed. I am done." in str(item.message_delta or "")
                     for item in prior_events
+                    if item.event_type.value == "agent_response"
                 ),
                 "failing_test_output_observed": any(
                     "failed" in str(item.message_delta or "").lower()

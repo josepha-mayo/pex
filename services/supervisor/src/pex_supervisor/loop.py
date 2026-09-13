@@ -1205,7 +1205,7 @@ def _needs_independent_verifier(
 def _apply_verifier_receipt(
     request: SupervisorRequest,
     semantic: SupervisorResult,
-    _deterministic: ProposedAction,
+    deterministic: ProposedAction,
     receipt: dict[str, Any],
 ) -> SupervisorResult:
     status = _clip(_redact_request_text(request, receipt.get("status") or "failed"), 120)
@@ -1343,6 +1343,17 @@ def _apply_verifier_receipt(
     semantic.traces = [_clip(item, 4_000) for item in traces[-256:]]
     if semantic.independent_verifier.authorizes_intervention():
         semantic.diagnosis = f"{semantic.diagnosis}:independent_verifier_approved"
+        return semantic
+    # An uncertain verifier can explicitly require the already-derived safe
+    # typed probe. Preserve only that evidence request; the rejected correction
+    # remains unauthorized until the worker returns an observable receipt.
+    if (
+        status == "uncertain_evidence"
+        and deterministic.type == InterventionType.REQUEST_VERIFICATION
+    ):
+        semantic.action = deterministic
+        semantic.diagnosis = f"{semantic.diagnosis}:verification_request_preserved"
+        semantic.traces.append("verification_request_preserved")
         return semantic
     semantic.action = _action_from_proposal(
         request,
