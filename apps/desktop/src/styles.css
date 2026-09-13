@@ -2491,11 +2491,14 @@ html.pet-shell #root {
 }
 
 .pet-overlay-close {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  z-index: 2;
   min-height: 28px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  justify-self: end;
   padding: 0 9px;
   border: 1px solid rgba(236, 244, 239, 0.22);
   border-radius: 999px;

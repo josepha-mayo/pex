@@ -112,7 +112,10 @@ test("overlay actor, status bubble, and hide control share scale-aware geometry"
     assert.match(styles, /\.pet-stage-overlay \.pet-actor\s*\{[\s\S]*?width:\s*var\(--pet-overlay-actor-width, 126px\)/u);
     assert.match(styles, /\.pet-stage-overlay \.activity-bubble\s*\{[\s\S]*?width:\s*100%;[\s\S]*?margin:\s*0;/u);
     assert.match(styles, /\.pet-overlay-panel\s*\{[\s\S]*?calc\(100% - var\(--pet-overlay-actor-width, 126px\)\)[\s\S]*?align-self:\s*flex-end;/u);
-    assert.match(styles, /\.pet-overlay-close\s*\{[\s\S]*?justify-self:\s*end;[\s\S]*?-webkit-app-region:\s*no-drag;/u);
+    assert.match(styles, /\.pet-stage-overlay\s*\{\s*position:\s*relative;/u);
+    assert.match(styles, /\.pet-overlay-close\s*\{\s*position:\s*absolute;\s*top:\s*4px;\s*right:\s*0;[\s\S]*?-webkit-app-region:\s*no-drag;/u);
+    assert.doesNotMatch(styles, /\.pet-overlay-panel\s*\{[^}]*position:/u,
+      "message panel must not become the Hide button's variable-height positioning ancestor");
   } finally {
     await vite.close();
   }
