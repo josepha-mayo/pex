@@ -1488,7 +1488,9 @@ async def test_observe_inbox_stop_is_noop_when_required_file_is_present(
 
     worker = tmp_path / "obs-done"
     worker.mkdir()
-    (worker / "report.txt").write_text("shipped\n", encoding="utf-8")
+    # This positive fixture must satisfy the exact-file objective below.
+    # Newline/BOM rejection is covered in test_cursor_exact_completion.py.
+    (worker / "report.txt").write_bytes(b"shipped")
     start = await client.post(
         "/v1/hooks/cursor",
         json={

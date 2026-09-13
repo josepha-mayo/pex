@@ -694,6 +694,25 @@ test("primary session prioritizes a human decision", () => {
   assert.equal(selected?.id, "decision");
 });
 
+test("primary session selection is stable when desktop placeholders reorder", () => {
+  const placeholder = {
+    id: "codex:desktop",
+    harness_type: "codex",
+    status: "discovered",
+    metadata: { source: "desktop" },
+  };
+  const worker = {
+    id: "opencode:live",
+    harness_type: "opencode",
+    status: "discovered",
+    cwd: "C:/isolated/worker",
+  };
+
+  assert.equal(selectPrimarySession([placeholder, worker])?.id, worker.id);
+  assert.equal(selectPrimarySession([worker, placeholder])?.id, worker.id);
+  assert.equal(selectPrimarySession([placeholder, worker], placeholder.id)?.id, placeholder.id);
+});
+
 test("offline status never presents stale state as current", () => {
   const copy = statusCopy(
     { headline: "1 working", working: 1, drifting: 0, needs_you: 0, sessions: [] },

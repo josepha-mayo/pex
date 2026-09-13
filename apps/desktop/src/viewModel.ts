@@ -461,12 +461,21 @@ export function normalizeLines(value: string): string[] {
 export function selectPrimarySession(sessions: SessionRow[], selectedId?: string | null): SessionRow | undefined {
   const selected = sessions.find((session) => session.id === selectedId);
   if (selected) return selected;
+  // Status determines urgency. Within the same urgency tier, prefer a worker
+  // that can own a persistent goal over an observe-only desktop placeholder.
+  // Discovery order is not stable, so using sessions[0] directly can retarget
+  // Home while the bridge refreshes and turn a visible "Set goal" CTA into the
+  // unrelated connection flow at click time.
+  const preferred = (matches: (session: SessionRow) => boolean): SessionRow | undefined => {
+    const candidates = sessions.filter(matches);
+    return candidates.find((session) => canAttachPersistentGoal(session)) ?? candidates[0];
+  };
   return (
-    sessions.find((session) => session.status === "needs_decision") ??
-    sessions.find((session) => session.status === "drifting") ??
-    sessions.find((session) => session.status === "blocked" || session.status === "error") ??
-    sessions.find((session) => session.status === "working" || session.status === "verifying") ??
-    sessions[0]
+    preferred((session) => session.status === "needs_decision") ??
+    preferred((session) => session.status === "drifting") ??
+    preferred((session) => session.status === "blocked" || session.status === "error") ??
+    preferred((session) => session.status === "working" || session.status === "verifying") ??
+    preferred(() => true)
   );
 }
 

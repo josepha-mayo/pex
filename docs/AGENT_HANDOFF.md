@@ -1,16 +1,46 @@
 # PEX active handoff
 
-## Active full-suite handle and corrected shipping documents
+## D-drive migration and Home selection repair
 
-Full offline suite is RUNNING in exec **17215**, started from 80f0237 with all
-five live markers excluded. Re-poll that exact handle before inferring status;
-receipt target `build/offline-80f0237.xml`. At latest observation it reached
-23% with multiple failure markers. Do not restart it or call it green.
+Authoritative checkout is now `D:\PEX-work` at `0c9e9d4` plus the current
+uncommitted repairs. The original 23.83 GiB repository and all readable
+`pex-live-*`, `pex-release-*`, and `pex-verify-*` contents were moved from C:
+into `D:\C-drive-recovery`. C: recovered roughly 66 GiB. Five zero-file release
+directory shells remain locked by external handles; do not kill unrelated tasks
+to remove them. Installed runtime, WebView data, and live `.pex` state now live
+on D: with verified C: junctions for compatibility. The database hash matched
+through the state junction. Old unreadable pytest cache directory shells remain
+separately named on C:; all enumerated live-state files moved successfully.
+
+Native checking reproduced a Home race: reversed discovery order selected the
+Codex desktop placeholder over the real OpenCode session, and the visible Set
+Goal CTA could route to Connections. `selectPrimarySession` now keeps urgency
+ordering but prefers a goal-capable worker within each urgency tier; explicit
+selection still wins. A reorder regression was added. Desktop suite: 302 passed,
+1 Windows capability skip, zero failures. Production frontend build passed.
+The Cursor positive fixture is byte-exact and its focused 60-test suite passed
+again from D (43.40s). Package/live native proof
+still belongs to installed 268d39a until a new package is built and tested.
+
+The earlier full offline run is terminal and invalid: disk exhaustion caused
+widespread errors and prevented JUnit completion (`offline-80f0237.xml` is only
+38 bytes). Do not quote its failures as product regressions or its partial passes
+as a gate. Run a fresh full suite on D after focused checks. Goal remains active;
+AgentCore deployment, formal benchmark freeze, matching release and submission
+remain unproven.
+
+## Historical disk-exhausted full suite and corrected shipping documents
+
+Full offline suite handle **17215** is terminal and invalid. It started from
+80f0237 with all five live markers excluded, but C: reached zero bytes and pytest
+ended with `OSError: [Errno 28] No space left on device` while writing JUnit.
+`build/offline-80f0237.xml` is only 38 bytes. Do not call it green and do not
+infer product failures from the disk-exhaustion cascade.
 
 One failure independently reproduced: existing Cursor correct-completion
-fixture writes shipped+LF but objective says exactly shipped; verifier now
-correctly returns contradicted. After the full run finishes, make the positive
-fixture byte-exact and retain negative coverage, without weakening verification.
+fixture wrote shipped+LF but objective says exactly shipped; verifier correctly
+returned contradicted. The positive fixture is now byte-exact and retains
+negative coverage without weakening verification.
 New separate `test_cursor_exact_completion.py`: three hook/ingest contract cases
 pass (exact, newline rejection, BOM rejection; no fake observe-only delivery).
 It was added AFTER the full run collected tests and is NOT included in that
