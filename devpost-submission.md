@@ -120,7 +120,7 @@ Recording flow:
 - The focused local Strands/AgentCore gate passed 277 tests with four environment skips. The desktop suite passed 303 tests with one expected Windows symlink skip.
 - AgentCore protocol is locally implemented and tested but not deployed to AWS.
 - PexBench is not frozen, so no comparative score or leaderboard rank is claimed.
-- Live project read on 2026-09-13 at 19:28 UTC: `state:draft`, `published_at:null`, `video_url:null`, and `submitted_at:null` for this event. Nothing has been submitted.
+- Live project read after the proof refresh on 2026-09-13 at 19:35 UTC: the project page is published, `video_url:null`, and `submitted_at:null` for this event. The Devpost project page exists, but the hackathon submission has not been sent.
 
 ## Known Limitations
 
