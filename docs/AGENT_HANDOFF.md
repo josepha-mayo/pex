@@ -82,7 +82,8 @@ toolchains/wiring, and blockers `[]`. The exclusive package verifier reports
 `release_ready:true`, blockers `[]`. Packaged settings smoke verified bridge
 identity, authenticated settings, Zen/Muse-first discovery, the three-call cap,
 zero provider calls, and no worker attachment. Three frozen-bridge lifetime
-tests passed.
+tests passed. A fresh exact-current AgentCore/Strands-focused gate then passed
+277 tests with four environment-dependent skips.
 
 The immutable local candidate is
 `build/release-candidate-f2832a8/`. GitHub reports the same byte counts and
@@ -111,7 +112,10 @@ OpenCode recovery and restraint are proven. Exact-current Codex integration is
 covered by the unchanged adapter path and prior live recovery/quiet evidence;
 Cursor remains contract-tested but lacks a fresh exact-current live run. The
 formal required four-arm comparative benchmark remains incomplete: do not
-invent a score or say it passed. AgentCore integration remains implemented,
+invent a score or say it passed. Its 2026-09-13 readiness rerun again reported
+`manifest_frozen:false`, `coherent_runs:[]`, and `can_freeze:false`; the decisive
+gaps are the isolated execution/raw-event boundary and synchronous same-session
+Cursor treatment. AgentCore integration remains implemented,
 dependency-packaged, and locally tested, but was not deployed or invoked in AWS
 because paid/billable cloud work was not authorized. Do not claim deployment.
 
