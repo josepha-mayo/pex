@@ -73,6 +73,17 @@ send one targeted correction, verify that it helped, and remain quiet across
 already-correct work. They do not prove the still-unfrozen four-arm
 Cursor/Codex comparative benchmark.
 
+Fresh exact-current Codex evidence now also exists at pushed source `a529316`.
+The owned App Server pair passed 2/2 in 161.12 seconds with Spark worker and the
+same saved Zen/Muse/Strands supervisor. Recovery delivered one specific
+`SEND_NUDGE` to one unchanged vendor thread, produced exact `shipped`, recorded
+`helped:true`, then returned `NOOP`; the correct control produced exact `pong`
+and only `NOOP`, with zero follow-ups. All SQLite/JSONL audit comparisons passed
+and owned App Servers exited. Read
+`docs/demo/evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md`. This is controlled
+behavior proof, not the formal comparative benchmark or desktop-conversation
+control.
+
 ### Exact RC4 Windows candidate
 
 Desktop tests passed 303 with one expected Windows symlink-capability skip;
@@ -136,9 +147,9 @@ accurately, and finish the Devpost submission. Do not reopen broad refactors
 before submission unless this exact smoke path reveals a release-blocking bug.
 
 The verified transfer bundle is `D:\PEX-recording-kit-f2832a8-v1.zip`,
-102,037,068 bytes, SHA-256
-`6bf79026cbf2e0666ab0e1c36d55ca71a633e3afe9e3407a48ae36980b522581`.
-Its 12-entry inventory was reopened and all installer/receipt/smoke entry hashes
+102,038,394 bytes, SHA-256
+`3d93d2ccf03ec52bfb54bc06b7ee75172a8b32f84dc331d82e3263662d3c624f`.
+Its 13-entry inventory was reopened and all installer/receipt/smoke entry hashes
 were recomputed successfully. The included submission, judge and laptop cards
 contain no stale RC2/current-candidate references. Start with `START_HERE.md`;
 the included `SECOND_LAPTOP_ACCEPTANCE.md` is updated to RC4.

@@ -13,8 +13,9 @@
 > click-through remains required; this is not a long-run leak claim. Desktop is
 > 303 passed with one platform skip. Fresh exact-current OpenCode recovery and
 > ten-case quietness prove real Zen/Strands same-session correction, observed
-> helpful outcome, final NOOP, and zero unnecessary follow-ups. The unchanged
-> Codex path retains earlier live recovery/quiet evidence. AgentCore is
+> helpful outcome, final NOOP, and zero unnecessary follow-ups. A fresh
+> exact-current Codex pair independently proves the same recovery/quiet
+> behavior through an owned App Server. AgentCore is
 > implemented and locally tested (277 exact-current focused tests with four
 > environment skips), not deployed.
 > PexBench remains unfrozen and no comparative score is claimed. Finish
@@ -23,7 +24,7 @@
 
 Current live-pair receipts and exact hashes are in
 [`LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md`](demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md)
-and [`LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md`](demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
+and [`LIVE_CODEX_PAIR_A529316_2026-09-13.md`](demo/evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md).
 
 Fresh readiness still reports no coherent four-arm run and `can_freeze:false`.
 The formal experiment must not be scored while OS-isolated hidden evaluation,

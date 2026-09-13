@@ -15,9 +15,9 @@ Windows may show a publisher warning because this candidate is not code-signed.
 Current published product source: `f2832a8`. Its rebuilt installer, frozen
 bridge, authenticated settings surface, package inventory, and four installed
 executable hashes passed. Fresh exact-current OpenCode recovery plus ten-case
-quietness passed with Zen BYOK and Strands. The unchanged Codex adapter retains
-its earlier live recovery/quiet proof. Repeat the exact-build installed visual
-card before filming.
+quietness passed with Zen BYOK and Strands. A fresh current-main Codex pair also
+passed same-session recovery and quietness through an owned App Server. Repeat
+the exact-build installed visual card before filming.
 See [exact-copy/hash instructions](demo/SECOND_LAPTOP_ACCEPTANCE.md), or build
 current source below.
 
