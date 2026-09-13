@@ -159,10 +159,11 @@ def test_protocol_roundtrip_accepts_field_name_schema_dump():
     assert restored.evidence_observations[0].output == output
 
 
-def test_verifier_authority_requires_resolved_observation_not_tool_name_or_prose():
+@pytest.mark.parametrize("tool_name", ["get_recent_events", "inspect_acceptance"])
+def test_verifier_authority_requires_resolved_observation_not_tool_name_or_prose(tool_name):
     collector = _collector("verifier")
     collector.record(
-        tool_name="get_recent_events",
+        tool_name=tool_name,
         arguments_json="{}",
         value={"events": []},
     )
@@ -172,7 +173,7 @@ def test_verifier_authority_requires_resolved_observation_not_tool_name_or_prose
         "status": "approved",
         "rationale": "checked",
         "evidence": ["model prose"],
-        "evidence_tools": ["get_recent_events"],
+        "evidence_tools": [tool_name],
         "model_call_count": 1,
         "invocation_id": "verifier-invocation",
         "evidence_observations": [observation],

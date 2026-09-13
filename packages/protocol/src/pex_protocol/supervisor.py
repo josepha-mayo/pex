@@ -27,6 +27,7 @@ INDEPENDENT_VERIFIER_EVIDENCE_TOOLS = frozenset(
         "get_recent_events",
         "get_scores",
         "get_session_state",
+        "inspect_acceptance",
         "inspect_workspace",
         "inspect_git",
         "inspect_file",
