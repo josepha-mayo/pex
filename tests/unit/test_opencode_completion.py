@@ -55,6 +55,14 @@ def recovery_rows():
 def test_recovery_requires_exact_helped_correction_then_supported_noop():
     rows, followups = recovery_rows()
     assert recovery_interventions_succeeded(rows, followups)
+
+
+def test_recovery_accepts_verified_continue_session_route():
+    rows, followups = recovery_rows()
+    rows[0]["action_taken"] = "CONTINUE_SESSION"
+    rows[0]["result"] = "continued"
+
+    assert recovery_interventions_succeeded(rows, followups)
     rows.reverse()  # Store presentation order is newest-first.
     assert recovery_interventions_succeeded(rows, followups)
 

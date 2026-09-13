@@ -242,7 +242,10 @@ def test_acceptance_tool_batches_verification_events_and_required_files(tmp_path
     request.scores.features["verification"] = {
         "status": "contradicted",
         "acceptance_status": "unsatisfied",
+        "acceptance_evidence": ["missing:report.txt"],
+        "missing_files": ["report.txt"],
         "verdicts": [{"evidence": ["missing:report.txt"]}],
+        "private_debug": "MUST_NOT_REACH_BATCHED_OBSERVATION",
     }
     (tmp_path / "report.txt").write_bytes(b"ready\n")
     collector = EvidenceObservationCollector(
@@ -257,6 +260,9 @@ def test_acceptance_tool_batches_verification_events_and_required_files(tmp_path
     observed = json.loads(rendered)
 
     assert observed["verification"]["acceptance_status"] == "unsatisfied"
+    assert observed["verification"]["missing_files"] == ["report.txt"]
+    assert "verdicts" not in observed["verification"]
+    assert "MUST_NOT_REACH_BATCHED_OBSERVATION" not in rendered
     assert observed["recent_events"][-1]["event_id"] == request.event.event_id
     assert observed["required_files"] == [{
         "path": "report.txt", "bytes": 6, "text": "ready\n", "observed": True,

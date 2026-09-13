@@ -91,7 +91,7 @@ def semantic_reviews_succeeded(journal: list[Any]) -> bool:
 
 
 def recovery_interventions_succeeded(rows: Any, followups: Any) -> bool:
-    """Require one exact correction, its helped outcome, then quiet completion."""
+    """Require one exact worker-facing correction, helped outcome, then quiet completion."""
     if not isinstance(rows, list) or not isinstance(followups, list) or len(followups) != 1:
         return False
     if not all(isinstance(row, dict) for row in rows):
@@ -120,12 +120,17 @@ def recovery_interventions_succeeded(rows: Any, followups: Any) -> bool:
     text = payload.get("text") if isinstance(payload, dict) else None
     metadata = correction.get("metadata")
     verifier = metadata.get("independent_verifier") if isinstance(metadata, dict) else None
+    action_taken = correction.get("action_taken")
+    expected_result = {
+        "SEND_NUDGE": "sent",
+        "CONTINUE_SESSION": "continued",
+    }.get(action_taken)
     if not (
-        correction.get("action_taken") == "SEND_NUDGE"
+        expected_result is not None
         and isinstance(text, str)
         and bool(text.strip())
         and followups == [text]
-        and correction.get("result") == "sent"
+        and correction.get("result") == expected_result
         and correction.get("outcome") == "goal_evidence_supported"
         and correction.get("helped") is True
         and isinstance(correction.get("worker_response"), str)

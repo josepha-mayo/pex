@@ -513,16 +513,63 @@ def build_evidence_tools(
 
         candidate = trajectory_review_candidate(request)
         source_ids = set(candidate.event_ids) if candidate else set()
-        selected_events = {event.event_id: event for event in request.recent_events[-12:]}
+        bookkeeping = {
+            "assistant",
+            "message.part.updated",
+            "session.diff",
+            "session.status",
+            "session.updated",
+            "user",
+        }
+        meaningful = [
+            event
+            for event in request.recent_events
+            if (
+                event.event_type in {
+                    EventType.AGENT_RESPONSE,
+                    EventType.AGENT_THOUGHT,
+                    EventType.FILE_EDIT,
+                    EventType.SHELL,
+                    EventType.TOOL_CALL,
+                }
+                and (event.message_delta or event.command or event.tool_name or "").strip()
+                not in bookkeeping
+            )
+        ]
+        selected_events = {event.event_id: event for event in meaningful[-6:]}
         for event in [*request.recent_events, request.event]:
             if event.event_id in source_ids or event.event_id == request.event.event_id:
                 selected_events[event.event_id] = event
 
+        raw_verification = (request.scores.features or {}).get("verification")
+        if isinstance(raw_verification, dict) and raw_verification:
+            gathering = raw_verification.get("evidence_gathering")
+            verification: dict[str, object] = {
+                "status": raw_verification.get("status"),
+                "acceptance_status": raw_verification.get("acceptance_status"),
+                "acceptance_evidence": raw_verification.get("acceptance_evidence") or [],
+                "correction": raw_verification.get("correction"),
+                "missing_files": raw_verification.get("missing_files") or [],
+            }
+            if isinstance(gathering, dict):
+                verification["evidence_gathering"] = {
+                    "state": gathering.get("state"),
+                    "workspace_snapshot": gathering.get("workspace_snapshot"),
+                    "workspace_snapshot_reason": gathering.get("workspace_snapshot_reason"),
+                    "reason": gathering.get("reason"),
+                }
+        else:
+            verification = {
+                "status": "unavailable", "reason": "no local verification receipt",
+            }
         payload: dict[str, object] = {
-            "verification": (request.scores.features or {}).get("verification")
-            or {"status": "unavailable", "reason": "no local verification receipt"},
+            "verification": verification,
             "recent_events": [
-                _event_view(event)
+                {
+                    key: value
+                    for key, value in _event_view(event).items()
+                    if value not in (None, [], {})
+                }
                 for event in sorted(selected_events.values(), key=lambda item: item.ts)
             ],
             "required_files": [],
