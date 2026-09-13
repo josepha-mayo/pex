@@ -150,21 +150,36 @@ recovery plus quiet case, capture the architecture/AgentCore implementation
 accurately, and finish the Devpost submission. Do not reopen broad refactors
 before submission unless this exact smoke path reveals a release-blocking bug.
 
-The verified transfer bundle is `D:\PEX-recording-kit-f2832a8-v1.zip`,
-102,223,552 bytes, SHA-256
-`7096faab71409fca9390e3fa66f7be8f74c7b0898ea976d2cc70e275f79c807c`.
-Its 16-entry inventory was reopened and all installer/receipt/smoke/visual entry hashes
+The newest verified transfer bundle is `D:\PEX-recording-kit-f2832a8-v2.zip`,
+102,229,042 bytes, SHA-256
+`88b7252dfa8d151d5112ad347c76183f7c04b5583841471f44eebd4557c2e4d2`.
+Its 17-entry inventory was reopened and all installer/receipt/smoke/visual entry hashes
 were recomputed successfully. The included submission, judge and laptop cards
 contain no stale RC2/current-candidate references. Start with `START_HERE.md`;
 the included `SECOND_LAPTOP_ACCEPTANCE.md` is updated to RC4. The kit now also
-contains the clean 1600 by 900 architecture PNG and flat PEX thumbnail.
+contains the clean 1600 by 900 architecture PNG, flat PEX thumbnail, and the
+current root Devpost draft as `guide/DEVPOST_SUBMISSION.md`.
 
-C: is not full at this checkpoint: 204,205,641,728 bytes (about 190.18 GiB) are
-free. Four Hugging Face caches remain losslessly junctioned from their original
+C: is not full at this checkpoint: about 190.86 GiB (40.0%) is free. Forty-two
+verified PEX-prefixed temporary directories were moved off C: to the recoverable
+quarantine `D:\PEX-c-drive-trash-20260913`, recovering about 1.23 GiB. The
+remaining PEX-prefixed temp directories contain only about 0.06 MiB. The exact
+installed RC4 app remains on C: and occupies about 171.4 MiB because it is still
+needed for the final native/recording check. Four Hugging Face caches remain
+losslessly junctioned from their original
 C: paths to `D:\C-drive-recovery\huggingface-cache-20260913`; never delete that
 D: directory while the junctions exist. Do not perform broad deletion of the
 user's unrelated data. Measure and request an exact target before any further
 cleanup.
+
+The authenticated Devpost project `pex-mbcpr4` is now public at
+https://devpost.com/software/pex-mbcpr4 but is **not submitted** to the
+hackathon (`submitted_at:null`, no video URL). Its online proof section now
+names the exact RC4 OpenCode and current Codex behavior pairs, and the clean
+flat PEX mark replaced the older Home screenshot as its thumbnail with an HTTP
+200 upload. The required architecture file and maximum-five-minute public demo
+video still need to be attached before submission. The currently exposed MCP
+tool set had no architecture/file-upload tool; do not pretend it was attached.
 
 ## AUTHORITATIVE CURRENT STATE — 6ad2b99 / RC3 (2026-09-13)
 
