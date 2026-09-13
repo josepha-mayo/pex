@@ -13,8 +13,9 @@ requirements fetched on 12 September 2026 remain authoritative.
 - Built with: Strands Agents, Python, Rust, Tauri, React, TypeScript, FastAPI,
   SQLite, OpenCode, Codex, Zen, Amazon Bedrock AgentCore
 - Public repository: `https://github.com/josepha-mayo/pex`
-- Public Windows judge build:
-  `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1`
+- Public Windows judge build: RC1 is currently public but contains older
+  product source `49385f2`. Replace this field with the matching RC2 URL only
+  after the verified `1cd42c8` artifacts are published.
 - Thumbnail: an older privacy-safe Home screenshot is present in the draft.
   Replace it during final review with `docs/demo/assets/pex-mark.png` or a
   privacy-safe exact-current-build frame.
@@ -36,6 +37,10 @@ visually reviewed at its original 1243×1733 resolution. It shows the goal/evide
 same-session OpenCode/Codex action, Zen BYOK vault boundary, SQLite audit, and
 optional AgentCore Runtime explicitly labeled `NOT DEPLOYED`.
 
+The replacement project mark is a transparent 1024×1024 PNG at
+`docs/demo/assets/pex-mark.png`, SHA-256
+`61ff11794df490525b95a3e7b83c6c635e641f01c50f1a0cb8187f1276709795`.
+
 ## Required video
 
 The form requires one public YouTube or Vimeo URL and rejects a missing video.
@@ -54,10 +59,9 @@ demo, and PEX should not mislabel it.
 
 ### Testing instructions (`28191`)
 
-> Download the unsigned Windows judge build from
-> https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc1 and verify the
-> NSIS SHA-256 is
-> 6fb27ff7d4ec986e5b64209b1f00b70cab6593b67daafa42e08add5bd90c6d92.
+> Download the unsigned Windows judge build from the final RC2 release and
+> verify `PEX_0.1.0_x64-setup.exe` SHA-256 is
+> 81c85b528e0e7aeae57a6c4bc554b08c54302df87f776f034bbec7aa9f36d849.
 > Start a throwaway OpenCode server with `opencode serve --port 4096`, attach
 > with `opencode attach http://127.0.0.1:4096`, connect PEX to that address,
 > and configure Zen BYOK with the exact
@@ -82,11 +86,13 @@ confirmed. Do not republish a duplicate.
 Before requesting `yes, submit`:
 
 1. Attach the architecture PNG to field `27734`.
-2. Add and independently open the public video URL.
-3. Confirm the private Builder ID value in field `27735`.
-4. Confirm Individual, Nigeria, Professional Agents, and the repository URL in
+2. Publish the matching `1cd42c8` RC2 artifacts, independently download them,
+   and confirm the public NSIS hash above before replacing the older RC1 link.
+3. Add and independently open the public video URL.
+4. Confirm the private Builder ID value in field `27735`.
+5. Confirm Individual, Nigeria, Professional Agents, and the repository URL in
    the rendered form.
-5. Review the complete project page for formatting, privacy, and claim accuracy.
-6. Run the tracked-secret scan and verify `HEAD == origin/main`.
-7. Present the exact payload to Joseph and receive the unambiguous phrase
+6. Review the complete project page for formatting, privacy, and claim accuracy.
+7. Run the tracked-secret scan and verify `HEAD == origin/main`.
+8. Present the exact payload to Joseph and receive the unambiguous phrase
    `yes, submit` before calling the final Devpost submit action.
