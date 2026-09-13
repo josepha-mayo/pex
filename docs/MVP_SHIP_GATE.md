@@ -148,6 +148,11 @@ adapter coverage and full goal-completion proof are not established by these
 bounded examples. Winning is an aim, never an engineering guarantee. Keep the
 persistent goal active while requirements remain unproven.
 
+Current verified recording transfer bundle:
+`D:\PEX-recording-kit-f2832a8-v3.zip`, 102,231,240 bytes, SHA-256
+`21b5ae2134ac4dae8c019ec8cd509ca887074c675613aef001294a2c888e8215`.
+Its checksum inventory was reopened and verified after creation.
+
 ## Official submission boundary
 
 Live organizer refresh 13 September at 19:28 UTC: deadline 15 September 00:00 UTC /

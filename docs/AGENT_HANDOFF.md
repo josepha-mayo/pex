@@ -33,6 +33,13 @@ user Temp directory to
 `D:\PEX-c-drive-trash-20260913\temp-loose-files`. The installed RC4 under
 LocalAppData was retained for the exact native acceptance/recording check.
 
+The refreshed transfer bundle is
+`D:\PEX-recording-kit-f2832a8-v3.zip`, 102,231,240 bytes, SHA-256
+`21b5ae2134ac4dae8c019ec8cd509ca887074c675613aef001294a2c888e8215`.
+It has 19 entries and was reopened after creation; all eight entries named in
+its `SHA256SUMS.txt` recomputed exactly. It preserves the RC4 installer and adds
+the fresh OpenCode recovery evidence plus installed-bridge soak evidence.
+
 ## AUTHORITATIVE CURRENT STATE — f2832a8 / RC4 (2026-09-13)
 
 This section supersedes every older package/status section below it. The clean,
