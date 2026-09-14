@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { BrandMark } from "./components/BrandMark";
+import { ChatHome } from "./components/ChatHome";
 import { CommandDeck } from "./components/CommandDeck";
 import type { GoalDraft } from "./components/GoalEditor";
 import {
@@ -378,6 +379,8 @@ export function App() {
   const [surface, setSurface] = useState<Surface>(() => surfaceFromHash());
   const [activeView, setActiveView] = useState<DeckView>("now");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [chosenWorkspace, setChosenWorkspace] = useState("");
+  const [choosingWorkspace, setChoosingWorkspace] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalDraft, setGoalDraft] = useState<GoalDraft>(EMPTY_GOAL);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
@@ -811,9 +814,9 @@ export function App() {
   }, [shell, surface]);
 
   useEffect(() => {
-    if (!goalFocusRequest || shell !== "main" || surface !== "inspector") return;
+    if (!goalFocusRequest || shell !== "main" || surface !== "compact") return;
     const frame = window.requestAnimationFrame(() => {
-      const target = document.querySelector<HTMLElement>('[data-goal-setup="true"]');
+      const target = document.querySelector<HTMLElement>('#simple-goal');
       target?.focus({ preventScroll: true });
       target?.scrollIntoView({ block: "start" });
     });
@@ -994,6 +997,11 @@ export function App() {
   // An explicit selection is an interaction boundary. If it disappears, show
   // unavailable state instead of silently retargeting an open goal form.
   const current = selectedId ? explicitlySelected : selectPrimarySession(pet ? homeSessions : sessions);
+  useEffect(() => {
+    if (!chosenWorkspace || selectedId !== "workspace:unselected" || savingGoal) return;
+    const matching = sessions.find(s => s.cwd === chosenWorkspace && canAttachPersistentGoal(s));
+    if (matching) setSelectedId(matching.id);
+  }, [chosenWorkspace, selectedId, sessions, savingGoal]);
   const attachedGoal = availableGoals.find((goal) => goal.id === current?.goal_id);
   const projectId = current?.project_id || attachedGoal?.project_id || current?.cwd || "";
   const identitySelectedProjectId = identityTargetProjectId ?? projectId;
@@ -1632,6 +1640,10 @@ export function App() {
 
   async function savePersistentGoal(event: FormEvent) {
     event.preventDefault();
+    if (surface === "compact" && (!chosenWorkspace || !current || current.cwd !== chosenWorkspace)) {
+      setNote("Choose an agent session in the selected folder before starting supervision.");
+      return;
+    }
     if (!goalMutationAvailable) {
       setNote("Canonical goal state is unavailable. Refresh before saving changes.");
       return;
@@ -2274,8 +2286,34 @@ export function App() {
   }
 
   function openGoalSetup() {
-    openInspector();
+    if (current?.cwd) setChosenWorkspace(current.cwd);
+    showSurface("compact");
     setGoalFocusRequest((request) => request + 1);
+  }
+
+  function selectWorkspaceFolder(path: string) {
+    if (savingGoal) return;
+    setChosenWorkspace(path);
+    const match = sessions.find(s => s.cwd === path && canAttachPersistentGoal(s));
+    setSelectedId(match?.id || "workspace:unselected");
+    setGoalDraft({ ...EMPTY_GOAL, projectId: path });
+    setEditingGoalId(null);
+    setNote(null);
+    setQuestion("");
+    setAnswer("");
+  }
+
+  async function chooseWorkspaceFolder() {
+    if (choosingWorkspace || savingGoal) return;
+    setChoosingWorkspace(true);
+    try {
+      if (!TAURI) throw new Error("Use Enter a folder path instead in the browser preview. The desktop app opens a folder chooser.");
+      const { invoke } = await import("@tauri-apps/api/core");
+      const path = await invoke<string | null>("choose_workspace_folder");
+      if (path) selectWorkspaceFolder(path);
+    } catch (error) {
+      setNote(operationError(error, "Could not open the folder chooser. Use Enter a folder path instead."));
+    } finally { setChoosingWorkspace(false); }
   }
 
   if (shell === "pet") {
@@ -2439,7 +2477,7 @@ export function App() {
               onClick={() => showSurface(item)}
               key={item}
             >
-              {item === "compact" ? "Home" : titleCase(item)}
+              {item === "compact" ? "Chat" : item === "inspector" ? "Activity" : "Advanced"}
             </button>
           ))}
         </nav>
@@ -2447,93 +2485,30 @@ export function App() {
       </header>
 
       {surface === "compact" ? (
-        <section
-          className="compact-surface surface-focus-target"
-          data-surface-root="compact"
-          aria-label="PEX compact companion"
-          tabIndex={-1}
-        >
-          <aside className="worker-rail" aria-label="Your workers">
-            <div className="worker-rail-heading">
-              <p className="eyebrow">Agent harnesses</p>
-              <span>{sessionStateFresh ? `${homeSessions.length} available` : "checking"}</span>
-            </div>
-            {homeSessions.slice(0, 8).map((session) => (
-              <button key={session.id} type="button" className="worker-choice"
-                aria-pressed={current?.id === session.id}
-                onClick={() => setSelectedId(session.id)}>
-                <strong>{titleCase(session.harness_type)}</strong>
-                <small>{session.label || session.cwd?.split(/[\\/]/).filter(Boolean).pop() || "Existing session"}</small>
-                <small>{titleCase(session.status)}</small>
-              </button>
-            ))}
-            {!homeSessions.length ? (
-              <div className="harness-empty" aria-label="Supported agent harnesses">
-                <span><i aria-hidden="true">O</i><strong>OpenCode</strong></span>
-                <span><i aria-hidden="true">C</i><strong>Codex</strong></span>
-                <small>{sessionStateFresh ? "No available worker yet" : "Waiting for local state"}</small>
-              </div>
-            ) : null}
-            <button type="button" className="ghost" onClick={() => openSettings("connections")}>Connect a worker</button>
-          </aside>
-          <div className="compact-companion">
-            <div className="workspace-heading">
-              <p className="eyebrow">{current ? `${titleCase(current.harness_type)} workspace` : "Your workspace"}</p>
-              <h1>{attachedGoal?.title || "What are we working toward?"}</h1>
-              <p>{current?.cwd || "Connect OpenCode or Codex, then give PEX a goal to supervise."}</p>
-            </div>
-            <PetStage
-              name={petName}
-              sheet={sheet}
-              mood={mood}
-              scale={1.08}
-              reducedMotion={reducedMotion}
-              status={setup ? undefined : homeStatus}
-              statusIdentity={action?.id}
-              onActivate={() => openInspector()}
-            />
-            <div
-              className="compact-metrics"
-              aria-label={sessionStateFresh ? "Live PEX counts" : "PEX counts unavailable"}
-            >
-              <span><strong>{sessionStateFresh ? pet?.working || 0 : "—"}</strong> working</span>
-              <span><strong>{sessionStateFresh ? pet?.needs_you || 0 : "—"}</strong> need you</span>
-              <span><strong>{sessionStateFresh ? pet?.drifting || 0 : "—"}</strong> drifting</span>
-            </div>
-          {attachedGoal ? (
-            <p className="compact-goal">
-              <span>{goalStateFresh ? "Persistent goal" : "Cached persistent goal"}</span>
-              <strong>{attachedGoal.title}</strong>
-            </p>
-          ) : null}
-            {setup ? (
-              <div className="compact-setup">
-                <p className="eyebrow">Your next step</p>
-                <h1>{setup.title}</h1>
-                <p>{setup.detail}</p>
-                <div className="button-row">
-                  {setup.cta ? (
-                    <button type="button" className="solid" onClick={() => {
-                      if (setup.cta?.intent === "goal") openGoalSetup();
-                      else openSettings("connections");
-                    }}>{setup.cta.label}</button>
-                  ) : null}
-                  <button type="button" className="ghost" onClick={() => openInspector()}>Inspect current state</button>
-                </div>
-              </div>
-            ) : (
-              <button type="button" className="solid compact-open" onClick={() => openInspector()}>
-                Inspect what PEX knows
-              </button>
-            )}
-            {setup?.state !== "unavailable" ? supervisorNotice : null}
-          </div>
-          {compactGoalIssue && setup?.state !== "unavailable" ? (
-            <p className="canonical-state-warning compact-state-warning" role="status" aria-live="polite">
-              {compactGoalIssue} Goal controls stay unavailable until refresh succeeds.
-            </p>
-          ) : null}
-        </section>
+        <ChatHome
+          workspace={chosenWorkspace}
+          current={current?.cwd === chosenWorkspace ? current : undefined}
+          sessions={sessions}
+          goal={current?.cwd === chosenWorkspace ? attachedGoal : undefined}
+          action={current?.cwd === chosenWorkspace ? action : undefined}
+          objective={goalDraft.objective}
+          saving={savingGoal}
+          choosing={choosingWorkspace}
+          available={goalMutationAvailable && sessionStateFresh && Boolean(current && canAttachPersistentGoal(current))}
+          note={note || compactGoalIssue}
+          question={question}
+          answer={answer}
+          asking={asking}
+          onChooseFolder={() => void chooseWorkspaceFolder()}
+          onWorkspace={selectWorkspaceFolder}
+          onSession={setSelectedId}
+          onObjective={(objective) => setGoalDraft(draft => ({ ...draft, objective }))}
+          onSave={(event) => void savePersistentGoal(event)}
+          onQuestion={setQuestion}
+          onAsk={(event) => void askPex(event)}
+          onDetails={() => openInspector()}
+          onConnect={() => openSettings("connections")}
+        />
       ) : null}
 
       {surface === "inspector" ? (

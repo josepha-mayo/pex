@@ -989,7 +989,7 @@ test("companion headline names the harness and does not invent token savings", (
   assert.doesNotMatch(configuredModelCopy, /semantic model is loaded|ready|successful inference|saved \d+k/i);
 });
 
-test("compact companion is the one-line pet, not a worker catalog", async () => {
+test("chat home separates the simple composer from detailed settings", async () => {
   const { readFile } = await import("node:fs/promises");
   const { dirname, join } = await import("node:path");
   const { fileURLToPath } = await import("node:url");
@@ -997,11 +997,11 @@ test("compact companion is the one-line pet, not a worker catalog", async () => 
     join(dirname(fileURLToPath(import.meta.url)), "App.tsx"),
     "utf8",
   );
-  const compactStart = app.indexOf('aria-label="PEX compact companion"');
-  const compactEnd = app.indexOf('surface === "inspector"');
+  const compactStart = app.indexOf('<ChatHome');
+  const compactEnd = app.indexOf('surface === "inspector"', compactStart);
   const compact = app.slice(compactStart, compactEnd);
-  assert.match(compact, /Live PEX counts/);
-  assert.match(compact, /Inspect what PEX knows/);
+  assert.match(compact, /onChooseFolder/);
+  assert.match(compact, /onSave=\{\(event\) => void savePersistentGoal\(event\)\}/);
   assert.doesNotMatch(compact, /Active agents/);
   assert.doesNotMatch(compact, /AskPex/);
   assert.doesNotMatch(compact, /Choose your PEX pet/);
@@ -1606,7 +1606,7 @@ test("pet renders separate keyboard buttons for status dismissal, activation, an
   }
 });
 
-test("compact home presents the supported MVP harnesses and a readable companion", async () => {
+test("chat home retains explicit session selection and a scrollable conversation", async () => {
   const { readFile } = await import("node:fs/promises");
   const { dirname, join } = await import("node:path");
   const { fileURLToPath } = await import("node:url");
@@ -1615,18 +1615,16 @@ test("compact home presents the supported MVP harnesses and a readable companion
     readFile(join(root, "App.tsx"), "utf8"),
     readFile(join(root, "styles.css"), "utf8"),
   ]);
-  assert.match(app, /Agent harnesses/u);
-  assert.match(app, /Supported agent harnesses[\s\S]*OpenCode[\s\S]*Codex/u);
-  assert.match(app, /`\$\{homeSessions\.length\} available`/u);
-  assert.match(app, /homeSessions\.slice\(0, 8\)/u);
+  assert.match(app, /<ChatHome/u);
+  assert.match(app, /chosenWorkspace/u);
+  assert.match(app, /choose_workspace_folder/u);
   assert.match(app, /selectedId \? explicitlySelected : selectPrimarySession\(pet \? homeSessions : sessions\)/u);
   assert.match(app, /function openInspector\(sessionId: string \| undefined = current\?\.id\)/u);
   assert.match(app, /if \(sessionId\) setSelectedId\(sessionId\)/u);
   assert.match(app, /if \(next !== "compact" && current\) setSelectedId\(current.id\)/u);
   assert.doesNotMatch(app, /`\$\{sessions\.length\} live`/u);
-  assert.match(app, /scale=\{1\.08\}/u);
-  assert.match(styles, /\.harness-empty\s*\{/u);
-  assert.match(styles, /\.compact-companion \.pet-actor\s*\{\s*width:\s*148px;\s*min-height:\s*164px;/u);
+  assert.match(styles, /\.chat-thread\s*\{[^}]*overflow-y:auto/u);
+  assert.match(styles, /\.chat-compose-area\s*\{/u);
 });
 
 test("goal editor locks submitted fields only while saving", async () => {

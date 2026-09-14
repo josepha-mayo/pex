@@ -596,6 +596,7 @@ fn packaged_bridge_path(resource_root: &Path) -> Result<PathBuf, String> {
     }
     Ok(executable)
 }
+
 fn bridge_sidecar_args() -> [&'static str; 4] {
     ["--host", BRIDGE_HOST, "--port", BRIDGE_PORT]
 }
@@ -665,6 +666,31 @@ fn bridge_bootstrap_status(runtime: tauri::State<'_, BridgeRuntime>) -> BridgeBo
 #[tauri::command]
 fn retry_bridge(app: tauri::AppHandle) -> BridgeBootstrapStatus {
     schedule_bridge_bootstrap(&app)
+}
+
+#[tauri::command]
+async fn choose_workspace_folder() -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        #[cfg(target_os = "linux")]
+        {
+            let output = std::process::Command::new("zenity")
+                .env_remove("LD_LIBRARY_PATH")
+                .env_remove("LD_PRELOAD")
+                .args(["--file-selection", "--directory", "--title=Choose your agent's workspace"])
+                .output()
+                .map_err(|_| "Folder chooser unavailable. Install zenity or enter the folder path.".to_string())?;
+            if output.status.code() == Some(1) { return Ok(None); }
+            if !output.status.success() { return Err("Folder chooser could not open. Enter the folder path instead.".to_string()); }
+            let value = String::from_utf8(output.stdout)
+                .map_err(|_| "The selected path is not valid UTF-8.".to_string())?;
+            let value = value.trim_end_matches(['\r', '\n']);
+            let path = Path::new(value);
+            if !path.is_absolute() || !path.is_dir() { return Err("Choose an existing folder.".to_string()); }
+            Ok(Some(value.to_string()))
+        }
+        #[cfg(not(target_os = "linux"))]
+        { Err("Use Enter a folder path instead on this platform.".to_string()) }
+    }).await.map_err(|_| "Folder chooser stopped unexpectedly.".to_string())?
 }
 
 fn fail_bridge_attempt(
@@ -1048,6 +1074,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             bridge_token,
             bridge_bootstrap_status,
+            choose_workspace_folder,
             retry_bridge
         ])
         .setup(|app| {
@@ -1105,8 +1132,8 @@ mod tests {
         command_event_is_terminal, is_pex_identity_response, normalize_bridge_token,
         packaged_bridge_path, remaining_timeout, trusted_webview_navigation, window_close_action,
         BridgeAuth, BridgeBootstrapPhase, BridgePortState, BridgeRuntime, BridgeSource,
-        WindowCloseAction, BRIDGE_IDENTITY_MISS_LIMIT, BRIDGE_IDENTITY_MONITOR_INTERVAL,
-        BRIDGE_EXECUTABLE_NAME, BRIDGE_PYTHON_RUNTIME_NAME, MAX_BRIDGE_TOKEN_CHARS,
+        WindowCloseAction, BRIDGE_EXECUTABLE_NAME, BRIDGE_IDENTITY_MISS_LIMIT,
+        BRIDGE_IDENTITY_MONITOR_INTERVAL, BRIDGE_PYTHON_RUNTIME_NAME, MAX_BRIDGE_TOKEN_CHARS,
     };
 
     #[test]
