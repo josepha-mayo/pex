@@ -1161,12 +1161,6 @@ def _preserve_deterministic_truth(
             semantic.traces.append("incomplete_inference_action_rejected")
         return semantic
 
-    # A completed NOOP is a real supervisor decision.  In particular, do not
-    # restore a stale pre-model REQUEST_VERIFICATION after the supervisor has
-    # used its evidence tools and concluded that no action is needed.
-    if semantic.action.type == InterventionType.NOOP:
-        return semantic
-
     verification = (request.scores.features or {}).get("verification") or {}
     acceptance_supported = verification.get("acceptance_status") == "supported"
     verification_status = verification.get("status")
@@ -1174,6 +1168,22 @@ def _preserve_deterministic_truth(
         "supported",
         "no_claims",
     }
+    # A completed NOOP is a real supervisor decision. In particular, do not
+    # restore a stale pre-model REQUEST_VERIFICATION after inspection. When a
+    # model proposed an uncited intervention against already-supported
+    # acceptance, the validation layer has already converted it to NOOP; retain
+    # the explicit deterministic-truth trace instead of making that safety path
+    # look like an ordinary model-selected silence.
+    if semantic.action.type == InterventionType.NOOP:
+        if (
+            deterministic.type == InterventionType.NOOP
+            and completion_supported
+            and "invalid_evidence_refs" in semantic.diagnosis
+        ):
+            semantic.diagnosis = f"{semantic.diagnosis}:verified_noop_preserved"
+            semantic.traces.append("verified_noop_preserved")
+        return semantic
+
     if (
         deterministic.type == InterventionType.NOOP
         and completion_supported

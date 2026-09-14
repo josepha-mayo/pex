@@ -78,13 +78,22 @@ def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
     authorize an intervention.
     """
 
+    features = request.scores.features or {}
+    verification = features.get("verification")
+    acceptance_supported = (
+        isinstance(verification, dict)
+        and verification.get("status") == "supported"
+        and verification.get("acceptance_status") == "supported"
+    )
+
     # Semantic inference currently runs on STOP. Give that hot path one
     # purpose-built read instead of resending seven overlapping tool schemas and
-    # encouraging small BYOK models to spend separate turns touring them. The
-    # combined observation remains request-bound, read-only, redacted and
-    # independently citable.
+    # encouraging small BYOK models to spend separate turns touring them. When
+    # the request already carries a fully supported deterministic acceptance
+    # receipt, omit the duplicate read entirely: NOOP needs no evidence citation
+    # and the model still makes the semantic decision through Strands.
     if request.event.event_type == EventType.STOP:
-        selected = {"inspect_acceptance"}
+        selected = set() if acceptance_supported else {"inspect_acceptance"}
     else:
         selected = {
             "get_recent_events",
@@ -96,11 +105,10 @@ def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
             "run_verification",
         }
     context = request.supervisor_context
-    if context is not None and context.offered_context_ids:
+    if not acceptance_supported and context is not None and context.offered_context_ids:
         selected.add("get_context_items")
-    if context is not None and context.offered_decision_ids:
+    if not acceptance_supported and context is not None and context.offered_decision_ids:
         selected.add("get_decisions")
-    features = request.scores.features or {}
     if features.get("abandoned_background"):
         selected.add("inspect_process")
     # Completion claims are local facts and must not add two public-web schemas

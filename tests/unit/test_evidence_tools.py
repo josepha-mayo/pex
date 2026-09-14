@@ -219,6 +219,21 @@ def test_model_tool_profile_omits_irrelevant_high_cost_schemas():
     assert len(selected) == 1
 
 
+def test_supported_stop_omits_duplicate_acceptance_tool_round():
+    request = _request(0.1)
+    request.scores.features["verification"] = {
+        "status": "supported",
+        "acceptance_status": "supported",
+        "acceptance_evidence": ["pytest_ok=true"],
+    }
+
+    selected = select_evidence_tool_names(request)
+    tools = build_evidence_tools(request, [], tool_names=selected)
+
+    assert selected == ()
+    assert tools == []
+
+
 def test_model_tool_profile_adds_only_observed_optional_surfaces():
     request = _request(0.1)
     request.scores.features["public_claims"] = ["public release claim"]
