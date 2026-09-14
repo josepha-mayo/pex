@@ -4383,12 +4383,16 @@ class Pipeline:
             if status in {"contradicted", "acceptance_gap"}:
                 prior.outcome = "acceptance_still_unsatisfied"
                 prior.helped = False
+                prior.metadata["outcome_final"] = True
             elif status == "supported" or acceptance_status == "supported":
                 prior.outcome = "goal_evidence_supported"
                 prior.helped = True
+                prior.metadata["outcome_final"] = True
             else:
+                # Some harnesses publish STOP before the final response or
+                # terminal test output. Uncertain is not a terminal outcome;
+                # keep the intervention eligible for the later evidence.
                 prior.outcome = "worker_stopped_outcome_uncertain"
-            prior.metadata["outcome_final"] = True
         else:
             prior.outcome = "worker_progress_observed"
         if persist:

@@ -399,6 +399,73 @@ async def test_exact_codex_turn_receipt_remains_eligible_for_outcome_attribution
 
 
 @pytest.mark.asyncio
+async def test_uncertain_stop_remains_eligible_for_later_terminal_evidence(tmp_path):
+    created_at = datetime.now(UTC)
+    session = _session(HarnessType.CODEX, str(tmp_path))
+    turn_id = "turn-awaiting-final-evidence"
+    action = ProposedAction(
+        type=InterventionType.SEND_NUDGE,
+        session_id=session.id,
+        goal_id=session.goal_id,
+        payload={"text": "Fix the failing test and verify it."},
+        rationale="A test still fails.",
+        evidence=["pytest:failed"],
+    )
+    prior = Intervention(
+        id="codex-awaiting-final-evidence",
+        session_id=session.id,
+        goal_id=session.goal_id,
+        trigger=EventType.STOP.value,
+        evidence=action.evidence,
+        diagnosis=action.rationale,
+        proposed_action=action,
+        confidence=action.confidence,
+        risk=action.risk.value,
+        reversible=action.reversible,
+        authority_required=action.authority_required.value,
+        action_taken=action.type.value,
+        policy_verdict=PolicyVerdict.ALLOW,
+        result="sent",
+        created_at=created_at,
+        metadata={
+            "worker_delivery_receipt": {
+                "schema": "pex.worker-delivery.codex-turn.v1",
+                "target_session_id": session.id,
+                "vendor_session_id": session.vendor_session_id,
+                "vendor_turn_id": turn_id,
+            },
+        },
+    )
+    event = _later_stop(session, created_at).model_copy(
+        update={
+            "event_id": f"{session.id}:turn:{turn_id}",
+            "raw_event_ref": json.dumps(
+                {
+                    "schema": "pex.codex-event-ref.v1",
+                    "thread_id": session.vendor_session_id,
+                    "turn_id": turn_id,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+            "metadata": {"vendor_turn_id": turn_id},
+        }
+    )
+
+    updates = await _pipeline_with(prior)._observe_prior_intervention(
+        session,
+        event,
+        {"status": "no_claims", "acceptance_status": "uncertain"},
+        persist=False,
+    )
+
+    assert len(updates) == 1
+    assert updates[0].outcome == "worker_stopped_outcome_uncertain"
+    assert updates[0].helped is None
+    assert updates[0].metadata.get("outcome_final") is not True
+
+
+@pytest.mark.asyncio
 async def test_shared_codex_normalized_delivery_events_require_exact_durable_binding(tmp_path):
     coordinator, transport = await _subscribed(tmp_path)
     adapter = CodexSharedAdapter(coordinator)
