@@ -40,34 +40,38 @@ export function GoalEditor({
       <fieldset className="goal-form-fields" disabled={saving} aria-label="Goal details">
       {projectIdentity ? (
         <p className="goal-project-identity">
-          <span>Project identity</span>
+          <span>Workspace</span>
           <code>{projectIdentity}</code>
         </p>
       ) : (
         <label>
-          Project identity
+          Workspace
           <input
             value={draft.projectId}
             onChange={(event) => onChange("projectId", event.target.value)}
-            placeholder="Stable project id or workspace path"
+            placeholder="Select a session, or enter its workspace path"
           />
         </label>
       )}
       <label>
-        Goal title
-        <input
-          value={draft.title}
-          onChange={(event) => onChange("title", event.target.value)}
-          placeholder="Ship a verified release"
-        />
-      </label>
-      <label>
-        Objective
+        What should get done?
         <textarea
           value={draft.objective}
           onChange={(event) => onChange("objective", event.target.value)}
-          rows={4}
-          placeholder="What outcome should persist across chats? Labeled Acceptance criteria lists are extracted if the fields below are empty."
+          rows={6}
+          placeholder="Describe the result you want and how to check it. You can paste your whole goal here."
+        />
+      </label>
+      <p className="goal-help">PEX checks this goal as your agent works. Include an “Acceptance criteria:” list for specific checks.</p>
+      <details className="goal-options">
+      <summary>Optional details</summary>
+      <div className="goal-option-fields">
+      <label>
+        Goal name · optional
+        <input
+          value={draft.title}
+          onChange={(event) => onChange("title", event.target.value)}
+          placeholder="Named automatically from your goal"
         />
       </label>
       <label>
@@ -146,6 +150,8 @@ export function GoalEditor({
           />
         </label>
       </div>
+      </div>
+      </details>
       <div className="button-row">
         <button
           className="solid"
@@ -153,7 +159,6 @@ export function GoalEditor({
           disabled={
             saving ||
             disabled ||
-            !draft.title.trim() ||
             !draft.objective.trim() ||
             (!projectIdentity && !draft.projectId.trim())
           }
@@ -161,10 +166,10 @@ export function GoalEditor({
           {saving
             ? "Saving…"
             : editing
-              ? "Save ledger"
+              ? "Save changes"
               : willAttach
-                ? "Save and attach"
-                : "Save goal"}
+                ? "Start supervising"
+                : "Create goal"}
         </button>
         {editing && onCancel ? (
           <button type="button" className="ghost" onClick={onCancel} disabled={saving}>
