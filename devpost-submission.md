@@ -57,7 +57,7 @@ Required upload asset: `docs/architecture/pex-architecture.png`.
 
 ## Testing Instructions
 
-1. On Windows, download the exact RC4 installer from `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4` and install it. The installer is unsigned, so Windows may show a publisher warning.
+1. On Windows, download the exact RC5 installer from `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc5` and install it. The installer is unsigned, so Windows may show a publisher warning.
 2. For a source run instead, clone `https://github.com/josepha-mayo/pex`, follow the pinned prerequisites in the README, run `./scripts/install.ps1`, then `npm --prefix apps/desktop run tauri dev`.
 3. Start a throwaway OpenCode worker with `opencode serve --port 4096` and attach a terminal using `opencode attach http://127.0.0.1:4096`.
 4. In PEX Settings → Connections, connect OpenCode at `http://127.0.0.1:4096`.
@@ -113,8 +113,8 @@ Recording flow:
   2026-09-13. Keep current-build UI frames in the screenshot gallery rather
   than using an older build as package proof.
 - Public repo and MIT license are ready.
-- Public unsigned Windows RC4: `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4`, targeting exact product source `f2832a8651442eb3ee47a508a9c81cc16a82ec5d`.
-- RC4 installer: 101,722,399 bytes; SHA-256 `63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`. Its packaged receipt, installed executable hashes, authenticated bridge identity, and packaged settings smoke all passed.
+- Public unsigned Windows RC5: `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc5`, targeting exact product source `5bd01945098284b994f488011848c7aedcfe1863`.
+- RC5 installer: 101,737,472 bytes; SHA-256 `8f1acb81fbd6f8eabb23b0f3185ac6385855cbde0a5e06f7f9bfa983be21b49f`. Its packaged receipt, authenticated bridge identity, packaged settings smoke, and source-bound live supervision receipts all passed.
 - Architecture PNG exists and is below the official 35 MiB limit.
 - Exact-current OpenCode proof includes a ten-case already-correct run with ten `NOOP` decisions and zero follow-ups, plus a recovery run with one `SEND_NUDGE`, exact repaired output, `helped:true`, and a final `NOOP` in the same worker session.
 - Exact-current Codex proof is retained at `docs/demo/evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md`: recovery produced one same-thread `SEND_NUDGE`, exact `shipped`, `helped:true`, then `NOOP`; the quiet control produced exact `pong`, only `NOOP`, and zero follow-ups.
@@ -155,7 +155,7 @@ Recording flow:
 - AWS Builder ID (`27735`, required): supplied privately by the user on 2026-09-12; do not publish the email in this repository.
 - Live demo (`27736`, optional): omit unless a stable public URL exists.
 - Testing instructions (`28191`, optional): use the concise instructions above and `docs/JUDGE_TESTING.md`.
-- Current public RC4 installer: `https://github.com/josepha-mayo/pex/releases/download/v0.1.0-rc4/PEX_0.1.0_x64-setup.exe`; SHA-256 `63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`.
+- Current public RC5 installer: `https://github.com/josepha-mayo/pex/releases/download/v0.1.0-rc5/PEX_0.1.0_x64-setup.exe`; SHA-256 `8f1acb81fbd6f8eabb23b0f3185ac6385855cbde0a5e06f7f9bfa983be21b49f`.
 - Bonus blog (`27737`, optional): `https://builder.aws.com/content/3IuxELaimn2aM3bayFznibEnnhK/agents-for-humans-teaching-pex-when-to-stay-quiet` (signed-in Published state observed; logged-out reachability still needs confirmation).
 - Demo video (required deliverable): TODO — public YouTube or Vimeo URL, no longer than 5 minutes.
 - Codex session ID: not requested by the current official form; omit.

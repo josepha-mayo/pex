@@ -6,13 +6,13 @@ retain the screenshot/log; do not film around a defect.
 ## 1. Download and verify
 
 Download `PEX_0.1.0_x64-setup.exe` from the public
-[PEX 0.1.0 RC4](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc4),
-or copy it from `build/release-candidate-f2832a8/` on the development laptop.
-RC4 is exact source `f2832a8651442eb3ee47a508a9c81cc16a82ec5d`.
-Its four installed executables match the exclusive receipt, and the installed
-bridge passed authenticated settings smoke with the same result bytes as the
-packaged candidate. RC3 passed the unchanged native renderer/overlay UX; do not
-skip the exact-build visual gates below for RC4.
+[PEX 0.1.0 RC5](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc5),
+or copy it from `build/release-candidate-5bd0194-r1/` on the development laptop.
+RC5 is exact source `5bd01945098284b994f488011848c7aedcfe1863`.
+Its packaged executable inventory matches the exclusive receipt, and the frozen
+bridge passed authenticated settings smoke. RC3 passed the unchanged native
+renderer/overlay UX; do not
+skip the exact-build visual gates below for RC5.
 
 ```powershell
 $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
@@ -20,10 +20,10 @@ $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
 (Get-FileHash -LiteralPath $pexInstaller -Algorithm SHA256).Hash
 ```
 
-Expected bytes for RC4: `101722399`
+Expected bytes for RC5: `101737472`
 
 Expected SHA-256:
-`63D9F4AE90AC9B3F83F5334B3D3C9ABF8EF3DB7D8BE82E87FF1876F3B007B18A`
+`8F1ACB81FBD6F8EABB23B0F3185AC6385855CBDE0A5E06F7F9BFA983BE21B49F`
 
 The installer is unsigned, so a Windows publisher warning is expected. Reject
 the file if its size or hash differs.

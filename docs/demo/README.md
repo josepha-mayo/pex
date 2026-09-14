@@ -5,11 +5,11 @@ directory are historical references and must not be presented as final-source pr
 
 ## Current checkpoint — 13 September 2026
 
-- Current installed product source: `f2832a8`. The retained NSIS is
-  `build/release-candidate-f2832a8/PEX_0.1.0_x64-setup.exe`, 101,722,399 bytes,
-  SHA-256 `63d9f4ae90ac9b3f83f5334b3d3c9abf8ef3db7d8be82e87ff1876f3b007b18a`.
-  Its MSI/NSIS receipt has zero blockers and the installed desktop matches the
-  NSIS payload. See the [active shipping gate](../MVP_SHIP_GATE.md).
+- Current release product source: `5bd0194`. The retained NSIS is
+  `build/release-candidate-5bd0194-r1/PEX_0.1.0_x64-setup.exe`, 101,737,472 bytes,
+  SHA-256 `8f1acb81fbd6f8eabb23b0f3185ac6385855cbde0a5e06f7f9bfa983be21b49f`.
+  Its MSI/NSIS receipt has zero blockers and verifies the packaged executable
+  inventory. See the [active shipping gate](../MVP_SHIP_GATE.md).
 - Both installers contain exactly Pex and Von. The preceding build passed bounded native Home, Settings,
   transparent Von, independent message dismissal, separate overlay Hide/Escape,
   bridge liveness and ordinary shutdown. Exact `f2832a8` passed installation,
@@ -29,7 +29,7 @@ directory are historical references and must not be presented as final-source pr
   bounded bridge evidence, not full-desktop leak freedom.
 - AgentCore is implemented and locally tested, not deployed. PexBench remains
   unfrozen with no coherent four-arm run or valid score. Final video and final
-  submission remain open; the matching RC4 release is public. Follow the
+  submission remain open; the matching RC5 release is public. Follow the
   [active ship gate](../MVP_SHIP_GATE.md).
 - The [MVP behavior scorecard](MVP_BEHAVIOR_SCORECARD.md) consolidates the live
   recovery, quiet-control, resource, and current implementation evidence while
