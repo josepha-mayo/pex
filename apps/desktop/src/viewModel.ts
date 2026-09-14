@@ -886,7 +886,7 @@ export function createGoalPayload(input: {
   return {
     ...(input.idempotencyKey ? { idempotency_key: input.idempotencyKey } : {}),
     project_id: input.projectId,
-    title: input.title.trim(),
+    title: input.title.trim() || input.objective.trim().split(/\r?\n/)[0].slice(0, 80),
     objective: input.objective.trim(),
     acceptance_criteria: normalizeLines(input.acceptance),
     constraints: normalizeLines(input.constraints),

@@ -1643,7 +1643,6 @@ export function App() {
     }
     const goalProjectId = current?.project_id || current?.cwd || goalDraft.projectId.trim();
     if (
-      !goalDraft.title.trim() ||
       !goalDraft.objective.trim() ||
       savingGoal
     ) return;
@@ -2314,6 +2313,7 @@ export function App() {
   if (shell === "settings") {
     return (
       <SettingsPage
+        onCreateGoal={openGoalSetup}
         initialSection={settingsDestination}
         goals={availableGoals}
         note={note}

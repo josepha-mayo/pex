@@ -460,6 +460,17 @@ test("goal control retries retain identity only for the same logical request", (
   assert.equal(issued, 3);
 });
 
+test("goal names are optional for creation and editing", () => {
+  const draft = {
+    projectId: "demo", title: "", objective: "  Finish the demo\nAcceptance criteria:\n- tests pass",
+    acceptance: "", constraints: "", nonGoals: "", evidence: "",
+  };
+  assert.equal(createGoalPayload(draft).title, "Finish the demo");
+  assert.equal(updateGoalPayload(draft, 1).title, "Finish the demo");
+  assert.equal(createGoalPayload({ ...draft, title: " My title " }).title, "My title");
+  assert.equal(createGoalPayload({ ...draft, objective: "x".repeat(200) }).title.length, 80);
+});
+
 test("goal payload keeps constraints and non-goals separate", () => {
   const payload = createGoalPayload({
     projectId: "pex",
@@ -1654,8 +1665,9 @@ test("goal editor objective is a textarea so a full task can be pasted", async (
     join(dirname(fileURLToPath(import.meta.url)), "components/GoalEditor.tsx"),
     "utf8",
   );
-  assert.match(source, /Objective[\s\S]*<textarea/);
-  assert.doesNotMatch(source, /Objective[\s\S]*<input[\s\S]*What outcome should persist/);
+  assert.match(source, /What should get done\?[\s\S]*<textarea/);
+  assert.match(source, /<details className="goal-options">/);
+  assert.match(source, /Start supervising/);
 });
 
 test("ledger edit maps the stored goal onto a PATCH update payload", () => {
@@ -1734,7 +1746,7 @@ test("goal mutations preserve committed success across refresh failures", async 
   const root = dirname(fileURLToPath(import.meta.url));
   const inspector = await readFile(join(root, "components/Inspector.tsx"), "utf8");
   const app = await readFile(join(root, "App.tsx"), "utf8");
-  assert.match(inspector, /Edit this ledger/);
+  assert.match(inspector, /Edit goal/);
   assert.match(inspector, /Rejected approaches/);
   assert.match(app, /\/v1\/goals\/\$\{encodeURIComponent\(editingGoalId\)\}/);
   assert.match(app, /method:\s*"PATCH"/);

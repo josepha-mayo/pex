@@ -139,7 +139,7 @@ export function Inspector({
       ) : null}
       {sessions.length > 1 ? (
         <label className="session-picker">
-          Inspect a worker · includes recorded sessions
+          OpenCode or other agent session
           <select value={current?.id || ""} disabled={!onSelectSession}
             onChange={(event) => onSelectSession?.(event.target.value)}>
             {!current ? <option value="" disabled>Choose a worker</option> : null}
@@ -152,6 +152,8 @@ export function Inspector({
         </label>
       ) : null}
 
+      <details className="goal-options" key={goal ? "supervising" : "setup"} open={Boolean(goal)}>
+      <summary>Activity and evidence</summary>
       <div className="inspector-grid">
         <section className="story-card session-story">
           <div className="card-heading">
@@ -258,6 +260,7 @@ export function Inspector({
         </section>
       </div>
 
+      </details>
       <section className="goal-card" data-goal-setup="true" tabIndex={-1} aria-label="Persistent goal setup">
         <div className="card-heading">
           <span>
@@ -297,6 +300,9 @@ export function Inspector({
             <p className="note" role="status">
               {goalCompletionCopy(goal, completion, canonicalStateAvailable)}
             </p>
+            <p className="goal-help">{goal.objective}</p>
+            <details className="goal-options">
+            <summary>Checks and details</summary>
             <div className="goal-boundaries">
               <Boundary label="Acceptance" values={goal.acceptance_criteria} />
               <Boundary label="Constraints" values={goal.constraints} />
@@ -307,16 +313,17 @@ export function Inspector({
               <Boundary label="Rejected approaches" values={ledger.rejected.map((item) => item.statement)} />
               <Boundary label="Unresolved questions" values={ledger.unresolved.map((item) => item.statement)} />
             </div>
+            </details>
             {onEditGoal ? (
               <div className="button-row">
                 <button type="button" className="ghost" onClick={onEditGoal} disabled={savingGoal || !goalActionsAvailable}>
-                  Edit this ledger
+                  Edit goal
                 </button>
               </div>
             ) : null}
           </>
         ) : (
-          <p className="empty-copy">PEX inspects against a stored goal, not whichever chat spoke last.</p>
+          <p className="empty-copy">Give PEX a goal to supervise this session.</p>
         )}
         <details
           className="goal-editor"
@@ -325,10 +332,10 @@ export function Inspector({
         >
           <summary>
             {editingGoal
-              ? "Edit persistent ledger"
+              ? "Edit goal"
               : goal
-                ? "Create another persistent goal"
-                : "Create persistent goal"}
+                ? "Create another goal"
+                : "Create goal"}
           </summary>
           <GoalEditor
             draft={goalDraft}
