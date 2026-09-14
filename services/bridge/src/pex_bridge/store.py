@@ -500,6 +500,13 @@ CREATE TABLE IF NOT EXISTS goal_control_operation_migration_state (
   schema_version INTEGER NOT NULL CHECK(schema_version = 1),
   json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS intervention_binding_migration_state (
+  singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+  initialized_at TEXT NOT NULL,
+  legacy_unbound_count INTEGER NOT NULL CHECK(legacy_unbound_count >= 0),
+  schema_version INTEGER NOT NULL CHECK(schema_version = 1),
+  json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS goal_control_operations (
   operation_id TEXT PRIMARY KEY,
   principal_id TEXT NOT NULL CHECK(principal_id = 'local_bridge_operator'),
@@ -1146,6 +1153,16 @@ CREATE TRIGGER IF NOT EXISTS trg_goal_control_operation_migration_no_delete
 BEFORE DELETE ON goal_control_operation_migration_state
 BEGIN
   SELECT RAISE(ABORT, 'goal control operation migration state is append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_intervention_binding_migration_immutable
+BEFORE UPDATE ON intervention_binding_migration_state
+BEGIN
+  SELECT RAISE(ABORT, 'intervention binding migration state is immutable');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_intervention_binding_migration_no_delete
+BEFORE DELETE ON intervention_binding_migration_state
+BEGIN
+  SELECT RAISE(ABORT, 'intervention binding migration state is append-only');
 END;
 CREATE TRIGGER IF NOT EXISTS trg_goal_control_operation_immutable
 BEFORE UPDATE ON goal_control_operations
@@ -8187,6 +8204,34 @@ class Store:
     async def _migrate_intervention_project_bindings(self) -> None:
         """Add immutable intervention authority without consulting today's registry."""
 
+        marker_cursor = await self.db.execute(
+            "SELECT initialized_at, legacy_unbound_count, schema_version, json "
+            "FROM intervention_binding_migration_state WHERE singleton = 1"
+        )
+        marker_rows = await marker_cursor.fetchall()
+        if marker_rows:
+            if len(marker_rows) != 1:
+                raise RuntimeError("intervention binding migration marker is ambiguous")
+            marker_row = marker_rows[0]
+            try:
+                marker = _strict_json_loads(str(marker_row["json"]))
+            except (RuntimeError, TypeError, ValueError) as exc:
+                raise RuntimeError("intervention binding migration marker is corrupt") from exc
+            if (
+                not isinstance(marker, dict)
+                or marker != {
+                    "initialized_at": marker_row["initialized_at"],
+                    "legacy_unbound_count": marker_row["legacy_unbound_count"],
+                    "schema": "pex.intervention-binding-migration.v1",
+                    "schema_version": marker_row["schema_version"],
+                }
+                or marker_row["schema_version"] != 1
+                or not isinstance(marker_row["legacy_unbound_count"], int)
+                or marker_row["legacy_unbound_count"] < 0
+            ):
+                raise RuntimeError("intervention binding migration marker is corrupt")
+            return
+
         trigger_names = (
             "trg_interventions_require_binding",
             "trg_interventions_bound_update",
@@ -8487,6 +8532,23 @@ class Store:
             await self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_interventions_authority "
                 "ON interventions(session_id, goal_id, project_binding, ts DESC)"
+            )
+            unbound_cursor = await self.db.execute(
+                "SELECT COUNT(*) AS count FROM interventions WHERE project_binding IS NULL"
+            )
+            legacy_unbound_count = int((await unbound_cursor.fetchone())["count"])
+            initialized_at = utcnow().isoformat()
+            marker = {
+                "schema": "pex.intervention-binding-migration.v1",
+                "initialized_at": initialized_at,
+                "legacy_unbound_count": legacy_unbound_count,
+                "schema_version": 1,
+            }
+            await self.db.execute(
+                "INSERT INTO intervention_binding_migration_state("
+                "singleton, initialized_at, legacy_unbound_count, schema_version, json) "
+                "VALUES (1, ?, ?, 1, ?)",
+                (initialized_at, legacy_unbound_count, _canonical_json(marker)),
             )
             await self.db.commit()
         except Exception:

@@ -1261,7 +1261,15 @@ class OpenCodeAdapter(HarnessAdapter):
             # Preserve it as typed shell state so an earlier PEX verification
             # request can bind to the exact later command result. Do not infer
             # a passing exit from narration or a pytest summary.
-            event_type = EventType.SHELL
+            # A completed shell command is typed execution evidence, including
+            # a non-zero exit. An OpenCode tool transport failure is different:
+            # it did not produce a trustworthy completed process observation
+            # and must remain visible as TOOL_FAILURE.
+            event_type = (
+                EventType.TOOL_FAILURE
+                if state.get("status") in {"error", "failed"}
+                else EventType.SHELL
+            )
             raw_tool_metadata = state.get("metadata")
             tool_metadata = raw_tool_metadata if isinstance(raw_tool_metadata, dict) else {}
             shell_payload: dict[str, object] = {
