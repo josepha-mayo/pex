@@ -23,24 +23,24 @@ not edit the project, submission, code repository, or video.
 
 ## 1. Accept the installed candidate — 10 minutes
 
-Use the public NSIS candidate from product source `5bd0194`. The
+Use the public NSIS candidate from product source `bd0471f`. The
 retained installer is:
 
-`build/release-candidate-5bd0194-r1/PEX_0.1.0_x64-setup.exe`
+`apps/desktop/src-tauri/target/release/bundle/nsis/PEX_0.1.0_x64-setup.exe`
 
 Expected SHA-256:
 
-`8f1acb81fbd6f8eabb23b0f3185ac6385855cbde0a5e06f7f9bfa983be21b49f`
+`07b82aa3c5685f3f4c0695a5b7b1e9c7bd6e26f70cc70c835545bac992b10d75`
 
 The exact release candidate has cleared package verification, authenticated
 startup and a responsive bounded resource sample. The
 immediately preceding UI passed native Home/Settings and ordinary-close cleanup;
 its overlay exposed separate Hide and message-dismiss controls, and Escape hid
 only the pet. Because native computer control was unavailable after reboot,
-repeat that short visual card on exact `5bd0194` before filming. Current package
+repeat that short visual card on exact `bd0471f` before filming. Current package
 and startup evidence is in the active handoff and `../MVP_SHIP_GATE.md`. Fresh
 release-source OpenCode recovery/quiet behaviors also pass; Codex control passes
-the focused automated gate but was not rerun as a live RC5 pair. Concentrate
+the focused automated gate but was not rerun as a live RC6 pair. Concentrate
 the final recording rehearsal on the public throwaway OpenCode recovery and
 quiet cases.
 
@@ -96,7 +96,7 @@ Before any external write, confirm:
 git status --short
 git rev-parse HEAD
 git rev-parse origin/main
-Get-FileHash .\build\release-candidate-5bd0194-r1\PEX_0.1.0_x64-setup.exe -Algorithm SHA256
+Get-FileHash .\apps\desktop\src-tauri\target\release\bundle\nsis\PEX_0.1.0_x64-setup.exe -Algorithm SHA256
 ```
 
 The worktree must be clean, local and remote main must match, and the installer
@@ -106,8 +106,8 @@ hash must equal the value above. Then:
    pushed root `devpost-submission.md` packet;
 2. continue the existing PEX Devpost project draft `pex-mbcpr4`;
 3. ensure the installer offered to judges matches the filmed build. Public
-   [PEX 0.1.0 RC5](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc5)
-   contains the accepted `5bd0194` installer and matching server-recorded hash;
+   [PEX 0.1.0 RC6](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc6)
+   contains the accepted `bd0471f` installer and matching server-recorded hash;
 4. upload the final public YouTube/Vimeo video, maximum five minutes;
 5. fill Devpost from `docs/SUBMISSION.md` and `docs/JUDGE_TESTING.md`;
 6. add `docs/architecture/pex-architecture.png`, AWS Builder ID, public repo,

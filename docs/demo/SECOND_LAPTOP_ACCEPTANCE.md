@@ -6,13 +6,13 @@ retain the screenshot/log; do not film around a defect.
 ## 1. Download and verify
 
 Download `PEX_0.1.0_x64-setup.exe` from the public
-[PEX 0.1.0 RC5](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc5),
-or copy it from `build/release-candidate-5bd0194-r1/` on the development laptop.
-RC5 is exact source `5bd01945098284b994f488011848c7aedcfe1863`.
+[PEX 0.1.0 RC6](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc6),
+or copy it from the current release bundle on the development laptop.
+RC6 is exact source `bd0471ffee43df60b95570df30a402b725f049c1`.
 Its packaged executable inventory matches the exclusive receipt, and the frozen
 bridge passed authenticated settings smoke. RC3 passed the unchanged native
 renderer/overlay UX; do not
-skip the exact-build visual gates below for RC5.
+skip the exact-build visual gates below for RC6.
 
 ```powershell
 $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
@@ -20,10 +20,10 @@ $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
 (Get-FileHash -LiteralPath $pexInstaller -Algorithm SHA256).Hash
 ```
 
-Expected bytes for RC5: `101737472`
+Expected bytes for RC6: `101735091`
 
 Expected SHA-256:
-`8F1ACB81FBD6F8EABB23B0F3185AC6385855CBDE0A5E06F7F9BFA983BE21B49F`
+`07B82AA3C5685F3F4C0695A5B7B1E9C7BD6E26F70CC70C835545BAC992B10D75`
 
 The installer is unsigned, so a Windows publisher warning is expected. Reject
 the file if its size or hash differs.

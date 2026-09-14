@@ -5,9 +5,9 @@ directory are historical references and must not be presented as final-source pr
 
 ## Current checkpoint — 13 September 2026
 
-- Current release product source: `5bd0194`. The retained NSIS is
-  `build/release-candidate-5bd0194-r1/PEX_0.1.0_x64-setup.exe`, 101,737,472 bytes,
-  SHA-256 `8f1acb81fbd6f8eabb23b0f3185ac6385855cbde0a5e06f7f9bfa983be21b49f`.
+- Current release product source: `bd0471f`. The retained NSIS is
+  `apps/desktop/src-tauri/target/release/bundle/nsis/PEX_0.1.0_x64-setup.exe`, 101,735,091 bytes,
+  SHA-256 `07b82aa3c5685f3f4c0695a5b7b1e9c7bd6e26f70cc70c835545bac992b10d75`.
   Its MSI/NSIS receipt has zero blockers and verifies the packaged executable
   inventory. See the [active shipping gate](../MVP_SHIP_GATE.md).
 - Both installers contain exactly Pex and Von. The preceding build passed bounded native Home, Settings,
@@ -29,7 +29,7 @@ directory are historical references and must not be presented as final-source pr
   bounded bridge evidence, not full-desktop leak freedom.
 - AgentCore is implemented and locally tested, not deployed. PexBench remains
   unfrozen with no coherent four-arm run or valid score. Final video and final
-  submission remain open; the matching RC5 release is public. Follow the
+  submission remain open; the matching RC6 release is public. Follow the
   [active ship gate](../MVP_SHIP_GATE.md).
 - The [MVP behavior scorecard](MVP_BEHAVIOR_SCORECARD.md) consolidates the live
   recovery, quiet-control, resource, and current implementation evidence while

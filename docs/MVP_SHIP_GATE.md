@@ -19,13 +19,13 @@ app termination, fabricated benchmark score or false completion claim.
 
 ## Current candidate
 
-Published product source: **`5bd01945098284b994f488011848c7aedcfe1863`**.
-Local NSIS: `build/release-candidate-5bd0194-r1/PEX_0.1.0_x64-setup.exe`.
-Bytes: `101737472`; SHA-256:
-`8f1acb81fbd6f8eabb23b0f3185ac6385855cbde0a5e06f7f9bfa983be21b49f`.
+Published product source: **`bd0471ffee43df60b95570df30a402b725f049c1`**.
+Local NSIS: `apps/desktop/src-tauri/target/release/bundle/nsis/PEX_0.1.0_x64-setup.exe`.
+Bytes: `101735091`; SHA-256:
+`07b82aa3c5685f3f4c0695a5b7b1e9c7bd6e26f70cc70c835545bac992b10d75`.
 The package receipt and installed smoke are retained beside that candidate.
 The exact package is public as
-[PEX 0.1.0 RC5](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc5).
+[PEX 0.1.0 RC6](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc6).
 
 ## Sequenced acceptance checklist
 

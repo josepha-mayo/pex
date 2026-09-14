@@ -7,16 +7,16 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 ## Fastest evaluation path
 
 Download the current unsigned NSIS from
-[PEX 0.1.0 RC5](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc5)
+[PEX 0.1.0 RC6](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc6)
 and verify SHA-256
-`8f1acb81fbd6f8eabb23b0f3185ac6385855cbde0a5e06f7f9bfa983be21b49f`.
+`07b82aa3c5685f3f4c0695a5b7b1e9c7bd6e26f70cc70c835545bac992b10d75`.
 Windows may show a publisher warning because this candidate is not code-signed.
 
-Current published product source: `5bd0194`. Its rebuilt installer, frozen
+Current published product source: `bd0471f`. Its rebuilt installer, frozen
 bridge, authenticated settings surface, package inventory, and packaged
 executable hashes passed. Fresh exact-current OpenCode recovery and a quiet
 control passed with Zen BYOK and Strands. Codex App Server integration passes the
-focused automated gate; it was not rerun as a live RC5 pair. Repeat the
+focused automated gate; it was not rerun as a live RC6 pair. Repeat the
 exact-build installed visual card before filming.
 See [exact-copy/hash instructions](demo/SECOND_LAPTOP_ACCEPTANCE.md), or build
 current source below.

@@ -13,9 +13,9 @@ requirements fetched on 12 September 2026 remain authoritative.
 - Built with: Strands Agents, Python, Rust, Tauri, React, TypeScript, FastAPI,
   SQLite, OpenCode, Codex, Zen, Amazon Bedrock AgentCore
 - Public repository: `https://github.com/josepha-mayo/pex`
-- Public Windows judge build: RC5 is public at
-  `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc5` and contains
-  product source `5bd0194` with server-recorded matching hashes.
+- Public Windows judge build: RC6 is public at
+  `https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc6` and contains
+  product source `bd0471f` with server-recorded matching hashes.
 - Thumbnail: the clean `docs/demo/assets/pex-mark.png` mark is uploaded.
 
 ## Required custom answers
@@ -57,9 +57,9 @@ demo, and PEX should not mislabel it.
 
 ### Testing instructions (`28191`)
 
-> Download the unsigned Windows judge build from the RC5 release and
+> Download the unsigned Windows judge build from the RC6 release and
 > verify `PEX_0.1.0_x64-setup.exe` SHA-256 is
-> 8f1acb81fbd6f8eabb23b0f3185ac6385855cbde0a5e06f7f9bfa983be21b49f.
+> 07b82aa3c5685f3f4c0695a5b7b1e9c7bd6e26f70cc70c835545bac992b10d75.
 > Start a throwaway OpenCode server with `opencode serve --port 4096`, attach
 > with `opencode attach http://127.0.0.1:4096`, connect PEX to that address,
 > and configure Zen BYOK with the exact
@@ -84,7 +84,7 @@ confirmed. Do not republish a duplicate.
 Before requesting `yes, submit`:
 
 1. Attach the architecture PNG to field `27734`.
-2. Confirm the already-public `5bd0194` RC5 asset and server-recorded NSIS hash.
+2. Confirm the already-public `bd0471f` RC6 asset and server-recorded NSIS hash.
 3. Add and independently open the public video URL.
 4. Confirm the private Builder ID value in field `27735`.
 5. Confirm Individual, Nigeria, Professional Agents, and the repository URL in
