@@ -1040,6 +1040,12 @@ def _goal_file_verdict(
         criterion = str(raw or "").strip()
         if not criterion:
             continue
+        # Test-suite acceptance is resolved from the typed harness execution
+        # below, not from the workspace file snapshot. Keeping it in the
+        # generic unresolved bucket made a witnessed full-suite pass unable to
+        # satisfy an otherwise machine-checkable goal.
+        if _PYTEST_REQUIREMENT.search(criterion):
+            continue
         if FILE_TOKEN.fullmatch(criterion):
             continue
         row_check = _expected_file_rows(criterion)
@@ -1052,7 +1058,11 @@ def _goal_file_verdict(
             unresolved.append(criterion)
     for raw in goal.evidence_requirements:
         requirement = str(raw or "").strip()
-        if requirement and not FILE_TOKEN.fullmatch(requirement):
+        if (
+            requirement
+            and not FILE_TOKEN.fullmatch(requirement)
+            and not _PYTEST_REQUIREMENT.search(requirement)
+        ):
             unresolved.append(requirement)
 
     for path, expected, exact in checks:
@@ -1378,6 +1388,40 @@ def verify_claims(
                 }
             )
     acceptance_gap = _goal_file_verdict(None, goal, workspace)
+    goal_requires_pytest = _PYTEST_REQUIREMENT.search(_goal_requirement_text(goal)) is not None
+    latest_pytest = _latest_pytest(events)
+    if goal_requires_pytest:
+        pytest_supported = False
+        pytest_evidence: list[str] = []
+        if latest_pytest is not None:
+            pytest_event, pytest_info, pytest_index, pytest_invocation = latest_pytest
+            pytest_supported = _pytest_supports_goal(
+                pytest_info,
+                pytest_invocation,
+                edits=_later_edits(events, pytest_index),
+                goal=goal,
+            )
+            pytest_evidence = [
+                f"pytest_event_id={pytest_event.event_id}",
+                f"pytest_scope={pytest_invocation.scope.value}",
+            ]
+            if pytest_supported:
+                pytest_evidence.append("pytest_ok=true")
+        if pytest_supported:
+            acceptance_gap["evidence"] = list(
+                dict.fromkeys([*(acceptance_gap.get("evidence") or []), *pytest_evidence])
+            )
+        elif acceptance_gap.get("status") == "supported":
+            acceptance_gap = {
+                "claim": None,
+                "status": "uncertain",
+                "evidence": [
+                    *(acceptance_gap.get("evidence") or []),
+                    *pytest_evidence,
+                    "unchecked:full-suite pytest exits successfully",
+                ],
+                "correction": None,
+            }
     acceptance_status = acceptance_gap.get("status")
     acceptance_evidence = list(acceptance_gap.get("evidence") or [])
     if acceptance_gap.get("status") == "supported":
@@ -1413,7 +1457,6 @@ def verify_claims(
     else:
         status = "uncertain"
     chosen = contradicted[0] if contradicted else unsatisfied[0] if unsatisfied else None
-    latest_pytest = _latest_pytest(events)
     latest_unittest = _latest_unittest(events)
     pytest_provenance = (
         None

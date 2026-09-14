@@ -1067,6 +1067,55 @@ def test_satisfied_file_acceptance_is_observed_without_worker_claim(tmp_path):
     assert result["acceptance_status"] == "supported"
 
 
+def test_full_suite_pytest_requirement_is_first_class_acceptance_evidence(tmp_path):
+    (tmp_path / "csv_utils.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (tmp_path / "test_csv_utils.py").write_text(
+        "def test_value():\n    assert True\n", encoding="utf-8"
+    )
+    events = [
+        _event(
+            event_id="pytest-pass",
+            event_type=EventType.SHELL,
+            command="python -m pytest -q",
+            process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 1}},
+        ),
+        _event(event_id="stop", event_type=EventType.STOP),
+    ]
+
+    result = verify_claims(
+        [],
+        events,
+        _goal(
+            acceptance_criteria=["python -m pytest -q exits successfully"],
+            evidence_requirements=["csv_utils.py", "test_csv_utils.py"],
+        ),
+        snapshot(tmp_path, run_pytest=False),
+    )
+
+    assert result["status"] == "no_claims"
+    assert result["acceptance_status"] == "supported"
+    assert "pytest_event_id=pytest-pass" in result["acceptance_evidence"]
+    assert "pytest_ok=true" in result["acceptance_evidence"]
+
+
+def test_full_suite_pytest_requirement_stays_uncertain_without_a_run(tmp_path):
+    (tmp_path / "csv_utils.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+    result = verify_claims(
+        [],
+        [_event(event_type=EventType.STOP)],
+        _goal(
+            acceptance_criteria=["python -m pytest -q exits successfully"],
+            evidence_requirements=["csv_utils.py"],
+        ),
+        snapshot(tmp_path, run_pytest=False),
+    )
+
+    assert result["status"] == "no_claims"
+    assert result["acceptance_status"] == "uncertain"
+    assert "unchecked:full-suite pytest exits successfully" in result["acceptance_evidence"]
+
+
 def test_existing_file_does_not_hide_unverified_acceptance_criterion(tmp_path):
     (tmp_path / "report.txt").write_text("shipped\n", encoding="utf-8")
     result = verify_claims(
