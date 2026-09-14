@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import test from "node:test";
 
 import {
   assertBridgeRuntimeMatches,
   buildBridgeRuntimeManifest,
+  materializeBridgeRuntimeSymlinks,
   validateBridgeRuntimeManifest,
 } from "./bridge-runtime-contract.mjs";
 
@@ -55,7 +56,7 @@ test("tree manifests detect changed, missing, and extra runtime files", () => wi
   writeFileSync(join(root, "_internal", "python312.dll"), "changed", "utf8");
   assert.throws(() => assertBridgeRuntimeMatches(expected, buildBridgeRuntimeManifest(root)), /mismatch/u);
   rmSync(join(root, "_internal", "python312.dll"));
-  assert.throws(() => buildBridgeRuntimeManifest(root), /missing required file/u);
+  assert.throws(() => buildBridgeRuntimeManifest(root), /missing its required Python runtime library/u);
   writeFileSync(join(root, "_internal", "python312.dll"), "python", "utf8");
   writeFileSync(join(root, "extra.txt"), "extra", "utf8");
   assert.throws(() => assertBridgeRuntimeMatches(expected, buildBridgeRuntimeManifest(root)), /mismatch/u);
@@ -101,3 +102,70 @@ test("tree construction rejects symbolic links when the platform permits them", 
   }
   assert.throws(() => buildBridgeRuntimeManifest(root), /symbolic links/u);
 }));
+
+test("materializes safe in-tree symbolic links as regular files", (t) => withFixture((root) => {
+  const link = join(root, "_internal", "linked.dll");
+  try {
+    symlinkSync("python312.dll", link, "file");
+  } catch (error) {
+    if (error?.code === "EPERM" || error?.code === "EACCES") {
+      t.skip(`symbolic-link creation is unavailable: ${error.code}`);
+      return;
+    }
+    throw error;
+  }
+  assert.deepEqual(materializeBridgeRuntimeSymlinks(root), ["_internal/linked.dll"]);
+  assert.equal(lstatSync(link).isFile(), true);
+  assert.equal(lstatSync(link).isSymbolicLink(), false);
+  assert.equal(readFileSync(link, "utf8"), "python");
+  assert.doesNotThrow(() => buildBridgeRuntimeManifest(root));
+}));
+
+test("rejects symbolic links that escape the runtime", (t) => withFixture((root) => {
+  const link = join(root, "_internal", "escaped.dll");
+  const outside = join(root, "..", `${root.split(/[\\/]/u).at(-1)}-outside.dll`);
+  writeFileSync(outside, "outside", "utf8");
+  try {
+    try {
+      symlinkSync(relative(join(root, "_internal"), outside), link, "file");
+    } catch (error) {
+      if (error?.code === "EPERM" || error?.code === "EACCES") {
+        t.skip(`symbolic-link creation is unavailable: ${error.code}`);
+        return;
+      }
+      throw error;
+    }
+    assert.throws(() => materializeBridgeRuntimeSymlinks(root), /escapes the bridge runtime/u);
+  } finally {
+    rmSync(outside, { force: true });
+  }
+}));
+
+test("rejects dangling and directory symbolic links", (t) => withFixture((root) => {
+  const dangling = join(root, "_internal", "dangling.dll");
+  const directory = join(root, "_internal", "directory-link");
+  try {
+    symlinkSync("missing.dll", dangling, "file");
+    symlinkSync(".", directory, "dir");
+  } catch (error) {
+    if (error?.code === "EPERM" || error?.code === "EACCES") {
+      t.skip(`symbolic-link creation is unavailable: ${error.code}`);
+      return;
+    }
+    throw error;
+  }
+  assert.throws(() => materializeBridgeRuntimeSymlinks(root), /dangling/u);
+  rmSync(dangling);
+  assert.throws(() => materializeBridgeRuntimeSymlinks(root), /regular file/u);
+}));
+
+test("accepts a POSIX bridge runtime manifest", () => {
+  const manifest = {
+    version: 1,
+    files: [
+      { path: "_internal/libpython3.12.so.1.0", bytes: 1, sha256: "a".repeat(64) },
+      { path: "pex-bridge", bytes: 1, sha256: "b".repeat(64) },
+    ],
+  };
+  assert.deepEqual(validateBridgeRuntimeManifest(structuredClone(manifest)), manifest);
+});

@@ -67,6 +67,12 @@ jobs:
           CARGO_BUILD_JOBS: '2'
         run: npm run tauri -- build --bundles appimage,deb
 
+      - name: Smoke the packaged Linux bridge
+        run: |
+          .venv/bin/python scripts/smoke_packaged_bridge.py \
+            --exe apps/desktop/src-tauri/binaries/pex-bridge-runtime/pex-bridge \
+            --output build/linux-packaged-bridge-smoke.json
+
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -75,6 +81,7 @@ jobs:
           path: |
             apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
             apps/desktop/src-tauri/target/release/bundle/deb/*.deb
+            build/linux-packaged-bridge-smoke.json
 
       - name: Attach Linux packages to the release
         env:

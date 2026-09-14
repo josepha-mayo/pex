@@ -1,9 +1,22 @@
 import { createHash } from "node:crypto";
-import { lstatSync, readdirSync, readFileSync } from "node:fs";
-import { isAbsolute, relative, resolve } from "node:path";
+import {
+  chmodSync,
+  constants,
+  copyFileSync,
+  lstatSync,
+  readlinkSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  statSync,
+} from "node:fs";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 const SHA256 = /^[0-9a-f]{64}$/u;
-const REQUIRED_FILES = Object.freeze(["pex-bridge.exe", "_internal/python312.dll"]);
+const BRIDGE_EXECUTABLES = Object.freeze(["pex-bridge.exe", "pex-bridge"]);
+const PYTHON_RUNTIME = /^_internal\/(?:python\d+\.dll|libpython\d+(?:\.\d+)*\.(?:so(?:\.\d+)*|dylib))$/u;
 const WINDOWS_RESERVED_BASENAMES = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/iu;
 
 function exactKeys(value, expected) {
@@ -39,6 +52,63 @@ function canonicalRelativePath(root, path) {
 
 function comparePosixPaths(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function assertContained(root, path, label) {
+  const value = relative(root, path);
+  if (value === "" || isAbsolute(value) || value.split(/[\\/]/u).includes("..")) {
+    throw new Error(`${label} escapes the bridge runtime: ${value}`);
+  }
+}
+
+function collectSymbolicLinks(root, directory, links) {
+  for (const name of readdirSync(directory).sort()) {
+    const path = resolve(directory, name);
+    const entry = lstatSync(path);
+    if (entry.isSymbolicLink()) {
+      links.push(path);
+    } else if (entry.isDirectory()) {
+      collectSymbolicLinks(root, path, links);
+    } else if (!entry.isFile()) {
+      throw new Error(`Bridge runtime must contain only regular files and directories: ${canonicalRelativePath(root, path)}`);
+    }
+  }
+}
+
+export function materializeBridgeRuntimeSymlinks(root) {
+  const runtimeRoot = assertRuntimeRoot(root);
+  const links = [];
+  collectSymbolicLinks(runtimeRoot, runtimeRoot, links);
+  for (const link of links) {
+    const relativeLink = canonicalRelativePath(runtimeRoot, link);
+    const linkTarget = readlinkSync(link);
+    if (isAbsolute(linkTarget)) {
+      throw new Error(`Bridge runtime symbolic link must use an in-tree relative target: ${relativeLink}`);
+    }
+    const lexicalTarget = resolve(dirname(link), linkTarget);
+    assertContained(runtimeRoot, lexicalTarget, `Bridge runtime symbolic link ${relativeLink}`);
+    let resolvedTarget;
+    try {
+      resolvedTarget = realpathSync.native(lexicalTarget);
+    } catch (error) {
+      throw new Error(`Bridge runtime symbolic link is dangling: ${relativeLink}`, { cause: error });
+    }
+    assertContained(runtimeRoot, resolvedTarget, `Bridge runtime symbolic link ${relativeLink}`);
+    const target = statSync(link);
+    if (!target.isFile()) {
+      throw new Error(`Bridge runtime symbolic link must resolve to a regular file: ${relativeLink}`);
+    }
+    const staged = `${link}.pex-materialized`;
+    try {
+      copyFileSync(resolvedTarget, staged, constants.COPYFILE_EXCL);
+      chmodSync(staged, target.mode);
+      rmSync(link);
+      renameSync(staged, link);
+    } finally {
+      rmSync(staged, { force: true });
+    }
+  }
+  return links.map((path) => canonicalRelativePath(runtimeRoot, path));
 }
 
 function collectFiles(root, directory, files) {
@@ -104,8 +174,11 @@ export function validateBridgeRuntimeManifest(manifest) {
     caseInsensitivePaths.add(folded);
   }
   const paths = new Set(manifest.files.map((file) => file.path));
-  for (const required of REQUIRED_FILES) {
-    if (!paths.has(required)) throw new Error(`Bridge runtime manifest is missing required file: ${required}`);
+  if (!BRIDGE_EXECUTABLES.some((path) => paths.has(path))) {
+    throw new Error("Bridge runtime manifest is missing its required bridge executable");
+  }
+  if (!manifest.files.some((file) => PYTHON_RUNTIME.test(file.path))) {
+    throw new Error("Bridge runtime manifest is missing its required Python runtime library");
   }
   return manifest;
 }

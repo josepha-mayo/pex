@@ -1,8 +1,8 @@
-"""Prove a frozen PEX bridge exposes safe fresh-install supervisor settings.
+"""Prove a packaged PEX bridge exposes safe fresh-install supervisor settings.
 
 This smoke is deliberately local and configuration-only: it disables cloud
-reasoning and worker attachment, uses a random bearer, and owns the frozen
-process in a kill-on-close Windows job.
+reasoning and worker attachment, uses a random bearer, and terminates the owned
+process after the check.
 """
 
 from __future__ import annotations
@@ -211,15 +211,28 @@ def main() -> int:
     if not 0.2 <= args.sample_interval <= 60.0:
         parser.error("--sample-interval must be between 0.2 and 60")
     binary = args.exe.resolve(strict=True)
-    if os.name != "nt" or binary.suffix.lower() != ".exe" or not binary.is_file():
-        parser.error("--exe must name an existing Windows executable")
-    runtime_library = binary.parent / "_internal" / "python312.dll"
-    if not runtime_library.is_file():
-        parser.error(
-            "--exe must name the packaged one-directory bridge beside _internal/python312.dll"
-        )
+    expected_name = "pex-bridge.exe" if os.name == "nt" else "pex-bridge"
+    if binary.name != expected_name or not binary.is_file():
+        parser.error(f"--exe must name an existing packaged {expected_name} executable")
+    internal = binary.parent / "_internal"
+    runtime_libraries = (
+        [internal / "python312.dll"]
+        if os.name == "nt"
+        else [*internal.glob("libpython*.so*"), *internal.glob("libpython*.dylib")]
+    )
+    if not any(path.is_file() for path in runtime_libraries):
+        parser.error("--exe must name a packaged one-directory bridge with its Python runtime")
 
-    from pex_protocol.windows_job import CREATE_SUSPENDED, assign_job_and_resume, close_job
+    if os.name == "nt":
+        from pex_protocol.windows_job import CREATE_SUSPENDED, assign_job_and_resume, close_job
+    else:
+        CREATE_SUSPENDED = 0
+
+        def assign_job_and_resume(_process: subprocess.Popen[bytes]) -> None:
+            return None
+
+        def close_job(_job: None) -> None:
+            return None
 
     port = _unused_loopback_port()
     token = secrets.token_hex(48)
@@ -237,10 +250,12 @@ def main() -> int:
                     stderr=subprocess.STDOUT,
                     env=_environment(home, port, token),
                     cwd=home,
-                    creationflags=subprocess.CREATE_NO_WINDOW | CREATE_SUSPENDED,
+                    creationflags=(subprocess.CREATE_NO_WINDOW | CREATE_SUSPENDED)
+                    if os.name == "nt"
+                    else 0,
                 )
                 job = assign_job_and_resume(process)
-                if job is None:
+                if os.name == "nt" and job is None:
                     raise RuntimeError("failed to contain the frozen bridge in a Windows job")
                 _wait_for_identity(port, token, process)
                 settings = _read_json(f"http://127.0.0.1:{port}/v1/supervisor", token=token)

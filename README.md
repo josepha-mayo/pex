@@ -12,7 +12,7 @@ It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude 
 Codex App Server, Zen BYOK and exactly two controllable companions, Pex and Von.
 Published product source **`bd0471f`** has a zero-blocker MSI/NSIS package
 receipt, 304 passing desktop tests with one expected Windows symlink skip,
-4,577 passing backend tests with 32 environment skips, and a 1,358-test focused
+4,578 passing backend tests with 32 environment skips, and a 1,358-test focused
 Codex/Strands/AgentCore gate with one environment skip. The matching RC6
 installers are public.
 

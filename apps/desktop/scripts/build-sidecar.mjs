@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import {
   assertBridgeRuntimeMatches,
   buildBridgeRuntimeManifest,
+  materializeBridgeRuntimeSymlinks,
 } from "./bridge-runtime-contract.mjs";
 import { validatePetReviewArchive } from "./pet-review-contract.mjs";
 
@@ -1204,6 +1205,7 @@ for (const relativePath of RETIRED_BRIDGE_DATA_FILES) {
 const stagedBridgeRuntime = join(repo, "build", "pyinstaller", `pex-bridge-runtime-${triple}.stage`);
 removeSafeDirectory(stagedBridgeRuntime, "Staged bridge runtime");
 renameSync(builtBridgeRuntime, stagedBridgeRuntime);
+materializeBridgeRuntimeSymlinks(stagedBridgeRuntime);
 const stagedBridge = join(stagedBridgeRuntime, `pex-bridge${extension}`);
 const stagedBridgeManifest = buildBridgeRuntimeManifest(stagedBridgeRuntime);
 
