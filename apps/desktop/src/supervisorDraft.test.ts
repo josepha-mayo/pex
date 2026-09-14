@@ -116,9 +116,9 @@ test("Home presents onboarding once instead of repeating it through the pet and 
   assert.ok(start >= 0 && end > start, "compact Home route must have a bounded source region");
   const home = app.slice(start, end);
 
-  assert.match(home, /status=\{setup \? undefined : homeStatus\}/u);
-  assert.match(home, /\{setup\?\.state !== "unavailable" \? supervisorNotice : null\}/u);
-  assert.match(home, /\{compactGoalIssue && setup\?\.state !== "unavailable" \? \(/u);
+  assert.match(home, /<ChatHome/u);
+  assert.doesNotMatch(home, /<PetStage|supervisorNotice/u);
+  assert.match(home, /note=\{note \|\| compactGoalIssue\}/u);
 });
 
 test("floating pet refreshes canonical goals without loading heavy settings state", () => {
@@ -294,13 +294,13 @@ test("Home setup routes reuse guarded connection and goal flows without writing 
   const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
   const inspector = readFileSync(new URL("./components/Inspector.tsx", import.meta.url), "utf8");
   assert.match(app, /firstRunGuidance\(\{[\s\S]*?sessionFresh: sessionStateFresh,[\s\S]*?goalFresh: goalStateFresh/);
-  assert.match(app, /if \(setup\.cta\?\.intent === "goal"\) openGoalSetup\(\)/);
-  assert.match(app, /else openSettings\("connections"\)/);
+  assert.match(app, /onCreateGoal=\{openGoalSetup\}/);
+  assert.match(app, /onConnect=\{\(\) => openSettings\("connections"\)\}/);
   assert.match(app, /initialSection=\{settingsDestination\}/);
   assert.match(app, /supervisorNotice=\{supervisorNotice\}/);
   assert.match(app, /supervisorAvailability\(\{ supervisor, supervisorFresh: settingsAvailable \}\)/);
-  const route = app.slice(app.indexOf("function openGoalSetup()"), app.indexOf('if (shell === "pet")', app.indexOf("function openGoalSetup()")));
-  assert.match(route, /openInspector\(\)/);
+  const route = app.slice(app.indexOf("function openGoalSetup()"), app.indexOf('function selectWorkspaceFolder', app.indexOf("function openGoalSetup()")));
+  assert.match(route, /showSurface\("compact"\)/);
   assert.doesNotMatch(route, /bridgeJson|POST|PATCH|setGoalDraft|setEditingGoalId/);
   assert.match(inspector, /data-goal-setup="true" tabIndex=\{-1\}/);
   assert.match(app, /statusWithFirstRunGuidance\(\s*selectedWorkerStatus\(status, current, action, sessionStateFresh, Boolean\(pet\?\.paused\)\),\s*setup, Boolean\(pet\?\.paused\),?\s*\)/);
