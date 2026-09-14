@@ -144,7 +144,12 @@ class CursorAdapter(HarnessAdapter):
             except Exception:
                 acp_ready = False
         hook_live = self._hook_live()
-        desktop = await asyncio.to_thread(desktop_process_running, "Cursor.exe")
+        # A current hook heartbeat already proves that Cursor is running. Repeating
+        # Windows process discovery on the synchronous hook path adds seconds of
+        # avoidable latency and can make beforeSubmitPrompt fail open.
+        desktop = False
+        if not acp_ready and not hook_live:
+            desktop = await asyncio.to_thread(desktop_process_running, "Cursor.exe")
         active_hook = self._active_hook.get()
         synchronous_hook_control = self._delivery_channel.get() != "observe"
         active_stop = bool(

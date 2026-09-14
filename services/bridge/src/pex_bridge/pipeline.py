@@ -2593,8 +2593,15 @@ class Pipeline:
                 )
                 plan_contexts.append(event_item)
 
+        # Prompt-submit hooks sit on the editor's synchronous send path. Their
+        # deterministic intent lint only needs the current prompt, goal and
+        # durable human decisions; trajectory history is neither an input to
+        # that decision nor worth risking the hook deadline for.
+        prompt_submit = event.event_type == EventType.USER_PROMPT
         recent = (
-            await self.store.recent_events_through_for_authority(
+            [event]
+            if prompt_submit
+            else await self.store.recent_events_through_for_authority(
                 session.id,
                 event.event_id,
                 goal_id=goal.id,
@@ -2606,7 +2613,7 @@ class Pipeline:
             else [event]
         )
         context_items: list[ContextItem] = []
-        if project_key:
+        if project_key and not prompt_submit:
             context_items = await self.store.list_context_for_authority(
                 project_key,
                 goal_id=goal.id if goal is not None else None,
@@ -2620,7 +2627,7 @@ class Pipeline:
         session.metadata["context_health_signals"] = dict(health.signals)
 
         intervention_updates: list[Intervention] = []
-        if event.event_type != EventType.STOP:
+        if event.event_type not in {EventType.STOP, EventType.USER_PROMPT}:
             intervention_updates = await self._observe_prior_intervention(
                 session,
                 event,
@@ -2629,13 +2636,14 @@ class Pipeline:
 
         scores = score_trajectory(recent, goal)
         scores.features.update(health.planner_features())
-        for bucket in await self.store.agent_fingerprint_stats(
-            session_id=session.id,
-            accepted_event_id=event.event_id,
-        ):
-            if bucket.get("harness") == session.harness_type.value:
-                scores.features.update(fingerprint_score_features(bucket))
-                break
+        if not prompt_submit:
+            for bucket in await self.store.agent_fingerprint_stats(
+                session_id=session.id,
+                accepted_event_id=event.event_id,
+            ):
+                if bucket.get("harness") == session.harness_type.value:
+                    scores.features.update(fingerprint_score_features(bucket))
+                    break
         claims: list[dict] = []
         verification: dict = {}
         notes = ""

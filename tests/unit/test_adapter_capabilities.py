@@ -389,6 +389,33 @@ async def test_unknown_empty_capabilities_fail_closed(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_cursor_live_hook_probe_skips_redundant_desktop_inventory(monkeypatch):
+    calls = 0
+
+    def desktop_running(_image_name: str) -> bool:
+        nonlocal calls
+        calls += 1
+        return False
+
+    monkeypatch.setattr("pex_bridge.adapters.cursor.desktop_process_running", desktop_running)
+    adapter = CursorAdapter()
+
+    cold = await adapter.probe()
+    assert calls == 1
+    assert cold.support_label == AdapterSupportLabel.UNAVAILABLE
+
+    session = adapter.upsert_from_hook(
+        {"conversation_id": "live-fast-path", "hook_event_name": "stop"}
+    )
+    adapter.normalize_hook({"hook_event_name": "stop"}, session)
+    live = await adapter.probe()
+
+    assert calls == 1
+    assert live.support_label == AdapterSupportLabel.STRONG
+    assert live.send_message is True
+
+
+@pytest.mark.asyncio
 async def test_probes_do_not_advertise_unimplemented_controls(monkeypatch):
     monkeypatch.setattr("pex_bridge.adapters.desktop.running_image_names", lambda: set())
     cursor_adapter = CursorAdapter()
