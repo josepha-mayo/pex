@@ -10,11 +10,13 @@ It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude 
 
 **Verified local MVP — 14 September 2026.** The shipping focus is OpenCode,
 Codex App Server, Zen BYOK and exactly two controllable companions, Pex and Von.
-Published product source **`bd0471f`** has a zero-blocker MSI/NSIS package
-receipt, 304 passing desktop tests with one expected Windows symlink skip,
+Cross-platform release source **`600d1de`** has a zero-blocker Windows MSI/NSIS
+package receipt, 305 passing desktop tests on Windows with four expected
+symbolic-link permission skips, and 309 passing desktop tests on Ubuntu,
 4,578 passing backend tests with 32 environment skips, and a 1,358-test focused
-Codex/Strands/AgentCore gate with one environment skip. The matching RC6
-installers are public.
+Codex/Strands/AgentCore gate with one environment skip. RC7 packages Windows
+x64 and Linux x64; Linux package construction and packaged-bridge startup pass,
+while final visual acceptance on physical Linux hardware remains requested.
 
 The fresh release-source OpenCode pair used the same task and free worker model:
 without PEX the worker stopped with an independently failing test; with PEX it
@@ -22,16 +24,17 @@ recovered to an independently passing test. A separate correctly completed task
 produced model-backed `NOOP` and zero follow-ups. Codex App Server control is
 covered by the focused gate, but was not rerun as a live paired benchmark for
 RC6. These are controlled behavioral examples, not a formal comparative
-benchmark or leaderboard result.
+benchmark or leaderboard result. RC7 changes packaging and verification code,
+not that supervisor behavior; the live pair was not rerun for RC7.
 
 The immediately preceding candidate passed native Home/Settings, exactly two
 pets, transparent Von, independent message dismissal, separate overlay Hide,
 Escape-to-hide, bridge liveness and ordinary
-shutdown. RC6 passed package identity, authenticated bridge startup, saved
-Zen/Muse settings, and a 60-second packaged-bridge soak. A 20.48-minute local
+shutdown. RC7 passed Windows package identity and authenticated bridge startup;
+its Ubuntu build passed packaged bridge identity/settings startup as well. A 20.48-minute local
 release run remained responsive across ten owned processes and ended near 640
-MiB aggregate working set / 323 MiB private; a fresh RC6 recording-laptop visual
-click-through remains required. This is bounded evidence, not an indefinite leak
+MiB aggregate working set / 323 MiB private; a fresh RC7 recording-laptop visual
+click-through remains required, especially on Linux. This is bounded evidence, not an indefinite leak
 claim. AgentCore is
 implemented and locally tested but
 **not AWS-deployed**. The formal four-arm benchmark is unfrozen and has no valid
@@ -96,19 +99,45 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 
 ## Quick start
 
-### Windows install or source prerequisites
+### Install PEX
 
-The current verified, unsigned Windows build is published as
-[PEX 0.1.0 RC6](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc6).
+Download the package for your x64 computer from
+[PEX 0.1.0 RC7](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7).
+
+**Windows 10/11:** use `PEX_0.1.0_x64-setup.exe` for the normal install.
+The binary is not code-signed, so Windows may show a publisher warning.
+
+**Ubuntu, Debian, Linux Mint, Pop!_OS:** download the `.deb`, then run:
+
+```bash
+sudo apt install ./PEX_0.1.0_amd64.deb
+```
+
+**Other graphical x64 Linux distributions:** download the AppImage, then run:
+
+```bash
+chmod +x PEX_0.1.0_amd64.AppImage
+./PEX_0.1.0_amd64.AppImage
+```
+
+Linux needs a graphical desktop and a normal Secret Service/keyring (for
+example GNOME Keyring or KWallet) to save a Zen BYOK key through Settings. The
+CI gate built both Linux formats on Ubuntu 24.04 and booted the packaged bridge;
+it did not visually exercise every Linux desktop environment. macOS and ARM64
+packages are not available in this release.
+
+The Windows package is built from exact source
+`600d1dea9e0bfb0402b20dd3e3d0d1c6ea337b79`.
 Use `PEX_0.1.0_x64-setup.exe` for the normal install. It is built from exact
-product source `bd0471ffee43df60b95570df30a402b725f049c1`; its SHA-256 is
-`07b82aa3c5685f3f4c0695a5b7b1e9c7bd6e26f70cc70c835545bac992b10d75`.
-The binary is not code-signed, so Windows may show a publisher warning. Package
-integrity is not indefinite stability or publisher trust; current source-bound
-evidence is recorded in the [active handoff](docs/AGENT_HANDOFF.md).
+product source above; its SHA-256 is
+`0c151ddf93512b5450688fe95b5930f047364e8da34121c488226f9e3a0ffc75`.
+Package integrity is not indefinite stability or publisher trust; current
+source-bound evidence is recorded in the [active handoff](docs/AGENT_HANDOFF.md).
 
 Use the [exact-build recording card](docs/demo/SECOND_LAPTOP_ACCEPTANCE.md)
 before filming this release, or build current source below.
+
+### Build from source
 
 To build from source instead,
 use the development workflow below; it is not a packaged installer.
@@ -277,7 +306,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound live OpenCode and separate Codex App Server behavior proofs are retained. The matching [RC6 release](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc6) is public; recording and Devpost submission remain pending under [the focused MVP gate](docs/MVP_SHIP_GATE.md). Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](docs/SUBMISSION.md).
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound live OpenCode and separate Codex App Server behavior proofs are retained. The matching [RC7 release](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7) provides Windows and Linux x64 packages; recording and Devpost submission remain pending under [the focused MVP gate](docs/MVP_SHIP_GATE.md). Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](docs/SUBMISSION.md).
 
 - License: MIT
 - Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)
