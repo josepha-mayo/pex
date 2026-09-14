@@ -1606,6 +1606,30 @@ test("pet renders separate keyboard buttons for status dismissal, activation, an
   }
 });
 
+test("chat home shows sessions across workspaces before folder selection, including view-only rows", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createServer } = await import("vite");
+  const vite = await createServer({ root: process.cwd(), server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom" });
+  try {
+    const { ChatHome } = await vite.ssrLoadModule("/src/components/ChatHome.tsx");
+    const html = renderToStaticMarkup(createElement(ChatHome, {
+      workspace: "", sessions: [
+        { id: "a", label: "Expenses", cwd: "/project/a", capabilities: { send_message: true } },
+        { id: "b", label: "Invoices", cwd: "/project/b", capabilities: { send_message: true } },
+        { id: "c", label: "Desktop", cwd: "/project/c", capabilities: { send_message: false } },
+      ], objective: "Monitor work", saving: false, choosing: false, available: false,
+      question: "", answer: "", asking: false,
+    }));
+    assert.match(html, /All connected sessions/u);
+    assert.match(html, /Expenses · \/project\/a/u);
+    assert.match(html, /Invoices · \/project\/b/u);
+    assert.match(html, /Desktop · \/project\/c · View only/u);
+    assert.match(html, /workspace is selected automatically/u);
+    assert.match(html, /disabled="">Start supervising/u);
+  } finally { await vite.close(); }
+});
+
 test("chat home retains explicit session selection and a scrollable conversation", async () => {
   const { readFile } = await import("node:fs/promises");
   const { dirname, join } = await import("node:path");

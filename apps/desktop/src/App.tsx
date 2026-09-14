@@ -2501,7 +2501,18 @@ export function App() {
           asking={asking}
           onChooseFolder={() => void chooseWorkspaceFolder()}
           onWorkspace={selectWorkspaceFolder}
-          onSession={setSelectedId}
+          onSession={(id) => {
+            if (savingGoal) return;
+            const session = sessions.find(row => row.id === id);
+            if (!session) return;
+            setChosenWorkspace(session.cwd || "");
+            setSelectedId(id);
+            setGoalDraft({ ...EMPTY_GOAL, projectId: session.cwd || "" });
+            setEditingGoalId(null);
+            setNote(null);
+            setQuestion("");
+            setAnswer("");
+          }}
           onObjective={(objective) => setGoalDraft(draft => ({ ...draft, objective }))}
           onSave={(event) => void savePersistentGoal(event)}
           onQuestion={setQuestion}

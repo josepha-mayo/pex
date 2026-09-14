@@ -30,7 +30,7 @@ type Props = {
 export function ChatHome(p: Props) {
   const [newGoal, setNewGoal] = useState(false);
   useEffect(() => { setNewGoal(false); }, [p.goal?.id, p.workspace]);
-  const matching = p.sessions.filter(s => s.cwd === p.workspace && s.capabilities?.send_message);
+  const visibleSessions = p.sessions;
   const composing = !p.goal || newGoal;
   return <section className="chat-home surface-focus-target" data-surface-root="compact" tabIndex={-1}>
     <header className="chat-workspace">
@@ -43,15 +43,15 @@ export function ChatHome(p: Props) {
     </header>
     <div className="chat-thread">
       {p.workspace ? <p className="chat-path" title={p.workspace}>{p.workspace}</p> : null}
-      {p.workspace && matching.length ? <label className="chat-session">Agent session
+      {visibleSessions.length ? <label className="chat-session">All connected sessions
         <select value={p.current?.id || ""} onChange={e=>p.onSession(e.target.value)} disabled={p.saving}>
           <option value="" disabled>Choose a session</option>
-          {matching.map(s=><option key={s.id} value={s.id}>{s.label || s.harness_type}</option>)}
+          {visibleSessions.map(s=><option key={s.id} value={s.id}>{s.label || s.harness_type} · {s.cwd || "No workspace"}{s.capabilities?.send_message ? "" : " · View only"}</option>)}
         </select>
       </label> : null}
       <article className="chat-message chat-pex">
         <span className="chat-speaker">PEX</span>
-        <p>{!p.workspace ? "Choose the folder your agent is working in. Then tell me what needs to get done." : !p.current ? "Open an agent session in this folder, then connect it to PEX." : composing ? "What should your agent finish? Tell me the outcome and how to check it." : "I’m watching this goal and checking your agent’s progress."}</p>
+        <p>{!p.current ? visibleSessions.length ? "Choose a session above. Its workspace is selected automatically." : "Connect OpenCode to see its sessions here." : !p.available ? "This session is visible, but live supervision is not available yet. Check Connections." : composing ? "What should your agent finish? Tell me the outcome and how to check it." : "I’m watching this goal and checking your agent’s progress."}</p>
       </article>
       {p.goal ? <article className="chat-message chat-you"><span className="chat-speaker">Your goal</span><p>{p.goal.objective}</p></article> : null}
       {p.goal && p.action ? <article className="chat-message chat-pex">
@@ -66,7 +66,7 @@ export function ChatHome(p: Props) {
       {composing ? <form className="chat-composer" onSubmit={event=>{p.onSave(event);}}>
         <label htmlFor="simple-goal">Your goal</label>
         <textarea id="simple-goal" value={p.objective} onChange={e=>p.onObjective(e.target.value)} rows={4} placeholder="What should get done? Paste your goal here…" disabled={p.saving}/>
-        <div className="chat-compose-actions"><small>{p.current ? "Saved to this workspace and session" : "Choose a folder and connect an agent first"}</small><button className="solid" type="submit" disabled={!p.available || !p.current || !p.workspace || !p.objective.trim() || p.saving}>{p.saving ? "Starting…" : "Start supervising"}</button></div>
+        <div className="chat-compose-actions"><small>{p.current ? "Applies only to the selected session" : "Choose a connected session above"}</small><button className="solid" type="submit" disabled={!p.available || !p.current || !p.workspace || !p.objective.trim() || p.saving}>{p.saving ? "Starting…" : "Start supervising"}</button></div>
       </form> : <form className="chat-composer" onSubmit={p.onAsk}>
         <label htmlFor="simple-question">Ask about this work</label>
         <input id="simple-question" value={p.question} onChange={e=>p.onQuestion(e.target.value)} placeholder="What still needs to be done?" disabled={p.asking}/>

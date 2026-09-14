@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 env:
-  RELEASE_TAG: ${{ inputs.release_tag || 'v0.1.0-rc9' }}
+  RELEASE_TAG: ${{ inputs.release_tag || 'v0.1.0-rc10' }}
 
 jobs:
   linux-x64:
@@ -94,8 +94,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
             gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --prerelease \
-              --title "PEX RC9 — simple chat and workspace chooser" \
-              --notes "Preview build from the goal-setup PR. Includes chat-first goal entry and a Linux folder chooser."
+              --title "PEX RC10 — all connected sessions" \
+              --notes "Shows all reported sessions across workspaces, with automatic workspace selection and clear view-only labels. Does not enable supervision without explicit goal assignment."
           fi
           mapfile -t assets < <(find apps/desktop/src-tauri/target/release/bundle \
             -type f \( -name '*.AppImage' -o -name '*.deb' \) -print)
