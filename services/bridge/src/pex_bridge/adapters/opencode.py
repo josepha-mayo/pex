@@ -45,6 +45,8 @@ from pex_bridge.adapters.desktop import (
 )
 from pex_bridge.adapters.http_json import HttpJsonTransport, transport_events_since
 from pex_bridge.adapters.opencode_outcomes import (
+    OPENCODE_LINEAGE_RECONCILIATION_KEY,
+    OPENCODE_LINEAGE_RECONCILIATION_SCHEMA,
     OPENCODE_MESSAGE_LINEAGE_KEY,
     opencode_message_lineage,
 )
@@ -481,6 +483,72 @@ class OpenCodeAdapter(HarnessAdapter):
         if not isinstance(listed, list):
             return None
         return [item for item in listed if isinstance(item, dict)]
+
+    async def _reconcile_terminal_lineage(
+        self,
+        event: HarnessEvent,
+        session: HarnessSession,
+    ) -> HarnessEvent:
+        """Recover one exact terminal parent edge from the canonical message snapshot."""
+
+        if event.event_type != EventType.STOP:
+            return event
+        lineage = (event.metadata or {}).get(OPENCODE_MESSAGE_LINEAGE_KEY)
+        if (
+            not isinstance(lineage, dict)
+            or lineage.get("stream_contiguous") is not False
+            or lineage.get("source_event_type") != "message.updated"
+            or lineage.get("assistant_message_completed") is not True
+            or lineage.get("assistant_message_error") is not False
+            or lineage.get("assistant_finish") != "stop"
+        ):
+            return event
+        message_id = lineage.get("message_id")
+        parent_id = lineage.get("parent_message_id")
+        if not isinstance(message_id, str) or not isinstance(parent_id, str):
+            return event
+        listed = await self._messages(session)
+        if listed is None:
+            return event
+        assistant_matches: list[dict] = []
+        parent_matches: list[dict] = []
+        for item in listed:
+            info = item.get("info")
+            if not isinstance(info, dict) or info.get("sessionID") != session.vendor_session_id:
+                continue
+            if info.get("id") == message_id:
+                assistant_matches.append(info)
+            if info.get("id") == parent_id:
+                parent_matches.append(info)
+        if len(assistant_matches) != 1 or len(parent_matches) != 1:
+            return event
+        assistant = assistant_matches[0]
+        parent = parent_matches[0]
+        completed = assistant.get("time")
+        if (
+            assistant.get("role") != "assistant"
+            or assistant.get("parentID") != parent_id
+            or assistant.get("finish") != "stop"
+            or not isinstance(completed, dict)
+            or not isinstance(completed.get("completed"), int)
+            or isinstance(completed.get("completed"), bool)
+            or parent.get("role") != "user"
+            or parent.get("parentID") not in {None, ""}
+        ):
+            return event
+        metadata = dict(event.metadata or {})
+        metadata[OPENCODE_LINEAGE_RECONCILIATION_KEY] = {
+            "schema": OPENCODE_LINEAGE_RECONCILIATION_SCHEMA,
+            "source": "canonical_message_snapshot",
+            "target_session_id": session.id,
+            "vendor_session_id": session.vendor_session_id,
+            "message_id": message_id,
+            "parent_message_id": parent_id,
+            "assistant_finish": "stop",
+            "assistant_message_completed": True,
+            "parent_message_present": True,
+        }
+        return event.model_copy(update={"metadata": metadata})
 
     async def _user_message_ids(self, session: HarnessSession) -> set[str] | None:
         listed = await self._messages(session)
@@ -1469,6 +1537,7 @@ class OpenCodeAdapter(HarnessAdapter):
                         session, payload, pre_admission_idle=pre_admission_idle
                     )
                     event = await self._enrich_shell_event(event, session)
+                    event = await self._reconcile_terminal_lineage(event, session)
                     pending = (event, session.model_copy(deep=True))
                     ingesting = True
                     await ingest(event, pending[1])

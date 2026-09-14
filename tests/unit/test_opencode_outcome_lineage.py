@@ -10,6 +10,7 @@ from pex_bridge.adapters import http_json as http_json_module
 from pex_bridge.adapters.http_json import LiveHttpTransport, MemoryHttpTransport
 from pex_bridge.adapters.opencode import OpenCodeAdapter
 from pex_bridge.adapters.opencode_outcomes import (
+    OPENCODE_LINEAGE_RECONCILIATION_KEY,
     OPENCODE_MESSAGE_LINEAGE_KEY,
     event_matches_opencode_delivery,
 )
@@ -485,6 +486,40 @@ def test_completed_assistant_message_is_exact_terminal_for_its_parent() -> None:
     assert lineage["assistant_message_error"] is False
     assert lineage["assistant_finish"] == "stop"
     assert event_matches_opencode_delivery(_intervention(session), session, terminal) is True
+
+
+@pytest.mark.asyncio
+async def test_canonical_message_snapshot_recovers_exact_terminal_after_sse_gap() -> None:
+    adapter, session = _adapter_session()
+    adapter._event_gap_detected = True
+    payload = _assistant_payload(session)
+    payload["properties"]["info"]["time"] = {"created": 10, "completed": 20}
+    payload["properties"]["info"]["finish"] = "stop"
+    terminal = adapter.normalize_sse(session, payload)
+    assert terminal.metadata[OPENCODE_MESSAGE_LINEAGE_KEY]["stream_contiguous"] is False
+    assert event_matches_opencode_delivery(_intervention(session), session, terminal) is False
+
+    adapter.transport.messages = [
+        {
+            "info": {
+                "id": "user-pex",
+                "sessionID": session.vendor_session_id,
+                "role": "user",
+            },
+            "parts": [{"type": "text", "text": "Inspect the missing evidence."}],
+        },
+        {"info": payload["properties"]["info"], "parts": []},
+    ]
+    recovered = await adapter._reconcile_terminal_lineage(terminal, session)
+
+    assert recovered.metadata[OPENCODE_LINEAGE_RECONCILIATION_KEY]["source"] == (
+        "canonical_message_snapshot"
+    )
+    assert event_matches_opencode_delivery(_intervention(session), session, recovered) is True
+
+    forged = recovered.model_copy(deep=True)
+    forged.metadata[OPENCODE_LINEAGE_RECONCILIATION_KEY]["parent_message_id"] = "other"
+    assert event_matches_opencode_delivery(_intervention(session), session, forged) is False
 
 
 @pytest.mark.asyncio

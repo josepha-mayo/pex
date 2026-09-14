@@ -22,6 +22,8 @@ from pex_bridge.adapters.base import (
 
 OPENCODE_MESSAGE_LINEAGE_SCHEMA = "pex.opencode-message-lineage.v1"
 OPENCODE_MESSAGE_LINEAGE_KEY = "opencode_message_lineage"
+OPENCODE_LINEAGE_RECONCILIATION_KEY = "opencode_lineage_reconciliation"
+OPENCODE_LINEAGE_RECONCILIATION_SCHEMA = "pex.opencode-lineage-reconciliation.v1"
 OPENCODE_MESSAGE_LINEAGE_KEYS = frozenset(
     {
         "schema",
@@ -159,7 +161,6 @@ def _validated_event_lineage(event: HarnessEvent) -> dict[str, Any] | None:
         return None
     if (
         candidate.get("schema") != OPENCODE_MESSAGE_LINEAGE_SCHEMA
-        or candidate.get("stream_contiguous") is not True
         or candidate.get("parent_removed_observed") is not False
         or candidate.get("role") != "assistant"
         or candidate.get("source_event_type")
@@ -192,6 +193,28 @@ def _validated_event_lineage(event: HarnessEvent) -> dict[str, Any] | None:
     except (TypeError, ValueError):
         return None
     return normalized if normalized == candidate else None
+
+
+def _snapshot_reconciles_lineage(
+    event: HarnessEvent,
+    session: HarnessSession,
+    lineage: dict[str, Any],
+) -> bool:
+    """Validate one exact parent edge recovered from OpenCode's messages API."""
+
+    candidate = (event.metadata or {}).get(OPENCODE_LINEAGE_RECONCILIATION_KEY)
+    expected = {
+        "schema": OPENCODE_LINEAGE_RECONCILIATION_SCHEMA,
+        "source": "canonical_message_snapshot",
+        "target_session_id": session.id,
+        "vendor_session_id": session.vendor_session_id,
+        "message_id": lineage["message_id"],
+        "parent_message_id": lineage["parent_message_id"],
+        "assistant_finish": "stop",
+        "assistant_message_completed": True,
+        "parent_message_present": True,
+    }
+    return isinstance(candidate, dict) and candidate == expected
 
 
 def event_matches_opencode_delivery(
@@ -252,6 +275,10 @@ def event_matches_opencode_delivery(
         return False
     lineage = _validated_event_lineage(event)
     if lineage is None:
+        return False
+    if lineage["stream_contiguous"] is not True and not _snapshot_reconciles_lineage(
+        event, session, lineage
+    ):
         return False
     clean_terminal = (
         event.event_type == EventType.STOP
