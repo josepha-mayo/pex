@@ -19,6 +19,16 @@ const BRIDGE_ADDRESS: &str = "127.0.0.1:7420";
 const BRIDGE_IDENTITY_PATH: &str = "/health/identity";
 const MIN_BRIDGE_TOKEN_BYTES: usize = 32;
 const MAX_BRIDGE_TOKEN_CHARS: usize = 512;
+
+#[cfg(target_os = "windows")]
+const BRIDGE_EXECUTABLE_NAME: &str = "pex-bridge.exe";
+#[cfg(not(target_os = "windows"))]
+const BRIDGE_EXECUTABLE_NAME: &str = "pex-bridge";
+
+#[cfg(target_os = "windows")]
+const BRIDGE_PYTHON_RUNTIME_NAME: &str = "python312.dll";
+#[cfg(not(target_os = "windows"))]
+const BRIDGE_PYTHON_RUNTIME_NAME: &str = "libpython3.12.so.1.0";
 // Bound cold runtime imports and authenticated readiness. The bridge is shipped
 // unpacked so startup no longer extracts a one-file payload on every launch.
 const BRIDGE_STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
@@ -562,30 +572,30 @@ fn packaged_bridge_path(resource_root: &Path) -> Result<PathBuf, String> {
         .canonicalize()
         .map_err(|_| "missing resource directory")?;
     let runtime = root.join("pex-bridge-runtime");
+    let executable_path = runtime.join(BRIDGE_EXECUTABLE_NAME);
+    let python_runtime_path = runtime.join("_internal").join(BRIDGE_PYTHON_RUNTIME_NAME);
     for path in [
         &runtime,
         &runtime.join("_internal"),
-        &runtime.join("pex-bridge.exe"),
-        &runtime.join("_internal/python312.dll"),
+        &executable_path,
+        &python_runtime_path,
     ] {
         let metadata = std::fs::symlink_metadata(path).map_err(|_| "missing bridge runtime")?;
         if metadata.file_type().is_symlink() {
             return Err("linked bridge runtime is unsupported".into());
         }
     }
-    let executable = runtime
-        .join("pex-bridge.exe")
+    let executable = executable_path
         .canonicalize()
         .map_err(|_| "missing bridge executable")?;
     if !executable.starts_with(&root)
         || !executable.is_file()
-        || !runtime.join("_internal/python312.dll").is_file()
+        || !python_runtime_path.is_file()
     {
         return Err("invalid bridge runtime layout".into());
     }
     Ok(executable)
 }
-
 fn bridge_sidecar_args() -> [&'static str; 4] {
     ["--host", BRIDGE_HOST, "--port", BRIDGE_PORT]
 }
@@ -1096,7 +1106,7 @@ mod tests {
         packaged_bridge_path, remaining_timeout, trusted_webview_navigation, window_close_action,
         BridgeAuth, BridgeBootstrapPhase, BridgePortState, BridgeRuntime, BridgeSource,
         WindowCloseAction, BRIDGE_IDENTITY_MISS_LIMIT, BRIDGE_IDENTITY_MONITOR_INTERVAL,
-        MAX_BRIDGE_TOKEN_CHARS,
+        BRIDGE_EXECUTABLE_NAME, BRIDGE_PYTHON_RUNTIME_NAME, MAX_BRIDGE_TOKEN_CHARS,
     };
 
     #[test]
@@ -1117,12 +1127,16 @@ mod tests {
         assert!(packaged_bridge_path(&fixture.0).is_err());
         let runtime = fixture.0.join("pex-bridge-runtime");
         std::fs::create_dir_all(runtime.join("_internal")).unwrap();
-        std::fs::write(runtime.join("pex-bridge.exe"), b"fixture").unwrap();
+        std::fs::write(runtime.join(BRIDGE_EXECUTABLE_NAME), b"fixture").unwrap();
         assert!(packaged_bridge_path(&fixture.0).is_err());
-        std::fs::write(runtime.join("_internal/python312.dll"), b"fixture").unwrap();
+        std::fs::write(
+            runtime.join("_internal").join(BRIDGE_PYTHON_RUNTIME_NAME),
+            b"fixture",
+        )
+        .unwrap();
         assert_eq!(
             packaged_bridge_path(&fixture.0).unwrap(),
-            runtime.join("pex-bridge.exe").canonicalize().unwrap()
+            runtime.join(BRIDGE_EXECUTABLE_NAME).canonicalize().unwrap()
         );
     }
 
