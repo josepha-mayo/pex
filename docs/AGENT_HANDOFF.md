@@ -1,5 +1,48 @@
 # PEX active handoff
 
+## Public Windows + Linux RC7 — 14 September 16:42 UTC
+
+Public release: https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7
+
+Exact package source `600d1dea9e0bfb0402b20dd3e3d0d1c6ea337b79`
+adds a fail-closed Linux packaging repair without changing supervisor behavior.
+PyInstaller's safe relative in-tree shared-library links are materialized as
+ordinary files before the immutable runtime manifest is built. Absolute,
+escaping, dangling and directory links remain rejected. Windows tests cannot
+create links on this host, but the Ubuntu runner exercised all four positive and
+negative link cases successfully.
+
+Ubuntu 24.04 passed locked dependency installation, 309 desktop contracts, the
+full Tauri AppImage/Debian build, and a packaged `pex-bridge` smoke. The smoke
+verified authenticated bridge identity, authenticated Supervisor settings,
+Zen with `muse-spark-1.3-contributor-free` first, dispatch cap three, worker
+attachment disabled and zero provider calls. CI run:
+https://github.com/josepha-mayo/pex/actions/runs/34867675759
+
+Fresh Windows RC7 MSI/NSIS builds also passed the exclusive package verifier:
+`release_ready:true`, exact source above, and zero blockers. The packaged
+Windows bridge passed the same identity/settings check with zero provider calls.
+Published artifacts and SHA-256:
+
+- AppImage: `853acd873010faeb65dbab3a1bd4577c3383800a65b50ab76b6d36b13569fc22`
+- Debian: `8123824d89817ac9804186cacdce22d56bf03d424a86c087eba5a56bd3350c0a`
+- NSIS: `0c151ddf93512b5450688fe95b5930f047364e8da34121c488226f9e3a0ffc75`
+- MSI: `5963e4fd29126890655ce0ec04923efcfed7d179e51a49b7b94146804d949952`
+
+All five public release URLs, including `SHA256SUMS-rc7.txt`, returned HTTP 206
+for an unauthenticated one-byte range request. Main advanced to docs-only commit
+`2dd6b796e79179bd97edd7db0c2ae5a9fb710695` with judge-friendly Windows and
+Linux setup. macOS and ARM64 remain unsupported. Linux package construction and
+bridge startup are verified; physical Linux UI, keyring save, pet interaction,
+OpenCode attach and live Zen supervision still require the second-laptop visual
+acceptance. Do not claim those unperformed checks. The existing OpenCode/Codex
+Strands behavior evidence remains valid for the unchanged supervisor runtime,
+but was not rerun for this packaging-only delta.
+
+Devpost remains not submitted. The video, logged-out playback, architecture
+attachment and final authorized contest submission remain the consequential
+gates.
+
 ## Tracked-secret gate and live Devpost refresh — 13 September 22:08 UTC
 
 Clean pushed source `9153260bdb68835a29c70a2ac1603af92c8ce3f1`

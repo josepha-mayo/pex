@@ -1,6 +1,6 @@
 # PEX current MVP shipping gate
 
-Updated 13 September 2026. Superseded checkpoints are preserved in
+Updated 14 September 2026. Superseded checkpoints are preserved in
 [MVP_SHIP_GATE_HISTORY.md](MVP_SHIP_GATE_HISTORY.md), not active instructions.
 
 ## Authority and scope
@@ -19,13 +19,15 @@ app termination, fabricated benchmark score or false completion claim.
 
 ## Current candidate
 
-Published product source: **`bd0471ffee43df60b95570df30a402b725f049c1`**.
+Published package source: **`600d1dea9e0bfb0402b20dd3e3d0d1c6ea337b79`**.
 Local NSIS: `apps/desktop/src-tauri/target/release/bundle/nsis/PEX_0.1.0_x64-setup.exe`.
-Bytes: `101735091`; SHA-256:
-`07b82aa3c5685f3f4c0695a5b7b1e9c7bd6e26f70cc70c835545bac992b10d75`.
+Bytes: `101732049`; SHA-256:
+`0c151ddf93512b5450688fe95b5930f047364e8da34121c488226f9e3a0ffc75`.
 The package receipt and installed smoke are retained beside that candidate.
-The exact package is public as
-[PEX 0.1.0 RC6](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc6).
+Windows x64 NSIS/MSI and Linux x64 AppImage/Debian packages are public as
+[PEX 0.1.0 RC7](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7).
+The Ubuntu CI gate passed 309 desktop contracts, both bundles and packaged
+bridge identity/settings startup. Physical Linux visual acceptance remains open.
 
 ## Sequenced acceptance checklist
 

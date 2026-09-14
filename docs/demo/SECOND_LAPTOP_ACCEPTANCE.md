@@ -1,18 +1,19 @@
 # PEX second-laptop acceptance and recording card
 
-Use this card on the clean Windows laptop. Stop on the first failed gate and
+Use this card on the clean Windows or graphical x64 Linux laptop. Stop on the first failed gate and
 retain the screenshot/log; do not film around a defect.
 
 ## 1. Download and verify
 
-Download `PEX_0.1.0_x64-setup.exe` from the public
-[PEX 0.1.0 RC6](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc6),
-or copy it from the current release bundle on the development laptop.
-RC6 is exact source `bd0471ffee43df60b95570df30a402b725f049c1`.
+Download the matching package from the public
+[PEX 0.1.0 RC7](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7).
+Use `PEX_0.1.0_x64-setup.exe` on Windows, `PEX_0.1.0_amd64.deb` on
+Debian-family Linux, or `PEX_0.1.0_amd64.AppImage` on other graphical x64 Linux.
+RC7 is exact package source `600d1dea9e0bfb0402b20dd3e3d0d1c6ea337b79`.
 Its packaged executable inventory matches the exclusive receipt, and the frozen
 bridge passed authenticated settings smoke. RC3 passed the unchanged native
-renderer/overlay UX; do not
-skip the exact-build visual gates below for RC6.
+renderer/overlay UX; Ubuntu CI passed the package build and bridge startup but
+not physical display interaction. Do not skip the exact-build visual gates below.
 
 ```powershell
 $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
@@ -20,10 +21,25 @@ $pexInstaller = '.\PEX_0.1.0_x64-setup.exe'
 (Get-FileHash -LiteralPath $pexInstaller -Algorithm SHA256).Hash
 ```
 
-Expected bytes for RC6: `101735091`
+Expected Windows NSIS bytes: `101732049`
 
 Expected SHA-256:
-`07B82AA3C5685F3F4C0695A5B7B1E9C7BD6E26F70CC70C835545BAC992B10D75`
+`0C151DDF93512B5450688FE95B5930F047364E8DA34121C488226F9E3A0FFC75`
+
+On Debian-family Linux:
+
+```bash
+sudo apt install ./PEX_0.1.0_amd64.deb
+```
+
+For the AppImage:
+
+```bash
+chmod +x PEX_0.1.0_amd64.AppImage
+./PEX_0.1.0_amd64.AppImage
+```
+
+Verify either Linux file against `SHA256SUMS-rc7.txt` before running it.
 
 The installer is unsigned, so a Windows publisher warning is expected. Reject
 the file if its size or hash differs.

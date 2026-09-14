@@ -1,23 +1,27 @@
 # PEX judge testing guide
 
-PEX is a Windows desktop companion that supervises coding workers through their
+PEX is a Windows and Linux x64 desktop companion that supervises coding workers through their
 supported local interfaces. The focused submission supports OpenCode HTTP and an
 isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Fastest evaluation path
 
-Download the current unsigned NSIS from
-[PEX 0.1.0 RC6](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc6)
-and verify SHA-256
-`07b82aa3c5685f3f4c0695a5b7b1e9c7bd6e26f70cc70c835545bac992b10d75`.
-Windows may show a publisher warning because this candidate is not code-signed.
+Download the matching package from
+[PEX 0.1.0 RC7](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7)
+and verify it against the attached `SHA256SUMS-rc7.txt`. Windows users should
+choose the NSIS `PEX_0.1.0_x64-setup.exe`; Debian-family users should choose the
+`.deb`; other graphical x64 Linux users should choose the AppImage. Windows may
+show a publisher warning because this candidate is not code-signed.
 
-Current published product source: `bd0471f`. Its rebuilt installer, frozen
+Current package source: `600d1de`. Its rebuilt Windows installers, frozen
 bridge, authenticated settings surface, package inventory, and packaged
-executable hashes passed. Fresh exact-current OpenCode recovery and a quiet
-control passed with Zen BYOK and Strands. Codex App Server integration passes the
-focused automated gate; it was not rerun as a live RC6 pair. Repeat the
-exact-build installed visual card before filming.
+executable hashes passed. Ubuntu 24.04 also passed all 309 desktop contracts,
+built AppImage and Debian packages, and booted the packaged bridge through the
+authenticated Settings check. Fresh OpenCode recovery and a quiet control pass
+with Zen BYOK and Strands on the unchanged supervisor runtime. Codex App Server
+integration passes the focused automated gate; neither behavior pair was rerun
+for the packaging-only RC7 delta. Repeat the exact-build installed visual card
+before filming, especially on Linux.
 See [exact-copy/hash instructions](demo/SECOND_LAPTOP_ACCEPTANCE.md), or build
 current source below.
 
@@ -43,8 +47,9 @@ opening PEX or calling a model:
 ```
 
 The command refuses a loose development executable, uses an isolated temporary
-profile, verifies authenticated identity plus Settings, disables worker/cloud
-attachment, and owns the bridge in a kill-on-close Windows job.
+profile, verifies authenticated identity plus Settings, and disables
+worker/cloud attachment. The CI gate runs the corresponding `pex-bridge` path
+on Linux.
 
 ## Connect OpenCode
 

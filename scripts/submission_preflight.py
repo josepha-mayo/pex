@@ -79,8 +79,8 @@ class ArtifactSpec:
 ARTIFACTS = (
     ArtifactSpec(
         INSTALLER,
-        101_735_091,
-        "07b82aa3c5685f3f4c0695a5b7b1e9c7bd6e26f70cc70c835545bac992b10d75",
+        101_732_049,
+        "0c151ddf93512b5450688fe95b5930f047364e8da34121c488226f9e3a0ffc75",
     ),
     ArtifactSpec(
         ARCHITECTURE,
