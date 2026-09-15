@@ -39,10 +39,8 @@ claim. AgentCore is
 implemented and locally tested but
 **not AWS-deployed**. The formal four-arm benchmark is unfrozen and has no valid
 score. Final recording remains. See the
-[current checklist](docs/MVP_SHIP_GATE.md),
-[judge guide](docs/JUDGE_TESTING.md),
-[OpenCode evidence](docs/AGENT_HANDOFF.md), and
-[exact-current Codex pair](docs/demo/evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md).
+[judge guide](docs/JUDGE_TESTING.md) and the
+[architecture overview](docs/architecture/overview.md).
 
 ![PEX Home showing two available coding workers and the Von companion](docs/demo/assets/pex-home-49385f2.png)
 
@@ -89,7 +87,7 @@ prolonged stability is not yet claimed. It supervises existing harnesses.
 - Uses reviewed **Codex v2** atlases (`1536×2288`, `spriteVersionNumber: 2`), restrained playback and manual dragging. The overlay does not roam or hop on hover.
 - Separate controls hide the pet or dismiss only its status message; the pet can be restored from Settings. Both actions were observed independently in native checks.
 - Custom imports and image generation are disabled in this MVP, including their write APIs. Existing legacy import metadata is preserved; retired selections fall back to Pex.
-- Both current installer inventories contain only Pex and Von. See the [shipping gate](docs/MVP_SHIP_GATE.md) for current source-bound checks and remaining limits.
+- Both current installer inventories contain only Pex and Von. See the [judge guide](docs/JUDGE_TESTING.md) for the focused evaluation path and remaining limits.
 
 ## Benchmark headline
 
@@ -132,10 +130,9 @@ Use `PEX_0.1.0_x64-setup.exe` for the normal install. It is built from exact
 product source above; its SHA-256 is
 `0c151ddf93512b5450688fe95b5930f047364e8da34121c488226f9e3a0ffc75`.
 Package integrity is not indefinite stability or publisher trust; current
-source-bound evidence is recorded in the [active handoff](docs/AGENT_HANDOFF.md).
+source-bound behavior and trust boundaries are summarized in the [architecture overview](docs/architecture/overview.md).
 
-Use the [exact-build recording card](docs/demo/SECOND_LAPTOP_ACCEPTANCE.md)
-before filming this release, or build current source below.
+Use the [judge testing guide](docs/JUDGE_TESTING.md) before evaluating this release, or build current source below.
 
 ### Build from source
 
@@ -294,11 +291,8 @@ still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
 target, not a deployed-service claim. Fresh release-source OpenCode and Codex
 pairs each retain one evidence-specific same-session recovery, an observed
 `helped:true` outcome, a final model-backed `NOOP`, and a separate already-correct
-control with zero PEX follow-ups. See the current
-[OpenCode evidence](docs/demo/evidence/LIVE_OPENCODE_PAIR_1CAA822_2026-09-13.md)
-and [Codex evidence](docs/demo/evidence/LIVE_CODEX_PAIR_8E99E9F_2026-09-13.md).
-These bounded pairs do not prove broad quiet statistics, AgentCore deployment,
-or a comparative benchmark result.
+control with zero PEX follow-ups. These bounded pairs do not prove broad quiet
+statistics, AgentCore deployment, or a comparative benchmark result.
 
 The cloud supervisor can propose actions. It cannot bypass local policy.
 
@@ -306,11 +300,10 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound live OpenCode and separate Codex App Server behavior proofs are retained. The matching [RC7 release](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7) provides Windows and Linux x64 packages; recording and Devpost submission remain pending under [the focused MVP gate](docs/MVP_SHIP_GATE.md). Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](docs/SUBMISSION.md).
+Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound live OpenCode and separate Codex App Server behavior proofs are retained. The matching [RC7 release](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7) provides Windows and Linux x64 packages. Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](devpost-submission.md).
 
 - License: MIT
-- Devpost copy and demo script: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)
-- Spec: [`docs/PEX_BUILD_SPEC.md`](docs/PEX_BUILD_SPEC.md)
-- Hackathon/AWS track: [`docs/HACKATHON_TRACK.md`](docs/HACKATHON_TRACK.md)
+- Devpost copy: [`devpost-submission.md`](devpost-submission.md)
+- Architecture: [`docs/architecture/overview.md`](docs/architecture/overview.md)
+- Hackathon diagram: [`docs/architecture/hackathon.md`](docs/architecture/hackathon.md)
 - Why not an orchestrator: [`docs/DIFFERENTIATION.md`](docs/DIFFERENTIATION.md)
-- Status: [`STATUS.md`](STATUS.md)

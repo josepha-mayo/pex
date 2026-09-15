@@ -22,8 +22,7 @@ with Zen BYOK and Strands on the unchanged supervisor runtime. Codex App Server
 integration passes the focused automated gate; neither behavior pair was rerun
 for the packaging-only RC7 delta. Repeat the exact-build installed visual card
 before filming, especially on Linux.
-See [exact-copy/hash instructions](demo/SECOND_LAPTOP_ACCEPTANCE.md), or build
-current source below.
+Build current source below, or use the package instructions in the README.
 
 To build from the public source checkout instead, use the pinned prerequisites
 in the README:

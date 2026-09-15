@@ -117,7 +117,7 @@ Recording flow:
 - RC5 installer: 101,737,472 bytes; SHA-256 `8f1acb81fbd6f8eabb23b0f3185ac6385855cbde0a5e06f7f9bfa983be21b49f`. Its packaged receipt, authenticated bridge identity, packaged settings smoke, and source-bound live supervision receipts all passed.
 - Architecture PNG exists and is below the official 35 MiB limit.
 - Exact-current OpenCode proof includes a ten-case already-correct run with ten `NOOP` decisions and zero follow-ups, plus a recovery run with one `SEND_NUDGE`, exact repaired output, `helped:true`, and a final `NOOP` in the same worker session.
-- Exact-current Codex proof is retained at `docs/demo/evidence/LIVE_CODEX_PAIR_A529316_2026-09-13.md`: recovery produced one same-thread `SEND_NUDGE`, exact `shipped`, `helped:true`, then `NOOP`; the quiet control produced exact `pong`, only `NOOP`, and zero follow-ups.
+- Exact-current Codex behavior was checked with one same-thread recovery followed by `NOOP` and a separate already-correct control with zero follow-ups; these are bounded behavioral proofs, not a comparative benchmark.
 - The focused local Strands/AgentCore gate passed 277 tests with four environment skips. The desktop suite passed 303 tests with one expected Windows symlink skip.
 - AgentCore protocol is locally implemented and tested but not deployed to AWS.
 - PexBench is not frozen, so no comparative score or leaderboard rank is claimed.

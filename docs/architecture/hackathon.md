@@ -19,9 +19,9 @@ Zen BYOK uses the locally held vault credential; configuration does not guarante
 free usage. Green identifies the core local path, not exhaustive live coverage.
 The dashed AgentCore option is implemented and offline-tested, **not deployed**.
 It cannot bypass local policy. No deployed Memory or CloudWatch claim is made.
-AgentCore deployment is optional under the refreshed official rules. See
-[the focused shipping gate](../MVP_SHIP_GATE.md) and source-bound live evidence
-in [the active handoff](../AGENT_HANDOFF.md). No formal comparative score is claimed.
+AgentCore deployment is optional under the refreshed official rules. See the
+[architecture overview](overview.md) for the trust boundaries. No formal comparative
+score is claimed.
 
 ## Historical diagram description — not the current submission image
 

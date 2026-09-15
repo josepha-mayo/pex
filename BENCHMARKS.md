@@ -154,7 +154,8 @@ On 12 September 2026, the expanded benchmark/integration selection passed
 safety, immutable result admission, hidden-evaluator boundaries, Cursor
 capture/delivery/ack/policy, and speculative supervision. The exact command and
 scope are retained in
-[`docs/demo/evidence/BENCHMARK_GATE_2026-09-12.md`](docs/demo/evidence/BENCHMARK_GATE_2026-09-12.md).
+The exact command and scope were part of the internal development record; the public
+benchmark contract and task prompts remain in this directory.
 
 The same checkpoint's `four_arm.py readiness` returned exit code 0 while
 correctly reporting `coherent_runs: []`, `can_freeze: false`. Passing the
