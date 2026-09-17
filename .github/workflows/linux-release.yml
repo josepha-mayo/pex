@@ -1,6 +1,8 @@
 name: Linux release bundle
 
 on:
+  push:
+    branches: [fix/simple-goal-setup]
   workflow_dispatch:
     inputs:
       release_tag:
@@ -11,6 +13,9 @@ on:
 permissions:
   contents: write
 
+env:
+  RELEASE_TAG: ${{ inputs.release_tag || 'v0.1.0-rc10' }}
+
 jobs:
   linux-x64:
     runs-on: ubuntu-24.04
@@ -19,7 +24,7 @@ jobs:
       - name: Check out the exact release source
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ inputs.release_tag || github.sha }}
           fetch-depth: 0
 
       - name: Install Tauri Linux dependencies
@@ -76,7 +81,7 @@ jobs:
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pex-linux-x64-${{ inputs.release_tag }}
+          name: pex-linux-x64-${{ env.RELEASE_TAG }}
           if-no-files-found: error
           path: |
             apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
@@ -87,7 +92,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --prerelease \
+              --title "PEX RC10 — all connected sessions" \
+              --notes "Shows all reported sessions across workspaces, with automatic workspace selection and clear view-only labels. Does not enable supervision without explicit goal assignment."
+          fi
           mapfile -t assets < <(find apps/desktop/src-tauri/target/release/bundle \
             -type f \( -name '*.AppImage' -o -name '*.deb' \) -print)
           test "${#assets[@]}" -ge 2
-          gh release upload "${{ inputs.release_tag }}" "${assets[@]}" --clobber
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
