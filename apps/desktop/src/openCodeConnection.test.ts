@@ -69,6 +69,29 @@ test("OpenCode setup rejects invalid origins before I/O", async () => {
   }, "http://remote.example", new AbortController().signal));
 });
 
+test("OpenCode password is sent only in the authenticated bridge body", async () => {
+  const signal = new AbortController().signal;
+  await connectOpenCode(async (path, init) => {
+    assert.equal(path, "/v1/adapters/opencode/attach");
+    assert.deepEqual(JSON.parse(String(init?.body)), {
+      url: "http://127.0.0.1:4096", username: "opencode", password: "server-password-canary",
+    });
+    assert.equal(new Headers(init?.headers).has("Authorization"), false);
+    return { ok: true, name: "opencode" };
+  }, "http://127.0.0.1:4096", signal, { username: "", password: "server-password-canary" });
+});
+
+test("OpenCode malformed server credentials fail before I/O", async () => {
+  for (const credentials of [
+    { username: "user\nname", password: "secret" },
+    { username: "opencode", password: "secret\n" },
+    { username: "opencode", password: "x".repeat(4097) },
+  ]) {
+    await assert.rejects(connectOpenCode(async () => assert.fail("must not send"),
+      "http://localhost:4096", new AbortController().signal, credentials));
+  }
+});
+
 test("OpenCode failed or ambiguous attach never retries or claims success", async () => {
   for (const result of [null, [], {}, { ok: false, name: "opencode" }, { ok: true, name: "codex" }, "lost"]) {
     let calls = 0;

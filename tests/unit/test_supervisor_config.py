@@ -175,3 +175,62 @@ def test_frozen_sidecar_collects_dynamic_keyring_backends():
     )
 
     assert '"--collect-all",\n    "keyring"' in build_script
+
+
+def test_linux_keyring_chain_uses_secure_backend_without_plaintext_fallback(monkeypatch):
+    from types import SimpleNamespace
+
+    import keyring
+    import pex_bridge.supervisor_config as config
+    from keyring.backends.chainer import ChainerBackend
+
+    values = {}
+
+    class Secure:
+        __module__ = "keyring.backends.SecretService"
+
+        def set_password(self, service, name, value):
+            values[service, name] = value
+
+        def get_password(self, service, name):
+            return values.get((service, name))
+
+        def delete_password(self, service, name):
+            values.pop((service, name))
+
+    class Plaintext:
+        __module__ = "keyrings.alt.file"
+
+        def set_password(self, *_args):
+            pytest.fail("plaintext backend must never receive the key")
+
+    monkeypatch.setattr(config, "os", SimpleNamespace(name="posix"))
+    monkeypatch.setattr(ChainerBackend, "backends", [Plaintext(), Secure()])
+    monkeypatch.setattr(keyring, "get_keyring", lambda: ChainerBackend())
+    store = KeyringSupervisorSecretStore()
+    reference = store.put("local-test-credential", audience="a" * 64)
+    assert store.get(reference, audience="a" * 64) == "local-test-credential"
+    store.delete(reference)
+    assert not values
+
+
+def test_keyring_chain_without_secure_backend_is_rejected(monkeypatch):
+    import keyring
+    from keyring.backends.chainer import ChainerBackend
+
+    monkeypatch.setattr(ChainerBackend, "backends", [object()])
+    monkeypatch.setattr(keyring, "get_keyring", lambda: ChainerBackend())
+    with pytest.raises(SupervisorSecretStoreError, match="supported operating-system"):
+        KeyringSupervisorSecretStore().put("local-test-credential", audience="a" * 64)
+
+
+def test_keyring_initialization_failure_is_a_safe_configuration_error(monkeypatch):
+    import keyring
+
+    def unavailable():
+        raise RuntimeError("private backend diagnostics")
+
+    monkeypatch.setattr(keyring, "get_keyring", unavailable)
+    with pytest.raises(SupervisorSecretStoreError, match="could not initialize") as error:
+        KeyringSupervisorSecretStore()._keyring()
+    assert "private backend diagnostics" not in str(error.value)

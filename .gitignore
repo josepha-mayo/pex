@@ -38,6 +38,7 @@ Thumbs.db
 .vscode/
 .opencode/
 *.log
+/work/
 
 # Benchmark raw logs are immutable once written; never commit invented scores
 benchmarks/results/_scratch/

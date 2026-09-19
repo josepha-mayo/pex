@@ -17,6 +17,47 @@ from pex_protocol.intervention import Intervention
 from pex_protocol.session import HarnessEvent, HarnessSession
 
 
+async def test_codex_routine_listing_uses_state_db_without_rollout_repairs():
+    class IndexedTransport(CodexAppServerTransport):
+        async def request(self, method, params=None):
+            if method == "thread/list":
+                # A rollout scan can stall for longer than the RPC deadline on
+                # a migrated account. Both probe and discovery must stay indexed.
+                assert params.get("useStateDbOnly") is True
+            return await super().request(method, params)
+
+    adapter = CodexAdapter(IndexedTransport())
+    assert (await adapter.probe()).support_label.value == "basic"
+    assert await adapter.discover_sessions(observe_desktop=False)
+
+
+async def test_codex_listing_does_not_revive_stopped_threads_or_refresh_activity():
+    from pex_protocol.enums import SessionStatus
+
+    transport = CodexAppServerTransport()
+    old_activity = datetime(2026, 1, 1, tzinfo=UTC)
+    transport.threads = [
+        {"id": "old", "cwd": "C:/repo", "updatedAt": int(old_activity.timestamp())}
+    ]
+    adapter = CodexAdapter(transport)
+    first = (await adapter.discover_sessions(observe_desktop=False))[0]
+    assert first.last_activity == old_activity
+    assert first.status == SessionStatus.DISCOVERED
+    first.status = SessionStatus.STOPPED
+    second = (await adapter.discover_sessions(observe_desktop=False))[0]
+    assert second.last_activity == old_activity
+    assert second.status == SessionStatus.STOPPED
+
+
+@pytest.mark.parametrize("updated_at", [None, True, -1, 10**100, "recent"])
+async def test_codex_listing_does_not_invent_timestamps(updated_at):
+    transport = CodexAppServerTransport()
+    transport.threads = [{"id": "old", "cwd": "C:/repo", "updatedAt": updated_at}]
+    adapter = CodexAdapter(transport)
+    session = (await adapter.discover_sessions(observe_desktop=False))[0]
+    assert session.last_activity is None
+
+
 async def test_codex_pump_does_not_discover_without_a_transport(monkeypatch):
     adapter = CodexAdapter()
     sleep_entered = asyncio.Event()

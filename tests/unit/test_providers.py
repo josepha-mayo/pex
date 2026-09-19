@@ -51,6 +51,54 @@ def test_local_auto_detection_requires_successful_http_status(monkeypatch):
     assert _local_alive("http://127.0.0.1/right") is True
 
 
+def test_nebius_saved_byok_constructs_strands_model_with_scoped_endpoint(monkeypatch):
+    import pex_supervisor.providers as providers
+    import strands.models.openai
+
+    captured = {}
+
+    class Model:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
+    monkeypatch.setattr(providers, "_DOTENV_LOADED", True)
+    monkeypatch.setattr(strands.models.openai, "OpenAIModel", Model)
+    sentinel = object()
+    monkeypatch.setattr(providers, "credential_safe_http_client", lambda **_: sentinel)
+    model = load_supervisor_model(SupervisorRuntimeConfig(
+        provider="nebius", auth_mode="api_key", credential_source="secret_store",
+        api_key="local-test-credential",
+    ))
+    assert captured["client_args"]["base_url"] == "https://api.tokenfactory.us-central1.nebius.com/v1"
+    assert captured["client_args"]["api_key"] == "local-test-credential"
+    assert captured["client_args"]["http_client"] is sentinel
+    assert captured["model_id"] == "nvidia/nemotron-3-super-120b-a12b"
+    assert model._pex_provenance["provider"] == "nebius"
+    assert "local-test-credential" not in json.dumps(model._pex_provenance)
+
+
+def test_nebius_environment_key_never_inherits_another_vendors_key(monkeypatch):
+    import pex_supervisor.providers as providers
+
+    monkeypatch.setattr(providers, "_DOTENV_LOADED", True)
+    monkeypatch.setattr(providers, "_RUNTIME_CONFIG", None)
+    monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
+    monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "nebius")
+    monkeypatch.delenv("PEX_SUPERVISOR_BASE_URL", raising=False)
+    monkeypatch.delenv("PEX_SUPERVISOR_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "unrelated-vendor-key")
+    assert openai_compat_client_config() is None
+    monkeypatch.setenv("NEBIUS_API_KEY", "local-test-credential")
+    config = openai_compat_client_config()
+    assert config["api_key"] == "local-test-credential"
+    info = describe_backend()
+    assert info["provider_auth_modes"]["nebius"] == ["api_key"]
+    hints = [row for row in catalog() if row["provider"] == "nebius"]
+    assert hints and all(row["availability"] == "unverified" for row in hints)
+
+
 def test_dotenv_loader_refuses_oversized_files(monkeypatch, tmp_path):
     import pex_supervisor.providers as providers
 

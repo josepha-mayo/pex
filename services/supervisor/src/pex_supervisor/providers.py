@@ -315,6 +315,16 @@ PROVIDERS: dict[str, ProviderSpec] = {
         ("PEX_SUPERVISOR_API_KEY", "NVIDIA_API_KEY"),
         ("api_key",),
     ),
+    "nebius": ProviderSpec(
+        "nebius",
+        "openai_compat",
+        "https://api.tokenfactory.us-central1.nebius.com/v1",
+        ("PEX_SUPERVISOR_API_KEY", "NEBIUS_API_KEY"),
+        ("api_key",),
+        "nvidia/nemotron-3-super-120b-a12b",
+        "Use a Nebius Token Factory API key. Refresh models after saving to check "
+        "your account's catalog. Select custom for another regional endpoint.",
+    ),
     "perplexity": ProviderSpec(
         "perplexity",
         "openai_compat",
@@ -434,6 +444,7 @@ _AUTO_ORDER = (
     "deepseek",
     "moonshot",
     "mistral",
+    "nebius",
     "bedrock",
     "ollama",
     "lmstudio",
@@ -858,6 +869,7 @@ def resolve_provider_id() -> str | None:
 def describe_backend() -> dict[str, Any]:
     _load_dotenv()
     runtime = _active_runtime_config()
+    provider_auth_modes = {pid: list(spec.auth_modes) for pid, spec in PROVIDERS.items()}
     if os.environ.get("PEX_SUPERVISOR_DISABLE") == "1":
         return {
             "backend": None,
@@ -865,6 +877,7 @@ def describe_backend() -> dict[str, Any]:
             "disabled": True,
             "catalog_size": len(catalog()),
             "providers": sorted(PROVIDERS),
+            "provider_auth_modes": provider_auth_modes,
         }
     pid = None
     try:
@@ -916,6 +929,7 @@ def describe_backend() -> dict[str, Any]:
         "login_note": login_note,
         "catalog_size": len(catalog()),
         "providers": sorted(PROVIDERS),
+        "provider_auth_modes": provider_auth_modes,
     }
 
 

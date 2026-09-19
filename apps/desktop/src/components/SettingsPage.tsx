@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { SupervisorAuthMode, SupervisorProtocol, SupervisorCredentialAction } from "../supervisorDraft";
-import { supervisorReviewLimitCopy } from "../supervisorDraft";
+import { supervisorAuthModes, supervisorReviewLimitCopy } from "../supervisorDraft";
 import type {
   Goal,
   ChannelHubStatus,
@@ -125,9 +125,9 @@ export function SettingsPage({
   onCopyHook: () => void;
   onClearHook: () => void;
 }) {
-  const sections: SettingsSection[] = ["companion", "supervisor", "connections", "goals"];
+  const sections: SettingsSection[] = ["supervisor", "connections", "goals", "companion"];
   const [section, setSection] = useState<SettingsSection>(
-    initialSection ?? (settingsAvailable && !settingsIssue && supervisor?.model_loaded ? "companion" : "supervisor"),
+    initialSection ?? "supervisor",
   );
   useEffect(() => {
     if (!initialSection && (settingsIssue || !settingsAvailable)) setSection("supervisor");
@@ -145,13 +145,7 @@ export function SettingsPage({
   const catalogIsLive = visibleCatalog.length > 0 && visibleCatalog.every(
     (row) => row.source === "live_provider_list",
   );
-  const supervisorAuthOptions: SupervisorAuthMode[] = supervisorProvider === "custom"
-    ? ["custom", "api_key"]
-    : ["ollama", "lmstudio", "llamacpp", "vllm"].includes(supervisorProvider)
-      ? ["local"]
-      : supervisorProvider === "bedrock"
-        ? ["bedrock", "agentcore"]
-        : ["api_key", "login"];
+  const supervisorAuthOptions = supervisorAuthModes(supervisorProvider, supervisor?.provider_auth_modes);
   const supervisorUsesCredential = ["api_key", "custom"].includes(supervisorAuth);
 
   return (
@@ -168,9 +162,9 @@ export function SettingsPage({
       <div className="settings-page">
         <header className="surface-heading">
           <div>
-            <p className="eyebrow">Local companion</p>
+            <p className="eyebrow">Workspace preferences</p>
             <h1>Settings</h1>
-            <p>Your companion, supervisor, and coding-agent connections. Credentials stay in the local environment or secret store.</p>
+            <p>Choose PEX’s model, connect your workers, and make the workspace yours.</p>
           </div>
         </header>
 
@@ -350,6 +344,8 @@ export function SettingsPage({
           <section className="settings-card settings-wide">
             <p className="eyebrow">Supervisor inference</p>
             <h2>PEX model</h2>
+            <details className="settings-advanced">
+              <summary>Review budget</summary>
             <p className="settings-note" aria-label="Supervisor review limit">
               {supervisorReviewLimitCopy(settingsAvailable && !settingsIssue
                 ? supervisor?.max_dispatches_per_session : undefined)}
@@ -375,6 +371,7 @@ export function SettingsPage({
                 This does not cancel a review already in flight.
               </span>
             </label>
+            </details>
             <p className="settings-note">
               {supervisor
                 ? supervisorHonestyCopy(supervisor)
@@ -414,7 +411,7 @@ export function SettingsPage({
                   }}
                 >
                   <option value="">auto-detect</option>
-                  {providers.map((provider) => <option value={provider} key={provider}>{provider}</option>)}
+                  {providers.map((provider) => <option value={provider} key={provider}>{provider === "nebius" ? "Nebius Token Factory" : provider}</option>)}
                 </select>
               </label>
               <label>
@@ -441,6 +438,9 @@ export function SettingsPage({
                   disabled={!settingsAvailable || savingSupervisor}
                   onChange={(event) => onSupervisorAuth(event.target.value as SupervisorAuthMode)}
                 >
+                  {!supervisorAuthOptions.includes(supervisorAuth) ? (
+                    <option value={supervisorAuth} disabled>{supervisorAuth} · unavailable, select a supported method</option>
+                  ) : null}
                   {supervisorAuthOptions.map((mode) => (
                     <option value={mode} key={mode}>{mode.replace("_", " ")}</option>
                   ))}
@@ -504,6 +504,8 @@ export function SettingsPage({
                     spellCheck={false}
                   />
                 </label>
+                <details className="settings-advanced">
+                  <summary>Credential options</summary>
                 <label>
                   When the key box is empty
                   <select
@@ -523,14 +525,17 @@ export function SettingsPage({
                       ? "PEX is configured to read the selected provider’s environment credential."
                       : "No credential is configured. Custom auth may still work for an intentionally keyless endpoint."}
                 </p>
+                </details>
               </>
             ) : null}
+            <div className="settings-save-bar">
             <button type="button" className="ghost" disabled={!settingsAvailable || savingSupervisor || refreshingCatalog} onClick={onRefreshCatalog}>
               {refreshingCatalog ? "Refreshing…" : "Refresh configured provider models"}
             </button>
             <button type="button" className="solid" disabled={!settingsAvailable || savingSupervisor} onClick={onSaveSupervisor}>
               {savingSupervisor ? "Saving…" : "Save supervisor"}
             </button>
+            </div>
           </section>
           ) : null}
 

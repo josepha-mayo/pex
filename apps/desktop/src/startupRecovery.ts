@@ -176,7 +176,7 @@ function startupRecoveryCodeCopy(status: BridgeBootstrapStatus): StartupRecovery
         ...base,
         title: "PEX could not create a local session secret",
         detail: "The desktop app could not create the temporary secret used to authenticate its local bridge.",
-        guidance: "Retry after checking that Windows security services are available. No weaker authentication will be used.",
+        guidance: "Retry after checking that operating-system security services are available. No weaker authentication will be used.",
       };
     case "desktop_control_unavailable":
     case "desktop_state_unavailable":
@@ -203,9 +203,9 @@ function startupRecoveryCodeCopy(status: BridgeBootstrapStatus): StartupRecovery
     case "sidecar_spawn_failed":
       return {
         ...base,
-        title: "Windows could not launch the PEX bridge",
+        title: "Could not launch the PEX bridge",
         detail: "The packaged bridge executable was found, but the desktop app could not start it.",
-        guidance: "Check Windows Security for a blocked-app prompt, then choose Retry. Repair the installation if this continues.",
+        guidance: "Check system security prompts and the executable’s permissions, then choose Retry. Repair the installation if this continues.",
       };
     case "sidecar_exited_early":
       return {
@@ -219,7 +219,7 @@ function startupRecoveryCodeCopy(status: BridgeBootstrapStatus): StartupRecovery
         ...base,
         title: "PEX could not verify its bridge in time",
         detail: "The packaged bridge did not prove its identity before the bounded startup deadline.",
-        guidance: "Check whether Windows Security is waiting for a response, then choose Retry.",
+        guidance: "Check whether system security is waiting for a response, then choose Retry.",
       };
     case "bridge_process_stopped":
       return {

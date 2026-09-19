@@ -851,7 +851,7 @@ test("settings fetch failure cannot submit the empty fallback form", async () =>
     /supervisorResult\.status === "fulfilled"[\s\S]*?markCanonical\("supervisor", "fresh"\)[\s\S]*?markCanonical\("supervisor", "failed"/u,
   );
   assert.match(app, /settingsAvailable=\{settingsAvailable\}/u);
-  assert.match(app, /onReloadSettings=\{\(\) => void loadSettings\(\)\}/u);
+  assert.match(app, /onReloadSettings=\{\(\) => void loadSettings\(true\)\}/u);
 });
 
 test("intervention mutations and context stay bound to their actual live source", async () => {
@@ -989,7 +989,7 @@ test("companion headline names the harness and does not invent token savings", (
   assert.doesNotMatch(configuredModelCopy, /semantic model is loaded|ready|successful inference|saved \d+k/i);
 });
 
-test("compact companion is the one-line pet, not a worker catalog", async () => {
+test("workspace home keeps evidence access and an optional companion", async () => {
   const { readFile } = await import("node:fs/promises");
   const { dirname, join } = await import("node:path");
   const { fileURLToPath } = await import("node:url");
@@ -1001,7 +1001,7 @@ test("compact companion is the one-line pet, not a worker catalog", async () => 
   const compactEnd = app.indexOf('surface === "inspector"');
   const compact = app.slice(compactStart, compactEnd);
   assert.match(compact, /Live PEX counts/);
-  assert.match(compact, /Inspect what PEX knows/);
+  assert.match(compact, /Review evidence/);
   assert.doesNotMatch(compact, /Active agents/);
   assert.doesNotMatch(compact, /AskPex/);
   assert.doesNotMatch(compact, /Choose your PEX pet/);
@@ -1615,10 +1615,11 @@ test("compact home presents the supported MVP harnesses and a readable companion
     readFile(join(root, "App.tsx"), "utf8"),
     readFile(join(root, "styles.css"), "utf8"),
   ]);
-  assert.match(app, /Agent harnesses/u);
+  assert.match(app, /Workers/u);
   assert.match(app, /Supported agent harnesses[\s\S]*OpenCode[\s\S]*Codex/u);
   assert.match(app, /`\$\{homeSessions\.length\} available`/u);
-  assert.match(app, /homeSessions\.slice\(0, 8\)/u);
+  assert.match(app, /homeSessions\.map\(/u);
+  assert.doesNotMatch(app, /homeSessions\.slice\(0, 8\)/u);
   assert.match(app, /selectedId \? explicitlySelected : selectPrimarySession\(pet \? homeSessions : sessions\)/u);
   assert.match(app, /function openInspector\(sessionId: string \| undefined = current\?\.id\)/u);
   assert.match(app, /if \(sessionId\) setSelectedId\(sessionId\)/u);

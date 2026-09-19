@@ -6,7 +6,20 @@
 
 **PEX turns you from a full-time manager of AI agents into the owner of goals and decisions.**
 
-It is a goal-aware adaptive supervisor that lives *above* Cursor, Codex, Claude Code, OpenCode, and other coding agents you already use. It is not another coding harness, not a Kanban board, and not a chat UI that makes you babysit a babysitter.
+It is a goal-aware supervisor for coding agents you already use. Connect a
+worker, give it a persistent goal, and inspect the evidence behind PEX's
+decisions from a compact workspace. OpenCode and Codex are the primary paths;
+the supervisor model is configured separately with your own key.
+
+**Current development: Nebius × NVIDIA Global AI Hackathon.** The workspace
+prioritizes the goal, worker list and supervision state, with the companion and
+advanced settings behind optional disclosures. Nebius Token Factory is a named
+BYOK provider with NVIDIA Nemotron model suggestions. Suggestions are not proof
+of account access: refresh the configured provider's catalog and verify a real
+supervision run before claiming hackathon readiness.
+
+<details>
+<summary>Historical release evidence — September 14, 2026</summary>
 
 **Verified local MVP — 14 September 2026.** The shipping focus is OpenCode,
 Codex App Server, Zen BYOK and exactly two controllable companions, Pex and Von.
@@ -41,6 +54,8 @@ implemented and locally tested but
 score. Final recording remains. See the
 [judge guide](docs/JUDGE_TESTING.md) and the
 [architecture overview](docs/architecture/overview.md).
+
+</details>
 
 ![PEX Home showing two available coding workers and the Von companion](docs/demo/assets/pex-home-49385f2.png)
 
@@ -255,7 +270,7 @@ hook. There is not yet an automated uninstall command.
 
 With no supervisor provider configured, PEX stays on deterministic triage and
 reports `used_llm=false`; it does not invent model-backed supervision. To enable
-semantic supervision, open **Settings → Supervisor inference**, select the
+semantic supervision, open **Settings → Supervisor**, select the
 provider/model and credential source, and save it. Provider setup is independent
 of worker attachment.
 
@@ -267,6 +282,32 @@ specific policy-gated continuation. Observe-only surfaces never claim delivery.
 Raw-browser no-auth operation is not available from an environment variable or
 release CLI; it exists only inside explicit in-process Python test harnesses via
 `Settings.for_test(...)`.
+
+### Nebius Token Factory + NVIDIA Nemotron
+
+In **Settings → Supervisor**, choose **Nebius Token Factory**, select an
+account-supported NVIDIA model, paste the key and save. Keys go into the OS
+credential store; Linux needs an unlocked Secret Service or KWallet backend.
+Unsaved drafts survive background refreshes. If another client changes the saved
+configuration, reload explicitly before saving again.
+
+Alternatively, configure the process environment before launching PEX:
+
+```text
+PEX_SUPERVISOR_PROVIDER=nebius
+PEX_SUPERVISOR_MODEL=nvidia/nemotron-3-super-120b-a12b
+NEBIUS_API_KEY=<your Token Factory key>
+```
+
+The default endpoint is `https://api.tokenfactory.us-central1.nebius.com/v1`.
+A custom regional endpoint is an explicit credential destination: provide a key
+for that endpoint in Settings or through `PEX_SUPERVISOR_API_KEY`. PEX does not
+forward another provider's key to it. See the
+[official Nebius Nemotron example](https://github.com/nebius/token-factory-cookbook/blob/main/models/nemotron/nemotron3-super-120B.md).
+
+Push and pull-request checks run the offline backend suite, desktop contracts,
+lint and frontend production build on Windows and Ubuntu. Live provider calls,
+native visual acceptance and installer testing remain separate checks.
 
 ## Architecture
 
@@ -300,7 +341,20 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 
 ## Hackathon
 
-Built for the AWS + Devpost [Agents for Humans Hackathon](https://agentsforhumans.devpost.com/), Professional Agents track. PEX uses Strands Agents locally and implements an optional AgentCore Runtime path, which is not deployed. Source-bound live OpenCode and separate Codex App Server behavior proofs are retained. The matching [RC7 release](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7) provides Windows and Linux x64 packages. Optional cloud deployment and the uncompleted formal research benchmark are not contest-entry prerequisites; no comparative score or leaderboard rank is claimed. Canonical draft: [submission copy](devpost-submission.md).
+Current target: the [Nebius × NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/),
+Coding and Agentic Engineering track. The
+[official rules](https://nebiusglobalaihackathon.devpost.com/rules) require runtime
+use of Nebius Token Factory or AI Cloud and an NVIDIA open-source model.
+Submission closes October 30, 2026 at 17:00 UTC. An existing project must explain
+its significant new work. The intended proof is an actual stopped worker
+recovered through a Nemotron-backed PEX review, with an independently verified
+result and a public demo under three minutes. This is a target, not a completed
+submission or a claim of measured benefit.
+
+PEX originated in the AWS Agents for Humans hackathon and still uses Strands
+locally. AgentCore remains optional and is not deployed. The existing
+[submission copy](devpost-submission.md) describes that earlier event; it is not
+the Nebius submission. No comparative benchmark score is claimed.
 
 - License: MIT
 - Devpost copy: [`devpost-submission.md`](devpost-submission.md)

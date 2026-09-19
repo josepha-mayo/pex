@@ -11,6 +11,8 @@ import {
   supervisorSavePayload,
   supervisorSaveResponseIsCurrent,
   supervisorSaveConfirmation,
+  supervisorSettingsRefreshDisposition,
+  supervisorAuthModes,
   type SupervisorDraft,
 } from "./supervisorDraft.ts";
 
@@ -23,6 +25,23 @@ const custom: SupervisorDraft = {
   apiKey: "fixture-key-not-a-real-credential",
   credentialAction: "keep",
 };
+
+test("visibility refresh preserves draft credentials and never rebases an external edit", () => {
+  assert.equal(supervisorSettingsRefreshDisposition(true, false, 4, 4), "preserve");
+  assert.equal(supervisorSettingsRefreshDisposition(true, false, 4, 5), "conflict");
+  assert.equal(supervisorSettingsRefreshDisposition(true, true, 4, 5), "replace");
+  assert.equal(supervisorSettingsRefreshDisposition(false, false, 4, 5), "replace");
+  assert.equal(supervisorSettingsRefreshDisposition(true, true, 4, undefined), "conflict");
+});
+
+test("authentication choices follow implemented provider capabilities", () => {
+  assert.deepEqual(supervisorAuthModes("nebius"), ["api_key"]);
+  assert.deepEqual(supervisorAuthModes("openai"), ["api_key"]);
+  assert.deepEqual(supervisorAuthModes("custom"), ["custom", "api_key"]);
+  assert.deepEqual(supervisorAuthModes("ollama"), ["local"]);
+  assert.deepEqual(supervisorAuthModes("vllm", {vllm: ["local", "custom"]}), ["local", "custom"]);
+  assert.deepEqual(supervisorAuthModes("openai", {openai: ["api_key", "login", "invalid"]}), ["api_key"]);
+});
 
 test("provider changes clear stale model ids when the new catalog is empty", () => {
   const settings = readFileSync(new URL("./components/SettingsPage.tsx", import.meta.url), "utf8");
@@ -283,9 +302,8 @@ test("settings sections expose an accessible keyboard-operated tab contract", ()
   assert.match(settings, /\["ArrowLeft", "ArrowRight", "Home", "End"\]/);
   assert.match(settings, /role="tabpanel"/);
   assert.match(settings, /aria-labelledby=\{`settings-tab-\$\{section\}`\}/);
-  assert.match(settings, /settingsAvailable && !settingsIssue && supervisor\?\.model_loaded \? "companion" : "supervisor"/);
+  assert.match(settings, /initialSection \?\? "supervisor"/);
   // An explicit Home setup destination must survive background settings loading.
-  assert.match(settings, /initialSection \?\? \(settingsAvailable/);
   assert.match(settings, /if \(!initialSection && \(settingsIssue \|\| !settingsAvailable\)\) setSection\("supervisor"\)/);
 });
 

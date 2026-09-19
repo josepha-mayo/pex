@@ -7,6 +7,23 @@ vendor /models endpoints. No API keys live here.
 from __future__ import annotations
 
 CATALOG: list[dict[str, str]] = [
+    # NVIDIA models on Nebius Token Factory. Hints, not account-access claims.
+    # https://github.com/nebius/token-factory-cookbook/tree/main/models/nemotron
+    {
+        "provider": "nebius",
+        "model_id": "nvidia/nemotron-3-super-120b-a12b",
+        "label": "Nemotron 3 Super · Nebius",
+    },
+    {
+        "provider": "nebius",
+        "model_id": "nvidia/Nemotron-3_5-Lightning",
+        "label": "Nemotron 3.5 Lightning · Nebius",
+    },
+    {
+        "provider": "nebius",
+        "model_id": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "label": "Nemotron 3 Ultra · Nebius",
+    },
     # OpenAI
     {"provider": "openai", "model_id": "gpt-5.6-sol", "label": "GPT 5.6 Sol"},
     {"provider": "openai", "model_id": "gpt-5.6-terra", "label": "GPT 5.6 Terra"},

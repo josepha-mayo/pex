@@ -51,7 +51,12 @@ class KeyringSupervisorSecretStore:
             raise SupervisorSecretStoreError(
                 "OS credential storage is unavailable in this build"
             ) from exc
-        backend = keyring.get_keyring()
+        try:
+            backend = keyring.get_keyring()
+        except Exception as exc:
+            raise SupervisorSecretStoreError(
+                "the operating-system credential store could not initialize"
+            ) from exc
         module = type(backend).__module__
         allowed = (
             ("keyring.backends.Windows",)
@@ -63,9 +68,29 @@ class KeyringSupervisorSecretStore:
                 "keyring.backends.kwallet",
             )
         )
-        if not module.startswith(allowed):
+        def approved(candidate: Any) -> bool:
+            name = type(candidate).__module__
+            return any(name == prefix or name.startswith(prefix + ".") for prefix in allowed)
+
+        if module == "keyring.backends.chainer":
+            # The default Linux keyring can wrap Secret Service and KWallet.
+            # Use a single approved OS backend directly: never execute the
+            # chain, whose fallback may store passwords in a plaintext file.
+            from keyring.backends.chainer import ChainerBackend
+
+            if isinstance(backend, ChainerBackend):
+                try:
+                    selected = next((item for item in backend.backends if approved(item)), None)
+                except Exception as exc:
+                    raise SupervisorSecretStoreError(
+                        "the operating-system credential store could not initialize"
+                    ) from exc
+                if selected is not None:
+                    return selected, KeyringError
+        if not approved(backend):
             raise SupervisorSecretStoreError(
-                "a supported operating-system credential backend is unavailable"
+                "a supported operating-system credential backend is unavailable; "
+                "unlock Secret Service or KWallet on Linux, or use environment credentials"
             )
         return keyring, KeyringError
 

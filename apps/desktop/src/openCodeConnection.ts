@@ -11,7 +11,7 @@ export function openCodeConnectionFailure(error: unknown): string {
       return "The bridge rejected the connection because an active connection conflicts with this request. Inspect the worker list before changing connections. No new worker was started.";
     }
     if (error.status === 502) {
-      return "The OpenCode health check did not pass. Check the local server and address, then retry. PEX discarded this connection attempt; it did not start a worker.";
+      return "The OpenCode health check did not pass. Check the local server, address and server password, then retry. PEX discarded this connection attempt; it did not start a worker.";
     }
   }
   return "Connection was not confirmed. Check that your local OpenCode server is running and inspect the worker list before retrying. A lost response does not mean the connection was rolled back.";
@@ -29,12 +29,22 @@ export function openCodeOrigin(value: string): string | null {
 }
 
 /** One authenticated local-bridge request. Never send the operator key to OpenCode. */
-export async function connectOpenCode(request: SharedRequest, value: string, signal: AbortSignal) {
+export async function connectOpenCode(
+  request: SharedRequest, value: string, signal: AbortSignal,
+  credentials?: { username: string; password: string },
+) {
   const url = openCodeOrigin(value);
   if (!url) throw new Error("Enter a local HTTP origin, such as http://127.0.0.1:4096.");
+  const auth = credentials?.password ? {
+    username: credentials.username.trim() || "opencode", password: credentials.password,
+  } : undefined;
+  if (auth && (auth.username.length > 256 || /[^\x21-\x7e]/u.test(auth.username)
+    || auth.password.length > 4096 || /[\r\n\0]/u.test(auth.password))) {
+    throw new Error("Enter a valid OpenCode server username and password.");
+  }
   const result = await request("/v1/adapters/opencode/attach", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }), signal,
+    body: JSON.stringify({ url, ...auth }), signal,
   });
   if (!result || typeof result !== "object" || Array.isArray(result)
     || (result as Record<string, unknown>).ok !== true

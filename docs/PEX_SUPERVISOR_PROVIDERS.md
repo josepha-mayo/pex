@@ -1,4 +1,4 @@
-# Supervisor model providers (BYOK, login, local, custom)
+# Supervisor model providers (BYOK, local, custom)
 
 This section is binding for both the core product spec and the build spec.
 
@@ -13,12 +13,12 @@ PEX never requires the user to migrate into a PEX-owned coding harness. The supe
 
 ---
 
-## Auth modes (all first-class)
+## Auth modes
 
 | Mode | Meaning |
 | --- | --- |
 | `api_key` / BYOK | User pastes a key. Stored locally, never committed, never uploaded in specs or git. |
-| `login` | Vendor session/OAuth/CLI login the user already has (ChatGPT, Claude, Grok, Gemini, OpenCode, Hermes, …). Reuse local credentials when the vendor documents it. Do not scrape passwords. |
+| `login` | Reserved for a documented vendor integration; currently unavailable for supervisor inference. Worker CLI login is independent. Settings offers only implemented modes. |
 | `local` | No cloud key. Ollama, llama.cpp, LM Studio, vLLM, OpenAI-compatible localhost. |
 | `custom` | User supplies `base_url` + optional key + model id. Any OpenAI-compatible or Anthropic-compatible endpoint. |
 | `bedrock` / `agentcore` | AWS signed requests. Appropriate for the hackathon deploy path, not the only path. |
@@ -48,6 +48,7 @@ Built-in named providers (OpenAI-compatible unless noted). Users can add more wi
 - Moonshot / Kimi — `https://api.moonshot.ai/v1` — `MOONSHOT_API_KEY`
 - DashScope / Qwen — `DASHSCOPE_API_KEY`
 - NVIDIA NIM / build.nvidia.com — `NVIDIA_API_KEY`
+- Nebius Token Factory — `https://api.tokenfactory.us-central1.nebius.com/v1` — `NEBIUS_API_KEY`; default NVIDIA model `nvidia/nemotron-3-super-120b-a12b`
 - Perplexity — `PERPLEXITY_API_KEY`
 - Hugging Face Inference — `HF_TOKEN`
 - GitHub Models — `GITHUB_TOKEN`

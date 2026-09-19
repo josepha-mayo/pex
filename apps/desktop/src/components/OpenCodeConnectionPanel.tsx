@@ -2,8 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { connectOpenCode, openCodeConnectionFailure, openCodeOrigin } from "../openCodeConnection";
 import type { SharedRequest } from "../sharedConnection";
 
-export function OpenCodeConnectionPanel({ request }: { request: SharedRequest }) {
+export function OpenCodeConnectionPanel({ request, onChanged }: {
+  request: SharedRequest;
+  onChanged?: () => void;
+}) {
   const [url, setUrl] = useState("http://127.0.0.1:4096");
+  const [username, setUsername] = useState("opencode");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const pending = useRef<AbortController | null>(null);
@@ -20,9 +25,10 @@ export function OpenCodeConnectionPanel({ request }: { request: SharedRequest })
     setNotice("");
     const timer = setTimeout(() => controller.abort(), 12_000);
     try {
-      await connectOpenCode(request, url, controller.signal);
+      await connectOpenCode(request, url, controller.signal, { username, password });
       if (pending.current === controller) {
         setNotice("OpenCode server connected. If no worker appears, create or resume a session in the OpenCode terminal attached to this server. Then return Home, select your worker, and set its persistent goal. PEX did not start a worker turn.");
+        onChanged?.();
       }
     } catch (error) {
       if (pending.current === controller) {
@@ -33,6 +39,7 @@ export function OpenCodeConnectionPanel({ request }: { request: SharedRequest })
       if (pending.current === controller) {
         pending.current = null;
         setBusy(false);
+        setPassword("");
       }
     }
   }
@@ -56,10 +63,19 @@ export function OpenCodeConnectionPanel({ request }: { request: SharedRequest })
         onChange={(event) => setUrl(event.target.value)} autoComplete="off"
         spellCheck={false} placeholder="http://127.0.0.1:4096" />
     </label>
-    <p className="settings-note">
-      This quick connection supports an unauthenticated loopback server only.
-      Password-protected servers require the authenticated bridge API setup.
-    </p>
+    <details className="settings-advanced">
+      <summary>Server password (optional)</summary>
+      <p className="settings-note">Use your OpenCode server credentials, separate from your model API key.
+        The password is held in memory for the connection and cleared from this form after each attempt.</p>
+      <label>Server username
+        <input value={username} maxLength={256} disabled={busy} autoComplete="off"
+          onChange={(event) => setUsername(event.target.value)} spellCheck={false} />
+      </label>
+      <label>Server password
+        <input type="password" value={password} maxLength={4096} disabled={busy} autoComplete="off"
+          onChange={(event) => setPassword(event.target.value)} />
+      </label>
+    </details>
     <button type="button" className="solid" disabled={busy || !openCodeOrigin(url)}
       onClick={() => void connect()}>{busy ? "Connecting…" : "Connect OpenCode"}</button>
     {notice ? <p role="status" aria-live="polite">{notice}</p> : null}

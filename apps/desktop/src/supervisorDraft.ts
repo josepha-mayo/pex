@@ -2,6 +2,32 @@ export type SupervisorAuthMode = "api_key" | "login" | "local" | "custom" | "bed
 export type SupervisorProtocol = "openai" | "anthropic";
 export type SupervisorCredentialAction = "keep" | "environment" | "clear";
 
+/** Background reconciliation must never erase or silently rebase a user's draft. */
+export function supervisorSettingsRefreshDisposition(
+  dirty: boolean,
+  discardDraft: boolean,
+  draftBaseRevision: unknown,
+  receivedRevision: unknown,
+): "replace" | "preserve" | "conflict" {
+  if (!isSupervisorRevision(receivedRevision)) return "conflict";
+  if (!dirty || discardDraft) return "replace";
+  return draftBaseRevision === receivedRevision ? "preserve" : "conflict";
+}
+
+export function supervisorAuthModes(
+  provider: string,
+  capabilities?: Record<string, string[]>,
+): SupervisorAuthMode[] {
+  const valid = new Set<SupervisorAuthMode>(["api_key", "local", "custom", "bedrock", "agentcore"]);
+  const declared = capabilities?.[provider]?.filter((mode): mode is SupervisorAuthMode =>
+    valid.has(mode as SupervisorAuthMode));
+  if (declared?.length) return declared;
+  if (["ollama", "lmstudio", "llamacpp", "vllm"].includes(provider)) return ["local"];
+  if (provider === "custom") return ["custom", "api_key"];
+  if (provider === "bedrock") return ["bedrock", "agentcore"];
+  return ["api_key"];
+}
+
 export function supervisorSaveConfirmation(modelLoaded: boolean | undefined): string {
   if (modelLoaded === true) {
     return "Configuration saved. This save did not test the API key or run model inference.";

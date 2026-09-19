@@ -55,6 +55,7 @@ import {
   supervisorDispatchLimitDraft,
   supervisorSaveResponseIsCurrent,
   supervisorSaveConfirmation,
+  supervisorSettingsRefreshDisposition,
   type SupervisorAuthMode,
   type SupervisorCredentialAction,
   type SupervisorProtocol,
@@ -127,6 +128,7 @@ import {
   sessionExternalUrl,
   starterInventoryFromDiscover,
   statusCopy,
+  meaningfulEvidence,
   titleCase,
   type UndoAttempt,
   undoFailureMessage,
@@ -484,6 +486,8 @@ export function App() {
   const identitySelectedProjectIdRef = useRef("");
   const settingsRequestSequence = useRef(0);
   const supervisorDraftRevision = useRef(0);
+  const supervisorDraftDirty = useRef(false);
+  const supervisorDraftBaseRevision = useRef<number | undefined>(undefined);
   const supervisorSaveInFlight = useRef(false);
   const supervisorKeyAudience = useRef<string | null>(null);
   const goalEvidenceKey = useRef<string | null>(null);
@@ -892,7 +896,7 @@ export function App() {
   }, [pet?.appearance?.scale, pet?.settings?.click_through, pet?.settings?.custom_name, pet?.settings?.scale]);
 
   const settingsAvailable = canonicalResourcesAreFresh(canonicalResources, ["supervisor"]);
-  const loadSettings = useCallback(async () => {
+  const loadSettings = useCallback(async (discardDraft = false) => {
     if (supervisorSaveInFlight.current) return;
     const requestSequence = ++settingsRequestSequence.current;
     const [supervisorResult, channelsResult] = await Promise.allSettled([
@@ -902,20 +906,31 @@ export function App() {
     if (requestSequence !== settingsRequestSequence.current) return;
     if (supervisorResult.status === "fulfilled" && isSupervisorRevision(supervisorResult.value?.revision)) {
       const data = supervisorResult.value;
-      setSupervisor(data);
-      setSupervisorProvider(data.backend || "");
-      setSupervisorModel(data.model_id || "");
-      setSupervisorAuth(
-        (data.auth_mode as SupervisorAuthMode | null) ||
-          defaultSupervisorAuth(data.backend || ""),
+      const disposition = supervisorSettingsRefreshDisposition(
+        supervisorDraftDirty.current, discardDraft, supervisorDraftBaseRevision.current, data.revision,
       );
-      setSupervisorProtocol(data.protocol || "openai");
-      setSupervisorBaseUrl(data.base_url || "");
-      setSupervisorDispatchLimit(supervisorDispatchLimitDraft(data.dispatch_limit_override));
-      setSupervisorApiKey("");
-      supervisorKeyAudience.current = null;
-      setSupervisorCredentialAction("keep");
-      markCanonical("supervisor", "fresh");
+      if (disposition === "conflict") {
+        markCanonical("supervisor", "failed", "Saved settings changed elsewhere. Your draft is preserved; reload settings to discard it and use the saved configuration.");
+      } else {
+        setSupervisor(data);
+        if (disposition === "replace") {
+          supervisorDraftDirty.current = false;
+          supervisorDraftBaseRevision.current = data.revision;
+          setSupervisorProvider(data.backend || "");
+          setSupervisorModel(data.model_id || "");
+          setSupervisorAuth(
+            (data.auth_mode as SupervisorAuthMode | null) ||
+              defaultSupervisorAuth(data.backend || ""),
+          );
+          setSupervisorProtocol(data.protocol || "openai");
+          setSupervisorBaseUrl(data.base_url || "");
+          setSupervisorDispatchLimit(supervisorDispatchLimitDraft(data.dispatch_limit_override));
+          setSupervisorApiKey("");
+          supervisorKeyAudience.current = null;
+          setSupervisorCredentialAction("keep");
+        }
+        markCanonical("supervisor", "fresh");
+      }
     } else {
       markCanonical("supervisor", "failed", "Supervisor settings and their revision could not be refreshed.");
     }
@@ -2197,6 +2212,8 @@ export function App() {
       }
       setSupervisor(data);
       markCanonical("supervisor", "fresh");
+      supervisorDraftDirty.current = false;
+      supervisorDraftBaseRevision.current = data.revision;
       setSupervisorProvider(data.backend || "");
       setSupervisorModel(data.model_id || "");
       setSupervisorAuth((data.auth_mode as SupervisorAuthMode | null) || defaultSupervisorAuth(data.backend || ""));
@@ -2219,6 +2236,7 @@ export function App() {
   function changeSupervisorDraft<T>(current: T, next: T, setter: (value: T) => void, audience = false) {
     if (supervisorSaveInFlight.current || current === next) return;
     supervisorDraftRevision.current += 1;
+    supervisorDraftDirty.current = true;
     settingsRequestSequence.current += 1;
     if (audience) {
       supervisorKeyAudience.current = null;
@@ -2342,7 +2360,10 @@ export function App() {
         hookCredential={hookBootstrap?.token || ""}
         hookCredentialExpiresAt={hookBootstrap?.expires_at || ""}
         provisioningHook={provisioningHook}
-        workerConnection={<><OpenCodeConnectionPanel request={sharedConnectionRequest} /><SharedConnectionPanel request={sharedConnectionRequest} /></>}
+        workerConnection={<>
+          <OpenCodeConnectionPanel request={sharedConnectionRequest} onChanged={() => void loadBaseState()} />
+          <SharedConnectionPanel request={sharedConnectionRequest} onChanged={() => void loadBaseState()} />
+        </>}
         onBack={() => { window.location.hash = surface; }}
         onNickname={setNickname}
         onScale={setScale}
@@ -2372,7 +2393,7 @@ export function App() {
         })}
         onSupervisorCredentialAction={(value) => changeSupervisorDraft(supervisorCredentialAction, value, setSupervisorCredentialAction)}
         onSaveSupervisor={() => void saveSupervisor()}
-        onReloadSettings={() => void loadSettings()}
+        onReloadSettings={() => void loadSettings(true)}
         onRefreshCatalog={() => void refreshSupervisorCatalog()}
         onHookHarness={(value) => {
           setHookHarness(value);
@@ -2455,10 +2476,11 @@ export function App() {
         >
           <aside className="worker-rail" aria-label="Your workers">
             <div className="worker-rail-heading">
-              <p className="eyebrow">Agent harnesses</p>
+              <p className="eyebrow">Workers</p>
               <span>{sessionStateFresh ? `${homeSessions.length} available` : "checking"}</span>
             </div>
-            {homeSessions.slice(0, 8).map((session) => (
+            <div className="worker-list">
+            {homeSessions.map((session) => (
               <button key={session.id} type="button" className="worker-choice"
                 aria-pressed={current?.id === session.id}
                 onClick={() => setSelectedId(session.id)}>
@@ -2467,6 +2489,7 @@ export function App() {
                 <small>{titleCase(session.status)}</small>
               </button>
             ))}
+            </div>
             {!homeSessions.length ? (
               <div className="harness-empty" aria-label="Supported agent harnesses">
                 <span><i aria-hidden="true">O</i><strong>OpenCode</strong></span>
@@ -2475,23 +2498,17 @@ export function App() {
               </div>
             ) : null}
             <button type="button" className="ghost" onClick={() => openSettings("connections")}>Connect a worker</button>
+            <div className="workspace-rail-footer">
+              <span className="status-dot" aria-hidden="true" />
+              <span>{sessionStateFresh ? "Local bridge connected" : "Waiting for local bridge"}</span>
+            </div>
           </aside>
           <div className="compact-companion">
             <div className="workspace-heading">
               <p className="eyebrow">{current ? `${titleCase(current.harness_type)} workspace` : "Your workspace"}</p>
-              <h1>{attachedGoal?.title || "What are we working toward?"}</h1>
+              <h1>{attachedGoal?.title || "Give your work a goal."}</h1>
               <p>{current?.cwd || "Connect OpenCode or Codex, then give PEX a goal to supervise."}</p>
             </div>
-            <PetStage
-              name={petName}
-              sheet={sheet}
-              mood={mood}
-              scale={1.08}
-              reducedMotion={reducedMotion}
-              status={setup ? undefined : homeStatus}
-              statusIdentity={action?.id}
-              onActivate={() => openInspector()}
-            />
             <div
               className="compact-metrics"
               aria-label={sessionStateFresh ? "Live PEX counts" : "PEX counts unavailable"}
@@ -2501,15 +2518,41 @@ export function App() {
               <span><strong>{sessionStateFresh ? pet?.drifting || 0 : "—"}</strong> drifting</span>
             </div>
           {attachedGoal ? (
-            <p className="compact-goal">
-              <span>{goalStateFresh ? "Persistent goal" : "Cached persistent goal"}</span>
-              <strong>{attachedGoal.title}</strong>
-            </p>
+            <section className="workspace-goal" aria-label="Persistent goal">
+              <div className="workspace-section-heading">
+                <p className="eyebrow">{goalStateFresh ? "The objective" : "Cached objective"}</p>
+                <button type="button" className="text-button" onClick={() => openInspector()}>Goal details ↗</button>
+              </div>
+              <p>{attachedGoal.objective}</p>
+            </section>
           ) : null}
+            {!setup ? (
+              <section className={`workspace-activity tone-${homeStatus.tone}`} aria-label="Current supervision">
+                <div className="workspace-section-heading">
+                  <p className="eyebrow">Supervision</p>
+                  <span className="workspace-live-label">{sessionStateFresh ? "Latest observed state" : "State unavailable"}</span>
+                </div>
+                <h2><span className="status-dot" aria-hidden="true" />{homeStatus.label}</h2>
+                <p>{homeStatus.detail}</p>
+                {current && sessionStateFresh ? (
+                  <details className="workspace-evidence">
+                    <summary>Latest worker activity</summary>
+                    <p>{meaningfulEvidence(current)}</p>
+                  </details>
+                ) : null}
+                <div className="button-row">
+                  <button type="button" className="solid" onClick={() => openInspector()}>Review evidence</button>
+                  {current ? <button type="button" className="ghost" disabled={!sessionStateFresh}
+                    onClick={() => void pauseOrResume()}>
+                    {current.supervision_paused ? "Resume supervision" : "Pause supervision"}
+                  </button> : null}
+                </div>
+              </section>
+            ) : null}
             {setup ? (
               <div className="compact-setup">
                 <p className="eyebrow">Your next step</p>
-                <h1>{setup.title}</h1>
+                <h2>{setup.title}</h2>
                 <p>{setup.detail}</p>
                 <div className="button-row">
                   {setup.cta ? (
@@ -2521,12 +2564,21 @@ export function App() {
                   <button type="button" className="ghost" onClick={() => openInspector()}>Inspect current state</button>
                 </div>
               </div>
-            ) : (
-              <button type="button" className="solid compact-open" onClick={() => openInspector()}>
-                Inspect what PEX knows
-              </button>
-            )}
+            ) : null}
             {setup?.state !== "unavailable" ? supervisorNotice : null}
+            <details className="workspace-companion">
+              <summary><span>Companion</span><span>{petName}</span></summary>
+              <PetStage
+                name={petName}
+                sheet={sheet}
+                mood={mood}
+                scale={1.08}
+                reducedMotion={reducedMotion}
+                status={setup ? undefined : homeStatus}
+                statusIdentity={action?.id}
+                onActivate={() => openInspector()}
+              />
+            </details>
           </div>
           {compactGoalIssue && setup?.state !== "unavailable" ? (
             <p className="canonical-state-warning compact-state-warning" role="status" aria-live="polite">

@@ -235,6 +235,7 @@ export type SupervisorInfo = {
   login_note?: string;
   catalog?: SupervisorRow[];
   providers?: string[];
+  provider_auth_modes?: Record<string, string[]>;
   note?: string;
   model_loaded?: boolean;
   activation_status?: "loading" | "timed_out" | "failed" | "unavailable" | "disabled" | "configured";

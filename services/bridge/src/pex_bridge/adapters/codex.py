@@ -1365,7 +1365,9 @@ class CodexAdapter(HarnessAdapter):
         if await self._ready():
             assert self.transport is not None
             try:
-                listed = await self.transport.request("thread/list", {"limit": 1})
+                listed = await self.transport.request(
+                    "thread/list", {"limit": 1, "useStateDbOnly": True}
+                )
                 connected = isinstance(listed, dict) and (
                     isinstance(listed.get("data"), list) or isinstance(listed.get("threads"), list)
                 )
@@ -1471,7 +1473,13 @@ class CodexAdapter(HarnessAdapter):
                 self._observe_desktop_session()
             return list(self.sessions.values())
         assert self.transport is not None
-        listed = await self.transport.request("thread/list", {"limit": 50})
+        # Poll the indexed state, not every historical rollout. Re-reading
+        # large/moved rollout files here can exceed the transport deadline and
+        # stall observation on otherwise healthy App Server connections.
+        # Control still performs its separate live thread/binding validation.
+        listed = await self.transport.request(
+            "thread/list", {"limit": 50, "useStateDbOnly": True}
+        )
         rows = _thread_rows(listed)
         if len(rows) > MAX_CODEX_SESSIONS:
             raise RuntimeError("Codex thread listing exceeded the safety bound")
@@ -1497,10 +1505,20 @@ class CodexAdapter(HarnessAdapter):
                 if len(retained_session_ids) + len(new_session_ids) >= MAX_CODEX_SESSIONS:
                     raise RuntimeError("Codex retained session state reached the safety bound")
                 new_session_ids.add(session_id)
-            status = SessionStatus.WORKING if existing else SessionStatus.DISCOVERED
+            # Merely listing an old thread is not new worker activity.
+            status = existing.status if existing else SessionStatus.DISCOVERED
             raw_status = thread.get("status")
             if isinstance(raw_status, dict) and raw_status.get("type") == "idle":
                 status = SessionStatus.IDLE
+            last_activity = existing.last_activity if existing else None
+            updated_at = thread.get("updatedAt")
+            if existing is None and type(updated_at) is int and updated_at >= 0:
+                try:
+                    observed_at = datetime.fromtimestamp(updated_at, UTC)
+                    if observed_at <= datetime.now(UTC):
+                        last_activity = observed_at
+                except (OSError, OverflowError, ValueError):
+                    pass
             listed_cwd = thread.get("cwd")
             if not isinstance(listed_cwd, str) or not listed_cwd:
                 listed_cwd = existing.cwd if existing else None
@@ -1526,7 +1544,7 @@ class CodexAdapter(HarnessAdapter):
                 cwd=listed_cwd,
                 project_id=project_id,
                 status=status,
-                last_activity=datetime.now(UTC),
+                last_activity=last_activity,
                 goal_id=goal_id,
                 supervision_paused=paused,
                 metadata={
