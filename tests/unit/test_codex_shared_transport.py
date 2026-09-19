@@ -877,8 +877,10 @@ def _make_private_windows_fixture(path):
     )
     win32security.SetNamedSecurityInfo(
         str(path), win32security.SE_FILE_OBJECT,
-        win32security.DACL_SECURITY_INFORMATION | win32security.PROTECTED_DACL_SECURITY_INFORMATION,
-        None, None, acl, None,
+        win32security.OWNER_SECURITY_INFORMATION
+        | win32security.DACL_SECURITY_INFORMATION
+        | win32security.PROTECTED_DACL_SECURITY_INFORMATION,
+        sid, None, acl, None,
     )
 
 
