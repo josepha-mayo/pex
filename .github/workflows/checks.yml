@@ -23,13 +23,14 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
         with:
-          python-version-file: .python-version
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
         with:
-          version: '0.8.22'
+          version: '0.12.17'
           enable-cache: true
+      - name: Install pinned standalone Python
+        run: uv python install
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
@@ -72,13 +73,14 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
         with:
-          python-version-file: .python-version
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
         with:
-          version: '0.8.22'
+          version: '0.12.17'
           enable-cache: true
+      - name: Install pinned standalone Python
+        run: uv python install
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
