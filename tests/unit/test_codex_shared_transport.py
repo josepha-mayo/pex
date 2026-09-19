@@ -921,6 +921,11 @@ def test_native_private_leaf_does_not_bypass_unsafe_ancestor_acl(tmp_path):
     executable, endpoint = tmp_path / "never-run.exe", tmp_path / "never-open.sock"
     executable.write_bytes(b"fixture executable is never run")
     endpoint.write_bytes(b"fixture endpoint is never opened")
+    # Elevated hosted runners can assign Administrators as the default owner
+    # of newly-created children even when the parent is current-user-owned.
+    # Make the two leaf fixtures match the private endpoint this test models.
+    _make_private_windows_fixture(executable)
+    _make_private_windows_fixture(endpoint)
     assert _windows_owned_by_current_user(tmp_path)
     protected = all(
         _windows_owned_by_current_user(path, protected_launch=True)

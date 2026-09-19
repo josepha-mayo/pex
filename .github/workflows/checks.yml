@@ -42,6 +42,12 @@ jobs:
         run: npm ci --prefix apps/desktop --no-audit --no-fund
       - name: Python lint
         run: uv run --frozen ruff check services packages tests scripts
+      - name: Windows native ACL smoke
+        if: runner.os == 'Windows'
+        run: >-
+          uv run --frozen pytest -q
+          tests/unit/test_codex_shared_transport.py::test_native_private_temp_acl_check_does_not_leak_handles
+          tests/unit/test_codex_shared_transport.py::test_native_private_leaf_does_not_bypass_unsafe_ancestor_acl
       - name: Backend, adapters, policy and persistence
         run: uv run --frozen pytest -q -m "not live_llm and not live_codex and not live_opencode and not live_agentcore" --junitxml=build/test-results.xml
       - name: Desktop behavior and production build
