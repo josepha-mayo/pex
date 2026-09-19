@@ -54,7 +54,7 @@ test("deck metrics wrap without forcing horizontal overflow", async () => {
   assert.match(css, /\.attention-metrics\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/u);
   assert.match(css, /\.attention-metrics\s*>\s*div\s*\{[^}]*min-width:\s*0;/u);
   assert.match(css, /@media \(max-width:\s*840px\)[\s\S]*?\.attention-metrics\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/u);
-  assert.match(css, /@media \(max-width:\s*560px\)[\s\S]*?\.attention-metrics\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\);/u);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*?\.attention-metrics\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\);/u);
 });
 
 import { animationFrameIndex } from "./pets/atlasMath.ts";
