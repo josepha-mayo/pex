@@ -857,6 +857,31 @@ async def test_notification_overflow_fails_closed_without_unbounded_queue(tmp_pa
     await transport.close()
 
 
+def _make_private_windows_fixture(path):
+    import win32api
+    import win32con
+    import win32security
+
+    token = win32security.OpenProcessToken(
+        win32api.GetCurrentProcess(), win32con.TOKEN_QUERY
+    )
+    try:
+        sid = win32security.GetTokenInformation(token, win32security.TokenUser)[0]
+    finally:
+        token.Close()
+    acl = win32security.ACL()
+    acl.AddAccessAllowedAceEx(
+        win32security.ACL_REVISION,
+        win32con.OBJECT_INHERIT_ACE | win32con.CONTAINER_INHERIT_ACE,
+        0x1F01FF, sid,  # FILE_ALL_ACCESS
+    )
+    win32security.SetNamedSecurityInfo(
+        str(path), win32security.SE_FILE_OBJECT,
+        win32security.DACL_SECURITY_INFORMATION | win32security.PROTECTED_DACL_SECURITY_INFORMATION,
+        None, None, acl, None,
+    )
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="native Windows ACL/resource check")
 def test_native_private_temp_acl_check_does_not_leak_handles(tmp_path):
     import ctypes
@@ -874,6 +899,7 @@ def test_native_private_temp_acl_check_does_not_leak_handles(tmp_path):
         assert kernel.GetProcessHandleCount(kernel.GetCurrentProcess(), ctypes.byref(count))
         return count.value
 
+    _make_private_windows_fixture(tmp_path)
     # Warm native library/security initialization before checking repeated calls.
     assert _windows_owned_by_current_user(tmp_path)
     before = handles()
@@ -889,6 +915,7 @@ def test_native_private_leaf_does_not_bypass_unsafe_ancestor_acl(tmp_path):
         validate_shared_endpoint,
     )
 
+    _make_private_windows_fixture(tmp_path)
     executable, endpoint = tmp_path / "never-run.exe", tmp_path / "never-open.sock"
     executable.write_bytes(b"fixture executable is never run")
     endpoint.write_bytes(b"fixture endpoint is never opened")

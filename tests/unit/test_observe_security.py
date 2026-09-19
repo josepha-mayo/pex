@@ -22,6 +22,22 @@ def test_public_workspace_tests_are_never_executed_by_default(tmp_path):
     assert not marker.exists()
 
 
+@pytest.mark.parametrize(("expected", "passes"), [(1, False), (2, True)])
+def test_public_pytest_ignores_worker_bytecode_and_grades_current_source(
+    tmp_path, expected, passes
+):
+    import py_compile
+
+    module = tmp_path / "answer.py"
+    module.write_text("VALUE = 1\n")
+    py_compile.compile(str(module), invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
+    module.write_text("VALUE = 2\n")
+    (tmp_path / "test_public.py").write_text(
+        f"from answer import VALUE\ndef test_current():\n    assert VALUE == {expected}\n"
+    )
+    assert snapshot(tmp_path, run_pytest=True)["pytest"]["ok"] is passes
+
+
 def test_public_pytest_receives_no_parent_secret_and_redacts_output(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-abcdefghijklmnopqrstuvwxyz123456")
     (tmp_path / "test_public.py").write_text(

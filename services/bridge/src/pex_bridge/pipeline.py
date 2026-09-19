@@ -6934,7 +6934,8 @@ def agent_label(session: HarnessSession, goal: object | None = None) -> str:
         return str(title)
     cwd = session.cwd or session.project_id
     if cwd:
-        name = Path(str(cwd)).name.strip()
+        # Labels may describe persisted workers from a different host OS.
+        name = str(cwd).replace("\\", "/").rstrip("/").rsplit("/", 1)[-1].strip()
         if name:
             return name
     return str(session.harness_type.value).replace("_", " ")

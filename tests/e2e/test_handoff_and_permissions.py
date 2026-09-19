@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import os
 import sqlite3
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
@@ -32,6 +33,9 @@ from pex_supervisor.loop import _action_from_proposal
 
 _OPERATOR_TOKEN = "handoff-operator-test-token-0123456789abcdef"
 
+
+
+_TEST_DRIVE = "C:" if os.name == "nt" else ""
 
 class _HandoffOperatorClient(AsyncClient):
     """Attach the authenticated goal-control contract to domain-focused requests."""
@@ -276,7 +280,7 @@ async def _bind_cursor_conversation(
     client: AsyncClient,
     *,
     conversation_id: str,
-    workspace_root: str = "C:/proj",
+    workspace_root: str = f"{_TEST_DRIVE}/proj",
 ) -> None:
     started = await client.post(
         "/v1/hooks/cursor",
@@ -1826,15 +1830,15 @@ async def test_auto_handoff_from_cursor_conversation_reaches_isolated_codex_not_
     from pex_protocol.session import HarnessSession
 
     transport = CodexAppServerTransport()
-    transport.threads = [{"id": "thr_handoff", "cwd": "C:/proj"}]
+    transport.threads = [{"id": "thr_handoff", "cwd": f"{_TEST_DRIVE}/proj"}]
     state.adapters.codex.attach_transport(transport)
     await transport.ensure_ready()
     isolated = HarnessSession(
         id="codex:thr_handoff",
         harness_type=HarnessType.CODEX,
         vendor_session_id="thr_handoff",
-        cwd="C:/proj",
-        project_id="C:/proj",
+        cwd=f"{_TEST_DRIVE}/proj",
+        project_id=f"{_TEST_DRIVE}/proj",
         status=SessionStatus.WORKING,
         metadata={"isolated": True, "source": "pexbench"},
     )
@@ -1844,8 +1848,8 @@ async def test_auto_handoff_from_cursor_conversation_reaches_isolated_codex_not_
         id="codex:desktop",
         harness_type=HarnessType.CODEX,
         vendor_session_id="desktop",
-        cwd="C:/proj",
-        project_id="C:/proj",
+        cwd=f"{_TEST_DRIVE}/proj",
+        project_id=f"{_TEST_DRIVE}/proj",
         status=SessionStatus.WORKING,
         metadata={"source": "desktop", "process": "ChatGPT.exe"},
         capabilities={"inject_context": True, "send_message": True},
@@ -1856,7 +1860,7 @@ async def test_auto_handoff_from_cursor_conversation_reaches_isolated_codex_not_
         json={
             "hook_event_name": "sessionStart",
             "conversation_id": "conv-handoff",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         },
     )
     assert started.status_code == 200
@@ -1902,7 +1906,7 @@ async def test_auto_handoff_from_cursor_conversation_reaches_isolated_codex_not_
         json={
             "hook_event_name": "afterAgentResponse",
             "conversation_id": "conv-handoff",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
             "text": (
                 "Verified artifact path: artifacts/prepared_dataset.parquet. "
                 "Do not regenerate it."
@@ -1961,7 +1965,7 @@ async def test_auto_handoff_from_isolated_codex_reaches_cursor_conversation_not_
         json={
             "hook_event_name": "sessionStart",
             "conversation_id": "conv-back",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         },
     )
     assert started.status_code == 200
@@ -3790,7 +3794,7 @@ async def test_pytest_permission_auto_allowed(client: AsyncClient):
             "hook_event_name": "beforeShellExecution",
             "conversation_id": "conv-perm",
             "command": "pytest -q",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         },
     )
     assert hook.json().get("permission") == "allow"
@@ -3804,7 +3808,7 @@ async def test_destructive_shell_permission_asks_human(client: AsyncClient):
             "hook_event_name": "beforeShellExecution",
             "conversation_id": "conv-rm",
             "command": "rm -rf /tmp/pex-scratch",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         },
     )
     assert hook.json().get("permission") == "ask"
@@ -3816,20 +3820,20 @@ async def test_commandless_and_sensitive_permissions_default_to_human(client: As
         {
             "hook_event_name": "beforeReadFile",
             "conversation_id": "conv-secret",
-            "file_path": "C:/Users/me/.ssh/id_rsa",
-            "workspace_roots": ["C:/proj"],
+            "file_path": f"{_TEST_DRIVE}/Users/me/.ssh/id_rsa",
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         },
         {
             "hook_event_name": "beforeMCPExecution",
             "conversation_id": "conv-mcp",
             "tool_name": "send_email",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         },
         {
             "hook_event_name": "beforeShellExecution",
             "conversation_id": "conv-unknown-shell",
             "command": "python deploy.py",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         },
     ]
     for payload in cases:

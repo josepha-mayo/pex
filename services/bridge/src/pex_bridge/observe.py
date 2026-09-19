@@ -17,6 +17,7 @@ import threading
 import time
 from collections.abc import Iterator
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from pex_protocol.redaction import redact_text
@@ -266,11 +267,18 @@ def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
         return None
     if len(tests) > _MAX_PUBLIC_TEST_FILES:
         raise ValueError("workspace exceeds the 256-test-file observation bound")
+    with TemporaryDirectory(prefix="pex-public-bytecode-") as cache:
+        return _run_public_pytest(root, tests, cache)
+
+
+def _run_public_pytest(root: Path, tests: list[str], cache: str) -> dict[str, Any]:
     # The worker tests are untrusted input.  Never copy the bridge process's
     # provider tokens, auth material, or arbitrary environment into them.
     env = {key: os.environ[key] for key in _PUBLIC_ENV_KEYS if key in os.environ}
     env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    # Ignore stale or worker-supplied __pycache__ files when observing current source.
+    env["PYTHONPYCACHEPREFIX"] = cache
     env["PYTHONIOENCODING"] = "utf-8"
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)

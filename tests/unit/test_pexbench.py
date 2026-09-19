@@ -15,6 +15,8 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
+_TEST_DRIVE = "C:" if os.name == "nt" else ""
+
 _MANIFEST_TEMP_DIRS: list[TemporaryDirectory] = []
 
 
@@ -55,6 +57,21 @@ def test_observed_outcome_credits_only_observed_failure_to_success():
 
 def _digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def test_evaluator_grades_current_source_even_with_worker_supplied_bytecode(tmp_path):
+    import py_compile
+
+    evaluator = _evaluator()
+    task = "pexbench_007_quixbugs_next_permutation"
+    seed = evaluator.seed_workspace(task, tmp_path)
+    module = tmp_path / f"{evaluator.task_spec(task)['module']}.py"
+    # An unchecked cache always looks valid to ordinary imports, even after
+    # the worker repairs the source. Neither grading process may consume it.
+    py_compile.compile(str(module), invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
+    evaluator.complete_synthetic(task, tmp_path)
+    result = evaluator.evaluate(task, tmp_path, seed)
+    assert result["success"], result["reasons"]
 
 
 def test_public_prompts_have_one_cross_platform_byte_representation(tmp_path):
@@ -126,7 +143,7 @@ def _valid_live_record(
     hooks_sha256 = _digest("cursor-hooks")
     transport_evidence = (
         {
-            "hooks_path": "C:/tmp/hooks.json",
+            "hooks_path": f"{_TEST_DRIVE}/tmp/hooks.json",
             "hooks_sha256": hooks_sha256,
             "process": "Cursor.exe",
             "conversation_id": "conversation",
@@ -161,16 +178,16 @@ def _valid_live_record(
             "mode": "fresh_seeded_workspace",
             "prepared_before_worker": True,
             "workspace_name": workspace_name,
-            "receipt_path": f"C:/tmp/_receipts/{workspace_name}.json",
+            "receipt_path": f"{_TEST_DRIVE}/tmp/_receipts/{workspace_name}.json",
             "receipt_sha256": _digest("receipt"),
         },
         "pair_id": f"{run_id}:{task}",
         "thread_id": "conversation",
-        "cwd": f"C:/tmp/workspaces/{workspace_name}",
+        "cwd": f"{_TEST_DRIVE}/tmp/workspaces/{workspace_name}",
         "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
         "seed_manifest_sha256": _digest("seed"),
         "final_workspace_sha256": _digest("final"),
-        "snapshot": "C:/tmp/results/_scratch/run/arm/task",
+        "snapshot": f"{_TEST_DRIVE}/tmp/results/_scratch/run/arm/task",
         "worker_config_sha256": _digest("worker"),
         "worker_model": "model",
         "harness_version": "1.0.0",
@@ -962,8 +979,8 @@ def test_out_of_process_supervisor_receives_prefetched_public_evidence(monkeypat
         id="codex:test",
         harness_type=HarnessType.CODEX,
         vendor_session_id="test",
-        project_id="C:/public/workspace",
-        cwd="C:/public/workspace",
+        project_id=f"{_TEST_DRIVE}/public/workspace",
+        cwd=f"{_TEST_DRIVE}/public/workspace",
     )
     observation = {
         "files": ["answer.py", "test_public.py"],
@@ -979,12 +996,12 @@ def test_out_of_process_supervisor_receives_prefetched_public_evidence(monkeypat
         },
         "pytest": {"ok": False, "exit_code": 1, "output": "1 failed"},
     }
-    _bind_controller_pytest(process, observation, "C:/public/workspace")
+    _bind_controller_pytest(process, observation, f"{_TEST_DRIVE}/public/workspace")
 
     process.decide_public_observation(
         {
             "public_task": "Fix answer.py and make the public test pass.",
-            "project_id": "C:/public/workspace",
+            "project_id": f"{_TEST_DRIVE}/public/workspace",
             "goal_id": "goal:test",
             "session": session.model_dump(mode="json"),
             "public_observation": observation,
@@ -1009,7 +1026,7 @@ def test_out_of_process_supervisor_receives_prefetched_public_evidence(monkeypat
         "public_test_sha256": "c" * 64,
         "workspace_stable_during_verification": True,
         "executed_argv": process._public_pytest_argv(
-            Path("C:/public/workspace"), ["test_public.py"]
+            Path(f"{_TEST_DRIVE}/public/workspace"), ["test_public.py"]
         ),
     }
     assert pytest_event.project_id == request.event.project_id
@@ -1033,8 +1050,8 @@ def test_out_of_process_supervisor_nudges_contradicted_tests_pass():
         id="codex:test",
         harness_type=HarnessType.CODEX,
         vendor_session_id="test",
-        project_id="C:/public/workspace",
-        cwd="C:/public/workspace",
+        project_id=f"{_TEST_DRIVE}/public/workspace",
+        cwd=f"{_TEST_DRIVE}/public/workspace",
     )
     observation = {
         "files": ["answer.py", "test_public.py"],
@@ -1054,11 +1071,11 @@ def test_out_of_process_supervisor_nudges_contradicted_tests_pass():
             "output": "FAILED test_public.py::test_slugify",
         },
     }
-    _bind_controller_pytest(process, observation, "C:/public/workspace")
+    _bind_controller_pytest(process, observation, f"{_TEST_DRIVE}/public/workspace")
     result = process.decide_public_observation(
         {
             "public_task": "Fix answer.py and make the public test pass.",
-            "project_id": "C:/public/workspace",
+            "project_id": f"{_TEST_DRIVE}/public/workspace",
             "goal_id": "goal:test",
             "session": session.model_dump(mode="json"),
             "public_observation": observation,
@@ -1084,8 +1101,8 @@ def test_out_of_process_supervisor_nudges_failed_pytest_without_tests_pass_claim
         id="codex:test",
         harness_type=HarnessType.CODEX,
         vendor_session_id="test",
-        project_id="C:/public/workspace",
-        cwd="C:/public/workspace",
+        project_id=f"{_TEST_DRIVE}/public/workspace",
+        cwd=f"{_TEST_DRIVE}/public/workspace",
     )
     observation = {
         "files": ["answer.py", "test_public.py"],
@@ -1105,11 +1122,11 @@ def test_out_of_process_supervisor_nudges_failed_pytest_without_tests_pass_claim
             "output": "FAILED test_public.py::test_slugify",
         },
     }
-    _bind_controller_pytest(process, observation, "C:/public/workspace")
+    _bind_controller_pytest(process, observation, f"{_TEST_DRIVE}/public/workspace")
     result = process.decide_public_observation(
         {
             "public_task": "Fix answer.py and make the public test pass.",
-            "project_id": "C:/public/workspace",
+            "project_id": f"{_TEST_DRIVE}/public/workspace",
             "goal_id": "goal:test",
             "session": session.model_dump(mode="json"),
             "public_observation": observation,
@@ -1124,11 +1141,11 @@ def test_out_of_process_supervisor_nudges_failed_pytest_without_tests_pass_claim
     assert not text.startswith("PEX:")
 
     observation["pytest"] = {"ok": True, "exit_code": 0, "output": "1 passed"}
-    _bind_controller_pytest(process, observation, "C:/public/workspace")
+    _bind_controller_pytest(process, observation, f"{_TEST_DRIVE}/public/workspace")
     quiet = process.decide_public_observation(
         {
             "public_task": "Fix answer.py and make the public test pass.",
-            "project_id": "C:/public/workspace",
+            "project_id": f"{_TEST_DRIVE}/public/workspace",
             "goal_id": "goal:test",
             "session": session.model_dump(mode="json"),
             "public_observation": observation,
@@ -1167,13 +1184,13 @@ def test_out_of_process_supervisor_withholds_pytest_when_integrity_is_false(monk
         id="codex:test",
         harness_type=HarnessType.CODEX,
         vendor_session_id="test",
-        project_id="C:/public/workspace",
-        cwd="C:/public/workspace",
+        project_id=f"{_TEST_DRIVE}/public/workspace",
+        cwd=f"{_TEST_DRIVE}/public/workspace",
     )
     process.decide_public_observation(
         {
             "public_task": "Fix answer.py and make the public test pass.",
-            "project_id": "C:/public/workspace",
+            "project_id": f"{_TEST_DRIVE}/public/workspace",
             "goal_id": "goal:test",
             "session": session.model_dump(mode="json"),
             "public_observation": _public_test_observation(intact=False),
@@ -1198,20 +1215,20 @@ def test_out_of_process_supervisor_rejects_forged_worker_pytest_attribution():
 
     process = _supervisor_process()
     observation = _public_test_observation()
-    _bind_controller_pytest(process, observation, "C:/public/workspace")
+    _bind_controller_pytest(process, observation, f"{_TEST_DRIVE}/public/workspace")
     observation["controller_verification"]["owner"] = "worker"
     session = HarnessSession(
         id="codex:test",
         harness_type=HarnessType.CODEX,
         vendor_session_id="test",
-        project_id="C:/public/workspace",
-        cwd="C:/public/workspace",
+        project_id=f"{_TEST_DRIVE}/public/workspace",
+        cwd=f"{_TEST_DRIVE}/public/workspace",
     )
     with pytest.raises(ValueError, match="not bound to this observation"):
         process.decide_public_observation(
             {
                 "public_task": "Fix answer.py and make the public test pass.",
-                "project_id": "C:/public/workspace",
+                "project_id": f"{_TEST_DRIVE}/public/workspace",
                 "goal_id": "goal:test",
                 "session": session.model_dump(mode="json"),
                 "public_observation": observation,
@@ -1227,20 +1244,20 @@ def test_out_of_process_supervisor_rejects_reused_pytest_result():
 
     process = _supervisor_process()
     observation = _public_test_observation()
-    _bind_controller_pytest(process, observation, "C:/public/workspace")
+    _bind_controller_pytest(process, observation, f"{_TEST_DRIVE}/public/workspace")
     observation["pytest"] = {"ok": True, "exit_code": 0, "output": "1 passed"}
     session = HarnessSession(
         id="codex:test",
         harness_type=HarnessType.CODEX,
         vendor_session_id="test",
-        project_id="C:/public/workspace",
-        cwd="C:/public/workspace",
+        project_id=f"{_TEST_DRIVE}/public/workspace",
+        cwd=f"{_TEST_DRIVE}/public/workspace",
     )
     with pytest.raises(ValueError, match="not bound to this observation"):
         process.decide_public_observation(
             {
                 "public_task": "Fix answer.py and make the public test pass.",
-                "project_id": "C:/public/workspace",
+                "project_id": f"{_TEST_DRIVE}/public/workspace",
                 "goal_id": "goal:test",
                 "session": session.model_dump(mode="json"),
                 "public_observation": observation,
@@ -1323,14 +1340,14 @@ def test_out_of_process_supervisor_rejects_workspace_identity_mismatch():
         id="codex:test",
         harness_type=HarnessType.CODEX,
         vendor_session_id="test",
-        project_id="C:/wrong/workspace",
-        cwd="C:/public/workspace",
+        project_id=f"{_TEST_DRIVE}/wrong/workspace",
+        cwd=f"{_TEST_DRIVE}/public/workspace",
     )
     with pytest.raises(ValueError, match="workspace identity"):
         process.decide_public_observation(
             {
                 "public_task": "Fix answer.py.",
-                "project_id": "C:/public/workspace",
+                "project_id": f"{_TEST_DRIVE}/public/workspace",
                 "goal_id": "goal:test",
                 "session": session.model_dump(mode="json"),
                 "public_observation": {},
@@ -1545,7 +1562,7 @@ def test_evaluator_fails_closed_on_unbounded_worker_output(tmp_path):
 def test_evaluator_subprocess_environment_is_allowlisted(monkeypatch):
     ev = _evaluator()
     monkeypatch.setenv("OPENAI_API_KEY", "must-not-reach-worker")
-    monkeypatch.setenv("PYTHONPATH", "C:/private/controller")
+    monkeypatch.setenv("PYTHONPATH", f"{_TEST_DRIVE}/private/controller")
 
     child_env = ev._subprocess_env()
 
@@ -2270,7 +2287,7 @@ def _complete_run(four, run_id: str, arms=None) -> None:
             hooks_sha256 = _digest("cursor-hooks")
             evidence = (
                 {
-                    "hooks_path": "C:/tmp/hooks.json",
+                    "hooks_path": f"{_TEST_DRIVE}/tmp/hooks.json",
                     "hooks_sha256": hooks_sha256,
                     "process": "Cursor.exe",
                     "conversation_id": f"cursor-{task}",
@@ -2757,7 +2774,7 @@ async def test_cursor_treatment_fails_closed_without_same_session_continuation()
             "cursor_pex",
             "pexbench_001_premature_stop",
             "no_replayed_treatment",
-            stop_payload={"cwd": "C:/tmp", "hook_event_name": "stop"},
+            stop_payload={"cwd": f"{_TEST_DRIVE}/tmp", "hook_event_name": "stop"},
         )
 
 
@@ -3646,11 +3663,11 @@ async def test_codex_isolated_thread_is_not_an_existing_id():
     from pex_bridge.adapters.codex import CodexAdapter, CodexAppServerTransport, IsolatedThreadError
 
     adapter = CodexAdapter(CodexAppServerTransport())
-    session = await adapter.start_isolated_thread("C:/tmp/pexbench")
+    session = await adapter.start_isolated_thread(f"{_TEST_DRIVE}/tmp/pexbench")
     assert session.vendor_session_id != "thr_demo"
     assert session.metadata["isolated"] is True
     assert session.metadata["sandbox"] == "workspace-write"
-    assert Path(session.cwd).resolve() == Path("C:/tmp/pexbench").resolve()
+    assert Path(session.cwd).resolve() == Path(f"{_TEST_DRIVE}/tmp/pexbench").resolve()
 
     class Reuse(CodexAppServerTransport):
         async def request(self, method, params=None):
@@ -3659,7 +3676,7 @@ async def test_codex_isolated_thread_is_not_an_existing_id():
             return await super().request(method, params)
 
     with pytest.raises(IsolatedThreadError, match="already existed"):
-        await CodexAdapter(Reuse()).start_isolated_thread("C:/tmp/pexbench")
+        await CodexAdapter(Reuse()).start_isolated_thread(f"{_TEST_DRIVE}/tmp/pexbench")
 
 
 def test_codex_isolated_approval_policy_never_denies_all_requests(tmp_path):
@@ -3739,11 +3756,11 @@ async def test_codex_isolated_thread_refuses_cwd_mismatch():
     class WrongCwd(CodexAppServerTransport):
         async def request(self, method, params=None):
             if method == "thread/start":
-                return {"thread": {"id": "thr_mismatch", "cwd": "C:/not/the/workspace"}}
+                return {"thread": {"id": "thr_mismatch", "cwd": f"{_TEST_DRIVE}/not/the/workspace"}}
             return await super().request(method, params)
 
     with pytest.raises(IsolatedThreadError, match="does not match"):
-        await CodexAdapter(WrongCwd()).start_isolated_thread("C:/tmp/pexbench")
+        await CodexAdapter(WrongCwd()).start_isolated_thread(f"{_TEST_DRIVE}/tmp/pexbench")
 
 
 async def test_codex_isolated_thread_never_calls_resume():
@@ -3759,7 +3776,7 @@ async def test_codex_isolated_thread_never_calls_resume():
             return await super().request(method, params)
 
     transport = Spy()
-    await CodexAdapter(transport).start_isolated_thread("C:/tmp/pexbench")
+    await CodexAdapter(transport).start_isolated_thread(f"{_TEST_DRIVE}/tmp/pexbench")
     assert "thread/start" in transport.methods
     assert "thread/resume" not in transport.methods
 
@@ -3778,7 +3795,7 @@ async def test_codex_isolated_thread_lists_ids_without_rollout_repair():
             return await super().request(method, params)
 
     transport = Spy()
-    await CodexAdapter(transport).start_isolated_thread("C:/tmp/pexbench")
+    await CodexAdapter(transport).start_isolated_thread(f"{_TEST_DRIVE}/tmp/pexbench")
 
     assert transport.list_params
     assert all(params.get("useStateDbOnly") is True for params in transport.list_params)
@@ -3790,7 +3807,7 @@ async def test_codex_dangerous_sandbox_requires_explicit_opt_in():
     transport = CodexAppServerTransport()
     adapter = CodexAdapter(transport)
     session = await adapter.start_isolated_thread(
-        "C:/tmp/pexbench-proof",
+        f"{_TEST_DRIVE}/tmp/pexbench-proof",
         sandbox="danger-full-access",
     )
     await adapter.start_turn(session, "write the disposable proof artifact")
@@ -3798,7 +3815,7 @@ async def test_codex_dangerous_sandbox_requires_explicit_opt_in():
     assert session.metadata["sandbox"] == "danger-full-access"
     assert transport.turns[-1]["sandboxPolicy"] == {"type": "dangerFullAccess"}
     with pytest.raises(ValueError, match="unsupported Codex sandbox"):
-        await adapter.start_isolated_thread("C:/tmp/pexbench", sandbox="unknown")
+        await adapter.start_isolated_thread(f"{_TEST_DRIVE}/tmp/pexbench", sandbox="unknown")
 
 
 async def test_wait_for_turn_collects_item_notifications_not_empty_items():
@@ -3821,7 +3838,7 @@ async def test_wait_for_turn_collects_item_notifications_not_empty_items():
             return result
 
     adapter = CodexAdapter(ItemsOnWire())
-    session = await adapter.start_isolated_thread("C:/tmp/pexbench")
+    session = await adapter.start_isolated_thread(f"{_TEST_DRIVE}/tmp/pexbench")
     started = await adapter.start_turn(session, "do the task")
     turn = await adapter.wait_for_turn_completion(session, started["turn"]["id"])
     assert turn.get("items") == []

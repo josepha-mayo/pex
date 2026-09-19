@@ -10,6 +10,7 @@ from pex_bridge.adapters.acp_harness import HermesAdapter
 from pex_bridge.adapters.claude_code import ClaudeCodeAdapter
 from pex_bridge.adapters.codex import CodexAdapter
 from pex_bridge.adapters.cursor import CursorAdapter
+from pex_bridge.adapters.desktop import desktop_focus_supported
 
 
 @pytest.mark.parametrize(
@@ -42,7 +43,7 @@ async def test_probe_yields_during_process_discovery(monkeypatch, factory, looku
             assert not probe.done()
             release.set()
             capabilities = await probe
-        assert capabilities.focus_ui
+        assert capabilities.focus_ui is desktop_focus_supported()
         # Seeing a desktop process alone must never grant worker control.
         assert not capabilities.send_message
     finally:

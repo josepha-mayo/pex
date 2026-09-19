@@ -862,7 +862,7 @@ class HermesAdapter(AcpHarnessAdapter):
 
     async def probe(self):
         caps = await super().probe()
-        from pex_bridge.adapters.desktop import matching_desktop_image
+        from pex_bridge.adapters.desktop import desktop_focus_supported, matching_desktop_image
 
         hook_live = self._hook_live()
         desktop = await asyncio.to_thread(
@@ -874,7 +874,7 @@ class HermesAdapter(AcpHarnessAdapter):
                 return caps.model_copy(
                     update={
                         "observe_session_status": True,
-                        "focus_ui": True,
+                        "focus_ui": desktop_focus_supported(),
                         "trust_level": 0.4,
                         "support_label": AdapterSupportLabel.OBSERVE_ONLY,
                         "notes": caps.notes

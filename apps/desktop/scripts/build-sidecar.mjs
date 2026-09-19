@@ -88,9 +88,10 @@ const builtInPets = RELEASE_BUILT_IN_PET_IDS;
 const archivedReviewedPets = ["pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von"];
 const petsRoot = join(repo, "apps", "desktop", "src", "pets");
 const petReleaseManifest = join(petsRoot, "release-manifest.json");
+const venvRoot = resolve(repo, process.env.UV_PROJECT_ENVIRONMENT || ".venv");
 const venvPython = process.platform === "win32"
-  ? join(repo, ".venv", "Scripts", "python.exe")
-  : join(repo, ".venv", "bin", "python");
+  ? join(venvRoot, "Scripts", "python.exe")
+  : join(venvRoot, "bin", "python");
 const sourceRoots = [
   join(repo, "packages", "protocol", "src"),
   join(repo, "services", "bridge", "src"),
@@ -1151,8 +1152,8 @@ for (const id of builtInPets) {
 }
 
 const pyinstaller = process.platform === "win32"
-  ? join(repo, ".venv", "Scripts", "pyinstaller.exe")
-  : join(repo, ".venv", "bin", "pyinstaller");
+  ? join(venvRoot, "Scripts", "pyinstaller.exe")
+  : join(venvRoot, "bin", "pyinstaller");
 if (!existsSync(pyinstaller)) {
   throw new Error("PyInstaller is missing. Run `uv sync --dev` from the repository root.");
 }

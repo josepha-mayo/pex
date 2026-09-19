@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import json
+import os
 from collections import deque
 from datetime import UTC, datetime
 from pathlib import Path
@@ -48,6 +49,7 @@ from pex_protocol.intervention import Intervention
 from pex_protocol.overlay import Overlay, OverlayDiff
 from pex_protocol.session import HarnessEvent, HarnessSession
 
+_TEST_DRIVE = "C:" if os.name == "nt" else ""
 
 def _successful_stop_intervention(session_id: str, text: str) -> Intervention:
     action = ProposedAction(
@@ -120,13 +122,15 @@ def _inline_permission_intervention(
 def test_cursor_requires_stable_conversation_identity_and_keeps_parallel_chats_separate():
     adapter = CursorAdapter()
     with pytest.raises(ValueError, match="conversation_id"):
-        adapter.upsert_from_hook({"cwd": "C:/same", "workspace_roots": ["C:/same"]})
+        adapter.upsert_from_hook(
+            {"cwd": f"{_TEST_DRIVE}/same", "workspace_roots": [f"{_TEST_DRIVE}/same"]}
+        )
 
     first = adapter.upsert_from_hook(
-        {"conversation_id": "conversation-a", "workspace_roots": ["C:/same"]}
+        {"conversation_id": "conversation-a", "workspace_roots": [f"{_TEST_DRIVE}/same"]}
     )
     second = adapter.upsert_from_hook(
-        {"conversation_id": "conversation-b", "workspace_roots": ["C:/same"]}
+        {"conversation_id": "conversation-b", "workspace_roots": [f"{_TEST_DRIVE}/same"]}
     )
     assert first.id == "cursor:conversation-a"
     assert second.id == "cursor:conversation-b"
@@ -235,14 +239,14 @@ async def test_opencode_discards_token_deltas_before_transport_gap_accounting():
         adapter.attach_transport(transport)
         for index in range(2_000):
             transport._record_event({
-                "directory": "C:/project",
+                "directory": f"{_TEST_DRIVE}/project",
                 "payload": {
                     "type": "message.part.delta",
                     "properties": {"delta": f"token-{index}"},
                 },
             })
         terminal = {
-            "directory": "C:/project",
+            "directory": f"{_TEST_DRIVE}/project",
             "payload": {"type": "message.updated", "properties": {"id": "done"}},
         }
         transport._record_event(terminal)
@@ -624,12 +628,16 @@ async def test_provider_session_titles_are_bounded_and_redacted_before_persisten
     secret_title = "report token=abcdefghijklmnop"
 
     acp_transport = FakeAcpTransport()
-    acp_transport.sessions = [{"sessionId": "s1", "cwd": "C:/project", "title": secret_title}]
+    acp_transport.sessions = [
+        {"sessionId": "s1", "cwd": f"{_TEST_DRIVE}/project", "title": secret_title}
+    ]
     acp_rows = await AcpClient(acp_transport).list_sessions()
     assert acp_rows[0]["title"] == "report [REDACTED:credential_assignment]"
 
     opencode_transport = MemoryHttpTransport()
-    opencode_transport.sessions = [{"id": "s1", "cwd": "C:/project", "title": secret_title}]
+    opencode_transport.sessions = [
+        {"id": "s1", "cwd": f"{_TEST_DRIVE}/project", "title": secret_title}
+    ]
     opencode = (await OpenCodeAdapter(opencode_transport).discover_sessions())[0]
     assert opencode.metadata["title"] == "report [REDACTED:credential_assignment]"
 
@@ -637,7 +645,7 @@ async def test_provider_session_titles_are_bounded_and_redacted_before_persisten
     codex_transport.threads = [
         {
             "id": "t1",
-            "cwd": "C:/project",
+            "cwd": f"{_TEST_DRIVE}/project",
             "name": secret_title,
             "source": "token=abcdefghijklmnop",
         }
@@ -817,7 +825,7 @@ async def test_opencode_global_sse_wrapper_binds_exact_session_and_current_route
 
     transport.events.append(
         {
-            "directory": "C:/project",
+            "directory": f"{_TEST_DRIVE}/project",
             "payload": {
                 "type": "message.updated",
                 "properties": {"info": {"id": "msg-1", "sessionID": "s1", "role": "user"}},
@@ -826,7 +834,7 @@ async def test_opencode_global_sse_wrapper_binds_exact_session_and_current_route
     )
     transport.events.append(
         {
-            "directory": "C:/project",
+            "directory": f"{_TEST_DRIVE}/project",
             "payload": {
                 "type": "message.part.updated",
                 "properties": {
@@ -877,8 +885,8 @@ async def test_opencode_permissions_and_overlays_require_real_supported_bindings
         id="opencode:s1",
         harness_type=HarnessType.OPENCODE,
         vendor_session_id="s1",
-        cwd="C:/project",
-        project_id="C:/project",
+        cwd=f"{_TEST_DRIVE}/project",
+        project_id=f"{_TEST_DRIVE}/project",
     )
     assert await adapter.respond_permission(session, "permission-1", "allow") is False
     adapter.normalize_sse(
@@ -888,7 +896,7 @@ async def test_opencode_permissions_and_overlays_require_real_supported_bindings
             "properties": {
                 "id": "permission-1",
                 "sessionID": "s1",
-                "cwd": "C:/project",
+                "cwd": f"{_TEST_DRIVE}/project",
             },
         },
     )
@@ -1010,9 +1018,9 @@ async def test_codex_serializes_concurrent_first_resume():
             {
                 "thread": {
                     "id": "wrong-thread",
-                    "cwd": "C:/fake",
+                    "cwd": f"{_TEST_DRIVE}/fake",
                 },
-                "cwd": "C:/fake",
+                "cwd": f"{_TEST_DRIVE}/fake",
                 "model": "test-model",
                 "modelProvider": "test-provider",
             },
@@ -1022,9 +1030,9 @@ async def test_codex_serializes_concurrent_first_resume():
             {
                 "thread": {
                     "id": "thr_demo",
-                    "cwd": "C:/other",
+                    "cwd": f"{_TEST_DRIVE}/other",
                 },
-                "cwd": "C:/other",
+                "cwd": f"{_TEST_DRIVE}/other",
                 "model": "test-model",
                 "modelProvider": "test-provider",
             },
@@ -1034,9 +1042,9 @@ async def test_codex_serializes_concurrent_first_resume():
             {
                 "thread": {
                     "id": "thr_demo",
-                    "cwd": "C:/fake",
+                    "cwd": f"{_TEST_DRIVE}/fake",
                 },
-                "cwd": "C:/other",
+                "cwd": f"{_TEST_DRIVE}/other",
                 "model": "test-model",
                 "modelProvider": "test-provider",
             },
@@ -1046,9 +1054,9 @@ async def test_codex_serializes_concurrent_first_resume():
             {
                 "thread": {
                     "id": "thr_demo",
-                    "cwd": "C:/fake",
+                    "cwd": f"{_TEST_DRIVE}/fake",
                 },
-                "cwd": "C:/fake",
+                "cwd": f"{_TEST_DRIVE}/fake",
                 "modelProvider": "test-provider",
             },
             "authoritative model",
@@ -1057,9 +1065,9 @@ async def test_codex_serializes_concurrent_first_resume():
             {
                 "thread": {
                     "id": "thr_demo",
-                    "cwd": "C:/fake",
+                    "cwd": f"{_TEST_DRIVE}/fake",
                 },
-                "cwd": "C:/fake",
+                "cwd": f"{_TEST_DRIVE}/fake",
                 "model": "test-model",
             },
             "model provider",
@@ -1068,10 +1076,10 @@ async def test_codex_serializes_concurrent_first_resume():
             {
                 "thread": {
                     "id": "thr_demo",
-                    "cwd": "C:/fake",
+                    "cwd": f"{_TEST_DRIVE}/fake",
                     "canAcceptDirectInput": False,
                 },
-                "cwd": "C:/fake",
+                "cwd": f"{_TEST_DRIVE}/fake",
                 "model": "test-model",
                 "modelProvider": "test-provider",
             },
@@ -1152,7 +1160,7 @@ async def test_codex_transport_restart_and_replacement_force_fresh_resume():
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "binding_update",
-    [{"project_id": "C:/other"}, {"goal_id": "different-goal"}],
+    [{"project_id": f"{_TEST_DRIVE}/other"}, {"goal_id": "different-goal"}],
 )
 async def test_codex_revalidates_canonical_binding_after_awaited_resume(binding_update):
     resume_started = asyncio.Event()

@@ -15,6 +15,7 @@ from pex_bridge.store import Store
 from pex_protocol.actions import InterventionType
 from pex_protocol.enums import EventType, PolicyVerdict
 
+_TEST_DRIVE = "C:" if os.name == "nt" else ""
 
 def test_permission_mapping_requires_explicit_delivery_result():
     denied_action = SimpleNamespace(
@@ -63,7 +64,7 @@ async def test_cursor_stop_hook_requests_exact_missing_test_evidence(
     goal = await client.post(
         "/v1/goals",
         json={
-            "project_id": "C:/proj",
+            "project_id": f"{_TEST_DRIVE}/proj",
             "title": "Fix bug",
             "objective": "Fix the failing test",
             "acceptance_criteria": ["tests pass"],
@@ -76,7 +77,7 @@ async def test_cursor_stop_hook_requests_exact_missing_test_evidence(
         json={
             "hook_event_name": "sessionStart",
             "conversation_id": "conv-1",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
             "session_id": "conv-1",
         },
     )
@@ -87,7 +88,7 @@ async def test_cursor_stop_hook_requests_exact_missing_test_evidence(
         json={
             "hook_event_name": "stop",
             "conversation_id": "conv-1",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
             "status": "completed",
             "loop_count": 0,
             "generation_id": "generation-before-followup",
@@ -116,7 +117,7 @@ async def test_cursor_stop_hook_requests_exact_missing_test_evidence(
     ack = {
         "hook_event_name": "pexDeliveryReceipt",
         "conversation_id": "conv-1",
-        "workspace_roots": ["C:/proj"],
+        "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         "receipt": packet,
         "delivery_evidence": "hook_stdout_flushed",
     }
@@ -134,7 +135,7 @@ async def test_cursor_stop_hook_requests_exact_missing_test_evidence(
     wrong_session = {**ack, "conversation_id": "other-conversation"}
     rejected = await client.post("/v1/hooks/cursor", json=wrong_session, headers=headers)
     assert rejected.status_code == 422
-    wrong_project = {**ack, "workspace_roots": ["C:/different-project"]}
+    wrong_project = {**ack, "workspace_roots": [f"{_TEST_DRIVE}/different-project"]}
     rejected = await client.post("/v1/hooks/cursor", json=wrong_project, headers=headers)
     assert rejected.status_code == 409
     flushed = await client.post("/v1/hooks/cursor", json=ack, headers=headers)
@@ -156,7 +157,7 @@ async def test_cursor_stop_hook_requests_exact_missing_test_evidence(
         json={
             "hook_event_name": "afterAgentResponse",
             "conversation_id": "conv-1",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
             "generation_id": "generation-after-followup",
             "text": "I am inspecting the tests now.",
         },
@@ -215,7 +216,7 @@ async def test_cursor_hook_pipeline_deadlines_return_safe_fallbacks(
         json={
             "hook_event_name": hook_name,
             "conversation_id": f"deadline-{hook_name}",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
             "command": "python deploy.py",
         },
     )
@@ -248,7 +249,7 @@ async def test_named_stop_hook_deadline_returns_without_unevidenced_block(
         json={
             "hook_event_name": "Stop",
             "session_id": "named-stop-deadline",
-            "cwd": "C:/proj",
+            "cwd": f"{_TEST_DRIVE}/proj",
             "last_assistant_message": "I am done.",
         },
     )
@@ -387,7 +388,7 @@ def test_cursor_hook_script_recovers_event_name():
         mod._safe_hook_stdout(
             '{"permission":"ask"}',
             "beforeReadFile",
-            {"file_path": "C:/elsewhere/auth.json"},
+            {"file_path": f"{_TEST_DRIVE}/elsewhere/auth.json"},
         )
     )["permission"] == "deny"
     assert json.loads(
@@ -414,11 +415,11 @@ def test_cursor_hook_script_recovers_event_name():
     assert mod._is_destructive({"command": "Remove-Item C:\\tmp -Recurse -Force"})
     assert mod._is_destructive({"command": "git reset --hard HEAD~1"})
     assert mod._is_destructive({"command": "vercel deploy --prod"})
-    assert mod._has_sensitive_path({"file_path": "C:/Users/me/.ssh/id_rsa"})
+    assert mod._has_sensitive_path({"file_path": f"{_TEST_DRIVE}/Users/me/.ssh/id_rsa"})
     for path in (
-        "C:/Users/me/.npmrc",
-        "C:/Users/me/.aws/credentials",
-        "C:/Users/me/.pex/bridge.token",
+        f"{_TEST_DRIVE}/Users/me/.npmrc",
+        f"{_TEST_DRIVE}/Users/me/.aws/credentials",
+        f"{_TEST_DRIVE}/Users/me/.pex/bridge.token",
         "config/secrets.yaml",
         "certs/client.p12",
     ):
@@ -456,17 +457,20 @@ def test_cursor_hook_script_recovers_event_name():
     ) == {"permission": "allow"}
     assert mod._is_routine_safe(
         "beforeReadFile",
-        {"file_path": "C:/elsewhere/note.txt", "workspace_roots": ["C:/proj"]},
+        {"file_path": f"{_TEST_DRIVE}/elsewhere/note.txt",
+         "workspace_roots": [f"{_TEST_DRIVE}/proj"]},
     )
     assert json.loads(
         mod._fail_open(
             "beforeReadFile",
-            {"file_path": "C:/elsewhere/note.txt", "workspace_roots": ["C:/proj"]},
+            {"file_path": f"{_TEST_DRIVE}/elsewhere/note.txt",
+         "workspace_roots": [f"{_TEST_DRIVE}/proj"]},
         )
     ) == {"permission": "allow"}
     assert not mod._is_routine_safe(
         "beforeReadFile",
-        {"file_path": "C:/Users/me/.ssh/id_rsa", "workspace_roots": ["C:/proj"]},
+        {"file_path": f"{_TEST_DRIVE}/Users/me/.ssh/id_rsa",
+         "workspace_roots": [f"{_TEST_DRIVE}/proj"]},
     )
     assert not mod._is_routine_safe("preToolUse", {"tool_name": "Delete"})
     assert json.loads(
@@ -930,7 +934,7 @@ async def test_cursor_overlay_is_not_prompt_injection():
         {
             "hook_event_name": "sessionStart",
             "conversation_id": "ovl",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         }
     )
     overlay = Overlay(
@@ -1204,7 +1208,9 @@ def test_cursor_observe_helper_keeps_workspace_root_when_edits_are_huge(
         b'{"edits":[{"old":"'
         + (b"x" * 80_000)
         + b'"}],"conversation_id":"obs-root","file_path":"src/app.py",'
-        + b'"workspace_roots":["C:/proj"]}'
+        + b'"workspace_roots":'
+        + json.dumps([f"{_TEST_DRIVE}/proj"]).encode("utf-8")
+        + b'}'
     )
     monkeypatch.setattr(module.sys, "stdin", BytesIO(payload))
     module.main(["pex_cursor_observe.py", "afterFileEdit"])
@@ -1212,7 +1218,7 @@ def test_cursor_observe_helper_keeps_workspace_root_when_edits_are_huge(
         (tmp_path / "hooks" / "cursor.jsonl").read_text(encoding="utf-8").splitlines()[-1]
     )
     assert body["conversation_id"] == "obs-root"
-    assert body["workspace_roots"] == ["C:/proj"]
+    assert body["workspace_roots"] == [f"{_TEST_DRIVE}/proj"]
     assert "edits" not in body
 
 
@@ -1584,7 +1590,7 @@ async def test_before_submit_prompt_blocks_constraint_contradiction(client: Asyn
     goal = await client.post(
         "/v1/goals",
         json={
-            "project_id": "C:/proj",
+            "project_id": f"{_TEST_DRIVE}/proj",
             "title": "Train model",
             "objective": "Train without touching preprocessing",
             "acceptance_criteria": ["metrics.json exists"],
@@ -1597,7 +1603,7 @@ async def test_before_submit_prompt_blocks_constraint_contradiction(client: Asyn
         json={
             "hook_event_name": "sessionStart",
             "conversation_id": "conv-prompt",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         },
     )
     assert first.status_code == 200
@@ -1607,7 +1613,7 @@ async def test_before_submit_prompt_blocks_constraint_contradiction(client: Asyn
         json={
             "hook_event_name": "beforeSubmitPrompt",
             "conversation_id": "conv-prompt",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
             "prompt": "Just alter dataset preprocessing first.",
         },
     )
@@ -1620,7 +1626,7 @@ async def test_before_submit_prompt_blocks_constraint_contradiction(client: Asyn
         json={
             "hook_event_name": "beforeSubmitPrompt",
             "conversation_id": "conv-prompt",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
             "prompt": "Run the training script on the existing preprocessed dataset.",
         },
     )
@@ -1632,7 +1638,7 @@ async def test_before_submit_prompt_rewrites_accidental_ambiguity(client: AsyncC
     goal = await client.post(
         "/v1/goals",
         json={
-            "project_id": "C:/proj",
+            "project_id": f"{_TEST_DRIVE}/proj",
             "title": "Eval",
             "objective": "Produce a complete evaluation",
             "acceptance_criteria": ["results.jsonl has 30 rows"],
@@ -1644,7 +1650,7 @@ async def test_before_submit_prompt_rewrites_accidental_ambiguity(client: AsyncC
         json={
             "hook_event_name": "sessionStart",
             "conversation_id": "conv-ambiguous",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         },
     )
     await client.post("/v1/sessions/cursor:conv-ambiguous/attach", json={"goal_id": goal_id})
@@ -1653,7 +1659,7 @@ async def test_before_submit_prompt_rewrites_accidental_ambiguity(client: AsyncC
         json={
             "hook_event_name": "beforeSubmitPrompt",
             "conversation_id": "conv-ambiguous",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
             "prompt": "Just quickly hack whatever works.",
         },
     )
@@ -1672,7 +1678,7 @@ async def test_before_submit_prompt_records_explicit_override_as_a_decision(
     goal = await client.post(
         "/v1/goals",
         json={
-            "project_id": "C:/proj",
+            "project_id": f"{_TEST_DRIVE}/proj",
             "title": "Train model",
             "objective": "Train without touching preprocessing",
             "acceptance_criteria": ["metrics.json exists"],
@@ -1685,7 +1691,7 @@ async def test_before_submit_prompt_records_explicit_override_as_a_decision(
         json={
             "hook_event_name": "sessionStart",
             "conversation_id": "conv-override",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
         },
     )
     await client.post("/v1/sessions/cursor:conv-override/attach", json={"goal_id": goal_id})
@@ -1694,7 +1700,7 @@ async def test_before_submit_prompt_records_explicit_override_as_a_decision(
         json={
             "hook_event_name": "beforeSubmitPrompt",
             "conversation_id": "conv-override",
-            "workspace_roots": ["C:/proj"],
+            "workspace_roots": [f"{_TEST_DRIVE}/proj"],
             "prompt": (
                 "Override the preprocessing constraint and alter dataset "
                 "preprocessing first."

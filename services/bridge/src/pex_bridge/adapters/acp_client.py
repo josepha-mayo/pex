@@ -92,7 +92,8 @@ class FakeAcpTransport:
     def __init__(self) -> None:
         self.prompts: list[dict[str, Any]] = []
         self.sessions: list[dict[str, Any]] = [
-            {"sessionId": "cursor-acp-demo", "cwd": "C:/proj", "title": "demo"}
+            {"sessionId": "cursor-acp-demo", "title": "demo",
+             "cwd": "C:/proj" if os.name == "nt" else "/proj"}
         ]
         self.closed = False
         self.initialized = False

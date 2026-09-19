@@ -1,3 +1,5 @@
+import os
+
 from pex_bridge.adapters.acp_client import FakeAcpTransport
 from pex_bridge.adapters.cursor import CursorAdapter
 from pex_bridge.adapters.cursor_bin import resolve_cursor_agent
@@ -5,6 +7,7 @@ from pex_bridge.ask import answer_question
 from pex_protocol.enums import HarnessType, SessionStatus
 from pex_protocol.session import HarnessSession
 
+_TEST_DRIVE = "C:" if os.name == "nt" else ""
 
 def test_never_resolves_grok_agent(monkeypatch, tmp_path):
     grok = tmp_path / ".grok" / "bin" / "agent.exe"
@@ -34,7 +37,7 @@ async def test_acp_prompt_and_session_list():
     assert transport.prompts
     assert "tests were not run" in transport.prompts[0]["prompt"][0]["text"]
     assert transport.loaded == [
-        {"sessionId": "cursor-acp-demo", "cwd": "C:/proj", "mcpServers": []}
+        {"sessionId": "cursor-acp-demo", "cwd": f"{_TEST_DRIVE}/proj", "mcpServers": []}
     ]
     caps = await adapter.probe()
     assert caps.support_label.value == "basic"

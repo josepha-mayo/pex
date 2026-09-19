@@ -79,6 +79,21 @@ DESKTOP_APPS = (
 
 _SCOPED_SNAPSHOT_MAX_AGE_SECONDS = 5.0
 
+# Process discovery is an observation hint only, never attachment authority.
+# Do not map the `codex` CLI to ChatGPT.exe: those are different surfaces.
+_POSIX_IMAGE_ALIASES = {
+    "cursor.exe": ("cursor",),
+    "opencode.exe": ("opencode",),
+    "hermes.exe": ("hermes",),
+    "noushermes.exe": ("noushermes",),
+    "claude.exe": ("claude",),
+}
+
+
+def desktop_focus_supported() -> bool:
+    """Window activation currently has a verified Windows implementation only."""
+    return sys.platform == "win32"
+
 
 @dataclass(frozen=True)
 class DesktopProcessSnapshot:
@@ -122,19 +137,24 @@ def _active_process_snapshot() -> DesktopProcessSnapshot | None:
     return snapshot
 
 def desktop_process_running(image: str, running: set[str] | None = None) -> bool:
-    names = {name.lower() for name in (running if running is not None else running_image_names())}
-    return image.lower() in names
+    return matching_desktop_image(image, running) is not None
 
 
 def matching_desktop_image(
     images: tuple[str, ...] | str,
     running: set[str] | None = None,
 ) -> str | None:
-    names = {name.lower() for name in (running if running is not None else running_image_names())}
+    names = {
+        name.lower(): name for name in (running if running is not None else running_image_names())
+    }
     candidates = (images,) if isinstance(images, str) else images
     for image in candidates:
         if image.lower() in names:
             return image
+        if sys.platform != "win32":
+            for alias in _POSIX_IMAGE_ALIASES.get(image.lower(), ()):
+                if alias in names:
+                    return names[alias]
     return None
 
 
@@ -201,7 +221,8 @@ def _read_running_image_names() -> set[str] | None:
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     try:
         raw = subprocess.check_output(
-            ["tasklist", "/fo", "csv", "/nh"],
+            ["tasklist", "/fo", "csv", "/nh"]
+            if sys.platform == "win32" else ["ps", "-A", "-o", "comm="],
             text=True,
             errors="replace",
             timeout=3.0,
@@ -211,6 +232,8 @@ def _read_running_image_names() -> set[str] | None:
         return None
     if len(raw) > 2_097_152:
         return None
+    if sys.platform != "win32":
+        return {line.strip().rsplit("/", 1)[-1] for line in raw.splitlines() if line.strip()}
     names: set[str] = set()
     for row in csv.reader(io.StringIO(raw)):
         if row:
@@ -219,10 +242,10 @@ def _read_running_image_names() -> set[str] | None:
 
 
 def list_desktop_apps(running: set[str] | None = None) -> list[dict]:
-    images = {name.lower() for name in (running if running is not None else running_image_names())}
+    images = running if running is not None else running_image_names()
     found: list[dict] = []
     for app in DESKTOP_APPS:
-        hit = next((image for image in app["images"] if image.lower() in images), None)
+        hit = matching_desktop_image(app["images"], images)
         if hit:
             found.append(
                 {
@@ -230,7 +253,11 @@ def list_desktop_apps(running: set[str] | None = None) -> list[dict]:
                     "kind": "desktop",
                     "connect": app["connect"],
                     "process": hit,
-                    "surface": app["surface"],
+                    "surface": app["surface"] if sys.platform == "win32" else (
+                        f"Already-running {hit} process. Process inventory alone does not "
+                        "identify a workspace or grant worker control. Connect its supported "
+                        "API or hooks; window focus is unavailable on this platform."
+                    ),
                 }
             )
     return found

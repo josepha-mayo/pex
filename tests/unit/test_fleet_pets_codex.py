@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import subprocess
 from datetime import UTC, datetime
 from io import BytesIO
@@ -47,6 +48,7 @@ from pex_protocol.enums import Authority, EventType, PolicyVerdict
 from pex_protocol.intervention import Intervention
 from pex_protocol.overlay import Overlay, OverlayDiff
 
+_TEST_DRIVE = "C:" if os.name == "nt" else ""
 
 def test_desktop_detection_uses_running_apps():
     from pex_bridge.adapters.desktop import list_desktop_apps
@@ -81,7 +83,9 @@ async def test_discover_keeps_chatgpt_and_isolated_appserver_apart(monkeypatch):
         lambda: list_desktop_apps({"ChatGPT.exe"}),
     )
     monkeypatch.setattr("pex_bridge.adapters.discover.PROBES", ())
-    monkeypatch.setattr("pex_bridge.adapters.discover.resolve_codex_bin", lambda: "C:/codex.exe")
+    monkeypatch.setattr(
+        "pex_bridge.adapters.discover.resolve_codex_bin", lambda: f"{_TEST_DRIVE}/codex.exe"
+    )
     monkeypatch.setattr("pex_bridge.adapters.discover.resolve_grok_build", lambda: None)
     monkeypatch.setattr("pex_bridge.adapters.discover.resolve_hermes", lambda: None)
     monkeypatch.setattr("pex_bridge.adapters.discover.shutil.which", lambda _name: None)
@@ -227,7 +231,7 @@ async def test_codex_pump_ingests_stop_permission_and_agent_message():
     from pex_protocol.enums import EventType
 
     transport = CodexAppServerTransport()
-    transport.threads = [{"id": "thr_pump", "preview": "pump thread", "cwd": "C:/proj"}]
+    transport.threads = [{"id": "thr_pump", "preview": "pump thread", "cwd": f"{_TEST_DRIVE}/proj"}]
     adapter = CodexAdapter(transport)
     ingested: list = []
 
@@ -237,14 +241,14 @@ async def test_codex_pump_ingests_stop_permission_and_agent_message():
     transport.pending_approvals["req_pump"] = {
         "id": "req_pump",
         "method": "item/commandExecution/requestApproval",
-        "params": {"threadId": "thr_pump", "command": "pytest", "cwd": "C:/proj"},
+        "params": {"threadId": "thr_pump", "command": "pytest", "cwd": f"{_TEST_DRIVE}/proj"},
     }
     transport.notifications.append(
         {
             "method": "item/completed",
             "params": {
                 "threadId": "thr_pump",
-                "cwd": "C:/proj",
+                "cwd": f"{_TEST_DRIVE}/proj",
                 "item": {"id": "item_msg", "type": "agentMessage", "text": "working on it"},
             },
         }
@@ -254,7 +258,7 @@ async def test_codex_pump_ingests_stop_permission_and_agent_message():
             "method": "turn/completed",
             "params": {
                 "threadId": "thr_pump",
-                "cwd": "C:/proj",
+                "cwd": f"{_TEST_DRIVE}/proj",
                 "turn": {"id": "t_pump", "status": "completed", "items": []},
             },
         }
@@ -285,7 +289,7 @@ async def test_codex_pump_ingests_stop_permission_and_agent_message():
     assert EventType.STOP.value in types
     session = adapter.sessions.get("codex:thr_pump")
     assert session is not None
-    assert session.cwd == "C:/proj"
+    assert session.cwd == f"{_TEST_DRIVE}/proj"
 
 
 async def test_codex_event_pump_inventories_desktop_once_not_on_each_list_refresh(monkeypatch):
@@ -300,7 +304,7 @@ async def test_codex_event_pump_inventories_desktop_once_not_on_each_list_refres
     monkeypatch.setattr("pex_bridge.adapters.desktop.running_image_names", inventory)
     monkeypatch.setattr("pex_bridge.adapters.codex.CODEX_DISCOVERY_INTERVAL_SECONDS", 0.0)
     transport = CodexAppServerTransport()
-    transport.threads = [{"id": "thr_idle", "cwd": "C:/proj"}]
+    transport.threads = [{"id": "thr_idle", "cwd": f"{_TEST_DRIVE}/proj"}]
     request = transport.request
 
     async def counted_request(method, params=None):
@@ -421,7 +425,7 @@ def test_explicit_invalid_harness_binary_never_falls_back_to_path(
 async def test_cursor_binary_path_is_not_deep(monkeypatch):
     monkeypatch.setattr("pex_bridge.adapters.desktop.running_image_names", lambda: set())
     adapter = CursorAdapter()
-    adapter._bin = "C:/not-an-attached-acp"
+    adapter._bin = f"{_TEST_DRIVE}/not-an-attached-acp"
     caps = await adapter.probe()
     assert caps.support_label.value == "unavailable"
     assert caps.send_message is False
@@ -464,7 +468,7 @@ async def test_codex_stdio_jsonl_fake_process(tmp_path):
 
     script = tmp_path / "fake_appserver.py"
     script.write_text(
-        "import json, sys\n"
+        "import json, sys\nfrom pathlib import Path\n"
         "for line in sys.stdin:\n"
         "    msg = json.loads(line)\n"
         "    method = msg.get('method')\n"
@@ -475,10 +479,12 @@ async def test_codex_stdio_jsonl_fake_process(tmp_path):
         "'platformOs': 'test'}}), flush=True)\n"
         "    elif method == 'thread/list':\n"
         "        print(json.dumps({'id': msg['id'], 'result': {"
-        "'data': [{'id': 'thr_jsonl', 'preview': 'fake', 'cwd': 'C:/proj'}]}}), flush=True)\n"
+        "'data': [{'id': 'thr_jsonl', 'preview': 'fake', "
+        "'cwd': str(Path('C:/proj').absolute())}]}}), flush=True)\n"
         "    elif method == 'thread/resume':\n"
         "        print(json.dumps({'id': msg['id'], 'result': {"
-        "'thread': {'id': 'thr_jsonl', 'cwd': 'C:/proj'}, 'cwd': 'C:/proj', "
+        "'thread': {'id': 'thr_jsonl', 'cwd': str(Path('C:/proj').absolute())}, "
+        "'cwd': str(Path('C:/proj').absolute()), "
         "'model': 'gpt-test', 'modelProvider': 'test'}}), flush=True)\n"
         "    elif method == 'turn/start':\n"
         "        print(json.dumps({'id': msg['id'], 'result': {'turn': "
@@ -560,7 +566,7 @@ async def test_codex_stdio_protocol_observer_failure_is_fail_closed(tmp_path):
 
     script = tmp_path / "fake_appserver.py"
     script.write_text(
-        "import json, sys\n"
+        "import json, sys\nfrom pathlib import Path\n"
         "message = json.loads(sys.stdin.readline())\n"
         "print(json.dumps({'id': message['id'], 'result': {"
         "'userAgent': 'fake', 'codexHome': '/', 'platformFamily': 'test', "
@@ -864,7 +870,7 @@ async def test_kimi_hermes_omp_deep_with_acp():
 
 async def test_omp_acp_pump_uses_prompt_result_for_stop():
     transport = FakeAcpTransport()
-    transport.sessions = [{"sessionId": "omp-pump", "cwd": "C:/proj"}]
+    transport.sessions = [{"sessionId": "omp-pump", "cwd": f"{_TEST_DRIVE}/proj"}]
     adapter = OmpAdapter()
     adapter.attach_acp(transport)
     session = (await adapter.discover_sessions())[0]
@@ -1101,7 +1107,7 @@ def test_claude_permission_hooks_ignore_incomplete_intervention_records():
 
 async def test_hermes_plugin_hooks_use_official_returns():
     adapter = HermesAdapter()
-    session = adapter.ingest_hook({"session_id": "h1", "cwd": "C:/proj"})
+    session = adapter.ingest_hook({"session_id": "h1", "cwd": f"{_TEST_DRIVE}/proj"})
     end = adapter.normalize_hook(
         {"hook_event_name": "on_session_end", "text": "I am done."},
         session,
@@ -1404,8 +1410,17 @@ def test_release_preflight_is_structured_and_never_claims_package_readiness():
         "binaries/pex-bridge-runtime/": "pex-bridge-runtime/",
     }
     manifest = report["sidecars"]["bridge_runtime_manifest"]
-    runtime_paths = {entry["path"] for entry in manifest["files"]}
-    assert {"pex-bridge.exe", "_internal/python312.dll"} <= runtime_paths
+    if manifest is None:
+        # A clean source checkout has no frozen runtime yet. The preflight must
+        # disclose that blocker; native CI separately builds and boots the bundle.
+        assert report["sidecars"]["current"] is False
+        assert report["sidecars"]["frozen_inventory_verified"] is False
+        assert "stale_or_missing_sidecars" in {item["code"] for item in report["blockers"]}
+    else:
+        runtime_paths = {entry["path"] for entry in manifest["files"]}
+        assert ("pex-bridge.exe" if os.name == "nt" else "pex-bridge") in runtime_paths
+        if os.name == "nt":
+            assert "_internal/python312.dll" in runtime_paths
     assert result.returncode == (0 if report["source_ready"] else 2)
     assert bool(report["blockers"]) is (not report["source_ready"])
 

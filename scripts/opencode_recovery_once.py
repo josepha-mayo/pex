@@ -205,7 +205,7 @@ def run_workspace_pytest(workspace: Path) -> dict[str, object]:
         capture_output=True,
         text=True,
         timeout=30,
-        creationflags=subprocess.CREATE_NO_WINDOW,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     output = (completed.stdout + completed.stderr)[-4_000:]
     return {"exit_code": completed.returncode, "output": output}
@@ -250,7 +250,7 @@ async def run_recovery(
     subprocess.run(
         ["git", "init", "--quiet", str(workspace)],
         check=True,
-        creationflags=subprocess.CREATE_NO_WINDOW,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     seed_scenario(workspace, scenario)
     spec = scenario_spec(scenario)
@@ -624,7 +624,7 @@ async def main() -> int:
                 env=environment,
                 stdout=log,
                 stderr=subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NO_WINDOW,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
             async with httpx.AsyncClient(base_url=ORIGIN, timeout=2) as client:
                 async with asyncio.timeout(45):

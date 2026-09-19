@@ -3,6 +3,7 @@ from __future__ import annotations
 import builtins
 import importlib.util
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -149,6 +150,7 @@ class _FailedTerminationProcess:
         return None
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="requires native Windows Job Objects")
 def test_windows_job_assignment_failure_reaps_root_and_closes_pipes(monkeypatch):
     import win32job
     from pex_protocol.windows_job import assign_job_and_resume
@@ -174,6 +176,7 @@ def test_windows_job_assignment_failure_reaps_root_and_closes_pipes(monkeypatch)
 
 
 @pytest.mark.parametrize("failure", ["missing_handle", "import", "create"])
+@pytest.mark.skipif(sys.platform != "win32", reason="requires native Windows Job Objects")
 def test_windows_job_setup_failures_reap_root_and_close_every_pipe(
     monkeypatch, failure
 ):

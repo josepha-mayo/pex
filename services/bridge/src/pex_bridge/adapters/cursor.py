@@ -44,6 +44,7 @@ from pex_bridge.adapters.base import (
     validate_cursor_hook_preparation_receipt,
 )
 from pex_bridge.adapters.desktop import (
+    desktop_focus_supported,
     desktop_process_running,
     is_desktop_observe_session,
     upsert_desktop_observe_session,
@@ -196,7 +197,7 @@ class CursorAdapter(HarnessAdapter):
             modify_mcp=False,
             modify_model=False,
             modify_reasoning_effort=False,
-            focus_ui=available,
+            focus_ui=available and desktop_focus_supported(),
             control_granularity=(
                 ControlGranularity.EVENT
                 if active_stop or active_permission

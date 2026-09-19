@@ -39,6 +39,7 @@ from pex_bridge.adapters.base import (
 )
 from pex_bridge.adapters.desktop import (
     _active_process_snapshot,
+    desktop_focus_supported,
     is_desktop_observe_session,
     matching_desktop_image,
     upsert_desktop_observe_session,
@@ -229,7 +230,7 @@ class OpenCodeAdapter(HarnessAdapter):
             modify_tools=plugin_live,
             modify_permissions=False,
             config_scope="session" if plugin_live else "none",
-            focus_ui=desktop,
+            focus_ui=desktop and desktop_focus_supported(),
             control_granularity=(ControlGranularity.EVENT if deep else ControlGranularity.SESSION),
             trust_level=(
                 0.9

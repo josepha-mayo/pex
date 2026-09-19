@@ -6,6 +6,22 @@ PEX negotiates support from evidence observed in the current connection. A regis
 worker, installed binary, open port, initialize response, or injected test transport is
 not by itself proof that PEX can observe or control that worker.
 
+Current development targets OpenCode HTTP, isolated Codex App Server and Nebius
+Token Factory BYOK. The September 19 audit verified real Codex initialization,
+indexed discovery and a completed worker turn, plus OpenCode HTTP/SSE attachment.
+The saved Zen account currently rejects supervisor inference; its free worker
+service reports exhausted usage. Successful current-account semantic recovery
+and Nebius inference are still required. A configured model is not a live result.
+
+Windows and Ubuntu native package builds and authenticated bundled-bridge startup
+passed at `20ffdc7`. Newer source repairs require their own checks. Windows native
+Home/Settings interaction was exercised in a development build. Linux desktop
+focus is unavailable; process detection provides observation hints only, while
+HTTP, hooks and ACP remain the control surfaces.
+
+<details>
+<summary>Historical integration evidence</summary>
+
 The verified release candidate at product source `b0438bd` includes the bridge and Cursor
 helpers. Its extracted package inventories pass, but the installers are unsigned and a
 fresh native smoke run remains outstanding after the reported machine freeze. Backend source
@@ -16,6 +32,8 @@ a specific nudge, produced the required artifact, recorded a helped outcome, and
 NOOP. This is source-bound semantic proof, not packaged native-app proof. See
 [the submission copy](devpost-submission.md), [architecture overview](docs/architecture/overview.md),
 and [package receipt](docs/PACKAGE_RECEIPT_B0438BD.json).
+
+</details>
 
 Shared Codex is deliberately different from isolated Codex. The shared route can observe a
 separately confirmed existing workspace through bounded, durable receipts, but sending,
@@ -36,8 +54,14 @@ keyring reference. Custom OpenAI-compatible and Anthropic-compatible endpoints a
 locally constructor-tested; local Ollama/LM Studio/llama.cpp/vLLM modes and named API-key
 providers retain their distinct auth contracts. Consumer login, AgentCore auth, Azure
 OpenAI's deployment-specific contract, and generic SageMaker payload construction are
-truthfully unavailable/degraded. No provider-live inference or packaged WinVault lifecycle
-has been run for the current tree.
+truthfully unavailable/degraded. The Windows native vault passed a temporary
+credential write/read/delete check. Linux secure-backend selection has automated
+coverage; a desktop Secret Service/KWallet roundtrip remains unverified.
+
+Linux cleanup uses filesystem creation timestamps as well as device/inode identity,
+so a replaced file cannot be accepted solely because its inode was reused. Filesystems
+without `STATX_BTIME` refuse automatic cleanup. Old Linux cleanup records without
+creation identity require manual review; they are not silently rebound to current files.
 
 | Harness | Label | Connect | Official surface |
 | --- | --- | --- | --- |

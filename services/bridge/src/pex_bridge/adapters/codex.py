@@ -43,6 +43,7 @@ from pex_bridge.adapters.base import (
 )
 from pex_bridge.adapters.codex_bin import app_server_command
 from pex_bridge.adapters.codex_output import OUTPUT_WITHHELD_KEY, command_output_is_withheld
+from pex_bridge.adapters.desktop import desktop_focus_supported
 from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
 from pex_bridge.shell_state import parse_test_process_state
 
@@ -197,7 +198,8 @@ class CodexAppServerTransport(_CodexRawCapture):
         self._init_raw_capture()
         self.approvals: list[dict[str, Any]] = []
         self.threads: list[dict[str, Any]] = [
-            {"id": "thr_demo", "preview": "synthetic thread", "cwd": "C:/fake"}
+            {"id": "thr_demo", "preview": "synthetic thread",
+             "cwd": "C:/fake" if os.name == "nt" else "/fake"}
         ]
         self.initialized = False
         self.connection_generation = 0
@@ -1420,7 +1422,7 @@ class CodexAdapter(HarnessAdapter):
             start=connected,
             resume=connected,
             fork=False,
-            focus_ui=desktop,
+            focus_ui=desktop and desktop_focus_supported(),
             control_granularity=ControlGranularity.EVENT if pumping else ControlGranularity.SESSION,
             trust_level=0.9 if pumping else 0.65 if connected else 0.35 if desktop else 0.0,
             support_label=label,

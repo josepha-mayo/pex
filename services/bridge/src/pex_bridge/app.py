@@ -1790,16 +1790,27 @@ def _enforce_windows_owner_only_acl(descriptor: int) -> None:
     finally:
         kernel32.LocalFree(security)
 
-    compact = _windows_named_sddl(path).casefold().replace(" ", "")
-    if f"(a;;fa;;;{sid.casefold()})" not in compact:
-        raise RuntimeError("bridge token file ACL is not owner-only")
-    if "d:p" not in compact and ":p(" not in compact:
+    import win32security
+
+    verified = win32security.GetNamedSecurityInfo(
+        path, win32security.SE_FILE_OBJECT, win32security.DACL_SECURITY_INFORMATION
+    )
+    control, _revision = verified.GetSecurityDescriptorControl()
+    if not control & win32security.SE_DACL_PROTECTED:
         raise RuntimeError("bridge token file ACL is not protected from inheritance")
-    if any(
-        marker in compact
-        for marker in (";;;wd)", ";;;bu)", ";;;s-1-1-0)", ";;;s-1-5-32-545)")
+    verified_acl = verified.GetSecurityDescriptorDacl()
+    if verified_acl is None or verified_acl.GetAceCount() != 1:
+        raise RuntimeError("bridge token file ACL is not owner-only")
+    (ace_type, flags), mask, ace_sid = verified_acl.GetAce(0)
+    # Compare actual SIDs: SDDL may abbreviate the current user's SID (for
+    # example LA for the local administrator), even after an exact ACL write.
+    if (
+        ace_type != win32security.ACCESS_ALLOWED_ACE_TYPE
+        or flags != 0
+        or mask != 0x1F01FF
+        or win32security.ConvertSidToStringSid(ace_sid) != sid
     ):
-        raise RuntimeError("bridge token file ACL grants other users")
+        raise RuntimeError("bridge token file ACL is not owner-only")
 
 
 def _validate_token_descriptor(descriptor: int) -> os.stat_result:

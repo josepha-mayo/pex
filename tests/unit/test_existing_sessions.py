@@ -18,7 +18,12 @@ from pex_bridge.adapters.acp_harness import HermesAdapter
 from pex_bridge.adapters.claude_code import ClaudeCodeAdapter
 from pex_bridge.adapters.codex import CodexAdapter
 from pex_bridge.adapters.cursor import CursorAdapter
-from pex_bridge.adapters.desktop import DESKTOP_APPS, desktop_process_inventory, list_desktop_apps
+from pex_bridge.adapters.desktop import (
+    DESKTOP_APPS,
+    desktop_focus_supported,
+    desktop_process_inventory,
+    list_desktop_apps,
+)
 from pex_bridge.adapters.opencode import OpenCodeAdapter
 from pex_bridge.app import create_app, state
 from pex_bridge.bus import EventBus
@@ -103,7 +108,7 @@ async def test_cursor_lists_existing_exe_without_hooks_or_send(monkeypatch):
     caps = await adapter.probe()
     assert caps.support_label.value == "observe_only"
     assert caps.send_message is False
-    assert caps.focus_ui is True
+    assert caps.focus_ui is desktop_focus_supported()
     assert "never auto-installed" in caps.notes.lower()
     assert "this open session" not in caps.notes.lower()
 
@@ -129,7 +134,7 @@ async def test_codex_observe_only_when_chatgpt_running(monkeypatch):
     caps = await adapter.probe()
     assert caps.support_label.value == "observe_only"
     assert caps.send_message is False
-    assert caps.focus_ui is True
+    assert caps.focus_ui is desktop_focus_supported()
 
 
 async def test_codex_keeps_working_isolated_session_when_chatgpt_is_also_open(
@@ -158,7 +163,7 @@ async def test_codex_keeps_working_isolated_session_when_chatgpt_is_also_open(
     caps = await adapter.probe()
     assert caps.support_label.value == "observe_only"
     assert caps.send_message is False
-    assert caps.focus_ui is True
+    assert caps.focus_ui is desktop_focus_supported()
 
 
 @pytest.mark.asyncio
@@ -294,7 +299,7 @@ async def test_hermes_lists_existing_desktop_without_launching(monkeypatch):
     caps = await adapter.probe()
     assert caps.support_label.value == "observe_only"
     assert caps.send_message is False
-    assert caps.focus_ui is True
+    assert caps.focus_ui is desktop_focus_supported()
 
 
 async def test_claude_code_lists_existing_cli_without_installing_hooks(monkeypatch):

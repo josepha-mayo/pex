@@ -5,6 +5,7 @@ import threading
 import time
 
 import pytest
+from pex_bridge.adapters.desktop import desktop_focus_supported
 from pex_bridge.adapters.http_json import MemoryHttpTransport
 from pex_bridge.adapters.opencode import OpenCodeAdapter
 from pex_protocol.enums import EventType
@@ -26,7 +27,7 @@ async def test_opencode_probe_reuses_scoped_snapshot_in_worker_thread(monkeypatc
     )
     with desktop.scoped_running_image_snapshot(snapshot):
         capabilities = await OpenCodeAdapter(MemoryHttpTransport()).probe()
-    assert capabilities.focus_ui is True
+    assert capabilities.focus_ui is desktop_focus_supported()
     assert reads == []
 
 
@@ -53,7 +54,7 @@ async def test_opencode_probe_keeps_loop_responsive_during_desktop_discovery(mon
             assert not probe.done()
             release.set()
             capabilities = await probe
-        assert capabilities.focus_ui is True
+        assert capabilities.focus_ui is desktop_focus_supported()
         assert capabilities.send_message is True
     finally:
         release.set()
@@ -70,7 +71,7 @@ async def test_opencode_event_probe_bounds_desktop_inventory_reads(monkeypatch):
     )
     adapter = OpenCodeAdapter(MemoryHttpTransport())
     results = await asyncio.gather(*(adapter.probe() for _ in range(20)))
-    assert all(result.focus_ui for result in results)
+    assert all(result.focus_ui is desktop_focus_supported() for result in results)
     assert len(reads) == 1
     # A focus hint may be cached, never worker-message authority.
     adapter.transport = None
@@ -89,7 +90,7 @@ async def test_opencode_scoped_inventory_overrides_cached_focus_hint(monkeypatch
 
     monkeypatch.setattr(desktop, "_read_running_image_names", lambda: {"OpenCode.exe"})
     adapter = OpenCodeAdapter(MemoryHttpTransport())
-    assert (await adapter.probe()).focus_ui is True
+    assert (await adapter.probe()).focus_ui is desktop_focus_supported()
     fresh = desktop.DesktopProcessSnapshot(frozenset(), True, time.monotonic())
     with desktop.scoped_running_image_snapshot(fresh):
         assert (await adapter.probe()).focus_ui is False

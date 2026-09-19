@@ -6,6 +6,15 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Fastest evaluation path
 
+**Current Nebius/NVIDIA preparation:** build the latest source below. RC7 is a
+historical package and does not contain the September 19 UI/BYOK repairs.
+Windows and Ubuntu development packages and authenticated bridge startup passed
+CI at `20ffdc7`; newer fixes are under verification. A current successful Nebius
+Nemotron recovery/quiet pair and final package visual acceptance remain required.
+
+<details>
+<summary>Historical RC7 package instructions and evidence</summary>
+
 Download the matching package from
 [PEX 0.1.0 RC7](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7)
 and verify it against the attached `SHA256SUMS-rc7.txt`. Windows users should
@@ -23,6 +32,8 @@ integration passes the focused automated gate; neither behavior pair was rerun
 for the packaging-only RC7 delta. Repeat the exact-build installed visual card
 before filming, especially on Linux.
 Build current source below, or use the package instructions in the README.
+
+</details>
 
 To build from the public source checkout instead, use the pinned prerequisites
 in the README:

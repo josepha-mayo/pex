@@ -700,6 +700,8 @@ def _hidden_check(workspace: Path, spec: dict[str, Any]) -> tuple[bool, str]:
             "import importlib\n"
             "import json\n"
             "import sys\n\n"
+            "sys.dont_write_bytecode = True\n"
+            "sys.pycache_prefix = __file__ + '-bytecode'\n"
             "workspace, module_name, function_name = sys.argv[1:]\n"
             "sys.path.insert(0, workspace)\n"
             "function = getattr(importlib.import_module(module_name), function_name)\n"
@@ -759,29 +761,35 @@ def _hidden_check(workspace: Path, spec: dict[str, Any]) -> tuple[bool, str]:
 
 
 def _run_pytest(workspace: Path, files: list[str]) -> tuple[bool, str]:
-    returncode, output, timed_out, output_exceeded = _run_bounded(
-        [
-            sys.executable,
-            "-I",
-            "-m",
-            "pytest",
-            "-q",
-            "--tb=line",
-            "-p",
-            "no:cacheprovider",
-            "--confcutdir",
-            str(workspace),
-            "-c",
-            os.devnull,
-            "-o",
-            "testpaths=",
-            "-o",
-            "addopts=",
-            *files,
-        ],
-        cwd=workspace,
-        timeout=30,
-    )
+    # Isolated Python ignores PYTHONDONTWRITEBYTECODE. Never read worker-supplied
+    # or timestamp-stale bytecode when grading the current source.
+    with TemporaryDirectory(prefix="pexbench_bytecode_") as cache:
+        returncode, output, timed_out, output_exceeded = _run_bounded(
+            [
+                sys.executable,
+                "-I",
+                "-B",
+                "-X",
+                f"pycache_prefix={cache}",
+                "-m",
+                "pytest",
+                "-q",
+                "--tb=line",
+                "-p",
+                "no:cacheprovider",
+                "--confcutdir",
+                str(workspace),
+                "-c",
+                os.devnull,
+                "-o",
+                "testpaths=",
+                "-o",
+                "addopts=",
+                *files,
+            ],
+            cwd=workspace,
+            timeout=30,
+        )
     if timed_out:
         return False, "public pytest timed out"
     if output_exceeded:

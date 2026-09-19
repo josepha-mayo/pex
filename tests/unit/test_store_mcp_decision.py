@@ -532,7 +532,10 @@ async def test_human_decision_resolution_is_atomic_replay_safe_and_supersedes_pe
             for result in (first, second)
             if result.response()["delivery_status"] == "delivered"
         ]
-        assert len(delivered) == 1
+        # The replay may read before or after the first request finishes delivery.
+        # Both responses may truthfully report delivered; only one sends to the worker.
+        assert any(not result.replayed for result in delivered)
+        assert len(delivery_adapter.messages) == 1
         replay = await resolve_requested_human_decision(
             store,
             adapters,

@@ -17,6 +17,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from sys import platform
 from typing import Any
 from unicodedata import category
 from uuid import uuid4
@@ -4840,6 +4841,10 @@ def _lifecycle_entity_identity(path: Path) -> tuple[dict[str, int], str]:
         "file_type": int(stat.S_IFMT(value.st_mode)),
         "file_attributes": attributes,
     }
+    if platform == "linux":
+        from pex_bridge.file_identity import linux_birthtime_ns
+
+        identity["birthtime_ns"] = linux_birthtime_ns(path, value)
     fingerprint = hashlib.sha256(_canonical_json(identity).encode("utf-8")).hexdigest()
     return identity, fingerprint
 

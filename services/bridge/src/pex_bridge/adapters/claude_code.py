@@ -38,6 +38,7 @@ from pex_bridge.adapters.base import (
     verified_inline_permission_outcome,
 )
 from pex_bridge.adapters.desktop import (
+    desktop_focus_supported,
     is_desktop_observe_session,
     matching_desktop_image,
     upsert_desktop_observe_session,
@@ -112,7 +113,7 @@ class ClaudeCodeAdapter(HarnessAdapter):
             ),
             resume=active_stop,
             modify_system_instructions=False,
-            focus_ui=available,
+            focus_ui=available and desktop_focus_supported(),
             control_granularity=(
                 ControlGranularity.EVENT
                 if active_stop or active_permission
