@@ -6,11 +6,13 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Fastest evaluation path
 
-**Current Nebius/NVIDIA preparation:** build the latest source below. RC7 is a
-historical package and does not contain the September 19 UI/BYOK repairs.
-Windows and Ubuntu development packages and authenticated bridge startup passed
-CI at `20ffdc7`; newer fixes are under verification. A current successful Nebius
-Nemotron recovery/quiet pair and final package visual acceptance remain required.
+**Current Nebius/NVIDIA preparation:** build latest `main`. Historical RC7 does
+not contain the current harness UI, Nebius provider, BYOK, discovery, or
+cross-platform repairs. Commit `742b421` passed complete Windows and Ubuntu
+source CI; the app-identical `d3c1732` source passed Windows NSIS and Ubuntu
+Debian package, bootstrap, and bundled-bridge verification. A successful live
+Nebius/Nemotron recovery and quiet-control pair, a public current test build,
+and current-build screenshots/video remain required before submission.
 
 <details>
 <summary>Historical RC7 package instructions and evidence</summary>
@@ -77,20 +79,21 @@ worker session in the OpenCode terminal first; connecting PEX does not create a
 task or restart OpenCode. Return Home, select the worker, and attach a persistent
 goal with observable acceptance criteria.
 
-## Configure Zen BYOK
+## Configure Nebius Token Factory BYOK
 
 Open **Settings → Supervisor**:
 
-1. Choose provider **zen**.
-2. Choose or paste `muse-spark-1.3-contributor-free`.
-3. Keep authentication on **api key** and paste your own Zen key.
+1. Choose provider **Nebius Token Factory**.
+2. Choose `nvidia/nemotron-3-super-120b-a12b`, or another NVIDIA open-source
+   model confirmed available to the tester's account.
+3. Keep authentication on **api key** and paste your own Nebius Token Factory key.
 4. Keep the saved review limit at **3** for the bounded demo.
 5. Choose **Save supervisor**.
 
 The key field is write-only and the credential is stored in the operating-system
-vault. Saving configuration does not test the key or prove inference. The model
-label is not a billing guarantee; check the provider account and disable any
-auto-reload before testing. PEX never silently changes to another model ID.
+vault. Saving configuration does not test the key or prove inference. Confirm a
+successful receipt in Inspector and retain its exact provider and model identity.
+PEX never silently changes to another model ID.
 
 ## What to verify
 
@@ -120,3 +123,6 @@ optional AgentCore endpoint proposes an action.
   an arbitrary private Codex desktop conversation.
 - The installer is unsigned; source and SHA-256 hashes are published with the
   accepted candidate.
+- Devpost requires a free judge-accessible working demo or test build, a public
+  YouTube video under three minutes, product feedback, and an explanation of
+  the significant post-August-26 updates. See `devpost-submission.md`.

@@ -219,8 +219,8 @@ in OpenCode separately from PEX's supervisor provider. These commands follow the
 In PEX, choose **Connect a worker → Connect your local OpenCode server**, enter
 `http://127.0.0.1:4096`, then choose **Connect OpenCode**. Return Home, select the
 worker and set its persistent goal. Connecting does not start a worker turn.
-The quick-connect form supports unauthenticated loopback servers only; do not
-put the Zen key in the server address.
+The quick-connect form supports optional OpenCode Basic credentials for a
+loopback server; do not put provider keys or credentials in the server address.
 
 Alternatively, set the loopback origin before starting PEX from a second shell:
 
@@ -352,9 +352,10 @@ result and a public demo under three minutes. This is a target, not a completed
 submission or a claim of measured benefit.
 
 PEX originated in the AWS Agents for Humans hackathon and still uses Strands
-locally. AgentCore remains optional and is not deployed. The existing
-[submission copy](devpost-submission.md) describes that earlier event; it is not
-the Nebius submission. No comparative benchmark score is claimed.
+locally. AgentCore remains optional and is not deployed. The current
+[submission draft](devpost-submission.md) targets Nebius × NVIDIA and explains
+the significant updates made during this submission period. No comparative
+benchmark score is claimed.
 
 - License: MIT
 - Devpost copy: [`devpost-submission.md`](devpost-submission.md)

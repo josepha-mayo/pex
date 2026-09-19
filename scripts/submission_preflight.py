@@ -12,27 +12,22 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
-INSTALLER = Path(
-    "apps/desktop/src-tauri/target/release/bundle/nsis/PEX_0.1.0_x64-setup.exe"
-)
 ARCHITECTURE = Path("docs/architecture/pex-architecture.png")
 MARK = Path("docs/demo/assets/pex-mark.png")
 
 ACTIVE_GUIDES = (
-    Path("docs/SUBMISSION.md"),
-    Path("docs/demo/DEVPOST_FINAL_PAYLOAD.md"),
-    Path("docs/demo/README.md"),
-    Path("docs/demo/RECORDING_RUNBOOK.md"),
-    Path("docs/demo/REHEARSAL_CARD.md"),
-    Path("docs/demo/SECOND_LAPTOP_ACCEPTANCE.md"),
-    Path("docs/demo/TOMORROW_SHIP_CARD.md"),
-    Path("docs/demo/VOICEOVER_SCRIPT.md"),
+    Path("README.md"),
+    Path("devpost-submission.md"),
+    Path("docs/JUDGE_TESTING.md"),
 )
 
 STALE_PATTERNS = (
-    "fc20329",
-    "9df8f6e14e75b7d7aa5e2a83e744919264b6a0e0f4dd66d8831478e1093fce95",
-    "LIVE_OPENCODE_RECOVERY_FC20329",
+    "Maximum length: 5 minutes",
+    "public YouTube or Vimeo",
+    "AWS Builder ID field",
+    "Track: Professional Agents",
+    "current public RC5",
+    "20ffdc7; newer fixes are under verification",
 )
 
 SENSITIVE_PATTERNS = (
@@ -78,11 +73,6 @@ class ArtifactSpec:
 
 ARTIFACTS = (
     ArtifactSpec(
-        INSTALLER,
-        101_732_049,
-        "0c151ddf93512b5450688fe95b5930f047364e8da34121c488226f9e3a0ffc75",
-    ),
-    ArtifactSpec(
         ARCHITECTURE,
         94_752,
         "dea91e42f057aea78a2d7c61add7b36de1ad3fc630a742bfd916e1a016fadd68",
@@ -117,8 +107,21 @@ def validate_video_url(value: str | None) -> bool:
         return False
     parsed = urlparse(value.strip())
     host = (parsed.hostname or "").lower()
-    allowed = host in {"youtu.be", "youtube.com", "www.youtube.com", "vimeo.com", "www.vimeo.com"}
+    allowed = host in {"youtu.be", "youtube.com", "www.youtube.com"}
     return parsed.scheme == "https" and allowed and bool(parsed.path.strip("/"))
+
+
+def validate_public_demo_url(value: str | None) -> bool:
+    if not value:
+        return False
+    parsed = urlparse(value.strip())
+    host = (parsed.hostname or "").lower()
+    return bool(
+        parsed.scheme == "https"
+        and host
+        and host not in {"localhost", "127.0.0.1", "::1"}
+        and bool(parsed.path.strip("/") or parsed.netloc)
+    )
 
 
 def artifact_check(root: Path, spec: ArtifactSpec) -> dict[str, object]:
@@ -228,9 +231,14 @@ def build_report(
     root: Path,
     *,
     video_url: str | None,
+    demo_url: str | None,
+    test_build_current: bool,
     video_publicly_playable: bool,
-    architecture_attached: bool,
-    builder_id_confirmed: bool,
+    video_under_three_minutes: bool,
+    nebius_runtime_verified: bool,
+    nvidia_model_verified: bool,
+    feedback_prepared: bool,
+    significant_updates_explained: bool,
     rules_accepted: bool,
     git_runner: Callable[..., tuple[int, str]] = _git,
 ) -> dict[str, object]:
@@ -244,9 +252,14 @@ def build_report(
     }
     attestations = {
         "video_url_valid": validate_video_url(video_url),
+        "demo_url_valid": validate_public_demo_url(demo_url),
+        "test_build_current": test_build_current,
         "video_publicly_playable": video_publicly_playable,
-        "architecture_attached": architecture_attached,
-        "builder_id_confirmed": builder_id_confirmed,
+        "video_under_three_minutes": video_under_three_minutes,
+        "nebius_runtime_verified": nebius_runtime_verified,
+        "nvidia_model_verified": nvidia_model_verified,
+        "feedback_prepared": feedback_prepared,
+        "significant_updates_explained": significant_updates_explained,
         "rules_accepted": rules_accepted,
     }
     blockers: list[str] = []
@@ -261,7 +274,7 @@ def build_report(
         if not exists
     )
     blockers.extend(
-        f"stale recording reference: {item['path']} ({item['pattern']})" for item in stale
+        f"stale submission reference: {item['path']} ({item['pattern']})" for item in stale
     )
     if not sensitive["readable"]:
         blockers.append("tracked-file privacy scan could not read the Git file list")
@@ -270,13 +283,23 @@ def build_report(
         for item in sensitive["hits"]
     )
     if not attestations["video_url_valid"]:
-        blockers.append("public YouTube or Vimeo demo video URL is missing or invalid")
+        blockers.append("public YouTube demo video URL is missing or invalid")
+    if not attestations["demo_url_valid"]:
+        blockers.append("public working demo or test-build URL is missing or invalid")
+    if not test_build_current:
+        blockers.append("public test build is not attested as built from current pushed source")
     if not video_publicly_playable:
         blockers.append("logged-out demo video playback is not attested")
-    if not architecture_attached:
-        blockers.append("architecture diagram upload is not attested")
-    if not builder_id_confirmed:
-        blockers.append("AWS Builder ID field is not attested")
+    if not video_under_three_minutes:
+        blockers.append("demo video duration under three minutes is not attested")
+    if not nebius_runtime_verified:
+        blockers.append("Nebius runtime call or AI Cloud deployment is not verified")
+    if not nvidia_model_verified:
+        blockers.append("NVIDIA open-source model runtime use is not verified")
+    if not feedback_prepared:
+        blockers.append("required Nebius/NVIDIA feedback is not prepared")
+    if not significant_updates_explained:
+        blockers.append("post-August-26 significant updates are not explained")
     if not rules_accepted:
         blockers.append("official rules acceptance is not attested")
     return {
@@ -296,9 +319,14 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fail-closed PEX Devpost submission preflight.")
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--video-url")
+    parser.add_argument("--demo-url")
+    parser.add_argument("--test-build-current", action="store_true")
     parser.add_argument("--video-publicly-playable", action="store_true")
-    parser.add_argument("--architecture-attached", action="store_true")
-    parser.add_argument("--builder-id-confirmed", action="store_true")
+    parser.add_argument("--video-under-three-minutes", action="store_true")
+    parser.add_argument("--nebius-runtime-verified", action="store_true")
+    parser.add_argument("--nvidia-model-verified", action="store_true")
+    parser.add_argument("--feedback-prepared", action="store_true")
+    parser.add_argument("--significant-updates-explained", action="store_true")
     parser.add_argument("--rules-accepted", action="store_true")
     return parser.parse_args()
 
@@ -308,9 +336,14 @@ def main() -> int:
     report = build_report(
         args.root.resolve(),
         video_url=args.video_url,
+        demo_url=args.demo_url,
+        test_build_current=args.test_build_current,
         video_publicly_playable=args.video_publicly_playable,
-        architecture_attached=args.architecture_attached,
-        builder_id_confirmed=args.builder_id_confirmed,
+        video_under_three_minutes=args.video_under_three_minutes,
+        nebius_runtime_verified=args.nebius_runtime_verified,
+        nvidia_model_verified=args.nvidia_model_verified,
+        feedback_prepared=args.feedback_prepared,
+        significant_updates_explained=args.significant_updates_explained,
         rules_accepted=args.rules_accepted,
     )
     print(json.dumps(report, indent=2, sort_keys=True))

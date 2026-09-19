@@ -36,10 +36,17 @@ def test_video_url_accepts_only_public_video_hosts():
     module = _load_preflight()
     assert module.validate_video_url("https://youtu.be/example") is True
     assert module.validate_video_url("https://www.youtube.com/watch?v=example") is True
-    assert module.validate_video_url("https://vimeo.com/12345") is True
+    assert module.validate_video_url("https://vimeo.com/12345") is False
     assert module.validate_video_url("http://youtu.be/example") is False
     assert module.validate_video_url("https://example.com/video") is False
     assert module.validate_video_url(None) is False
+
+
+def test_demo_url_requires_public_https_origin():
+    module = _load_preflight()
+    assert module.validate_public_demo_url("https://github.com/example/release") is True
+    assert module.validate_public_demo_url("http://example.com/build") is False
+    assert module.validate_public_demo_url("https://127.0.0.1:7420") is False
 
 
 def test_png_dimensions_reads_ihdr_without_image_library(tmp_path):
@@ -62,9 +69,10 @@ def test_artifact_check_fails_closed_on_size_or_hash_mismatch(tmp_path):
 def test_stale_scan_reports_missing_guides_and_old_receipts(tmp_path, monkeypatch):
     module = _load_preflight()
     monkeypatch.setattr(module, "ACTIVE_GUIDES", (Path("one.md"), Path("two.md")))
-    (tmp_path / "one.md").write_text("old fc20329 receipt", encoding="utf-8")
+    monkeypatch.setattr(module, "STALE_PATTERNS", ("old-marker",))
+    (tmp_path / "one.md").write_text("old-marker receipt", encoding="utf-8")
     assert module.scan_stale_guides(tmp_path) == [
-        {"path": "one.md", "pattern": "fc20329"},
+        {"path": "one.md", "pattern": "old-marker"},
         {"path": "two.md", "pattern": "missing"},
     ]
 
@@ -143,17 +151,24 @@ def test_report_requires_every_manual_submission_gate(tmp_path, monkeypatch):
     report = module.build_report(
         tmp_path,
         video_url=None,
+        demo_url=None,
+        test_build_current=False,
         video_publicly_playable=False,
-        architecture_attached=False,
-        builder_id_confirmed=False,
+        video_under_three_minutes=False,
+        nebius_runtime_verified=False,
+        nvidia_model_verified=False,
+        feedback_prepared=False,
+        significant_updates_explained=False,
         rules_accepted=False,
         git_runner=git_runner,
     )
     assert report["ready"] is False
-    assert "public YouTube or Vimeo" in " ".join(report["blockers"])
+    assert "public YouTube" in " ".join(report["blockers"])
     assert "logged-out demo video playback" in " ".join(report["blockers"])
-    assert "architecture diagram" in " ".join(report["blockers"])
-    assert "AWS Builder ID" in " ".join(report["blockers"])
+    assert "working demo" in " ".join(report["blockers"])
+    assert "current pushed source" in " ".join(report["blockers"])
+    assert "Nebius runtime" in " ".join(report["blockers"])
+    assert "NVIDIA open-source model" in " ".join(report["blockers"])
     assert "official rules" in " ".join(report["blockers"])
 
 
@@ -177,9 +192,14 @@ def test_report_requires_playability_even_for_valid_video_url(tmp_path, monkeypa
     report = module.build_report(
         tmp_path,
         video_url="https://youtu.be/example",
+        demo_url="https://github.com/example/release",
+        test_build_current=True,
         video_publicly_playable=False,
-        architecture_attached=True,
-        builder_id_confirmed=True,
+        video_under_three_minutes=True,
+        nebius_runtime_verified=True,
+        nvidia_model_verified=True,
+        feedback_prepared=True,
+        significant_updates_explained=True,
         rules_accepted=True,
         git_runner=git_runner,
     )
