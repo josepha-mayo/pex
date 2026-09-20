@@ -1363,13 +1363,12 @@ def _apply_verifier_receipt(
     if semantic.independent_verifier.authorizes_intervention():
         semantic.diagnosis = f"{semantic.diagnosis}:independent_verifier_approved"
         return semantic
-    # An uncertain verifier can explicitly require the already-derived safe
-    # typed probe. Preserve only that evidence request; the rejected correction
-    # remains unauthorized until the worker returns an observable receipt.
-    if (
-        status == "uncertain_evidence"
-        and deterministic.type == InterventionType.REQUEST_VERIFICATION
-    ):
+    # The deterministic verifier may already have derived a request-bound,
+    # read-only probe. Preserve that safe evidence request even when the model
+    # verifier mistakes untrusted worker narration for proof. A rejected
+    # correction remains unauthorized until the worker returns an observable
+    # receipt.
+    if deterministic.type == InterventionType.REQUEST_VERIFICATION:
         semantic.action = deterministic
         semantic.diagnosis = f"{semantic.diagnosis}:verification_request_preserved"
         semantic.traces.append("verification_request_preserved")

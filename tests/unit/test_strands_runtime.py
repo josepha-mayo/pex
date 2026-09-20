@@ -869,6 +869,36 @@ async def test_uncertain_verifier_preserves_only_the_safe_typed_probe_request():
 
 
 @pytest.mark.asyncio
+async def test_rejecting_verifier_cannot_veto_a_safe_typed_probe_request():
+    request = _request(0.1)
+    request.scores.features["verification"] = {
+        "status": "uncertain",
+        "acceptance_status": "uncertain",
+        "evidence_gathering": {
+            "state": "inspected",
+            "probe": {
+                "id": "verification_probe_test",
+                "kind": "pytest",
+                "relative_targets": [],
+            },
+        },
+    }
+    model = FakeStructuredModel(
+        "SEND_NUDGE",
+        verifier_approved=False,
+        verifier_evidence_tool_calls=1,
+    )
+
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "REQUEST_VERIFICATION"
+    assert result.action.payload["probe"]["id"] == "verification_probe_test"
+    assert "verification_request_preserved" in result.diagnosis
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.status == "rejected"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("evidence_calls", [1, 2, 3])
 async def test_verifier_budget_reserves_a_verdict_or_fails_closed(evidence_calls):
     model = FakeStructuredModel(
