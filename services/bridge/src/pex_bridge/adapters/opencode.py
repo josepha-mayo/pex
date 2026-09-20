@@ -67,6 +67,25 @@ MAX_MESSAGE_ROLES = 10_000
 MAX_PATH_CHARS = 4_096
 PROMPT_RECEIPT_POLL_ATTEMPTS = 10
 PROMPT_RECEIPT_POLL_SECONDS = 0.1
+OPENCODE_SCOPED_TEST_COMMAND_KEY = "opencode_scoped_test_command"
+
+
+def _scoped_test_command(command: str | None, cwd: str) -> str | None:
+    """Unwrap OpenCode's exact bound-workspace ``cd`` prefix for test evidence."""
+
+    if not command or command.count("&&") != 1:
+        return command
+    prefix, candidate = command.split("&&", 1)
+    prefix = prefix.strip()
+    if not prefix.casefold().startswith("cd "):
+        return command
+    raw_path = prefix[3:].strip()
+    if len(raw_path) >= 2 and raw_path[0] == raw_path[-1] and raw_path[0] in {"'", '"'}:
+        raw_path = raw_path[1:-1]
+    if ntpath.normcase(ntpath.normpath(raw_path)) != ntpath.normcase(ntpath.normpath(cwd)):
+        return command
+    normalized = candidate.strip()
+    return normalized or command
 
 
 class OpenCodeAdapter(HarnessAdapter):
@@ -1253,6 +1272,7 @@ class OpenCodeAdapter(HarnessAdapter):
             field="SSE command",
         )
         process_state = None
+        scoped_test_command = _scoped_test_command(command, session.cwd)
         if (
             kind == "message.part.updated"
             and part.get("type") == "tool"
@@ -1280,7 +1300,7 @@ class OpenCodeAdapter(HarnessAdapter):
             raw_exit = tool_metadata.get("exit")
             if isinstance(raw_exit, int) and not isinstance(raw_exit, bool):
                 shell_payload["exit_code"] = raw_exit
-            process_state = parse_test_process_state(command, shell_payload)
+            process_state = parse_test_process_state(scoped_test_command, shell_payload)
         lineage = (
             opencode_message_lineage(
                 session=session,
@@ -1329,6 +1349,8 @@ class OpenCodeAdapter(HarnessAdapter):
             tool_status = state.get("status")
             if isinstance(tool_status, str) and tool_status:
                 metadata["opencode_tool_status"] = tool_status[:64]
+            if process_state is not None and scoped_test_command != command:
+                metadata[OPENCODE_SCOPED_TEST_COMMAND_KEY] = scoped_test_command
         if (
             assistant_message_completed
             and lineage is not None
@@ -1433,7 +1455,8 @@ class OpenCodeAdapter(HarnessAdapter):
                     if not isinstance(raw_exit, int) or isinstance(raw_exit, bool):
                         break
                     process_state = parse_test_process_state(
-                        event.command,
+                        event.metadata.get(OPENCODE_SCOPED_TEST_COMMAND_KEY)
+                        or event.command,
                         {
                             "output": state.get("output"),
                             "error": state.get("error"),

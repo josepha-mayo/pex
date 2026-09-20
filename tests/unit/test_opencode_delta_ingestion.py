@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.http_json import MemoryHttpTransport
+from pex_bridge.adapters.opencode import _scoped_test_command
 from pex_bridge.adapters.opencode_outcomes import OPENCODE_MESSAGE_LINEAGE_KEY
 from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings
@@ -14,6 +15,29 @@ from pex_protocol.capabilities import AdapterCapabilities
 from pex_protocol.enums import EventPhase, EventType, HarnessType, SessionStatus
 from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
+
+
+def test_scoped_test_command_unwraps_only_the_exact_bound_workspace():
+    cwd = r"D:\work\case"
+
+    assert (
+        _scoped_test_command(r"cd D:\work\case && python -m pytest -q", cwd)
+        == "python -m pytest -q"
+    )
+    assert (
+        _scoped_test_command(r'cd "D:\work\case" && python -m pytest -q', cwd)
+        == "python -m pytest -q"
+    )
+    assert (
+        _scoped_test_command(r"cd D:\other && python -m pytest -q", cwd)
+        == r"cd D:\other && python -m pytest -q"
+    )
+    assert (
+        _scoped_test_command(
+            r"cd D:\work\case && python -m pytest -q && echo done", cwd
+        )
+        == r"cd D:\work\case && python -m pytest -q && echo done"
+    )
 
 
 async def _bound_opencode_pipeline(tmp_path):

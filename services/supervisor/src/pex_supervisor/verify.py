@@ -156,7 +156,10 @@ def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def _pytest_info(event: HarnessEvent) -> tuple[dict[str, Any], PytestInvocation] | None:
-    invocation = classify_pytest_invocation(event.command)
+    scoped_command = event.metadata.get("opencode_scoped_test_command")
+    invocation = classify_pytest_invocation(
+        scoped_command if isinstance(scoped_command, str) else event.command
+    )
     if invocation is None:
         return None
     state = event.process_state if isinstance(event.process_state, dict) else {}
@@ -183,7 +186,10 @@ def _latest_pytest(
 
 
 def _unittest_info(event: HarnessEvent) -> tuple[dict[str, Any], UnittestInvocation] | None:
-    invocation = classify_unittest_invocation(event.command)
+    scoped_command = event.metadata.get("opencode_scoped_test_command")
+    invocation = classify_unittest_invocation(
+        scoped_command if isinstance(scoped_command, str) else event.command
+    )
     if invocation is None:
         return None
     state = event.process_state if isinstance(event.process_state, dict) else {}

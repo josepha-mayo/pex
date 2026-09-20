@@ -101,6 +101,35 @@ def test_verified_tests_pass_is_not_blocked_by_same_event_generic_done():
     assert result["pytest_scope"] == "full_suite"
 
 
+def test_opencode_scoped_test_command_is_validated_as_direct_pytest():
+    result = verify_claims(
+        [
+            {
+                "statement": "All tests passed",
+                "kind": "tests_pass",
+                "polarity": "asserted",
+                "confidence": 0.9,
+                "source_event_id": "stop",
+            }
+        ],
+        [
+            _event(
+                event_id="pytest",
+                event_type=EventType.SHELL,
+                command=r"cd D:\work\case && python -m pytest -q",
+                process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 1}},
+                metadata={"opencode_scoped_test_command": "python -m pytest -q"},
+            ),
+            _event(event_id="stop", event_type=EventType.STOP),
+        ],
+        _goal(acceptance_criteria=["python -m pytest -q exits successfully"]),
+        {},
+    )
+
+    assert result["status"] == "supported"
+    assert result["pytest_scope"] == "full_suite"
+
+
 def test_goal_required_unittest_pass_is_supported_without_pytest_nag():
     claims = [
         {
