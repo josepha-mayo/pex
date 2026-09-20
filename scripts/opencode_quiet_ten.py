@@ -70,7 +70,7 @@ ROOT: Path  # Assigned only after explicit CLI run-name validation.
 START_CASE = 1
 ORIGIN = "http://127.0.0.1:4098"
 WORKER_PROVIDER = "nebius"
-WORKER_MODEL = "nvidia/nemotron-3-super-120b-a12b"
+WORKER_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
 SUPERVISOR_MODEL = "unconfigured"
 CASE_TIMEOUT_SECONDS = 240.0
 # The free worker can legitimately consume almost the entire case budget before
@@ -524,7 +524,8 @@ async def main():
                         "apiKey": "{env:NEBIUS_API_KEY}",
                     },
                     "models": {
-                        WORKER_MODEL: {"name": "NVIDIA Nemotron 3 Super"},
+                        choice.model_id: {"name": "PEX supervisor model"},
+                        WORKER_MODEL: {"name": "PEX OpenCode worker model"},
                     },
                 }
             },

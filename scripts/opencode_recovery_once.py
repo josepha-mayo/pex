@@ -41,6 +41,7 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
             "mimo-v2.5-free",
             "nemotron-3-ultra-free",
             "nemotron-3.5-lightning-free",
+            "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
             "nvidia/nemotron-3-super-120b-a12b",
         ),
         default="ling-3.0-flash-fin-free",
@@ -614,7 +615,8 @@ async def main() -> int:
                         "apiKey": "{env:NEBIUS_API_KEY}",
                     },
                     "models": {
-                        choice.model_id: {"name": "NVIDIA Nemotron 3 Super"},
+                        choice.model_id: {"name": "PEX supervisor model"},
+                        args.worker_model: {"name": "PEX OpenCode worker model"},
                     },
                 }
             },
