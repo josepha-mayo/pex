@@ -57,9 +57,9 @@ score. Final recording remains. See the
 
 </details>
 
-![PEX RC13 Inspector showing the goal-first supervision harness](docs/demo/assets/pex-inspector-browser-rc13.jpg)
+![PEX Inspector showing the goal-first supervision harness](docs/demo/assets/pex-inspector-browser-rc13.jpg)
 
-*Current RC13 browser presentation capture. Browser mode intentionally cannot read
+*RC13 browser presentation capture of the current harness layout. Browser mode intentionally cannot read
 the desktop bridge bearer, so unavailable canonical state stays visibly disabled
 instead of being invented. Authenticated live and package evidence is retained in
 the [judge guide](docs/JUDGE_TESTING.md).*
@@ -127,7 +127,7 @@ presentation benchmark.
 ### Install PEX
 
 Download the package for your x64 computer from
-[PEX 0.1.0 RC13](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc13).
+[PEX 0.1.0 RC14](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc14).
 
 **Windows 10/11:** use `PEX_0.1.0_x64-setup.exe` for the normal install.
 The binary is not code-signed, so Windows may show a publisher warning.
@@ -142,13 +142,13 @@ Linux needs a graphical desktop and a normal Secret Service/keyring (for
 example GNOME Keyring or KWallet) to save a BYOK key through Settings. The
 exact-commit CI gate built the Debian package on Ubuntu 24.04 and booted its
 packaged bridge; it did not visually exercise every Linux desktop environment.
-AppImage, macOS, and ARM64 packages are not available in RC13.
+AppImage, macOS, and ARM64 packages are not available in RC14.
 
-Both RC13 packages are built from exact product source
-`c1c730fe3fd6647f69cdb1ec2cd676f9f186df84`. The Windows installer SHA-256 is
-`c61f9ccd2351a7df217adee8e8cc174f454752f49cb1e9bb119aee2088f37723`;
+Both RC14 packages are built from exact product source
+`be389338ded450e5939524ca4f44eb0e5a0b8ebc`. The Windows installer SHA-256 is
+`3940d5f2f63a1dfc9a1815e28854e7fb277d50ff6850d158c5bd853e0af0c5ed`;
 the Debian package SHA-256 is
-`3e5e34271cbcbc0dea092e5472bff2767920d009440cea58b370898031ddca37`.
+`0165811f77b4ae9eac37499dbce6e8a4ef4df31c6dcfaa4d68333252f563119d`.
 The release also includes `SHA256SUMS`.
 Package integrity is not indefinite stability or publisher trust; current
 source-bound behavior and trust boundaries are summarized in the [architecture overview](docs/architecture/overview.md).

@@ -10,9 +10,9 @@ a.m. PDT (17:00 UTC).
 | Working application using Nebius Token Factory or Nebius AI Cloud at runtime | `docs/evidence/nebius-live-proof.json` retains a sanitized Token Factory inference receipt. | Satisfied |
 | At least one NVIDIA open-source model | The retained runtime receipt names `nvidia/nemotron-3-super-120b-a12b`. | Satisfied |
 | Track fit | PEX is a coding-agent supervision and verification harness; target track is Coding and Agentic Engineering. | Satisfied |
-| Runs consistently on its intended platform | Windows full suite and Ubuntu CI cover the source; RC13 provides Windows and Debian test builds. | Satisfied for RC13; current-head packages must be rebuilt after product changes |
+| Runs consistently on its intended platform | Exact-source RC14 passed Windows and Ubuntu source suites, desktop builds, native packaging, bootstrap tests, and packaged bridge smoke checks. | Satisfied for RC14 |
 | Existing project significantly updated after 26 August 2026 | `devpost-submission.md` lists the Nebius provider, BYOK vault, OpenCode/Codex adapters, UI redesign, packaging, and verification work. | Satisfied in draft |
-| Free judge-accessible working demo or test build through judging | RC13 is public and free. A current-head release is still required after final fixes. | Incomplete |
+| Free judge-accessible working demo or test build through judging | RC14 is public and free at the repository release URL. | Satisfied for RC14 |
 | Public repository with source, assets, setup instructions, and visible open-source license | Public GitHub repository, README, and MIT `LICENSE`. | Satisfied |
 | English feature and functionality description | `devpost-submission.md`. | Satisfied in draft |
 | Public YouTube demonstration under three minutes showing the product functioning | No final public video URL exists. | Incomplete |
