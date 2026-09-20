@@ -2519,6 +2519,68 @@ textarea::placeholder {
   margin: 0;
 }
 
+.settings-disclosure {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012));
+}
+
+.settings-disclosure > summary {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 20px;
+  color: var(--paper);
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings-disclosure > summary::-webkit-details-marker { display: none; }
+
+.settings-disclosure > summary::after {
+  content: "+";
+  flex: none;
+  color: var(--mint);
+  font-size: 18px;
+}
+
+.settings-disclosure[open] > summary::after { content: "−"; }
+
+.settings-disclosure > summary > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.settings-disclosure > summary small {
+  color: var(--mint);
+  font-size: 9px;
+  font-weight: 780;
+  letter-spacing: 0.14em;
+}
+
+.settings-disclosure > summary strong { font-size: 13px; }
+
+.settings-disclosure > summary > span:last-of-type {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.settings-disclosure-body {
+  padding: 0 20px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.settings-disclosure-body > .settings-card {
+  padding: 20px 0 0;
+  border: 0;
+  background: transparent;
+}
+
 .settings-page label {
   font-size: 12px;
   line-height: 1.45;

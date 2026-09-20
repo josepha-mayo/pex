@@ -206,9 +206,15 @@ export function SettingsPage({
         >
           {section === "connections" ? workerConnection : null}
           {section === "connections" ? (
-          <section className="settings-card settings-wide">
-            <p className="eyebrow">Cursor observer</p>
-            <h2>Rejected input</h2>
+          <details className="settings-disclosure settings-wide">
+            <summary>
+              <span>
+                <small>DIAGNOSTICS</small>
+                <strong>Cursor rejection audit</strong>
+              </span>
+              <span>{cursorRejections?.total ? `${cursorRejections.total} rejected` : "Review"}</span>
+            </summary>
+            <div className="settings-disclosure-body">
             {cursorRejections === null ? (
               <p className="settings-note">Rejection audit is unavailable until local state refreshes.</p>
             ) : cursorRejections.total === 0 ? (
@@ -230,7 +236,8 @@ export function SettingsPage({
                 <p className="settings-note">Receipts retain offsets and hashes, never rejected payload content.</p>
               </div>
             )}
-          </section>
+            </div>
+          </details>
           ) : null}
           {section === "companion" ? (
           <section className="settings-card">
@@ -277,9 +284,15 @@ export function SettingsPage({
           {section === "companion" ? companionRoster : null}
 
           {section === "connections" ? (
-          <section className="settings-card settings-wide">
-            <p className="eyebrow">Worker integrations</p>
-            <h2>Provision a scoped hook</h2>
+          <details className="settings-disclosure settings-wide">
+            <summary>
+              <span>
+                <small>OTHER WORKERS</small>
+                <strong>Provision a scoped hook</strong>
+              </span>
+              <span>Advanced</span>
+            </summary>
+            <div className="settings-disclosure-body">
             <p className="settings-note">
               Create this before starting a new hooked worker. It can call only the selected
               harness routes in this project; the first valid hook binds it permanently to that
@@ -337,7 +350,8 @@ export function SettingsPage({
                 <button type="button" className="ghost" onClick={onClearHook}>Clear from screen</button>
               </div>
             ) : null}
-          </section>
+            </div>
+          </details>
           ) : null}
 
           {section === "supervisor" ? (
@@ -540,9 +554,15 @@ export function SettingsPage({
           ) : null}
 
           {section === "connections" ? (
-          <section className="settings-card settings-wide">
-            <p className="eyebrow">Attention</p>
-            <h2>Remote channels</h2>
+          <details className="settings-disclosure settings-wide">
+            <summary>
+              <span>
+                <small>ATTENTION</small>
+                <strong>Remote channels</strong>
+              </span>
+              <span>Unavailable</span>
+            </summary>
+            <div className="settings-disclosure-body">
             <p className="settings-note">
               Remote messages use the same human-decision policy as the deck. Telegram, Discord,
               WhatsApp, and Slack stay disconnected until a real adapter exists.
@@ -552,7 +572,8 @@ export function SettingsPage({
                 <li key={row.id}>{channelStatusCopy(row)}</li>
               ))}
             </ul>
-          </section>
+            </div>
+          </details>
           ) : null}
 
           {section === "goals" ? (

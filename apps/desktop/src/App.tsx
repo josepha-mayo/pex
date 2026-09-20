@@ -2362,7 +2362,18 @@ export function App() {
         provisioningHook={provisioningHook}
         workerConnection={<>
           <OpenCodeConnectionPanel request={sharedConnectionRequest} onChanged={() => void loadBaseState()} />
-          <SharedConnectionPanel request={sharedConnectionRequest} onChanged={() => void loadBaseState()} />
+          <details className="settings-disclosure settings-wide">
+            <summary>
+              <span>
+                <small>CODEX</small>
+                <strong>Observe an existing Codex thread</strong>
+              </span>
+              <span>Advanced</span>
+            </summary>
+            <div className="settings-disclosure-body">
+              <SharedConnectionPanel request={sharedConnectionRequest} onChanged={() => void loadBaseState()} />
+            </div>
+          </details>
         </>}
         onBack={() => { window.location.hash = surface; }}
         onNickname={setNickname}
