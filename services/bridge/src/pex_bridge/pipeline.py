@@ -724,6 +724,30 @@ class Cooldowns:
         self._last[(session_id, action_type)] = time.monotonic()
 
 
+def _verification_gap_signature(value: object) -> tuple[str, tuple[str, ...]] | None:
+    """Identify one locally observed acceptance gap for cooldown purposes.
+
+    A worker can make progress and stop again before a generic action cooldown
+    expires. The later STOP needs a new correction when the verifier now sees
+    a different gap; treating it as a duplicate leaves the session stranded.
+    Only verifier-owned status and evidence participate in this identity.
+    """
+
+    if not isinstance(value, dict):
+        return None
+    status = str(value.get("status") or "").strip()
+    acceptance = str(value.get("acceptance_status") or "").strip()
+    if status not in {"acceptance_gap", "contradicted"} or acceptance != "unsatisfied":
+        return None
+    raw_evidence = value.get("acceptance_evidence") or value.get("evidence") or []
+    if not isinstance(raw_evidence, list):
+        return None
+    evidence = tuple(
+        sorted({str(item).strip() for item in raw_evidence if str(item).strip()})
+    )
+    return (status, evidence) if evidence else None
+
+
 def _requests_drifting(action: ProposedAction) -> bool:
     return str((action.payload or {}).get("session_status") or "").strip().lower() == "drifting"
 
@@ -3258,6 +3282,7 @@ class Pipeline:
             )
             accepted_at = datetime.fromisoformat(str(processing["accepted_at"]))
             prior_at: datetime | None = None
+            prior_verification: object = None
             for prior in prior_interventions:
                 if prior.action_taken != action.type.value:
                     continue
@@ -3268,9 +3293,18 @@ class Pipeline:
                     candidate = prior.created_at
                 if candidate <= accepted_at and (prior_at is None or candidate > prior_at):
                     prior_at = candidate
+                    prior_verification = prior.metadata.get("verification")
+            current_gap = _verification_gap_signature(verification)
+            prior_gap = _verification_gap_signature(prior_verification)
             cooldown_allowed = (
                 prior_at is None
                 or (accepted_at - prior_at).total_seconds() >= action.cooldown_seconds
+                or (
+                    action.type in _WORKER_TEXT_ACTIONS
+                    and current_gap is not None
+                    and prior_gap is not None
+                    and current_gap != prior_gap
+                )
                 or (
                     action.type == InterventionType.REQUEST_VERIFICATION
                     and bool(verification.get("supersedes_probe_id"))

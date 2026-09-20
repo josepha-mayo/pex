@@ -451,6 +451,67 @@ async def test_premature_stop_continues_then_verifies_completion(client: AsyncCl
 
 
 @pytest.mark.asyncio
+async def test_new_verified_gap_bypasses_duplicate_action_cooldown(
+    client: AsyncClient, tmp_path
+):
+    worker = tmp_path / "successive-gap-worker"
+    worker.mkdir()
+    (worker / "stage-one.txt").write_bytes(b"stage-one-ok\n")
+    adapter = state.adapters.synthetic
+    session = adapter.seed_session(vendor_id="successive-gap", cwd=str(worker))
+    await state.store.upsert_session(session)
+    await _attach_goal(
+        client,
+        session.id,
+        "two exact files",
+        objective="Create both proof files with exact LF bytes.",
+        acceptance_criteria=[
+            "stage-one.txt contains exactly stage-one-ok followed by one LF newline",
+            "final.txt contains exactly pex-supervised-ok followed by one LF newline",
+        ],
+        evidence_requirements=["stage-one.txt", "final.txt"],
+    )
+
+    first = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.STOP.value,
+            "message": "Phase one is finished.",
+        },
+    )
+    assert first.json()["intervention"]["action_taken"] == "SEND_NUDGE"
+    assert "final.txt" in adapter.inbox[session.id][-1]
+
+    (worker / "final.txt").write_bytes(b"pex-supervised-ok\r\n")
+    second = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.STOP.value,
+            "message": "final.txt created successfully.",
+        },
+    )
+    intervention = second.json()["intervention"]
+    assert intervention["action_taken"] == "SEND_NUDGE"
+    assert intervention["result"] == "sent"
+    assert "final.txt" in adapter.inbox[session.id][-1]
+    assert "pex-supervised-ok\\n" in adapter.inbox[session.id][-1]
+    assert len(adapter.inbox[session.id]) == 2
+
+    duplicate = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.STOP.value,
+            "message": "Stopping again without changing final.txt.",
+        },
+    )
+    assert duplicate.json()["intervention"]["action_taken"] == "SUPPRESSED_COOLDOWN"
+    assert len(adapter.inbox[session.id]) == 2
+
+
+@pytest.mark.asyncio
 async def test_labeled_objective_is_extracted_on_create_and_checked_at_stop(
     client: AsyncClient, tmp_path
 ):
