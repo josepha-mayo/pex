@@ -6,13 +6,13 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Fastest evaluation path
 
-**Current Nebius/NVIDIA preparation:** build latest `main`. Historical RC7 does
-not contain the current harness UI, Nebius provider, BYOK, discovery, or
-cross-platform repairs. Commit `742b421` passed complete Windows and Ubuntu
-source CI; the app-identical `d3c1732` source passed Windows NSIS and Ubuntu
-Debian package, bootstrap, and bundled-bridge verification. A successful live
-Nebius/Nemotron recovery and quiet-control pair, a public current test build,
-and current-build screenshots/video remain required before submission.
+**Current Nebius/NVIDIA candidate:** download
+[PEX 0.1.0 RC11](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc11),
+built from exact product source `64cbabd`. Its exact-commit CI passed complete
+Windows and Ubuntu source suites, desktop builds, Windows NSIS and Ubuntu
+Debian packages, bootstrap tests, and bundled-bridge identity checks. A
+successful live Nebius/Nemotron recovery and quiet-control pair plus
+current-build screenshots/video remain required before submission.
 
 <details>
 <summary>Historical RC7 package instructions and evidence</summary>

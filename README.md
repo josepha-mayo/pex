@@ -90,7 +90,7 @@ PEX does not require work to start inside PEX. Existing tools stay usable. Conte
 See [`INTEGRATIONS.md`](INTEGRATIONS.md) for the live matrix.
 
 Judges and evaluators can follow the focused [testing guide](docs/JUDGE_TESTING.md)
-for the two-pet OpenCode/Zen path and its exact claim boundaries.
+for the OpenCode/Nebius path and its exact claim boundaries.
 
 ## Pets
 
@@ -115,7 +115,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 ### Install PEX
 
 Download the package for your x64 computer from
-[PEX 0.1.0 RC7](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc7).
+[PEX 0.1.0 RC11](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc11).
 
 **Windows 10/11:** use `PEX_0.1.0_x64-setup.exe` for the normal install.
 The binary is not code-signed, so Windows may show a publisher warning.
@@ -126,24 +126,18 @@ The binary is not code-signed, so Windows may show a publisher warning.
 sudo apt install ./PEX_0.1.0_amd64.deb
 ```
 
-**Other graphical x64 Linux distributions:** download the AppImage, then run:
-
-```bash
-chmod +x PEX_0.1.0_amd64.AppImage
-./PEX_0.1.0_amd64.AppImage
-```
-
 Linux needs a graphical desktop and a normal Secret Service/keyring (for
-example GNOME Keyring or KWallet) to save a Zen BYOK key through Settings. The
-CI gate built both Linux formats on Ubuntu 24.04 and booted the packaged bridge;
-it did not visually exercise every Linux desktop environment. macOS and ARM64
-packages are not available in this release.
+example GNOME Keyring or KWallet) to save a BYOK key through Settings. The
+exact-commit CI gate built the Debian package on Ubuntu 24.04 and booted its
+packaged bridge; it did not visually exercise every Linux desktop environment.
+AppImage, macOS, and ARM64 packages are not available in RC11.
 
-The Windows package is built from exact source
-`600d1dea9e0bfb0402b20dd3e3d0d1c6ea337b79`.
-Use `PEX_0.1.0_x64-setup.exe` for the normal install. It is built from exact
-product source above; its SHA-256 is
-`0c151ddf93512b5450688fe95b5930f047364e8da34121c488226f9e3a0ffc75`.
+Both RC11 packages are built from exact product source
+`64cbabdc62b763eef0269142b0d43668351a7a4f`. The Windows installer SHA-256 is
+`40c2e17d459633a6fee3065ae27531ebc6fc6ac1c5aecbf1d0e8ddf89efb11ed`;
+the Debian package SHA-256 is
+`6e1e2764fc391fa0a8584f90ccf80d1a6b0c4e60bf719d906f89ac8349f66fd7`.
+The release also includes `SHA256SUMS.txt`.
 Package integrity is not indefinite stability or publisher trust; current
 source-bound behavior and trust boundaries are summarized in the [architecture overview](docs/architecture/overview.md).
 
