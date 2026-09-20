@@ -39,11 +39,12 @@ technology. Stage two scores four equally weighted criteria:
 
 ## Remaining release order
 
-1. Produce a current, provenance-bound paired diagnostic with and without PEX.
+1. Expand the current one-task Codex diagnostic into a multi-task paired study;
+   the retained first pair proves the runner path and reports observed overhead,
+   but does not establish general performance lift.
 2. Repeat the bounded live recovery on the cooldown-fixed source without paid
    usage, or use a sponsor-provided credit balance with a verified cutoff.
 3. Build and verify current Windows and Debian artifacts.
 4. Record the submitted build, upload a public under-three-minute YouTube video,
    and verify playback while logged out.
 5. Run `scripts/submission_preflight.py` against the exact release and video URL.
-

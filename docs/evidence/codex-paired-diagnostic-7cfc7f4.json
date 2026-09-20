@@ -1,0 +1,48 @@
+{
+  "baseline": {
+    "execution_wall_seconds": 95.604024,
+    "human_interventions": 0,
+    "raw_log_sha256": "21efb13e6289c9b477f5c47847755eb43b99cad1d527e4d122cc21953023b757",
+    "success": true,
+    "tool_calls": 14,
+    "worker_wall_seconds": 95.604024
+  },
+  "codex_harness_version": "0.155.0-alpha.9.2",
+  "controller_commit": "7cfc7f4073e14d91fcb3ab49924ae8a3436162bc",
+  "controller_worktree_clean": true,
+  "evidence_kind": "paired_live_diagnostic_not_presentation_benchmark",
+  "limits": [
+    "This is one controlled recovery task and cannot establish general performance lift.",
+    "The supervisor model was disabled to prevent paid Nebius usage; the PEX arm exercised isolated observation and deterministic restraint only.",
+    "Both outputs are diagnostic_only and excluded from the immutable presentation benchmark.",
+    "Worker and PEX token counts were unavailable, so no cost comparison is claimed."
+  ],
+  "observed_delta": {
+    "execution_wall_seconds": 30.959711,
+    "tool_calls": 6
+  },
+  "pair_id": "current-paired-7cfc7f4:pexbench_001_premature_stop",
+  "pex": {
+    "backend_disabled": true,
+    "decision_count": 1,
+    "execution_wall_seconds": 126.563735,
+    "followups": 0,
+    "human_interventions": 0,
+    "interventions": 0,
+    "pex_version": "224c43cf2ad5c220dbdfdbc8340a563dea554b3b59d4fe23d063b3330c33bf2c",
+    "raw_log_sha256": "85b7cc70b18d2876deff0fb7e3fe76cc0586815f7256a32beb2454a11f320242",
+    "success": true,
+    "supervisor_wall_seconds": 1.261313,
+    "tool_calls": 20,
+    "used_llm": false,
+    "worker_wall_seconds": 125.302422
+  },
+  "run_id": "current-paired-7cfc7f4",
+  "same_harness_identity_sha256": true,
+  "same_prompt_sha256": true,
+  "same_seed_manifest_sha256": true,
+  "same_worker_config_sha256": true,
+  "schema_version": 1,
+  "task": "pexbench_001_premature_stop",
+  "worker_model": "gpt-5.6-sol"
+}

@@ -112,6 +112,14 @@ Four-arm experiment: Cursor / Cursor+PEX / Codex / Codex+PEX.
 
 Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor decides in a separate process on public observations only. The deterministic development smoke has five recovery tasks plus three source-pinned public QuixBugs repairs and is **unfrozen**: an OS-enforced hidden-data/no-network worker boundary is still missing, existing rows predate the current 32-row suite/integrity contract, and Cursor+PEX still lacks complete same-session/raw-log evidence. **There is no citeable impact score or validated public leaderboard rank yet.** Do not cite quarantined leakage runs.
 
+A current Codex-only paired diagnostic is retained in
+[`docs/evidence/codex-paired-diagnostic-7cfc7f4.json`](docs/evidence/codex-paired-diagnostic-7cfc7f4.json).
+Both arms passed one controlled recovery task with no human intervention. The
+PEX arm made one isolated local audit and correctly sent no follow-up, but took
+30.96 seconds longer in that pair. Supervisor inference was disabled to prevent
+paid Nebius usage. This is restraint and overhead evidence, not a productivity
+score, and the rows remain outside the presentation benchmark.
+
 ## Quick start
 
 ### Install PEX
