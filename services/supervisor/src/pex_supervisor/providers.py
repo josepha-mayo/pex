@@ -1301,10 +1301,10 @@ def _refresh_model_catalog(
 
 
 def _openai_compat_chat_params(spec: ProviderSpec) -> dict[str, Any]:
-    """Chat Completions params. Zen follow-up turns reject leftover reasoning."""
+    """Chat Completions params for providers that reject reasoning history."""
 
     params: dict[str, Any] = {"max_tokens": 1200, "stream": False}
-    if spec.id in {"zen", "opencode_go"}:
+    if spec.id in {"zen", "opencode_go", "nebius"}:
         params["extra_body"] = {"reasoning": {"exclude": True}}
     return params
 

@@ -70,7 +70,7 @@ ROOT: Path  # Assigned only after explicit CLI run-name validation.
 START_CASE = 1
 ORIGIN = "http://127.0.0.1:4098"
 WORKER_PROVIDER = "nebius"
-WORKER_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
+WORKER_MODEL = "nvidia/Nemotron-3_5-Lightning"
 SUPERVISOR_MODEL = "unconfigured"
 CASE_TIMEOUT_SECONDS = 240.0
 # The free worker can legitimately consume almost the entire case budget before

@@ -42,6 +42,7 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
             "nemotron-3-ultra-free",
             "nemotron-3.5-lightning-free",
             "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+            "nvidia/Nemotron-3_5-Lightning",
             "nvidia/nemotron-3-super-120b-a12b",
         ),
         default="ling-3.0-flash-fin-free",

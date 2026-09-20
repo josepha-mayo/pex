@@ -74,6 +74,7 @@ def test_nebius_saved_byok_constructs_strands_model_with_scoped_endpoint(monkeyp
     assert captured["client_args"]["api_key"] == "local-test-credential"
     assert captured["client_args"]["http_client"] is sentinel
     assert captured["model_id"] == "nvidia/nemotron-3-super-120b-a12b"
+    assert captured["params"]["extra_body"] == {"reasoning": {"exclude": True}}
     assert model._pex_provenance["provider"] == "nebius"
     assert "local-test-credential" not in json.dumps(model._pex_provenance)
 
