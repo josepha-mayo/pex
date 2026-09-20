@@ -39,6 +39,13 @@ PEX existed before August 26, 2026. During the submission period it received sub
 
 PEX targets developers who already use coding agents and want more parallel work without becoming full-time dispatchers. Its key design choice is restraint: correct work produces `NOOP`; incomplete work receives one evidence-specific, policy-allowed correction on the same worker. The product makes every intervention inspectable instead of hiding supervision inside another chat transcript.
 
+## Product feedback
+
+- Token Factory's OpenAI-compatible global API made provider integration direct: the existing PEX OpenAI transport needed only a provider definition, scoped credential handling, and a model ID. The live Nemotron Super probe followed the requested JSON shape and completed in 54 total tokens.
+- Endpoint migration needs a clearer failure path. The older regional hostname returned an authentication error for a valid key, while the current global hostname worked immediately. A redirect, a typed deprecation response, or a prominent migration note would save debugging time.
+- Model IDs in the live catalog mix case and separator conventions, for example `nvidia/Nemotron-3_5-Lightning` and `nvidia/nemotron-3-super-120b-a12b`. Canonical aliases or copy-ready examples would reduce configuration mistakes.
+- The cost cutoff is hard to discover. The decisive control is named **Paid usage after trial** in the avatar menu, rather than auto top-up under Billing. Showing the selected cutoff beside the balance would make trial-only testing safer and easier to verify.
+
 ## Testing instructions
 
 1. Download [PEX 0.1.0 RC12](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc12), or build current `main` with the pinned prerequisites in `README.md`.
@@ -62,7 +69,7 @@ License: MIT.
 - Public YouTube video: TODO — under three minutes and visibly demonstrating the submitted build.
 - Nebius runtime proof: completed — sanitized global Token Factory catalog and inference evidence is retained in `docs/evidence/nebius-live-proof.json`.
 - NVIDIA model proof: completed — the retained response names `nvidia/nemotron-3-super-120b-a12b` and records 54 total tokens.
-- Product feedback: TODO — add specific Nebius Token Factory and Nemotron feedback after the live run.
+- Product feedback: completed — see the evidence-based feedback above.
 - Screenshots: TODO — capture privacy-safe frames from the current build.
 
 ## Suggested video flow (under three minutes)
