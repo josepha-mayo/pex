@@ -615,8 +615,16 @@ async def main() -> int:
                         "apiKey": "{env:NEBIUS_API_KEY}",
                     },
                     "models": {
-                        choice.model_id: {"name": "PEX supervisor model"},
-                        args.worker_model: {"name": "PEX OpenCode worker model"},
+                        choice.model_id: {
+                            "name": "PEX supervisor model",
+                            "reasoning": True,
+                            "interleaved": {"field": "reasoning_content"},
+                        },
+                        args.worker_model: {
+                            "name": "PEX OpenCode worker model",
+                            "reasoning": True,
+                            "interleaved": {"field": "reasoning_content"},
+                        },
                     },
                 }
             },
