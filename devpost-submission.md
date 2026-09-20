@@ -48,7 +48,7 @@ PEX targets developers who already use coding agents and want more parallel work
 
 ## Testing instructions
 
-1. Download [PEX 0.1.0 RC12](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc12), or build current `main` with the pinned prerequisites in `README.md`.
+1. Download [PEX 0.1.0 RC13](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc13), or build current `main` with the pinned prerequisites in `README.md`.
 2. Start `opencode serve --port 4096`, attach an OpenCode terminal to that exact origin, and create or resume a worker session.
 3. In PEX, open **Settings → Connections**, connect the loopback server, return Home, select the worker, and attach a goal with observable acceptance criteria.
 4. In **Settings → Supervisor**, choose **Nebius Token Factory**, choose `nvidia/nemotron-3-super-120b-a12b`, enter a tester-owned Token Factory key, and save. Saving is configuration only; confirm a real inference receipt in Inspector.
@@ -62,7 +62,7 @@ failing pytest result into an independently passing result through one bounded
 verification follow-up in the same session. The sanitized receipt is
 `docs/evidence/nebius-opencode-proof.json`.
 
-No developer credential ships with PEX. The public build is expected to be unsigned.
+No developer credential ships with PEX. The public build is unsigned.
 
 ## Public repository
 
@@ -72,7 +72,7 @@ License: MIT.
 
 ## Required submission fields still open
 
-- Working demo or test-build URL: https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc12
+- Working demo or test-build URL: https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc13
 - Public YouTube video: TODO — under three minutes and visibly demonstrating the submitted build.
 - Nebius runtime proof: completed — sanitized global Token Factory catalog and inference evidence is retained in `docs/evidence/nebius-live-proof.json`.
 - NVIDIA model proof: completed — the retained response names `nvidia/nemotron-3-super-120b-a12b` and records 54 total tokens.

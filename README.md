@@ -115,7 +115,7 @@ Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor de
 ### Install PEX
 
 Download the package for your x64 computer from
-[PEX 0.1.0 RC12](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc12).
+[PEX 0.1.0 RC13](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc13).
 
 **Windows 10/11:** use `PEX_0.1.0_x64-setup.exe` for the normal install.
 The binary is not code-signed, so Windows may show a publisher warning.
@@ -130,13 +130,13 @@ Linux needs a graphical desktop and a normal Secret Service/keyring (for
 example GNOME Keyring or KWallet) to save a BYOK key through Settings. The
 exact-commit CI gate built the Debian package on Ubuntu 24.04 and booted its
 packaged bridge; it did not visually exercise every Linux desktop environment.
-AppImage, macOS, and ARM64 packages are not available in RC12.
+AppImage, macOS, and ARM64 packages are not available in RC13.
 
-Both RC12 packages are built from exact product source
-`2411c374e1f1fe6ecd1f7e2f0fb3ac48af0ecad9`. The Windows installer SHA-256 is
-`606b43890801424443a64f25f4050c1ecdc48ff9b1793967bd6ef3a1fb59f42c`;
+Both RC13 packages are built from exact product source
+`c1c730fe3fd6647f69cdb1ec2cd676f9f186df84`. The Windows installer SHA-256 is
+`c61f9ccd2351a7df217adee8e8cc174f454752f49cb1e9bb119aee2088f37723`;
 the Debian package SHA-256 is
-`f9d0508f6689001ab1d02dcff308ef6c4b98be76bb427ddec28ef816170021f7`.
+`3e5e34271cbcbc0dea092e5472bff2767920d009440cea58b370898031ddca37`.
 The release also includes `SHA256SUMS`.
 Package integrity is not indefinite stability or publisher trust; current
 source-bound behavior and trust boundaries are summarized in the [architecture overview](docs/architecture/overview.md).
