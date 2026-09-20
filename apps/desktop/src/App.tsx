@@ -2554,6 +2554,23 @@ export function App() {
                 <p className="eyebrow">Your next step</p>
                 <h2>{setup.title}</h2>
                 <p>{setup.detail}</p>
+                <div className="supervision-loop" aria-label="PEX supervision loop">
+                  <div>
+                    <span aria-hidden="true">01</span>
+                    <strong>Retrieve</strong>
+                    <small>Bring the goal, decisions, and prior evidence into the worker context.</small>
+                  </div>
+                  <div>
+                    <span aria-hidden="true">02</span>
+                    <strong>Supervise</strong>
+                    <small>Watch progress and return a precise correction to the same session.</small>
+                  </div>
+                  <div>
+                    <span aria-hidden="true">03</span>
+                    <strong>Verify</strong>
+                    <small>Check the requested evidence before PEX accepts a completion claim.</small>
+                  </div>
+                </div>
                 <div className="button-row">
                   {setup.cta ? (
                     <button type="button" className="solid" onClick={() => {
