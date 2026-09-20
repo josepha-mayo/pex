@@ -48,7 +48,7 @@ Built-in named providers (OpenAI-compatible unless noted). Users can add more wi
 - Moonshot / Kimi — `https://api.moonshot.ai/v1` — `MOONSHOT_API_KEY`
 - DashScope / Qwen — `DASHSCOPE_API_KEY`
 - NVIDIA NIM / build.nvidia.com — `NVIDIA_API_KEY`
-- Nebius Token Factory — `https://api.tokenfactory.us-central1.nebius.com/v1` — `NEBIUS_API_KEY`; default NVIDIA model `nvidia/nemotron-3-super-120b-a12b`
+- Nebius Token Factory — `https://api.tokenfactory.nebius.com/v1` — `NEBIUS_API_KEY`; default NVIDIA model `nvidia/nemotron-3-super-120b-a12b`
 - Perplexity — `PERPLEXITY_API_KEY`
 - Hugging Face Inference — `HF_TOKEN`
 - GitHub Models — `GITHUB_TOKEN`

@@ -318,12 +318,12 @@ PROVIDERS: dict[str, ProviderSpec] = {
     "nebius": ProviderSpec(
         "nebius",
         "openai_compat",
-        "https://api.tokenfactory.us-central1.nebius.com/v1",
+        "https://api.tokenfactory.nebius.com/v1",
         ("PEX_SUPERVISOR_API_KEY", "NEBIUS_API_KEY"),
         ("api_key",),
         "nvidia/nemotron-3-super-120b-a12b",
         "Use a Nebius Token Factory API key. Refresh models after saving to check "
-        "your account's catalog. Select custom for another regional endpoint.",
+        "your account's catalog. Select custom for another compatible endpoint.",
     ),
     "perplexity": ProviderSpec(
         "perplexity",

@@ -18,7 +18,7 @@ PEX is a local Windows and Linux desktop harness for OpenCode and Codex App Serv
 
 ## Nebius and NVIDIA implementation
 
-PEX supports Nebius Token Factory through its OpenAI-compatible inference API at `https://api.tokenfactory.us-central1.nebius.com/v1`. The primary submission model is `nvidia/nemotron-3-super-120b-a12b`; the UI also exposes account-dependent Nemotron 3.5 Lightning and Ultra suggestions. The key is entered through a write-only BYOK field and stored in the operating-system credential vault. Provider, authentication mode, endpoint, and credential audience are bound together so a pasted key cannot silently follow a configuration change.
+PEX supports Nebius Token Factory through its OpenAI-compatible inference API at `https://api.tokenfactory.nebius.com/v1`. The primary submission model is `nvidia/nemotron-3-super-120b-a12b`; the UI also exposes account-dependent Nemotron 3.5 Lightning and Ultra suggestions. The key is entered through a write-only BYOK field and stored in the operating-system credential vault. Provider, authentication mode, endpoint, and credential audience are bound together so a pasted key cannot silently follow a configuration change.
 
 The submission must include retained evidence from a successful runtime Token Factory call using an NVIDIA open-source model. Provider configuration or catalog suggestions alone do not satisfy that rule.
 

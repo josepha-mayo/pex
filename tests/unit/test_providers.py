@@ -70,7 +70,7 @@ def test_nebius_saved_byok_constructs_strands_model_with_scoped_endpoint(monkeyp
         provider="nebius", auth_mode="api_key", credential_source="secret_store",
         api_key="local-test-credential",
     ))
-    assert captured["client_args"]["base_url"] == "https://api.tokenfactory.us-central1.nebius.com/v1"
+    assert captured["client_args"]["base_url"] == "https://api.tokenfactory.nebius.com/v1"
     assert captured["client_args"]["api_key"] == "local-test-credential"
     assert captured["client_args"]["http_client"] is sentinel
     assert captured["model_id"] == "nvidia/nemotron-3-super-120b-a12b"

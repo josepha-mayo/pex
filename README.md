@@ -293,8 +293,8 @@ PEX_SUPERVISOR_MODEL=nvidia/nemotron-3-super-120b-a12b
 NEBIUS_API_KEY=<your Token Factory key>
 ```
 
-The default endpoint is `https://api.tokenfactory.us-central1.nebius.com/v1`.
-A custom regional endpoint is an explicit credential destination: provide a key
+The default endpoint is `https://api.tokenfactory.nebius.com/v1`.
+A custom compatible endpoint is an explicit credential destination: provide a key
 for that endpoint in Settings or through `PEX_SUPERVISOR_API_KEY`. PEX does not
 forward another provider's key to it. See the
 [official Nebius Nemotron example](https://github.com/nebius/token-factory-cookbook/blob/main/models/nemotron/nemotron3-super-120B.md).
