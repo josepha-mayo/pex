@@ -248,6 +248,20 @@ def test_openai_provider_constructs_with_installed_dependency(monkeypatch):
     assert model is not None
 
 
+def test_openai_chat_model_creates_a_fresh_guarded_transport_per_turn(monkeypatch):
+    from pex_supervisor.openai_chat import OpenAIChatModel
+
+    monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
+    monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "nebius")
+    monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-key")
+
+    model = load_supervisor_model()
+
+    assert isinstance(model, OpenAIChatModel)
+    assert "http_client" not in model.client_args
+    assert model._http_client_factory is not None
+
+
 def test_zen_chat_model_excludes_reasoning_on_follow_up_turns(monkeypatch):
     monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
     monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "zen")
@@ -322,7 +336,8 @@ def test_other_zen_models_preserve_chat_completions_route(monkeypatch):
     assert not isinstance(model, OpenAIResponsesModel)
     assert model._pex_provenance["generation_api"] == "chat"
     assert model.config["params"]["extra_body"] == {"reasoning": {"exclude": True}}
-    asyncio.run(model.client_args["http_client"].aclose())
+    assert "http_client" not in model.client_args
+    assert model._http_client_factory is not None
 
 
 def test_responses_model_translates_strands_tools_and_tool_results(monkeypatch):

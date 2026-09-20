@@ -1438,7 +1438,7 @@ def _load_supervisor_model() -> Any | None:
         client_args["timeout"] = _supervisor_timeout()
         generation_api = _generation_api(spec.id, model_id)
         model_type = OpenAIModel
-        responses_args: dict[str, Any] = {}
+        transport_args: dict[str, Any] = {}
         if generation_api == "responses":
             # Keep the Responses subclass out of chat-only startup. Besides
             # avoiding an irrelevant SDK/class load, this prevents integrations
@@ -1456,17 +1456,30 @@ def _load_supervisor_model() -> Any | None:
                 client_args["default_headers"] = {
                     "x-opencode-session": f"pex_{secrets.token_hex(16)}"
                 }
-            responses_args = {
+            transport_args = {
                 "http_client_factory": lambda: credential_safe_http_client(
                     timeout=_supervisor_timeout(),
                     asynchronous=True,
                 )
             }
         else:
-            client_args["http_client"] = credential_safe_http_client(
-                timeout=_supervisor_timeout(),
-                asynchronous=True,
-            )
+            if OpenAIModel.__module__ == "strands.models.openai":
+                from pex_supervisor.openai_chat import OpenAIChatModel
+
+                model_type = OpenAIChatModel
+                transport_args = {
+                    "http_client_factory": lambda: credential_safe_http_client(
+                        timeout=_supervisor_timeout(),
+                        asynchronous=True,
+                    )
+                }
+            else:
+                # Test and integration substitutes receive the same concrete
+                # guarded client contract used before the per-turn adapter.
+                client_args["http_client"] = credential_safe_http_client(
+                    timeout=_supervisor_timeout(),
+                    asynchronous=True,
+                )
         return ready(
             model_type(
                 client_args=client_args or None,
@@ -1477,7 +1490,7 @@ def _load_supervisor_model() -> Any | None:
                     if generation_api == "chat"
                     else {}
                 ),
-                **responses_args,
+                **transport_args,
             )
         )
 
