@@ -323,11 +323,14 @@ STOP intervention must also pass a fresh independent verifier Agent using its
 own observations and invocation. Timeout, malformed output, missing evidence,
 or rejection becomes NOOP. Deterministic verification truth and local policy
 still own the final boundary. Bedrock AgentCore Runtime is a hardened deploy
-target, not a deployed-service claim. Fresh release-source OpenCode and Codex
-pairs each retain one evidence-specific same-session recovery, an observed
-`helped:true` outcome, a final model-backed `NOOP`, and a separate already-correct
-control with zero PEX follow-ups. These bounded pairs do not prove broad quiet
-statistics, AgentCore deployment, or a comparative benchmark result.
+target, not a deployed-service claim. The current Nebius/OpenCode source retains
+one controlled false-claim recovery and one already-correct quiet control.
+Nemotron Super requested a bound pytest run, the same OpenCode session repaired
+the failing parser, an independent rerun passed, and the final review stayed
+quiet; the control produced `NOOP` with zero PEX follow-ups. See
+[`docs/evidence/nebius-opencode-proof.json`](docs/evidence/nebius-opencode-proof.json).
+This bounded pair does not prove broad quiet statistics, AgentCore deployment,
+or a comparative benchmark result.
 
 The cloud supervisor can propose actions. It cannot bypass local policy.
 
@@ -340,10 +343,11 @@ Coding and Agentic Engineering track. The
 [official rules](https://nebiusglobalaihackathon.devpost.com/rules) require runtime
 use of Nebius Token Factory or AI Cloud and an NVIDIA open-source model.
 Submission closes October 30, 2026 at 17:00 UTC. An existing project must explain
-its significant new work. The intended proof is an actual stopped worker
-recovered through a Nemotron-backed PEX review, with an independently verified
-result and a public demo under three minutes. This is a target, not a completed
-submission or a claim of measured benefit.
+its significant new work. The retained product proof is an actual stopped
+worker recovered through a Nemotron-backed PEX review with an independently
+verified result, plus a separate quiet control. A public demo under three
+minutes is still required. This is not a completed submission or a claim of
+measured benefit.
 
 PEX originated in the AWS Agents for Humans hackathon and still uses Strands
 locally. AgentCore remains optional and is not deployed. The current

@@ -13,8 +13,13 @@ Windows and Ubuntu source suites, desktop builds, Windows NSIS and Ubuntu
 Debian packages, bootstrap tests, and bundled-bridge identity checks. A
 bounded live Nemotron Super call passed on the global Token Factory endpoint;
 see [`docs/evidence/nebius-live-proof.json`](evidence/nebius-live-proof.json).
-A full PEX recovery and quiet-control pair plus current-build screenshots/video
-remain required before submission.
+An exact-source live OpenCode pair also passed: one already-correct case produced
+a model-backed `NOOP` with zero follow-ups, while one controlled false test claim
+triggered a bound pytest request, same-session repair, independent passing rerun,
+and final `NOOP`. See
+[`docs/evidence/nebius-opencode-proof.json`](evidence/nebius-opencode-proof.json).
+Current-build screenshots and a public under-three-minute video remain required
+before submission.
 
 <details>
 <summary>Historical RC7 package instructions and evidence</summary>

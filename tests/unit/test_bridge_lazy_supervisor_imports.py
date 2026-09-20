@@ -65,7 +65,11 @@ model = load_supervisor_model()
 assert model is not None
 assert model._pex_provenance['generation_api'] == 'chat'
 assert 'pex_supervisor.openai_responses' not in sys.modules
-asyncio.run(model.client_args['http_client'].aclose())
+client_factory = getattr(model, '_http_client_factory', None)
+if client_factory is not None:
+    asyncio.run(client_factory().aclose())
+else:
+    asyncio.run(model.client_args['http_client'].aclose())
 print('chat_only_model_ready')
 """
     result = subprocess.run(

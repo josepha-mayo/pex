@@ -55,6 +55,13 @@ PEX targets developers who already use coding agents and want more parallel work
 5. Run one already-correct task and confirm a model-backed `NOOP` with zero worker follow-ups.
 6. Run one deliberately incomplete task and confirm an evidence-specific correction reaches the same session, followed by an independently observed result.
 
+The retained live proof on source `66d9b17` uses Nemotron Super as PEX and
+Nemotron 3.5 Lightning as the OpenCode worker. Its correct control produced
+`NOOP` with zero follow-ups. Its false-claim recovery changed an independently
+failing pytest result into an independently passing result through one bounded
+verification follow-up in the same session. The sanitized receipt is
+`docs/evidence/nebius-opencode-proof.json`.
+
 No developer credential ships with PEX. The public build is expected to be unsigned.
 
 ## Public repository
@@ -69,6 +76,7 @@ License: MIT.
 - Public YouTube video: TODO — under three minutes and visibly demonstrating the submitted build.
 - Nebius runtime proof: completed — sanitized global Token Factory catalog and inference evidence is retained in `docs/evidence/nebius-live-proof.json`.
 - NVIDIA model proof: completed — the retained response names `nvidia/nemotron-3-super-120b-a12b` and records 54 total tokens.
+- OpenCode recovery and quiet-control proof: completed — the retained exact-source pair records a zero-follow-up `NOOP` control and a failing-to-passing same-session recovery.
 - Product feedback: completed — see the evidence-based feedback above.
 - Screenshots: TODO — capture privacy-safe frames from the current build.
 
