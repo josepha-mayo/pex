@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-09-20",
+  "source_commit": "d9a85582a06f2d0715ef1fe629011b49cc2b3df7",
+  "url": "http://127.0.0.1:1420/",
+  "runtime": "Vite browser presentation mode",
+  "checks": {
+    "page_loaded": true,
+    "meaningful_content_rendered": true,
+    "vite_error_overlay": false,
+    "console_errors": 0,
+    "viewport_1280x900_horizontal_overflow": false,
+    "viewport_720x900_horizontal_overflow": false
+  },
+  "screenshots": [
+    {
+      "path": "docs/demo/assets/pex-home-browser-rc13.jpg",
+      "dimensions": [1280, 900],
+      "sha256": "6bc425acca3af8f016b37c20862a0bd1f89bb25d91a25ba999559c546de15435"
+    },
+    {
+      "path": "docs/demo/assets/pex-inspector-browser-rc13.jpg",
+      "dimensions": [1280, 900],
+      "sha256": "0958dd491ae8eaa36e4411c5e339dab6b7a6d53c7c78c3364676313db5ef161b"
+    },
+    {
+      "path": "docs/demo/assets/pex-settings-browser-rc13.jpg",
+      "dimensions": [1280, 900],
+      "sha256": "1d3740cc00ebe28f5fed2bb821c331751bd60118386d4067086d2f6ec8dff37f"
+    }
+  ],
+  "privacy": {
+    "credential_visible": false,
+    "user_workspace_visible": false,
+    "worker_content_visible": false
+  },
+  "boundary": "Browser presentation mode intentionally cannot read the desktop bridge bearer, so these images show fail-closed current-build UI states. Authenticated supervisor, OpenCode, Codex, BYOK, and packaged-desktop behavior are covered by separate live and exact-commit evidence."
+}

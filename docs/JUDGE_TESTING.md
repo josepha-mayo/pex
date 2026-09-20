@@ -18,8 +18,10 @@ a model-backed `NOOP` with zero follow-ups, while one controlled false test clai
 triggered a bound pytest request, same-session repair, independent passing rerun,
 and final `NOOP`. See
 [`docs/evidence/nebius-opencode-proof.json`](evidence/nebius-opencode-proof.json).
-Current-build screenshots and a public under-three-minute video remain required
-before submission.
+Privacy-safe current-build Home, Inspector, and Settings screenshots are retained
+under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
+in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json). A public
+under-three-minute video remains required before submission.
 
 <details>
 <summary>Historical RC7 package instructions and evidence</summary>

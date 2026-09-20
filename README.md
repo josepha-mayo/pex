@@ -57,10 +57,12 @@ score. Final recording remains. See the
 
 </details>
 
-![PEX Home showing two available coding workers and the Von companion](docs/demo/assets/pex-home-49385f2.png)
+![PEX RC13 Inspector showing the goal-first supervision harness](docs/demo/assets/pex-inspector-browser-rc13.jpg)
 
-*Earlier installed `49385f2` Home capture, not the newest logo/build. The worker rail is
-freshness-filtered; historical sessions remain in Inspector and Deck.*
+*Current RC13 browser presentation capture. Browser mode intentionally cannot read
+the desktop bridge bearer, so unavailable canonical state stays visibly disabled
+instead of being invented. Authenticated live and package evidence is retained in
+the [judge guide](docs/JUDGE_TESTING.md).*
 
 ## The pain it removes
 

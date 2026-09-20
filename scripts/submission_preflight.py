@@ -14,6 +14,9 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[1]
 ARCHITECTURE = Path("docs/architecture/pex-architecture.png")
 MARK = Path("docs/demo/assets/pex-mark.png")
+HOME_SCREENSHOT = Path("docs/demo/assets/pex-home-browser-rc13.jpg")
+INSPECTOR_SCREENSHOT = Path("docs/demo/assets/pex-inspector-browser-rc13.jpg")
+SETTINGS_SCREENSHOT = Path("docs/demo/assets/pex-settings-browser-rc13.jpg")
 
 ACTIVE_GUIDES = (
     Path("README.md"),
@@ -82,6 +85,21 @@ ARTIFACTS = (
         MARK,
         99_348,
         "61ff11794df490525b95a3e7b83c6c635e641f01c50f1a0cb8187f1276709795",
+    ),
+    ArtifactSpec(
+        HOME_SCREENSHOT,
+        40_589,
+        "6bc425acca3af8f016b37c20862a0bd1f89bb25d91a25ba999559c546de15435",
+    ),
+    ArtifactSpec(
+        INSPECTOR_SCREENSHOT,
+        65_663,
+        "0958dd491ae8eaa36e4411c5e339dab6b7a6d53c7c78c3364676313db5ef161b",
+    ),
+    ArtifactSpec(
+        SETTINGS_SCREENSHOT,
+        55_989,
+        "1d3740cc00ebe28f5fed2bb821c331751bd60118386d4067086d2f6ec8dff37f",
     ),
 )
 

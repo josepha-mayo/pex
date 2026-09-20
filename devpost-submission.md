@@ -78,7 +78,7 @@ License: MIT.
 - NVIDIA model proof: completed — the retained response names `nvidia/nemotron-3-super-120b-a12b` and records 54 total tokens.
 - OpenCode recovery and quiet-control proof: completed — the retained exact-source pair records a zero-follow-up `NOOP` control and a failing-to-passing same-session recovery.
 - Product feedback: completed — see the evidence-based feedback above.
-- Screenshots: TODO — capture privacy-safe frames from the current build.
+- Screenshots: completed — privacy-safe current-build Home, Inspector, and Settings frames are retained under `docs/demo/assets/*-browser-rc13.jpg`; their hashes and browser-mode boundary are in `docs/evidence/ui-browser-rc13.json`.
 
 ## Suggested video flow (under three minutes)
 
