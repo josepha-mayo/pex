@@ -7,12 +7,14 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 ## Fastest evaluation path
 
 **Current Nebius/NVIDIA candidate:** download
-[PEX 0.1.0 RC11](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc11),
-built from exact product source `64cbabd`. Its exact-commit CI passed complete
+[PEX 0.1.0 RC12](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc12),
+built from exact product source `2411c37`. Its exact-commit CI passed complete
 Windows and Ubuntu source suites, desktop builds, Windows NSIS and Ubuntu
 Debian packages, bootstrap tests, and bundled-bridge identity checks. A
-successful live Nebius/Nemotron recovery and quiet-control pair plus
-current-build screenshots/video remain required before submission.
+bounded live Nemotron Super call passed on the global Token Factory endpoint;
+see [`docs/evidence/nebius-live-proof.json`](evidence/nebius-live-proof.json).
+A full PEX recovery and quiet-control pair plus current-build screenshots/video
+remain required before submission.
 
 <details>
 <summary>Historical RC7 package instructions and evidence</summary>

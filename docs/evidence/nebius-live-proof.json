@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-09-20",
+  "credential_redacted": true,
+  "billing_guard": {
+    "trial_credit_usd_displayed": 1.0,
+    "trial_days_remaining_displayed": 29,
+    "paid_usage_after_trial": "stop",
+    "switch_to_paid_selected": false
+  },
+  "pex_configuration": {
+    "provider": "nebius",
+    "model_id": "nvidia/nemotron-3-super-120b-a12b",
+    "base_url": "https://api.tokenfactory.nebius.com/v1",
+    "credential_source": "windows_credential_manager",
+    "credential_available_after_reload": true,
+    "dispatch_limit_override": 1,
+    "replaced_credential_removed": true
+  },
+  "catalog_probe": {
+    "ok": true,
+    "model_count": 24,
+    "nvidia_models": [
+      "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+      "nvidia/Nemotron-3_5-Lightning",
+      "nvidia/Nemotron-3-Ultra-550b-a55b",
+      "nvidia/nemotron-3-super-120b-a12b"
+    ]
+  },
+  "bounded_inference_probe": {
+    "ok": true,
+    "transport": "direct OpenAI-compatible API probe",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "response": {"status": "ok"},
+    "prompt_tokens": 27,
+    "completion_tokens": 27,
+    "total_tokens": 54
+  },
+  "source": {
+    "endpoint_repair_commit": "b7327bb2e20c009e4e96e901c519494981df3465",
+    "release_commit": "2411c374e1f1fe6ecd1f7e2f0fb3ac48af0ecad9",
+    "ci_run": "https://github.com/josepha-mayo/pex/actions/runs/35494248368"
+  },
+  "boundary": "This proves credential, catalog, NVIDIA model, endpoint, and one bounded runtime call. It is not the final judge-facing PEX recovery-pair demonstration."
+}
