@@ -470,6 +470,9 @@ async def test_attachment_publishes_over_historical_activity_without_inventing_n
     selected = await _inspect(client, body)
     response = await _confirm(client, selected)
     assert response.status_code == 200, response.text
+    await _eventually(
+        lambda: adapters.codex._input_bootstrap_complete or adapters.codex._pump_task.done()
+    )
     canonical = await state.store.get_session_for_authority(historical.id)
     assert canonical.status == SessionStatus.IDLE
     assert canonical.last_activity == observed_at
@@ -477,6 +480,8 @@ async def test_attachment_publishes_over_historical_activity_without_inventing_n
     assert (
         canonical.metadata["subscription_receipt"]["authorization_id"] == selected["inspection_id"]
     )
+    assert adapters.codex.last_pump_error is None, adapters.codex.last_pump_error
+    assert not adapters.codex._pump_task.done()
     assert adapters.codex.session == canonical
     assert adapters.codex.sessions[canonical.id] is adapters.codex.session
     assert adapters.codex._normalizer.sessions[canonical.id] is adapters.codex.session

@@ -7,6 +7,7 @@ from typing import Any
 
 from pex_protocol.actions import InterventionType
 from pex_protocol.enums import HarnessType
+from pex_protocol.project_identity import same_absolute_path
 from pex_protocol.session import HarnessSession
 
 from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
@@ -63,7 +64,7 @@ def correction_scope(session: HarnessSession, workspace: WorkspaceBinding) -> di
         or receipt.get("pex_session_id") != session.id
         or receipt.get("thread_id") != session.vendor_session_id
         or receipt.get("project_id") != session.project_id
-        or receipt.get("cwd") != session.cwd
+        or not same_absolute_path(receipt.get("cwd"), session.cwd)
         or "vendor_project_id" not in receipt
         or session.project_id != workspace.project_id
     ):
