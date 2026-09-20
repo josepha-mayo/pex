@@ -41,6 +41,7 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
             "mimo-v2.5-free",
             "nemotron-3-ultra-free",
             "nemotron-3.5-lightning-free",
+            "nvidia/nemotron-3-super-120b-a12b",
         ),
         default="ling-3.0-flash-fin-free",
     )
@@ -73,7 +74,7 @@ def _load_runtime_dependencies() -> None:
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 ORIGIN = "http://127.0.0.1:4098"
-SUPERVISOR_MODEL = "muse-spark-1.3-contributor-free"
+SUPERVISOR_MODEL = "unconfigured"
 EXPECTED_STAGE = b"stage-one-ok\n"
 EXPECTED_FINAL = b"pex-supervised-ok\n"
 INITIAL_PROOF_SECONDS = 360
@@ -371,7 +372,10 @@ async def run_recovery(
             "POST",
             registry.opencode._scoped_path(f"/session/{vendor}/prompt_async", str(workspace)),
             json={
-                "model": {"providerID": "opencode", "modelID": worker_model},
+                "model": {
+                    "providerID": "nebius" if worker_model.startswith("nvidia/") else "opencode",
+                    "modelID": worker_model,
+                },
                 "parts": [{"type": "text", "text": task}],
             },
         )
@@ -555,6 +559,7 @@ async def run_recovery(
 
 
 async def main() -> int:
+    global SUPERVISOR_MODEL
     parser, args = _EARLY_CLI or _parse_cli()
     _load_runtime_dependencies()
     if not source_is_clean():
@@ -568,20 +573,18 @@ async def main() -> int:
     (root / "completion-fence.py").write_bytes(helper_bytes)
     start_commit = source_commit()
     choice = load_supervisor_choice(Path.home() / ".pex/supervisor.json")
-    if not choice or (
-        choice.provider,
-        choice.model_id,
-        choice.base_url,
-        choice.credential_source,
-    ) != ("zen", SUPERVISOR_MODEL, "https://opencode.ai/zen/v1", "secret_store"):
-        raise RuntimeError("saved supervisor is not the exact approved Zen free model")
+    if not choice or not all((choice.provider, choice.model_id, choice.base_url)):
+        raise RuntimeError("saved supervisor routing is incomplete")
+    if choice.credential_source != "secret_store":
+        raise RuntimeError("saved supervisor does not use the OS credential vault")
+    SUPERVISOR_MODEL = choice.model_id
     if choice.secret_ref is None:
-        raise RuntimeError("saved Zen vault credential reference is unavailable")
+        raise RuntimeError("saved supervisor vault credential reference is unavailable")
     secret = KeyringSupervisorSecretStore().get(
         choice.secret_ref, audience=choice.credential_audience()
     )
     if not secret:
-        raise RuntimeError("saved Zen vault credential is unavailable")
+        raise RuntimeError("saved supervisor vault credential is unavailable")
     shim = shutil.which("opencode.cmd") or shutil.which("opencode")
     if shim is None:
         raise RuntimeError("OpenCode executable is unavailable")
@@ -589,15 +592,34 @@ async def main() -> int:
     if not executable.is_file():
         raise RuntimeError("direct OpenCode executable is unavailable; refusing shim ownership")
     environment = os.environ.copy()
-    environment["OPENCODE_API_KEY"] = secret
+    environment["NEBIUS_API_KEY"] = secret
     for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
         environment[f"XDG_{kind}_HOME"] = str(root / kind.lower())
     pins = {
-        "PEX_SUPERVISOR_PROVIDER": "zen",
-        "PEX_SUPERVISOR_MODEL": SUPERVISOR_MODEL,
+        "PEX_SUPERVISOR_PROVIDER": choice.provider,
+        "PEX_SUPERVISOR_MODEL": choice.model_id,
         "PEX_SUPERVISOR_API_KEY": secret,
-        "PEX_SUPERVISOR_BASE_URL": "https://opencode.ai/zen/v1",
+        "PEX_SUPERVISOR_BASE_URL": choice.base_url,
     }
+    write_json(
+        root / "opencode.json",
+        {
+            "$schema": "https://opencode.ai/config.json",
+            "provider": {
+                "nebius": {
+                    "npm": "@ai-sdk/openai-compatible",
+                    "name": "Nebius Token Factory",
+                    "options": {
+                        "baseURL": choice.base_url,
+                        "apiKey": "{env:NEBIUS_API_KEY}",
+                    },
+                    "models": {
+                        choice.model_id: {"name": "NVIDIA Nemotron 3 Super"},
+                    },
+                }
+            },
+        },
+    )
     before_env = {key: os.environ.get(key) for key in pins}
     os.environ.update(pins)
     server: subprocess.Popen[bytes] | None = None

@@ -69,8 +69,9 @@ sys.path.insert(0, str(REPO))
 ROOT: Path  # Assigned only after explicit CLI run-name validation.
 START_CASE = 1
 ORIGIN = "http://127.0.0.1:4098"
-WORKER_MODEL = "ling-3.0-flash-fin-free"
-SUPERVISOR_MODEL = "muse-spark-1.3-contributor-free"
+WORKER_PROVIDER = "nebius"
+WORKER_MODEL = "nvidia/nemotron-3-super-120b-a12b"
+SUPERVISOR_MODEL = "unconfigured"
 CASE_TIMEOUT_SECONDS = 240.0
 # The free worker can legitimately consume almost the entire case budget before
 # emitting its first STOP. Once PEX has observed that STOP, reserve one complete
@@ -288,7 +289,7 @@ async def run_case(number, case, model, server):
             "POST",
             registry.opencode._scoped_path(f"/session/{vendor}/prompt_async", str(workspace)),
             json={
-                "model": {"providerID": "opencode", "modelID": WORKER_MODEL},
+                "model": {"providerID": WORKER_PROVIDER, "modelID": WORKER_MODEL},
                 "parts": [{"type": "text", "text": task}],
             },
         )
@@ -468,7 +469,7 @@ async def run_case(number, case, model, server):
 
 
 async def main():
-    global ROOT
+    global ROOT, SUPERVISOR_MODEL
     parser, args = _EARLY_CLI or _parse_cli()
     _load_runtime_dependencies()
     if not source_is_clean():
@@ -482,19 +483,18 @@ async def main():
     (ROOT / "completion-fence.py").write_bytes(helper_bytes)
     start_commit = source_commit()
     choice = load_supervisor_choice(Path.home() / ".pex/supervisor.json")
-    assert choice and (
-        choice.provider,
-        choice.model_id,
-        choice.base_url,
-        choice.credential_source,
-    ) == ("zen", SUPERVISOR_MODEL, "https://opencode.ai/zen/v1", "secret_store")
+    if not choice or not all((choice.provider, choice.model_id, choice.base_url)):
+        raise RuntimeError("Saved supervisor routing is incomplete")
+    if choice.credential_source != "secret_store":
+        raise RuntimeError("Saved supervisor does not use the OS credential vault")
+    SUPERVISOR_MODEL = choice.model_id
     assert choice.secret_ref is not None
     secret = KeyringSupervisorSecretStore().get(
         choice.secret_ref,
         audience=choice.credential_audience(),
     )
     if not secret:
-        raise RuntimeError("Saved Zen vault credential is unavailable")
+        raise RuntimeError("Saved supervisor vault credential is unavailable")
     shim = shutil.which("opencode.cmd") or shutil.which("opencode")
     if shim is None:
         raise RuntimeError("OpenCode executable is unavailable")
@@ -502,15 +502,34 @@ async def main():
     if not executable.is_file():
         raise RuntimeError("Direct OpenCode executable is unavailable; refusing shim ownership")
     env = os.environ.copy()
-    env["OPENCODE_API_KEY"] = secret
+    env["NEBIUS_API_KEY"] = secret
     for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
         env[f"XDG_{kind}_HOME"] = str(ROOT / kind.lower())
     pin = {
-        "PEX_SUPERVISOR_PROVIDER": "zen",
-        "PEX_SUPERVISOR_MODEL": SUPERVISOR_MODEL,
+        "PEX_SUPERVISOR_PROVIDER": choice.provider,
+        "PEX_SUPERVISOR_MODEL": choice.model_id,
         "PEX_SUPERVISOR_API_KEY": secret,
-        "PEX_SUPERVISOR_BASE_URL": "https://opencode.ai/zen/v1",
+        "PEX_SUPERVISOR_BASE_URL": choice.base_url,
     }
+    write_json(
+        ROOT / "opencode.json",
+        {
+            "$schema": "https://opencode.ai/config.json",
+            "provider": {
+                WORKER_PROVIDER: {
+                    "npm": "@ai-sdk/openai-compatible",
+                    "name": "Nebius Token Factory",
+                    "options": {
+                        "baseURL": choice.base_url,
+                        "apiKey": "{env:NEBIUS_API_KEY}",
+                    },
+                    "models": {
+                        WORKER_MODEL: {"name": "NVIDIA Nemotron 3 Super"},
+                    },
+                }
+            },
+        },
+    )
     before_env = {key: os.environ.get(key) for key in pin}
     os.environ.update(pin)
     results = []
