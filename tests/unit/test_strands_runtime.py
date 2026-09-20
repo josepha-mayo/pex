@@ -483,6 +483,7 @@ def test_supervisor_prompt_bounds_untrusted_goal_and_event_fields():
     assert len(rendered) < 50_000
     assert "A" * 4_001 not in rendered
     assert "D" * 2_001 not in rendered
+    assert "call inspect_acceptance exactly once" in rendered
 
 
 def test_supervisor_and_verifier_prompts_treat_observed_text_as_untrusted_data():

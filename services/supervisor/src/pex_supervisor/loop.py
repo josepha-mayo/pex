@@ -233,6 +233,14 @@ def _format_user(request: SupervisorRequest) -> str:
     verification = request.scores.features.get("verification") if request.scores.features else {}
     context = request.supervisor_context
     evidence_tools = select_evidence_tool_names(request)
+    required_inspection = (
+        "Required next action: call inspect_acceptance exactly once before the "
+        "structured decision, then cite its returned pex_observation_id for any "
+        "non-NOOP action.\n"
+        if request.event.event_type.value == "stop"
+        and "inspect_acceptance" in evidence_tools
+        else ""
+    )
     rendered = (
         "Normalized supervision request.\n"
         f"Harness: {request.session.harness_type}\n"
@@ -253,6 +261,7 @@ def _format_user(request: SupervisorRequest) -> str:
         f"first_ids={list(context.offered_decision_ids[:3]) if context else []}\n"
         f"Available evidence tools: {list(evidence_tools)}. Use only tools actually "
         "offered for this request and do not assume facts without a tool result.\n"
+        f"{required_inspection}"
         "Return exactly one validated structured decision."
     )
     return _redact_request_text(request, rendered)
