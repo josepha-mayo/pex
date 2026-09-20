@@ -172,7 +172,11 @@ async def framed_pipeline(tmp_path, monkeypatch, request):
             channel_factory=factory,
             endpoint_validator=lambda _executable, _endpoint: None,
             connect_timeout_s=1,
-            request_timeout_s=1,
+            # The full Windows suite can delay the framed reader for more than
+            # one second while SQLite-heavy tests are cleaning up. Keep this
+            # fixture below the surrounding eight-second settlement bound while
+            # avoiding a scheduler-load failure that is unrelated to delivery.
+            request_timeout_s=5,
             receive_journal=journal,
         )
         coordinator = CodexExistingThreadSubscription(transport)

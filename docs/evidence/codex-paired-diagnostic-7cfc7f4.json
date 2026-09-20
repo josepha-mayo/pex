@@ -1,48 +1,198 @@
 {
-  "baseline": {
-    "execution_wall_seconds": 95.604024,
+  "aggregate": {
+    "baseline_mean_execution_wall_seconds": 106.937356,
+    "baseline_successes": 5,
+    "baseline_total_tool_calls": 90,
     "human_interventions": 0,
-    "raw_log_sha256": "21efb13e6289c9b477f5c47847755eb43b99cad1d527e4d122cc21953023b757",
-    "success": true,
-    "tool_calls": 14,
-    "worker_wall_seconds": 95.604024
+    "mean_delta_execution_wall_seconds": -3.202293,
+    "median_delta_execution_wall_seconds": 8.983451,
+    "pairs": 5,
+    "pex_mean_execution_wall_seconds": 103.735063,
+    "pex_successes": 5,
+    "pex_total_decisions": 5,
+    "pex_total_followups": 0,
+    "pex_total_interventions": 0,
+    "pex_total_tool_calls": 82
   },
   "codex_harness_version": "0.155.0-alpha.9.2",
-  "controller_commit": "7cfc7f4073e14d91fcb3ab49924ae8a3436162bc",
-  "controller_worktree_clean": true,
+  "controller_commit": "7cfc7f4359bf118f0a2c64e61d741ca3b98b2c91e",
+  "evidence_document_commit_base": "a036bcc33bda962d6916ee763c722cf435f4d23e",
   "evidence_kind": "paired_live_diagnostic_not_presentation_benchmark",
   "limits": [
-    "This is one controlled recovery task and cannot establish general performance lift.",
-    "The supervisor model was disabled to prevent paid Nebius usage; the PEX arm exercised isolated observation and deterministic restraint only.",
-    "Both outputs are diagnostic_only and excluded from the immutable presentation benchmark.",
-    "Worker and PEX token counts were unavailable, so no cost comparison is claimed."
+    "These are five controlled recovery fixtures, not natural repository tasks, and cannot establish general productivity lift.",
+    "The supervisor model was disabled to prevent paid Nebius usage; PEX exercised isolated observation and deterministic restraint only.",
+    "All outputs are diagnostic_only and excluded from the immutable presentation benchmark.",
+    "Worker and PEX token counts were unavailable, so no cost comparison is claimed.",
+    "Each task has one run per arm; timing variance is not statistically resolved."
   ],
-  "observed_delta": {
-    "execution_wall_seconds": 30.959711,
-    "tool_calls": 6
-  },
-  "pair_id": "current-paired-7cfc7f4:pexbench_001_premature_stop",
-  "pex": {
-    "backend_disabled": true,
-    "decision_count": 1,
-    "execution_wall_seconds": 126.563735,
-    "followups": 0,
-    "human_interventions": 0,
-    "interventions": 0,
-    "pex_version": "224c43cf2ad5c220dbdfdbc8340a563dea554b3b59d4fe23d063b3330c33bf2c",
-    "raw_log_sha256": "85b7cc70b18d2876deff0fb7e3fe76cc0586815f7256a32beb2454a11f320242",
-    "success": true,
-    "supervisor_wall_seconds": 1.261313,
-    "tool_calls": 20,
-    "used_llm": false,
-    "worker_wall_seconds": 125.302422
-  },
   "run_id": "current-paired-7cfc7f4",
-  "same_harness_identity_sha256": true,
-  "same_prompt_sha256": true,
-  "same_seed_manifest_sha256": true,
-  "same_worker_config_sha256": true,
-  "schema_version": 1,
-  "task": "pexbench_001_premature_stop",
+  "schema_version": 2,
+  "task_pairs": [
+    {
+      "baseline": {
+        "execution_wall_seconds": 95.604024,
+        "human_interventions": 0,
+        "raw_log_sha256": "21efb13e6289c9b477f5c47847755eb43b99cad1d527e4d122cc21953023b757",
+        "success": true,
+        "tool_calls": 14
+      },
+      "observed_delta": {
+        "execution_wall_seconds": 30.959711,
+        "tool_calls": 6
+      },
+      "pex": {
+        "backend_disabled": true,
+        "decision_count": 1,
+        "execution_wall_seconds": 126.563735,
+        "followups": 0,
+        "human_interventions": 0,
+        "interventions": 0,
+        "raw_log_sha256": "85b7cc70b18d2876deff0fb7e3fe76cc0586815f7256a32beb2454a11f320242",
+        "success": true,
+        "supervisor_wall_seconds": 1.261313,
+        "tool_calls": 20,
+        "used_llm": false
+      },
+      "provenance_match": {
+        "harness_identity": true,
+        "prompt": true,
+        "seed_manifest": true,
+        "worker_config": true
+      },
+      "task": "pexbench_001_premature_stop"
+    },
+    {
+      "baseline": {
+        "execution_wall_seconds": 83.601189,
+        "human_interventions": 0,
+        "raw_log_sha256": "cec14496ca10312d2bdc54ea2546bde4155e914ac0fe35c05ac8c40bbd8eea43",
+        "success": true,
+        "tool_calls": 12
+      },
+      "observed_delta": {
+        "execution_wall_seconds": 8.983451,
+        "tool_calls": 2
+      },
+      "pex": {
+        "backend_disabled": true,
+        "decision_count": 1,
+        "execution_wall_seconds": 92.58464,
+        "followups": 0,
+        "human_interventions": 0,
+        "interventions": 0,
+        "raw_log_sha256": "5910c7cc69a9bfe294050ab17ea83fe6d63b377dff160b7bdfb8ff957c52993f",
+        "success": true,
+        "supervisor_wall_seconds": 1.727846,
+        "tool_calls": 14,
+        "used_llm": false
+      },
+      "provenance_match": {
+        "harness_identity": true,
+        "prompt": true,
+        "seed_manifest": true,
+        "worker_config": true
+      },
+      "task": "pexbench_002_drift"
+    },
+    {
+      "baseline": {
+        "execution_wall_seconds": 79.003169,
+        "human_interventions": 0,
+        "raw_log_sha256": "2e3e80943958b4a38668278b55592b6434fe8db6ab8b27283f1bce98c220b2dc",
+        "success": true,
+        "tool_calls": 16
+      },
+      "observed_delta": {
+        "execution_wall_seconds": 13.082658,
+        "tool_calls": 2
+      },
+      "pex": {
+        "backend_disabled": true,
+        "decision_count": 1,
+        "execution_wall_seconds": 92.085827,
+        "followups": 0,
+        "human_interventions": 0,
+        "interventions": 0,
+        "raw_log_sha256": "1d1af89992c8311b2b8a26c6d88e8ff905e78a1026d53ba05dfd15622b6d42f7",
+        "success": true,
+        "supervisor_wall_seconds": 1.878944,
+        "tool_calls": 18,
+        "used_llm": false
+      },
+      "provenance_match": {
+        "harness_identity": true,
+        "prompt": true,
+        "seed_manifest": true,
+        "worker_config": true
+      },
+      "task": "pexbench_003_permission_spam"
+    },
+    {
+      "baseline": {
+        "execution_wall_seconds": 187.324605,
+        "human_interventions": 0,
+        "raw_log_sha256": "00ec681ce3b8efe7b4e829554e91fdb562a6dc019e83e83d2ef1e1724d28c89f",
+        "success": true,
+        "tool_calls": 32
+      },
+      "observed_delta": {
+        "execution_wall_seconds": -55.582072,
+        "tool_calls": -16
+      },
+      "pex": {
+        "backend_disabled": true,
+        "decision_count": 1,
+        "execution_wall_seconds": 131.742533,
+        "followups": 0,
+        "human_interventions": 0,
+        "interventions": 0,
+        "raw_log_sha256": "f7c0b59183e3f5154c1584fb7992811b42e225f50d2c553260e57596dd3c16ed",
+        "success": true,
+        "supervisor_wall_seconds": 1.759714,
+        "tool_calls": 16,
+        "used_llm": false
+      },
+      "provenance_match": {
+        "harness_identity": true,
+        "prompt": true,
+        "seed_manifest": true,
+        "worker_config": true
+      },
+      "task": "pexbench_004_false_claim"
+    },
+    {
+      "baseline": {
+        "execution_wall_seconds": 89.153795,
+        "human_interventions": 0,
+        "raw_log_sha256": "820ca050ea3730ffc6881680d27d0a65ac879c327a1b26c433ff88eb4ea6b508",
+        "success": true,
+        "tool_calls": 16
+      },
+      "observed_delta": {
+        "execution_wall_seconds": -13.455213,
+        "tool_calls": -2
+      },
+      "pex": {
+        "backend_disabled": true,
+        "decision_count": 1,
+        "execution_wall_seconds": 75.698582,
+        "followups": 0,
+        "human_interventions": 0,
+        "interventions": 0,
+        "raw_log_sha256": "14765f2199242e2c57b60d03611cca75c39e3a02fff36c4702d2b8dc0401ff84",
+        "success": true,
+        "supervisor_wall_seconds": 1.972316,
+        "tool_calls": 14,
+        "used_llm": false
+      },
+      "provenance_match": {
+        "harness_identity": true,
+        "prompt": true,
+        "seed_manifest": true,
+        "worker_config": true
+      },
+      "task": "pexbench_005_handoff"
+    }
+  ],
   "worker_model": "gpt-5.6-sol"
 }

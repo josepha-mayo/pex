@@ -39,9 +39,9 @@ technology. Stage two scores four equally weighted criteria:
 
 ## Remaining release order
 
-1. Expand the current one-task Codex diagnostic into a multi-task paired study;
-   the retained first pair proves the runner path and reports observed overhead,
-   but does not establish general performance lift.
+1. Extend the current five-task Codex recovery diagnostic to natural repository
+   tasks and repeated trials; the retained pairs prove the runner path and
+   report observed overhead, but do not establish general performance lift.
 2. Repeat the bounded live recovery on the cooldown-fixed source without paid
    usage, or use a sponsor-provided credit balance with a verified cutoff.
 3. Build and verify current Windows and Debian artifacts.
