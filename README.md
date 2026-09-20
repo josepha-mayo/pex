@@ -361,4 +361,5 @@ benchmark score is claimed.
 - Devpost copy: [`devpost-submission.md`](devpost-submission.md)
 - Architecture: [`docs/architecture/overview.md`](docs/architecture/overview.md)
 - Hackathon diagram: [`docs/architecture/hackathon.md`](docs/architecture/hackathon.md)
+- Official requirement matrix: [`docs/HACKATHON_REQUIREMENTS.md`](docs/HACKATHON_REQUIREMENTS.md)
 - Why not an orchestrator: [`docs/DIFFERENTIATION.md`](docs/DIFFERENTIATION.md)
