@@ -1371,6 +1371,37 @@ def test_benchmark_supervisor_rejects_linked_workspace_entries(tmp_path, monkeyp
         attach._assert_unlinked_workspace(tmp_path)
 
 
+def test_benchmark_supervisor_prunes_ignored_cache_before_descent(tmp_path, monkeypatch):
+    attach = _pex_attach()
+    cache = tmp_path / ".pytest_cache"
+    source = tmp_path / "src"
+
+    def controlled_walk(*_args, **_kwargs):
+        names = [cache.name, source.name]
+        yield str(tmp_path), names, []
+        assert cache.name not in names
+        yield str(source), [], []
+
+    monkeypatch.setattr(attach.os, "walk", controlled_walk)
+    monkeypatch.setattr(attach, "_is_link_like", lambda _path: False)
+
+    attach._assert_unlinked_workspace(tmp_path)
+
+
+def test_benchmark_supervisor_rejects_linked_ignored_cache(tmp_path, monkeypatch):
+    attach = _pex_attach()
+    cache = tmp_path / ".pytest_cache"
+
+    def controlled_walk(*_args, **_kwargs):
+        yield str(tmp_path), [cache.name], []
+
+    monkeypatch.setattr(attach.os, "walk", controlled_walk)
+    monkeypatch.setattr(attach, "_is_link_like", lambda path: path == cache)
+
+    with pytest.raises(RuntimeError, match="linked ignored path"):
+        attach._assert_unlinked_workspace(tmp_path)
+
+
 def test_public_supervisor_response_is_identity_bound_and_sanitized():
     attach = _pex_attach()
     raw = {
@@ -3914,6 +3945,70 @@ async def test_codex_test_double_is_never_labeled_live(tmp_path, monkeypatch):
     blockers = four.freeze_blockers()
     assert any("cursor/" in b for b in blockers)
     assert any("codex_pex/" in b for b in blockers)
+
+
+async def test_codex_diagnostic_is_kept_out_of_immutable_results(tmp_path, monkeypatch):
+    from pex_bridge.adapters.codex import CodexAppServerTransport
+
+    four = _four_arm()
+    results = tmp_path / "results"
+    monkeypatch.setattr(four.runner, "RESULTS", results)
+    monkeypatch.setattr(
+        four.runner,
+        "append_immutable",
+        lambda *_args, **_kwargs: pytest.fail("diagnostic reached immutable results"),
+    )
+
+    result = await four.run_live(
+        "codex",
+        "pexbench_001_premature_stop",
+        "safe_diagnostic",
+        transport=CodexAppServerTransport(),
+        workspace_root=tmp_path / "ws-diagnostic",
+        diagnostic_only=True,
+    )
+
+    expected = (
+        results
+        / "_scratch"
+        / "_diagnostics"
+        / "safe_diagnostic"
+        / "codex"
+        / "pexbench_001_premature_stop"
+        / "result.json"
+    )
+    assert Path(result["written"]) == expected
+    assert result["run_status"] == "diagnostic_only"
+    assert result["not_a_presentation_arm"] is True
+    assert json.loads(expected.read_text(encoding="utf-8"))["run_status"] == "diagnostic_only"
+
+
+async def test_codex_diagnostic_rejects_non_recovery_task(tmp_path, monkeypatch):
+    from pex_bridge.adapters.codex import CodexAppServerTransport
+
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    with pytest.raises(RuntimeError, match="controlled recovery tasks"):
+        await four.run_live(
+            "codex",
+            "pexbench_006_quixbugs_wrap",
+            "unsafe_diagnostic",
+            transport=CodexAppServerTransport(),
+            workspace_root=tmp_path / "ws-diagnostic",
+            diagnostic_only=True,
+        )
+
+
+async def test_diagnostic_rejects_cursor_before_writing_results(tmp_path, monkeypatch):
+    four = _four_arm()
+    monkeypatch.setattr(four.runner, "RESULTS", tmp_path / "results")
+    with pytest.raises(RuntimeError, match="Codex arms only"):
+        await four.run_live(
+            "cursor",
+            "pexbench_001_premature_stop",
+            "unsafe_cursor_diagnostic",
+            diagnostic_only=True,
+        )
 
 
 async def test_treatment_arm_attaches_supervisor_without_better_prompt(tmp_path, monkeypatch):

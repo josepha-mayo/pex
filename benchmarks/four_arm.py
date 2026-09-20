@@ -2897,8 +2897,13 @@ async def run_live(
     stop_payload: dict[str, Any] | None = None,
     bridge_url: str | None = None,
     wait_cursor_stop: bool = False,
+    diagnostic_only: bool = False,
 ) -> dict[str, Any]:
     """Isolated live run. Cursor never opens a second window. Codex only thread/start."""
+    if diagnostic_only and arm not in {"codex", "codex_pex"}:
+        raise RuntimeError("live diagnostics currently support Codex arms only")
+    if diagnostic_only and task_id not in evaluator.RECOVERY_TASK_IDS:
+        raise RuntimeError("live diagnostics are limited to controlled recovery tasks")
     if arm in {"cursor", "cursor_pex"}:
         return await run_live_this_cursor(
             arm,
@@ -2937,7 +2942,7 @@ async def run_live(
         )
     if isinstance(transport, CodexStdioTransport) and not worker_model:
         raise RuntimeError("live Codex arms require an explicit --worker-model for parity")
-    presentation_candidate = isinstance(transport, CodexStdioTransport)
+    presentation_candidate = isinstance(transport, CodexStdioTransport) and not diagnostic_only
     task_budget = float(runner.protocol_config()["budget"]["task_wall_seconds"])
     if presentation_candidate:
         preflight = _execution_preflight_blockers(arm)
@@ -3253,7 +3258,19 @@ async def run_live(
             "reasons": result["reasons"],
             "ts": datetime.now(UTC).isoformat(),
         }
-        path = runner.append_immutable(run_id, record)
+        if diagnostic_only:
+            record["run_status"] = "diagnostic_only"
+            record["not_a_presentation_arm"] = True
+            path = (
+                runner.RESULTS / "_scratch" / "_diagnostics" / run_id / arm / task_id
+                / "result.json"
+            )
+            if _path_has_link_component(path, runner.RESULTS):
+                raise RuntimeError("refusing a linked diagnostic result path")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            _write_text_fsync(path, json.dumps(record, sort_keys=True, allow_nan=False) + "\n")
+        else:
+            path = runner.append_immutable(run_id, record)
         result.update(record)
         result["written"] = str(path)
         return result
@@ -3307,6 +3324,7 @@ def main() -> None:
     parser.add_argument("--worker-model", default=None)
     parser.add_argument("--pex-bridge-url", default=None)
     parser.add_argument("--wait-cursor-stop", action="store_true")
+    parser.add_argument("--diagnostic-only", action="store_true")
     args = parser.parse_args()
     if args.command == "readiness":
         print(json.dumps(readiness(), indent=2))
@@ -3393,7 +3411,11 @@ def main() -> None:
     if args.arm in PRESENTATION_ARMS:
         if not args.allow_live:
             raise SystemExit("presentation arms require --allow-live")
-        preflight = _execution_preflight_blockers(args.arm)
+        if args.diagnostic_only and args.arm not in {"codex", "codex_pex"}:
+            raise SystemExit("--diagnostic-only currently supports Codex arms only")
+        if args.diagnostic_only and args.task not in evaluator.RECOVERY_TASK_IDS:
+            raise SystemExit("--diagnostic-only is limited to controlled recovery tasks")
+        preflight = [] if args.diagnostic_only else _execution_preflight_blockers(args.arm)
         if preflight:
             raise SystemExit(
                 "benchmark execution preflight is NO-GO: " + "; ".join(preflight)
@@ -3411,6 +3433,7 @@ def main() -> None:
                         stop_payload=None,
                         bridge_url=args.pex_bridge_url,
                         wait_cursor_stop=args.wait_cursor_stop,
+                        diagnostic_only=args.diagnostic_only,
                     )
                 ),
                 indent=2,

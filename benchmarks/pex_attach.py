@@ -20,7 +20,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from tempfile import TemporaryDirectory
 from typing import Any
 
-from pex_bridge.observe import HIDDEN_NAME_MARKERS, snapshot
+from pex_bridge.observe import HIDDEN_NAME_MARKERS, IGNORED_PARTS, snapshot
 from pex_protocol.actions import InterventionType, ProposedAction
 from pex_protocol.enums import HarnessType, SessionStatus
 from pex_protocol.session import HarnessSession
@@ -86,6 +86,15 @@ def _assert_unlinked_workspace(workspace: Path) -> None:
         followlinks=False,
     ):
         base = Path(directory)
+        # Codex may create cache directories under a sandbox-owned ACL that the
+        # controller cannot traverse on Windows. They are already excluded from
+        # canonical workspace observations; prune them before os.walk descends.
+        ignored = {name for name in names if name.casefold() in IGNORED_PARTS}
+        for name in ignored:
+            candidate = base / name
+            if _is_link_like(candidate):
+                raise RuntimeError("refusing a linked ignored path in the supervised workspace")
+        names[:] = [name for name in names if name not in ignored]
         entries += len(names) + len(filenames)
         if entries > 20_000:
             raise RuntimeError("supervisor workspace exceeds the link-audit entry bound")
