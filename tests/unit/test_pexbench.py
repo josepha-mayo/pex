@@ -4011,6 +4011,23 @@ async def test_diagnostic_rejects_cursor_before_writing_results(tmp_path, monkey
         )
 
 
+@pytest.mark.parametrize(
+    ("server_info", "expected"),
+    [
+        ({"version": "1.2.3"}, "1.2.3"),
+        ({"userAgent": "pex/0.155.0-alpha.9.2 (Windows 11)"}, "0.155.0-alpha.9.2"),
+        (
+            {"serverInfo": {"user_agent": "pex/0.156.0+build.7 (linux; x86_64)"}},
+            "0.156.0+build.7",
+        ),
+        ({"userAgent": "malformed"}, "unknown"),
+        ({"userAgent": "pex/version with spaces"}, "unknown"),
+    ],
+)
+def test_codex_harness_version_uses_initialize_user_agent(server_info, expected):
+    assert _four_arm()._codex_harness_version(server_info) == expected
+
+
 async def test_treatment_arm_attaches_supervisor_without_better_prompt(tmp_path, monkeypatch):
     from pex_bridge.adapters.codex import CodexAppServerTransport
 

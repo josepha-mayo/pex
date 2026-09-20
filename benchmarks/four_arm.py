@@ -2367,14 +2367,30 @@ def _codex_harness_version(server_info: object) -> str:
     if not isinstance(server_info, dict):
         return "unknown"
     candidates = [server_info.get("version")]
+    user_agents = [server_info.get("userAgent"), server_info.get("user_agent")]
     for key in ("serverInfo", "server_info"):
         nested = server_info.get(key)
         if isinstance(nested, dict):
             candidates.append(nested.get("version"))
+            user_agents.extend((nested.get("userAgent"), nested.get("user_agent")))
     version = next(
         (str(value).strip() for value in candidates if str(value or "").strip()),
-        "unknown",
+        "",
     )
+    if not version:
+        for value in user_agents:
+            user_agent = str(value or "").strip()
+            _client, separator, remainder = user_agent.partition("/")
+            if not separator:
+                continue
+            token = remainder.split(maxsplit=1)[0].strip()
+            if token[:1].isdigit() and all(
+                character.isalnum() or character in ".+-_" for character in token
+            ):
+                version = token
+                break
+    if not version:
+        return "unknown"
     if len(version) > 256 or any(ord(character) < 32 for character in version):
         return "unknown"
     return version
