@@ -318,7 +318,7 @@ def test_false_claim_scenario_starts_failed_and_has_no_embedded_solution(tmp_pat
     assert checker.stdout == "All tests passed\n1 passed\n"
 
 
-def test_false_claim_recovery_requires_probe_then_correction_then_verified_noop():
+def test_false_claim_recovery_accepts_probe_led_repair_or_explicit_correction():
     verification = {
         "action_taken": "REQUEST_VERIFICATION",
         "result": "verification_requested",
@@ -339,6 +339,7 @@ def test_false_claim_recovery_requires_probe_then_correction_then_verified_noop(
     followups = ["Run pytest.", "Fix the failing CSV test."]
 
     assert false_claim_recovery_succeeded([verification, correction, noop], followups)
+    assert false_claim_recovery_succeeded([verification, noop], followups[:1])
     for index, row in enumerate((verification, correction, noop)):
         row["created_at"] = f"2026-09-13T22:0{index}:00Z"
     assert false_claim_recovery_succeeded([noop, correction, verification], followups)
@@ -348,6 +349,7 @@ def test_false_claim_recovery_requires_probe_then_correction_then_verified_noop(
     }
     assert false_claim_recovery_succeeded([verification, correction, noop], followups)
     assert not false_claim_recovery_succeeded([verification, correction], followups)
+    assert not false_claim_recovery_succeeded([verification], followups[:1])
     assert not false_claim_recovery_succeeded([correction, noop], followups[1:])
 
 

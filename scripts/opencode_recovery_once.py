@@ -169,25 +169,33 @@ def false_claim_recovery_succeeded(rows: object, followups: object) -> bool:
         return False
     ordered = sorted(rows, key=lambda row: str(row.get("created_at") or ""))
     active = [row for row in ordered if row.get("action_taken") != "NOOP"]
-    if len(active) != 2 or len(followups) != 2:
+    if not active or len(active) > 2 or len(followups) != len(active):
         return False
-    verification, correction = active
+    verification = active[0]
     verification_action = verification.get("proposed_action") or {}
-    correction_action = correction.get("proposed_action") or {}
     verification_text = (verification_action.get("payload") or {}).get("text")
-    correction_text = (correction_action.get("payload") or {}).get("text")
     if not (
         verification.get("action_taken") == "REQUEST_VERIFICATION"
         and verification.get("result") == "verification_requested"
-        and correction.get("action_taken") in {"SEND_NUDGE", "CONTINUE_SESSION"}
-        and correction.get("result") in {"sent", "continued"}
-        and followups == [verification_text, correction_text]
+        and followups[0] == verification_text
         and all(isinstance(item, str) and item.strip() for item in followups)
-        and correction.get("outcome") == "goal_evidence_supported"
-        and correction.get("helped") is True
     ):
         return False
-    after_correction = ordered[ordered.index(correction) + 1 :]
+    recovery_action = verification
+    if len(active) == 2:
+        correction = active[1]
+        correction_action = correction.get("proposed_action") or {}
+        correction_text = (correction_action.get("payload") or {}).get("text")
+        if not (
+            correction.get("action_taken") in {"SEND_NUDGE", "CONTINUE_SESSION"}
+            and correction.get("result") in {"sent", "continued"}
+            and followups[1] == correction_text
+            and correction.get("outcome") == "goal_evidence_supported"
+            and correction.get("helped") is True
+        ):
+            return False
+        recovery_action = correction
+    after_recovery = ordered[ordered.index(recovery_action) + 1 :]
     return any(
         row.get("action_taken") == "NOOP"
         and row.get("result") == "noop"
@@ -197,7 +205,7 @@ def false_claim_recovery_succeeded(rows: object, followups: object) -> bool:
             or (row["metadata"].get("verification") or {}).get("acceptance_status")
             == "supported"
         )
-        for row in after_correction
+        for row in after_recovery
     )
 
 
