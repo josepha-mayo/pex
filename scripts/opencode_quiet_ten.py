@@ -50,6 +50,7 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
         choices=PROOF_WORKER_MODELS,
         default="ling-3.0-flash-fin-free",
     )
+    parser.add_argument("--arm", choices=("baseline", "pex"), default="pex")
     args = parser.parse_args()
     if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,100}", args.run_name) is None:
         parser.error("--run-name must contain lowercase letters, digits and hyphens only")
@@ -194,6 +195,19 @@ def source_is_clean():
     ).strip()
 
 
+def public_case_contract(case):
+    name, seed_name, seed, output_name, expected, objective = case
+    criterion = (
+        f"{output_name} contains exactly {expected} followed by one LF newline (U+000A), no CR"
+    )
+    task = (
+        f"Work only in this workspace. Read {seed_name}. {objective} "
+        f"Write {output_name}. Acceptance: {criterion}. Preserve the input file. "
+        "Verify your result before reporting completion."
+    )
+    return name, seed_name, seed, output_name, expected, objective, criterion, task
+
+
 async def run_case(number, case, model, server):
     from benchmarks.opencode_completion import (
         QuietCompletionFence,
@@ -204,9 +218,12 @@ async def run_case(number, case, model, server):
         semantic_reviews_succeeded,
     )
 
-    name, seed_name, seed, output_name, expected, objective = case
+    name = case[0]
     case_root = ROOT / f"case-{number:02d}-{name}"
     workspace = case_root / "workspace"
+    name, seed_name, seed, output_name, expected, objective, criterion, task = (
+        public_case_contract(case)
+    )
     workspace.mkdir(parents=True, exist_ok=False)
     subprocess.run(
         ["git", "init", "--quiet", str(workspace)],
@@ -214,14 +231,6 @@ async def run_case(number, case, model, server):
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     (workspace / seed_name).write_bytes(seed.encode())
-    criterion = (
-        f"{output_name} contains exactly {expected} followed by one LF newline (U+000A), no CR"
-    )
-    task = (
-        f"Work only in {workspace}. Read {seed_name}. {objective} "
-        f"Write {output_name}. Acceptance: {criterion}. Preserve the input file. "
-        "Verify your result before reporting completion."
-    )
     write_json(case_root / "public-task.json", {"task": task, "criterion": criterion})
     store = Store(case_root / "pex.sqlite")
     await store.connect()
@@ -426,6 +435,8 @@ async def run_case(number, case, model, server):
         receipt = {
             "case": name,
             "number": number,
+            "arm": "pex",
+            "pex_attached": True,
             "passed": passed,
             "worker_completed_correctly": bool(exact and preserved and worker_completed),
             "worker_completion_fence_passed": worker_completed,
@@ -457,6 +468,7 @@ async def run_case(number, case, model, server):
             "output_tokens": sum(r.get("output_tokens") or 0 for r in reviews),
             "model_call_count": sum(r.get("model_call_count") or 0 for r in reviews),
             "worker_model": WORKER_MODEL,
+            "worker_provider": WORKER_PROVIDER,
             "supervisor_model": SUPERVISOR_MODEL,
             "comparative_benchmark": False,
             "native_desktop_supervision": False,
@@ -478,6 +490,215 @@ async def run_case(number, case, model, server):
                 await transport.aclose()
             finally:
                 await store.close()
+
+
+async def run_baseline_case(number, case, server):
+    """Run the identical public task without constructing or ingesting into PEX."""
+
+    from benchmarks.opencode_completion import (
+        QuietCompletionFence,
+        belongs_to_case,
+        completed_generation,
+        retryable_provider_abort,
+    )
+
+    name = case[0]
+    case_root = ROOT / f"case-{number:02d}-{name}"
+    workspace = case_root / "workspace"
+    name, seed_name, seed, output_name, expected, objective, criterion, task = (
+        public_case_contract(case)
+    )
+    workspace.mkdir(parents=True, exist_ok=False)
+    subprocess.run(
+        ["git", "init", "--quiet", str(workspace)],
+        check=True,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    (workspace / seed_name).write_bytes(seed.encode())
+    write_json(case_root / "public-task.json", {"task": task, "criterion": criterion})
+
+    transport = LiveHttpTransport(ORIGIN)
+    registry = AdapterRegistry()
+    registry.opencode.attach_transport(transport)
+    observed_events = {}
+    first_stop = None
+    first_stop_at = None
+    case_session_id = None
+
+    async def observed_capture(event, observed_session):
+        nonlocal first_stop, first_stop_at
+        if not belongs_to_case(event, observed_session, case_session_id):
+            return
+        observed_events[event.event_id] = event
+        if event.event_type.value == "stop" and first_stop is None:
+            first_stop_at = time.monotonic()
+            artifact = workspace / output_name
+            raw = artifact.read_bytes() if artifact.is_file() else None
+            first_stop = {
+                "event_id": event.event_id,
+                "session_id": event.session_id,
+                "observed_at": datetime.now(UTC).isoformat(),
+                "exact_output": raw == (expected + "\n").encode(),
+                "observed_bytes_hex": raw.hex() if raw is not None else None,
+                "input_preserved": (workspace / seed_name).read_bytes() == seed.encode(),
+                "prior_followup_count": 0,
+            }
+            write_json(case_root / "first-stop-observation.json", first_stop)
+
+    pump = registry.opencode.start_pipeline_pump(observed_capture)
+    started = time.monotonic()
+    try:
+        async with asyncio.timeout(15):
+            while "/global/event" not in transport.connected_sse_paths:
+                await asyncio.sleep(0.1)
+        created = await transport.request(
+            "POST",
+            f"/session?directory={quote(str(workspace), safe='')}",
+            json={"title": f"Baseline artifact check {number}"},
+        )
+        vendor = created["id"]
+        session = next(
+            item
+            for item in await registry.opencode.discover_sessions()
+            if item.vendor_session_id == vendor
+        )
+        case_session_id = session.id
+        now = datetime.now(UTC)
+        goal = Goal(
+            id=new_id("goal_"),
+            project_id=str(workspace),
+            title=objective,
+            objective=objective,
+            acceptance_criteria=[criterion],
+            constraints=[f"Preserve {seed_name} unchanged."],
+            evidence_requirements=[output_name],
+            created_at=now,
+            updated_at=now,
+        )
+        write_json(case_root / "goal.json", goal.model_dump(mode="json"))
+        await transport.request(
+            "POST",
+            registry.opencode._scoped_path(f"/session/{vendor}/prompt_async", str(workspace)),
+            json={
+                "model": {"providerID": WORKER_PROVIDER, "modelID": WORKER_MODEL},
+                "parts": [{"type": "text", "text": task}],
+            },
+        )
+
+        fence = QuietCompletionFence()
+        generation = None
+        messages = []
+        statuses = None
+        completion_fence_passed = False
+        while time.monotonic() < _case_deadline(started, first_stop_at):
+            if server.poll() is not None:
+                raise RuntimeError("owned server exited")
+            messages = await transport.request(
+                "GET", registry.opencode._scoped_path(f"/session/{vendor}/message", str(workspace))
+            )
+            statuses = await transport.request(
+                "GET", registry.opencode._scoped_path("/session/status", str(workspace))
+            )
+            generation = completed_generation(messages, statuses, vendor, minimum_user_count=1)
+            completion_fence_passed = fence.observe(
+                now=time.monotonic(),
+                generation=generation,
+                event_ids=tuple(observed_events),
+                followup_count=0,
+                reviews_present=True,
+                journal_complete=True,
+            )
+            if completion_fence_passed:
+                break
+            await asyncio.sleep(1)
+
+        messages = await transport.request(
+            "GET", registry.opencode._scoped_path(f"/session/{vendor}/message", str(workspace))
+        )
+        statuses = await transport.request(
+            "GET", registry.opencode._scoped_path("/session/status", str(workspace))
+        )
+        final_generation = completed_generation(messages, statuses, vendor, minimum_user_count=1)
+        infrastructure_abort_reason = retryable_provider_abort(messages, vendor)
+        final_fence_passed = fence.observe(
+            now=time.monotonic(),
+            generation=final_generation,
+            event_ids=tuple(observed_events),
+            followup_count=0,
+            reviews_present=True,
+            journal_complete=True,
+        )
+        worker_completed = bool(
+            completion_fence_passed
+            and final_fence_passed
+            and final_generation
+            and final_generation == generation
+        )
+        output_path = workspace / output_name
+        exact = output_path.is_file() and output_path.read_bytes() == (expected + "\n").encode()
+        preserved = (workspace / seed_name).read_bytes() == seed.encode()
+        initially_correct = bool(
+            first_stop
+            and first_stop["exact_output"]
+            and first_stop["input_preserved"]
+            and first_stop["prior_followup_count"] == 0
+        )
+        passed = bool(
+            initially_correct
+            and exact
+            and preserved
+            and worker_completed
+            and infrastructure_abort_reason is None
+        )
+        receipt = {
+            "case": name,
+            "number": number,
+            "arm": "baseline",
+            "pex_attached": False,
+            "passed": passed,
+            "worker_completed_correctly": bool(exact and preserved and worker_completed),
+            "worker_completion_fence_passed": worker_completed,
+            "latest_completed_generation": final_generation,
+            "observation_incomplete": not worker_completed,
+            "infrastructure_abort_reason": infrastructure_abort_reason,
+            "initially_correct_before_pex_review": initially_correct,
+            "first_stop_observation": first_stop,
+            "semantic_review_count": 0,
+            "all_semantic_reviews_completed": None,
+            "completion_stop_review_completed": None,
+            "unnecessary_interruption": False,
+            "session_id": session.id,
+            "goal_id": goal.id,
+            "wall_seconds": round(time.monotonic() - started, 2),
+            "exact_output": exact,
+            "input_preserved": preserved,
+            "all_observed_events_settled": None,
+            "event_count": len(observed_events),
+            "actions": [],
+            "followup_count": 0,
+            "input_tokens": None,
+            "output_tokens": None,
+            "model_call_count": 0,
+            "worker_model": WORKER_MODEL,
+            "worker_provider": WORKER_PROVIDER,
+            "supervisor_model": None,
+            "comparative_benchmark": False,
+            "native_desktop_supervision": False,
+        }
+        write_json(case_root / "worker-messages.json", messages)
+        write_json(case_root / "worker-statuses.json", statuses)
+        write_json(
+            case_root / "events.json",
+            [event.model_dump(mode="json") for event in observed_events.values()],
+        )
+        write_json(case_root / "journal.json", [])
+        write_json(case_root / "interventions.json", [])
+        write_json(case_root / "receipt.json", receipt)
+        return receipt
+    finally:
+        pump.cancel()
+        await asyncio.gather(pump, return_exceptions=True)
+        await transport.aclose()
 
 
 async def main():
@@ -552,14 +773,16 @@ async def main():
         },
     )
     before_env = {key: os.environ.get(key) for key in pin}
-    os.environ.update(pin)
+    if args.arm == "pex":
+        os.environ.update(pin)
     results = []
     error_type = None
     server = None
     selected_cases = CASES[START_CASE - 1 : START_CASE - 1 + args.case_count]
     try:
-        model = load_supervisor_model()
-        assert model is not None
+        model = load_supervisor_model() if args.arm == "pex" else None
+        if args.arm == "pex" and model is None:
+            raise RuntimeError("saved supervisor model did not construct")
         with (ROOT / "server.log").open("x", encoding="utf-8") as log:
             server = subprocess.Popen(
                 [
@@ -588,7 +811,11 @@ async def main():
                         except httpx.HTTPError:
                             await asyncio.sleep(0.5)
             for number, case in enumerate(selected_cases, START_CASE):
-                receipt = await run_case(number, case, model, server)
+                receipt = (
+                    await run_case(number, case, model, server)
+                    if args.arm == "pex"
+                    else await run_baseline_case(number, case, server)
+                )
                 results.append(receipt)
                 print(json.dumps(receipt), flush=True)
                 if not receipt["passed"]:
@@ -617,6 +844,10 @@ async def main():
                 os.environ[key] = value
     result = {
         "source_commit": start_commit,
+        "arm": args.arm,
+        "pex_attached": args.arm == "pex",
+        "worker_model": WORKER_MODEL,
+        "worker_provider": WORKER_PROVIDER,
         "source_unchanged": source_commit() == start_commit and source_is_clean(),
         "cases": results,
         "error_type": error_type,

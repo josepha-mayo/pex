@@ -18,8 +18,10 @@ from benchmarks.opencode_completion import (
 from benchmarks.opencode_proof_route import proof_worker_route, resolve_opencode_executable
 from scripts.opencode_quiet_ten import (
     CASE_TIMEOUT_SECONDS,
+    CASES,
     POST_STOP_REVIEW_GRACE_SECONDS,
     _case_deadline,
+    public_case_contract,
 )
 from scripts.opencode_recovery_once import (
     INITIAL_PROOF_SECONDS,
@@ -100,6 +102,23 @@ def test_quiet_runner_binds_route_before_secret_access_and_is_cross_platform():
     assert "NEBIUS_API_KEY" not in source
     assert 'getattr(subprocess, "CREATE_NO_WINDOW", 0)' in source
     assert "creationflags=subprocess.CREATE_NO_WINDOW" not in source
+
+
+def test_quiet_baseline_uses_the_same_public_contract_without_a_pex_pipeline():
+    baseline = public_case_contract(CASES[0])
+    treatment = public_case_contract(CASES[0])
+
+    assert baseline == treatment
+    assert "Work only in this workspace." in baseline[7]
+
+    runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
+    source = runner.read_text(encoding="utf-8")
+    baseline_source = source[
+        source.index("async def run_baseline_case") : source.index("async def main")
+    ]
+    assert "Pipeline(" not in baseline_source
+    assert "pipeline.ingest_event" not in baseline_source
+    assert '"pex_attached": False' in baseline_source
 
 
 def test_recovery_runner_reserves_review_time_after_each_late_stop():
@@ -319,6 +338,7 @@ def test_completion_event_must_be_observed(event_id):
     (["--run-name", "../outside"], 2),
     (["--run-name", "safe", "--case-count", "0"], 2),
     (["--run-name", "safe", "--case-count", "11"], 2),
+    (["--run-name", "safe", "--arm", "unknown"], 2),
 ])
 def test_live_runner_requires_explicit_valid_run_name_before_any_work(args, code):
     root = Path(__file__).resolve().parents[2]
