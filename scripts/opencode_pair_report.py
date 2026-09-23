@@ -62,6 +62,7 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
         "worker_provider",
         "worker_credential_source",
         "supervisor_provider",
+        "pex_mode",
     ):
         if baseline.get(field) != treatment.get(field):
             blockers.append(f"paired {field} mismatch")
@@ -150,13 +151,21 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             "pex_followups": sum(int(row["pex_followup_count"] or 0) for row in pairs),
             "pex_model_calls": sum(int(row["pex_model_call_count"] or 0) for row in pairs),
         }
+    pex_mode = baseline.get("pex_mode") if comparable else None
+    deterministic = pex_mode == "deterministic"
     return {
         "schema": "pex.opencode-paired-diagnostic.v1",
         "comparable": comparable,
         "comparative_benchmark": False,
         "claim_boundary": (
-            "A bounded paired diagnostic over small public artifact tasks. It is not a "
-            "general productivity benchmark or leaderboard result."
+            "A bounded paired diagnostic over small public artifact tasks. "
+            + (
+                "PEX semantic supervision was explicitly disabled; only attachment, "
+                "observation, deterministic policy, restraint, and overhead are measured. "
+                if deterministic
+                else ""
+            )
+            + "It is not a general productivity benchmark or leaderboard result."
         ),
         "source_commit": baseline.get("source_commit") if comparable else None,
         "worker_provider": baseline.get("worker_provider") if comparable else None,
@@ -165,6 +174,8 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             baseline.get("worker_credential_source") if comparable else None
         ),
         "supervisor_provider": baseline.get("supervisor_provider") if comparable else None,
+        "pex_mode": pex_mode,
+        "semantic_supervision_enabled": False if deterministic else (True if comparable else None),
         "blockers": blockers,
         "pairs": pairs,
         "metrics": metrics,

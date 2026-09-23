@@ -20,6 +20,7 @@ def write_pair(tmp_path):
         "completion_fence_sha256": "c" * 64,
         "worker_model": "ling-3.0-flash-fin-free",
         "worker_provider": "opencode",
+        "pex_mode": "semantic",
     }
     base_case = {
         "number": 1,
@@ -62,6 +63,8 @@ def test_open_code_pair_report_requires_and_reports_a_true_pair(tmp_path):
     assert report["comparable"] is True
     assert report["comparative_benchmark"] is False
     assert report["blockers"] == []
+    assert report["pex_mode"] == "semantic"
+    assert report["semantic_supervision_enabled"] is True
     assert report["metrics"] == {
         "case_count": 1,
         "baseline_successes": 1,
@@ -89,6 +92,22 @@ def test_open_code_pair_report_fails_closed_on_task_or_route_drift(tmp_path):
     assert report["metrics"] is None
     assert "paired worker_provider mismatch" in report["blockers"]
     assert "case 1 public task mismatch" in report["blockers"]
+
+
+def test_open_code_pair_report_labels_deterministic_pex_without_semantic_claim(tmp_path):
+    baseline, treatment = write_pair(tmp_path)
+    for root in (baseline, treatment):
+        summary_path = root / "summary.json"
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        summary["pex_mode"] = "deterministic"
+        summary_path.write_text(json.dumps(summary), encoding="utf-8")
+
+    report = build_report(baseline, treatment)
+
+    assert report["comparable"] is True
+    assert report["pex_mode"] == "deterministic"
+    assert report["semantic_supervision_enabled"] is False
+    assert "semantic supervision was explicitly disabled" in report["claim_boundary"]
 
 
 def test_open_code_pair_report_rejects_path_shaped_case_identity(tmp_path):

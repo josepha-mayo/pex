@@ -52,6 +52,15 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
         choices=PROOF_WORKER_MODELS,
         default="mimo-v2.6-flash-free",
     )
+    parser.add_argument(
+        "--pex-mode",
+        choices=("semantic", "deterministic"),
+        default="semantic",
+        help=(
+            "PEX treatment mode. deterministic explicitly disables model calls and "
+            "measures only attachment, observation, policy and overhead."
+        ),
+    )
     parser.add_argument("--arm", choices=("baseline", "pex"), default="pex")
     args = parser.parse_args()
     if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,100}", args.run_name) is None:
@@ -93,6 +102,7 @@ WORKER_PROVIDER = "unconfigured"
 WORKER_MODEL = "unconfigured"
 WORKER_CREDENTIAL_SOURCE = "unconfigured"
 SUPERVISOR_MODEL = "unconfigured"
+PEX_MODE = "semantic"
 CASE_TIMEOUT_SECONDS = 240.0
 # The free worker can legitimately consume almost the entire case budget before
 # emitting its first STOP. Once PEX has observed that STOP, reserve one complete
@@ -480,6 +490,7 @@ async def run_case(number, case, model, server):
             "worker_provider": WORKER_PROVIDER,
             "worker_credential_source": WORKER_CREDENTIAL_SOURCE,
             "supervisor_model": SUPERVISOR_MODEL,
+            "pex_mode": PEX_MODE,
             "comparative_benchmark": False,
             "native_desktop_supervision": False,
         }
@@ -693,6 +704,7 @@ async def run_baseline_case(number, case, server):
             "worker_provider": WORKER_PROVIDER,
             "worker_credential_source": WORKER_CREDENTIAL_SOURCE,
             "supervisor_model": None,
+            "pex_mode": PEX_MODE,
             "comparative_benchmark": False,
             "native_desktop_supervision": False,
         }
@@ -714,6 +726,7 @@ async def run_baseline_case(number, case, server):
 
 async def main():
     global ROOT, SUPERVISOR_MODEL, WORKER_MODEL, WORKER_PROVIDER, WORKER_CREDENTIAL_SOURCE
+    global PEX_MODE
     parser, args = _EARLY_CLI or _parse_cli()
     _load_runtime_dependencies()
     if not source_is_clean():
@@ -731,7 +744,8 @@ async def main():
         raise RuntimeError("Saved supervisor routing is incomplete")
     if choice.credential_source != "secret_store":
         raise RuntimeError("Saved supervisor does not use the OS credential vault")
-    SUPERVISOR_MODEL = choice.model_id
+    PEX_MODE = args.pex_mode
+    SUPERVISOR_MODEL = None if PEX_MODE == "deterministic" else choice.model_id
     WORKER_MODEL = args.worker_model
     has_separate_worker_credential = "PEX_PROOF_WORKER_KEY" in os.environ
     try:
@@ -748,6 +762,7 @@ async def main():
             "pex_attached": args.arm == "pex",
             "worker_model": WORKER_MODEL,
             "worker_provider": None,
+            "pex_mode": PEX_MODE,
             "cases": [],
             "error_type": type(exc).__name__,
             "route_rejection": str(exc),
@@ -816,17 +831,32 @@ async def main():
             },
         },
     )
-    before_env = {key: os.environ.get(key) for key in pin}
+    before_env = {
+        key: os.environ.get(key) for key in (*pin, "PEX_SUPERVISOR_DISABLE")
+    }
+    if (
+        args.arm == "pex"
+        and PEX_MODE == "semantic"
+        and before_env["PEX_SUPERVISOR_DISABLE"] == "1"
+    ):
+        raise RuntimeError(
+            "ambient supervisor disable conflicts with semantic mode; "
+            "use --pex-mode deterministic"
+        )
     if args.arm == "pex":
         os.environ.update(pin)
+        if PEX_MODE == "deterministic":
+            os.environ["PEX_SUPERVISOR_DISABLE"] = "1"
     results = []
     error_type = None
     server = None
     selected_cases = CASES[START_CASE - 1 : START_CASE - 1 + args.case_count]
     try:
         model = load_supervisor_model() if args.arm == "pex" else None
-        if args.arm == "pex" and model is None:
+        if args.arm == "pex" and PEX_MODE == "semantic" and model is None:
             raise RuntimeError("saved supervisor model did not construct")
+        if args.arm == "pex" and PEX_MODE == "deterministic" and model is not None:
+            raise RuntimeError("deterministic PEX mode constructed a supervisor model")
         with (ROOT / "server.log").open("x", encoding="utf-8") as log:
             server = subprocess.Popen(
                 [
@@ -894,6 +924,7 @@ async def main():
         "worker_provider": WORKER_PROVIDER,
         "worker_credential_source": WORKER_CREDENTIAL_SOURCE,
         "supervisor_provider": choice.provider,
+        "pex_mode": PEX_MODE,
         "source_unchanged": source_commit() == start_commit and source_is_clean(),
         "cases": results,
         "error_type": error_type,

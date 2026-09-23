@@ -133,6 +133,9 @@ def test_quiet_runner_binds_route_before_secret_access_and_is_cross_platform():
     assert "creationflags=subprocess.CREATE_NO_WINDOW" not in source
     assert '"credential_read": False' in source
     assert '"provider_call_started": False' in source
+    assert 'choices=("semantic", "deterministic")' in source
+    assert 'os.environ["PEX_SUPERVISOR_DISABLE"] = "1"' in source
+    assert '"pex_mode": PEX_MODE' in source
 
     recovery_source = (
         Path(__file__).resolve().parents[2] / "scripts/opencode_recovery_once.py"
@@ -378,6 +381,7 @@ def test_completion_event_must_be_observed(event_id):
     (["--run-name", "safe", "--case-count", "0"], 2),
     (["--run-name", "safe", "--case-count", "11"], 2),
     (["--run-name", "safe", "--arm", "unknown"], 2),
+    (["--run-name", "safe", "--pex-mode", "unknown"], 2),
 ])
 def test_live_runner_requires_explicit_valid_run_name_before_any_work(args, code):
     root = Path(__file__).resolve().parents[2]
