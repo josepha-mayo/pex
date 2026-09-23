@@ -245,6 +245,7 @@ async def run_case(number, case, model, server):
         deterministic_reviews_succeeded,
         retryable_provider_abort,
         review_completed_for_event,
+        review_failed_for_event,
         semantic_reviews_succeeded,
     )
 
@@ -357,6 +358,7 @@ async def run_case(number, case, model, server):
         )
         fence = QuietCompletionFence()
         completion_fence_passed = False
+        terminal_review_failed = False
         generation = None
         statuses = None
         while time.monotonic() < _case_deadline(started, first_stop_at):
@@ -401,6 +403,22 @@ async def run_case(number, case, model, server):
                 journal_complete=complete,
             )
             if completion_fence_passed:
+                break
+            if (
+                PEX_MODE == "semantic"
+                and generation is not None
+                and complete
+                and not registry.opencode.inbox.get(session.id, [])
+                and bool(rows)
+                and all(row.action_taken == "NOOP" for row in rows)
+                and review_failed_for_event(
+                    journal,
+                    event_id=first_stop["event_id"] if first_stop else None,
+                    session_id=session.id,
+                    goal_id=goal.id,
+                )
+            ):
+                terminal_review_failed = True
                 break
             await asyncio.sleep(1)
         messages = await transport.request(
@@ -493,6 +511,7 @@ async def run_case(number, case, model, server):
             "all_deterministic_reviews_completed": deterministic_completed,
             "all_pex_reviews_completed": reviews_completed,
             "review_mode": PEX_MODE,
+            "terminal_review_failed": terminal_review_failed,
             "completion_stop_review_completed": stop_review_completed,
             "unnecessary_interruption": bool(
                 initially_correct
@@ -716,6 +735,7 @@ async def run_baseline_case(number, case, server):
             "all_deterministic_reviews_completed": None,
             "all_pex_reviews_completed": None,
             "review_mode": None,
+            "terminal_review_failed": None,
             "completion_stop_review_completed": None,
             "unnecessary_interruption": False,
             "session_id": session.id,

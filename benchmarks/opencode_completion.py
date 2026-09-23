@@ -58,6 +58,29 @@ def review_completed_for_event(
     )
 
 
+def review_failed_for_event(
+    journal: list[Any], *, event_id: str | None, session_id: str, goal_id: str
+) -> bool:
+    """Identify a terminal failed review bound to the exact completion event."""
+    if not all(isinstance(value, str) and value for value in (event_id, session_id, goal_id)):
+        return False
+    matches = [
+        row for row in journal if isinstance(row, dict) and row.get("event_id") == event_id
+    ]
+    if len(matches) != 1:
+        return False
+    row = matches[0]
+    if (
+        row.get("session_id") != session_id
+        or row.get("goal_id") != goal_id
+        or row.get("state") != "complete"
+    ):
+        return False
+    plan = row.get("plan")
+    result = plan.get("supervisor_result") if isinstance(plan, dict) else None
+    return isinstance(result, dict) and result.get("inference_status") in {"failed", "timeout"}
+
+
 def _deterministic_review_succeeded(result: Any) -> bool:
     """Recognize the exact no-provider result emitted by local deterministic triage."""
     action = result.get("action") if isinstance(result, dict) else None

@@ -15,6 +15,7 @@ from benchmarks.opencode_completion import (
     recovery_interventions_succeeded,
     retryable_provider_abort,
     review_completed_for_event,
+    review_failed_for_event,
     semantic_reviews_succeeded,
 )
 from benchmarks.opencode_proof_route import (
@@ -355,6 +356,33 @@ def bound_review(journal, event_id="stop"):
     return review_completed_for_event(
         journal, event_id=event_id, session_id="session", goal_id="goal"
     )
+
+
+def bound_failed_review(journal, event_id="stop"):
+    return review_failed_for_event(
+        journal, event_id=event_id, session_id="session", goal_id="goal"
+    )
+
+
+def test_terminal_review_failure_requires_the_exact_completed_stop_event():
+    failed = completion_review(plan=review(True, "failed")["plan"])
+    assert bound_failed_review([failed])
+    assert not bound_review([failed])
+    assert not bound_failed_review([failed], event_id="later")
+    assert not bound_failed_review([failed, deepcopy(failed)])
+    assert not bound_failed_review([completion_review()])
+
+
+@pytest.mark.parametrize("changes", [
+    {"session_id": "other"},
+    {"goal_id": "other"},
+    {"state": "planned"},
+    {"plan": None},
+])
+def test_terminal_review_failure_rejects_unbound_or_pending_rows(changes):
+    failed = completion_review(plan=review(True, "failed")["plan"])
+    failed.update(changes)
+    assert not bound_failed_review([failed])
 
 
 def deterministic_review(**result_changes):
