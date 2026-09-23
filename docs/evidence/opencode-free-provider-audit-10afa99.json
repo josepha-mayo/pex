@@ -1,0 +1,68 @@
+{
+  "schema": "pex.opencode-free-provider-audit.v1",
+  "observed_on": "2026-09-23",
+  "claim_boundary": "Bounded live provider and runner diagnostics; not a productivity benchmark.",
+  "paid_nebius_calls": 0,
+  "card_charges_authorized": false,
+  "attempts": [
+    {
+      "source_commit": "8af3a4860a757ac66cc4e4c69e628dd935d7278b",
+      "worker_provider": "opencode",
+      "worker_model": "ling-3.0-flash-fin-free",
+      "arm": "baseline",
+      "result": "passed",
+      "wall_seconds": 63.05
+    },
+    {
+      "source_commit": "8af3a4860a757ac66cc4e4c69e628dd935d7278b",
+      "worker_provider": "opencode",
+      "worker_model": "ling-3.0-flash-fin-free",
+      "supervisor_provider": "zen",
+      "supervisor_model": "muse-spark-1.3-contributor-free",
+      "arm": "pex",
+      "worker_artifact_correct": true,
+      "result": "failed",
+      "failure": "PermissionDeniedError",
+      "fallback_action": "NOOP",
+      "model_call_count": 1
+    },
+    {
+      "source_commit": "e15a9395b9473a34124c2a219278b30400c265c5",
+      "worker_provider": "opencode-go",
+      "worker_model": "ox-alpha-free",
+      "arm": "baseline",
+      "result": "failed",
+      "failure": "model absent from the live OpenCode Go catalog",
+      "assistant_completion_observed": false
+    },
+    {
+      "source_commit": "37e363e5306283ee82d267b9da58bb81f5e501d5",
+      "worker_provider": "opencode",
+      "worker_model": "ling-3.0-flash-fin-free",
+      "worker_credential_source": "separate_environment",
+      "supervisor_provider": "opencode_go",
+      "supervisor_model": "ox-alpha-free",
+      "arm": "pex",
+      "worker_artifact_correct": true,
+      "result": "failed",
+      "failure": "BadRequestError",
+      "fallback_actions": [
+        "NOOP",
+        "NOOP"
+      ],
+      "model_call_count": 2
+    }
+  ],
+  "current_source_changes": [
+    "worker and supervisor credentials have separate audience-bound routes",
+    "a separate credential cannot select a paid Nebius proof worker",
+    "Windows proof tasks prohibit outside-workspace paths and UTF-8 byte-order marks",
+    "the removed ox-alpha-free OpenCode Go suggestion and default were deleted"
+  ],
+  "restoration": {
+    "temporary_credentials_deleted": true,
+    "saved_supervisor_provider": "nebius",
+    "saved_supervisor_model": "nvidia/nemotron-3-super-120b-a12b",
+    "saved_supervisor_revision": 4
+  }
+}

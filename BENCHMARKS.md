@@ -184,6 +184,11 @@ binds that separate credential only to the reviewed free Zen worker
 endpoint and keeps the saved PEX supervisor credential in its original vault
 audience. A separate credential can never select a paid Nebius worker.
 
+The 23 September free-provider audit is retained in
+`docs/evidence/opencode-free-provider-audit-10afa99.json`. It records one free
+Zen worker baseline pass plus fail-closed Zen and stale Go supervisor attempts.
+Those failures are evidence of provider access and catalog limits, not PEX lift.
+
 ## Current integrity verification
 
 On 12 September 2026, the expanded benchmark/integration selection passed
