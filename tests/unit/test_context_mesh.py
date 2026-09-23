@@ -385,6 +385,51 @@ def test_supported_verification_becomes_traceable_test_evidence() -> None:
     assert bundle.direct_evidence == [items[0].content]
 
 
+def test_handoff_does_not_mark_a_partial_acceptance_phrase_complete() -> None:
+    now = datetime.now(UTC)
+    goal = _goal(now).model_copy(
+        update={
+            "acceptance_criteria": [
+                "parser tests pass on Windows and Linux",
+                "release artifact exists",
+            ]
+        }
+    )
+    partial = _item(
+        "partial-result",
+        "Parser tests pass on Windows. Verified by: Windows pytest result.",
+        now,
+        kind=ContextKind.RESULT,
+        provenance=SourceKind.TEST,
+        metadata={
+            "verified": True,
+            "status": "supported",
+            "claim": {"statement": "parser tests pass on Windows"},
+        },
+    )
+    bundle = build_bundle(goal, _target(task="parser tests"), [partial], [], [])
+    assert bundle.next_objective == "parser tests pass on Windows and Linux"
+
+
+def test_handoff_advances_only_after_exact_supported_acceptance_claim() -> None:
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    verified = _item(
+        "verified-result",
+        "Parser tests pass. Verified by: pytest result.",
+        now,
+        kind=ContextKind.RESULT,
+        provenance=SourceKind.TEST,
+        metadata={
+            "verified": True,
+            "status": "supported",
+            "claim": {"statement": "parser tests pass"},
+        },
+    )
+    bundle = build_bundle(goal, _target(task="parser tests"), [verified], [], [])
+    assert bundle.next_objective == "release artifact exists"
+
+
 def test_rejected_approach_and_unresolved_question_shape_the_handoff_bundle() -> None:
     now = datetime.now(UTC)
     goal = _goal(now)

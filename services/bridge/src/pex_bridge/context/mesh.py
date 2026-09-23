@@ -335,16 +335,21 @@ def build_bundle(
                 text = _safe_text(item.content, 1_000)
                 if text:
                     return text
-        evidenced = " ".join(
-            item.content
+        # A shared word prefix in a result is not proof of an entire criterion.
+        # Only a trusted supported verdict whose claim states the exact criterion
+        # may advance the handoff to the next one.
+        evidenced = {
+            str(claim.get("statement") or "").strip().casefold()
             for item in chosen
             if item.kind == ContextKind.RESULT
-            and (item.provenance in _STRONG_PROVENANCE or bool(item.metadata.get("verified")))
-        ).casefold()
+            and item.provenance in _STRONG_PROVENANCE
+            and item.metadata.get("verified") is True
+            and item.metadata.get("status") == "supported"
+            if isinstance(claim := item.metadata.get("claim"), dict)
+        }
         for criterion in goal.acceptance_criteria:
             cleaned = _safe_text(criterion, 1_000)
-            tokens = [token for token in cleaned.casefold().split() if len(token) > 3]
-            if tokens and evidenced and all(token in evidenced for token in tokens[:3]):
+            if cleaned.casefold() in evidenced:
                 continue
             if cleaned:
                 return cleaned
@@ -411,7 +416,7 @@ def build_bundle(
             ][:8],
             direct_evidence=direct_evidence,
             recent_progress=progress,
-            next_objective=_next_objective(selected),
+            next_objective=_next_objective(chosen_raw),
             do_not_redo=_do_not_redo(selected),
             deep_links=_deep_links(selected),
             items=selected,
