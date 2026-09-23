@@ -653,11 +653,13 @@ export function canonicalResourceIssue(
   if (!affected.length) return null;
   const cached = affected.some((key) => resources[key].status === "stale");
   const loading = affected.every((key) => resources[key].status === "loading");
-  if (loading) return "Checking canonical local state…";
-  const names = affected.map((key) => key.replace("supervisor", "settings")).join(", ");
+  if (loading) return "Loading local PEX state…";
+  const names = affected.length > 2
+    ? "workspace settings"
+    : affected.map((key) => key.replace("supervisor", "settings")).join(", ");
   return cached
-    ? `Cached state · ${names} could not be refreshed.`
-    : `Canonical state unavailable · ${names}.`;
+    ? `Showing last known ${names}; PEX could not refresh them.`
+    : `PEX could not load ${names} from its local service.`;
 }
 
 export function statusCopy(
@@ -669,7 +671,7 @@ export function statusCopy(
     return {
       tone: "quiet",
       label: "Checking local state",
-      detail: "PEX has not observed canonical local state yet.",
+      detail: "Waiting for the local PEX service.",
     };
   }
   if (bridgeError || freshness === "unavailable") {

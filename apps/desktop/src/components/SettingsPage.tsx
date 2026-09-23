@@ -358,7 +358,7 @@ export function SettingsPage({
           <section className="settings-card settings-wide">
             <p className="eyebrow">Supervisor inference</p>
             <h2>PEX model</h2>
-            <details className="settings-advanced">
+            {settingsAvailable ? <details className="settings-advanced">
               <summary>Review budget</summary>
             <p className="settings-note" aria-label="Supervisor review limit">
               {supervisorReviewLimitCopy(settingsAvailable && !settingsIssue
@@ -385,30 +385,25 @@ export function SettingsPage({
                 This does not cancel a review already in flight.
               </span>
             </label>
-            </details>
-            <p className="settings-note">
-              {supervisor
-                ? supervisorHonestyCopy(supervisor)
-                : "Supervisor configuration has not been observed from canonical local state."}
-            </p>
-            <p className="settings-note">
-              {supervisor?.login_note || (supervisor
-                ? "This is PEX’s supervisor model, not a worker harness. Use the displayed credential source."
-                : "No provider or credential source is assumed while settings are unavailable.")}
-            </p>
+            </details> : null}
+            {supervisor ? <>
+              <p className="settings-note">{supervisorHonestyCopy(supervisor)}</p>
+              <p className="settings-note">{supervisor.login_note || "This is PEX’s supervisor model, not a worker harness. Use the displayed credential source."}</p>
+            </> : null}
             {settingsIssue ? (
               <div className="canonical-state-warning" role="status" aria-live="polite">
                 <p>
                   {settingsIssue}{" "}
                   {settingsAvailable
-                    ? "Available settings remain editable; unavailable sections are not treated as defaults."
-                    : "Supervisor configuration controls remain disabled until a current revision loads."}
+                    ? "Loaded settings remain editable. Refresh to recover the missing sections."
+                    : "Open the PEX desktop app or retry the local service to load your settings."}
                 </p>
                 <button type="button" className="ghost" disabled={savingSupervisor} onClick={onReloadSettings}>
                   Retry settings
                 </button>
               </div>
             ) : null}
+            {settingsAvailable ? <>
             <div className="form-grid two-column">
               <label>
                 Provider
@@ -550,6 +545,7 @@ export function SettingsPage({
               {savingSupervisor ? "Saving…" : "Save supervisor"}
             </button>
             </div>
+            </> : null}
           </section>
           ) : null}
 

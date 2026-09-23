@@ -749,7 +749,7 @@ test("initial companion state is checking until canonical pet state is observed"
 
   assert.equal(resources.pet.status, "loading");
   assert.equal(copy.label, "Checking local state");
-  assert.match(copy.detail, /has not observed canonical local state/i);
+  assert.match(copy.detail, /waiting for the local PEX service/i);
   assert.doesNotMatch(`${copy.label} ${copy.detail}`, /all quiet|nothing needs babysitting/i);
 });
 
@@ -771,7 +771,7 @@ test("canonical resource failures stay independent and preserve only same-resour
   assert.equal(partialFailure.goals.status, "unavailable");
   assert.equal(canonicalResourcesAreFresh(partialFailure, ["pet"]), true);
   assert.equal(canonicalResourcesAreFresh(partialFailure, ["pet", "goals"]), false);
-  assert.match(canonicalResourceIssue(partialFailure, ["goals"]) || "", /unavailable/i);
+  assert.match(canonicalResourceIssue(partialFailure, ["goals"]) || "", /could not load goals/i);
 
   const goalsFresh = settleCanonicalResource(partialFailure, "goals", "fresh", {
     observedAt: "2026-09-05T10:01:00.000Z",
@@ -781,7 +781,7 @@ test("canonical resource failures stay independent and preserve only same-resour
   });
   assert.equal(cached.goals.status, "stale");
   assert.equal(cached.goals.lastSuccessAt, "2026-09-05T10:01:00.000Z");
-  assert.match(canonicalResourceIssue(cached, ["goals"]) || "", /cached state/i);
+  assert.match(canonicalResourceIssue(cached, ["goals"]) || "", /showing last known goals/i);
   assert.equal(canonicalResourcesAreFresh(cached, ["goals"]), false);
 
   const catalogFailure = settleCanonicalResource(cached, "pets", "failed", {
