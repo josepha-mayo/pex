@@ -21,6 +21,22 @@ test("first-run guidance does not infer readiness from stale session or goal sta
   }
 });
 
+test("first-run guidance stops claiming an active connection attempt after the bridge fails", () => {
+  const guidance = firstRunGuidance({
+    current: worker,
+    attachedGoal: null,
+    sessionFresh: false,
+    goalFresh: false,
+    bridgeError: "Bridge offline",
+  });
+  assert.deepEqual(guidance, {
+    state: "unavailable",
+    title: "Local bridge unavailable",
+    detail: "Restart PEX or retry the local bridge before relying on worker state.",
+    cta: null,
+  });
+});
+
 test("first-run guidance distinguishes no usable worker from an attachable unbound worker", () => {
   const noWorker = firstRunGuidance({ sessionFresh: true, goalFresh: true });
   assert.deepEqual(noWorker?.cta, { intent: "connect", label: "How to connect a worker" });

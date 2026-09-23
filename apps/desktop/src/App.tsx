@@ -1480,6 +1480,7 @@ export function App() {
     attachedGoal,
     sessionFresh: sessionStateFresh,
     goalFresh: goalStateFresh,
+    bridgeError,
   });
   const semanticSupervisor = supervisorAvailability({ supervisor, supervisorFresh: settingsAvailable });
   const mood = moodForState(pet, bridgeError);

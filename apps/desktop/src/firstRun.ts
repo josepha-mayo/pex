@@ -68,12 +68,22 @@ export function firstRunGuidance({
   attachedGoal,
   sessionFresh,
   goalFresh,
+  bridgeError,
 }: {
   current?: SessionRow;
   attachedGoal?: Goal | null;
   sessionFresh: boolean;
   goalFresh: boolean;
+  bridgeError?: string | null;
 }): FirstRunGuidance | null {
+  if (bridgeError) {
+    return {
+      state: "unavailable",
+      title: "Local bridge unavailable",
+      detail: "Restart PEX or retry the local bridge before relying on worker state.",
+      cta: null,
+    };
+  }
   if (!sessionFresh) {
     return {
       state: "unavailable",
