@@ -655,6 +655,7 @@ export function canonicalResourceIssue(
   const loading = affected.every((key) => resources[key].status === "loading");
   if (loading) return "Loading local PEX state…";
   const names = affected.length > 2
+    && affected.every((key) => ["supervisor", "channels", "pets"].includes(key))
     ? "workspace settings"
     : affected.map((key) => key.replace("supervisor", "settings")).join(", ");
   return cached
