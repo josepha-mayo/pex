@@ -222,7 +222,9 @@ async def test_already_incomplete_message_refuses_read_and_dispatch_without_writ
 async def test_read_does_not_initialize_reconnect_or_bypass_missing_journal(tmp_path, state):
     channel = SnapshotChannel()
     factory = make_unjournaled_transport if state == "no-journal" else make_transport
-    transport = factory(tmp_path, channel)
+    # This test verifies lifecycle behavior, not the timeout boundary. Give the
+    # framed fake peer enough scheduling headroom under the full Windows suite.
+    transport = factory(tmp_path, channel, request_timeout_s=5)
     if state != "uninitialized":
         await transport.ensure_ready()
     if state == "closed":
