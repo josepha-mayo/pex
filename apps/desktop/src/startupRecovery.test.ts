@@ -172,7 +172,7 @@ test("native bridge identity monitoring limits idle probes without widening its 
 
 test("native bridge startup pins the desktop profile instead of inheriting benchmark state", async () => {
   const rust = await readFile(new URL("../src-tauri/src/main.rs", import.meta.url), "utf8");
-  assert.match(rust, /let \(bridge_home, bridge_database\) = bridge_data_paths\(&home_dir\)/u);
+  assert.match(rust, /let \(bridge_home, bridge_database\) = match resolved_bridge_data_paths\(&home_dir\)/u);
   assert.match(rust, /\.env\("PEX_HOME", &bridge_home\)/u);
   assert.match(rust, /\.env\("PEX_DB_PATH", &bridge_database\)/u);
   assert.doesNotMatch(rust, /std::env::var\("PEX_(?:HOME|DB_PATH)"\)/u);
