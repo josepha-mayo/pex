@@ -127,7 +127,7 @@ presentation benchmark.
 ### Install PEX
 
 Download the package for your x64 computer from
-[PEX 0.1.0 RC14](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc14).
+[PEX 0.1.0 RC15](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc15).
 
 **Windows 10/11:** use `PEX_0.1.0_x64-setup.exe` for the normal install.
 The binary is not code-signed, so Windows may show a publisher warning.
@@ -142,13 +142,13 @@ Linux needs a graphical desktop and a normal Secret Service/keyring (for
 example GNOME Keyring or KWallet) to save a BYOK key through Settings. The
 exact-commit CI gate built the Debian package on Ubuntu 24.04 and booted its
 packaged bridge; it did not visually exercise every Linux desktop environment.
-AppImage, macOS, and ARM64 packages are not available in RC14.
+AppImage, macOS, and ARM64 packages are not available in RC15.
 
-Both RC14 packages are built from exact product source
-`be389338ded450e5939524ca4f44eb0e5a0b8ebc`. The Windows installer SHA-256 is
-`3940d5f2f63a1dfc9a1815e28854e7fb277d50ff6850d158c5bd853e0af0c5ed`;
+Both RC15 packages are built from exact product source
+`df9c87775725cf18fb96d19501f6c3c79f4134d8`. The Windows installer SHA-256 is
+`e142c399f871fd13be16452ca2237a3437ca53a651b8e037bfc56cb390c5253b`;
 the Debian package SHA-256 is
-`0165811f77b4ae9eac37499dbce6e8a4ef4df31c6dcfaa4d68333252f563119d`.
+`9a9452960ca224ba5373f1ce5239f242937a67e40f9491f42883136e15226733`.
 The release also includes `SHA256SUMS`.
 Package integrity is not indefinite stability or publisher trust; current
 source-bound behavior and trust boundaries are summarized in the [architecture overview](docs/architecture/overview.md).
