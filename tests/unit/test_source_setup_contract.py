@@ -8,6 +8,9 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
+# These contracts validate parsing and command order, not process-start latency.
+# Windows PowerShell startup can exceed ten seconds late in the full CI suite.
+POWERSHELL_TEST_TIMEOUT_SECONDS = 45
 
 
 def _text(path: str) -> str:
@@ -76,7 +79,7 @@ $after = (Get-Location).Path
         check=False,
         capture_output=True,
         text=True,
-        timeout=15,
+        timeout=POWERSHELL_TEST_TIMEOUT_SECONDS,
     )
     assert result.returncode == 0, result.stderr
     receipt = json.loads(result_path.read_text(encoding="utf-8-sig"))
@@ -117,7 +120,7 @@ def test_windows_source_setup_parses_without_running_it() -> None:
         check=False,
         capture_output=True,
         text=True,
-        timeout=10,
+        timeout=POWERSHELL_TEST_TIMEOUT_SECONDS,
     )
 
     assert result.returncode == 0, result.stderr
