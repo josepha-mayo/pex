@@ -439,6 +439,29 @@ async def test_unavailable_model_does_not_spend_or_coalesce_a_future_review(tmp_
 
 
 @pytest.mark.asyncio
+async def test_saved_zero_dispatch_cap_prevents_model_call(tmp_path):
+    store, adapters, session, pipeline = await _pipeline(tmp_path)
+    supervisor = _NudgeSupervisor()
+    pipeline.supervisor = supervisor
+    pipeline.supervisor_dispatch_limit_override = 0
+    event = _event(session, "paused-review", event_type=EventType.STOP)
+    try:
+        await pipeline.ingest_event(event, session)
+        effect = await store.get_event_effect(event.event_id, "planner")
+        assert effect["state"] == "skipped"
+        assert effect["result"]["code"] == "supervisor_dispatch_budget_exhausted"
+        assert effect["result"]["provider_started"] is False
+        assert supervisor.calls == 0
+        assert not adapters.synthetic.inbox.get(session.id)
+        allowances = await pipeline.supervisor_review_allowances([session.id])
+        assert allowances[session.id]["limit"] == 0
+        assert allowances[session.id]["remaining"] == 0
+    finally:
+        await _drain_presentations(pipeline)
+        await store.close()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("fail", [False, True])
 @pytest.mark.parametrize("mode", ["local", "agentcore"])
 @pytest.mark.parametrize("cap_source", ["startup", "saved"])

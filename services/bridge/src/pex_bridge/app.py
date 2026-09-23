@@ -2778,7 +2778,7 @@ class SupervisorIn(_StrictRequestModel):
     api_key: SecretStr | None = Field(default=None, max_length=16_384, repr=False)
     clear_api_key: bool = False
     use_environment_credentials: bool | None = None
-    dispatch_limit_override: int | None = Field(default=None, strict=True, ge=1, le=100_000)
+    dispatch_limit_override: int | None = Field(default=None, strict=True, ge=0, le=100_000)
 
     @model_validator(mode="after")
     def _one_credential_operation(self) -> SupervisorIn:

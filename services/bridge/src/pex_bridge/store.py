@@ -21687,9 +21687,9 @@ class Store:
             raise ValueError("trajectory review requires an exact candidate key")
         if semantic_dispatch_limit is not None and (
             type(semantic_dispatch_limit) is not int
-            or not 1 <= semantic_dispatch_limit <= 100_000
+            or not 0 <= semantic_dispatch_limit <= 100_000
         ):
-            raise ValueError("semantic dispatch limit must be an integer from 1 to 100000")
+            raise ValueError("semantic dispatch limit must be an integer from 0 to 100000")
         if effect_key != "planner":
             raise ValueError("generic dispatch is restricted to the planner effect")
         async with aiosqlite.connect(self.path, timeout=5.0) as transaction:

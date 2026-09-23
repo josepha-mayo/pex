@@ -65,21 +65,24 @@ test("saved review cap is explicit, bounded and omitted for unsupported bridges"
   const draft = { ...custom, apiKey: "" };
   assert.equal(supervisorSavePayload(draft, 1, null).dispatch_limit_override, undefined);
   assert.equal(supervisorSavePayload({ ...draft, dispatchLimit: "20" }, 1, null).dispatch_limit_override, 20);
+  assert.equal(supervisorSavePayload({ ...draft, dispatchLimit: "0" }, 1, null).dispatch_limit_override, 0);
   assert.equal(supervisorSavePayload({ ...draft, dispatchLimit: "" }, 1, null).dispatch_limit_override, null);
-  for (const dispatchLimit of ["0", "-1", "1.5", "1e2", "100001", "NaN"]) {
+  for (const dispatchLimit of ["-1", "1.5", "1e2", "100001", "NaN"]) {
     assert.throws(() => supervisorSavePayload({ ...draft, dispatchLimit }, 1, null), /whole-number/u);
   }
   assert.equal(supervisorDispatchLimitDraft(null), "");
+  assert.equal(supervisorDispatchLimitDraft(0), "0");
   assert.equal(supervisorDispatchLimitDraft(20), "20");
-  for (const value of [undefined, "20", true, 0, 1.5, 100001]) {
+  for (const value of [undefined, "20", true, 1.5, 100001]) {
     assert.equal(supervisorDispatchLimitDraft(value), undefined);
   }
 });
 
 test("review limit copy distinguishes unknown, uncapped and bounded dispatches", () => {
   assert.match(supervisorReviewLimitCopy(null), /No per-session dispatch cap/u);
+  assert.match(supervisorReviewLimitCopy(0), /reviews are paused/u);
   assert.match(supervisorReviewLimitCopy(20), /20 semantic dispatches per session/u);
-  for (const value of [undefined, true, "20", 0, -1, 1.5, 100001, NaN]) {
+  for (const value of [undefined, true, "20", -1, 1.5, 100001, NaN]) {
     assert.match(supervisorReviewLimitCopy(value), /unavailable/u);
     assert.doesNotMatch(supervisorReviewLimitCopy(value), /No per-session/u);
   }

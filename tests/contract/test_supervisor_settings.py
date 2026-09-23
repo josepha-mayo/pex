@@ -298,7 +298,22 @@ async def test_saved_dispatch_cap_preserves_startup_value_and_revision_authority
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("value", [0, -1, 100001, True, "5", 1.5])
+async def test_saved_zero_dispatch_cap_pauses_reviews_without_erasing_provider(supervisor_client):
+    client, _secret_store, home = supervisor_client
+    saved = await client.patch("/v1/supervisor", json=_custom_payload(
+        expected_revision=0, dispatch_limit_override=0,
+    ))
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["max_dispatches_per_session"] == 0
+    choice = load_supervisor_choice(home / "supervisor.json")
+    assert choice.dispatch_limit_override == 0
+    assert choice.provider == "custom"
+    current = await client.get("/v1/supervisor")
+    assert current.json()["max_dispatches_per_session"] == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", [-1, 100001, True, "5", 1.5])
 async def test_saved_dispatch_cap_rejects_noncanonical_values(supervisor_client, value):
     client, _secret_store, _home = supervisor_client
     response = await client.patch("/v1/supervisor", json={

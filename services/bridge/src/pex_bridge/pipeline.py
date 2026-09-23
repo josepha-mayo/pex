@@ -3008,7 +3008,10 @@ class Pipeline:
             recent_events=recent,
             scores=scores,
             autonomy=self.settings.autonomy,
-            trajectory_review_enabled=(self.supervisor_dispatch_limit is not None),
+            trajectory_review_enabled=(
+                self.supervisor_dispatch_limit is not None
+                and self.supervisor_dispatch_limit > 0
+            ),
             notes=notes,
             supervisor_context=build_supervisor_context(
                 session,

@@ -314,6 +314,13 @@ credential store; Linux needs an unlocked Secret Service or KWallet backend.
 Unsaved drafts survive background refreshes. If another client changes the saved
 configuration, reload explicitly before saving again.
 
+To pause automatic model reviews while keeping the provider and key saved, open
+**Settings → Supervisor → Automatic reviews**, set the saved review limit to
+`0`, and choose **Save supervisor**. This stops new semantic dispatches; it does
+not cancel a review already in flight. A positive limit counts review
+dispatches, not dollars or individual model calls. Saving the key alone does
+not make a model call.
+
 Alternatively, configure the process environment before launching PEX:
 
 ```text

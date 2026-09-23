@@ -359,7 +359,15 @@ export function SettingsPage({
             <p className="eyebrow">Supervisor inference</p>
             <h2>PEX model</h2>
             {settingsAvailable ? <details className="settings-advanced">
-              <summary>Review budget</summary>
+              <summary>
+                Automatic reviews · {supervisor?.max_dispatches_per_session === 0
+                  ? "Paused"
+                  : supervisor?.max_dispatches_per_session === null
+                    ? "Uncapped"
+                    : supervisor?.max_dispatches_per_session === undefined
+                      ? "Unavailable"
+                      : `${supervisor.max_dispatches_per_session} per session`}
+              </summary>
             <p className="settings-note" aria-label="Supervisor review limit">
               {supervisorReviewLimitCopy(settingsAvailable && !settingsIssue
                 ? supervisor?.max_dispatches_per_session : undefined)}
@@ -380,7 +388,8 @@ export function SettingsPage({
                 aria-describedby="supervisor-review-limit-help"
               />
               <span className="settings-note" id="supervisor-review-limit-help">
-                Set 1–100000 and choose Save supervisor. Blank uses the bridge’s startup setting.
+                Set 0 to pause automatic model reviews, or 1–100000 to cap them. Choose Save supervisor.
+                Blank uses the bridge’s startup setting.
                 Saving or restarting never resets used reviews; lowering the limit can stop further reviews immediately.
                 This does not cancel a review already in flight.
               </span>
