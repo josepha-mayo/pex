@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { AutonomousCorrectionsPanel } from "./AutonomousCorrectionsPanel";
 import {
   canConfirmConnection, canInspectConnection, createSharedConnectionController, validOrigin,
@@ -31,6 +31,7 @@ export function SharedConnectionPanel({ request, onChanged }: {
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
   const headingId = useId();
   const origin = state.status?.origin;
+  const [originExpanded, setOriginExpanded] = useState(true);
   const connection = state.status?.connection;
   const selection = state.inspection;
   const blocked = !!state.busy || state.reloadRequired || !state.status;
@@ -43,6 +44,10 @@ export function SharedConnectionPanel({ request, onChanged }: {
     void controller.reload();
     return () => controller.deactivate();
   }, [controller]);
+
+  useEffect(() => {
+    setOriginExpanded(origin?.status !== "configured");
+  }, [origin?.status]);
 
   useEffect(() => {
     if (!selection) return;
@@ -92,7 +97,11 @@ export function SharedConnectionPanel({ request, onChanged }: {
         </div>
       ) : state.status ? <p>No shared Codex observer connection is currently recorded by this bridge.</p> : null}
 
-      <h3>1. Confirm this installation’s local origin</h3>
+      <details className="settings-advanced" open={originExpanded}
+        onToggle={(event) => setOriginExpanded(event.currentTarget.open)}>
+      <summary>{origin?.status === "configured" && origin.choice
+        ? `Local origin: ${origin.choice.origin.namespace} / ${origin.choice.origin.host}`
+        : "1. Confirm this installation’s local origin"}</summary>
       <p className="settings-note">Choose the exact namespace and host label used by this machine’s registered project locators. PEX does not guess a hostname or register, merge or relabel projects here.</p>
       {origin?.choice ? (
         <div>
@@ -117,7 +126,9 @@ export function SharedConnectionPanel({ request, onChanged }: {
           <button type="submit" className="solid" disabled={saveBlocked}>Save explicit local origin</button>
         </fieldset>
       </form>
+      </details>
 
+      {origin?.status === "configured" && !connection ? <>
       <h3>2. Inspect the existing thread</h3>
       <p className="settings-note">Use an already-running, compatible local Codex App Server endpoint. This flow does not launch a replacement worker or discover endpoint details for you.</p>
       <form onSubmit={(event) => { event.preventDefault(); void controller.inspect(); }}>
@@ -133,6 +144,7 @@ export function SharedConnectionPanel({ request, onChanged }: {
           <button type="submit" className="solid" disabled={!canInspectConnection(state)}>Inspect existing thread</button>
         </fieldset>
       </form>
+      </> : !connection ? <p className="settings-note">Confirm the local origin above before inspecting a Codex thread.</p> : null}
       {state.status?.pending.length ? <p className="settings-note">{state.status.pending.length} pending inspection(s) known to this panel. Pending IDs alone cannot restore a reviewed selection. They expire within 60 seconds. At four pending inspections, wait for expiry and reload before inspecting again.</p> : null}
 
       {selection ? (
