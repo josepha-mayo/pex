@@ -346,6 +346,13 @@ def build_bundle(
     acceptance_criteria = [
         text for value in goal.acceptance_criteria[:32] if (text := _safe_text(value, 1_000))
     ]
+    delivered_evidence = [
+        item
+        for item in previously_delivered
+        if item.id not in superseded
+        and _is_supported_result(item)
+        and score_item(item, goal, target, now=now) > 0
+    ]
 
     def _next_objective(chosen: list[ContextItem]) -> str:
         for item in chosen:
@@ -365,7 +372,7 @@ def build_bundle(
         # may advance the handoff to the next one.
         evidenced = {
             str(claim.get("statement") or "").strip().casefold()
-            for item in chosen
+            for item in [*delivered_evidence, *chosen]
             if _is_supported_result(item)
             if isinstance(claim := item.metadata.get("claim"), dict)
         }

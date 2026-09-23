@@ -472,6 +472,40 @@ def test_handoff_advances_only_after_exact_supported_acceptance_claim() -> None:
     assert bundle.next_objective == "release artifact exists"
 
 
+def test_later_handoff_keeps_previously_delivered_supported_criterion_complete() -> None:
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    verified = _item(
+        "delivered-tests",
+        "Parser tests pass. Verified by: pytest result.",
+        now,
+        kind=ContextKind.RESULT,
+        provenance=SourceKind.TEST,
+        metadata={
+            "verified": True,
+            "status": "supported",
+            "claim": {"statement": "parser tests pass"},
+        },
+    )
+    artifact = _item(
+        "new-artifact",
+        "Parser release artifact is ready for inspection",
+        now,
+        kind=ContextKind.ARTIFACT,
+    )
+    bundle = build_bundle(
+        goal,
+        _target(task="parser release"),
+        [verified, artifact],
+        [],
+        [],
+        exclude_item_ids={verified.id},
+    )
+
+    assert [item.id for item in bundle.items] == [artifact.id]
+    assert bundle.next_objective == "release artifact exists"
+
+
 def test_handoff_does_not_promote_worker_metadata_or_completion_words() -> None:
     now = datetime.now(UTC)
     goal = _goal(now)
