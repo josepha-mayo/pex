@@ -72,6 +72,11 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     )
     parser.add_argument("--arm", choices=("baseline", "pex"), default="pex")
     args = parser.parse_args()
+    if args.arm == "pex" and args.pex_mode == "semantic" and args.free_supervisor_model:
+        parser.error(
+            "OpenCode Zen free-tier models run only inside OpenCode; "
+            "they cannot be used for PEX semantic supervision"
+        )
     if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,100}", args.run_name) is None:
         parser.error("--run-name must contain lowercase letters, digits and hyphens only")
     return parser, args

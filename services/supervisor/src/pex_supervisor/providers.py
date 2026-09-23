@@ -228,8 +228,9 @@ PROVIDERS: dict[str, ProviderSpec] = {
         "https://opencode.ai/zen/v1",
         ("PEX_SUPERVISOR_API_KEY", "PEX_ZEN_API_KEY", "OPENCODE_API_KEY"),
         ("api_key",),
-        "muse-spark-1.3-contributor-free",
-        "Use an OpenCode API key. Not the default product brain.",
+        None,
+        "Use an API-accessible Zen model. OpenCode free-tier models run only "
+        "inside OpenCode, not in PEX supervision.",
     ),
     "opencode_go": ProviderSpec(
         "opencode_go",
@@ -694,6 +695,10 @@ def validate_runtime_config(config: SupervisorRuntimeConfig) -> SupervisorRuntim
     }:
         raise ValueError("unsupported supervisor auth_mode")
     selected = provider or ("custom" if base_url else None)
+    if selected == "zen" and model_id and model_id.casefold().endswith("-free"):
+        raise ValueError(
+            "OpenCode Zen free-tier models run only inside OpenCode, not as a PEX supervisor"
+        )
     if selected == "custom" and not base_url:
         raise ValueError("custom provider requires base_url")
     if protocol and selected != "custom":
@@ -951,6 +956,10 @@ def apply_runtime_choice(
         cleaned_model = _catalog_text(raw_model)
         if raw_model and not cleaned_model:
             raise ValueError("model_id must be a bounded single-line identifier")
+    if pid == "zen" and cleaned_model and cleaned_model.casefold().endswith("-free"):
+        raise ValueError(
+            "OpenCode Zen free-tier models run only inside OpenCode, not as a PEX supervisor"
+        )
     if provider is not None:
         if pid:
             os.environ["PEX_SUPERVISOR_PROVIDER"] = pid
@@ -1096,7 +1105,7 @@ def _live_rows(provider: str, rows: list[tuple[str, str]]) -> list[dict[str, str
     unique: dict[str, str] = {}
     for model_id, label in rows[:_CATALOG_MAX_ITEMS]:
         cleaned = _catalog_text(model_id)
-        if cleaned:
+        if cleaned and not (provider == "zen" and cleaned.casefold().endswith("-free")):
             unique.setdefault(cleaned, _catalog_text(label) or cleaned)
         if len(unique) >= _CATALOG_MAX_MODELS:
             break
@@ -1325,6 +1334,8 @@ def openai_compat_client_config() -> dict[str, Any] | None:
     if _effective_kind(spec) != "openai_compat" or _auth_mode(spec) == "login":
         return None
     model_id = _configured_model_id(spec)
+    if spec.id == "zen" and model_id and model_id.casefold().endswith("-free"):
+        return None
     base_url = _usable_base_url(_selected_base_url(spec))
     api_key = _credential_for(spec)
 
@@ -1373,6 +1384,8 @@ def _load_supervisor_model() -> Any | None:
         return None
     spec = PROVIDERS[pid]
     model_id = _configured_model_id(spec)
+    if spec.id == "zen" and model_id and model_id.casefold().endswith("-free"):
+        return None
     base_url = _usable_base_url(_selected_base_url(spec))
     api_key = _credential_for(spec)
     kind = _effective_kind(spec)

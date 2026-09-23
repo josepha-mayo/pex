@@ -59,11 +59,6 @@ CATALOG: list[dict[str, str]] = [
     {"provider": "grok", "model_id": "grok-4.5", "label": "Grok 4.5"},
     {"provider": "grok", "model_id": "grok-build-0.1", "label": "Grok Build 0.1"},
     # OpenCode Zen / Go
-    {
-        "provider": "zen",
-        "model_id": "muse-spark-1.3-contributor-free",
-        "label": "Muse Spark 1.3 Contributor Free",
-    },
     {"provider": "zen", "model_id": "big-pickle", "label": "Big Pickle (Zen)"},
     {"provider": "zen", "model_id": "muse-spark-1.3", "label": "Muse Spark 1.3"},
     {"provider": "zen", "model_id": "muse-spark-1.2", "label": "Muse Spark 1.2"},

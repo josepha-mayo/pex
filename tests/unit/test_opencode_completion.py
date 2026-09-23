@@ -151,6 +151,23 @@ def test_quiet_runner_binds_route_before_secret_access_and_is_cross_platform():
     assert '"provider_call_started": False' in recovery_source
 
 
+def test_quiet_runner_rejects_opencode_only_free_supervisor_before_work(tmp_path):
+    runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
+    result = subprocess.run(
+        [
+            sys.executable, str(runner), "--run-name", "rejected-free-supervisor",
+            "--arm", "pex", "--pex-mode", "semantic",
+            "--free-supervisor-model", "mimo-v2.6-flash-free",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert "only inside OpenCode" in result.stderr
+    assert list(tmp_path.iterdir()) == []
+
 def test_quiet_baseline_uses_the_same_public_contract_without_a_pex_pipeline():
     baseline = public_case_contract(CASES[0])
     treatment = public_case_contract(CASES[0])

@@ -625,7 +625,7 @@ async def test_lifespan_exits_while_supervisor_activation_remains_hung(
         "strands.models.openai.OpenAIModel",
     ),
     (
-        "zen", "muse-spark-1.3-contributor-free", "https://opencode.ai/zen/v1",
+        "zen", "muse-spark-1.3", "https://opencode.ai/zen/v1",
         "pex_supervisor.openai_responses.OpenAIResponsesModel",
     ),
 ])

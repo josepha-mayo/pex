@@ -103,9 +103,9 @@ def test_review_uses_only_the_exact_configured_model():
     )
     assert openrouter == ["anthropic/claude-sonnet-4.6"]
     zen = _candidate_models(
-        {"provider": "zen", "model_id": "muse-spark-1.3-contributor-free"}
+        {"provider": "zen", "model_id": "muse-spark-1.3"}
     )
-    assert zen == ["muse-spark-1.3-contributor-free"]
+    assert zen == ["muse-spark-1.3"]
     assert _candidate_models({"provider": "zen", "model_id": ""}) == []
 
 
@@ -155,7 +155,7 @@ def test_responses_review_uses_selected_zen_model_without_fallback(monkeypatch):
         lambda: {
             "provider": "zen",
             "base_url": "https://example.invalid/v1",
-            "model_id": "muse-spark-1.3-contributor-free",
+            "model_id": "muse-spark-1.3",
             "api_key": None,
         },
     )
@@ -171,7 +171,7 @@ def test_responses_review_uses_selected_zen_model_without_fallback(monkeypatch):
     assert seen == {
         "path": "/v1/responses",
         "body": {
-            "model": "muse-spark-1.3-contributor-free",
+            "model": "muse-spark-1.3",
             "stream": False,
             "max_output_tokens": 400,
             "reasoning": {"effort": "low"},

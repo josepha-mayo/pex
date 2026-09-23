@@ -18,6 +18,7 @@ from pex_supervisor.providers import (
     openai_compat_client_config,
     refresh_model_catalog,
     resolve_provider_id,
+    validate_runtime_config,
 )
 
 
@@ -282,7 +283,7 @@ def test_zen_chat_model_excludes_reasoning_on_follow_up_turns(monkeypatch):
 
 
 @pytest.mark.parametrize("model_id", [
-    "muse-spark-1.3-contributor-free", "muse-spark-1.3", "muse-spark-1.2",
+    "muse-spark-1.3", "muse-spark-1.2",
 ])
 def test_zen_responses_model_is_routed_by_catalog_id(monkeypatch, model_id):
     from pex_supervisor.openai_responses import OpenAIResponsesModel
@@ -308,7 +309,7 @@ def test_zen_responses_model_is_routed_by_catalog_id(monkeypatch, model_id):
 def test_zen_responses_session_affinity_is_opaque_and_per_model(monkeypatch):
     monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
     monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "zen")
-    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "muse-spark-1.3-contributor-free")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "muse-spark-1.3")
     monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-key")
 
     first = load_supervisor_model()
@@ -574,15 +575,37 @@ def test_static_catalog_is_deduplicated_and_truthfully_unverified():
     assert {row["source"] for row in rows} == {"static_hint"}
 
 
-def test_zen_default_is_the_first_explicit_contributor_free_hint():
+def test_zen_hints_do_not_offer_an_opencode_only_free_tier():
     zen_rows = [row for row in catalog() if row["provider"] == "zen"]
-    expected = "muse-spark-1.3-contributor-free"
-    assert zen_rows[0]["model_id"] == expected
-    assert PROVIDERS["zen"].default_model == expected
-    assert "laguna-s-2.1-free" not in {row["model_id"] for row in zen_rows}
-    assert "muse-spark-1.2-contributor-free" not in {
-        row["model_id"] for row in zen_rows
-    }
+    assert zen_rows
+    assert PROVIDERS["zen"].default_model is None
+    assert not any(row["model_id"].endswith("-free") for row in zen_rows)
+
+
+def test_zen_free_tier_cannot_be_configured_as_a_supervisor(monkeypatch):
+    from pex_supervisor.providers import _live_rows, apply_runtime_choice
+
+    candidate = SupervisorRuntimeConfig(
+        provider="zen", model_id="mimo-v2.6-flash-free",
+        credential_source="environment", auth_mode="api_key",
+    )
+    with pytest.raises(ValueError, match="only inside OpenCode"):
+        validate_runtime_config(candidate)
+    with pytest.raises(ValueError, match="only inside OpenCode"):
+        apply_runtime_choice(provider="zen", model_id="mimo-v2.6-flash-free")
+    assert _live_rows("zen", [("mimo-v2.6-flash-free", "Free"), ("big-pickle", "API")]) == [
+        {
+            "provider": "zen", "model_id": "big-pickle", "label": "API",
+            "source": "live_provider_list", "availability": "listed",
+        }
+    ]
+
+    monkeypatch.delenv("PEX_SUPERVISOR_DISABLE", raising=False)
+    monkeypatch.setenv("PEX_SUPERVISOR_PROVIDER", "zen")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "mimo-v2.6-flash-free")
+    monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-key")
+    assert load_supervisor_model() is None
+    assert openai_compat_client_config() is None
 
 
 def test_live_openai_compatible_catalog_is_marked_listed(monkeypatch):

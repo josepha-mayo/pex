@@ -178,6 +178,12 @@ case order, public task bytes, or run success differs. A valid result is still a
 bounded paired diagnostic over small public tasks, not a general productivity
 benchmark or a PexBench freeze.
 
+OpenCode's free-tier models can run as OpenCode workers, but its API rejects
+calls from PEX's separate supervisor process. The runner rejects a free-model
+semantic supervisor choice before starting work. A real semantic comparison
+requires an API-accessible supervisor route; deterministic attachment alone
+does not establish a quality gain.
+
 For the normal product topology where the OpenCode worker and PEX supervisor
 use different providers, set `PEX_PROOF_WORKER_KEY` for the worker. The runner
 binds that separate credential only to the reviewed free Zen worker
