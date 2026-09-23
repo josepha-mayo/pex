@@ -19,18 +19,22 @@ NEBIUS_MODELS = (
 PROOF_WORKER_MODELS = FREE_OPENCODE_MODELS + NEBIUS_MODELS
 
 
+class ProofRouteError(RuntimeError):
+    """The requested worker model does not belong to the saved BYOK route."""
+
+
 def proof_worker_route(saved_provider: str, worker_model: str) -> tuple[str, str]:
     """Bind a worker model to the saved credential audience before secret access."""
 
     provider = saved_provider.casefold()
     if worker_model in NEBIUS_MODELS:
         if provider != "nebius":
-            raise RuntimeError("NVIDIA proof workers require the saved Nebius route")
+            raise ProofRouteError("NVIDIA proof workers require the saved Nebius route")
         return "nebius", "Nebius Token Factory"
     if worker_model not in FREE_OPENCODE_MODELS:
-        raise RuntimeError("unsupported OpenCode proof worker model")
+        raise ProofRouteError("unsupported OpenCode proof worker model")
     if provider != "zen":
-        raise RuntimeError("free proof workers require the saved OpenCode Zen route")
+        raise ProofRouteError("free proof workers require the saved OpenCode Zen route")
     return "opencode", "OpenCode Zen"
 
 

@@ -102,6 +102,14 @@ def test_quiet_runner_binds_route_before_secret_access_and_is_cross_platform():
     assert "NEBIUS_API_KEY" not in source
     assert 'getattr(subprocess, "CREATE_NO_WINDOW", 0)' in source
     assert "creationflags=subprocess.CREATE_NO_WINDOW" not in source
+    assert '"credential_read": False' in source
+    assert '"provider_call_started": False' in source
+
+    recovery_source = (
+        Path(__file__).resolve().parents[2] / "scripts/opencode_recovery_once.py"
+    ).read_text(encoding="utf-8")
+    assert '"credential_read": False' in recovery_source
+    assert '"provider_call_started": False' in recovery_source
 
 
 def test_quiet_baseline_uses_the_same_public_contract_without_a_pex_pipeline():

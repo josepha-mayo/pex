@@ -30,6 +30,7 @@ sys.path.insert(0, str(REPO))
 
 from benchmarks.opencode_proof_route import (  # noqa: E402
     PROOF_WORKER_MODELS,
+    ProofRouteError,
     proof_worker_route,
     resolve_opencode_executable,
 )
@@ -588,9 +589,29 @@ async def main() -> int:
     if choice.credential_source != "secret_store":
         raise RuntimeError("saved supervisor does not use the OS credential vault")
     SUPERVISOR_MODEL = choice.model_id
-    worker_provider, provider_name = proof_worker_route(
-        choice.provider, args.worker_model
-    )
+    try:
+        worker_provider, provider_name = proof_worker_route(
+            choice.provider, args.worker_model
+        )
+    except ProofRouteError as exc:
+        result = {
+            "source_commit": start_commit,
+            "source_unchanged": source_commit() == start_commit and source_is_clean(),
+            "receipt": {},
+            "error_type": type(exc).__name__,
+            "route_rejection": str(exc),
+            "credential_read": False,
+            "provider_call_started": False,
+            "passed": False,
+            "owned_server_exited": True,
+            "profiles_retained_for_audit": True,
+            "comparative_benchmark": False,
+            "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "completion_fence_sha256": hashlib.sha256(helper_bytes).hexdigest(),
+        }
+        write_json(root / "summary.json", result)
+        print(json.dumps(result), flush=True)
+        return 1
     if choice.secret_ref is None:
         raise RuntimeError("saved supervisor vault credential reference is unavailable")
     secret = KeyringSupervisorSecretStore().get(

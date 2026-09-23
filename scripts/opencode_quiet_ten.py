@@ -28,6 +28,7 @@ sys.path.insert(0, str(REPO))
 
 from benchmarks.opencode_proof_route import (  # noqa: E402
     PROOF_WORKER_MODELS,
+    ProofRouteError,
     proof_worker_route,
     resolve_opencode_executable,
 )
@@ -722,7 +723,32 @@ async def main():
         raise RuntimeError("Saved supervisor does not use the OS credential vault")
     SUPERVISOR_MODEL = choice.model_id
     WORKER_MODEL = args.worker_model
-    WORKER_PROVIDER, provider_name = proof_worker_route(choice.provider, WORKER_MODEL)
+    try:
+        WORKER_PROVIDER, provider_name = proof_worker_route(choice.provider, WORKER_MODEL)
+    except ProofRouteError as exc:
+        result = {
+            "source_commit": start_commit,
+            "source_unchanged": source_commit() == start_commit and source_is_clean(),
+            "arm": args.arm,
+            "pex_attached": args.arm == "pex",
+            "worker_model": WORKER_MODEL,
+            "worker_provider": None,
+            "cases": [],
+            "error_type": type(exc).__name__,
+            "route_rejection": str(exc),
+            "credential_read": False,
+            "provider_call_started": False,
+            "requested_case_count": args.case_count,
+            "passed": False,
+            "owned_server_exited": True,
+            "profiles_retained_for_audit": True,
+            "comparative_benchmark": False,
+            "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "completion_fence_sha256": hashlib.sha256(helper_bytes).hexdigest(),
+        }
+        write_json(ROOT / "summary.json", result)
+        print(json.dumps(result), flush=True)
+        return 1
     assert choice.secret_ref is not None
     secret = KeyringSupervisorSecretStore().get(
         choice.secret_ref,
