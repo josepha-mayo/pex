@@ -9,16 +9,16 @@ a.m. PDT (17:00 UTC).
 | --- | --- | --- |
 | Working application using Nebius Token Factory or Nebius AI Cloud at runtime | `docs/evidence/nebius-live-proof.json` retains a sanitized Token Factory inference receipt. | Satisfied |
 | At least one NVIDIA open-source model | The retained runtime receipt names `nvidia/nemotron-3-super-120b-a12b`. | Satisfied |
-| Track fit | PEX is a coding-agent supervision and verification harness; target track is Coding and Agentic Engineering. | Satisfied |
+| Track fit | Target Best Apps and Agents: PEX is a user-facing supervision app powered by Nemotron on Token Factory. The Coding and Agentic Engineering description calls for Token Factory Sandboxes, which PEX does not currently use. | Aligned in draft |
 | Runs consistently on its intended platform | Exact-source RC23 passed Windows and Ubuntu source suites, desktop builds, Windows package verification, and tagged Linux packaging and bridge smoke checks. | Satisfied for RC23 |
 | Existing project significantly updated after 26 August 2026 | `devpost-submission.md` lists the Nebius provider, BYOK vault, OpenCode/Codex adapters, UI redesign, packaging, and verification work. | Satisfied in draft |
 | Free judge-accessible working demo or test build through judging | RC23 is public and free at the repository release URL. | Satisfied for RC23 |
 | Public repository with source, assets, setup instructions, and visible open-source license | Public GitHub repository, README, and MIT `LICENSE`. | Satisfied |
 | English feature and functionality description | `devpost-submission.md`. | Satisfied in draft |
 | Public YouTube demonstration under three minutes showing the product functioning | No final public video URL exists. | Incomplete |
-| Identify submission track | Coding and Agentic Engineering. | Satisfied in draft |
+| Identify submission track | Best Apps and Agents. | Selected in draft; not submitted |
 | Feedback on Nebius and NVIDIA tools/models | Evidence-based feedback is included in `devpost-submission.md`. | Satisfied in draft |
-| Testing access stays free and unrestricted until judging ends | Public release requires no PEX license or login; a tester supplies their own model credential. Final judge instructions must make this boundary explicit. | Needs final attestation |
+| Testing access stays free and unrestricted until judging ends | Public release requires no PEX license or login, but semantic supervision currently needs a tester-owned Token Factory key. Free, unrestricted judging of that feature is not yet proven. | Incomplete |
 
 ## Judging criteria
 

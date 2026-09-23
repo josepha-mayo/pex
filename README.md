@@ -375,7 +375,7 @@ Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackath
 ## Hackathon
 
 Current target: the [Nebius × NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/),
-Coding and Agentic Engineering track. The
+Best Apps and Agents track. The
 [official rules](https://nebiusglobalaihackathon.devpost.com/rules) require runtime
 use of Nebius Token Factory or AI Cloud and an NVIDIA open-source model.
 Submission closes October 30, 2026 at 17:00 UTC. An existing project must explain
