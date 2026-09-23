@@ -65,7 +65,7 @@ def _deterministic_review_succeeded(result: Any) -> bool:
         isinstance(result, dict)
         and result.get("used_llm") is False
         and result.get("diagnosis") == "deterministic_triage_no_supervisor_model"
-        and result.get("execution_mode") == "local"
+        and result.get("execution_mode") in {"local", "local_deterministic"}
         and result.get("inference_status") == "not_attempted"
         and result.get("transport_status") == "not_attempted"
         and result.get("model_call_count") == 0

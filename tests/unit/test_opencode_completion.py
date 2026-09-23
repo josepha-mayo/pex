@@ -389,11 +389,16 @@ def test_deterministic_review_is_strict_and_does_not_weaken_semantic_review():
     assert not bound_review([row])
     assert not semantic_reviews_succeeded([row])
 
+    stop_row = deterministic_review(execution_mode="local_deterministic")
+    assert bound_deterministic_review([stop_row])
+    assert deterministic_reviews_succeeded([stop_row])
+
 
 @pytest.mark.parametrize("changes", [
     {"used_llm": True},
     {"diagnosis": "other"},
     {"execution_mode": "remote"},
+    {"execution_mode": "unknown_local_mode"},
     {"inference_status": "completed"},
     {"transport_status": "completed"},
     {"model_call_count": 1},
