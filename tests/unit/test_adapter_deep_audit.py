@@ -460,6 +460,49 @@ async def test_sse_line_reader_discards_unterminated_oversized_lines(monkeypatch
     assert lines[-2:] == ["data: {}", ""]
 
 
+@pytest.mark.asyncio
+async def test_sse_line_reader_captures_exact_chunks_before_utf8_decoding():
+    chunks = [b'data: {"text":"', b"\xc3", b'\xa9"}\r\n\r\n']
+
+    class ChunkStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            for chunk in chunks:
+                yield chunk
+
+    captured = []
+    response = httpx.Response(200, stream=ChunkStream())
+    lines = [
+        line async for line in _bounded_sse_lines(response, on_chunk=captured.append)
+    ]
+    assert captured == chunks
+    assert lines == ['data: {"text":"é"}', ""]
+
+
+@pytest.mark.asyncio
+async def test_live_http_sse_capture_failure_refuses_reconnect(monkeypatch):
+    def broken_sink(_path, _chunk):
+        raise OSError("journal unavailable")
+
+    transport = LiveHttpTransport("http://127.0.0.1:4096", sse_chunk_sink=broken_sink)
+    stream = httpx.AsyncClient(
+        base_url="http://127.0.0.1:4096",
+        transport=httpx.MockTransport(lambda _: httpx.Response(
+            200, content=b'data: {"id":1}\n\n',
+        )),
+    )
+    monkeypatch.setattr(http_json_module.httpx, "AsyncClient", lambda *args, **kwargs: stream)
+    try:
+        with pytest.raises(http_json_module.SseCaptureError, match="capture failed"):
+            await transport._read_sse("/event")
+        assert transport.sse_capture_failed is True
+        assert transport.sse_stream_count == 1
+        assert transport.events_since(0) == (0, [], 0)
+        with pytest.raises(http_json_module.SseCaptureError, match="capture failed"):
+            await transport.ensure_sse("/event")
+    finally:
+        await transport.aclose()
+
+
 def test_http_fallback_event_reader_and_request_paths_are_strictly_bounded(monkeypatch):
     transport = type("InjectedTransport", (), {"events": [{"id": i} for i in range(12)]})()
     monkeypatch.setattr(http_json_module, "MAX_HTTP_EVENTS", 4)

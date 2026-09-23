@@ -34,6 +34,7 @@ from benchmarks.opencode_proof_route import (  # noqa: E402
     proof_worker_route,
     resolve_opencode_executable,
 )
+from benchmarks.opencode_sse_journal import OpenCodeSseJournal  # noqa: E402
 
 
 def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
@@ -281,7 +282,8 @@ async def run_case(number, case, model, server):
     write_json(case_root / "public-task.json", {"task": task, "criterion": criterion})
     store = Store(case_root / "pex.sqlite")
     await store.connect()
-    transport = LiveHttpTransport(ORIGIN)
+    sse_journal = OpenCodeSseJournal(case_root / "opencode-global-event.sse")
+    transport = LiveHttpTransport(ORIGIN, sse_chunk_sink=sse_journal.observe)
     registry = AdapterRegistry()
     registry.opencode.attach_transport(transport)
     pipeline = Pipeline(
@@ -550,6 +552,14 @@ async def run_case(number, case, model, server):
         write_json(case_root / "events.json", [e.model_dump(mode="json") for e in events])
         write_json(case_root / "journal.json", journal)
         write_json(case_root / "interventions.json", serialized_rows)
+        pump.cancel()
+        await asyncio.gather(pump, return_exceptions=True)
+        await transport.aclose()
+        receipt["raw_sse_capture"] = sse_journal.finish(
+            stream_count=transport.sse_stream_count,
+            capture_failed=transport.sse_capture_failed,
+            event_gap=registry.opencode._event_gap_detected,
+        )
         write_json(case_root / "receipt.json", receipt)
         return receipt
     finally:
@@ -561,7 +571,10 @@ async def run_case(number, case, model, server):
             try:
                 await transport.aclose()
             finally:
-                await store.close()
+                try:
+                    sse_journal.abort()
+                finally:
+                    await store.close()
 
 
 async def run_baseline_case(number, case, server):
@@ -589,7 +602,8 @@ async def run_baseline_case(number, case, server):
     (workspace / seed_name).write_bytes(seed.encode())
     write_json(case_root / "public-task.json", {"task": task, "criterion": criterion})
 
-    transport = LiveHttpTransport(ORIGIN)
+    sse_journal = OpenCodeSseJournal(case_root / "opencode-global-event.sse")
+    transport = LiveHttpTransport(ORIGIN, sse_chunk_sink=sse_journal.observe)
     registry = AdapterRegistry()
     registry.opencode.attach_transport(transport)
     observed_events = {}
@@ -771,12 +785,23 @@ async def run_baseline_case(number, case, server):
         )
         write_json(case_root / "journal.json", [])
         write_json(case_root / "interventions.json", [])
+        pump.cancel()
+        await asyncio.gather(pump, return_exceptions=True)
+        await transport.aclose()
+        receipt["raw_sse_capture"] = sse_journal.finish(
+            stream_count=transport.sse_stream_count,
+            capture_failed=transport.sse_capture_failed,
+            event_gap=registry.opencode._event_gap_detected,
+        )
         write_json(case_root / "receipt.json", receipt)
         return receipt
     finally:
         pump.cancel()
         await asyncio.gather(pump, return_exceptions=True)
-        await transport.aclose()
+        try:
+            await transport.aclose()
+        finally:
+            sse_journal.abort()
 
 
 async def main():

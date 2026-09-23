@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 from scripts.opencode_pair_report import build_report
@@ -53,6 +54,20 @@ def write_pair(tmp_path):
         case_root = root / "case-01-deduplicate"
         case_root.mkdir()
         (case_root / "public-task.json").write_text('{"task":"same"}\n', encoding="utf-8")
+        payload = b'data: {"type":"session.idle"}\n\n'
+        capture_path = case_root / "opencode-global-event.sse"
+        capture_path.write_bytes(payload)
+        summary_path = root / "summary.json"
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        summary["cases"][0]["raw_sse_capture"] = {
+            "path": str(capture_path.resolve()),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "bytes": len(payload),
+            "chunks": 1,
+            "stream_count": 1,
+            "scope": "post_content_decoding_sse_bytes",
+        }
+        summary_path.write_text(json.dumps(summary), encoding="utf-8")
     return baseline, treatment
 
 
@@ -137,3 +152,27 @@ def test_open_code_pair_report_rejects_path_shaped_case_identity(tmp_path):
     assert report["comparable"] is False
     assert report["metrics"] is None
     assert "case 1 identity is invalid" in report["blockers"]
+
+
+def test_open_code_pair_report_rejects_tampered_raw_sse(tmp_path):
+    baseline, treatment = write_pair(tmp_path)
+    (treatment / "case-01-deduplicate" / "opencode-global-event.sse").write_bytes(b"changed")
+
+    report = build_report(baseline, treatment)
+
+    assert report["comparable"] is False
+    assert report["metrics"] is None
+    assert "case 1 treatment raw SSE capture is missing or invalid" in report["blockers"]
+
+
+def test_open_code_pair_report_rejects_missing_capture_receipt(tmp_path):
+    baseline, treatment = write_pair(tmp_path)
+    path = baseline / "summary.json"
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    del summary["cases"][0]["raw_sse_capture"]
+    path.write_text(json.dumps(summary), encoding="utf-8")
+
+    report = build_report(baseline, treatment)
+
+    assert report["comparable"] is False
+    assert "case 1 baseline raw SSE capture is missing or invalid" in report["blockers"]

@@ -160,7 +160,13 @@ Synthetic smoke remains `not_a_presentation_arm`.
 the same public artifact tasks. Both arms receive byte-identical task and
 acceptance text. The baseline captures OpenCode events and outcomes without
 constructing a PEX pipeline; the treatment attaches the normal PEX pipeline and
-retains its reviews and interventions. Run each arm from the same clean source
+retains its reviews and interventions. Each case also writes the exact
+post-content-decoding bytes consumed from OpenCode's `/global/event` SSE stream
+to an exclusive, bounded `opencode-global-event.sse` file. The receipt records
+its hash and size; a reconnect, capture failure, or event gap invalidates the
+case. The pair reporter rehashes both files and withholds metrics if either is
+missing or changed. These bytes are local evidence and may contain task content.
+Run each arm from the same clean source
 commit and worker route, then validate the pair:
 
 ```text

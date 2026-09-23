@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import codecs
 from collections import deque
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from typing import Any, Protocol
 from urllib.parse import urlparse
 
@@ -21,6 +22,10 @@ MAX_SSE_FRAME_CHARS = 1_048_576
 MAX_SSE_STREAMS = 1_024
 MAX_HTTP_PATH_CHARS = 8_192
 MAX_HTTP_SECRET_CHARS = 8_192
+
+
+class SseCaptureError(RuntimeError):
+    """An explicitly requested exact SSE capture failed; do not reconnect past it."""
 
 
 class HttpJsonTransport(Protocol):
@@ -180,8 +185,15 @@ class MemoryHttpTransport:
 
 class LiveHttpTransport:
     def __init__(
-        self, base_url: str, *, auth: tuple[str, str] | None = None, token: str | None = None
+        self,
+        base_url: str,
+        *,
+        auth: tuple[str, str] | None = None,
+        token: str | None = None,
+        sse_chunk_sink: Callable[[str, bytes], None] | None = None,
     ) -> None:
+        if sse_chunk_sink is not None and not callable(sse_chunk_sink):
+            raise TypeError("SSE chunk sink must be callable")
         self.base_url = _validated_base_url(base_url)
         headers = {}
         if token:
@@ -213,6 +225,9 @@ class LiveHttpTransport:
         self._sse_tasks: dict[str, asyncio.Task] = {}
         self.connected_sse_paths: set[str] = set()
         self._discarded_sse_event_types: frozenset[str] = frozenset()
+        self._sse_chunk_sink = sse_chunk_sink
+        self.sse_stream_count = 0
+        self.sse_capture_failed = False
 
     def discard_sse_event_types(self, event_types: set[str] | frozenset[str]) -> None:
         """Discard explicitly non-semantic SSE types before buffer accounting."""
@@ -278,6 +293,8 @@ class LiveHttpTransport:
                 await response.aclose()
 
     async def ensure_sse(self, path: str = "/event") -> None:
+        if self.sse_capture_failed:
+            raise SseCaptureError("exact SSE capture failed")
         path = _validated_request_path(path)
         existing = self._sse_tasks.get(path)
         if existing is not None and not existing.done():
@@ -298,12 +315,15 @@ class LiveHttpTransport:
                 try:
                     async with client.stream("GET", path) as response:
                         response.raise_for_status()
+                        self.sse_stream_count += 1
                         self.connected_sse_paths.add(path)
                         self._events_ready.set()
                         data_lines: list[str] = []
                         frame_chars = 0
                         discarding_frame = False
-                        async for line in _bounded_sse_lines(response):
+                        async for line in _bounded_sse_lines(
+                            response, on_chunk=lambda chunk: self._capture_sse_chunk(path, chunk)
+                        ):
                             if line is None:
                                 if not discarding_frame:
                                     self._record_event_gap()
@@ -335,6 +355,8 @@ class LiveHttpTransport:
                                 data_lines.append(line[5:].lstrip(" "))
                 except asyncio.CancelledError:
                     raise
+                except SseCaptureError:
+                    raise
                 except Exception:
                     pass
                 finally:
@@ -347,6 +369,16 @@ class LiveHttpTransport:
             self.connected_sse_paths.discard(path)
             self._events_ready.set()
             await client.aclose()
+
+    def _capture_sse_chunk(self, path: str, chunk: bytes) -> None:
+        sink = self._sse_chunk_sink
+        if sink is None:
+            return
+        try:
+            sink(path, chunk)
+        except Exception as exc:
+            self.sse_capture_failed = True
+            raise SseCaptureError("exact SSE capture failed") from exc
 
     async def aclose(self) -> None:
         tasks = list(self._sse_tasks.values())
@@ -467,11 +499,17 @@ def transport_events_since(
     return latest, retained, dropped
 
 
-async def _bounded_sse_lines(response: httpx.Response) -> AsyncIterator[str | None]:
+async def _bounded_sse_lines(
+    response: httpx.Response, *, on_chunk: Callable[[bytes], None] | None = None
+) -> AsyncIterator[str | None]:
     """Split bounded lines; None tells the frame decoder a line was discarded."""
     pending = ""
     discarding = False
-    async for chunk in response.aiter_text():
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    async for raw_chunk in response.aiter_bytes():
+        if on_chunk is not None:
+            on_chunk(raw_chunk)
+        chunk = decoder.decode(raw_chunk)
         cursor = 0
         while cursor < len(chunk):
             newline = chunk.find("\n", cursor)

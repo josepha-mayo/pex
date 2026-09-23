@@ -29,6 +29,29 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _valid_sse_capture(case_root: Path, receipt: dict) -> bool:
+    capture = receipt.get("raw_sse_capture")
+    if not isinstance(capture, dict):
+        return False
+    path = case_root / "opencode-global-event.sse"
+    if (
+        not path.is_file()
+        or path.is_symlink()
+        or capture.get("path") != str(path.resolve())
+        or capture.get("scope") != "post_content_decoding_sse_bytes"
+        or capture.get("stream_count") != 1
+        or isinstance(capture.get("bytes"), bool)
+        or not isinstance(capture.get("bytes"), int)
+        or not 0 < capture["bytes"] <= 64 * 1024 * 1024
+        or isinstance(capture.get("chunks"), bool)
+        or not isinstance(capture.get("chunks"), int)
+        or capture["chunks"] <= 0
+        or path.stat().st_size != capture["bytes"]
+    ):
+        return False
+    return _sha256(path) == capture.get("sha256")
+
+
 def build_report(baseline_root: Path, treatment_root: Path) -> dict:
     baseline_root = baseline_root.resolve()
     treatment_root = treatment_root.resolve()
@@ -105,6 +128,13 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             blockers.append(f"case {index} worker provider mismatch")
         if base.get("worker_credential_source") != pex.get("worker_credential_source"):
             blockers.append(f"case {index} worker credential source mismatch")
+        for root, receipt, arm in (
+            (baseline_root, base, "baseline"),
+            (treatment_root, pex, "treatment"),
+        ):
+            case_root = root / f"case-{number:02d}-{case_name}"
+            if not _valid_sse_capture(case_root, receipt):
+                blockers.append(f"case {index} {arm} raw SSE capture is missing or invalid")
         baseline_task = baseline_root / f"case-{number:02d}-{case_name}" / "public-task.json"
         treatment_task = treatment_root / f"case-{number:02d}-{case_name}" / "public-task.json"
         if not baseline_task.is_file() or not treatment_task.is_file():
@@ -155,7 +185,7 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
     pex_mode = baseline.get("pex_mode") if comparable else None
     deterministic = pex_mode == "deterministic"
     return {
-        "schema": "pex.opencode-paired-diagnostic.v1",
+        "schema": "pex.opencode-paired-diagnostic.v2",
         "comparable": comparable,
         "comparative_benchmark": False,
         "claim_boundary": (
