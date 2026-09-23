@@ -318,7 +318,7 @@ test("Home setup routes reuse guarded connection and goal flows without writing 
   assert.match(app, /if \(setup\.cta\?\.intent === "goal"\) openGoalSetup\(\)/);
   assert.match(app, /else openSettings\("connections"\)/);
   assert.match(app, /initialSection=\{settingsDestination\}/);
-  assert.match(app, /supervisorNotice=\{supervisorNotice\}/);
+  assert.match(app, /supervisorNotice=\{setup\?\.state !== "unavailable" \? supervisorNotice : null\}/);
   assert.match(app, /supervisorAvailability\(\{ supervisor, supervisorFresh: settingsAvailable \}\)/);
   const route = app.slice(app.indexOf("function openGoalSetup()"), app.indexOf('if (shell === "pet")', app.indexOf("function openGoalSetup()")));
   assert.match(route, /openInspector\(\)/);

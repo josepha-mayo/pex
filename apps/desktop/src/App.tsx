@@ -97,6 +97,7 @@ import {
   canFocusSession,
   canOpenSession,
   canonicalResourceIssue,
+  inspectorCanonicalIssue,
   canonicalResourceIsFreshForScope,
   canonicalResourcesAreFresh,
   createGoalPayload,
@@ -1444,18 +1445,17 @@ export function App() {
     && goalStateFresh
     && goalEvidenceFresh
     && contextStateFresh;
-  const inspectorIssue = contextProjectId !== projectId
-    ? "Checking canonical context for the selected project…"
-    : canonicalResourceIssue(
-        canonicalResources,
-        attachedGoal
-          ? ["pet", "goals", "context", "decisions", "completion"]
-          : ["pet", "goals", "context"],
-      );
+  const inspectorIssue = inspectorCanonicalIssue(
+    canonicalResources, bridgeError, projectId, contextProjectId, Boolean(attachedGoal),
+  );
   const deckMutationsAvailable = canonicalResourcesAreFresh(
     canonicalResources,
     ["deck", "goals"],
   );
+  const decisionsFresh = !bridgeError
+    && !detailsError
+    && attentionMetrics !== null
+    && canonicalResourcesAreFresh(canonicalResources, ["pet", "deck", "interventions"]);
   const auditMutationsAvailable = canonicalResourcesAreFresh(
     canonicalResources,
     ["interventions", "goals"],
@@ -1467,7 +1467,7 @@ export function App() {
   const compactGoalIssue = canonicalResourceIssue(canonicalResources, ["goals"]);
   const deckIssue = bridgeError
     ? "Bridge offline. Cached rows below are not current."
-    : contextProjectId !== projectId
+    : projectId && contextProjectId !== projectId
       ? "Checking canonical context for the selected project…"
       : canonicalResourceIssue(canonicalResources, ["deck", "context", "interventions"])
         || detailsError;
@@ -2628,7 +2628,7 @@ export function App() {
           goals={availableGoals}
           action={action}
           status={status}
-          supervisorNotice={supervisorNotice}
+          supervisorNotice={setup?.state !== "unavailable" ? supervisorNotice : null}
           evidenceOpen={evidenceOpen}
           question={question}
           answer={answer}
@@ -2703,6 +2703,12 @@ export function App() {
           loading={detailsLoading}
           error={deckIssue}
           mutationsAvailable={deckMutationsAvailable}
+          decisionsFresh={decisionsFresh}
+          sessionsFresh={sessionStateFresh}
+          contextFresh={!bridgeError && contextStateFresh && goalStateFresh}
+          interventionsFresh={!bridgeError && canonicalResourcesAreFresh(canonicalResources, ["interventions"])}
+          agentsFresh={sessionStateFresh && canonicalResourcesAreFresh(canonicalResources, ["deck"])}
+          bridgeOnline={!bridgeError}
           auditMutationsAvailable={auditMutationsAvailable}
           decisionFeedback={decisionFeedback}
           identityConflicts={identityConflicts}

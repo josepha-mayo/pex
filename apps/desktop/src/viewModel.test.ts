@@ -123,6 +123,7 @@ import {
   askPexQuestions,
   companionHeadline,
   canonicalResourceIssue,
+  inspectorCanonicalIssue,
   canonicalResourceIsFreshForScope,
   canonicalResourcesAreFresh,
   contextItemMarks,
@@ -805,6 +806,25 @@ test("canonical resource failures stay independent and preserve only same-resour
   });
   assert.equal(canonicalResourceIsFreshForScope(contextFresh, "context", "project-a", "project-a"), true);
   assert.equal(canonicalResourceIsFreshForScope(contextFresh, "context", "project-a", "project-b"), false);
+});
+
+test("Inspector does not promise a context refresh with no bridge or project", () => {
+  const initial = initialCanonicalResources();
+  assert.equal(inspectorCanonicalIssue(initial, "Bridge offline", "", null, false), null);
+  assert.equal(inspectorCanonicalIssue(initial, null, "", null, false), "Loading local PEX state…");
+
+  const petFresh = settleCanonicalResource(initial, "pet", "fresh");
+  const readyWithoutProject = settleCanonicalResource(petFresh, "goals", "fresh");
+  assert.equal(inspectorCanonicalIssue(readyWithoutProject, null, "", null, false), null);
+  assert.match(
+    inspectorCanonicalIssue(readyWithoutProject, null, "project-b", "project-a", false) || "",
+    /Checking canonical context for the selected project/u,
+  );
+  const failedContext = settleCanonicalResource(readyWithoutProject, "context", "failed");
+  assert.match(
+    inspectorCanonicalIssue(failedContext, null, "project-b", "project-b", false) || "",
+    /could not load context/u,
+  );
 });
 
 test("ledger edits require valid decisions for the exact goal revision", async () => {

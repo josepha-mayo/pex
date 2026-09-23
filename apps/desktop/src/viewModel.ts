@@ -663,6 +663,25 @@ export function canonicalResourceIssue(
     : `PEX could not load ${names} from its local service.`;
 }
 
+export function inspectorCanonicalIssue(
+  resources: CanonicalResourceMap,
+  bridgeError: string | null,
+  projectId: string,
+  contextProjectId: string | null,
+  hasGoal: boolean,
+): string | null {
+  // The Inspector already names an offline bridge in its main status. A
+  // project-scoped context read cannot complete while that bridge is down.
+  if (bridgeError) return null;
+  if (projectId && contextProjectId !== projectId) {
+    return "Checking canonical context for the selected project…";
+  }
+  const keys: CanonicalResourceKey[] = hasGoal
+    ? ["pet", "goals", "context", "decisions", "completion"]
+    : projectId ? ["pet", "goals", "context"] : ["pet", "goals"];
+  return canonicalResourceIssue(resources, keys);
+}
+
 export function statusCopy(
   pet: PetSnapshot | null,
   bridgeError: string | null,

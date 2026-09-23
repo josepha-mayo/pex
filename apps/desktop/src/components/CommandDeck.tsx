@@ -99,6 +99,12 @@ export function CommandDeck({
   loading,
   error,
   mutationsAvailable = true,
+  decisionsFresh = true,
+  sessionsFresh = true,
+  contextFresh = true,
+  interventionsFresh = true,
+  agentsFresh = true,
+  bridgeOnline = true,
   auditMutationsAvailable = true,
   decisionFeedback,
   identityConflicts,
@@ -144,6 +150,12 @@ export function CommandDeck({
   loading: boolean;
   error?: string | null;
   mutationsAvailable?: boolean;
+  decisionsFresh?: boolean;
+  sessionsFresh?: boolean;
+  contextFresh?: boolean;
+  interventionsFresh?: boolean;
+  agentsFresh?: boolean;
+  bridgeOnline?: boolean;
   auditMutationsAvailable?: boolean;
   decisionFeedback: DecisionFeedback | null;
   identityConflicts: ProjectIdentityConflictPage | null;
@@ -237,6 +249,7 @@ export function CommandDeck({
               interventions={interventions}
               attentionMetrics={attentionMetrics}
               degraded={Boolean(error)}
+              sourceFresh={sessionsFresh}
               mutationsAvailable={mutationsAvailable}
               onSelect={onSelectSession}
               onOpen={onOpenSession}
@@ -259,6 +272,7 @@ export function CommandDeck({
               identityResolving={identityResolving}
               identityFeedback={identityFeedback}
               mutationsAvailable={mutationsAvailable}
+              decisionsFresh={decisionsFresh}
               onOpen={onOpenSession}
               onResolve={onResolveDecision}
               onSelectIdentityProject={onSelectIdentityProject}
@@ -273,6 +287,7 @@ export function CommandDeck({
               items={contextItems}
               sessions={sessions}
               selectedSessionId={selectedSessionId}
+              sourceFresh={contextFresh}
             />
           ) : null}
           {activeView === "interventions" ? (
@@ -280,13 +295,14 @@ export function CommandDeck({
               interventions={auditInterventions}
               handoffAssimilation={handoffAssimilation}
               mutationsAvailable={auditMutationsAvailable}
+              sourceFresh={interventionsFresh}
               onUndo={onUndo}
             />
           ) : null}
           {activeView === "agents" ? (
-            <AgentsView sessions={sessions} fingerprints={fingerprints} adapters={adapters} />
+            <AgentsView sessions={sessions} fingerprints={fingerprints} adapters={adapters} sourceFresh={agentsFresh} />
           ) : null}
-          {activeView === "bench" ? <BenchView bench={bench} /> : null}
+          {activeView === "bench" ? <BenchView bench={bench} bridgeOnline={bridgeOnline} /> : null}
         </div>
 
         <AskPex
@@ -310,6 +326,7 @@ function NowView({
   interventions,
   attentionMetrics,
   degraded,
+  sourceFresh,
   mutationsAvailable,
   onSelect,
   onOpen,
@@ -320,6 +337,7 @@ function NowView({
   interventions: Intervention[];
   attentionMetrics: AttentionMetrics | null;
   degraded: boolean;
+  sourceFresh: boolean;
   mutationsAvailable: boolean;
   onSelect: (sessionId: string) => void;
   onOpen: (session: SessionRow) => void;
@@ -337,6 +355,8 @@ function NowView({
 
   return (
     <div className="now-layout">
+      {attentionMetrics ? (
+      <>
       <dl className="attention-metrics" aria-label="Human attention metrics">
         <div>
           <dt>Human interventions</dt>
@@ -398,11 +418,20 @@ function NowView({
           ? `All durable local history · exact aggregate · as of ${new Date(attentionMetrics.window.as_of).toLocaleString()} · not benchmark evidence`
           : "Attention metrics are unavailable; recent intervention rows are not used as a substitute."}
       </p>
+      </>
+      ) : (
+        <p className="attention-unavailable" role="status">
+          <strong>Attention metrics unavailable</strong>
+          <span>The bridge aggregate could not be refreshed. Recent intervention rows are not a substitute.</span>
+        </p>
+      )}
       <div className="now-grid">
       {!sessions.length ? (
         <EmptyState
-          title="No active sessions"
-          body="Start a supported worker normally. PEX will not manufacture one for the deck."
+          title={sourceFresh ? "No active sessions" : "Sessions unavailable"}
+          body={sourceFresh
+            ? "Start a supported worker normally. PEX will not manufacture one for the deck."
+            : "PEX could not refresh current sessions. Reconnect the local bridge to check again."}
         />
       ) : null}
       {sessions.map((session) => {
@@ -469,6 +498,7 @@ function DecisionsView({
   identityResolving,
   identityFeedback,
   mutationsAvailable,
+  decisionsFresh,
   onOpen,
   onResolve,
   onSelectIdentityProject,
@@ -490,6 +520,7 @@ function DecisionsView({
   identityResolving: boolean;
   identityFeedback: ProjectIdentityFeedback | null;
   mutationsAvailable: boolean;
+  decisionsFresh: boolean;
   onOpen: (session: SessionRow) => void;
   onResolve: (intervention: Intervention, decision: HumanDecisionChoice) => void;
   onSelectIdentityProject: (legacyProjectId: string) => void;
@@ -763,7 +794,9 @@ function DecisionsView({
         );
       })}
       {!permissionActions.length && !lifecycleActions.length && !requestedActions.length && !generalActions.length && !unexplainedSessions.length ? (
-        <EmptyState title="No unresolved judgments" body="The last decision was refreshed from canonical bridge state." />
+        decisionsFresh
+          ? <EmptyState title="No unresolved worker decisions" body="Current bridge state has no unresolved worker decisions. Project identity is reported separately above." />
+          : <EmptyState title="Decisions unavailable" body="PEX could not refresh current decisions. Reconnect the local bridge to check again." />
       ) : null}
     </div>
   );
@@ -925,11 +958,13 @@ function ContextView({
   items,
   sessions,
   selectedSessionId,
+  sourceFresh,
 }: {
   goals: Goal[];
   items: ContextItem[];
   sessions: SessionRow[];
   selectedSessionId?: string;
+  sourceFresh: boolean;
 }) {
   const selected = sessions.find((session) => session.id === selectedSessionId);
   const goal = goals.find((item) => item.id === selected?.goal_id) ||
@@ -942,14 +977,23 @@ function ContextView({
     <div className="context-layout">
       <aside className="context-boundaries">
         <p className="eyebrow">Active goal boundaries</p>
-        <h2>{goal?.title || "No goal selected"}</h2>
-        <ContextBoundary label="Constraints" values={goal?.constraints} />
-        <ContextBoundary label="Non-goals" values={goal?.non_goals} />
-        <ContextBoundary label="Preferences" values={goal?.preferences} />
-        <ContextBoundary label="Acceptance" values={goal?.acceptance_criteria} />
-        <p className={`context-health ${health.warning ? "warning" : ""}`}>
-          {health.label}
-        </p>
+        {sourceFresh ? (
+          <>
+            <h2>{goal?.title || "No goal selected"}</h2>
+            <ContextBoundary label="Constraints" values={goal?.constraints} />
+            <ContextBoundary label="Non-goals" values={goal?.non_goals} />
+            <ContextBoundary label="Preferences" values={goal?.preferences} />
+            <ContextBoundary label="Acceptance" values={goal?.acceptance_criteria} />
+            <p className={`context-health ${health.warning ? "warning" : ""}`}>
+              {health.label}
+            </p>
+          </>
+        ) : (
+          <>
+            <h2>Goal boundaries unavailable</h2>
+            <p>PEX could not refresh this project's goal and context state.</p>
+          </>
+        )}
       </aside>
       <div className="context-list">
         {items.length ? items.map((item) => {
@@ -977,7 +1021,9 @@ function ContextView({
           </article>
           );
         }) : (
-          <EmptyState title="No durable context recorded" body="Facts, decisions, constraints, and artifacts appear only after real ingestion." />
+          sourceFresh
+            ? <EmptyState title="No durable context recorded" body="Facts, decisions, constraints, and artifacts appear only after real ingestion." />
+            : <EmptyState title="Context unavailable" body="PEX could not refresh canonical context for this project." />
         )}
       </div>
     </div>
@@ -1115,15 +1161,19 @@ function InterventionsView({
   interventions,
   handoffAssimilation,
   mutationsAvailable,
+  sourceFresh,
   onUndo,
 }: {
   interventions: Intervention[];
   handoffAssimilation: Record<string, HandoffAssimilationStatus | "unreachable">;
   mutationsAvailable: boolean;
+  sourceFresh: boolean;
   onUndo: (intervention: Intervention) => void;
 }) {
   if (!interventions.length) {
-    return <EmptyState title="No interventions" body="Quiet is a valid result when no evidence justifies action." />;
+    return sourceFresh
+      ? <EmptyState title="No interventions" body="Quiet is a valid result when no evidence justifies action." />
+      : <EmptyState title="Interventions unavailable" body="PEX could not refresh intervention history. Reconnect the local bridge to check again." />;
   }
 
   return (
@@ -1216,10 +1266,12 @@ function AgentsView({
   sessions,
   fingerprints,
   adapters,
+  sourceFresh,
 }: {
   sessions: SessionRow[];
   fingerprints: Fingerprint[];
   adapters: AdapterRow[];
+  sourceFresh: boolean;
 }) {
   const adapterByName = useMemo(() => new Map(adapters.map((item) => [item.name, item])), [adapters]);
   const sessionsByHarness = useMemo(() => {
@@ -1238,7 +1290,9 @@ function AgentsView({
   ]));
 
   if (!harnesses.length) {
-    return <EmptyState title="No agent fingerprints yet" body="PEX learns from observed sessions; it does not invent strengths or failure patterns." />;
+    return sourceFresh
+      ? <EmptyState title="No agent fingerprints yet" body="PEX learns from observed sessions; it does not invent strengths or failure patterns." />
+      : <EmptyState title="Agent fingerprints unavailable" body="PEX could not refresh observed worker profiles." />;
   }
 
   return (
@@ -1282,9 +1336,9 @@ function AgentsView({
   );
 }
 
-function BenchView({ bench }: { bench: BenchState }) {
+function BenchView({ bench, bridgeOnline }: { bench: BenchState; bridgeOnline: boolean }) {
   const inventory = starterHarnessInventoryCopy(bench.inventory);
-  if (bench.loading && !bench.inventory && !bench.runs.length && !bench.message) {
+  if (bridgeOnline && bench.loading && !bench.inventory && !bench.runs.length && !bench.message) {
     return <EmptyState title="Loading benchmark state" body="Waiting for the bridge result endpoint." />;
   }
 
@@ -1300,7 +1354,9 @@ function BenchView({ bench }: { bench: BenchState }) {
         <div className="bench-integrity">
           <span>Integrity gate</span>
           <strong>
-            {bench.runs.length
+            {!bridgeOnline && !bench.runs.length
+              ? "Run status unavailable"
+              : bench.runs.length
               ? bench.runs.every((run) => run.frozen)
                 ? "Frozen manifests"
                 : "Unfrozen data present"
@@ -1311,8 +1367,10 @@ function BenchView({ bench }: { bench: BenchState }) {
       </div>
       {!bench.runs.length ? (
         <EmptyState
-          title="No verified benchmark runs"
-          body={bench.message || "PEX will show immutable, reproducible runs here when the bridge exposes them."}
+          title={bridgeOnline ? "No verified benchmark runs" : "Benchmark state unavailable"}
+          body={bridgeOnline
+            ? bench.message || "PEX will show immutable, reproducible runs here when the bridge exposes them."
+            : "PEX could not reach the local bridge to check benchmark runs."}
         />
       ) : (
         <div className="bench-runs">
