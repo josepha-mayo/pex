@@ -7,12 +7,12 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 ## Fastest evaluation path
 
 **Current Nebius/NVIDIA candidate:** download
-[PEX 0.1.0 RC15](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc15),
-built from exact product source `df9c877`. Its exact-commit CI passed complete
+[PEX 0.1.0 RC16](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc16),
+built from exact product source `3ea3676`. Its exact-commit CI passed complete
 Windows and Ubuntu source suites, desktop builds, Windows NSIS and Ubuntu
-Debian packages, bootstrap tests, and bundled-bridge identity checks. A
+Debian/AppImage packages, bootstrap tests, and bundled-bridge identity checks. A
 bounded live Nemotron Super call retained from the audited BYOK path passed on
-the global Token Factory endpoint; RC15 made no paid provider call. See
+the global Token Factory endpoint; RC16 packaging made no paid provider call. See
 [`docs/evidence/nebius-live-proof.json`](evidence/nebius-live-proof.json).
 The retained live OpenCode pair also passed: one already-correct case produced
 a model-backed `NOOP` with zero follow-ups, while one controlled false test claim
