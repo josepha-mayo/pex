@@ -199,6 +199,8 @@ def score_item(
     now = now or datetime.now(UTC)
     if item.sensitivity in {Sensitivity.SECRET, Sensitivity.LOCAL_ONLY}:
         return -1.0
+    if _as_utc(item.valid_from) > now:
+        return -1.0
     raw_ledger_kind = item.metadata.get("kind")
     ledger_kind = raw_ledger_kind.strip().casefold() if isinstance(raw_ledger_kind, str) else ""
     if ledger_kind in {
@@ -304,7 +306,11 @@ def build_bundle(
         item.supersedes
         for item in items
         if item.supersedes
-        and score_item(item, goal, target, now=now) > 0
+        and item.goal_id == goal.id
+        and project_binding_key(item.project_id) == project_binding_key(goal.project_id)
+        and _as_utc(item.valid_from) <= now
+        and (item.stale_after is None or _as_utc(item.stale_after) > now)
+        and item.source_refs
     }
     verified_refs = {
         ref

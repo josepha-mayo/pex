@@ -260,6 +260,28 @@ def test_delivered_successor_never_revives_superseded_context() -> None:
     assert bundle.items == []
 
 
+def test_private_successor_retires_old_public_context_without_crossing_scope() -> None:
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    retired = _item("old-path", "Use the old parser release path", now)
+    private = _item(
+        "private-replacement",
+        "New parser release path contains private details",
+        now,
+        sensitivity=Sensitivity.LOCAL_ONLY,
+    ).model_copy(update={"supersedes": retired.id})
+    assert build_bundle(
+        goal, _target(task="parser release"), [retired, private], [], []
+    ).items == []
+
+    future = private.model_copy(update={"valid_from": now + timedelta(days=1)})
+    assert build_bundle(
+        goal, _target(task="parser release"), [retired, future], [], []
+    ).items == [retired]
+    public_future = future.model_copy(update={"sensitivity": Sensitivity.INTERNAL})
+    assert score_item(public_future, goal, _target(), now=now) == -1.0
+
+
 def test_bundle_carries_only_selected_provenance_and_redacts_again_at_boundary() -> None:
     now = datetime.now(UTC)
     goal = _goal(now)
