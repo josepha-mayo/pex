@@ -22,16 +22,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           version: '0.12.17'
           enable-cache: true
       - name: Install pinned standalone Python
         run: uv python install
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
@@ -57,7 +57,7 @@ jobs:
           npm run build
       - name: Retain test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tests-${{ matrix.os }}
           path: build/test-results.xml
@@ -78,16 +78,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           version: '0.12.17'
           enable-cache: true
       - name: Install pinned standalone Python
         run: uv python install
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
@@ -113,7 +113,7 @@ jobs:
       - name: Verify bundled bridge startup and identity
         run: uv run --frozen python scripts/smoke_packaged_bridge.py --exe "${{ matrix.bridge }}" --output build/packaged-bridge-smoke.json
       - name: Retain packages and startup receipt
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.os }}-${{ github.sha }}
           if-no-files-found: error

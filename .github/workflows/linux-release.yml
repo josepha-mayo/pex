@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Check out the exact release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release_tag }}
           fetch-depth: 0
@@ -30,18 +30,18 @@ jobs:
             librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev patchelf wget
 
       - name: Install pinned Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12.13'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v10.2.0
         with:
           version: '0.8.22'
           enable-cache: true
 
       - name: Install pinned Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24.19.0'
           cache: npm
@@ -74,7 +74,7 @@ jobs:
             --output build/linux-packaged-bridge-smoke.json
 
       - name: Upload workflow artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pex-linux-x64-${{ inputs.release_tag }}
           if-no-files-found: error
