@@ -26,12 +26,19 @@ test("OpenCode onboarding explains the separate server and worker without starti
     const { OpenCodeConnectionPanel } = await vite.ssrLoadModule("/src/components/OpenCodeConnectionPanel.tsx");
     const html = renderToStaticMarkup(createElement(OpenCodeConnectionPanel, {
       request: async () => assert.fail("render must not connect or start work"),
+      available: true,
     }));
     assert.match(html, /opencode serve --port 4096/);
     assert.match(html, /opencode attach http:\/\/127\.0\.0\.1:4096/);
     assert.match(html, /Create or resume your worker session there/);
     assert.match(html, /does not restart OpenCode or start a task/);
     assert.match(html, /Zen key belongs in Supervisor settings, not this address/);
+    const offline = renderToStaticMarkup(createElement(OpenCodeConnectionPanel, {
+      request: async () => assert.fail("offline render must not connect"),
+      available: false,
+    }));
+    assert.match(offline, /disabled=""[^>]*>Connect OpenCode</);
+    assert.match(offline, /has not confirmed the local bridge/);
   } finally {
     await vite.close();
   }

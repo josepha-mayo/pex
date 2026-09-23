@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { connectOpenCode, openCodeConnectionFailure, openCodeOrigin } from "../openCodeConnection";
 import type { SharedRequest } from "../sharedConnection";
 
-export function OpenCodeConnectionPanel({ request, onChanged }: {
+export function OpenCodeConnectionPanel({ request, onChanged, available }: {
   request: SharedRequest;
   onChanged?: () => void;
+  available: boolean;
 }) {
   const [url, setUrl] = useState("http://127.0.0.1:4096");
   const [username, setUsername] = useState("opencode");
@@ -18,7 +19,7 @@ export function OpenCodeConnectionPanel({ request, onChanged }: {
   }, []);
 
   async function connect() {
-    if (pending.current || !openCodeOrigin(url)) return;
+    if (pending.current || !available || !openCodeOrigin(url)) return;
     const controller = new AbortController();
     pending.current = controller;
     setBusy(true);
@@ -76,8 +77,9 @@ export function OpenCodeConnectionPanel({ request, onChanged }: {
           onChange={(event) => setPassword(event.target.value)} />
       </label>
     </details>
-    <button type="button" className="solid" disabled={busy || !openCodeOrigin(url)}
+    <button type="button" className="solid" disabled={busy || !available || !openCodeOrigin(url)}
       onClick={() => void connect()}>{busy ? "Connecting…" : "Connect OpenCode"}</button>
+    {!available ? <p className="settings-note" role="status">PEX has not confirmed the local bridge. Open the PEX desktop app or retry its bridge before connecting a worker.</p> : null}
     {notice ? <p role="status" aria-live="polite">{notice}</p> : null}
   </section>;
 }

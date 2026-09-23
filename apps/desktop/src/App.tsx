@@ -2362,7 +2362,8 @@ export function App() {
         hookCredentialExpiresAt={hookBootstrap?.expires_at || ""}
         provisioningHook={provisioningHook}
         workerConnection={<>
-          <OpenCodeConnectionPanel request={sharedConnectionRequest} onChanged={() => void loadBaseState()} />
+          <OpenCodeConnectionPanel request={sharedConnectionRequest} available={sessionStateFresh}
+            onChanged={() => void loadBaseState()} />
           <details className="settings-disclosure settings-wide">
             <summary>
               <span>
