@@ -28,7 +28,7 @@ export function OpenCodeConnectionPanel({ request, onChanged, available }: {
     try {
       await connectOpenCode(request, url, controller.signal, { username, password });
       if (pending.current === controller) {
-        setNotice("OpenCode server connected. If no worker appears, create or resume a session in the OpenCode terminal attached to this server. Then return Home, select your worker, and set its persistent goal. PEX did not start a worker turn.");
+        setNotice("OpenCode server connected. Return Home to select a worker and set its goal. If none appears, create or resume a session in the attached OpenCode terminal. PEX did not start a worker turn.");
         onChanged?.();
       }
     } catch (error) {
@@ -47,18 +47,8 @@ export function OpenCodeConnectionPanel({ request, onChanged, available }: {
 
   return <section className="settings-card settings-wide">
     <p className="eyebrow">OpenCode</p>
-    <h2>Connect your local OpenCode server</h2>
-    <p className="settings-note">
-      Start OpenCode with its HTTP server, then enter the local address below.
-      PEX connects to existing sessions; it does not restart OpenCode or start a task.
-      Your Zen key belongs in Supervisor settings, not this address.
-    </p>
-    <ol className="settings-note">
-      <li>In your project terminal, run <code>opencode serve --port 4096</code>.</li>
-      <li>In another terminal, run <code>opencode attach http://127.0.0.1:4096</code>.
-        Create or resume your worker session there. Use the same server address below if you changed the port.</li>
-      <li>Connect PEX, then return Home to select that worker and set its goal.</li>
-    </ol>
+    <h2>Connect OpenCode</h2>
+    <p className="settings-note">Enter the address of an OpenCode server running on this computer.</p>
     <label>OpenCode server address
       <input type="url" value={url} maxLength={2048} disabled={busy}
         onChange={(event) => setUrl(event.target.value)} autoComplete="off"
@@ -81,5 +71,14 @@ export function OpenCodeConnectionPanel({ request, onChanged, available }: {
       onClick={() => void connect()}>{busy ? "Connecting…" : "Connect OpenCode"}</button>
     {!available ? <p className="settings-note" role="status">PEX has not confirmed the local bridge. Open the PEX desktop app or retry its bridge before connecting a worker.</p> : null}
     {notice ? <p role="status" aria-live="polite">{notice}</p> : null}
+    <details className="settings-advanced">
+      <summary>How to start and attach OpenCode</summary>
+      <ol className="settings-note">
+        <li>In your project terminal, run <code>opencode serve --port 4096</code>.</li>
+        <li>In another terminal, run <code>opencode attach http://127.0.0.1:4096</code> and create or resume a session.</li>
+        <li>Connect PEX, then select your worker and goal on Home.</li>
+      </ol>
+      <p className="settings-note">PEX connects to existing sessions; it does not start a task. Put model keys in Supervisor settings, not the server address.</p>
+    </details>
   </section>;
 }

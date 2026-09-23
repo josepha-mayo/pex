@@ -30,9 +30,10 @@ test("OpenCode onboarding explains the separate server and worker without starti
     }));
     assert.match(html, /opencode serve --port 4096/);
     assert.match(html, /opencode attach http:\/\/127\.0\.0\.1:4096/);
-    assert.match(html, /Create or resume your worker session there/);
-    assert.match(html, /does not restart OpenCode or start a task/);
-    assert.match(html, /Zen key belongs in Supervisor settings, not this address/);
+    assert.match(html, /and create or resume a session/);
+    assert.match(html, /it does not start a task/);
+    assert.match(html, /Put model keys in Supervisor settings, not the server address/);
+    assert.ok(html.indexOf(">Connect OpenCode</button>") < html.indexOf(">How to start and attach OpenCode</summary>"));
     const offline = renderToStaticMarkup(createElement(OpenCodeConnectionPanel, {
       request: async () => assert.fail("offline render must not connect"),
       available: false,

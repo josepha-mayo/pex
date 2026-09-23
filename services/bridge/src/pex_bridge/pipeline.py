@@ -6140,28 +6140,37 @@ class Pipeline:
                 code="artifact_project_identity_unbound",
             )
         delivered: set[str] = set()
-        for prior in await self.store.list_interventions_for_authority(
-            target.id,
-            goal_id=goal.id,
-            project_id=project_id,
-            harness_type=target.harness_type,
-        ):
-            if prior.proposed_action.type != InterventionType.FRESH_HANDOFF:
-                continue
-            delivery_status = str((prior.metadata or {}).get("handoff_delivery_status") or "")
-            if prior.result != "handoff_injected" and delivery_status not in {
-                "dispatching",
-                "delivering",
-                "delivered",
-                "delivery_uncertain",
-            }:
-                continue
-            raw_bundle = prior.proposed_action.payload.get("bundle")
-            if not isinstance(raw_bundle, dict):
-                continue
-            for raw_item in raw_bundle.get("items") or []:
-                if isinstance(raw_item, dict) and raw_item.get("id"):
-                    delivered.add(str(raw_item["id"]))
+        page_size = 1000
+        offset = 0
+        while True:
+            page = await self.store.list_interventions_for_authority(
+                target.id,
+                goal_id=goal.id,
+                project_id=project_id,
+                harness_type=target.harness_type,
+                limit=page_size,
+                offset=offset,
+            )
+            for prior in page:
+                if prior.proposed_action.type != InterventionType.FRESH_HANDOFF:
+                    continue
+                delivery_status = str((prior.metadata or {}).get("handoff_delivery_status") or "")
+                if prior.result != "handoff_injected" and delivery_status not in {
+                    "dispatching",
+                    "delivering",
+                    "delivered",
+                    "delivery_uncertain",
+                }:
+                    continue
+                raw_bundle = prior.proposed_action.payload.get("bundle")
+                if not isinstance(raw_bundle, dict):
+                    continue
+                for raw_item in raw_bundle.get("items") or []:
+                    if isinstance(raw_item, dict) and raw_item.get("id"):
+                        delivered.add(str(raw_item["id"]))
+            if len(page) < page_size:
+                break
+            offset += len(page)
         return delivered
 
     async def _duplicate_sibling_work(
