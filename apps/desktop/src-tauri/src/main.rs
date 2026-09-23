@@ -606,6 +606,26 @@ fn bridge_data_paths(home_dir: &Path) -> (PathBuf, PathBuf) {
     (home, database)
 }
 
+fn resolved_bridge_data_paths(home_dir: &Path) -> Result<(PathBuf, PathBuf), String> {
+    let (home, _) = bridge_data_paths(home_dir);
+    let home = match std::fs::symlink_metadata(&home) {
+        // Resolve an existing profile before the bridge opens its token file.
+        // The bridge still rejects a linked final token directory and checks
+        // the token's descriptor and owner-only permissions itself.
+        Ok(_) => {
+            if !home.is_dir() {
+                return Err("PEX desktop data path is not a directory".to_string());
+            }
+            home.canonicalize()
+                .map_err(|_| "PEX could not resolve its desktop data directory".to_string())?
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => home,
+        Err(_) => return Err("PEX could not inspect its desktop data directory".to_string()),
+    };
+    let database = home.join("pex.sqlite");
+    Ok((home, database))
+}
+
 fn stop_owned_bridge(app: &tauri::AppHandle) {
     let Some(state) = app.try_state::<BridgeRuntime>() else {
         return;
@@ -771,7 +791,20 @@ fn run_bridge_bootstrap(app: tauri::AppHandle, attempt: u64) {
             return;
         }
     };
-    let (bridge_home, bridge_database) = bridge_data_paths(&home_dir);
+    let (bridge_home, bridge_database) = match resolved_bridge_data_paths(&home_dir) {
+        Ok(paths) => paths,
+        Err(message) => {
+            fail_bridge_attempt(
+                &app,
+                attempt,
+                "desktop_home_unavailable",
+                &message,
+                false,
+                BridgeSource::NotReady,
+            );
+            return;
+        }
+    };
     let token = match app.state::<BridgeRuntime>().token_for_attempt(attempt) {
         Ok(token) => token,
         Err(_) => {
@@ -1103,10 +1136,11 @@ mod tests {
         bridge_address, bridge_data_paths, bridge_identity_proof,
         bridge_port_is_free_for_owned_launch, bridge_port_state_at, bridge_sidecar_args,
         command_event_is_terminal, is_pex_identity_response, normalize_bridge_token,
-        packaged_bridge_path, remaining_timeout, trusted_webview_navigation, window_close_action,
-        BridgeAuth, BridgeBootstrapPhase, BridgePortState, BridgeRuntime, BridgeSource,
-        WindowCloseAction, BRIDGE_IDENTITY_MISS_LIMIT, BRIDGE_IDENTITY_MONITOR_INTERVAL,
-        BRIDGE_EXECUTABLE_NAME, BRIDGE_PYTHON_RUNTIME_NAME, MAX_BRIDGE_TOKEN_CHARS,
+        packaged_bridge_path, remaining_timeout, resolved_bridge_data_paths,
+        trusted_webview_navigation, window_close_action, BridgeAuth, BridgeBootstrapPhase,
+        BridgePortState, BridgeRuntime, BridgeSource, WindowCloseAction, BRIDGE_EXECUTABLE_NAME,
+        BRIDGE_IDENTITY_MISS_LIMIT, BRIDGE_IDENTITY_MONITOR_INTERVAL, BRIDGE_PYTHON_RUNTIME_NAME,
+        MAX_BRIDGE_TOKEN_CHARS,
     };
 
     #[test]
@@ -1258,6 +1292,21 @@ mod tests {
         let (home, database) = bridge_data_paths(std::path::Path::new("C:/Users/example"));
         assert_eq!(home, std::path::PathBuf::from("C:/Users/example/.pex"));
         assert_eq!(database, home.join("pex.sqlite"));
+    }
+
+    #[test]
+    fn existing_sidecar_profile_is_resolved_before_bridge_launch() {
+        let root = std::env::temp_dir().join(format!(
+            "pex-profile-resolution-{}-{}",
+            std::process::id(),
+            rand::random::<u64>()
+        ));
+        let profile = root.join(".pex");
+        std::fs::create_dir_all(&profile).unwrap();
+        let (home, database) = resolved_bridge_data_paths(&root).unwrap();
+        assert_eq!(home, profile.canonicalize().unwrap());
+        assert_eq!(database, home.join("pex.sqlite"));
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
