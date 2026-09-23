@@ -131,7 +131,7 @@ presentation benchmark.
 ### Install PEX
 
 Download the package for your x64 computer from
-[PEX 0.1.0 RC16](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc16).
+[PEX 0.1.0 RC18](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc18).
 
 **Windows 10/11:** use `PEX_0.1.0_x64-setup.exe` for the normal install.
 The binary is not code-signed, so Windows may show a publisher warning.
@@ -147,15 +147,15 @@ example GNOME Keyring or KWallet) to save a BYOK key through Settings. The
 exact-commit CI gate built the Debian package on Ubuntu 24.04 and booted its
 packaged bridge; it did not visually exercise every Linux desktop environment.
 Other graphical x64 Linux users can use `PEX_0.1.0_amd64.AppImage`.
-macOS and ARM64 packages are not available in RC16.
+macOS and ARM64 packages are not available in RC18.
 
-All RC16 packages are built from exact product source
-`3ea36769ebf8f6567f2a7c4dcf79277eff425884`. The Windows installer SHA-256 is
-`22ec7164c03beecfc2d3c436a9d573bc0a96a6a9259e9dc767ef9bc4d6fc059a`;
+All RC18 packages are built from exact product source
+`4dba8d4bb25278eb504db417b338b60956ecac30`. The Windows installer SHA-256 is
+`1943d49e73d9ebda750cc9b37463072f02b23487aa414d9c8dcad07a5e8cb354`;
 the Debian package SHA-256 is
-`d85fd1b5fc2a5d2887672a299414de72aa0007355ab0865607bd2aa31a4eb10c`;
+`9d4cda26456a2ca6519fb3cf483fcfff0f27513814f53d6642139c3f2e8f5e24`;
 and the AppImage SHA-256 is
-`c3d1c5506e530ee89fcfb15e58579d620d61833744bded280b273caeef4a30d9`.
+`73aaca2d3307194248e028221598cd67673e48cb1ebc960b5a7b84d61d7f7a81`.
 The release also includes `SHA256SUMS`.
 Package integrity is not indefinite stability or publisher trust; current
 source-bound behavior and trust boundaries are summarized in the [architecture overview](docs/architecture/overview.md).
