@@ -7,12 +7,13 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 ## Fastest evaluation path
 
 **Current Nebius/NVIDIA candidate:** download
-[PEX 0.1.0 RC22](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc22),
-built from exact product source `60c0eeb`. Its exact-commit CI passed complete
-Windows and Ubuntu source suites, desktop builds, Windows NSIS and Ubuntu
-Debian/AppImage packages, bootstrap tests, and bundled-bridge identity checks. A
+[PEX 0.1.0 RC23](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc23),
+built from exact product source `0331f92`. Exact-commit Windows and Ubuntu CI
+source suites and desktop builds passed. Local Windows NSIS/MSI package
+verification and packaged-bridge smoke passed; the tagged Ubuntu workflow built
+the Debian/AppImage packages and smoked its bundled bridge. A
 bounded live Nemotron Super call retained from the audited BYOK path passed on
-the global Token Factory endpoint; RC22 packaging made no paid provider call. See
+the global Token Factory endpoint; RC23 packaging made no paid provider call. See
 [`docs/evidence/nebius-live-proof.json`](evidence/nebius-live-proof.json).
 The retained live OpenCode pair also passed: one already-correct case produced
 a model-backed `NOOP` with zero follow-ups, while one controlled false test claim
@@ -26,7 +27,7 @@ follow-up, and made zero supervisor model calls. See
 [`docs/evidence/opencode-deterministic-paired-diagnostic-63dc5cd.json`](evidence/opencode-deterministic-paired-diagnostic-63dc5cd.json).
 This is attachment, observation, restraint, and overhead evidence; semantic
 supervision was disabled and it is not a productivity benchmark.
-Privacy-safe current-build Home, Inspector, and Settings screenshots are retained
+Privacy-safe earlier-build Home, Inspector, and Settings screenshots are retained
 under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
 in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json). A public
 under-three-minute video remains required before submission.
