@@ -138,6 +138,10 @@ def test_quiet_runner_binds_route_before_secret_access_and_is_cross_platform():
     assert 'choices=("semantic", "deterministic")' in source
     assert 'os.environ["PEX_SUPERVISOR_DISABLE"] = "1"' in source
     assert '"pex_mode": PEX_MODE' in source
+    assert '"PEX_PROOF_FREE_SUPERVISOR_KEY" not in os.environ' in source
+    assert 'env.pop("PEX_PROOF_FREE_SUPERVISOR_KEY", None)' in source
+    assert 'supervisor_provider = "zen"' in source
+    assert source.index('choices=FREE_OPENCODE_MODELS') < source.index('_EARLY_CLI = _parse_cli()')
 
     recovery_source = (
         Path(__file__).resolve().parents[2] / "scripts/opencode_recovery_once.py"

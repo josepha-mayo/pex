@@ -20,6 +20,7 @@ def write_pair(tmp_path):
         "completion_fence_sha256": "c" * 64,
         "worker_model": "ling-3.0-flash-fin-free",
         "worker_provider": "opencode",
+        "supervisor_credential_source": "separate_environment",
         "pex_mode": "semantic",
     }
     base_case = {
@@ -92,6 +93,19 @@ def test_open_code_pair_report_fails_closed_on_task_or_route_drift(tmp_path):
     assert report["metrics"] is None
     assert "paired worker_provider mismatch" in report["blockers"]
     assert "case 1 public task mismatch" in report["blockers"]
+
+
+def test_open_code_pair_report_rejects_supervisor_credential_source_drift(tmp_path):
+    baseline, treatment = write_pair(tmp_path)
+    summary_path = treatment / "summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["supervisor_credential_source"] = "saved_supervisor"
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+
+    report = build_report(baseline, treatment)
+
+    assert report["comparable"] is False
+    assert "paired supervisor_credential_source mismatch" in report["blockers"]
 
 
 def test_open_code_pair_report_labels_deterministic_pex_without_semantic_claim(tmp_path):

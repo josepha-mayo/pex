@@ -27,6 +27,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from benchmarks.opencode_proof_route import (  # noqa: E402
+    FREE_OPENCODE_MODELS,
     PROOF_WORKER_MODELS,
     ProofRouteError,
     proof_worker_base_url,
@@ -59,6 +60,14 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
         help=(
             "PEX treatment mode. deterministic explicitly disables model calls and "
             "measures only attachment, observation, policy and overhead."
+        ),
+    )
+    parser.add_argument(
+        "--free-supervisor-model",
+        choices=FREE_OPENCODE_MODELS,
+        help=(
+            "Use an explicitly free OpenCode Zen model from "
+            "PEX_PROOF_FREE_SUPERVISOR_KEY without reading saved BYOK."
         ),
     )
     parser.add_argument("--arm", choices=("baseline", "pex"), default="pex")
@@ -760,18 +769,31 @@ async def main():
     helper_bytes = (REPO / "benchmarks/opencode_completion.py").read_bytes()
     (ROOT / "completion-fence.py").write_bytes(helper_bytes)
     start_commit = source_commit()
-    choice = load_supervisor_choice(Path.home() / ".pex/supervisor.json")
-    if not choice or not all((choice.provider, choice.model_id, choice.base_url)):
-        raise RuntimeError("Saved supervisor routing is incomplete")
-    if choice.credential_source != "secret_store":
-        raise RuntimeError("Saved supervisor does not use the OS credential vault")
     PEX_MODE = args.pex_mode
-    SUPERVISOR_MODEL = None if PEX_MODE == "deterministic" else choice.model_id
     WORKER_MODEL = args.worker_model
+    if args.free_supervisor_model:
+        if WORKER_MODEL not in FREE_OPENCODE_MODELS:
+            raise RuntimeError("free supervisor proof requires a free OpenCode worker")
+        supervisor_provider = "zen"
+        supervisor_model = args.free_supervisor_model
+        supervisor_base_url = proof_worker_base_url("opencode")
+        supervisor_credential_source = "separate_environment"
+        choice = None
+    else:
+        choice = load_supervisor_choice(Path.home() / ".pex/supervisor.json")
+        if not choice or not all((choice.provider, choice.model_id, choice.base_url)):
+            raise RuntimeError("Saved supervisor routing is incomplete")
+        if choice.credential_source != "secret_store":
+            raise RuntimeError("Saved supervisor does not use the OS credential vault")
+        supervisor_provider = choice.provider
+        supervisor_model = choice.model_id
+        supervisor_base_url = choice.base_url
+        supervisor_credential_source = "saved_supervisor"
+    SUPERVISOR_MODEL = None if PEX_MODE == "deterministic" else supervisor_model
     has_separate_worker_credential = "PEX_PROOF_WORKER_KEY" in os.environ
     try:
         WORKER_PROVIDER, provider_name = proof_worker_route(
-            choice.provider,
+            supervisor_provider,
             WORKER_MODEL,
             separate_worker_credential=has_separate_worker_credential,
         )
@@ -800,13 +822,19 @@ async def main():
         write_json(ROOT / "summary.json", result)
         print(json.dumps(result), flush=True)
         return 1
-    assert choice.secret_ref is not None
-    supervisor_secret = KeyringSupervisorSecretStore().get(
-        choice.secret_ref,
-        audience=choice.credential_audience(),
-    )
-    if not supervisor_secret:
-        raise RuntimeError("Saved supervisor vault credential is unavailable")
+    if args.free_supervisor_model:
+        if "PEX_PROOF_FREE_SUPERVISOR_KEY" not in os.environ:
+            raise RuntimeError("explicit free supervisor credential is unavailable")
+        supervisor_secret = validate_supervisor_secret(
+            os.environ["PEX_PROOF_FREE_SUPERVISOR_KEY"]
+        )
+    else:
+        assert choice is not None and choice.secret_ref is not None
+        supervisor_secret = KeyringSupervisorSecretStore().get(
+            choice.secret_ref, audience=choice.credential_audience()
+        )
+        if not supervisor_secret:
+            raise RuntimeError("Saved supervisor vault credential is unavailable")
     worker_secret = (
         validate_supervisor_secret(os.environ["PEX_PROOF_WORKER_KEY"])
         if has_separate_worker_credential
@@ -820,14 +848,15 @@ async def main():
         raise RuntimeError("OpenCode executable is unavailable")
     executable = resolve_opencode_executable(shim)
     env = os.environ.copy()
+    env.pop("PEX_PROOF_FREE_SUPERVISOR_KEY", None)
     env["PEX_PROOF_PROVIDER_KEY"] = worker_secret
     for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
         env[f"XDG_{kind}_HOME"] = str(ROOT / kind.lower())
     pin = {
-        "PEX_SUPERVISOR_PROVIDER": choice.provider,
-        "PEX_SUPERVISOR_MODEL": choice.model_id,
+        "PEX_SUPERVISOR_PROVIDER": supervisor_provider,
+        "PEX_SUPERVISOR_MODEL": supervisor_model,
         "PEX_SUPERVISOR_API_KEY": supervisor_secret,
-        "PEX_SUPERVISOR_BASE_URL": choice.base_url,
+        "PEX_SUPERVISOR_BASE_URL": supervisor_base_url,
     }
     write_json(
         ROOT / "opencode.json",
@@ -944,7 +973,8 @@ async def main():
         "worker_model": WORKER_MODEL,
         "worker_provider": WORKER_PROVIDER,
         "worker_credential_source": WORKER_CREDENTIAL_SOURCE,
-        "supervisor_provider": choice.provider,
+        "supervisor_provider": supervisor_provider,
+        "supervisor_credential_source": supervisor_credential_source,
         "pex_mode": PEX_MODE,
         "source_unchanged": source_commit() == start_commit and source_is_clean(),
         "cases": results,

@@ -62,6 +62,7 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
         "worker_provider",
         "worker_credential_source",
         "supervisor_provider",
+        "supervisor_credential_source",
         "pex_mode",
     ):
         if baseline.get(field) != treatment.get(field):
@@ -174,6 +175,9 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             baseline.get("worker_credential_source") if comparable else None
         ),
         "supervisor_provider": baseline.get("supervisor_provider") if comparable else None,
+        "supervisor_credential_source": (
+            baseline.get("supervisor_credential_source") if comparable else None
+        ),
         "pex_mode": pex_mode,
         "semantic_supervision_enabled": False if deterministic else (True if comparable else None),
         "blockers": blockers,
