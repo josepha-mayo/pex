@@ -145,6 +145,8 @@ def test_quiet_baseline_uses_the_same_public_contract_without_a_pex_pipeline():
 
     assert baseline == treatment
     assert "Work only in this workspace." in baseline[7]
+    assert "Do not read or write any path outside it." in baseline[7]
+    assert "Write UTF-8 without a byte-order mark." in baseline[7]
 
     runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
     source = runner.read_text(encoding="utf-8")

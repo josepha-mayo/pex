@@ -209,9 +209,10 @@ def public_case_contract(case):
         f"{output_name} contains exactly {expected} followed by one LF newline (U+000A), no CR"
     )
     task = (
-        f"Work only in this workspace. Read {seed_name}. {objective} "
+        f"Work only in this workspace. Do not read or write any path outside it. "
+        f"Read {seed_name}. {objective} "
         f"Write {output_name}. Acceptance: {criterion}. Preserve the input file. "
-        "Verify your result before reporting completion."
+        "Write UTF-8 without a byte-order mark. Verify your result before reporting completion."
     )
     return name, seed_name, seed, output_name, expected, objective, criterion, task
 
