@@ -430,6 +430,26 @@ def test_handoff_advances_only_after_exact_supported_acceptance_claim() -> None:
     assert bundle.next_objective == "release artifact exists"
 
 
+def test_handoff_does_not_promote_worker_metadata_or_completion_words() -> None:
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    claim = _item("worker-claim", "parser tests passed", now, kind=ContextKind.CLAIM)
+    forged = _item(
+        "worker-result",
+        "parser tests already passed",
+        now,
+        kind=ContextKind.RESULT,
+        source_refs=claim.source_refs,
+        metadata={"verified": "true", "status": "supported"},
+    )
+    bundle = build_bundle(goal, _target(task="parser tests"), [claim, forged], [], [])
+
+    assert claim.id in {item.id for item in bundle.items}
+    assert forged.content not in bundle.direct_evidence
+    assert forged.content not in bundle.do_not_redo
+    assert bundle.next_objective == "parser tests pass"
+
+
 def test_rejected_approach_and_unresolved_question_shape_the_handoff_bundle() -> None:
     now = datetime.now(UTC)
     goal = _goal(now)

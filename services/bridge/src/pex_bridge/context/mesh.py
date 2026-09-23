@@ -160,6 +160,15 @@ def _is_unresolved(item: ContextItem, item_terms: set[str] | None = None) -> boo
     )
 
 
+def _is_supported_result(item: ContextItem) -> bool:
+    return (
+        item.kind == ContextKind.RESULT
+        and item.provenance in _STRONG_PROVENANCE
+        and item.metadata.get("verified") is True
+        and item.metadata.get("status") == "supported"
+    )
+
+
 def _matches_declared_target(item: ContextItem, target: HarnessSession) -> bool:
     """Require target-specific evidence when the target declares its current work.
 
@@ -243,7 +252,7 @@ def score_item(
         score += 0.20
     elif item.provenance == SourceKind.HUMAN:
         score += 0.12
-    if item.kind == ContextKind.RESULT and bool(item.metadata.get("verified")):
+    if _is_supported_result(item):
         score += 0.20
 
     age_days = max(0.0, (now - _as_utc(item.valid_from)).total_seconds() / 86_400)
@@ -292,8 +301,7 @@ def build_bundle(
     verified_refs = {
         ref
         for item in items
-        if item.kind == ContextKind.RESULT
-        and bool(item.metadata.get("verified"))
+        if _is_supported_result(item)
         and score_item(item, goal, target, now=now) > 0
         for ref in item.source_refs
     }
@@ -341,10 +349,7 @@ def build_bundle(
         evidenced = {
             str(claim.get("statement") or "").strip().casefold()
             for item in chosen
-            if item.kind == ContextKind.RESULT
-            and item.provenance in _STRONG_PROVENANCE
-            and item.metadata.get("verified") is True
-            and item.metadata.get("status") == "supported"
+            if _is_supported_result(item)
             if isinstance(claim := item.metadata.get("claim"), dict)
         }
         for criterion in goal.acceptance_criteria:
@@ -359,18 +364,10 @@ def build_bundle(
         rows: list[str] = []
         for item in selected:
             kind = str(item.metadata.get("kind") or "").casefold()
-            status = str(item.metadata.get("status") or "").casefold()
             if kind == "rejected_approach":
                 rows.append(item.content)
                 continue
-            if item.kind in {ContextKind.DECISION, ContextKind.RESULT} and (
-                status in {"supported", "verified", "complete", "passed"}
-                or re.search(
-                    r"\balready (?:verified|completed|passed)\b",
-                    item.content,
-                    re.I,
-                )
-            ):
+            if _is_supported_result(item):
                 rows.append(item.content)
         return rows[:8]
 
@@ -401,8 +398,7 @@ def build_bundle(
         direct_evidence = [
             item.content
             for item in selected
-            if item.kind == ContextKind.RESULT
-            and (item.provenance in _STRONG_PROVENANCE or bool(item.metadata.get("verified")))
+            if item.kind == ContextKind.RESULT and item.provenance in _STRONG_PROVENANCE
         ][:8]
         bundle = ContextBundle(
             goal_id=goal.id,
