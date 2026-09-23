@@ -141,9 +141,10 @@ productivity claim is made.
 ### Install PEX
 
 Download the package for your x64 computer from
-[PEX 0.1.0 RC23](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc23).
+[PEX 0.1.0 RC24](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc24).
 
-**Windows 10/11:** use `PEX_0.1.0_x64-setup.exe` for the normal install.
+**Windows 10/11:** use `PEX_0.1.0_x64-setup.exe` for the normal install, or
+`PEX_0.1.0_x64_en-US.msi` for MSI deployment.
 The binary is not code-signed, so Windows may show a publisher warning.
 
 **Ubuntu, Debian, Linux Mint, Pop!_OS:** download the `.deb`, then run:
@@ -157,15 +158,17 @@ example GNOME Keyring or KWallet) to save a BYOK key through Settings. The
 exact-commit CI gate built the Debian package on Ubuntu 24.04 and booted its
 packaged bridge; it did not visually exercise every Linux desktop environment.
 Other graphical x64 Linux users can use `PEX_0.1.0_amd64.AppImage`.
-macOS and ARM64 packages are not available in RC23.
+macOS and ARM64 packages are not available in RC24.
 
-All RC23 packages are built from exact product source
-`0331f9242e32afaaca1770af33952b5baf889a17`. The Windows installer SHA-256 is
-`62c16e4808d3bc75de86399c0035dae45e39bd14e0ee39437e88cbc353d7ad9e`;
+All RC24 packages are built from exact release source
+`263a30bb5ccf778969c4f5d6c7a3768462a23714`. The Windows NSIS installer SHA-256 is
+`a8b5f4d26d9fed6973eafbfab740289bbdf4c156d9740a60ae40c9c3f5e1ef1d`;
+the MSI SHA-256 is
+`0f32ac1f0b6ee525977e28b65448eee0636c6fc5e6de7003af4d5fc328959f24`;
 the Debian package SHA-256 is
-`0c9be08f356b17eedbfb8a1e7f5c29c805ff52cc417664a827f52e41ab5bb3b8`;
+`a5ed2878d95f990083908326090ae50cbd63805a91eae59fdee0d794a90cb99f`;
 and the AppImage SHA-256 is
-`907609f5cdc6807b45dbaa4abff19769ddb9a2ec8eabb2fd96e4a2085645f5e5`.
+`6dc89641c9fe86ce900741e3c212bdcc16e09d656590a16356fe032575e7f889`.
 The release also includes `SHA256SUMS`.
 Package integrity is not indefinite stability or publisher trust; current
 source-bound behavior and trust boundaries are summarized in the [architecture overview](docs/architecture/overview.md).
