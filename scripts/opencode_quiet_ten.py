@@ -50,7 +50,7 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     parser.add_argument(
         "--worker-model",
         choices=PROOF_WORKER_MODELS,
-        default="ling-3.0-flash-fin-free",
+        default="mimo-v2.6-flash-free",
     )
     parser.add_argument("--arm", choices=("baseline", "pex"), default="pex")
     args = parser.parse_args()

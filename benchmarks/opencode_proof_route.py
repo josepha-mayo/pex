@@ -5,7 +5,7 @@ from pathlib import Path
 
 FREE_OPENCODE_MODELS = (
     "ling-3.0-flash-fin-free",
-    "mimo-v2.5-free",
+    "mimo-v2.6-flash-free",
     "nemotron-3-ultra-free",
     "nemotron-3.5-lightning-free",
 )

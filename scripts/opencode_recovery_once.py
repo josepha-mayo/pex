@@ -48,7 +48,7 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     parser.add_argument(
         "--worker-model",
         choices=PROOF_WORKER_MODELS,
-        default="ling-3.0-flash-fin-free",
+        default="mimo-v2.6-flash-free",
     )
     args = parser.parse_args()
     if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,100}", args.run_name) is None:

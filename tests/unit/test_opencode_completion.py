@@ -42,7 +42,7 @@ from scripts.opencode_recovery_once import (
 @pytest.mark.parametrize(
     "saved_provider,worker_model,expected",
     [
-        ("zen", "ling-3.0-flash-fin-free", ("opencode", "OpenCode Zen")),
+        ("zen", "mimo-v2.6-flash-free", ("opencode", "OpenCode Zen")),
         ("ZEN", "nemotron-3-ultra-free", ("opencode", "OpenCode Zen")),
         (
             "nebius",
@@ -92,6 +92,11 @@ def test_paid_worker_route_cannot_borrow_a_separate_unbound_credential():
 def test_unknown_proof_worker_model_fails_closed():
     with pytest.raises(RuntimeError, match="unsupported OpenCode proof worker model"):
         proof_worker_route("zen", "vendor/unreviewed-model")
+
+
+def test_removed_free_worker_model_fails_closed():
+    with pytest.raises(RuntimeError, match="unsupported OpenCode proof worker model"):
+        proof_worker_route("zen", "mimo-v2.5-free")
 
 
 def test_opencode_executable_resolution_supports_posix_and_owned_windows_layout(tmp_path):
