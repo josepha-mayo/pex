@@ -232,9 +232,22 @@ async def run_case(number, case, model, server):
         QuietCompletionFence,
         belongs_to_case,
         completed_generation,
+        deterministic_review_completed_for_event,
+        deterministic_reviews_succeeded,
         retryable_provider_abort,
         review_completed_for_event,
         semantic_reviews_succeeded,
+    )
+
+    event_review_completed = (
+        deterministic_review_completed_for_event
+        if PEX_MODE == "deterministic"
+        else review_completed_for_event
+    )
+    reviews_succeeded = (
+        deterministic_reviews_succeeded
+        if PEX_MODE == "deterministic"
+        else semantic_reviews_succeeded
     )
 
     name = case[0]
@@ -370,7 +383,7 @@ async def run_case(number, case, model, server):
                 generation=generation,
                 event_ids=tuple(event.event_id for event in events),
                 followup_count=len(registry.opencode.inbox.get(session.id, [])),
-                reviews_present=review_completed_for_event(
+                reviews_present=event_review_completed(
                     journal,
                     event_id=first_stop["event_id"] if first_stop else None,
                     session_id=session.id,
@@ -409,7 +422,7 @@ async def run_case(number, case, model, server):
         complete = bool(journal) and all(
             row and row["state"] in {"complete", "record_only_complete"} for row in journal
         )
-        stop_review_completed = review_completed_for_event(
+        stop_review_completed = event_review_completed(
             journal,
             event_id=first_stop["event_id"] if first_stop else None,
             session_id=session.id,
@@ -441,13 +454,15 @@ async def run_case(number, case, model, server):
             and first_stop["input_preserved"]
             and first_stop["prior_followup_count"] == 0
         )
-        semantic_completed = semantic_reviews_succeeded(journal)
+        reviews_completed = reviews_succeeded(journal)
+        semantic_completed = reviews_completed if PEX_MODE == "semantic" else None
+        deterministic_completed = reviews_completed if PEX_MODE == "deterministic" else None
         passed = bool(
             initially_correct
             and exact
             and preserved
             and worker_completed
-            and semantic_completed
+            and reviews_completed
             and complete
             and quiet
         )
@@ -466,6 +481,9 @@ async def run_case(number, case, model, server):
             "first_stop_observation": first_stop,
             "semantic_review_count": len(reviews),
             "all_semantic_reviews_completed": semantic_completed,
+            "all_deterministic_reviews_completed": deterministic_completed,
+            "all_pex_reviews_completed": reviews_completed,
+            "review_mode": PEX_MODE,
             "completion_stop_review_completed": stop_review_completed,
             "unnecessary_interruption": bool(
                 initially_correct
@@ -686,6 +704,9 @@ async def run_baseline_case(number, case, server):
             "first_stop_observation": first_stop,
             "semantic_review_count": 0,
             "all_semantic_reviews_completed": None,
+            "all_deterministic_reviews_completed": None,
+            "all_pex_reviews_completed": None,
+            "review_mode": None,
             "completion_stop_review_completed": None,
             "unnecessary_interruption": False,
             "session_id": session.id,

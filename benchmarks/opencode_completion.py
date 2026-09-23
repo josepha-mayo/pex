@@ -58,6 +58,68 @@ def review_completed_for_event(
     )
 
 
+def _deterministic_review_succeeded(result: Any) -> bool:
+    """Recognize the exact no-provider result emitted by local deterministic triage."""
+    action = result.get("action") if isinstance(result, dict) else None
+    return (
+        isinstance(result, dict)
+        and result.get("used_llm") is False
+        and result.get("diagnosis") == "deterministic_triage_no_supervisor_model"
+        and result.get("execution_mode") == "local"
+        and result.get("inference_status") == "not_attempted"
+        and result.get("transport_status") == "not_attempted"
+        and result.get("model_call_count") == 0
+        and result.get("input_tokens") == 0
+        and result.get("output_tokens") == 0
+        and result.get("provider") is None
+        and isinstance(action, dict)
+        and action.get("type") == "NOOP"
+    )
+
+
+def deterministic_review_completed_for_event(
+    journal: list[Any], *, event_id: str | None, session_id: str, goal_id: str
+) -> bool:
+    """Bind an exact local deterministic review to the observed completion event."""
+    if not all(isinstance(value, str) and value for value in (event_id, session_id, goal_id)):
+        return False
+    matches = [
+        row for row in journal if isinstance(row, dict) and row.get("event_id") == event_id
+    ]
+    if len(matches) != 1:
+        return False
+    row = matches[0]
+    if (
+        row.get("session_id") != session_id
+        or row.get("goal_id") != goal_id
+        or row.get("state") != "complete"
+    ):
+        return False
+    plan = row.get("plan")
+    result = plan.get("supervisor_result") if isinstance(plan, dict) else None
+    return _deterministic_review_succeeded(result)
+
+
+def deterministic_reviews_succeeded(journal: list[Any]) -> bool:
+    """Require every planned review to be an exact local, zero-call NOOP result."""
+    completed_review = False
+    for row in journal:
+        if not isinstance(row, dict):
+            return False
+        plan = row.get("plan")
+        if plan is None:
+            continue
+        if not isinstance(plan, dict):
+            return False
+        result = plan.get("supervisor_result")
+        if result is None:
+            continue
+        if not _deterministic_review_succeeded(result):
+            return False
+        completed_review = True
+    return completed_review
+
+
 def semantic_reviews_succeeded(journal: list[Any]) -> bool:
     """A prior success must not hide a later setup/reconciliation failure.
 

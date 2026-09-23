@@ -10,6 +10,8 @@ from benchmarks.opencode_completion import (
     QuietCompletionFence,
     belongs_to_case,
     completed_generation,
+    deterministic_review_completed_for_event,
+    deterministic_reviews_succeeded,
     recovery_interventions_succeeded,
     retryable_provider_abort,
     review_completed_for_event,
@@ -324,7 +326,7 @@ def test_malformed_or_contradictory_reviews_cannot_be_hidden(invalid):
 def test_runner_audits_unfiltered_journal_not_only_used_llm_rows():
     runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
     source = runner.read_text(encoding="utf-8")
-    assert "semantic_completed = semantic_reviews_succeeded(journal)" in source
+    assert "reviews_completed = reviews_succeeded(journal)" in source
 
 
 def test_quiet_runner_reserves_a_full_review_window_after_late_worker_stop():
@@ -349,6 +351,73 @@ def bound_review(journal, event_id="stop"):
     return review_completed_for_event(
         journal, event_id=event_id, session_id="session", goal_id="goal"
     )
+
+
+def deterministic_review(**result_changes):
+    result = {
+        "used_llm": False,
+        "diagnosis": "deterministic_triage_no_supervisor_model",
+        "execution_mode": "local",
+        "inference_status": "not_attempted",
+        "transport_status": "not_attempted",
+        "model_call_count": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "provider": None,
+        "action": {"type": "NOOP"},
+    }
+    result.update(result_changes)
+    return {
+        "event_id": "stop",
+        "session_id": "session",
+        "goal_id": "goal",
+        "state": "complete",
+        "plan": {"supervisor_result": result},
+    }
+
+
+def bound_deterministic_review(journal, event_id="stop"):
+    return deterministic_review_completed_for_event(
+        journal, event_id=event_id, session_id="session", goal_id="goal"
+    )
+
+
+def test_deterministic_review_is_strict_and_does_not_weaken_semantic_review():
+    row = deterministic_review()
+    assert bound_deterministic_review([row])
+    assert deterministic_reviews_succeeded([row, {"plan": None}])
+    assert not bound_review([row])
+    assert not semantic_reviews_succeeded([row])
+
+
+@pytest.mark.parametrize("changes", [
+    {"used_llm": True},
+    {"diagnosis": "other"},
+    {"execution_mode": "remote"},
+    {"inference_status": "completed"},
+    {"transport_status": "completed"},
+    {"model_call_count": 1},
+    {"input_tokens": 1},
+    {"output_tokens": 1},
+    {"provider": "nebius"},
+    {"action": {"type": "SEND_NUDGE"}},
+])
+def test_deterministic_review_rejects_any_provider_or_action_evidence(changes):
+    row = deterministic_review(**changes)
+    assert not bound_deterministic_review([row])
+    assert not deterministic_reviews_succeeded([row])
+
+
+@pytest.mark.parametrize("changes", [
+    {"session_id": "other"},
+    {"goal_id": "other"},
+    {"state": "planned"},
+    {"plan": None},
+])
+def test_deterministic_completion_requires_exact_binding(changes):
+    row = deterministic_review()
+    row.update(changes)
+    assert not bound_deterministic_review([row])
 
 
 def test_earlier_success_does_not_prove_completion_event_review():
