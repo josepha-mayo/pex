@@ -271,13 +271,14 @@ def main() -> int:
                 dispatch_cap = settings.get("max_dispatches_per_session")
                 if dispatch_cap != 3:
                     raise RuntimeError(f"fresh packaged dispatch cap is {dispatch_cap!r}, not 3")
-                if (first_zen.get("provider"), first_zen.get("model_id")) != (
-                    "zen",
-                    "muse-spark-1.3-contributor-free",
+                if not isinstance(first_zen.get("model_id"), str) or not first_zen["model_id"]:
+                    raise RuntimeError("first packaged Zen hint has no model ID")
+                if any(
+                    isinstance(row.get("model_id"), str)
+                    and row["model_id"].casefold().endswith("-free")
+                    for row in zen_catalog
                 ):
-                    raise RuntimeError(
-                        "first packaged Zen hint is not the expected free Muse model"
-                    )
+                    raise RuntimeError("packaged Zen catalog suggests an OpenCode-only free model")
                 result = {
                     "schema": "pex.packaged-settings-smoke.v1",
                     "bridge_sha256": _sha256(binary),
@@ -285,7 +286,7 @@ def main() -> int:
                     "authenticated_supervisor_read": True,
                     "max_dispatches_per_session": 3,
                     "first_catalog_provider": "zen",
-                    "first_catalog_model": "muse-spark-1.3-contributor-free",
+                    "first_catalog_model": first_zen["model_id"],
                     "cloud_reasoning": False,
                     "worker_attachment": False,
                     "provider_calls": 0,
