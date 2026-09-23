@@ -143,7 +143,10 @@ async def attached(
         "thr_exact",
         channel_factory=factory,
         endpoint_validator=lambda _executable, _endpoint: None,
-        connect_timeout_s=1,
+        # The handshake journals received bytes on disk. Keep its timeout at
+        # the production default so a busy Windows CI runner does not turn
+        # this dispatch-cancellation test into a disk-scheduling test.
+        connect_timeout_s=10,
         request_timeout_s=request_timeout_s,
         receive_journal=journal,
     )
