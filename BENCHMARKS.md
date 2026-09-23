@@ -6,6 +6,13 @@ hash; any legacy or edited file fails closed at freeze time.
 
 ## Design (frozen intent)
 
+This protocol predates the focused shipping scope. Its integrity rules remain
+useful, but Cursor is no longer a primary PEX product path. Because no coherent
+run has frozen, the next protocol revision must migrate the Cursor pair to
+OpenCode / OpenCode+PEX and regenerate the schedule and protocol fingerprints.
+Historical partial rows remain immutable evidence and cannot be relabeled as
+OpenCode results.
+
 Four arms per task:
 
 1. Cursor baseline
@@ -163,8 +170,8 @@ integrity implementation does not turn historical partial rows into a result.
 
 ## Next
 
-- Implement synchronous, evidenced same-session Cursor continuation without
-  opening a second Cursor window.
+- Replace the unfrozen Cursor pair with OpenCode / OpenCode+PEX, including a
+  complete immutable OpenCode event log and evidenced same-session continuation.
 - Enforce an OS-level hidden-data/no-network worker boundary for the pinned natural tasks.
 - Obtain exact worker-token/cost/raw-log telemetry and active-human-time capture
   where the harness surface supports it.

@@ -106,11 +106,15 @@ prolonged stability is not yet claimed. It supervises existing harnesses.
 - Custom imports and image generation are disabled in this MVP, including their write APIs. Existing legacy import metadata is preserved; retired selections fall back to Pex.
 - Both current installer inventories contain only Pex and Von. See the [judge guide](docs/JUDGE_TESTING.md) for the focused evaluation path and remaining limits.
 
-## Benchmark headline
+## Benchmark status
 
-Four-arm experiment: Cursor / Cursor+PEX / Codex / Codex+PEX.
+The current unfrozen integrity protocol still defines Cursor / Cursor+PEX /
+Codex / Codex+PEX. It predates the focused OpenCode-and-Codex product scope and
+is not a product-aligned impact benchmark. The next coherent protocol revision
+must replace the Cursor pair with OpenCode / OpenCode+PEX before any headline
+performance claim is eligible.
 
-Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor decides in a separate process on public observations only. The deterministic development smoke has five recovery tasks plus three source-pinned public QuixBugs repairs and is **unfrozen**: an OS-enforced hidden-data/no-network worker boundary is still missing, existing rows predate the current 32-row suite/integrity contract, and Cursor+PEX still lacks complete same-session/raw-log evidence. **There is no citeable impact score or validated public leaderboard rank yet.** Do not cite quarantined leakage runs.
+Paired arms share one `TASK.md` and equivalent workspaces. The PEX supervisor decides in a separate process on public observations only. The deterministic development smoke has five recovery tasks plus three source-pinned public QuixBugs repairs and is **unfrozen**: the harness mix is not aligned with the shipping scope, an OS-enforced hidden-data/no-network worker boundary is still missing, and existing rows predate the current 32-row suite/integrity contract. **There is no citeable impact score or validated public leaderboard rank yet.** Do not cite quarantined leakage runs.
 
 A current five-task Codex-only paired diagnostic is retained in
 [`docs/evidence/codex-paired-diagnostic-7cfc7f4.json`](docs/evidence/codex-paired-diagnostic-7cfc7f4.json).
