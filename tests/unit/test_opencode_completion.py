@@ -15,7 +15,11 @@ from benchmarks.opencode_completion import (
     review_completed_for_event,
     semantic_reviews_succeeded,
 )
-from benchmarks.opencode_proof_route import proof_worker_route, resolve_opencode_executable
+from benchmarks.opencode_proof_route import (
+    proof_worker_base_url,
+    proof_worker_route,
+    resolve_opencode_executable,
+)
 from scripts.opencode_quiet_ten import (
     CASE_TIMEOUT_SECONDS,
     CASES,
@@ -69,6 +73,25 @@ def test_recovery_worker_route_fails_before_mixed_free_or_paid_routing(
         proof_worker_route(saved_provider, worker_model)
 
 
+def test_free_worker_route_accepts_an_explicit_separate_worker_credential():
+    assert proof_worker_route(
+        "opencode_go",
+        "ling-3.0-flash-fin-free",
+        separate_worker_credential=True,
+    ) == ("opencode", "OpenCode Zen")
+    assert proof_worker_base_url("opencode") == "https://opencode.ai/zen/v1"
+    assert proof_worker_base_url("opencode-go") == "https://opencode.ai/zen/go/v1"
+
+
+def test_paid_worker_route_cannot_borrow_a_separate_unbound_credential():
+    with pytest.raises(RuntimeError, match="saved Nebius route"):
+        proof_worker_route(
+            "opencode_go",
+            "nvidia/nemotron-3-super-120b-a12b",
+            separate_worker_credential=True,
+        )
+
+
 def test_unknown_proof_worker_model_fails_closed():
     with pytest.raises(RuntimeError, match="unsupported OpenCode proof worker model"):
         proof_worker_route("zen", "vendor/unreviewed-model")
@@ -97,10 +120,12 @@ def test_quiet_runner_binds_route_before_secret_access_and_is_cross_platform():
     runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
     source = runner.read_text(encoding="utf-8")
 
-    assert source.index("proof_worker_route(choice.provider, WORKER_MODEL)") < source.index(
+    assert source.index("WORKER_PROVIDER, provider_name = proof_worker_route(") < source.index(
         "KeyringSupervisorSecretStore().get("
     )
-    assert 'env["PEX_PROOF_PROVIDER_KEY"] = secret' in source
+    assert 'env["PEX_PROOF_PROVIDER_KEY"] = worker_secret' in source
+    assert '"PEX_PROOF_WORKER_KEY" in os.environ' in source
+    assert "proof_worker_base_url(WORKER_PROVIDER)" in source
     assert "NEBIUS_API_KEY" not in source
     assert 'getattr(subprocess, "CREATE_NO_WINDOW", 0)' in source
     assert "creationflags=subprocess.CREATE_NO_WINDOW" not in source

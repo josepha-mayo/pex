@@ -60,6 +60,8 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
         "completion_fence_sha256",
         "worker_model",
         "worker_provider",
+        "worker_credential_source",
+        "supervisor_provider",
     ):
         if baseline.get(field) != treatment.get(field):
             blockers.append(f"paired {field} mismatch")
@@ -99,6 +101,8 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             blockers.append(f"case {index} worker model mismatch")
         if base.get("worker_provider") != pex.get("worker_provider"):
             blockers.append(f"case {index} worker provider mismatch")
+        if base.get("worker_credential_source") != pex.get("worker_credential_source"):
+            blockers.append(f"case {index} worker credential source mismatch")
         baseline_task = baseline_root / f"case-{number:02d}-{case_name}" / "public-task.json"
         treatment_task = treatment_root / f"case-{number:02d}-{case_name}" / "public-task.json"
         if not baseline_task.is_file() or not treatment_task.is_file():
@@ -157,6 +161,10 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
         "source_commit": baseline.get("source_commit") if comparable else None,
         "worker_provider": baseline.get("worker_provider") if comparable else None,
         "worker_model": baseline.get("worker_model") if comparable else None,
+        "worker_credential_source": (
+            baseline.get("worker_credential_source") if comparable else None
+        ),
+        "supervisor_provider": baseline.get("supervisor_provider") if comparable else None,
         "blockers": blockers,
         "pairs": pairs,
         "metrics": metrics,

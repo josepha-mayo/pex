@@ -178,6 +178,12 @@ case order, public task bytes, or run success differs. A valid result is still a
 bounded paired diagnostic over small public tasks, not a general productivity
 benchmark or a PexBench freeze.
 
+For the normal product topology where the OpenCode worker and PEX supervisor
+use different providers, set `PEX_PROOF_WORKER_KEY` for the worker. The runner
+binds that separate credential only to the reviewed free Zen or Go worker
+endpoint and keeps the saved PEX supervisor credential in its original vault
+audience. A separate credential can never select a paid Nebius worker.
+
 ## Current integrity verification
 
 On 12 September 2026, the expanded benchmark/integration selection passed

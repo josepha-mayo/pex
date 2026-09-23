@@ -29,6 +29,7 @@ sys.path.insert(0, str(REPO))
 from benchmarks.opencode_proof_route import (  # noqa: E402
     PROOF_WORKER_MODELS,
     ProofRouteError,
+    proof_worker_base_url,
     proof_worker_route,
     resolve_opencode_executable,
 )
@@ -66,6 +67,7 @@ _EARLY_CLI = _parse_cli() if __name__ == "__main__" else None
 def _load_runtime_dependencies() -> None:
     global httpx, AdapterRegistry, LiveHttpTransport, EventBus, Settings, Pipeline
     global Store, new_id, KeyringSupervisorSecretStore, load_supervisor_choice
+    global validate_supervisor_secret
     global Goal, load_supervisor_model, to_jsonable_python
 
     import httpx
@@ -75,7 +77,11 @@ def _load_runtime_dependencies() -> None:
     from pex_bridge.config import Settings
     from pex_bridge.pipeline import Pipeline
     from pex_bridge.store import Store, new_id
-    from pex_bridge.supervisor_config import KeyringSupervisorSecretStore, load_supervisor_choice
+    from pex_bridge.supervisor_config import (
+        KeyringSupervisorSecretStore,
+        load_supervisor_choice,
+        validate_supervisor_secret,
+    )
     from pex_protocol.goal import Goal
     from pex_supervisor.providers import load_supervisor_model
     from pydantic_core import to_jsonable_python
@@ -85,6 +91,7 @@ START_CASE = 1
 ORIGIN = "http://127.0.0.1:4098"
 WORKER_PROVIDER = "unconfigured"
 WORKER_MODEL = "unconfigured"
+WORKER_CREDENTIAL_SOURCE = "unconfigured"
 SUPERVISOR_MODEL = "unconfigured"
 CASE_TIMEOUT_SECONDS = 240.0
 # The free worker can legitimately consume almost the entire case budget before
@@ -470,6 +477,7 @@ async def run_case(number, case, model, server):
             "model_call_count": sum(r.get("model_call_count") or 0 for r in reviews),
             "worker_model": WORKER_MODEL,
             "worker_provider": WORKER_PROVIDER,
+            "worker_credential_source": WORKER_CREDENTIAL_SOURCE,
             "supervisor_model": SUPERVISOR_MODEL,
             "comparative_benchmark": False,
             "native_desktop_supervision": False,
@@ -682,6 +690,7 @@ async def run_baseline_case(number, case, server):
             "model_call_count": 0,
             "worker_model": WORKER_MODEL,
             "worker_provider": WORKER_PROVIDER,
+            "worker_credential_source": WORKER_CREDENTIAL_SOURCE,
             "supervisor_model": None,
             "comparative_benchmark": False,
             "native_desktop_supervision": False,
@@ -703,7 +712,7 @@ async def run_baseline_case(number, case, server):
 
 
 async def main():
-    global ROOT, SUPERVISOR_MODEL, WORKER_MODEL, WORKER_PROVIDER
+    global ROOT, SUPERVISOR_MODEL, WORKER_MODEL, WORKER_PROVIDER, WORKER_CREDENTIAL_SOURCE
     parser, args = _EARLY_CLI or _parse_cli()
     _load_runtime_dependencies()
     if not source_is_clean():
@@ -723,8 +732,13 @@ async def main():
         raise RuntimeError("Saved supervisor does not use the OS credential vault")
     SUPERVISOR_MODEL = choice.model_id
     WORKER_MODEL = args.worker_model
+    has_separate_worker_credential = "PEX_PROOF_WORKER_KEY" in os.environ
     try:
-        WORKER_PROVIDER, provider_name = proof_worker_route(choice.provider, WORKER_MODEL)
+        WORKER_PROVIDER, provider_name = proof_worker_route(
+            choice.provider,
+            WORKER_MODEL,
+            separate_worker_credential=has_separate_worker_credential,
+        )
     except ProofRouteError as exc:
         result = {
             "source_commit": start_commit,
@@ -750,24 +764,32 @@ async def main():
         print(json.dumps(result), flush=True)
         return 1
     assert choice.secret_ref is not None
-    secret = KeyringSupervisorSecretStore().get(
+    supervisor_secret = KeyringSupervisorSecretStore().get(
         choice.secret_ref,
         audience=choice.credential_audience(),
     )
-    if not secret:
+    if not supervisor_secret:
         raise RuntimeError("Saved supervisor vault credential is unavailable")
+    worker_secret = (
+        validate_supervisor_secret(os.environ["PEX_PROOF_WORKER_KEY"])
+        if has_separate_worker_credential
+        else supervisor_secret
+    )
+    WORKER_CREDENTIAL_SOURCE = (
+        "separate_environment" if has_separate_worker_credential else "saved_supervisor"
+    )
     shim = shutil.which("opencode.cmd") or shutil.which("opencode")
     if shim is None:
         raise RuntimeError("OpenCode executable is unavailable")
     executable = resolve_opencode_executable(shim)
     env = os.environ.copy()
-    env["PEX_PROOF_PROVIDER_KEY"] = secret
+    env["PEX_PROOF_PROVIDER_KEY"] = worker_secret
     for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
         env[f"XDG_{kind}_HOME"] = str(ROOT / kind.lower())
     pin = {
         "PEX_SUPERVISOR_PROVIDER": choice.provider,
         "PEX_SUPERVISOR_MODEL": choice.model_id,
-        "PEX_SUPERVISOR_API_KEY": secret,
+        "PEX_SUPERVISOR_API_KEY": supervisor_secret,
         "PEX_SUPERVISOR_BASE_URL": choice.base_url,
     }
     write_json(
@@ -779,15 +801,10 @@ async def main():
                     "npm": "@ai-sdk/openai-compatible",
                     "name": provider_name,
                     "options": {
-                        "baseURL": choice.base_url,
+                        "baseURL": proof_worker_base_url(WORKER_PROVIDER),
                         "apiKey": "{env:PEX_PROOF_PROVIDER_KEY}",
                     },
                     "models": {
-                        choice.model_id: {
-                            "name": "PEX supervisor model",
-                            "reasoning": True,
-                            "interleaved": {"field": "reasoning_content"},
-                        },
                         WORKER_MODEL: {
                             "name": "PEX OpenCode worker model",
                             "reasoning": True,
@@ -874,6 +891,8 @@ async def main():
         "pex_attached": args.arm == "pex",
         "worker_model": WORKER_MODEL,
         "worker_provider": WORKER_PROVIDER,
+        "worker_credential_source": WORKER_CREDENTIAL_SOURCE,
+        "supervisor_provider": choice.provider,
         "source_unchanged": source_commit() == start_commit and source_is_clean(),
         "cases": results,
         "error_type": error_type,

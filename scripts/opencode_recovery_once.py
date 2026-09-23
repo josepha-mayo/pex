@@ -31,6 +31,7 @@ sys.path.insert(0, str(REPO))
 from benchmarks.opencode_proof_route import (  # noqa: E402
     PROOF_WORKER_MODELS,
     ProofRouteError,
+    proof_worker_base_url,
     proof_worker_route,
     resolve_opencode_executable,
 )
@@ -61,6 +62,7 @@ _EARLY_CLI = _parse_cli() if __name__ == "__main__" else None
 def _load_runtime_dependencies() -> None:
     global httpx, AdapterRegistry, LiveHttpTransport, EventBus, Settings, Pipeline
     global Store, new_id, KeyringSupervisorSecretStore, load_supervisor_choice
+    global validate_supervisor_secret
     global Goal, load_supervisor_model, to_jsonable_python
 
     import httpx
@@ -70,7 +72,11 @@ def _load_runtime_dependencies() -> None:
     from pex_bridge.config import Settings
     from pex_bridge.pipeline import Pipeline
     from pex_bridge.store import Store, new_id
-    from pex_bridge.supervisor_config import KeyringSupervisorSecretStore, load_supervisor_choice
+    from pex_bridge.supervisor_config import (
+        KeyringSupervisorSecretStore,
+        load_supervisor_choice,
+        validate_supervisor_secret,
+    )
     from pex_protocol.goal import Goal
     from pex_supervisor.providers import load_supervisor_model
     from pydantic_core import to_jsonable_python
@@ -589,9 +595,12 @@ async def main() -> int:
     if choice.credential_source != "secret_store":
         raise RuntimeError("saved supervisor does not use the OS credential vault")
     SUPERVISOR_MODEL = choice.model_id
+    has_separate_worker_credential = "PEX_PROOF_WORKER_KEY" in os.environ
     try:
         worker_provider, provider_name = proof_worker_route(
-            choice.provider, args.worker_model
+            choice.provider,
+            args.worker_model,
+            separate_worker_credential=has_separate_worker_credential,
         )
     except ProofRouteError as exc:
         result = {
@@ -614,23 +623,31 @@ async def main() -> int:
         return 1
     if choice.secret_ref is None:
         raise RuntimeError("saved supervisor vault credential reference is unavailable")
-    secret = KeyringSupervisorSecretStore().get(
+    supervisor_secret = KeyringSupervisorSecretStore().get(
         choice.secret_ref, audience=choice.credential_audience()
     )
-    if not secret:
+    if not supervisor_secret:
         raise RuntimeError("saved supervisor vault credential is unavailable")
+    worker_secret = (
+        validate_supervisor_secret(os.environ["PEX_PROOF_WORKER_KEY"])
+        if has_separate_worker_credential
+        else supervisor_secret
+    )
+    worker_credential_source = (
+        "separate_environment" if has_separate_worker_credential else "saved_supervisor"
+    )
     shim = shutil.which("opencode.cmd") or shutil.which("opencode")
     if shim is None:
         raise RuntimeError("OpenCode executable is unavailable")
     executable = resolve_opencode_executable(shim)
     environment = os.environ.copy()
-    environment["PEX_PROOF_PROVIDER_KEY"] = secret
+    environment["PEX_PROOF_PROVIDER_KEY"] = worker_secret
     for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
         environment[f"XDG_{kind}_HOME"] = str(root / kind.lower())
     pins = {
         "PEX_SUPERVISOR_PROVIDER": choice.provider,
         "PEX_SUPERVISOR_MODEL": choice.model_id,
-        "PEX_SUPERVISOR_API_KEY": secret,
+        "PEX_SUPERVISOR_API_KEY": supervisor_secret,
         "PEX_SUPERVISOR_BASE_URL": choice.base_url,
     }
     write_json(
@@ -642,15 +659,10 @@ async def main() -> int:
                     "npm": "@ai-sdk/openai-compatible",
                     "name": provider_name,
                     "options": {
-                        "baseURL": choice.base_url,
+                        "baseURL": proof_worker_base_url(worker_provider),
                         "apiKey": "{env:PEX_PROOF_PROVIDER_KEY}",
                     },
                     "models": {
-                        choice.model_id: {
-                            "name": "PEX supervisor model",
-                            "reasoning": True,
-                            "interleaved": {"field": "reasoning_content"},
-                        },
                         args.worker_model: {
                             "name": "PEX OpenCode worker model",
                             "reasoning": True,
@@ -732,6 +744,9 @@ async def main() -> int:
         "source_unchanged": source_commit() == start_commit and source_is_clean(),
         "receipt": receipt,
         "error_type": error_type,
+        "worker_provider": worker_provider,
+        "worker_credential_source": worker_credential_source,
+        "supervisor_provider": choice.provider,
         "passed": receipt.get("passed") is True
         and source_commit() == start_commit
         and source_is_clean(),
