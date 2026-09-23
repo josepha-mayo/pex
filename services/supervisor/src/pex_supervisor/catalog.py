@@ -67,7 +67,6 @@ CATALOG: list[dict[str, str]] = [
     {"provider": "zen", "model_id": "big-pickle", "label": "Big Pickle (Zen)"},
     {"provider": "zen", "model_id": "muse-spark-1.3", "label": "Muse Spark 1.3"},
     {"provider": "zen", "model_id": "muse-spark-1.2", "label": "Muse Spark 1.2"},
-    {"provider": "opencode_go", "model_id": "ox-alpha-free", "label": "Ox Alpha Free (Go)"},
     # Open weights / other hosted
     {"provider": "deepseek", "model_id": "deepseek-chat", "label": "DeepSeek V4 Chat"},
     {"provider": "moonshot", "model_id": "kimi-k2.7-code", "label": "Kimi K2.7 Code"},

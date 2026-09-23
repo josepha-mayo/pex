@@ -170,9 +170,9 @@ python scripts/opencode_pair_report.py --baseline build/<baseline-name> --treatm
 ```
 
 The default worker is a free OpenCode Zen model. It fails before credential
-access or server startup unless the saved BYOK route is also OpenCode Zen.
-The free `ox-alpha-free` worker requires the saved OpenCode Go route, and
-NVIDIA worker IDs require the saved Nebius route. The pair reporter withholds
+access or server startup unless the saved BYOK route is also OpenCode Zen or a
+separate worker credential is explicitly supplied. NVIDIA worker IDs require
+the saved Nebius route. The pair reporter withholds
 all aggregate metrics if arm identity, source, worker route, runner hashes,
 case order, public task bytes, or run success differs. A valid result is still a
 bounded paired diagnostic over small public tasks, not a general productivity
@@ -180,7 +180,7 @@ benchmark or a PexBench freeze.
 
 For the normal product topology where the OpenCode worker and PEX supervisor
 use different providers, set `PEX_PROOF_WORKER_KEY` for the worker. The runner
-binds that separate credential only to the reviewed free Zen or Go worker
+binds that separate credential only to the reviewed free Zen worker
 endpoint and keeps the saved PEX supervisor credential in its original vault
 audience. A separate credential can never select a paid Nebius worker.
 

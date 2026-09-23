@@ -237,7 +237,8 @@ PROVIDERS: dict[str, ProviderSpec] = {
         "https://opencode.ai/zen/go/v1",
         ("PEX_SUPERVISOR_API_KEY", "OPENCODE_GO_API_KEY", "OPENCODE_API_KEY"),
         ("api_key",),
-        "ox-alpha-free",
+        None,
+        "Refresh the live catalog and choose a current OpenCode Go model.",
     ),
     "hermes": ProviderSpec(
         "hermes",
