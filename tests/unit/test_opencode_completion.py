@@ -40,6 +40,7 @@ from scripts.opencode_recovery_once import (
     [
         ("zen", "ling-3.0-flash-fin-free", ("opencode", "OpenCode Zen")),
         ("ZEN", "nemotron-3-ultra-free", ("opencode", "OpenCode Zen")),
+        ("opencode_go", "ox-alpha-free", ("opencode-go", "OpenCode Go")),
         (
             "nebius",
             "nvidia/nemotron-3-super-120b-a12b",
@@ -58,6 +59,7 @@ def test_recovery_worker_route_is_bound_to_the_saved_credential_audience(
     [
         ("nebius", "ling-3.0-flash-fin-free", "saved OpenCode Zen route"),
         ("zen", "nvidia/Nemotron-3_5-Lightning", "saved Nebius route"),
+        ("zen", "ox-alpha-free", "saved OpenCode Go route"),
     ],
 )
 def test_recovery_worker_route_fails_before_mixed_free_or_paid_routing(

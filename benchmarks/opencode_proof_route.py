@@ -10,13 +10,15 @@ FREE_OPENCODE_MODELS = (
     "nemotron-3.5-lightning-free",
 )
 
+OPENCODE_GO_MODELS = ("ox-alpha-free",)
+
 NEBIUS_MODELS = (
     "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
     "nvidia/Nemotron-3_5-Lightning",
     "nvidia/nemotron-3-super-120b-a12b",
 )
 
-PROOF_WORKER_MODELS = FREE_OPENCODE_MODELS + NEBIUS_MODELS
+PROOF_WORKER_MODELS = FREE_OPENCODE_MODELS + OPENCODE_GO_MODELS + NEBIUS_MODELS
 
 
 class ProofRouteError(RuntimeError):
@@ -31,6 +33,10 @@ def proof_worker_route(saved_provider: str, worker_model: str) -> tuple[str, str
         if provider != "nebius":
             raise ProofRouteError("NVIDIA proof workers require the saved Nebius route")
         return "nebius", "Nebius Token Factory"
+    if worker_model in OPENCODE_GO_MODELS:
+        if provider != "opencode_go":
+            raise ProofRouteError("OpenCode Go proof workers require the saved OpenCode Go route")
+        return "opencode-go", "OpenCode Go"
     if worker_model not in FREE_OPENCODE_MODELS:
         raise ProofRouteError("unsupported OpenCode proof worker model")
     if provider != "zen":

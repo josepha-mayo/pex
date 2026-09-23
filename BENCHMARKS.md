@@ -171,6 +171,7 @@ python scripts/opencode_pair_report.py --baseline build/<baseline-name> --treatm
 
 The default worker is a free OpenCode Zen model. It fails before credential
 access or server startup unless the saved BYOK route is also OpenCode Zen.
+The free `ox-alpha-free` worker requires the saved OpenCode Go route, and
 NVIDIA worker IDs require the saved Nebius route. The pair reporter withholds
 all aggregate metrics if arm identity, source, worker route, runner hashes,
 case order, public task bytes, or run success differs. A valid result is still a
