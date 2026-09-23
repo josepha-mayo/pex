@@ -199,6 +199,15 @@ def score_item(
     now = now or datetime.now(UTC)
     if item.sensitivity in {Sensitivity.SECRET, Sensitivity.LOCAL_ONLY}:
         return -1.0
+    raw_ledger_kind = item.metadata.get("kind")
+    ledger_kind = raw_ledger_kind.strip().casefold() if isinstance(raw_ledger_kind, str) else ""
+    if ledger_kind in {
+        "decision", "rejected_approach", "unresolved_question"
+    } and not (
+        item.kind == ContextKind.DECISION
+        and item.provenance in {SourceKind.HUMAN, SourceKind.PEX}
+    ):
+        return -1.0
     if (
         project_binding_key(item.project_id) != project_binding_key(goal.project_id)
         or item.goal_id != goal.id
@@ -337,8 +346,11 @@ def build_bundle(
         for item in chosen:
             kind = str(item.metadata.get("kind") or "").casefold()
             status = str(item.metadata.get("status") or "").casefold()
-            if kind == "unresolved_question" or (
-                item.kind == ContextKind.DECISION and status == "uncertain"
+            if (
+                item.kind == ContextKind.DECISION
+                and item.provenance in {SourceKind.HUMAN, SourceKind.PEX}
+                and status == DecisionStatus.UNCERTAIN.value
+                and kind == "unresolved_question"
             ):
                 text = _safe_text(item.content, 1_000)
                 if text:
@@ -364,7 +376,12 @@ def build_bundle(
         rows: list[str] = []
         for item in selected:
             kind = str(item.metadata.get("kind") or "").casefold()
-            if kind == "rejected_approach":
+            if (
+                item.kind == ContextKind.DECISION
+                and item.provenance in {SourceKind.HUMAN, SourceKind.PEX}
+                and kind == "rejected_approach"
+                and item.metadata.get("status") == DecisionStatus.ACTIVE.value
+            ):
                 rows.append(item.content)
                 continue
             if _is_supported_result(item):
