@@ -19,6 +19,13 @@ a model-backed `NOOP` with zero follow-ups, while one controlled false test clai
 triggered a bound pytest request, same-session repair, independent passing rerun,
 and final `NOOP`. See
 [`docs/evidence/nebius-opencode-proof.json`](evidence/nebius-opencode-proof.json).
+The current no-spend OpenCode diagnostic also passed 10/10 baseline and 10/10
+PEX-attached public artifact tasks on exact source `63dc5cd`. Every PEX case
+settled its event journal, produced an exact local deterministic `NOOP`, sent no
+follow-up, and made zero supervisor model calls. See
+[`docs/evidence/opencode-deterministic-paired-diagnostic-63dc5cd.json`](evidence/opencode-deterministic-paired-diagnostic-63dc5cd.json).
+This is attachment, observation, restraint, and overhead evidence; semantic
+supervision was disabled and it is not a productivity benchmark.
 Privacy-safe current-build Home, Inspector, and Settings screenshots are retained
 under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
 in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json). A public

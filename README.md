@@ -126,6 +126,16 @@ inference was disabled to prevent paid Nebius usage. This is restraint and
 overhead evidence, not a productivity score, and the rows remain outside the
 presentation benchmark.
 
+A current ten-task OpenCode diagnostic is retained in
+[`docs/evidence/opencode-deterministic-paired-diagnostic-63dc5cd.json`](docs/evidence/opencode-deterministic-paired-diagnostic-63dc5cd.json).
+Both exact-source arms passed 10/10 public artifact tasks. With PEX attached,
+every event journal settled, all ten completion-event reviews produced a local
+deterministic `NOOP`, no worker follow-up was sent, and no supervisor model call
+was made. The observed mean and median wall-time deltas were -1.92 and -1.97
+seconds. This validates attachment, observation, deterministic policy, restraint,
+and bounded overhead; semantic supervision was disabled and no general
+productivity claim is made.
+
 ## Quick start
 
 ### Install PEX
