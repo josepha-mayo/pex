@@ -236,10 +236,16 @@ the **same** server and create or resume a worker session there:
 opencode attach http://127.0.0.1:4096
 ```
 
+For OpenCode Desktop, use its Home screen server picker to connect to the same
+`http://127.0.0.1:4096` server, then create or resume the session there. PEX
+attaches to that shared server address too. OpenCode documents the
+[Desktop server picker](https://opencode.ai/docs/troubleshooting/#clear-the-desktop-default-server-url)
+and [Desktop connection to a server](https://opencode.ai/docs/windows-wsl/#desktop-app--wsl-server).
+
 A newly started server may have no sessions: connecting PEX alone does not
 create one. Running plain `opencode` in another terminal can open a different
 backend; use the explicit attach address. Configure the worker's provider/model
-in OpenCode separately from PEX's supervisor provider. These commands follow the
+in OpenCode separately from PEX's supervisor provider. The terminal commands follow the
 [official OpenCode CLI interface](https://opencode.ai/docs/cli/#attach).
 
 In PEX, choose **Connect a worker → Connect your local OpenCode server**, enter

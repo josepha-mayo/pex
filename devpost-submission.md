@@ -49,7 +49,7 @@ PEX targets developers who already use coding agents and want more parallel work
 ## Testing instructions
 
 1. Download [PEX 0.1.0 RC24](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc24), or build current `main` with the pinned prerequisites in `README.md`.
-2. Start `opencode serve --port 4096`, attach an OpenCode terminal to that exact origin, and create or resume a worker session.
+2. Start `opencode serve --port 4096`, attach an OpenCode terminal or connect OpenCode Desktop to that exact origin, and create or resume a worker session.
 3. In PEX, open **Settings → Connections**, connect the loopback server, return Home, select the worker, and attach a goal with observable acceptance criteria.
 4. In **Settings → Supervisor**, choose **Nebius Token Factory**, choose `nvidia/nemotron-3-super-120b-a12b`, enter a tester-owned Token Factory key, and save. Saving is configuration only; confirm a real inference receipt in Inspector.
 5. Run one already-correct task and confirm a model-backed `NOOP` with zero worker follow-ups.

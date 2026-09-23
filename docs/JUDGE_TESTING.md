@@ -83,17 +83,24 @@ on Linux.
 
 ## Connect OpenCode
 
-From a small throwaway project, keep one local server and its attached terminal
-open:
+From a small throwaway project, start one local server:
 
 ```powershell
 opencode serve --port 4096
+```
+
+In a second terminal, attach to it:
+
+```powershell
 opencode attach http://127.0.0.1:4096
 ```
 
+Or use the OpenCode Desktop server picker to connect to
+`http://127.0.0.1:4096` instead of starting the second terminal.
+
 In PEX, open **Settings → Connections**, keep the loopback address
 `http://127.0.0.1:4096`, and choose **Connect OpenCode**. Create or resume the
-worker session in the OpenCode terminal first; connecting PEX does not create a
+worker session in the attached terminal or Desktop app first; connecting PEX does not create a
 task or restart OpenCode. Return Home, select the worker, and attach a persistent
 goal with observable acceptance criteria.
 
