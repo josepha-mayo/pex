@@ -1,0 +1,17 @@
+{
+  "arm": "baseline",
+  "boundary": "A fail-closed routing diagnostic. It proves that the free OpenCode worker was rejected against a saved Nebius route before credential access or provider startup; it is not a worker, supervisor, recovery, or performance result.",
+  "comparative_benchmark": false,
+  "credential_read": false,
+  "error_type": "ProofRouteError",
+  "owned_server_exited": true,
+  "passed": false,
+  "pex_attached": false,
+  "provider_call_started": false,
+  "route_rejection": "free proof workers require the saved OpenCode Zen route",
+  "schema": "pex.opencode-route-rejection.v1",
+  "source_commit": "0f0fc5c599069608003ccaaa5d51041b6d24a7f6",
+  "source_unchanged": true,
+  "worker_model": "ling-3.0-flash-fin-free",
+  "worker_provider": null
+}

@@ -154,6 +154,29 @@ freeze this manifest either; they remain preserved as raw development evidence.
 
 Synthetic smoke remains `not_a_presentation_arm`.
 
+### Product-aligned OpenCode paired diagnostic
+
+`scripts/opencode_quiet_ten.py` now has explicit `baseline` and `pex` arms for
+the same public artifact tasks. Both arms receive byte-identical task and
+acceptance text. The baseline captures OpenCode events and outcomes without
+constructing a PEX pipeline; the treatment attaches the normal PEX pipeline and
+retains its reviews and interventions. Run each arm from the same clean source
+commit and worker route, then validate the pair:
+
+```text
+python scripts/opencode_quiet_ten.py --run-name <baseline-name> --arm baseline
+python scripts/opencode_quiet_ten.py --run-name <treatment-name> --arm pex
+python scripts/opencode_pair_report.py --baseline build/<baseline-name> --treatment build/<treatment-name> --output build/<pair-report>.json
+```
+
+The default worker is a free OpenCode Zen model. It fails before credential
+access or server startup unless the saved BYOK route is also OpenCode Zen.
+NVIDIA worker IDs require the saved Nebius route. The pair reporter withholds
+all aggregate metrics if arm identity, source, worker route, runner hashes,
+case order, public task bytes, or run success differs. A valid result is still a
+bounded paired diagnostic over small public tasks, not a general productivity
+benchmark or a PexBench freeze.
+
 ## Current integrity verification
 
 On 12 September 2026, the expanded benchmark/integration selection passed
