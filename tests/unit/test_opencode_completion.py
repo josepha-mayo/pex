@@ -15,6 +15,7 @@ from benchmarks.opencode_completion import (
     review_completed_for_event,
     semantic_reviews_succeeded,
 )
+from benchmarks.opencode_proof_route import proof_worker_route, resolve_opencode_executable
 from scripts.opencode_quiet_ten import (
     CASE_TIMEOUT_SECONDS,
     POST_STOP_REVIEW_GRACE_SECONDS,
@@ -24,7 +25,6 @@ from scripts.opencode_recovery_once import (
     INITIAL_PROOF_SECONDS,
     MAX_PROOF_SECONDS,
     POST_STOP_SETTLEMENT_SECONDS,
-    _proof_worker_route,
     _recovery_deadline,
     false_claim_recovery_succeeded,
     run_workspace_pytest,
@@ -48,7 +48,7 @@ from scripts.opencode_recovery_once import (
 def test_recovery_worker_route_is_bound_to_the_saved_credential_audience(
     saved_provider, worker_model, expected
 ):
-    assert _proof_worker_route(saved_provider, worker_model) == expected
+    assert proof_worker_route(saved_provider, worker_model) == expected
 
 
 @pytest.mark.parametrize(
@@ -62,7 +62,44 @@ def test_recovery_worker_route_fails_before_mixed_free_or_paid_routing(
     saved_provider, worker_model, match
 ):
     with pytest.raises(RuntimeError, match=match):
-        _proof_worker_route(saved_provider, worker_model)
+        proof_worker_route(saved_provider, worker_model)
+
+
+def test_unknown_proof_worker_model_fails_closed():
+    with pytest.raises(RuntimeError, match="unsupported OpenCode proof worker model"):
+        proof_worker_route("zen", "vendor/unreviewed-model")
+
+
+def test_opencode_executable_resolution_supports_posix_and_owned_windows_layout(tmp_path):
+    posix = tmp_path / "opencode"
+    posix.write_text("#!/bin/sh\n", encoding="utf-8")
+    assert resolve_opencode_executable(str(posix), platform="posix") == posix.resolve()
+
+    shim = tmp_path / "bin" / "opencode.cmd"
+    shim.parent.mkdir()
+    shim.write_text("@echo off\n", encoding="utf-8")
+    windows = shim.parent / "node_modules/opencode-ai/bin/opencode.exe"
+    windows.parent.mkdir(parents=True)
+    windows.write_bytes(b"fixture")
+    assert resolve_opencode_executable(str(shim), platform="nt") == windows
+
+
+def test_opencode_executable_resolution_rejects_missing_owned_target(tmp_path):
+    with pytest.raises(RuntimeError, match="refusing shim ownership"):
+        resolve_opencode_executable(str(tmp_path / "missing"), platform="posix")
+
+
+def test_quiet_runner_binds_route_before_secret_access_and_is_cross_platform():
+    runner = Path(__file__).resolve().parents[2] / "scripts/opencode_quiet_ten.py"
+    source = runner.read_text(encoding="utf-8")
+
+    assert source.index("proof_worker_route(choice.provider, WORKER_MODEL)") < source.index(
+        "KeyringSupervisorSecretStore().get("
+    )
+    assert 'env["PEX_PROOF_PROVIDER_KEY"] = secret' in source
+    assert "NEBIUS_API_KEY" not in source
+    assert 'getattr(subprocess, "CREATE_NO_WINDOW", 0)' in source
+    assert "creationflags=subprocess.CREATE_NO_WINDOW" not in source
 
 
 def test_recovery_runner_reserves_review_time_after_each_late_stop():

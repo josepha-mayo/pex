@@ -25,6 +25,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote
 
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
+
+from benchmarks.opencode_proof_route import (  # noqa: E402
+    PROOF_WORKER_MODELS,
+    proof_worker_route,
+    resolve_opencode_executable,
+)
+
 
 def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -36,15 +45,7 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     )
     parser.add_argument(
         "--worker-model",
-        choices=(
-            "ling-3.0-flash-fin-free",
-            "mimo-v2.5-free",
-            "nemotron-3-ultra-free",
-            "nemotron-3.5-lightning-free",
-            "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
-            "nvidia/Nemotron-3_5-Lightning",
-            "nvidia/nemotron-3-super-120b-a12b",
-        ),
+        choices=PROOF_WORKER_MODELS,
         default="ling-3.0-flash-fin-free",
     )
     args = parser.parse_args()
@@ -73,8 +74,6 @@ def _load_runtime_dependencies() -> None:
     from pex_supervisor.providers import load_supervisor_model
     from pydantic_core import to_jsonable_python
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO))
 ORIGIN = "http://127.0.0.1:4098"
 SUPERVISOR_MODEL = "unconfigured"
 EXPECTED_STAGE = b"stage-one-ok\n"
@@ -83,24 +82,6 @@ INITIAL_PROOF_SECONDS = 360
 POST_STOP_SETTLEMENT_SECONDS = 180
 MAX_PROOF_SECONDS = 540
 INITIAL_STAGE_SETTLE_SECONDS = 2.0
-
-
-def _proof_worker_route(saved_provider: str, worker_model: str) -> tuple[str, str]:
-    """Bind the isolated worker to the same credential audience as supervision.
-
-    The proof uses one saved BYOK route for both processes. Free OpenCode model
-    IDs belong to Zen; NVIDIA IDs belong to Nebius. Refuse mixed routing before
-    reading the credential or starting either process so a free-model request
-    cannot silently reach a paid endpoint.
-    """
-    provider = saved_provider.casefold()
-    if worker_model.startswith("nvidia/"):
-        if provider != "nebius":
-            raise RuntimeError("NVIDIA recovery workers require the saved Nebius route")
-        return "nebius", "Nebius Token Factory"
-    if provider != "zen":
-        raise RuntimeError("free recovery workers require the saved OpenCode Zen route")
-    return "opencode", "OpenCode Zen"
 
 
 def _recovery_deadline(started: float, current: float, stop_observed: float) -> float:
@@ -607,7 +588,7 @@ async def main() -> int:
     if choice.credential_source != "secret_store":
         raise RuntimeError("saved supervisor does not use the OS credential vault")
     SUPERVISOR_MODEL = choice.model_id
-    worker_provider, provider_name = _proof_worker_route(
+    worker_provider, provider_name = proof_worker_route(
         choice.provider, args.worker_model
     )
     if choice.secret_ref is None:
@@ -620,9 +601,7 @@ async def main() -> int:
     shim = shutil.which("opencode.cmd") or shutil.which("opencode")
     if shim is None:
         raise RuntimeError("OpenCode executable is unavailable")
-    executable = Path(shim).resolve().parent / "node_modules/opencode-ai/bin/opencode.exe"
-    if not executable.is_file():
-        raise RuntimeError("direct OpenCode executable is unavailable; refusing shim ownership")
+    executable = resolve_opencode_executable(shim)
     environment = os.environ.copy()
     environment["PEX_PROOF_PROVIDER_KEY"] = secret
     for kind in ("CONFIG", "CACHE", "DATA", "STATE"):

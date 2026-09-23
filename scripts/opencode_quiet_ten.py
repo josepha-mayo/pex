@@ -23,6 +23,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote
 
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
+
+from benchmarks.opencode_proof_route import (  # noqa: E402
+    PROOF_WORKER_MODELS,
+    proof_worker_route,
+    resolve_opencode_executable,
+)
+
 
 def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -35,6 +44,11 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
         choices=range(1, 11),
         default=10,
         help="Maximum consecutive public cases to run (default: all 10)",
+    )
+    parser.add_argument(
+        "--worker-model",
+        choices=PROOF_WORKER_MODELS,
+        default="ling-3.0-flash-fin-free",
     )
     args = parser.parse_args()
     if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,100}", args.run_name) is None:
@@ -64,13 +78,11 @@ def _load_runtime_dependencies() -> None:
     from pex_supervisor.providers import load_supervisor_model
     from pydantic_core import to_jsonable_python
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO))
 ROOT: Path  # Assigned only after explicit CLI run-name validation.
 START_CASE = 1
 ORIGIN = "http://127.0.0.1:4098"
-WORKER_PROVIDER = "nebius"
-WORKER_MODEL = "nvidia/Nemotron-3_5-Lightning"
+WORKER_PROVIDER = "unconfigured"
+WORKER_MODEL = "unconfigured"
 SUPERVISOR_MODEL = "unconfigured"
 CASE_TIMEOUT_SECONDS = 240.0
 # The free worker can legitimately consume almost the entire case budget before
@@ -199,7 +211,7 @@ async def run_case(number, case, model, server):
     subprocess.run(
         ["git", "init", "--quiet", str(workspace)],
         check=True,
-        creationflags=subprocess.CREATE_NO_WINDOW,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     (workspace / seed_name).write_bytes(seed.encode())
     criterion = (
@@ -469,7 +481,7 @@ async def run_case(number, case, model, server):
 
 
 async def main():
-    global ROOT, SUPERVISOR_MODEL
+    global ROOT, SUPERVISOR_MODEL, WORKER_MODEL, WORKER_PROVIDER
     parser, args = _EARLY_CLI or _parse_cli()
     _load_runtime_dependencies()
     if not source_is_clean():
@@ -488,6 +500,8 @@ async def main():
     if choice.credential_source != "secret_store":
         raise RuntimeError("Saved supervisor does not use the OS credential vault")
     SUPERVISOR_MODEL = choice.model_id
+    WORKER_MODEL = args.worker_model
+    WORKER_PROVIDER, provider_name = proof_worker_route(choice.provider, WORKER_MODEL)
     assert choice.secret_ref is not None
     secret = KeyringSupervisorSecretStore().get(
         choice.secret_ref,
@@ -498,11 +512,9 @@ async def main():
     shim = shutil.which("opencode.cmd") or shutil.which("opencode")
     if shim is None:
         raise RuntimeError("OpenCode executable is unavailable")
-    executable = Path(shim).resolve().parent / "node_modules/opencode-ai/bin/opencode.exe"
-    if not executable.is_file():
-        raise RuntimeError("Direct OpenCode executable is unavailable; refusing shim ownership")
+    executable = resolve_opencode_executable(shim)
     env = os.environ.copy()
-    env["NEBIUS_API_KEY"] = secret
+    env["PEX_PROOF_PROVIDER_KEY"] = secret
     for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
         env[f"XDG_{kind}_HOME"] = str(ROOT / kind.lower())
     pin = {
@@ -518,10 +530,10 @@ async def main():
             "provider": {
                 WORKER_PROVIDER: {
                     "npm": "@ai-sdk/openai-compatible",
-                    "name": "Nebius Token Factory",
+                    "name": provider_name,
                     "options": {
                         "baseURL": choice.base_url,
-                        "apiKey": "{env:NEBIUS_API_KEY}",
+                        "apiKey": "{env:PEX_PROOF_PROVIDER_KEY}",
                     },
                     "models": {
                         choice.model_id: {
@@ -565,7 +577,7 @@ async def main():
                 env=env,
                 stdout=log,
                 stderr=subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NO_WINDOW,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
             async with httpx.AsyncClient(base_url=ORIGIN, timeout=2) as client:
                 async with asyncio.timeout(45):
