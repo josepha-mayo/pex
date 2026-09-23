@@ -24,12 +24,45 @@ from scripts.opencode_recovery_once import (
     INITIAL_PROOF_SECONDS,
     MAX_PROOF_SECONDS,
     POST_STOP_SETTLEMENT_SECONDS,
+    _proof_worker_route,
     _recovery_deadline,
     false_claim_recovery_succeeded,
     run_workspace_pytest,
     scenario_spec,
     seed_scenario,
 )
+
+
+@pytest.mark.parametrize(
+    "saved_provider,worker_model,expected",
+    [
+        ("zen", "ling-3.0-flash-fin-free", ("opencode", "OpenCode Zen")),
+        ("ZEN", "nemotron-3-ultra-free", ("opencode", "OpenCode Zen")),
+        (
+            "nebius",
+            "nvidia/nemotron-3-super-120b-a12b",
+            ("nebius", "Nebius Token Factory"),
+        ),
+    ],
+)
+def test_recovery_worker_route_is_bound_to_the_saved_credential_audience(
+    saved_provider, worker_model, expected
+):
+    assert _proof_worker_route(saved_provider, worker_model) == expected
+
+
+@pytest.mark.parametrize(
+    "saved_provider,worker_model,match",
+    [
+        ("nebius", "ling-3.0-flash-fin-free", "saved OpenCode Zen route"),
+        ("zen", "nvidia/Nemotron-3_5-Lightning", "saved Nebius route"),
+    ],
+)
+def test_recovery_worker_route_fails_before_mixed_free_or_paid_routing(
+    saved_provider, worker_model, match
+):
+    with pytest.raises(RuntimeError, match=match):
+        _proof_worker_route(saved_provider, worker_model)
 
 
 def test_recovery_runner_reserves_review_time_after_each_late_stop():

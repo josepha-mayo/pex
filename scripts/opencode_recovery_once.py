@@ -85,6 +85,24 @@ MAX_PROOF_SECONDS = 540
 INITIAL_STAGE_SETTLE_SECONDS = 2.0
 
 
+def _proof_worker_route(saved_provider: str, worker_model: str) -> tuple[str, str]:
+    """Bind the isolated worker to the same credential audience as supervision.
+
+    The proof uses one saved BYOK route for both processes. Free OpenCode model
+    IDs belong to Zen; NVIDIA IDs belong to Nebius. Refuse mixed routing before
+    reading the credential or starting either process so a free-model request
+    cannot silently reach a paid endpoint.
+    """
+    provider = saved_provider.casefold()
+    if worker_model.startswith("nvidia/"):
+        if provider != "nebius":
+            raise RuntimeError("NVIDIA recovery workers require the saved Nebius route")
+        return "nebius", "Nebius Token Factory"
+    if provider != "zen":
+        raise RuntimeError("free recovery workers require the saved OpenCode Zen route")
+    return "opencode", "OpenCode Zen"
+
+
 def _recovery_deadline(started: float, current: float, stop_observed: float) -> float:
     """Reserve a full semantic-review window after every worker STOP."""
 
@@ -243,6 +261,7 @@ async def run_recovery(
     model: object,
     server: subprocess.Popen[bytes],
     *,
+    worker_provider: str,
     worker_model: str,
     scenario: str,
 ) -> dict:
@@ -383,7 +402,7 @@ async def run_recovery(
             registry.opencode._scoped_path(f"/session/{vendor}/prompt_async", str(workspace)),
             json={
                 "model": {
-                    "providerID": "nebius" if worker_model.startswith("nvidia/") else "opencode",
+                    "providerID": worker_provider,
                     "modelID": worker_model,
                 },
                 "parts": [{"type": "text", "text": task}],
@@ -588,6 +607,9 @@ async def main() -> int:
     if choice.credential_source != "secret_store":
         raise RuntimeError("saved supervisor does not use the OS credential vault")
     SUPERVISOR_MODEL = choice.model_id
+    worker_provider, provider_name = _proof_worker_route(
+        choice.provider, args.worker_model
+    )
     if choice.secret_ref is None:
         raise RuntimeError("saved supervisor vault credential reference is unavailable")
     secret = KeyringSupervisorSecretStore().get(
@@ -602,7 +624,7 @@ async def main() -> int:
     if not executable.is_file():
         raise RuntimeError("direct OpenCode executable is unavailable; refusing shim ownership")
     environment = os.environ.copy()
-    environment["NEBIUS_API_KEY"] = secret
+    environment["PEX_PROOF_PROVIDER_KEY"] = secret
     for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
         environment[f"XDG_{kind}_HOME"] = str(root / kind.lower())
     pins = {
@@ -616,12 +638,12 @@ async def main() -> int:
         {
             "$schema": "https://opencode.ai/config.json",
             "provider": {
-                "nebius": {
+                worker_provider: {
                     "npm": "@ai-sdk/openai-compatible",
-                    "name": "Nebius Token Factory",
+                    "name": provider_name,
                     "options": {
                         "baseURL": choice.base_url,
-                        "apiKey": "{env:NEBIUS_API_KEY}",
+                        "apiKey": "{env:PEX_PROOF_PROVIDER_KEY}",
                     },
                     "models": {
                         choice.model_id: {
@@ -679,6 +701,7 @@ async def main() -> int:
                 root,
                 model,
                 server,
+                worker_provider=worker_provider,
                 worker_model=args.worker_model,
                 scenario=args.scenario,
             )
