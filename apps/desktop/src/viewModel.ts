@@ -43,6 +43,9 @@ export function recordedActionLabel(action?: LastAction | null): string {
 
 export function actionExplanation(action?: LastAction | null): string {
   if (!action) return "No intervention has been recorded for this session.";
+  if (actionReviewIncomplete(action) && action.diagnosis === "strands_failed:PermissionDeniedError") {
+    return "The supervisor provider denied this review. PEX sent no correction and has not verified completion. Check provider access and the saved key in Settings.";
+  }
   if (actionReviewIncomplete(action) && action.evidence?.includes("independent_verifier:timeout")) {
     return "Independent verification timed out. PEX sent no correction; this is not a successful quiet review.";
   }

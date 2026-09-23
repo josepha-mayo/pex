@@ -197,6 +197,15 @@ test("failed inference is not presented as a successful quiet review", () => {
   assert.equal(recordedActionLabel({ ...action, diagnosis: "strands_missing_structured_output" }), "Review incomplete");
   assert.equal(recordedActionLabel({ ...action, inference_status: "completed" }), "Stayed quiet");
   assert.notEqual(recordedActionLabel({ ...action, action: "SEND_NUDGE", inference_status: "failed" }), "Review incomplete");
+  const denied = {
+    ...action,
+    diagnosis: "strands_failed:PermissionDeniedError",
+    inference_status: "failed",
+    rationale: "No deterministic fact requires interruption.",
+  };
+  assert.match(actionExplanation(denied), /provider denied this review/);
+  assert.match(actionExplanation(denied), /has not verified completion/);
+  assert.doesNotMatch(actionExplanation(denied), /No deterministic fact/);
 });
 
 test("independent verifier failures are not successful quiet reviews", () => {
