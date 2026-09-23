@@ -2777,6 +2777,11 @@ html.pet-shell #root {
   font-size: 9px;
 }
 
+@media (max-width: 900px) {
+  .supervision-loop { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .supervision-loop > div:last-child { grid-column: 1 / -1; }
+}
+
 @media (max-width: 840px) {
   .topbar { padding-inline: 14px; }
   .topbar-state { display: none; }
