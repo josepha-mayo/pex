@@ -45,7 +45,7 @@ def test_chat_only_model_does_not_import_responses_adapter(tmp_path):
     environment.update({
         "PEX_HOME": str(tmp_path), "PEX_SUPERVISOR_PROVIDER": "zen",
         # Muse uses Responses; this test exercises a chat-completions route.
-        "PEX_SUPERVISOR_MODEL": "ling-3.0-flash-fin-free",
+        "PEX_SUPERVISOR_MODEL": "big-pickle",
         "PEX_SUPERVISOR_API_KEY": "fixture-key",
     })
     script = """
