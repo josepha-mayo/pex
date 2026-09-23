@@ -189,6 +189,30 @@ def test_build_supervisor_context_exposes_useful_provenance_and_rejected_approac
     assert used == ["get_context_items", "get_decisions", "get_decisions"]
 
 
+def test_current_goal_context_survives_project_wide_context_limit():
+    now = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    session, _, _ = _bound(now)
+    project_wide = [
+        _context(now, f"shared-{index:02d}", goal_id=None)
+        for index in range(32)
+    ]
+    current_constraint = _context(
+        now,
+        "current-constraint",
+        content="Keep the current goal's explicit acceptance criterion.",
+    )
+    current_constraint.kind = ContextKind.CONSTRAINT
+    current_constraint.provenance = SourceKind.HUMAN
+    current_constraint.metadata["verified"] = False
+
+    envelope = build_supervisor_context(
+        session, [*project_wide, current_constraint], [], now=now
+    )
+
+    assert envelope.offered_context_ids[0] == "current-constraint"
+    assert len(envelope.context_items) == 32
+
+
 def test_selector_drops_expired_superseded_sensitive_future_and_foreign_records():
     now = datetime(2026, 9, 5, 12, tzinfo=UTC)
     session, _, _ = _bound(now)

@@ -458,6 +458,42 @@ async def test_explicit_typed_aliases_share_authority_without_raw_key_normalizat
 
 
 @pytest.mark.asyncio
+async def test_goal_context_query_can_include_project_wide_without_foreign_goal(tmp_path):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        goal = _goal("goal-context-current", "project-context-shared")
+        other = _goal("goal-context-other", goal.project_id)
+        await store.upsert_goal(goal)
+        await store.upsert_goal(other)
+        _, own = _pair(goal)
+        _, foreign = _pair(other)
+        shared = own.model_copy(
+            update={
+                "id": "context-project-wide",
+                "goal_id": None,
+                "valid_from": own.valid_from + timedelta(minutes=1),
+            }
+        )
+        for item in (own, foreign, shared):
+            await store.add_context(item)
+
+        assert await store.list_context_for_authority(goal.project_id, goal_id=goal.id) == [own]
+        assert await store.list_context_for_authority(
+            goal.project_id, goal_id=goal.id, include_project_wide=True
+        ) == [own, shared]
+        assert await store.list_context_for_authority(
+            goal.project_id, goal_id=goal.id, include_project_wide=True, limit=1
+        ) == [own]
+        with pytest.raises(ValueError, match="requires a bound goal"):
+            await store.list_context_for_authority(
+                goal.project_id, include_project_wide=True
+            )
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_different_identity_forensic_successor_cannot_deny_live_goal_authority(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()

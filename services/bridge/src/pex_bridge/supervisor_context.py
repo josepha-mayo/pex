@@ -114,10 +114,13 @@ def _context_verified(item: ContextItem) -> bool:
     return metadata.get("verified") is True and item.provenance in _VERIFIABLE_PROVENANCE
 
 
-def _context_rank(item: ContextItem) -> tuple[int, int, int, float, datetime, str]:
+def _context_rank(
+    item: ContextItem, goal_id: str
+) -> tuple[int, int, int, int, float, datetime, str]:
     metadata = item.metadata if isinstance(item.metadata, dict) else {}
     status = str(metadata.get("status") or "").casefold()
     return (
+        1 if item.goal_id == goal_id else 0,
         1 if _context_verified(item) else 0,
         1 if item.provenance in _STRONG_PROVENANCE else 0,
         _KIND_PRIORITY.get(item.kind, 0) + (1 if status == "uncertain" else 0),
@@ -190,7 +193,7 @@ def build_supervisor_context(
     selected_context: list[SupervisorContextItem] = []
     selected_context_ids: set[str] = set()
     context_text = 0
-    for item in sorted(in_scope, key=_context_rank, reverse=True):
+    for item in sorted(in_scope, key=lambda item: _context_rank(item, goal_id), reverse=True):
         if (
             item.id in superseded_ids
             or item.id in selected_context_ids

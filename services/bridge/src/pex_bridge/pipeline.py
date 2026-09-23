@@ -2641,6 +2641,7 @@ class Pipeline:
             context_items = await self.store.list_context_for_authority(
                 project_key,
                 goal_id=goal.id if goal is not None else None,
+                include_project_wide=goal is not None,
                 limit=256,
             )
         health_items = [*context_items]

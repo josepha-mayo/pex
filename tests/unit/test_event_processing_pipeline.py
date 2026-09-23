@@ -561,6 +561,10 @@ async def test_supervisor_gets_durable_context_and_replay_keeps_first_packet(tmp
     try:
         await store.add_context(context)
         await store.add_context(context.model_copy(update={
+            "id": "context-project-guidance", "goal_id": None,
+            "content": "Project-wide parser guidance retained across goals.",
+        }))
+        await store.add_context(context.model_copy(update={
             "id": "context-private", "content": "Private source must not enter inference.",
             "sensitivity": Sensitivity.LOCAL_ONLY,
         }))
@@ -571,6 +575,7 @@ async def test_supervisor_gets_durable_context_and_replay_keeps_first_packet(tmp
         envelope = requests[0].supervisor_context
         assert envelope is not None
         assert context.id in envelope.offered_context_ids
+        assert "context-project-guidance" in envelope.offered_context_ids
         planned_id = stable_event_artifact_id(event.event_id, "event_context")
         assert planned_id in envelope.offered_context_ids
         planned = next(item for item in envelope.context_items if item.id == planned_id)

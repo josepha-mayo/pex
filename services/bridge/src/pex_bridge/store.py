@@ -28462,6 +28462,7 @@ class Store:
         project_id: str,
         *,
         goal_id: str | None = None,
+        include_project_wide: bool = False,
         limit: int = MAX_LIST_QUERY_LIMIT,
         offset: int = 0,
     ) -> list[ContextItem]:
@@ -28470,6 +28471,8 @@ class Store:
         if not project_id or len(project_id) > MAX_PROJECT_ID_LENGTH:
             raise ValueError("context project id is invalid")
         _validate_query_page(label="context", limit=limit, offset=offset)
+        if include_project_wide and goal_id is None:
+            raise ValueError("project-wide context requires a bound goal")
         if goal_id is not None:
             _validate_store_id(goal_id, label="context goal id")
         async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
@@ -28488,18 +28491,26 @@ class Store:
                             "context project identity does not match its goal",
                             code="artifact_project_identity_changed",
                         )
-                    query = (
-                        "SELECT json FROM context_items WHERE project_binding = ? "
-                        "AND goal_id = ?"
+                    query = "SELECT json FROM context_items WHERE project_binding = ? "
+                    query += (
+                        "AND (goal_id = ? OR goal_id IS NULL)"
+                        if include_project_wide
+                        else "AND goal_id = ?"
                     )
                     parameters = [goal_binding.project_binding, goal_id]
                 else:
                     live_binding = await _project_binding_snapshot(transaction, project_id)
                     query = "SELECT json FROM context_items WHERE project_binding = ?"
                     parameters = [live_binding]
-                query += (
-                    " ORDER BY json_extract(json, '$.valid_from') DESC, id DESC LIMIT ? OFFSET ?"
-                )
+                if goal_id is not None and include_project_wide:
+                    query += " ORDER BY CASE WHEN goal_id = ? THEN 0 ELSE 1 END, "
+                    parameters.append(goal_id)
+                    query += "json_extract(json, '$.valid_from') DESC, id DESC LIMIT ? OFFSET ?"
+                else:
+                    query += (
+                        " ORDER BY json_extract(json, '$.valid_from') DESC, id DESC "
+                        "LIMIT ? OFFSET ?"
+                    )
                 parameters.extend((limit, offset))
                 cursor = await transaction.execute(query, tuple(parameters))
                 rows = await cursor.fetchall()
