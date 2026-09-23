@@ -44,11 +44,11 @@ PEX targets developers who already use coding agents and want more parallel work
 - Token Factory's OpenAI-compatible global API made provider integration direct: the existing PEX OpenAI transport needed only a provider definition, scoped credential handling, and a model ID. The live Nemotron Super probe followed the requested JSON shape and completed in 54 total tokens.
 - Endpoint migration needs a clearer failure path. The older regional hostname returned an authentication error for a valid key, while the current global hostname worked immediately. A redirect, a typed deprecation response, or a prominent migration note would save debugging time.
 - Model IDs in the live catalog mix case and separator conventions, for example `nvidia/Nemotron-3_5-Lightning` and `nvidia/nemotron-3-super-120b-a12b`. Canonical aliases or copy-ready examples would reduce configuration mistakes.
-- The cost cutoff is hard to discover. The decisive control is named **Paid usage after trial** in the avatar menu, rather than auto top-up under Billing. Showing the selected cutoff beside the balance would make trial-only testing safer and easier to verify.
+- The no-card-charge cutoff is hard to verify. The [published billing guide](https://docs.tokenfactory.nebius.com/other-capabilities/billing) describes auto top-up under the balance menu, but a clear trial-only state beside the balance would make safe testing easier to confirm.
 
 ## Testing instructions
 
-1. Download [PEX 0.1.0 RC20](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc20), or build current `main` with the pinned prerequisites in `README.md`.
+1. Download [PEX 0.1.0 RC21](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc21), or build current `main` with the pinned prerequisites in `README.md`.
 2. Start `opencode serve --port 4096`, attach an OpenCode terminal to that exact origin, and create or resume a worker session.
 3. In PEX, open **Settings → Connections**, connect the loopback server, return Home, select the worker, and attach a goal with observable acceptance criteria.
 4. In **Settings → Supervisor**, choose **Nebius Token Factory**, choose `nvidia/nemotron-3-super-120b-a12b`, enter a tester-owned Token Factory key, and save. Saving is configuration only; confirm a real inference receipt in Inspector.
@@ -72,7 +72,7 @@ License: MIT.
 
 ## Required submission fields still open
 
-- Working demo or test-build URL: https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc20
+- Working demo or test-build URL: https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc21
 - Public YouTube video: TODO — under three minutes and visibly demonstrating the submitted build.
 - Nebius runtime proof: completed — sanitized global Token Factory catalog and inference evidence is retained in `docs/evidence/nebius-live-proof.json`.
 - NVIDIA model proof: completed — the retained response names `nvidia/nemotron-3-super-120b-a12b` and records 54 total tokens.
