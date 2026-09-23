@@ -196,6 +196,8 @@ export function CommandDeck({
         (item) => item.status === "needs_decision" && !explainedSessions.has(item.id),
       ).length;
   const attentionCount = currentDecisionCount + (identityConflicts?.total || 0);
+  const attentionCountFresh = bridgeOnline && decisionsFresh && sessionsFresh
+    && identityConflicts !== null && !identityConflictsLoading && !identityConflictsError;
 
   return (
     <section
@@ -221,7 +223,9 @@ export function CommandDeck({
             onClick={() => onView(view.id)}
           >
             <span>{view.label}</span>
-            <small>{view.id === "decisions" ? `${attentionCount} waiting` : view.hint}</small>
+            <small>{view.id === "decisions"
+              ? attentionCountFresh ? `${attentionCount} waiting` : "count unavailable"
+              : view.hint}</small>
           </button>
         ))}
         <div className="deck-integrity-note">
