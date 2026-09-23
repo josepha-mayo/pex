@@ -304,7 +304,6 @@ def build_bundle(
         item.supersedes
         for item in items
         if item.supersedes
-        and item.id not in excluded
         and score_item(item, goal, target, now=now) > 0
     }
     verified_refs = {

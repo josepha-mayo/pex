@@ -240,6 +240,26 @@ def test_excluded_delivery_ids_also_remove_semantic_repeats() -> None:
     assert bundle.items == []
 
 
+def test_delivered_successor_never_revives_superseded_context() -> None:
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    retired = _item("old-decision", "Use the old parser release path", now)
+    successor = _item("new-decision", "Use the new parser release path", now).model_copy(
+        update={"supersedes": retired.id}
+    )
+
+    bundle = build_bundle(
+        goal,
+        _target(task="parser release"),
+        [retired, successor],
+        [],
+        [],
+        exclude_item_ids={successor.id},
+    )
+
+    assert bundle.items == []
+
+
 def test_bundle_carries_only_selected_provenance_and_redacts_again_at_boundary() -> None:
     now = datetime.now(UTC)
     goal = _goal(now)
