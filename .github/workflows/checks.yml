@@ -116,6 +116,7 @@ jobs:
         if: runner.os == 'Linux'
         run: bash scripts/smoke_linux_desktop.sh apps/desktop/src-tauri/target/release/bundle/deb/PEX_0.1.0_amd64.deb
       - name: Retain packages and startup receipt
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.os }}-${{ github.sha }}
@@ -125,4 +126,8 @@ jobs:
             apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
             build/packaged-bridge-smoke.json
             build/linux-desktop-smoke.png
+            build/linux-desktop-check-*.png
             build/linux-desktop-smoke.json
+            build/linux-desktop-smoke.log
+            build/linux-desktop-smoke-ocr.txt
+            build/linux-desktop-identity-headers.txt

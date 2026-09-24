@@ -48,12 +48,15 @@ if [[ "$ready" != 1 ]]; then
 fi
 
 workspace_ready=0
-for _ in $(seq 1 30); do
+for iteration in $(seq 1 30); do
   if ! kill -0 "$app_pid" 2>/dev/null; then
     echo 'Installed PEX desktop exited before its workspace loaded' >&2
     exit 1
   fi
   scrot -z build/linux-desktop-smoke.png
+  if [[ "$iteration" == 1 || "$iteration" == 15 || "$iteration" == 30 ]]; then
+    cp build/linux-desktop-smoke.png "build/linux-desktop-check-${iteration}.png"
+  fi
   tesseract build/linux-desktop-smoke.png stdout --psm 11 2>/dev/null \
     >build/linux-desktop-smoke-ocr.txt
   if grep -Eiq 'Connect an existing worker' build/linux-desktop-smoke-ocr.txt; then
@@ -65,6 +68,9 @@ done
 if [[ "$workspace_ready" != 1 ]]; then
   echo 'Installed PEX window did not load fresh authenticated state within 60 seconds; OCR:' >&2
   cat build/linux-desktop-smoke-ocr.txt >&2
+  curl --silent --show-error --dump-header build/linux-desktop-identity-headers.txt \
+    --output /dev/null \
+    "http://127.0.0.1:7420/health/identity?challenge=$(printf '0%.0s' {1..64})" || true
   exit 1
 fi
 

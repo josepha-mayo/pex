@@ -221,6 +221,7 @@ impl BridgeRuntime {
                 && inner.status.phase == BridgeBootstrapPhase::Starting
             {
                 inner.status = BridgeBootstrapStatus::ready(attempt);
+                eprintln!("PEX desktop bridge ready (attempt {attempt})");
             }
         }
     }
@@ -695,6 +696,7 @@ fn fail_bridge_attempt(
     retryable: bool,
     source: BridgeSource,
 ) {
+    eprintln!("PEX desktop bridge failure (attempt {attempt}, code {code})");
     let runtime = app.state::<BridgeRuntime>();
     if let Some(child) = runtime.finish_failed(attempt, code, message, retryable, source) {
         let _ = child.kill();
