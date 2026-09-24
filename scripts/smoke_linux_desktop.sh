@@ -62,8 +62,8 @@ for iteration in $(seq 1 30); do
     exit 1
   fi
   # Xvfb/WebKit can retain the first composited frame until UI input.
-  # Re-select Home without changing the route to flush that frame.
-  xdotool mousemove --window "$window_id" 620 9 click 1
+  # Click the empty strip below the command bar to expose the current frame.
+  xdotool mousemove --window "$window_id" 858 47 click 1
   scrot -z build/linux-desktop-smoke.png
   if [[ "$iteration" == 1 || "$iteration" == 15 || "$iteration" == 30 ]]; then
     cp build/linux-desktop-smoke.png "build/linux-desktop-check-${iteration}.png"
