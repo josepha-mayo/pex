@@ -2339,6 +2339,7 @@ export function App() {
         goals={availableGoals}
         goalsFresh={goalStateFresh}
         goalActionsAvailable={goalMutationAvailable}
+        appearanceAvailable={TAURI && sessionStateFresh}
         note={note}
         nickname={nickname}
         scale={scale}

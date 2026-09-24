@@ -21,6 +21,7 @@ export function SettingsPage({
   goals,
   goalsFresh,
   goalActionsAvailable,
+  appearanceAvailable,
   note,
   nickname,
   scale,
@@ -76,6 +77,7 @@ export function SettingsPage({
   goals: Goal[];
   goalsFresh: boolean;
   goalActionsAvailable: boolean;
+  appearanceAvailable: boolean;
   onCreateGoal?: () => void;
   note?: string | null;
   nickname: string;
@@ -247,9 +249,10 @@ export function SettingsPage({
           <section className="settings-card">
             <p className="eyebrow">Companion</p>
             <h2>Appearance</h2>
+            {!appearanceAvailable ? <p className="settings-note">Companion settings require the authenticated desktop bridge.</p> : null}
             <label>
               Nickname
-              <input value={nickname} onChange={(event) => onNickname(event.target.value)} />
+              <input value={nickname} disabled={!appearanceAvailable} onChange={(event) => onNickname(event.target.value)} />
             </label>
             <label>
               Pet scale · {scale.toFixed(2)}
@@ -259,6 +262,7 @@ export function SettingsPage({
                 max={1.4}
                 step={0.05}
                 value={scale}
+                disabled={!appearanceAvailable}
                 onChange={(event) => onScale(Number(event.target.value))}
               />
             </label>
@@ -266,6 +270,7 @@ export function SettingsPage({
               <input
                 type="checkbox"
                 checked={petVisible}
+                disabled={!appearanceAvailable}
                 onChange={(event) => onPetVisible(event.target.checked)}
               />
               Show desktop pet
@@ -274,6 +279,7 @@ export function SettingsPage({
               <input
                 type="checkbox"
                 checked={clickThrough}
+                disabled={!appearanceAvailable}
                 onChange={(event) => onClickThrough(event.target.checked)}
               />
               Click through the pet overlay
@@ -282,7 +288,7 @@ export function SettingsPage({
               When on, the pet ignores mouse clicks so it cannot cover work. Turn this off here to
               interact with the pet again.
             </p>
-            <button type="button" className="solid" onClick={onSaveAppearance}>Save appearance</button>
+            <button type="button" className="solid" onClick={onSaveAppearance} disabled={!appearanceAvailable}>Save appearance</button>
           </section>
           ) : null}
           {section === "companion" ? companionRoster : null}
