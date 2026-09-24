@@ -93,7 +93,15 @@ if [[ "$workspace_ready" != 1 ]]; then
 fi
 
 # The always-on-top pet must leave the main command bar usable on this screen.
-xdotool mousemove --window "$window_id" 858 9 click 1
+window_x=$(sed -n 's/^X=//p' build/linux-desktop-window-geometry.txt)
+window_y=$(sed -n 's/^Y=//p' build/linux-desktop-window-geometry.txt)
+if [[ ! "$window_x" =~ ^-?[0-9]+$ || ! "$window_y" =~ ^-?[0-9]+$ ]]; then
+  echo 'Installed PEX window geometry is invalid' >&2
+  exit 1
+fi
+xdotool mousemove "$((window_x + 857))" "$((window_y + 9))"
+xdotool getmouselocation --shell >build/linux-desktop-settings-pointer.txt
+xdotool click 1
 settings_ready=0
 for iteration in $(seq 1 8); do
   xdotool mousemove --window "$window_id" "$((858 + iteration % 2))" 47 click 1
