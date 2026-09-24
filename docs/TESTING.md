@@ -40,6 +40,18 @@ independent pytest rerun passed. The final review was quiet. See
 [`docs/evidence/nebius-opencode-free-worker-recovery-54366ca.json`](evidence/nebius-opencode-free-worker-recovery-54366ca.json).
 This is one recovery case, not a comparative productivity result or native
 desktop acceptance.
+A controlled paired retry on exact source `9c505e0` used the same free OpenCode
+worker, public task, test file, and deliberately inadequate project checker in
+both arms. The unsupervised worker finished with independent pytest exit 1.
+With PEX attached, the initial independent pytest also exited 1; PEX sent two
+same-session follow-ups, and the final independent pytest exited 0. The PEX
+arm used 10 Nemotron supervisor calls and took 175.14 seconds, versus 52.47
+seconds for the baseline. The baseline raw SSE was retained locally; the PEX
+arm retained processed events and its review journal, but this runner did not
+capture its raw SSE. See
+[`docs/evidence/opencode-controlled-recovery-pair-9c505e0.json`](evidence/opencode-controlled-recovery-pair-9c505e0.json).
+This is a single controlled diagnostic with an extra persistent goal in the
+PEX arm, not a representative reliability or productivity benchmark.
 The current no-spend OpenCode diagnostic also passed 10/10 baseline and 10/10
 PEX-attached public artifact tasks on exact source `63dc5cd`. Every PEX case
 settled its event journal, produced an exact local deterministic `NOOP`, sent no

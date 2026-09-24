@@ -167,6 +167,23 @@ Synthetic smoke remains `not_a_presentation_arm`.
 
 ### Product-aligned OpenCode paired diagnostic
 
+For the controlled false-test-claim recovery scenario, run
+`scripts/opencode_recovery_baseline.py` and
+`scripts/opencode_recovery_once.py --scenario false-test-claim` from the same
+clean source commit and free worker route. The baseline never constructs a PEX
+pipeline. Validate and redact the two local runs with:
+
+```text
+python scripts/opencode_recovery_pair_report.py --baseline build/<baseline-name> --treatment build/<treatment-name> --output build/<pair-report>.json
+```
+
+The reporter checks source, task, test and checker hashes; initial and final
+independent pytest; baseline raw SSE; and treatment event and review settlement.
+The treatment runner currently retains processed events rather than raw SSE.
+This is one controlled failure diagnostic with PEX's goal and model-backed
+follow-ups in the treatment arm. It does not freeze PexBench or establish a
+population-level quality or speed result.
+
 `scripts/opencode_quiet_ten.py` now has explicit `baseline` and `pex` arms for
 the same public artifact tasks. Both arms receive byte-identical task and
 acceptance text. The baseline captures OpenCode events and outcomes without
