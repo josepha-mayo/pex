@@ -25,6 +25,32 @@ def request_for_failures(count=3):
     )
 
 
+def request_for_opencode_edit_errors(count=3):
+    now = datetime.now(UTC)
+    events = [HarnessEvent(
+        event_id=f"edit-error-{index}", ts=now + timedelta(seconds=index * 12),
+        session_id="opencode:worker", project_id="p", goal_id="g",
+        harness_type=HarnessType.OPENCODE, event_type=EventType.TOOL_FAILURE,
+        phase=EventPhase.AFTER, tool_name="edit",
+        error="No changes to apply: oldString and newString are identical.",
+        metadata={
+            "opencode_tool_status": "error",
+            "opencode_tool_call_id": f"call-{index}",
+            "opencode_message_lineage": {
+                "parent_message_id": "user-turn-1", "stream_contiguous": True,
+            },
+        },
+    ) for index in range(count)]
+    return SupervisorRequest(
+        session=HarnessSession(id="opencode:worker", project_id="p", goal_id="g",
+                               harness_type=HarnessType.OPENCODE,
+                               vendor_session_id="worker"),
+        goal=Goal(id="g", project_id="p", title="Repair", objective="Fix CSV parser",
+                  created_at=now, updated_at=now),
+        event=events[-1], recent_events=events, trajectory_review_enabled=True,
+    )
+
+
 def test_repeated_observed_failures_are_review_candidates_not_verdicts():
     from pex_supervisor.trajectory import trajectory_review_candidate
 
@@ -33,6 +59,66 @@ def test_repeated_observed_failures_are_review_candidates_not_verdicts():
     assert candidate is not None
     assert candidate.event_ids == ("failure-0", "failure-1", "failure-2")
     assert needs_semantic_inference(request)
+
+
+def test_distinct_opencode_edit_errors_in_one_turn_request_material_review():
+    from pex_supervisor.trajectory import trajectory_review_candidate
+
+    request = request_for_opencode_edit_errors()
+    candidate = trajectory_review_candidate(request)
+    assert candidate is not None
+    assert candidate.kind == "repeated_opencode_tool_failure"
+    assert candidate.event_ids == ("edit-error-0", "edit-error-1", "edit-error-2")
+    assert needs_semantic_inference(request)
+    later = request.event.model_copy(update={
+        "event_id": "edit-error-3", "ts": request.event.ts + timedelta(seconds=12),
+        "metadata": {**request.event.metadata, "opencode_tool_call_id": "call-3"},
+    })
+    request.recent_events.append(later)
+    request.event = later
+    assert trajectory_review_candidate(request).key == candidate.key
+
+
+def test_opencode_error_review_survives_noisy_status_events():
+    from pex_supervisor.trajectory import trajectory_review_candidate
+
+    request = request_for_opencode_edit_errors()
+    first, second, third = request.recent_events
+    noise = [third.model_copy(update={
+        "event_id": f"status-{index}",
+        "event_type": EventType.STATUS,
+        "error": None,
+        "ts": second.ts + timedelta(milliseconds=index + 1),
+    }) for index in range(60)]
+    request.recent_events = [first, second, *noise, third][-80:]
+    assert trajectory_review_candidate(request) is not None
+
+
+def test_opencode_edit_error_review_requires_distinct_calls_and_one_turn():
+    from pex_supervisor.trajectory import trajectory_review_candidate
+
+    for change in ("duplicate_call", "different_parent", "broken_stream",
+                   "different_error", "before", "too_old", "other_harness",
+                   "other_session"):
+        request = request_for_opencode_edit_errors()
+        current = request.event
+        if change == "duplicate_call":
+            current.metadata["opencode_tool_call_id"] = "call-1"
+        elif change == "different_parent":
+            current.metadata["opencode_message_lineage"]["parent_message_id"] = "user-turn-2"
+        elif change == "broken_stream":
+            current.metadata["opencode_message_lineage"]["stream_contiguous"] = False
+        elif change == "different_error":
+            current.error = "Another error"
+        elif change == "before":
+            current.phase = EventPhase.BEFORE
+        elif change == "too_old":
+            current.ts += timedelta(seconds=601)
+        elif change == "other_harness":
+            request.session.harness_type = HarnessType.SYNTHETIC
+        elif change == "other_session":
+            request.recent_events[0].session_id = "opencode:someone-else"
+        assert trajectory_review_candidate(request) is None, change
 
 
 def test_routine_or_unbound_progress_does_not_trigger_review():
