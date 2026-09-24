@@ -101,6 +101,7 @@ export function CommandDeck({
   mutationsAvailable = true,
   decisionsFresh = true,
   sessionsFresh = true,
+  goalsFresh = true,
   contextFresh = true,
   interventionsFresh = true,
   agentsFresh = true,
@@ -152,6 +153,7 @@ export function CommandDeck({
   mutationsAvailable?: boolean;
   decisionsFresh?: boolean;
   sessionsFresh?: boolean;
+  goalsFresh?: boolean;
   contextFresh?: boolean;
   interventionsFresh?: boolean;
   agentsFresh?: boolean;
@@ -254,6 +256,8 @@ export function CommandDeck({
               attentionMetrics={attentionMetrics}
               degraded={Boolean(error)}
               sourceFresh={sessionsFresh}
+              goalsFresh={goalsFresh}
+              actionsFresh={interventionsFresh && !error}
               mutationsAvailable={mutationsAvailable}
               onSelect={onSelectSession}
               onOpen={onOpenSession}
@@ -331,6 +335,8 @@ function NowView({
   attentionMetrics,
   degraded,
   sourceFresh,
+  goalsFresh,
+  actionsFresh,
   mutationsAvailable,
   onSelect,
   onOpen,
@@ -342,6 +348,8 @@ function NowView({
   attentionMetrics: AttentionMetrics | null;
   degraded: boolean;
   sourceFresh: boolean;
+  goalsFresh: boolean;
+  actionsFresh: boolean;
   mutationsAvailable: boolean;
   onSelect: (sessionId: string) => void;
   onOpen: (session: SessionRow) => void;
@@ -451,7 +459,9 @@ function NowView({
               </span>
               <span className={`state-pill state-${session.status}`}>{humanize(session.status)}</span>
             </div>
-            <p className="goal-line">{goal ? goal.objective : "No persistent goal attached."}</p>
+            <p className="goal-line">{!goalsFresh
+              ? "Goal state unavailable · reconnect the local bridge to refresh."
+              : goal ? goal.objective : "No persistent goal attached."}</p>
             <dl className="now-facts">
               <div>
                 <dt>Latest state / evidence</dt>
@@ -459,7 +469,7 @@ function NowView({
               </div>
               <div>
                 <dt>Recent PEX actions</dt>
-                <dd>{actionCount.get(session.id) || 0}</dd>
+                <dd>{actionsFresh ? actionCount.get(session.id) || 0 : "Unavailable"}</dd>
               </div>
               <div>
                 <dt>Attention</dt>
@@ -467,7 +477,7 @@ function NowView({
               </div>
               <div>
                 <dt>Freshness</dt>
-                <dd>{sessionObservationCopy(session, degraded)}</dd>
+                <dd>{sessionObservationCopy(session, degraded || !sourceFresh)}</dd>
               </div>
             </dl>
             <div className="button-row">

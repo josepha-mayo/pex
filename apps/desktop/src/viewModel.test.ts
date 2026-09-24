@@ -920,7 +920,7 @@ test("offline state immediately suppresses stale agent prompts", async () => {
   assert.match(app, /\/v1\/goals\/\$\{goalId\}\/completion/);
   assert.match(deck, /questions=\{error \? \[\] : askPexQuestions\(sessions, interventions\[0\]\)\}/);
   assert.match(deck, /Cached · last observed/);
-  assert.match(deck, /sessionObservationCopy\(session, degraded\)/);
+  assert.match(deck, /sessionObservationCopy\(session, degraded \|\| !sourceFresh\)/);
 });
 
 test("malformed context expiry fails closed as stale", () => {

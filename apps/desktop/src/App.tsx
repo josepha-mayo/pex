@@ -2710,6 +2710,7 @@ export function App() {
           mutationsAvailable={deckMutationsAvailable}
           decisionsFresh={decisionsFresh}
           sessionsFresh={sessionStateFresh}
+          goalsFresh={goalStateFresh && !bridgeError}
           contextFresh={!bridgeError && contextStateFresh && goalStateFresh}
           interventionsFresh={!bridgeError && canonicalResourcesAreFresh(canonicalResources, ["interventions"])}
           agentsFresh={sessionStateFresh && canonicalResourcesAreFresh(canonicalResources, ["deck"])}
