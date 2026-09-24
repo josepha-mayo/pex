@@ -26,6 +26,10 @@ parser repair, but the worker remained busy after repeated edits. Its final
 file passed a post-run test, which is not a verified completed worker turn.
 The failure is retained in
 [`docs/evidence/nebius-opencode-free-worker-stall-2026-09-24.json`](evidence/nebius-opencode-free-worker-stall-2026-09-24.json).
+A second bounded run reached a different failure: the full suite failed, but
+the verifier omitted its dedicated citation field, so PEX sent no correction.
+That receipt is retained in
+[`docs/evidence/nebius-opencode-verifier-citation-2026-09-24.json`](evidence/nebius-opencode-verifier-citation-2026-09-24.json).
 The current no-spend OpenCode diagnostic also passed 10/10 baseline and 10/10
 PEX-attached public artifact tasks on exact source `63dc5cd`. Every PEX case
 settled its event journal, produced an exact local deterministic `NOOP`, sent no

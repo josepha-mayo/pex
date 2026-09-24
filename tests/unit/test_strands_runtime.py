@@ -35,9 +35,11 @@ class FakeStructuredModel(Model):
         verifier_evidence_tool_name: str = "inspect_acceptance",
         message: str | None = None,
         cite_evidence: bool = True,
+        verifier_refs_in_evidence_only: bool = False,
     ) -> None:
         self.action_type = action_type
         self.verifier_approved = verifier_approved
+        self.verifier_evidence_override = verifier_evidence is not None
         self.verifier_evidence = (
             ["observable verification receipt"]
             if verifier_evidence is None
@@ -53,6 +55,7 @@ class FakeStructuredModel(Model):
         self.verifier_evidence_tool_name = verifier_evidence_tool_name
         self.message = message
         self.cite_evidence = cite_evidence
+        self.verifier_refs_in_evidence_only = verifier_refs_in_evidence_only
         self.captured_messages: list[str] = []
 
     def update_config(self, **model_config: Any) -> None:
@@ -134,8 +137,14 @@ class FakeStructuredModel(Model):
             arguments = {
                 "approved": self.verifier_approved,
                 "rationale": "independent fake verification",
-                "evidence": self.verifier_evidence,
-                "evidence_refs": evidence_refs,
+                "evidence": (
+                    (self.verifier_evidence if self.verifier_evidence_override else evidence_refs)
+                    if self.verifier_refs_in_evidence_only
+                    else self.verifier_evidence
+                ),
+                "evidence_refs": (
+                    [] if self.verifier_refs_in_evidence_only else evidence_refs
+                ),
             }
         else:
             message = self.message
@@ -986,6 +995,45 @@ async def test_verifier_approval_without_an_evidence_tool_fails_closed():
         "independent_verifier_status=missing_or_invalid_evidence_refs" in item
         for item in result.traces
     )
+
+
+@pytest.mark.asyncio
+async def test_verifier_exact_receipt_in_evidence_field_keeps_bound_citation():
+    request = _request(0.1)
+    request.scores.features["verification"] = {
+        "status": "acceptance_gap",
+        "acceptance_status": "unsatisfied",
+        "acceptance_evidence": ["missing:report.txt"],
+        "missing_files": ["report.txt"],
+    }
+    model = FakeStructuredModel(
+        "SEND_NUDGE",
+        verifier_evidence_tool_calls=1,
+        verifier_refs_in_evidence_only=True,
+    )
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "SEND_NUDGE"
+    verifier = result.independent_verifier
+    assert verifier is not None and verifier.authorizes_intervention()
+    assert verifier.evidence_refs == verifier.evidence
+    assert verifier.evidence_refs == [verifier.evidence_observations[0].observation_id]
+
+
+@pytest.mark.asyncio
+async def test_verifier_unbound_evidence_id_still_fails_closed():
+    model = FakeStructuredModel(
+        "SEND_NUDGE",
+        verifier_evidence=["pexobs_" + "0" * 32],
+        verifier_evidence_tool_calls=1,
+        verifier_refs_in_evidence_only=True,
+    )
+    result = await decide_async(_request(0.1), model=model)
+
+    assert result.action.type.value == "NOOP"
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.status == "missing_or_invalid_evidence_refs"
+    assert result.independent_verifier.evidence_refs == []
 
 
 @pytest.mark.asyncio

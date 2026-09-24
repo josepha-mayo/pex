@@ -1016,10 +1016,20 @@ async def run_independent_verifier_async(
         for item in structured.evidence[:20]
         if item.strip()
     ]
+    raw_refs = structured.evidence_refs
+    if structured.approved and not raw_refs:
+        # Some providers put an exact tool receipt ID in `evidence` while
+        # leaving `evidence_refs` empty. Accept only a whole item that exactly
+        # matches a receipt from this verifier invocation; the normal binding
+        # validator below still checks request, session, event, stage and tool.
+        observed_ids = {item.observation_id for item in collector.observations}
+        raw_refs = list(dict.fromkeys(
+            item for item in structured.evidence if item in observed_ids
+        ))
     evidence_refs, refs_valid = _resolve_evidence_refs(
         request,
         observations=list(collector.observations),
-        raw_refs=structured.evidence_refs,
+        raw_refs=raw_refs,
         stage="verifier",
         invocation_id=verifier_invocation_id,
     )
