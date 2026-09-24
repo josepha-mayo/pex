@@ -12,6 +12,7 @@ import {
   bridgeBootstrapPollInterval,
   initialBridgeBootstrapStatus,
   normalizeBridgeBootstrapStatus,
+  shouldObserveBridgeBootstrap,
   shouldPollBridgeBootstrap,
   startupRecoveryCopy,
   startupRecoverySourceCopy,
@@ -282,18 +283,25 @@ test("only main desktop surfaces poll or mutate bridge bootstrap state", () => {
   assert.equal(shouldPollBridgeBootstrap(false, "main"), false);
 });
 
+test("native startup observes readiness before WebKit reports the window visible", () => {
+  assert.equal(shouldObserveBridgeBootstrap(false, "starting"), true);
+  assert.equal(shouldObserveBridgeBootstrap(false, "ready"), false);
+  assert.equal(shouldObserveBridgeBootstrap(false, "failed"), false);
+  assert.equal(shouldObserveBridgeBootstrap(true, "ready"), true);
+});
+
 test("ready bootstrap observation uses a low-frequency recovery cadence", () => {
   assert.equal(bridgeBootstrapPollInterval("starting"), 750);
   assert.equal(bridgeBootstrapPollInterval("failed"), 750);
   assert.equal(bridgeBootstrapPollInterval("ready"), 5_000);
 });
 
-test("native bootstrap reads pause while hidden and back off after readiness", async () => {
+test("native bootstrap reads resolve startup while hidden and back off after readiness", async () => {
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
   assert.match(source, /const readNativeBridgeBootstrap = boundedSingleFlightRead\(/u);
   assert.match(source, /normalizeBridgeBootstrapStatus\(await readNativeBridgeBootstrap\(signal\)\)/u);
   assert.match(source, /const pollBridgeBootstrap = shouldPollBridgeBootstrap\(TAURI, shell\);/u);
-  assert.match(source, /if \(!pageVisible \|\| !pollBridgeBootstrap\) return;\s*const stopPolling = startSerialPolling\(async \(signal\) => \{\s*const next = await readBridgeBootstrapStatus\(signal\);\s*if \(signal.aborted\) return;/u);
+  assert.match(source, /if \(!pollBridgeBootstrap \|\| !shouldObserveBridgeBootstrap\(pageVisible, bridgeStartup\.phase\)\) return;\s*const stopPolling = startSerialPolling\(async \(signal\) => \{\s*const next = await readBridgeBootstrapStatus\(signal\);\s*if \(signal.aborted\) return;/u);
   assert.match(source, /if \(next\) acceptBridgeStartupStatus\(next\);\s*\}, bridgeBootstrapPollInterval\(bridgeStartup\.phase\)\);\s*return stopPolling;/u);
   assert.match(source, /\[acceptBridgeStartupStatus, bridgeStartup\.phase, pageVisible, pollBridgeBootstrap\]/u);
 });

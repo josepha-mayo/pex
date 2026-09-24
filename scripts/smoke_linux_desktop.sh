@@ -20,11 +20,15 @@ export GDK_BACKEND=x11
 export WEBKIT_DISABLE_COMPOSITING_MODE=1
 mkdir -p build
 
+openbox >build/linux-desktop-window-manager.log 2>&1 &
+wm_pid=$!
 pex-desktop >build/linux-desktop-smoke.log 2>&1 &
 app_pid=$!
 cleanup() {
   kill "$app_pid" 2>/dev/null || true
   wait "$app_pid" 2>/dev/null || true
+  kill "$wm_pid" 2>/dev/null || true
+  wait "$wm_pid" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -46,6 +50,9 @@ if [[ "$ready" != 1 ]]; then
   echo 'Installed PEX did not show a window and authenticated bridge within 90 seconds' >&2
   exit 1
 fi
+
+window_id=$(xdotool search --onlyvisible --name '^PEX$' | sed -n '1p')
+xdotool windowactivate "$window_id"
 
 workspace_ready=0
 for iteration in $(seq 1 30); do

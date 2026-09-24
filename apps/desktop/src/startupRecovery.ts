@@ -101,6 +101,15 @@ export function shouldPollBridgeBootstrap(isTauri: boolean, shell: "main" | "set
   return isTauri && shell !== "pet";
 }
 
+export function shouldObserveBridgeBootstrap(
+  pageVisible: boolean,
+  phase: BridgeBootstrapStatus["phase"],
+): boolean {
+  // A native window may start before WebKit reports it visible. Resolve the
+  // first authenticated state even then; normal hidden-window polling pauses.
+  return pageVisible || phase === "starting";
+}
+
 export function bridgeBootstrapPollInterval(phase: BridgeBootstrapStatus["phase"]): number {
   // Startup and recovery should feel immediate. Once ready, the native monitor
   // owns liveness; the webview only needs a low-frequency status observation.

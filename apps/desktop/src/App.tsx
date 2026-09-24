@@ -43,6 +43,7 @@ import {
   browserDevelopmentBridgeStatus,
   initialBridgeBootstrapStatus,
   normalizeBridgeBootstrapStatus,
+  shouldObserveBridgeBootstrap,
   shouldPollBridgeBootstrap,
   unavailableBridgeBootstrapStatus,
 } from "./startupRecovery";
@@ -526,7 +527,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!pageVisible || !pollBridgeBootstrap) return;
+    if (!pollBridgeBootstrap || !shouldObserveBridgeBootstrap(pageVisible, bridgeStartup.phase)) return;
     const stopPolling = startSerialPolling(async (signal) => {
       const next = await readBridgeBootstrapStatus(signal);
       if (signal.aborted) return;
