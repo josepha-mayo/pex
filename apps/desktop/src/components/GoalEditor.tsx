@@ -152,6 +152,11 @@ export function GoalEditor({
       </div>
       </div>
       </details>
+      {disabled && !saving ? (
+        <p className="goal-help" role="status">
+          You can prepare this draft now. Saving is available when PEX reconnects and refreshes local state.
+        </p>
+      ) : null}
       <div className="button-row">
         <button
           className="solid"
