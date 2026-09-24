@@ -43,7 +43,7 @@ async def test_opencode_probe_keeps_loop_responsive_during_desktop_discovery(mon
         return "opencode.exe"
 
     monkeypatch.setattr("pex_bridge.adapters.opencode.matching_desktop_image", slow_discovery)
-    adapter = OpenCodeAdapter(MemoryHttpTransport())
+    adapter = OpenCodeAdapter(None)
     probe = asyncio.create_task(adapter.probe())
     try:
         async with asyncio.timeout(3):
@@ -55,7 +55,7 @@ async def test_opencode_probe_keeps_loop_responsive_during_desktop_discovery(mon
             release.set()
             capabilities = await probe
         assert capabilities.focus_ui is desktop_focus_supported()
-        assert capabilities.send_message is True
+        assert capabilities.send_message is False
     finally:
         release.set()
         await asyncio.gather(probe, return_exceptions=True)
@@ -69,11 +69,14 @@ async def test_opencode_event_probe_bounds_desktop_inventory_reads(monkeypatch):
         "pex_bridge.adapters.opencode.matching_desktop_image",
         lambda _: reads.append(True) or "opencode.exe",
     )
-    adapter = OpenCodeAdapter(MemoryHttpTransport())
+    adapter = OpenCodeAdapter(None)
     results = await asyncio.gather(*(adapter.probe() for _ in range(20)))
     assert all(result.focus_ui is desktop_focus_supported() for result in results)
     assert len(reads) == 1
     # A focus hint may be cached, never worker-message authority.
+    adapter.attach_transport(MemoryHttpTransport())
+    assert (await adapter.probe()).send_message is True
+    assert len(reads) == 1
     adapter.transport = None
     assert (await adapter.probe()).send_message is False
     assert len(reads) == 1
@@ -89,7 +92,7 @@ async def test_opencode_scoped_inventory_overrides_cached_focus_hint(monkeypatch
     from pex_bridge.adapters import desktop
 
     monkeypatch.setattr(desktop, "_read_running_image_names", lambda: {"OpenCode.exe"})
-    adapter = OpenCodeAdapter(MemoryHttpTransport())
+    adapter = OpenCodeAdapter(None)
     assert (await adapter.probe()).focus_ui is desktop_focus_supported()
     fresh = desktop.DesktopProcessSnapshot(frozenset(), True, time.monotonic())
     with desktop.scoped_running_image_snapshot(fresh):
