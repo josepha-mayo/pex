@@ -63,7 +63,7 @@ for iteration in $(seq 1 30); do
   fi
   # Xvfb/WebKit can retain the first composited frame until UI input.
   # Click the empty strip below the command bar to expose the current frame.
-  xdotool mousemove --window "$window_id" 858 47 click 1
+  xdotool mousemove --window "$window_id" "$((858 + iteration % 2))" 47 click 1
   scrot -z build/linux-desktop-smoke.png
   if [[ "$iteration" == 1 || "$iteration" == 15 || "$iteration" == 30 ]]; then
     cp build/linux-desktop-smoke.png "build/linux-desktop-check-${iteration}.png"
@@ -95,7 +95,8 @@ fi
 # The always-on-top pet must leave the main command bar usable on this screen.
 xdotool mousemove --window "$window_id" 858 9 click 1
 settings_ready=0
-for _ in $(seq 1 8); do
+for iteration in $(seq 1 8); do
+  xdotool mousemove --window "$window_id" "$((858 + iteration % 2))" 47 click 1
   scrot -z build/linux-desktop-settings.png
   tesseract build/linux-desktop-settings.png stdout --psm 11 2>/dev/null \
     >build/linux-desktop-settings-ocr.txt
