@@ -394,6 +394,11 @@ verified result, plus a separate quiet control. A public demo under three
 minutes is still required. This is not a completed submission or a claim of
 measured benefit.
 
+On September 24, a [separate live Windows Codex recovery](docs/evidence/codex-nebius-live-2026-09-24.json)
+passed with Nemotron 3 Super supervising a Codex worker: PEX corrected an
+incomplete stop on the same thread, observed the requested file, and stayed
+quiet after verification. This is one bounded case, not a benchmark score.
+
 PEX originated in the AWS Agents for Humans hackathon and still uses Strands
 locally. AgentCore remains optional and is not deployed. The current
 [submission draft](devpost-submission.md) targets Nebius × NVIDIA and explains

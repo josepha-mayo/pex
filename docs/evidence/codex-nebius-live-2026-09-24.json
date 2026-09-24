@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-09-24",
+  "source_commit": "38c222de452b28d24841c61bc47851171d4dad79",
+  "test": "tests/contract/test_live_codex_pump.py::test_live_codex_incomplete_stop_sends_specific_continue",
+  "test_result": "passed",
+  "provider": "nebius",
+  "supervisor_model": "nvidia/nemotron-3-super-120b-a12b",
+  "worker_harness": "codex",
+  "worker_model": "gpt-6-luna",
+  "worker_turns": 2,
+  "initial_stop": {
+    "requested_artifact_unsatisfied": true,
+    "acceptance_status": "unsatisfied",
+    "supervisor_inference_completed": true,
+    "independent_verifier": "approved",
+    "pex_action": "SEND_NUDGE",
+    "delivery_result": "sent",
+    "same_thread_delivery_receipt_checked": true
+  },
+  "after_correction": {
+    "artifact_content": "shipped",
+    "acceptance_status": "supported",
+    "supervisor_inference_completed": true,
+    "pex_action": "NOOP",
+    "outcome": "goal_evidence_supported",
+    "helped": true
+  },
+  "scope": "One live Windows Codex stop, correction, and verified completion in a temporary workspace. This is not a comparative benchmark or a broad reliability estimate. The full local proof receipt is not published because it contains machine-specific paths and identifiers."
+}
