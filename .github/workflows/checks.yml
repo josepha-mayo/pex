@@ -115,9 +115,12 @@ jobs:
       - name: Verify native OS credential storage
         if: runner.os == 'Windows'
         run: uv run --frozen python scripts/smoke_native_keyring.py
+      - name: Verify packaged Windows BYOK storage
+        if: runner.os == 'Windows'
+        run: uv run --frozen python scripts/smoke_packaged_bridge.py --exe "${{ matrix.bridge }}" --output build/packaged-byok-smoke.json --byok-roundtrip
       - name: Verify Linux Secret Service credential storage
         if: runner.os == 'Linux'
-        run: dbus-run-session -- bash scripts/smoke_linux_keyring.sh
+        run: dbus-run-session -- bash scripts/smoke_linux_keyring.sh "${{ matrix.bridge }}"
       - name: Verify installed Linux desktop window and bridge
         if: runner.os == 'Linux'
         run: bash scripts/smoke_linux_desktop.sh apps/desktop/src-tauri/target/release/bundle/deb/PEX_0.1.0_amd64.deb
@@ -131,6 +134,7 @@ jobs:
             apps/desktop/src-tauri/target/release/bundle/deb/*.deb
             apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
             build/packaged-bridge-smoke.json
+            build/packaged-byok-smoke.json
             build/linux-desktop-smoke.png
             build/linux-desktop-check-*.png
             build/linux-desktop-smoke.json

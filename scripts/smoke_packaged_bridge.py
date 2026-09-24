@@ -71,6 +71,99 @@ def _read_json(url: str, *, token: str | None = None) -> dict[str, Any]:
     return payload
 
 
+def _patch_json(url: str, *, token: str, payload: dict[str, Any]) -> dict[str, Any]:
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        method="PATCH",
+    )
+    with urllib.request.urlopen(request, timeout=10.0) as response:
+        body = response.read(1_048_577)
+    if len(body) > 1_048_576:
+        raise RuntimeError("bridge response exceeded the smoke limit")
+    result = json.loads(body.decode("utf-8"))
+    if not isinstance(result, dict):
+        raise RuntimeError("bridge returned a non-object JSON response")
+    return result
+
+
+def _byok_roundtrip(*, port: int, token: str, home: Path, log_path: Path) -> None:
+    """Exercise the frozen bridge and OS vault without contacting a provider."""
+    from pex_bridge.supervisor_config import (
+        KeyringSupervisorSecretStore,
+        load_supervisor_choice,
+    )
+
+    fake_key = "pex-packaged-smoke-" + secrets.token_urlsafe(24)
+    config_path = home / "supervisor.json"
+    store = KeyringSupervisorSecretStore()
+    reference: str | None = None
+    try:
+        saved = _patch_json(
+            f"http://127.0.0.1:{port}/v1/supervisor",
+            token=token,
+            payload={
+                "expected_revision": 0,
+                "provider": "custom",
+                "model_id": "pex-disposable-smoke",
+                "auth_mode": "custom",
+                "protocol": "openai",
+                "base_url": "https://models.example.invalid/v1",
+                "dispatch_limit_override": 0,
+                "api_key": fake_key,
+            },
+        )
+        if (
+            saved.get("revision") != 1
+            or saved.get("credential_source") != "secret_store"
+            or saved.get("has_api_key") is not True
+            or fake_key in json.dumps(saved)
+            or "sec_" in json.dumps(saved)
+        ):
+            raise RuntimeError("packaged BYOK settings did not save safely")
+        observed = _read_json(f"http://127.0.0.1:{port}/v1/supervisor", token=token)
+        if observed.get("has_api_key") is not True or fake_key in json.dumps(observed):
+            raise RuntimeError("packaged BYOK read did not preserve a redacted key state")
+        choice = load_supervisor_choice(config_path)
+        if choice is None or choice.secret_ref is None:
+            raise RuntimeError("packaged BYOK settings lost the vault reference")
+        reference = choice.secret_ref
+        if store.get(reference, audience=choice.credential_audience()) != fake_key:
+            raise RuntimeError("packaged BYOK key did not reach the OS vault")
+        if fake_key.encode() in config_path.read_bytes():
+            raise RuntimeError("packaged BYOK key leaked into the settings file")
+        cleared = _patch_json(
+            f"http://127.0.0.1:{port}/v1/supervisor",
+            token=token,
+            payload={"expected_revision": 1, "clear_api_key": True},
+        )
+        if (
+            cleared.get("has_api_key") is not False
+            or cleared.get("credential_source") != "none"
+        ):
+            raise RuntimeError("packaged BYOK clear did not update public settings")
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if store.get(reference, audience=choice.credential_audience()) is None:
+                break
+            time.sleep(0.1)
+        else:
+            raise RuntimeError("packaged BYOK clear did not retire the OS secret")
+        reference = None
+    finally:
+        if reference is None and config_path.exists():
+            leftover = load_supervisor_choice(config_path)
+            reference = leftover.secret_ref if leftover is not None else None
+        if reference is not None:
+            store.delete(reference)
+        if log_path.exists() and fake_key.encode() in log_path.read_bytes():
+            raise RuntimeError("packaged BYOK key leaked into the bridge log")
+
+
 def _wait_for_identity(port: int, token: str, process: subprocess.Popen[bytes]) -> None:
     deadline = time.monotonic() + 60
     while time.monotonic() < deadline:
@@ -205,6 +298,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--soak-seconds", type=float, default=0.0)
     parser.add_argument("--sample-interval", type=float, default=1.0)
+    parser.add_argument("--byok-roundtrip", action="store_true")
     args = parser.parse_args()
     if not 0.0 <= args.soak_seconds <= 3600.0:
         parser.error("--soak-seconds must be between 0 and 3600")
@@ -279,6 +373,8 @@ def main() -> int:
                     for row in zen_catalog
                 ):
                     raise RuntimeError("packaged Zen catalog suggests an OpenCode-only free model")
+                if args.byok_roundtrip:
+                    _byok_roundtrip(port=port, token=token, home=home, log_path=log_path)
                 result = {
                     "schema": "pex.packaged-settings-smoke.v1",
                     "bridge_sha256": _sha256(binary),
@@ -290,6 +386,7 @@ def main() -> int:
                     "cloud_reasoning": False,
                     "worker_attachment": False,
                     "provider_calls": 0,
+                    "byok_roundtrip": args.byok_roundtrip,
                 }
                 if args.soak_seconds:
                     result["soak"] = _soak_bridge(
