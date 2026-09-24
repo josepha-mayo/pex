@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     # A fresh desktop install must never create an unbounded BYOK model loop.
     # Three durable reservations are enough for the MVP recovery/quiet journey;
     # operators can explicitly raise the cap for longer supervised sessions.
-    supervisor_max_dispatches_per_session: int | None = Field(default=3, ge=1, le=100_000)
+    supervisor_max_dispatches_per_session: int | None = Field(default=3, ge=0, le=100_000)
     agentcore_runtime_arn: str | None = Field(default=None, max_length=2048)
     agentcore_region: str | None = Field(default=None, max_length=64)
     agentcore_qualifier: str = "DEFAULT"
