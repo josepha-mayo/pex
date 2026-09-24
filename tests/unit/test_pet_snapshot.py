@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.base import HarnessAdapter
+from pex_bridge.adapters.http_json import MemoryHttpTransport
 from pex_bridge.app import state
 from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings
@@ -618,6 +619,57 @@ async def test_refresh_keeps_hook_working_over_idle_discover(tmp_path):
     await store.close()
     assert kept is not None
     assert kept.status == SessionStatus.WORKING
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [SessionStatus.DISCOVERED, SessionStatus.WORKING])
+async def test_home_hides_retained_opencode_session_until_server_reattaches(
+    tmp_path, monkeypatch, status
+):
+    from pex_bridge.adapters.desktop import DesktopProcessSnapshot
+
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    session = HarnessSession(
+        id="opencode:retained",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="retained",
+        cwd=str(tmp_path),
+        project_id=str(tmp_path),
+        status=status,
+        last_activity=datetime.now(UTC),
+        metadata={"discovery_observation_only": True},
+    )
+    await store.upsert_session(session)
+    registry = AdapterRegistry()
+    pipeline = Pipeline(
+        store,
+        registry,
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, autonomy="observe"),
+    )
+    monkeypatch.setattr(
+        "pex_bridge.adapters.desktop.capture_running_image_snapshot",
+        lambda: DesktopProcessSnapshot(frozenset(), True, 1.0),
+    )
+    try:
+        await pipeline.refresh_desktop_sessions()
+        detached_view = await pipeline.pet_snapshot()
+        assert detached_view["sessions"] == []
+        assert detached_view["working"] == 0
+        assert (await store.get_session(session.id)).status == status
+
+        transport = MemoryHttpTransport()
+        transport.sessions = [
+            {"id": "retained", "title": "retained", "directory": str(tmp_path)}
+        ]
+        registry.opencode.attach_transport(transport)
+        pipeline._desktop_refresh_attempted_at = None
+        await pipeline.refresh_desktop_sessions()
+        attached_view = await pipeline.pet_snapshot()
+        assert [row["id"] for row in attached_view["sessions"]] == [session.id]
+    finally:
+        await store.close()
 
 
 @pytest.mark.asyncio

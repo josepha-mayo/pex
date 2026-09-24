@@ -84,6 +84,7 @@ from pex_bridge.adapters.base import (
 )
 from pex_bridge.adapters.codex_subscription import _stable_record_id, shared_live_event_id
 from pex_bridge.adapters.desktop import is_desktop_observe_session
+from pex_bridge.adapters.opencode import OpenCodeAdapter
 from pex_bridge.adapters.opencode_outcomes import event_matches_opencode_delivery
 from pex_bridge.agentcore import (
     AgentCoreDeliveryUncertainError,
@@ -6717,6 +6718,22 @@ class Pipeline:
             as_of=now,
         )
         sessions = projection["sessions"]
+        opencode = self.adapters.get("opencode")
+        if (
+            self._desktop_refresh_attempted_at is not None
+            and isinstance(opencode, OpenCodeAdapter)
+            and opencode.transport is None
+        ):
+            # A bridge restart retains forensic sessions but loses its explicit
+            # HTTP attachment. Keep desktop/plugin observations; do not offer
+            # old server sessions as connected workers on Home.
+            sessions = [
+                session
+                for session in sessions
+                if session.harness_type != HarnessType.OPENCODE
+                or is_desktop_observe_session(session)
+                or opencode._plugin_live(session.id)
+            ]
         interventions = projection["interventions"]
         goals = projection["goals"]
         events = projection["events"]
