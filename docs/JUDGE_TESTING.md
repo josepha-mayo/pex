@@ -20,6 +20,12 @@ a model-backed `NOOP` with zero follow-ups, while one controlled false test clai
 triggered a bound pytest request, same-session repair, independent passing rerun,
 and final `NOOP`. See
 [`docs/evidence/nebius-opencode-proof.json`](evidence/nebius-opencode-proof.json).
+A later bounded run with the free `mimo-v2.6-flash-free` OpenCode worker did not
+finish: PEX caught the false test claim and requested the failing suite and
+parser repair, but the worker remained busy after repeated edits. Its final
+file passed a post-run test, which is not a verified completed worker turn.
+The failure is retained in
+[`docs/evidence/nebius-opencode-free-worker-stall-2026-09-24.json`](evidence/nebius-opencode-free-worker-stall-2026-09-24.json).
 The current no-spend OpenCode diagnostic also passed 10/10 baseline and 10/10
 PEX-attached public artifact tasks on exact source `63dc5cd`. Every PEX case
 settled its event journal, produced an exact local deterministic `NOOP`, sent no
