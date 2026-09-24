@@ -30,6 +30,11 @@ A second bounded run reached a different failure: the full suite failed, but
 the verifier omitted its dedicated citation field, so PEX sent no correction.
 That receipt is retained in
 [`docs/evidence/nebius-opencode-verifier-citation-2026-09-24.json`](evidence/nebius-opencode-verifier-citation-2026-09-24.json).
+A third bounded run stayed silent on the first false claim because the main
+decision cited an inspection receipt but omitted its separate evidence list.
+See [`docs/evidence/nebius-opencode-main-evidence-2026-09-24.json`](evidence/nebius-opencode-main-evidence-2026-09-24.json).
+Subsequent receipt-handling changes have offline tests but no successful live
+recovery receipt on the updated source yet.
 The current no-spend OpenCode diagnostic also passed 10/10 baseline and 10/10
 PEX-attached public artifact tasks on exact source `63dc5cd`. Every PEX case
 settled its event journal, produced an exact local deterministic `NOOP`, sent no

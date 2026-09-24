@@ -889,7 +889,25 @@ async def run_strands_async(
             latency_ms=int((time.perf_counter() - started) * 1000),
             **meta,
         )
-    action = _action_from_proposal(request, _decision_proposal(structured))
+    proposal = _decision_proposal(structured)
+    evidence_bound_from_refs = False
+    if (
+        structured.action_type in {
+            InterventionType.SEND_NUDGE,
+            InterventionType.CONTINUE_SESSION,
+            InterventionType.REQUEST_VERIFICATION,
+        }
+        and not proposal.get("evidence")
+        and refs_valid
+        and evidence_refs
+    ):
+        # A provider can return valid, request-bound observation IDs while
+        # omitting the separate prose evidence list. Preserve those exact IDs
+        # as the action's evidence; the independent verifier still has to
+        # inspect and authorize the worker-facing correction.
+        proposal["evidence"] = evidence_refs
+        evidence_bound_from_refs = True
+    action = _action_from_proposal(request, proposal)
     if action.type != InterventionType.NOOP and (not refs_valid or not evidence_refs):
         action = _action_from_proposal(
             request,
@@ -907,7 +925,10 @@ async def run_strands_async(
             if action.type == structured.action_type
             else "strands_structured_decision:invalid_evidence_refs"
         ),
-        traces=[f"stop_reason={getattr(result, 'stop_reason', None)}"],
+        traces=[
+            f"stop_reason={getattr(result, 'stop_reason', None)}",
+            *(["main_evidence_items_bound_from_refs"] if evidence_bound_from_refs else []),
+        ],
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         latency_ms=int((time.perf_counter() - started) * 1000),

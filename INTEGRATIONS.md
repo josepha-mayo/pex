@@ -6,12 +6,12 @@ PEX negotiates support from evidence observed in the current connection. A regis
 worker, installed binary, open port, initialize response, or injected test transport is
 not by itself proof that PEX can observe or control that worker.
 
-Current development targets OpenCode HTTP, isolated Codex App Server and Nebius
-Token Factory BYOK. The September 19 audit verified real Codex initialization,
+The primary paths are OpenCode HTTP, isolated Codex App Server and configurable
+supervisor BYOK. The September 19 audit verified real Codex initialization,
 indexed discovery and a completed worker turn, plus OpenCode HTTP/SSE attachment.
-The saved Zen account currently rejects supervisor inference; its free worker
-service reports exhausted usage. Successful current-account semantic recovery
-and Nebius inference are still required. A configured model is not a live result.
+Bounded live Nebius/OpenCode successes and later failures are recorded in the
+[testing guide](docs/TESTING.md). Account availability can change; a configured
+model is not by itself a live result.
 
 Windows and Ubuntu native package builds and authenticated bundled-bridge startup
 passed at `20ffdc7`. Newer source repairs require their own checks. Windows native

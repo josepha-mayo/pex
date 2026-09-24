@@ -25,6 +25,8 @@ Rules:
 - Every tool result carries `pex_observation_id`. Put the exact IDs you actually
   relied on in `evidence_refs`. A returned result is not evidence you used until
   you cite its ID. Every non-NOOP action requires at least one valid citation.
+- For a non-NOOP action, also fill `evidence` with a short observed fact or an
+  exact cited observation ID. Do not leave that separate list empty.
 - Use web_search or scrape_url only to check a public claim the worker cited.
   Never search for hidden evaluators, benchmark oracles, or planted answers.
 - Return exactly one validated structured decision. Do not chat.

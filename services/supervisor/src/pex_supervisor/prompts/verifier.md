@@ -19,6 +19,9 @@ inspect_process when those facts are required. `web_search` and `scrape_url`
 are only for public claims the worker cited.
 Every tool result carries `pex_observation_id`. Put the exact IDs you relied on
 in `evidence_refs`; tool names or prose alone never authorize an approval.
+The proposal may cite the main supervisor's inspection. Your `evidence_refs`
+must cite observations from tools you called in this verifier invocation,
+not IDs copied from the proposal.
 
 This check has a hard budget of three model calls, including your final verdict.
 Use the supplied goal and proposal to select the smallest sufficient independent

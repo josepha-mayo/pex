@@ -36,6 +36,8 @@ class FakeStructuredModel(Model):
         message: str | None = None,
         cite_evidence: bool = True,
         verifier_refs_in_evidence_only: bool = False,
+        main_evidence_empty: bool = False,
+        cite_latest_only: bool = False,
     ) -> None:
         self.action_type = action_type
         self.verifier_approved = verifier_approved
@@ -56,6 +58,8 @@ class FakeStructuredModel(Model):
         self.message = message
         self.cite_evidence = cite_evidence
         self.verifier_refs_in_evidence_only = verifier_refs_in_evidence_only
+        self.main_evidence_empty = main_evidence_empty
+        self.cite_latest_only = cite_latest_only
         self.captured_messages: list[str] = []
 
     def update_config(self, **model_config: Any) -> None:
@@ -87,7 +91,7 @@ class FakeStructuredModel(Model):
         self.captured_messages.append(serialized_messages)
         observation_ids = re.findall(r"pexobs_[a-f0-9]{32}", serialized_messages)
         evidence_refs = (
-            list(dict.fromkeys(observation_ids))[-20:]
+            list(dict.fromkeys(observation_ids))[-(1 if self.cite_latest_only else 20):]
             if self.cite_evidence
             else []
         )
@@ -157,7 +161,7 @@ class FakeStructuredModel(Model):
             arguments = {
                 "action_type": self.action_type,
                 "rationale": "validated fake decision",
-                "evidence": ["workspace fact"],
+                "evidence": [] if self.main_evidence_empty else ["workspace fact"],
                 "evidence_refs": evidence_refs,
                 "message": message,
                 "confidence": 0.9,
@@ -233,6 +237,58 @@ async def test_real_strands_agent_returns_validated_structured_decision():
     assert result.action.type.value == "SEND_NUDGE"
     assert result.action.payload["text"] == "Create report.txt containing shipped."
     assert len(model.captured_messages) == 2
+
+
+@pytest.mark.asyncio
+async def test_main_exact_receipt_refs_supply_missing_evidence_item_for_review():
+    request = _request(0.1)
+    request.scores.features["verification"] = {
+        "status": "acceptance_gap",
+        "acceptance_status": "unsatisfied",
+        "acceptance_evidence": ["missing:report.txt"],
+        "missing_files": ["report.txt"],
+    }
+    model = FakeStructuredModel(
+        "SEND_NUDGE",
+        main_evidence_empty=True,
+        verifier_evidence_tool_calls=1,
+        cite_latest_only=True,
+    )
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "SEND_NUDGE", (
+        result.diagnosis, result.traces, result.independent_verifier
+    )
+    assert result.action.evidence == result.evidence_refs
+    assert "main_evidence_items_bound_from_refs" in result.traces
+    assert result.independent_verifier is not None
+    assert result.independent_verifier.authorizes_intervention()
+
+
+@pytest.mark.asyncio
+async def test_main_empty_evidence_without_bound_receipt_still_fails_closed():
+    result = await run_strands_async(
+        _request(0.1),
+        model=FakeStructuredModel(
+            "SEND_NUDGE", main_evidence_empty=True, cite_evidence=False,
+        ),
+    )
+
+    assert result.action.type.value == "NOOP"
+    assert result.evidence_refs == []
+    assert "main_evidence_items_bound_from_refs" not in result.traces
+
+
+@pytest.mark.asyncio
+async def test_main_refs_do_not_supply_missing_lifecycle_evidence():
+    result = await run_strands_async(
+        _request(0.1),
+        model=FakeStructuredModel("START_AGENT", main_evidence_empty=True),
+    )
+
+    assert result.action.type.value == "NOOP"
+    assert result.evidence_refs
+    assert "main_evidence_items_bound_from_refs" not in result.traces
 
 
 @pytest.mark.asyncio

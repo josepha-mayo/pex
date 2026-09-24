@@ -1,8 +1,8 @@
 # Local workspace origin and existing Codex attachment
 
-The production inspect route now creates `codex-received.sqlite` in the existing PEX data directory before connecting. It retains potentially sensitive exact received bytes locally, including invalid/partial/vendor data, with immutable requested-inspection provenance; it is not a raw HTTP/model/export or live-replay API. Capacity/failure stops capture without deleting old evidence. Source `db98481` is reviewed and tested; full recovery/installed-worker proof remains open. See [received journal review](../RECEIVED_JOURNAL_REVIEW.md) before handling or copying this private data.
+The production inspect route now creates `codex-received.sqlite` in the existing PEX data directory before connecting. It retains potentially sensitive exact received bytes locally, including invalid/partial/vendor data, with immutable requested-inspection provenance; it is not a raw HTTP/model/export or live-replay API. Capacity/failure stops capture without deleting old evidence. Source `db98481` is reviewed and tested; full recovery/installed-worker proof remains open. See the [received journal tests](../../tests/unit/test_codex_received_journal.py) before handling or copying this private data.
 
-This is the backend connection contract. Settings now contains the explicit connection/recovery caller, reviewed in source `cd39913`, with isolated rendered verification; it is not proof of installed Codex compatibility. Shared worker messaging, approvals and configuration changes remain disabled. PEX still needs its real same-worker supervisory loop. See [connection/control review](../CONNECTION_CONTROL_REVIEW.md).
+This is the backend connection contract. Settings now contains the explicit connection/recovery caller, reviewed in source `cd39913`, with isolated rendered verification; it is not proof of installed Codex compatibility. Shared worker messaging, approvals and configuration changes remain disabled. PEX still needs its real same-worker supervisory loop. See the [shared connection tests](../../tests/unit/test_codex_shared_attach.py).
 
 ## Why an origin is required
 
@@ -53,6 +53,6 @@ Dedicated publication now also persists a server-owned workspace/subscription wi
 
 Older workspace-bound sessions without that durable witness require explicit detach/reinspection after upgrade. PEX never reconstructs the origin path from client metadata or guesses it from the database location. Truly unbound legacy paths retain their previous contract; they are not newly certified by this change.
 
-Ask PEX reports changed/uncertain workspace authority and revokes local evidence reads and new outer fallback attempts after its review ends. Already-entered provider work cannot be retracted by these checks. See [the continuity review](../WORKSPACE_CONTINUITY_REVIEW.md) for exact verification state, failed cases and remaining sampling/concurrency limits.
+Ask PEX reports changed/uncertain workspace authority and revokes local evidence reads and new outer fallback attempts after its review ends. Already-entered provider work cannot be retracted by these checks. See the [continuity pipeline tests](../../tests/unit/test_workspace_continuity_pipeline.py) for the enforced cases; sampling and concurrency limits remain.
 
 Complete raw event capture, crash recovery, safe same-worker delivery and installed runtime compatibility still require separate verification. The desktop source flow is reviewed and tested with an explicit fake API; native end-to-end setup remains unverified. Passing local attachment/continuity tests does not certify those gates.
