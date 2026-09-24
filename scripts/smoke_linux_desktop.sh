@@ -91,5 +91,24 @@ if [[ "$workspace_ready" != 1 ]]; then
   exit 1
 fi
 
-printf '%s\n' '{"schema":"pex.linux-desktop-smoke.v1","window_visible":true,"fresh_state_visible":true,"anonymous_bridge_status":401,"fresh_profile":true,"cloud_reasoning_requested_off":true}' \
+# The always-on-top pet must leave the main command bar usable on this screen.
+xdotool mousemove --window "$window_id" 858 48 click 1
+settings_ready=0
+for _ in $(seq 1 8); do
+  scrot -z build/linux-desktop-settings.png
+  tesseract build/linux-desktop-settings.png stdout --psm 11 2>/dev/null \
+    >build/linux-desktop-settings-ocr.txt
+  if grep -Eiq 'WORKSPACE PREFERENCES|Choose PEX.s model' build/linux-desktop-settings-ocr.txt; then
+    settings_ready=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$settings_ready" != 1 ]]; then
+  echo 'Installed PEX Settings navigation was not visible with the companion present; OCR:' >&2
+  cat build/linux-desktop-settings-ocr.txt >&2
+  exit 1
+fi
+
+printf '%s\n' '{"schema":"pex.linux-desktop-smoke.v1","window_visible":true,"fresh_state_visible":true,"settings_navigation_visible":true,"anonymous_bridge_status":401,"fresh_profile":true,"cloud_reasoning_requested_off":true}' \
   >build/linux-desktop-smoke.json

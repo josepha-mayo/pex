@@ -140,6 +140,8 @@ jobs:
             build/linux-desktop-smoke.json
             build/linux-desktop-smoke.log
             build/linux-desktop-smoke-ocr.txt
+            build/linux-desktop-settings.png
+            build/linux-desktop-settings-ocr.txt
             build/linux-desktop-after-settings-click.png
             build/linux-desktop-after-settings-click-ocr.txt
             build/linux-desktop-identity-headers.txt

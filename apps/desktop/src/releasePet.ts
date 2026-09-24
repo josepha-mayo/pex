@@ -53,7 +53,9 @@ export async function releasePetOverlay() {
     const pos = await main.outerPosition();
     const size = await main.outerSize();
     await pet.setPosition(
-      new PhysicalPosition(Math.round(pos.x + size.width - 36), Math.round(pos.y + 48)),
+      // Keep the always-on-top window below the command bar when the window
+      // manager pulls it back onto a narrow screen.
+      new PhysicalPosition(Math.round(pos.x + size.width - 36), Math.round(pos.y + 132)),
     );
   } catch {
     /* keep last pet position */
