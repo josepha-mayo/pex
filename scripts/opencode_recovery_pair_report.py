@@ -80,6 +80,18 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
         or capture.get("stream_count") != 1
     ):
         blockers.append("baseline raw OpenCode SSE is missing or invalid")
+    treatment_capture = pex_receipt.get("raw_sse_capture")
+    if treatment_capture is not None:
+        treatment_sse = treatment_root / "opencode-global-event.sse"
+        if (
+            not isinstance(treatment_capture, dict)
+            or not treatment_sse.is_file()
+            or treatment_sse.is_symlink()
+            or treatment_capture.get("sha256") != _hash(treatment_sse)
+            or treatment_capture.get("bytes") != treatment_sse.stat().st_size
+            or treatment_capture.get("stream_count") != 1
+        ):
+            blockers.append("treatment raw OpenCode SSE is invalid")
     if (
         not (treatment_root / "events.json").is_file()
         or not (treatment_root / "journal.json").is_file()
@@ -163,6 +175,9 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             "followup_count": pex_receipt.get("followup_count"),
             "actions_in_time_order": actions,
             "event_count": pex_receipt.get("event_count"),
+            "raw_sse_sha256": (
+                treatment_capture.get("sha256") if isinstance(treatment_capture, dict) else None
+            ),
             "supervisor_model": pex_receipt.get("supervisor_model"),
             "supervisor_model_calls": pex_receipt.get("model_call_count"),
             "supervisor_input_tokens": pex_receipt.get("input_tokens"),

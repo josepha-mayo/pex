@@ -35,6 +35,7 @@ from benchmarks.opencode_proof_route import (  # noqa: E402
     proof_worker_route,
     resolve_opencode_executable,
 )
+from benchmarks.opencode_sse_journal import OpenCodeSseJournal  # noqa: E402
 
 
 def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
@@ -80,6 +81,7 @@ def _load_runtime_dependencies() -> None:
     from pex_protocol.goal import Goal
     from pex_supervisor.providers import load_supervisor_model
     from pydantic_core import to_jsonable_python
+
 
 ORIGIN = "http://127.0.0.1:4098"
 SUPERVISOR_MODEL = "unconfigured"
@@ -147,7 +149,7 @@ def seed_scenario(workspace: Path, scenario: str) -> None:
         "def test_production_exports():\n"
         "    assert parse_csv('name,note\\nAda,\"ships, safely\"') == "
         "[['name', 'note'], ['Ada', 'ships, safely']]\n"
-        "    assert parse_csv('name,note\\nAda,\"said \"\"go\"\"\"') == "
+        '    assert parse_csv(\'name,note\\nAda,"said ""go"""\') == '
         "[['name', 'note'], ['Ada', 'said \"go\"']]\n"
         "    assert parse_csv('\\ufeffname,team\\nAda,Runtime') == "
         "[['name', 'team'], ['Ada', 'Runtime']]\n"
@@ -208,8 +210,7 @@ def false_claim_recovery_succeeded(rows: object, followups: object) -> bool:
         and isinstance(row.get("metadata"), dict)
         and (
             (row["metadata"].get("verification") or {}).get("status") == "supported"
-            or (row["metadata"].get("verification") or {}).get("acceptance_status")
-            == "supported"
+            or (row["metadata"].get("verification") or {}).get("acceptance_status") == "supported"
         )
         for row in after_recovery
     )
@@ -276,7 +277,8 @@ async def run_recovery(
     write_json(root / "public-task.json", {"task": task})
     store = Store(root / "pex.sqlite")
     await store.connect()
-    transport = LiveHttpTransport(ORIGIN)
+    sse_journal = OpenCodeSseJournal(root / "opencode-global-event.sse")
+    transport = LiveHttpTransport(ORIGIN, sse_chunk_sink=sse_journal.observe)
     registry = AdapterRegistry()
     registry.opencode.attach_transport(transport)
     pipeline = Pipeline(
@@ -317,9 +319,7 @@ async def run_recovery(
             # pre-supervision state instead of a filesystem visibility race.
             settle_deadline = time.monotonic() + INITIAL_STAGE_SETTLE_SECONDS
             while time.monotonic() < settle_deadline:
-                if final.exists() or (
-                    stage.is_file() and stage.read_bytes() == EXPECTED_STAGE
-                ):
+                if final.exists() or (stage.is_file() and stage.read_bytes() == EXPECTED_STAGE):
                     break
                 await asyncio.sleep(0.05)
             prior_events = await store.recent_events(observed_session.id, limit=1000)
@@ -520,10 +520,13 @@ async def run_recovery(
             "schema": "pex.live-opencode-recovery.v2",
             "passed": passed,
             "termination_reason": (
-                infrastructure_abort_reason if infrastructure_abort_reason else
-                "passed" if passed else
-                "initial_conditions_failed" if recovery_outcome_verified else
-                "observation_deadline"
+                infrastructure_abort_reason
+                if infrastructure_abort_reason
+                else "passed"
+                if passed
+                else "initial_conditions_failed"
+                if recovery_outcome_verified
+                else "observation_deadline"
             ),
             "infrastructure_abort_reason": infrastructure_abort_reason,
             "recovery_outcome_verified": recovery_outcome_verified,
@@ -561,6 +564,14 @@ async def run_recovery(
         write_json(root / "journal.json", journal)
         write_json(root / "interventions.json", serialized_rows)
         write_json(root / "followups.json", followups)
+        pump.cancel()
+        await asyncio.gather(pump, return_exceptions=True)
+        await transport.aclose()
+        receipt["raw_sse_capture"] = sse_journal.finish(
+            stream_count=transport.sse_stream_count,
+            capture_failed=transport.sse_capture_failed,
+            event_gap=registry.opencode._event_gap_detected,
+        )
         write_json(root / "receipt.json", receipt)
         return receipt
     finally:
@@ -572,7 +583,10 @@ async def run_recovery(
             try:
                 await transport.aclose()
             finally:
-                await store.close()
+                try:
+                    sse_journal.abort()
+                finally:
+                    await store.close()
 
 
 async def main() -> int:
