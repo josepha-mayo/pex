@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -78,4 +79,16 @@ def test_sandbox_refuses_hardlink_into_workspace(tmp_path: Path) -> None:
     outside.write_text("private", encoding="utf-8")
     (workspace / "linked.txt").hardlink_to(outside)
     with pytest.raises(RuntimeError, match="hard-linked"):
+        linux_sandbox.public_pytest_command(workspace, ["test_public.py"])
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
+    reason="Linux bwrap required",
+)
+def test_sandbox_refuses_fifo_in_workspace(tmp_path: Path) -> None:
+    workspace = tmp_path / "worker"
+    workspace.mkdir()
+    os.mkfifo(workspace / "pipe")
+    with pytest.raises(RuntimeError, match="special file"):
         linux_sandbox.public_pytest_command(workspace, ["test_public.py"])

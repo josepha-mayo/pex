@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 
@@ -52,8 +53,12 @@ def _prefix(workspace: Path, checker: Path | None = None) -> list[str]:
             item = Path(current) / name
             if item.is_symlink() or os.path.ismount(item):
                 raise RuntimeError("candidate workspace contains a link or mount")
-            if name in files and item.stat(follow_symlinks=False).st_nlink > 1:
-                raise RuntimeError("candidate workspace contains a hard-linked file")
+            metadata = item.stat(follow_symlinks=False)
+            if name in files:
+                if not stat.S_ISREG(metadata.st_mode):
+                    raise RuntimeError("candidate workspace contains a special file")
+                if metadata.st_nlink > 1:
+                    raise RuntimeError("candidate workspace contains a hard-linked file")
     command = [
         str(binary),
         "--unshare-all",
