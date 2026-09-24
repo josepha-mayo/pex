@@ -96,7 +96,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 file libayatana-appindicator3-dev librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev openbox patchelf scrot tesseract-ocr wget xauth xdotool xvfb
+          sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 file gnome-keyring libayatana-appindicator3-dev librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev openbox patchelf scrot tesseract-ocr wget xauth xdotool xvfb
       - name: Install pinned Rust
         run: rustup toolchain install 1.97.1 --profile minimal
       - name: Install locked dependencies
@@ -112,6 +112,12 @@ jobs:
         run: cargo test --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
       - name: Verify bundled bridge startup and identity
         run: uv run --frozen python scripts/smoke_packaged_bridge.py --exe "${{ matrix.bridge }}" --output build/packaged-bridge-smoke.json
+      - name: Verify native OS credential storage
+        if: runner.os == 'Windows'
+        run: uv run --frozen python scripts/smoke_native_keyring.py
+      - name: Verify Linux Secret Service credential storage
+        if: runner.os == 'Linux'
+        run: dbus-run-session -- bash scripts/smoke_linux_keyring.sh
       - name: Verify installed Linux desktop window and bridge
         if: runner.os == 'Linux'
         run: bash scripts/smoke_linux_desktop.sh apps/desktop/src-tauri/target/release/bundle/deb/PEX_0.1.0_amd64.deb
