@@ -77,6 +77,14 @@ in the README:
 npm --prefix apps/desktop run tauri dev
 ```
 
+To check an installed Codex App Server without starting a model turn, run
+`.\.venv\Scripts\python.exe scripts\smoke_codex_handshake.py` on Windows or
+`.venv/bin/python scripts/smoke_codex_handshake.py` on Linux after installing
+the project dependencies. It starts a separate local App Server, completes the
+handshake and a bounded thread-list request, then closes it. This proves
+connectivity only; it does not prove supervision of a worker turn or a
+performance improvement.
+
 PEX starts without a cloud credential and remains honest about deterministic-
 only observation. A semantic supervision demo requires a model configured by the
 tester. No developer key is bundled.
