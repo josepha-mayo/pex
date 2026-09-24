@@ -9,7 +9,7 @@ test("OpenCode connection failures distinguish rejection from uncertainty withou
     assert.doesNotMatch(notice, /private diagnostic/);
     assert.doesNotMatch(notice, /lost response/);
   }
-  assert.match(openCodeConnectionFailure(new BridgeRequestError("probe", { status: 502 })), /health check/);
+  assert.match(openCodeConnectionFailure(new BridgeRequestError("probe", { status: 502 })), /session access/);
   assert.match(openCodeConnectionFailure(new BridgeRequestError("busy", { status: 409 })), /active connection/);
   assert.match(openCodeConnectionFailure(new DOMException("aborted", "AbortError")), /lost response/);
   assert.match(openCodeConnectionFailure(new Error("network")), /lost response/);

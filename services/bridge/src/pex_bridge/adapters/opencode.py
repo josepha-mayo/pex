@@ -223,10 +223,15 @@ class OpenCodeAdapter(HarnessAdapter):
             and self._last_pump_error is None
         )
         plugin_live = self._plugin_live()
-        # Capability probes also run during event ingestion, outside the HTTP
-        # endpoints' shared process snapshot. Windows tasklist must not stall
-        # the SSE reader or unrelated bridge requests on those paths.
-        desktop = await self._desktop_focus_hint()
+        # The HTTP session list already proves a connected server. A cold
+        # Windows desktop-process lookup is only an optional focus hint and
+        # must not turn a healthy HTTP attach into a timed-out probe. Shared
+        # process snapshots still supply the hint on command-deck refreshes.
+        desktop = (
+            await self._desktop_focus_hint()
+            if not connected or _active_process_snapshot() is not None
+            else False
+        )
         return AdapterCapabilities(
             observe_messages=deep,
             observe_tool_calls=deep,
@@ -287,7 +292,7 @@ class OpenCodeAdapter(HarnessAdapter):
                     if deep
                     else "SSE retention gap detected; observation is incomplete."
                     if self._event_gap_detected
-                    else "Health probe passed; Strong until the SSE pump is started."
+                    else "Session list probe passed; Strong until the SSE pump is started."
                     if connected
                     else "PEX OpenCode plugin is live; HTTP server control is detached."
                     if plugin_live
@@ -935,7 +940,7 @@ class OpenCodeAdapter(HarnessAdapter):
             vendor_session_id=vendor_id,
             cwd=cwd,
             project_id=cwd,
-            status=SessionStatus.WORKING,
+            status=SessionStatus.DISCOVERED,
             last_activity=datetime.now(UTC),
         )
         self.sessions[session_id] = session

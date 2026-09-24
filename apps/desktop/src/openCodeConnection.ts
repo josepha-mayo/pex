@@ -11,7 +11,7 @@ export function openCodeConnectionFailure(error: unknown): string {
       return "The bridge rejected the connection because an active connection conflicts with this request. Inspect the worker list before changing connections. No new worker was started.";
     }
     if (error.status === 502) {
-      return "The OpenCode health check did not pass. Check the local server, address and server password, then retry. PEX discarded this connection attempt; it did not start a worker.";
+      return "PEX could not verify OpenCode session access. Check the local server, address and server password, then retry. PEX discarded this connection attempt; it did not start a worker.";
     }
   }
   return "Connection was not confirmed. Check that your local OpenCode server is running and inspect the worker list before retrying. A lost response does not mean the connection was rolled back.";

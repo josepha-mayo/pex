@@ -148,6 +148,73 @@ async def test_adapter_probe_timeout_degrades_to_explicit_unavailable(monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_connected_opencode_attach_does_not_wait_for_optional_desktop_hint(monkeypatch):
+    adapter = OpenCodeAdapter(MemoryHttpTransport())
+    monkeypatch.setattr(opencode_module, "_active_process_snapshot", lambda: None)
+
+    async def unavailable_desktop_hint():
+        raise AssertionError("connected HTTP attach must not run a desktop process lookup")
+
+    monkeypatch.setattr(adapter, "_desktop_focus_hint", unavailable_desktop_hint)
+    capabilities = await _bounded_adapter_probe(adapter)
+
+    assert capabilities.support_label == AdapterSupportLabel.STRONG
+    assert capabilities.send_message is True
+
+
+@pytest.mark.asyncio
+async def test_new_idle_opencode_session_does_not_count_as_working(tmp_path):
+    adapter = OpenCodeAdapter(MemoryHttpTransport())
+    payload = {
+        "type": "session.created",
+        "properties": {
+            "sessionID": "fresh-session",
+            "info": {"id": "fresh-session", "directory": "C:/work/pex-fresh"},
+        },
+    }
+    session = adapter._session_for(payload)
+    assert session is not None
+    event = adapter.normalize_sse(session, payload)
+    assert event.event_type == EventType.STATUS
+
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    registry = AdapterRegistry()
+    registry.bind("opencode", adapter)
+    pipeline = Pipeline(
+        store,
+        registry,
+        EventBus(),
+        Settings.for_test(require_auth=False, home=tmp_path, supervisor_disable=True),
+    )
+    try:
+        await pipeline.ingest_event(event, session)
+        saved = await store.get_session(session.id)
+        assert saved is not None
+        assert saved.status == SessionStatus.DISCOVERED
+        prompt = {
+            "type": "message.updated",
+            "properties": {
+                "sessionID": "fresh-session",
+                "info": {
+                    "id": "user-message-1",
+                    "role": "user",
+                    "directory": "C:/work/pex-fresh",
+                },
+            },
+        }
+        prompt_event = adapter.normalize_sse(session, prompt)
+        assert prompt_event.event_type == EventType.USER_PROMPT
+        await pipeline.ingest_event(prompt_event, session)
+        active = await store.get_session(session.id)
+        assert active is not None
+        assert active.status == SessionStatus.WORKING
+    finally:
+        await pipeline.close_presentations()
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_pipeline_probes_and_persists_missing_capabilities(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
