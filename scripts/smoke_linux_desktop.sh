@@ -75,6 +75,13 @@ done
 if [[ "$workspace_ready" != 1 ]]; then
   echo 'Installed PEX window did not load fresh authenticated state within 60 seconds; OCR:' >&2
   cat build/linux-desktop-smoke-ocr.txt >&2
+  # Distinguish a live React view with stuck native IPC from a frozen webview.
+  xdotool mousemove --window "$window_id" 859 47 click 1
+  sleep 2
+  scrot -z build/linux-desktop-after-settings-click.png
+  tesseract build/linux-desktop-after-settings-click.png stdout --psm 11 \
+    >build/linux-desktop-after-settings-click-ocr.txt 2>/dev/null || true
+  cat build/linux-desktop-after-settings-click-ocr.txt >&2
   curl --silent --show-error --dump-header build/linux-desktop-identity-headers.txt \
     --output /dev/null \
     "http://127.0.0.1:7420/health/identity?challenge=$(printf '0%.0s' {1..64})" || true
