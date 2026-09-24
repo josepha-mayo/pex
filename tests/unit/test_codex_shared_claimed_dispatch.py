@@ -122,9 +122,6 @@ async def attached(
     tmp_path: Path,
     *,
     active: bool = False,
-    # Normal fake-peer reads include durable receive journaling on Windows CI.
-    # Timeout behavior is exercised with an explicit short value below.
-    request_timeout_s: float = 10,
 ) -> tuple[CodexSharedAdapter, ClaimedDispatchChannel]:
     channel = ClaimedDispatchChannel(tmp_path, active=active)
     executable, endpoint = tmp_path / "codex.exe", tmp_path / "codex.sock"
@@ -149,7 +146,9 @@ async def attached(
         # the production default so a busy Windows CI runner does not turn
         # this dispatch-cancellation test into a disk-scheduling test.
         connect_timeout_s=10,
-        request_timeout_s=request_timeout_s,
+        # Normal fake-peer reads include durable receive journaling on Windows
+        # CI. The held-ACK test narrows this only after setup has completed.
+        request_timeout_s=10,
         receive_journal=journal,
     )
     coordinator = CodexExistingThreadSubscription(transport)
@@ -347,7 +346,9 @@ async def test_new_input_while_transport_write_lock_waits_refuses_before_enqueue
 
 @pytest.mark.asyncio
 async def test_lost_ack_remains_delivery_uncertain_and_is_not_resent(tmp_path: Path) -> None:
-    adapter, channel = await attached(tmp_path, request_timeout_s=0.1)
+    adapter, channel = await attached(tmp_path)
+    # The held ACK is the timeout under test; setup reads must finish first.
+    adapter.transport.request_timeout_s = 0.1
     channel.hold_dispatch_response = True
     with pytest.raises(SharedCodexDeliveryUncertainError):
         await adapter._dispatch_claimed_text(**dispatch_args(adapter))
