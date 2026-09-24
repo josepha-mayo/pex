@@ -53,6 +53,7 @@ fi
 
 window_id=$(xdotool search --onlyvisible --name '^PEX$' | sed -n '1p')
 xdotool windowactivate "$window_id"
+xdotool getwindowgeometry --shell "$window_id" >build/linux-desktop-window-geometry.txt
 
 workspace_ready=0
 for iteration in $(seq 1 30); do
@@ -92,7 +93,7 @@ if [[ "$workspace_ready" != 1 ]]; then
 fi
 
 # The always-on-top pet must leave the main command bar usable on this screen.
-xdotool mousemove --window "$window_id" 858 48 click 1
+xdotool mousemove --window "$window_id" 858 28 click 1
 settings_ready=0
 for _ in $(seq 1 8); do
   scrot -z build/linux-desktop-settings.png

@@ -146,3 +146,4 @@ jobs:
             build/linux-desktop-after-settings-click-ocr.txt
             build/linux-desktop-identity-headers.txt
             build/linux-desktop-window-manager.log
+            build/linux-desktop-window-geometry.txt
