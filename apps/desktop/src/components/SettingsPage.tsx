@@ -19,6 +19,8 @@ export type SettingsSection = "companion" | "supervisor" | "connections" | "goal
 export function SettingsPage({
   initialSection,
   goals,
+  goalsFresh,
+  goalActionsAvailable,
   note,
   nickname,
   scale,
@@ -72,6 +74,8 @@ export function SettingsPage({
   onClearHook,
 }: {
   goals: Goal[];
+  goalsFresh: boolean;
+  goalActionsAvailable: boolean;
   onCreateGoal?: () => void;
   note?: string | null;
   nickname: string;
@@ -584,10 +588,12 @@ export function SettingsPage({
           {section === "goals" ? (
           <section className="settings-card">
             <p className="eyebrow">Persistent state</p>
-            <h2>Stored goals</h2>
-            <p className="settings-note">Choose a session, describe what should get done, and let PEX check the work.</p>
-            {onCreateGoal ? <button type="button" className="solid" onClick={onCreateGoal}>Create goal</button> : null}
-            {goals.length ? (
+            <h2>{goalsFresh ? "Stored goals" : "Goal state unavailable"}</h2>
+            <p className="settings-note">{goalsFresh
+              ? "Choose a session, describe what should get done, and let PEX check the work."
+              : "PEX cannot confirm stored goals until its local bridge responds."}</p>
+            {onCreateGoal ? <button type="button" className="solid" onClick={onCreateGoal} disabled={!goalActionsAvailable}>Create goal</button> : null}
+            {goalsFresh && goals.length ? (
               <ul className="settings-list">
                 {goals.map((goal) => (
                   <li key={goal.id}>
@@ -596,7 +602,7 @@ export function SettingsPage({
                   </li>
                 ))}
               </ul>
-            ) : <p className="settings-note">No goals stored yet.</p>}
+            ) : goalsFresh ? <p className="settings-note">No goals stored yet.</p> : null}
           </section>
           ) : null}
         </div>

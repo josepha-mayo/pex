@@ -2337,6 +2337,8 @@ export function App() {
         onCreateGoal={openGoalSetup}
         initialSection={settingsDestination}
         goals={availableGoals}
+        goalsFresh={goalStateFresh}
+        goalActionsAvailable={goalMutationAvailable}
         note={note}
         nickname={nickname}
         scale={scale}
