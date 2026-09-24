@@ -292,9 +292,10 @@ test("native bootstrap reads pause while hidden and back off after readiness", a
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
   assert.match(source, /const readNativeBridgeBootstrap = boundedSingleFlightRead\(/u);
   assert.match(source, /normalizeBridgeBootstrapStatus\(await readNativeBridgeBootstrap\(signal\)\)/u);
-  assert.match(source, /if \(!pageVisible \|\| !shouldPollBridgeBootstrap\(TAURI, shell\)\) return;\s*const stopPolling = startSerialPolling\(async \(signal\) => \{\s*const next = await readBridgeBootstrapStatus\(signal\);\s*if \(signal.aborted\) return;/u);
+  assert.match(source, /const pollBridgeBootstrap = shouldPollBridgeBootstrap\(TAURI, shell\);/u);
+  assert.match(source, /if \(!pageVisible \|\| !pollBridgeBootstrap\) return;\s*const stopPolling = startSerialPolling\(async \(signal\) => \{\s*const next = await readBridgeBootstrapStatus\(signal\);\s*if \(signal.aborted\) return;/u);
   assert.match(source, /if \(next\) acceptBridgeStartupStatus\(next\);\s*\}, bridgeBootstrapPollInterval\(bridgeStartup\.phase\)\);\s*return stopPolling;/u);
-  assert.match(source, /\[acceptBridgeStartupStatus, bridgeStartup\.phase, pageVisible, shell\]/u);
+  assert.match(source, /\[acceptBridgeStartupStatus, bridgeStartup\.phase, pageVisible, pollBridgeBootstrap\]/u);
 });
 
 test("retry bridge IPC is bounded and single-flight without automatic reissue", async () => {

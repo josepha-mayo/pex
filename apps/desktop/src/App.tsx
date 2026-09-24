@@ -500,6 +500,7 @@ export function App() {
   const identityConflictRefresh = useRef<(() => Promise<unknown>) | null>(null);
   const identityStatusRefresh = useRef<(() => Promise<unknown>) | null>(null);
   const bridgeStartupRef = useRef(bridgeStartup);
+  const pollBridgeBootstrap = shouldPollBridgeBootstrap(TAURI, shell);
   const bridgeAvailable = bridgeBootstrapAvailable(
     TAURI,
     shell,
@@ -525,7 +526,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!pageVisible || !shouldPollBridgeBootstrap(TAURI, shell)) return;
+    if (!pageVisible || !pollBridgeBootstrap) return;
     const stopPolling = startSerialPolling(async (signal) => {
       const next = await readBridgeBootstrapStatus(signal);
       if (signal.aborted) return;
@@ -533,7 +534,7 @@ export function App() {
       if (next) acceptBridgeStartupStatus(next);
     }, bridgeBootstrapPollInterval(bridgeStartup.phase));
     return stopPolling;
-  }, [acceptBridgeStartupStatus, bridgeStartup.phase, pageVisible, shell]);
+  }, [acceptBridgeStartupStatus, bridgeStartup.phase, pageVisible, pollBridgeBootstrap]);
 
   const retryBridgeBootstrap = useCallback(async () => {
     if (!bridgeStartup.retryable || bridgeRetrying) return;
