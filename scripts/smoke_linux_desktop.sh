@@ -60,6 +60,9 @@ for iteration in $(seq 1 30); do
     echo 'Installed PEX desktop exited before its workspace loaded' >&2
     exit 1
   fi
+  # Xvfb/WebKit can retain the first composited frame until pointer activity.
+  # A harmless hover forces a repaint without changing the workspace state.
+  xdotool mousemove --window "$window_id" "$((500 + iteration % 2))" 48
   scrot -z build/linux-desktop-smoke.png
   if [[ "$iteration" == 1 || "$iteration" == 15 || "$iteration" == 30 ]]; then
     cp build/linux-desktop-smoke.png "build/linux-desktop-check-${iteration}.png"
