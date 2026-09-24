@@ -199,14 +199,16 @@ def supervisor_has_no_task_id_branches(path: Path) -> None:
 def execution_runtime_blockers(arm: str | None = None) -> list[str]:
     """Describe missing implemented capabilities, not editable manifest claims.
 
-    The current worker/PEX processes share the controller host and evaluator.py
-    executes candidate code through ordinary python -I. Neither is an OS-level
-    hidden-data boundary. Replace these blockers only with an enforced backend
-    and action-time validation of its isolation/network receipts.
+    The current worker/PEX processes share the controller host. The default
+    evaluator path also executes candidate code through ordinary python -I;
+    its optional Linux bubblewrap subprocess is only one part of the boundary.
+    Replace these blockers only with an enforced backend and action-time
+    validation of worker, PEX, evaluator, and network receipts.
     """
     blockers = [
-        "OS-isolated worker/PEX and hidden-evaluator execution backend is not implemented; "
-        "plain python -I and controlled fixture directories are not a sandbox"
+        "OS-isolated worker/PEX and complete hidden-evaluator execution backend "
+        "are not implemented; an optional Linux evaluator subprocess sandbox "
+        "does not isolate worker or PEX"
     ]
     if arm is None or arm in {"cursor", "cursor_pex"}:
         blockers.append("Cursor network policy has no controller-enforced runtime receipt")

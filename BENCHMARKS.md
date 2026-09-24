@@ -91,6 +91,16 @@ filesystem/network boundary, so `natural_task_source_status` stays
 `not_yet_satisfied`. Eight tasks are the §34.6 development-smoke floor, not the
 30-plus final benchmark target.
 
+The evaluator now has an opt-in Linux candidate subprocess boundary:
+`PEX_BENCH_EVALUATOR_SANDBOX=linux-bwrap`. It requires `bwrap` and a system
+`/usr/bin/python3` with pytest available. Public tests and private-case checkers
+run with only the read-only candidate workspace and Python runtime mounted;
+network and host files are absent. The default development path remains
+unchanged. This protects the evaluator subprocess only: Codex/OpenCode workers,
+PEX, and the controller do not yet have a complete OS isolation and network
+receipt chain. The execution and presentation freeze gates therefore remain
+`NO-GO` even when this option is enabled.
+
 ## Predeclared execution and reporting protocol
 
 `manifest.yaml` now fixes a deterministic 32-row schedule. It SHA-256 sorts 16

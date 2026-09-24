@@ -27,6 +27,11 @@ from pex_protocol.windows_job import CREATE_SUSPENDED, assign_job_and_resume, cl
 from yaml.constructor import ConstructorError
 from yaml.resolver import BaseResolver
 
+if __package__:
+    from . import linux_sandbox
+else:  # `python benchmarks/four_arm.py` puts only this directory on sys.path.
+    import linux_sandbox
+
 ROOT = Path(__file__).resolve().parent
 TASKS = ROOT / "tasks"
 MANIFEST = ROOT / "manifest.yaml"
@@ -717,15 +722,22 @@ def _hidden_check(workspace: Path, spec: dict[str, Any]) -> tuple[bool, str]:
         )
         for index, case in enumerate(spec["hidden_cases"]):
             request = {"args": case.get("args", []), "kwargs": case.get("kwargs", {})}
-            returncode, output, timed_out, output_exceeded = _run_bounded(
-                [
+            command = (
+                linux_sandbox.hidden_command(
+                    workspace, checker, str(spec["module"]), str(spec["function"])
+                )
+                if linux_sandbox.enabled()
+                else [
                     sys.executable,
                     "-I",
                     str(checker),
                     str(workspace),
                     str(spec["module"]),
                     str(spec["function"]),
-                ],
+                ]
+            )
+            returncode, output, timed_out, output_exceeded = _run_bounded(
+                command,
                 cwd=workspace,
                 input_text=json.dumps(request),
                 timeout=10,
@@ -764,8 +776,10 @@ def _run_pytest(workspace: Path, files: list[str]) -> tuple[bool, str]:
     # Isolated Python ignores PYTHONDONTWRITEBYTECODE. Never read worker-supplied
     # or timestamp-stale bytecode when grading the current source.
     with TemporaryDirectory(prefix="pexbench_bytecode_") as cache:
-        returncode, output, timed_out, output_exceeded = _run_bounded(
-            [
+        command = (
+            linux_sandbox.public_pytest_command(workspace, files)
+            if linux_sandbox.enabled()
+            else [
                 sys.executable,
                 "-I",
                 "-B",
@@ -786,7 +800,10 @@ def _run_pytest(workspace: Path, files: list[str]) -> tuple[bool, str]:
                 "-o",
                 "addopts=",
                 *files,
-            ],
+            ]
+        )
+        returncode, output, timed_out, output_exceeded = _run_bounded(
+            command,
             cwd=workspace,
             timeout=30,
         )
