@@ -207,8 +207,8 @@ def execution_runtime_blockers(arm: str | None = None) -> list[str]:
     """
     blockers = [
         "OS-isolated worker/PEX and complete hidden-evaluator execution backend "
-        "are not implemented; an optional Linux evaluator subprocess sandbox "
-        "does not isolate worker or PEX"
+        "are not implemented; the worker/PEX host is not a sandbox, and an "
+        "optional Linux evaluator subprocess sandbox does not isolate them"
     ]
     if arm is None or arm in {"cursor", "cursor_pex"}:
         blockers.append("Cursor network policy has no controller-enforced runtime receipt")
