@@ -347,13 +347,20 @@ async def test_new_input_while_transport_write_lock_waits_refuses_before_enqueue
 @pytest.mark.asyncio
 async def test_lost_ack_remains_delivery_uncertain_and_is_not_resent(tmp_path: Path) -> None:
     adapter, channel = await attached(tmp_path)
-    # The held ACK is the timeout under test; setup reads must finish first.
-    adapter.transport.request_timeout_s = 0.1
     channel.hold_dispatch_response = True
-    with pytest.raises(SharedCodexDeliveryUncertainError):
-        await adapter._dispatch_claimed_text(**dispatch_args(adapter))
-    assert len(dispatch_writes(channel)) == 1
-    assert channel.closed
+    task = asyncio.create_task(adapter._dispatch_claimed_text(**dispatch_args(adapter)))
+    try:
+        await asyncio.wait_for(channel.dispatch_written.wait(), 10)
+        # Drop the peer after the write instead of shrinking the timeout for
+        # the preceding durable control read, which can be slow on Windows.
+        await channel.close_peer()
+        with pytest.raises(SharedCodexDeliveryUncertainError):
+            await task
+        assert len(dispatch_writes(channel)) == 1
+        assert channel.closed
+    finally:
+        await asyncio.gather(task, return_exceptions=True)
+        await adapter.transport.close()
 
 
 @pytest.mark.asyncio
