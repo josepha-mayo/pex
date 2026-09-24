@@ -17,7 +17,7 @@ fi
 export HOME="$(mktemp -d)"
 export PEX_CLOUD_REASONING=false
 export GDK_BACKEND=x11
-export WEBKIT_DISABLE_COMPOSITING_MODE=1
+export WEBKIT_DISABLE_DMABUF_RENDERER=1
 mkdir -p build
 
 openbox >build/linux-desktop-window-manager.log 2>&1 &
