@@ -1,3 +1,4 @@
+import { existsSync, renameSync } from "node:fs";
 import { assertBridgeRuntimeMatches } from "./bridge-runtime-contract.mjs";
 
 const SHA256 = /^[0-9a-f]{64}$/u;
@@ -42,6 +43,36 @@ export function withSynchronousCleanup(operation, cleanup) {
   }
   if (failed) throw primaryError;
   return result;
+}
+
+function sleepSynchronously(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+// Antivirus and indexing can briefly hold a newly built Windows runtime tree.
+// Retry only known transient rename errors while the source and destination
+// still have the exact expected pre-rename state; never infer that a rename
+// succeeded or overwrite a newly appearing target.
+export function renameWithWindowsRetry(source, target, options = {}) {
+  const platform = options.platform ?? process.platform;
+  const rename = options.rename ?? renameSync;
+  const exists = options.exists ?? existsSync;
+  const sleep = options.sleep ?? sleepSynchronously;
+  const maxAttempts = options.maxAttempts ?? 20;
+  const retryDelayMs = options.retryDelayMs ?? 500;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      rename(source, target);
+      return;
+    } catch (error) {
+      if (platform !== "win32"
+        || !["EACCES", "EBUSY", "EPERM"].includes(error?.code)
+        || attempt === maxAttempts
+        || !exists(source)
+        || exists(target)) throw error;
+      sleep(retryDelayMs);
+    }
+  }
 }
 
 export const EXPECTED_SIDECAR_BINS = [

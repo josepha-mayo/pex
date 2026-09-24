@@ -20,6 +20,7 @@ import {
   classifyGitReleaseInputs,
   parseFrozenBundleInventory,
   preflightSnapshotIsStable,
+  renameWithWindowsRetry,
   sidecarBuildPolicy,
   sidecarStampMatches,
   tauriReleaseWiringMatches,
@@ -87,6 +88,52 @@ test("verification cleanup preserves success and each failure without masking", 
     assert.deepEqual(error.errors, [primary, secondary]);
     return true;
   });
+});
+
+test("sidecar rename retries only transient Windows locks with unchanged paths", () => {
+  let attempts = 0;
+  let sleeps = 0;
+  renameWithWindowsRetry("source", "target", {
+    platform: "win32",
+    rename: () => {
+      attempts += 1;
+      if (attempts < 3) throw Object.assign(new Error("temporary lock"), { code: "EPERM" });
+    },
+    exists: (path) => path === "source",
+    sleep: () => { sleeps += 1; },
+    maxAttempts: 3,
+    retryDelayMs: 0,
+  });
+  assert.equal(attempts, 3);
+  assert.equal(sleeps, 2);
+
+  attempts = 0;
+  const persistent = Object.assign(new Error("persistent lock"), { code: "EPERM" });
+  assert.throws(() => renameWithWindowsRetry("source", "target", {
+    platform: "win32",
+    rename: () => { attempts += 1; throw persistent; },
+    exists: (path) => path === "source",
+    sleep: () => {},
+    maxAttempts: 2,
+    retryDelayMs: 0,
+  }), (error) => error === persistent);
+  assert.equal(attempts, 2);
+
+  for (const scenario of [
+    { platform: "linux", sourceExists: true, targetExists: false },
+    { platform: "win32", sourceExists: false, targetExists: false },
+    { platform: "win32", sourceExists: true, targetExists: true },
+  ]) {
+    let calls = 0;
+    const failure = Object.assign(new Error("rename failed"), { code: "EPERM" });
+    assert.throws(() => renameWithWindowsRetry("source", "target", {
+      platform: scenario.platform,
+      rename: () => { calls += 1; throw failure; },
+      exists: (path) => path === "source" ? scenario.sourceExists : scenario.targetExists,
+      sleep: () => { throw new Error("unexpected retry"); },
+    }), (error) => error === failure);
+    assert.equal(calls, 1);
+  }
 });
 
 test("public release evidence rejects machine identity and credential-shaped values", () => {

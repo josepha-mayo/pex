@@ -12,7 +12,6 @@ import {
   readSync,
   readdirSync,
   realpathSync,
-  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -36,6 +35,7 @@ import {
   classifyGitReleaseInputs,
   parseFrozenBundleInventory,
   preflightSnapshotIsStable,
+  renameWithWindowsRetry,
   sidecarBuildPolicy,
   sidecarStampMatches,
   tauriReleaseWiringMatches,
@@ -1045,12 +1045,12 @@ function installBinary(built, target) {
   removeSafeRegularFile(staged, "Staged sidecar artifact");
   removeSafeRegularFile(backup, "Sidecar backup artifact");
   if (existsSync(target)) assertSafeRegularFile(target, "Existing sidecar artifact");
-  renameSync(built, staged);
+  renameWithWindowsRetry(built, staged);
   try {
-    if (existsSync(target)) renameSync(target, backup);
-    renameSync(staged, target);
+    if (existsSync(target)) renameWithWindowsRetry(target, backup);
+    renameWithWindowsRetry(staged, target);
   } catch (error) {
-    if (!existsSync(target) && existsSync(backup)) renameSync(backup, target);
+    if (!existsSync(target) && existsSync(backup)) renameWithWindowsRetry(backup, target);
     removeSafeRegularFile(staged, "Staged sidecar artifact");
     throw error;
   }
@@ -1066,14 +1066,14 @@ function installBridgeRuntime(built, target) {
   removeSafeDirectory(staged, "Staged bridge runtime");
   removeSafeDirectory(backup, "Bridge runtime backup");
   if (existsSync(target)) buildBridgeRuntimeManifest(target);
-  renameSync(built, staged);
+  renameWithWindowsRetry(built, staged);
   try {
-    if (existsSync(target)) renameSync(target, backup);
-    renameSync(staged, target);
+    if (existsSync(target)) renameWithWindowsRetry(target, backup);
+    renameWithWindowsRetry(staged, target);
   } catch (error) {
     const rollbackErrors = [];
     try {
-      if (!existsSync(target) && existsSync(backup)) renameSync(backup, target);
+      if (!existsSync(target) && existsSync(backup)) renameWithWindowsRetry(backup, target);
     } catch (rollbackError) {
       rollbackErrors.push(rollbackError);
     }
@@ -1205,7 +1205,7 @@ for (const relativePath of RETIRED_BRIDGE_DATA_FILES) {
 }
 const stagedBridgeRuntime = join(repo, "build", "pyinstaller", `pex-bridge-runtime-${triple}.stage`);
 removeSafeDirectory(stagedBridgeRuntime, "Staged bridge runtime");
-renameSync(builtBridgeRuntime, stagedBridgeRuntime);
+renameWithWindowsRetry(builtBridgeRuntime, stagedBridgeRuntime);
 materializeBridgeRuntimeSymlinks(stagedBridgeRuntime);
 const stagedBridge = join(stagedBridgeRuntime, `pex-bridge${extension}`);
 const stagedBridgeManifest = buildBridgeRuntimeManifest(stagedBridgeRuntime);
