@@ -43,6 +43,16 @@ class KeyringSupervisorSecretStore:
 
     service_name = "PEX Supervisor"
 
+    @staticmethod
+    def _is_missing_secret_service_item(exc: Exception) -> bool:
+        # SecretStorage can raise this after an item was deleted, instead of
+        # returning None as the keyring protocol specifies. Match only this
+        # precise missing-item signal; all other vault failures stay errors.
+        return (
+            type(exc).__module__ == "secretstorage.exceptions"
+            and type(exc).__name__ == "ItemNotFoundException"
+        )
+
     def _keyring(self) -> Any:
         try:
             import keyring
@@ -104,14 +114,14 @@ class KeyringSupervisorSecretStore:
         secret = validate_supervisor_secret(value)
         audience = validate_secret_audience(audience)
         reference = f"sec_{secrets.token_hex(16)}"
-        keyring, keyring_error = self._keyring()
+        keyring, _ = self._keyring()
         envelope = json.dumps(
             {"version": 1, "audience": audience, "secret": secret},
             separators=(",", ":"),
         )
         try:
             keyring.set_password(self.service_name, reference, envelope)
-        except keyring_error as exc:
+        except Exception as exc:
             raise SupervisorSecretStoreError(
                 "the operating-system credential store rejected the supervisor key"
             ) from exc
@@ -120,10 +130,12 @@ class KeyringSupervisorSecretStore:
     def get(self, reference: str, *, audience: str) -> str | None:
         safe_reference = self._validate_reference(reference)
         audience = validate_secret_audience(audience)
-        keyring, keyring_error = self._keyring()
+        keyring, _ = self._keyring()
         try:
             value = keyring.get_password(self.service_name, safe_reference)
-        except keyring_error as exc:
+        except Exception as exc:
+            if self._is_missing_secret_service_item(exc):
+                return None
             raise SupervisorSecretStoreError(
                 "the operating-system credential store could not read the supervisor key"
             ) from exc
@@ -149,17 +161,20 @@ class KeyringSupervisorSecretStore:
 
     def delete(self, reference: str) -> None:
         safe_reference = self._validate_reference(reference)
-        keyring, keyring_error = self._keyring()
+        keyring, _ = self._keyring()
         try:
             keyring.delete_password(self.service_name, safe_reference)
-        except keyring_error as exc:
+        except Exception as exc:
+            if self._is_missing_secret_service_item(exc):
+                return
             # A missing entry is already the desired terminal state.  Backends do
             # not expose one portable missing-entry exception, so verify once.
             try:
                 if keyring.get_password(self.service_name, safe_reference) is None:
                     return
-            except keyring_error:
-                pass
+            except Exception as read_exc:
+                if self._is_missing_secret_service_item(read_exc):
+                    return
             raise SupervisorSecretStoreError(
                 "the operating-system credential store could not delete the supervisor key"
             ) from exc

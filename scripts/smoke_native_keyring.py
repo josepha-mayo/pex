@@ -31,6 +31,7 @@ def main() -> None:
         store.delete(reference)
     if store.get(reference, audience=audience) is not None:
         raise AssertionError("OS credential remained after deletion")
+    store.delete(reference)
     selected = backend.get_keyring() if hasattr(backend, "get_keyring") else backend
     print(f"Native keyring roundtrip passed ({type(selected).__module__})")
 

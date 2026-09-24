@@ -159,6 +159,44 @@ def test_keyring_envelope_is_versioned_bounded_and_audience_bound(monkeypatch):
     assert (store.service_name, reference) not in values
 
 
+def test_secret_service_deleted_item_is_absent_and_delete_is_idempotent(monkeypatch):
+    values: dict[tuple[str, str], str] = {}
+
+    class ItemNotFoundException(Exception):
+        pass
+
+    ItemNotFoundException.__module__ = "secretstorage.exceptions"
+
+    class SecretServiceKeyring:
+        @staticmethod
+        def set_password(service, reference, value):
+            values[(service, reference)] = value
+
+        @staticmethod
+        def get_password(service, reference):
+            try:
+                return values[(service, reference)]
+            except KeyError as exc:
+                raise ItemNotFoundException("item is gone") from exc
+
+        @staticmethod
+        def delete_password(service, reference):
+            try:
+                del values[(service, reference)]
+            except KeyError as exc:
+                raise ItemNotFoundException("item is gone") from exc
+
+    store = KeyringSupervisorSecretStore()
+    monkeypatch.setattr(store, "_keyring", lambda: (SecretServiceKeyring, Exception))
+    audience = "a" * 64
+    reference = store.put("disposable", audience=audience)
+
+    assert store.get(reference, audience=audience) == "disposable"
+    store.delete(reference)
+    assert store.get(reference, audience=audience) is None
+    store.delete(reference)
+
+
 @pytest.mark.skipif(os.name != "nt", reason="this receipt targets the Windows desktop build")
 def test_windows_runtime_selects_winvault_not_a_plaintext_keyring():
     store = KeyringSupervisorSecretStore()
