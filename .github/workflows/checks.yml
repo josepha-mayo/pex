@@ -96,7 +96,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 file libayatana-appindicator3-dev librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev patchelf scrot wget xdotool xvfb
+          sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 file libayatana-appindicator3-dev librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev patchelf scrot wget xauth xdotool xvfb
       - name: Install pinned Rust
         run: rustup toolchain install 1.97.1 --profile minimal
       - name: Install locked dependencies
