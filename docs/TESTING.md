@@ -33,8 +33,13 @@ That receipt is retained in
 A third bounded run stayed silent on the first false claim because the main
 decision cited an inspection receipt but omitted its separate evidence list.
 See [`docs/evidence/nebius-opencode-main-evidence-2026-09-24.json`](evidence/nebius-opencode-main-evidence-2026-09-24.json).
-Subsequent receipt-handling changes have offline tests but no successful live
-recovery receipt on the updated source yet.
+After the receipt-handling changes, one bounded live retry with the free-labeled
+OpenCode worker and Nebius BYOK supervisor passed: PEX observed a false test
+claim, requested verification, sent a same-session correction, and an
+independent pytest rerun passed. The final review was quiet. See
+[`docs/evidence/nebius-opencode-free-worker-recovery-54366ca.json`](evidence/nebius-opencode-free-worker-recovery-54366ca.json).
+This is one recovery case, not a comparative productivity result or native
+desktop acceptance.
 The current no-spend OpenCode diagnostic also passed 10/10 baseline and 10/10
 PEX-attached public artifact tasks on exact source `63dc5cd`. Every PEX case
 settled its event journal, produced an exact local deterministic `NOOP`, sent no
