@@ -2862,6 +2862,18 @@ html.pet-shell #root {
 }
 
 @media (max-width: 420px) {
+  .main-shell { grid-template-rows: 94px minmax(0, 1fr); }
+  .main-shell::before { inset-block-start: 94px; }
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 44px 40px;
+    gap: 0 8px;
+    padding: 0 12px 8px;
+  }
+  .topbar-settings { grid-column: 2; grid-row: 1; margin: 0; }
+  .surface-switch { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; margin: 0; }
+  .surface-switch button { flex: 1; justify-content: center; }
   .settings-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .settings-sections button { min-width: 0; }
 }

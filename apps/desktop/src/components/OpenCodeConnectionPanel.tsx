@@ -75,7 +75,7 @@ export function OpenCodeConnectionPanel({ request, onChanged, available }: {
       <summary>How to start and attach OpenCode</summary>
       <ol className="settings-note">
         <li>In your project terminal, run <code>opencode serve --port 4096</code>.</li>
-        <li>In another terminal, run <code>opencode attach http://127.0.0.1:4096</code> and create or resume a session.</li>
+        <li>Use <code>opencode attach http://127.0.0.1:4096</code> in another terminal, or connect OpenCode Desktop to that same server. Create or resume a session there.</li>
         <li>Connect PEX, then select your worker and goal on Home.</li>
       </ol>
       <p className="settings-note">PEX connects to existing sessions; it does not start a task. Put model keys in Supervisor settings, not the server address.</p>

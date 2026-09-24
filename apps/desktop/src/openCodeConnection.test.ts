@@ -30,7 +30,8 @@ test("OpenCode onboarding explains the separate server and worker without starti
     }));
     assert.match(html, /opencode serve --port 4096/);
     assert.match(html, /opencode attach http:\/\/127\.0\.0\.1:4096/);
-    assert.match(html, /and create or resume a session/);
+    assert.match(html, /connect OpenCode Desktop to that same server/);
+    assert.match(html, /Create or resume a session there/);
     assert.match(html, /it does not start a task/);
     assert.match(html, /Put model keys in Supervisor settings, not the server address/);
     assert.ok(html.indexOf(">Connect OpenCode</button>") < html.indexOf(">How to start and attach OpenCode</summary>"));
