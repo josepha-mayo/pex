@@ -668,6 +668,29 @@ async def test_home_hides_retained_opencode_session_until_server_reattaches(
         await pipeline.refresh_desktop_sessions()
         attached_view = await pipeline.pet_snapshot()
         assert [row["id"] for row in attached_view["sessions"]] == [session.id]
+
+        discover_sessions = registry.opencode.discover_sessions
+        monkeypatch.setattr(
+            registry.opencode,
+            "discover_sessions",
+            AsyncMock(side_effect=OSError("OpenCode server stopped")),
+        )
+        pipeline._desktop_refresh_attempted_at = None
+        await pipeline.refresh_desktop_sessions()
+        assert (await pipeline.pet_snapshot())["sessions"] == []
+        assert (await store.get_session(session.id)).status == status
+
+        monkeypatch.setattr(registry.opencode, "discover_sessions", discover_sessions)
+        pipeline._desktop_refresh_attempted_at = None
+        await pipeline.refresh_desktop_sessions()
+        recovered_view = await pipeline.pet_snapshot()
+        assert [row["id"] for row in recovered_view["sessions"]] == [session.id]
+
+        transport.sessions = []
+        pipeline._desktop_refresh_attempted_at = None
+        await pipeline.refresh_desktop_sessions()
+        assert (await pipeline.pet_snapshot())["sessions"] == []
+        assert (await store.get_session(session.id)).status == status
     finally:
         await store.close()
 

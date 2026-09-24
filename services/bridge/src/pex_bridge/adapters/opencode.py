@@ -94,6 +94,7 @@ class OpenCodeAdapter(HarnessAdapter):
     def __init__(self, transport: HttpJsonTransport | None = None) -> None:
         self.transport = transport
         self.sessions: dict[str, HarnessSession] = {}
+        self._http_listed_session_ids: set[str] = set()
         self.inbox: dict[str, list[str]] = {}
         self.hooks: list[dict] = []
         self._pump_task: asyncio.Task | None = None
@@ -136,6 +137,7 @@ class OpenCodeAdapter(HarnessAdapter):
             # evict complete tool/message/STOP evidence and break lineage.
             discard({"message.part.delta"})
         self.transport = transport
+        self._http_listed_session_ids.clear()
 
     def _pumping(self) -> bool:
         task = self._pump_task
@@ -383,6 +385,7 @@ class OpenCodeAdapter(HarnessAdapter):
                 },
             )
         self.sessions.update(updates)
+        self._http_listed_session_ids = set(updates)
         upsert_desktop_observe_session(
             self.sessions,
             harness=HarnessType.OPENCODE,

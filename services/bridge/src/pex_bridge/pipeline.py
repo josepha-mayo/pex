@@ -848,6 +848,7 @@ class Pipeline:
         self.supervision_paused = False
         self._desktop_refresh_lock = asyncio.Lock()
         self._desktop_refresh_attempted_at: float | None = None
+        self._opencode_http_seen_transport: object | None = None
         self._handoff_mutation_lock = asyncio.Lock()
         self._session_locks_guard = asyncio.Lock()
         # Locks need to live only while an ingestion owns or waits for them.
@@ -6461,10 +6462,25 @@ class Pipeline:
             )
 
             process_snapshot = await asyncio.to_thread(capture_running_image_snapshot)
+            opencode = self.adapters.get("opencode")
+            opencode_transport = (
+                opencode.transport if isinstance(opencode, OpenCodeAdapter) else None
+            )
             with scoped_running_image_snapshot(process_snapshot):
                 discoveries = await asyncio.gather(
                     *(discover_one(name) for name in DESKTOP_REFRESH_ADAPTERS)
                 )
+            self._opencode_http_seen_transport = None
+            if (
+                opencode_transport is not None
+                and isinstance(opencode, OpenCodeAdapter)
+                and opencode.transport is opencode_transport
+                and any(
+                    name == "opencode" and discovered is not None
+                    for name, discovered in discoveries
+                )
+            ):
+                self._opencode_http_seen_transport = opencode_transport
             seen: dict[str, set[str]] = {}
             for name, discovered in discoveries:
                 if discovered is None:
@@ -6722,17 +6738,21 @@ class Pipeline:
         if (
             self._desktop_refresh_attempted_at is not None
             and isinstance(opencode, OpenCodeAdapter)
-            and opencode.transport is None
         ):
-            # A bridge restart retains forensic sessions but loses its explicit
-            # HTTP attachment. Keep desktop/plugin observations; do not offer
-            # old server sessions as connected workers on Home.
+            # Durable history survives a restart or failed HTTP discovery, but
+            # neither proves the current server still lists that worker. Keep
+            # desktop/plugin observations without offering stale HTTP rows.
             sessions = [
                 session
                 for session in sessions
                 if session.harness_type != HarnessType.OPENCODE
                 or is_desktop_observe_session(session)
                 or opencode._plugin_live(session.id)
+                or (
+                    opencode.transport is not None
+                    and opencode.transport is self._opencode_http_seen_transport
+                    and session.id in opencode._http_listed_session_ids
+                )
             ]
         interventions = projection["interventions"]
         goals = projection["goals"]
