@@ -61,9 +61,9 @@ for iteration in $(seq 1 30); do
     echo 'Installed PEX desktop exited before its workspace loaded' >&2
     exit 1
   fi
-  # Xvfb/WebKit can retain the first composited frame until pointer input.
-  # Click empty workspace space to flush that frame without changing app state.
-  xdotool mousemove --window "$window_id" 500 300 click 1
+  # Xvfb/WebKit can retain the first composited frame until UI input.
+  # Re-select Home without changing the route to flush that frame.
+  xdotool mousemove --window "$window_id" 620 9 click 1
   scrot -z build/linux-desktop-smoke.png
   if [[ "$iteration" == 1 || "$iteration" == 15 || "$iteration" == 30 ]]; then
     cp build/linux-desktop-smoke.png "build/linux-desktop-check-${iteration}.png"
@@ -93,7 +93,7 @@ if [[ "$workspace_ready" != 1 ]]; then
 fi
 
 # The always-on-top pet must leave the main command bar usable on this screen.
-xdotool mousemove --window "$window_id" 858 28 click 1
+xdotool mousemove --window "$window_id" 858 9 click 1
 settings_ready=0
 for _ in $(seq 1 8); do
   scrot -z build/linux-desktop-settings.png
