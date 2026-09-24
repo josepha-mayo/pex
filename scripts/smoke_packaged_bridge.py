@@ -32,6 +32,12 @@ def _unused_loopback_port() -> int:
 def _environment(home: Path, port: int, token: str) -> dict[str, str]:
     inherited = ("SYSTEMROOT", "WINDIR", "COMSPEC", "TEMP", "TMP", "PATH")
     environment = {name: os.environ[name] for name in inherited if name in os.environ}
+    if os.name != "nt":
+        # The native Linux app inherits the session bus. Keep it in this
+        # isolated smoke too, or the frozen bridge cannot reach Secret Service.
+        for name in ("HOME", "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR"):
+            if name in os.environ:
+                environment[name] = os.environ[name]
     profile = home / "windows-profile"
     appdata = profile / "AppData" / "Roaming"
     local_appdata = profile / "AppData" / "Local"
@@ -81,8 +87,17 @@ def _patch_json(url: str, *, token: str, payload: dict[str, Any]) -> dict[str, A
         },
         method="PATCH",
     )
-    with urllib.request.urlopen(request, timeout=10.0) as response:
-        body = response.read(1_048_577)
+    try:
+        with urllib.request.urlopen(request, timeout=10.0) as response:
+            body = response.read(1_048_577)
+    except urllib.error.HTTPError as exc:
+        diagnostic = exc.read(4096)
+        try:
+            detail = json.loads(diagnostic).get("detail")
+        except (AttributeError, ValueError):
+            detail = None
+        safe_detail = detail if isinstance(detail, str) and len(detail) <= 128 else "unknown"
+        raise RuntimeError(f"bridge settings PATCH failed ({exc.code}): {safe_detail}") from None
     if len(body) > 1_048_576:
         raise RuntimeError("bridge response exceeded the smoke limit")
     result = json.loads(body.decode("utf-8"))
