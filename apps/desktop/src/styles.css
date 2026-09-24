@@ -2882,6 +2882,13 @@ html.pet-shell #root {
   .topbar-settings { grid-column: 2; grid-row: 1; margin: 0; }
   .surface-switch { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; margin: 0; }
   .surface-switch button { flex: 1; justify-content: center; }
+  .settings-shell.main-shell { grid-template-rows: 58px minmax(0, 1fr); }
+  .settings-shell.main-shell::before { inset-block-start: 58px; }
+  .settings-shell .topbar {
+    display: flex;
+    gap: 12px;
+    padding: 0 14px;
+  }
   .settings-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .settings-sections button { min-width: 0; }
 }
