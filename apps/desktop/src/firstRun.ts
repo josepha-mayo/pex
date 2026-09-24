@@ -27,8 +27,8 @@ export function statusWithFirstRunGuidance(
   if (guidance.state === "connect_worker") {
     return {
       ...status,
-      label: "No worker connected",
-      detail: "Connect an existing worker to begin.",
+      label: guidance.title,
+      detail: guidance.detail,
     };
   }
   if (guidance.state === "set_goal") {
@@ -92,7 +92,15 @@ export function firstRunGuidance({
       cta: null,
     };
   }
-  if (!current || !isCurrentlyObservableWorker(current)) {
+  if (current && !isCurrentlyObservableWorker(current)) {
+    return {
+      state: "connect_worker",
+      title: "Worker detected, control unavailable",
+      detail: "PEX can see this worker but cannot attach a goal or supervise its session. Connect a supported OpenCode or Codex session to continue.",
+      cta: { intent: "connect", label: "How to connect a worker" },
+    };
+  }
+  if (!current) {
     return {
       state: "connect_worker",
       title: "Connect an existing worker",

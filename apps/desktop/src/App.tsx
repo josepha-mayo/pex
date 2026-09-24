@@ -2491,7 +2491,7 @@ export function App() {
           <aside className="worker-rail" aria-label="Your workers">
             <div className="worker-rail-heading">
               <p className="eyebrow">Workers</p>
-              <span>{sessionStateFresh ? `${homeSessions.length} available` : "checking"}</span>
+              <span>{sessionStateFresh ? `${homeSessions.length} detected` : "checking"}</span>
             </div>
             <div className="worker-list">
             {homeSessions.map((session) => (
@@ -2508,7 +2508,7 @@ export function App() {
               <div className="harness-empty" aria-label="Supported agent harnesses">
                 <span><i aria-hidden="true">O</i><strong>OpenCode</strong></span>
                 <span><i aria-hidden="true">C</i><strong>Codex</strong></span>
-                <small>{sessionStateFresh ? "No available worker yet" : "Waiting for local state"}</small>
+                <small>{sessionStateFresh ? "No worker detected yet" : "Waiting for local state"}</small>
               </div>
             ) : null}
             <button type="button" className="ghost" onClick={() => openSettings("connections")}>Connect a worker</button>

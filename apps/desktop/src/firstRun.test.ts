@@ -49,6 +49,8 @@ test("first-run guidance distinguishes no usable worker from an attachable unbou
     goalFresh: true,
   });
   assert.equal(desktopOnly?.cta?.intent, "connect");
+  assert.equal(desktopOnly?.title, "Worker detected, control unavailable");
+  assert.equal(desktopOnly?.detail.includes("cannot attach a goal"), true);
 
   for (const current of [
     { ...worker, status: "detached" },
@@ -137,8 +139,8 @@ test("first-run wording only replaces a genuinely quiet unpaused status", () => 
   assert.ok(connect);
   assert.deepEqual(statusWithFirstRunGuidance(quiet, connect, false), {
     tone: "quiet",
-    label: "No worker connected",
-    detail: "Connect an existing worker to begin.",
+    label: "Connect an existing worker",
+    detail: "Open a supported worker first. PEX discovers existing sessions without starting a new harness.",
   });
 
   const paused: StatusCopy = { tone: "quiet", label: "PEX", detail: "Supervision is paused. PEX will not intervene until it is resumed." };

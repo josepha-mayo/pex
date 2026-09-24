@@ -19,7 +19,9 @@ from test_codex_shared_transport import MemoryAppServerChannel
 from websockets.frames import Frame, Opcode
 
 
-def make_transport(tmp_path, channel, *, request_timeout_s=1):
+def make_transport(tmp_path, channel, *, request_timeout_s=10):
+    # Keep ordinary fake-peer tests clear of Windows CI disk scheduling stalls;
+    # timeout-boundary tests set their own short request timeout explicitly.
     executable, endpoint = tmp_path / "codex.exe", tmp_path / "codex.sock"
     executable.write_bytes(b"fake executable never run")
     endpoint.write_bytes(b"fake rendezvous never opened")
@@ -39,7 +41,7 @@ def make_transport(tmp_path, channel, *, request_timeout_s=1):
         "thr_exact",
         channel_factory=factory,
         endpoint_validator=lambda _executable, _endpoint: None,
-        connect_timeout_s=2,
+        connect_timeout_s=10,
         request_timeout_s=request_timeout_s,
         receive_journal=journal,
     )
