@@ -30,7 +30,7 @@ Server quiet contract and a same-thread recovery contract with
 the saved free Muse/Strands supervisor: observed completion stayed NOOP; incomplete work earned
 a specific nudge, produced the required artifact, recorded a helped outcome, and returned to
 NOOP. This is source-bound semantic proof, not packaged native-app proof. See
-[the submission copy](devpost-submission.md), [architecture overview](docs/architecture/overview.md),
+[the architecture overview](docs/architecture/overview.md)
 and [package receipt](docs/PACKAGE_RECEIPT_B0438BD.json).
 
 </details>

@@ -200,7 +200,7 @@ def test_semicolon_without_negative_coordination_does_not_hide_a_conflict(ending
 @pytest.mark.parametrize(
     "prompt",
     [
-        "Please add the hackathon deadline to the status display.",
+        "Please add the project deadline to the status display.",
         "Maybe add a tooltip for the deadline.",
         "Please make this quick typography correction.",
         "Document the quick-hack field in the schema.",

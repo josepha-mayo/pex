@@ -257,7 +257,7 @@ PROVIDERS: dict[str, ProviderSpec] = {
         ("AWS_ACCESS_KEY_ID", "AWS_PROFILE"),
         ("aws_sigv4",),
         None,
-        "AWS credential chain / SSO / runtime execution role. Hackathon AgentCore path.",
+        "AWS credential chain / SSO / runtime execution role for hosted AgentCore.",
     ),
     "mistral": ProviderSpec(
         "mistral",

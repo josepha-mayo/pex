@@ -28,7 +28,7 @@ def _goal(**changes: object) -> Goal:
     values: dict[str, object] = {
         "id": "goal-one",
         "project_id": "pex",
-        "title": "Win the hackathon",
+        "title": "Ship the supervisor",
         "objective": "Build a real independent supervisor",
         "acceptance_criteria": ["real Codex trace", "real supervisor verdict"],
         "constraints": ["no fake evidence"],

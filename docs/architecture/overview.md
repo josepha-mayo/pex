@@ -43,7 +43,7 @@ flowchart TB
 - Secrets are redacted before cloud.
 - Adapter capabilities are negotiated, never assumed equal.
 - Progress is evidence-based.
-- AgentCore Runtime / Memory / CloudWatch are the hackathon deploy target. They are not claimed as live until deployed.
+- AgentCore Runtime / Memory / CloudWatch are optional deployment integrations. They are not claimed as live until deployed.
 
 ## Strands usage
 

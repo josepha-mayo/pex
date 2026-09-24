@@ -11,12 +11,11 @@ worker, give it a persistent goal, and inspect the evidence behind PEX's
 decisions from a compact workspace. OpenCode and Codex are the primary paths;
 the supervisor model is configured separately with your own key.
 
-**Current development: Nebius × NVIDIA Global AI Hackathon.** The workspace
-prioritizes the goal, worker list and supervision state, with the companion and
-advanced settings behind optional disclosures. Nebius Token Factory is a named
-BYOK provider with NVIDIA Nemotron model suggestions. Suggestions are not proof
-of account access: refresh the configured provider's catalog and verify a real
-supervision run before claiming hackathon readiness.
+The workspace prioritizes the goal, worker list and supervision state, with the
+companion and advanced settings behind optional disclosures. Nebius Token Factory
+is one named BYOK provider with NVIDIA Nemotron model suggestions. Refresh the
+configured provider's catalog and verify a real supervision run before treating
+a suggested model as available to an account.
 
 <details>
 <summary>Historical release evidence — September 14, 2026</summary>
@@ -52,7 +51,7 @@ claim. AgentCore is
 implemented and locally tested but
 **not AWS-deployed**. The formal four-arm benchmark is unfrozen and has no valid
 score. Final recording remains. See the
-[judge guide](docs/JUDGE_TESTING.md) and the
+[testing guide](docs/TESTING.md) and the
 [architecture overview](docs/architecture/overview.md).
 
 </details>
@@ -62,7 +61,7 @@ score. Final recording remains. See the
 *RC13 browser presentation capture of the current harness layout. Browser mode intentionally cannot read
 the desktop bridge bearer, so unavailable canonical state stays visibly disabled
 instead of being invented. Authenticated live and package evidence is retained in
-the [judge guide](docs/JUDGE_TESTING.md).*
+the [testing guide](docs/TESTING.md).*
 
 ## The pain it removes
 
@@ -91,7 +90,7 @@ PEX does not require work to start inside PEX. Existing tools stay usable. Conte
 
 See [`INTEGRATIONS.md`](INTEGRATIONS.md) for the live matrix.
 
-Judges and evaluators can follow the focused [testing guide](docs/JUDGE_TESTING.md)
+Evaluators can follow the focused [testing guide](docs/TESTING.md)
 for the OpenCode/Nebius path and its exact claim boundaries.
 
 ## Pets
@@ -104,7 +103,7 @@ prolonged stability is not yet claimed. It supervises existing harnesses.
 - Uses reviewed **Codex v2** atlases (`1536×2288`, `spriteVersionNumber: 2`), restrained playback and manual dragging. The overlay does not roam or hop on hover.
 - Separate controls hide the pet or dismiss only its status message; the pet can be restored from Settings. Both actions were observed independently in native checks.
 - Custom imports and image generation are disabled in this MVP, including their write APIs. Existing legacy import metadata is preserved; retired selections fall back to Pex.
-- Both current installer inventories contain only Pex and Von. See the [judge guide](docs/JUDGE_TESTING.md) for the focused evaluation path and remaining limits.
+- Both current installer inventories contain only Pex and Von. See the [testing guide](docs/TESTING.md) for the focused evaluation path and remaining limits.
 
 ## Benchmark status
 
@@ -173,7 +172,7 @@ The release also includes `SHA256SUMS`.
 Package integrity is not indefinite stability or publisher trust; current
 source-bound behavior and trust boundaries are summarized in the [architecture overview](docs/architecture/overview.md).
 
-Use the [judge testing guide](docs/JUDGE_TESTING.md) before evaluating this release, or build current source below.
+Use the [testing guide](docs/TESTING.md) before evaluating this release, or build current source below.
 
 ### Build from source
 
@@ -353,7 +352,7 @@ native visual acceptance and installer testing remain separate checks.
 ![PEX architecture](docs/architecture/pex-architecture.png)
 
 Editable references: [SVG](docs/architecture/pex-architecture.svg) and
-[Mermaid](docs/architecture/pex-architecture.mmd). Regenerate the submission
+[Mermaid](docs/architecture/pex-architecture.mmd). Regenerate the architecture
 PNG with `python scripts/render_architecture.py`.
 
 User input is the pet and persistent goals. Each semantic inspection can create a
@@ -379,35 +378,9 @@ or a comparative benchmark result.
 
 The cloud supervisor can propose actions. It cannot bypass local policy.
 
-Full diagram notes: [`docs/architecture/hackathon.md`](docs/architecture/hackathon.md).
-
-## Hackathon
-
-Current target: the [Nebius × NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/),
-Best Apps and Agents track. The
-[official rules](https://nebiusglobalaihackathon.devpost.com/rules) require runtime
-use of Nebius Token Factory or AI Cloud and an NVIDIA open-source model.
-Submission closes October 30, 2026 at 17:00 UTC. An existing project must explain
-its significant new work. The retained product proof is an actual stopped
-worker recovered through a Nemotron-backed PEX review with an independently
-verified result, plus a separate quiet control. A public demo under three
-minutes is still required. This is not a completed submission or a claim of
-measured benefit.
-
-On September 24, a [separate live Windows Codex recovery](docs/evidence/codex-nebius-live-2026-09-24.json)
-passed with Nemotron 3 Super supervising a Codex worker: PEX corrected an
-incomplete stop on the same thread, observed the requested file, and stayed
-quiet after verification. This is one bounded case, not a benchmark score.
-
-PEX originated in the AWS Agents for Humans hackathon and still uses Strands
-locally. AgentCore remains optional and is not deployed. The current
-[submission draft](devpost-submission.md) targets Nebius × NVIDIA and explains
-the significant updates made during this submission period. No comparative
-benchmark score is claimed.
-
-- License: MIT
-- Devpost copy: [`devpost-submission.md`](devpost-submission.md)
-- Architecture: [`docs/architecture/overview.md`](docs/architecture/overview.md)
-- Hackathon diagram: [`docs/architecture/hackathon.md`](docs/architecture/hackathon.md)
-- Official requirement matrix: [`docs/HACKATHON_REQUIREMENTS.md`](docs/HACKATHON_REQUIREMENTS.md)
-- Why not an orchestrator: [`docs/DIFFERENTIATION.md`](docs/DIFFERENTIATION.md)
+The [architecture overview](docs/architecture/overview.md) describes the local
+policy and evidence boundaries. A [live Windows Codex recovery](docs/evidence/codex-nebius-live-2026-09-24.json)
+showed Nemotron 3 Super correcting one incomplete stop on the same thread and
+staying quiet after verification. This is a bounded case, not a benchmark score.
+AgentCore remains optional and is not deployed. See the
+[testing guide](docs/TESTING.md) for reproducible checks and limits.

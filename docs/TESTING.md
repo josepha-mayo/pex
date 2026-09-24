@@ -1,12 +1,12 @@
-# PEX judge testing guide
+# PEX testing guide
 
 PEX is a Windows and Linux x64 desktop companion that supervises coding workers through their
-supported local interfaces. The focused submission supports OpenCode HTTP and an
+supported local interfaces. The primary paths use OpenCode HTTP and an
 isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Fastest evaluation path
 
-**Current Nebius/NVIDIA candidate:** download
+**Current release candidate:** download
 [PEX 0.1.0 RC24](https://github.com/josepha-mayo/pex/releases/tag/v0.1.0-rc24),
 built from exact release source `263a30b`. Windows and Ubuntu CI on its product code
 source suites and desktop builds passed. Local Windows NSIS/MSI package
@@ -35,8 +35,7 @@ This is attachment, observation, restraint, and overhead evidence; semantic
 supervision was disabled and it is not a productivity benchmark.
 Privacy-safe earlier-build Home, Inspector, and Settings screenshots are retained
 under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
-in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json). A public
-under-three-minute video remains required before submission.
+in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json).
 
 <details>
 <summary>Historical RC7 package instructions and evidence</summary>
@@ -147,13 +146,10 @@ optional AgentCore endpoint proposes an action.
 
 ## Honest boundaries
 
-- Amazon Bedrock AgentCore support is implemented and offline-tested, but the
-  submission does not claim a deployed AgentCore Runtime.
+- Amazon Bedrock AgentCore support is implemented and offline-tested; no
+  deployed AgentCore Runtime is claimed.
 - PexBench is unfrozen; no comparative productivity score is claimed.
 - Codex support means an isolated `codex app-server` connection, not control of
   an arbitrary private Codex desktop conversation.
 - The installer is unsigned; source and SHA-256 hashes are published with the
   accepted candidate.
-- Devpost requires a free judge-accessible working demo or test build, a public
-  YouTube video under three minutes, product feedback, and an explanation of
-  the significant post-August-26 updates. See `devpost-submission.md`.

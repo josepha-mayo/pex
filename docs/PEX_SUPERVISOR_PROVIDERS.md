@@ -21,7 +21,7 @@ PEX never requires the user to migrate into a PEX-owned coding harness. The supe
 | `login` | Reserved for a documented vendor integration; currently unavailable for supervisor inference. Worker CLI login is independent. Settings offers only implemented modes. |
 | `local` | No cloud key. Ollama, llama.cpp, LM Studio, vLLM, OpenAI-compatible localhost. |
 | `custom` | User supplies `base_url` + optional key + model id. Any OpenAI-compatible or Anthropic-compatible endpoint. |
-| `bedrock` / `agentcore` | AWS signed requests. Appropriate for the hackathon deploy path, not the only path. |
+| `bedrock` / `agentcore` | AWS signed requests for optional hosted supervision. |
 
 If a login flow is not yet implemented for a vendor, the adapter must say so. It must not fake Deep/connected. BYOK and custom endpoint must work without waiting for every OAuth.
 
