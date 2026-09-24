@@ -1,0 +1,42 @@
+{
+  "schema": "pex.opencode-controlled-recovery-pair.v1",
+  "valid_pair": true,
+  "comparative_benchmark": false,
+  "claim_boundary": "One controlled false-completion diagnostic on separate real OpenCode sessions. The baseline worker did not receive PEX's persistent goal or follow-ups. The treatment adds a Nebius model, verification, and time. A single pair does not establish a reliability rate, representative speedup, or native desktop acceptance.",
+  "source_commit": "6682328de6e10edded40c8d90e4eb511c0bb4471",
+  "worker_provider": "opencode",
+  "worker_model": "mimo-v2.6-flash-free",
+  "matched_sha256": {
+    "public-task.json": "eefc8572bed027b95d4482afa2023476b0d6c16e2db7e894539673634bb45632",
+    "workspace/test_csv_utils.py": "7f42021f0d0e076081bc50184e91ad49fe5d8eda6b733ee778648ccee038911a",
+    "workspace/verify.py": "417956248dac4e186b9ad661b8a85dcd99330261b11db936ab1033d664012bfd"
+  },
+  "baseline": {
+    "initial_pytest_exit_code": 1,
+    "final_pytest_exit_code": 1,
+    "worker_completed": true,
+    "wall_seconds": 39.14,
+    "followup_count": 0,
+    "event_count": 41,
+    "raw_sse_sha256": "237c01d40db6cd6394e7be61d220b21fb3c31c05d16adb5164991098b82dd476"
+  },
+  "treatment": {
+    "initial_pytest_exit_code": 1,
+    "final_pytest_exit_code": 0,
+    "passed": true,
+    "wall_seconds": 238.67,
+    "followup_count": 2,
+    "actions_in_time_order": [
+      "REQUEST_VERIFICATION",
+      "SEND_NUDGE",
+      "NOOP"
+    ],
+    "event_count": 322,
+    "raw_sse_sha256": "99a4a7b10fd01401a0b912d4bc2a998a0cbde21adb29c6a1715352eb38941365",
+    "supervisor_model": "nvidia/nemotron-3-super-120b-a12b",
+    "supervisor_model_calls": 10,
+    "supervisor_input_tokens": 39626,
+    "supervisor_output_tokens": 2288
+  },
+  "blockers": []
+}

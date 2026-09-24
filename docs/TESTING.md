@@ -52,6 +52,16 @@ capture its raw SSE. See
 [`docs/evidence/opencode-controlled-recovery-pair-9c505e0.json`](evidence/opencode-controlled-recovery-pair-9c505e0.json).
 This is a single controlled diagnostic with an extra persistent goal in the
 PEX arm, not a representative reliability or productivity benchmark.
+The same false-claim scenario was repeated on source `6682328` with a free
+OpenCode worker in both arms and a Nebius Nemotron supervisor only in the PEX
+arm. The independent pytest failed before and after the baseline worker's
+completed turn (exit 1). In the PEX arm it failed initially (exit 1), then
+passed after two same-session follow-ups (exit 0). The matched-task and raw-SSE
+pair validator passed with no blockers. PEX took 238.67 seconds and 10
+supervisor model calls, versus 39.14 seconds for baseline; this demonstrates
+one recovery at a substantial time and inference cost, not a general speed or
+reliability gain. See
+[`docs/evidence/opencode-controlled-recovery-pair-6682328.json`](evidence/opencode-controlled-recovery-pair-6682328.json).
 The current no-spend OpenCode diagnostic also passed 10/10 baseline and 10/10
 PEX-attached public artifact tasks on exact source `63dc5cd`. Every PEX case
 settled its event journal, produced an exact local deterministic `NOOP`, sent no
