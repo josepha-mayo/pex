@@ -47,7 +47,7 @@ if [[ "$ready" != 1 ]]; then
   exit 1
 fi
 
-workspace_visible=0
+workspace_ready=0
 for _ in $(seq 1 30); do
   if ! kill -0 "$app_pid" 2>/dev/null; then
     echo 'Installed PEX desktop exited before its workspace loaded' >&2
@@ -56,18 +56,17 @@ for _ in $(seq 1 30); do
   scrot -z build/linux-desktop-smoke.png
   tesseract build/linux-desktop-smoke.png stdout --psm 11 2>/dev/null \
     >build/linux-desktop-smoke-ocr.txt
-  if grep -Eiq 'Your workspace|Give your work a goal|Connect a worker' \
-    build/linux-desktop-smoke-ocr.txt; then
-    workspace_visible=1
+  if grep -Eiq 'Connect an existing worker' build/linux-desktop-smoke-ocr.txt; then
+    workspace_ready=1
     break
   fi
   sleep 2
 done
-if [[ "$workspace_visible" != 1 ]]; then
-  echo 'Installed PEX window did not reach the workspace within 60 seconds; OCR:' >&2
+if [[ "$workspace_ready" != 1 ]]; then
+  echo 'Installed PEX window did not load fresh authenticated state within 60 seconds; OCR:' >&2
   cat build/linux-desktop-smoke-ocr.txt >&2
   exit 1
 fi
 
-printf '%s\n' '{"schema":"pex.linux-desktop-smoke.v1","window_visible":true,"workspace_visible":true,"anonymous_bridge_status":401,"fresh_profile":true,"cloud_reasoning_requested_off":true}' \
+printf '%s\n' '{"schema":"pex.linux-desktop-smoke.v1","window_visible":true,"fresh_state_visible":true,"anonymous_bridge_status":401,"fresh_profile":true,"cloud_reasoning_requested_off":true}' \
   >build/linux-desktop-smoke.json
