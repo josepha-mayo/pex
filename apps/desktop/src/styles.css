@@ -519,7 +519,7 @@ p {
   max-width: 100%;
   min-width: 0;
   min-height: 0;
-  overflow: auto hidden;
+  overflow: hidden auto;
   display: grid;
   grid-template-columns: 216px minmax(0, 1fr);
   align-content: stretch;
