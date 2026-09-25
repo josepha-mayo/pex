@@ -1,0 +1,47 @@
+name: Linux installed desktop replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      native_run_id:
+        description: Checks run containing the built Linux Debian package
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install visual smoke dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dbus-x11 openbox scrot tesseract-ocr xauth xdotool xvfb
+      - name: Download exact built Linux package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NATIVE_RUN_ID: ${{ inputs.native_run_id }}
+        run: |
+          [[ "$NATIVE_RUN_ID" =~ ^[0-9]+$ ]]
+          gh run download "$NATIVE_RUN_ID" --pattern 'native-ubuntu-24.04-*' --dir build/native-replay
+          mapfile -t packages < <(find build/native-replay -type f -name '*.deb')
+          [[ "${#packages[@]}" -eq 1 ]]
+          printf '%s\n' "${packages[0]}" > build/native-replay-package-path.txt
+      - name: Verify installed window and authenticated bridge
+        run: bash scripts/smoke_linux_desktop.sh "$(cat build/native-replay-package-path.txt)"
+      - name: Retain visual receipt
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-desktop-replay-${{ inputs.native_run_id }}-${{ github.sha }}
+          if-no-files-found: warn
+          path: |
+            build/linux-desktop-*.png
+            build/linux-desktop-*.txt
+            build/linux-desktop-*.log
+            build/linux-desktop-smoke.json
