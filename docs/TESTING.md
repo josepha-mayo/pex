@@ -82,6 +82,17 @@ pair validator. PEX took 129.12 seconds versus 43.23 seconds without it. See
 [`docs/evidence/opencode-deterministic-recovery-pair-a957c2d.json`](evidence/opencode-deterministic-recovery-pair-a957c2d.json).
 This one controlled diagnostic does not establish a general reliability rate,
 speedup, Nebius semantic-model performance, or native desktop acceptance.
+On exact source `8c059c0`, a second no-spend pair tested context recovery across
+two stages. Both free OpenCode workers created the exact first-stage artifact and
+stopped with the final artifact absent. The baseline stayed incomplete (43.61
+seconds). PEX carried the final-file acceptance criterion into one same-session
+correction; the treatment worker wrote the exact final bytes, and PEX's next
+review was `NOOP` (98.86 seconds, zero supervisor model calls). The matched
+pair validator passed with raw SSE from both arms. See
+[`docs/evidence/opencode-deterministic-two-stage-recovery-pair-8c059c0.json`](evidence/opencode-deterministic-two-stage-recovery-pair-8c059c0.json).
+Earlier attempts on `e08e1c2` retained failed local OpenCode GET observations;
+they were excluded from this pair. This single result demonstrates a specific
+context handoff, not a general performance or native desktop claim.
 Privacy-safe earlier-build Home, Inspector, and Settings screenshots are retained
 under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
 in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json).

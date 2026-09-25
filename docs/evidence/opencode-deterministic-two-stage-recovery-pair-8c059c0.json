@@ -1,0 +1,49 @@
+{
+  "schema": "pex.opencode-controlled-recovery-pair.v1",
+  "valid_pair": true,
+  "comparative_benchmark": false,
+  "claim_boundary": "One controlled incomplete-artifact diagnostic on separate real OpenCode sessions. The baseline worker did not receive PEX's persistent goal or follow-ups. The treatment adds a persistent goal, local verification, and same-session follow-ups with zero supervisor model calls. A single pair does not establish a reliability rate, representative speedup, or native desktop acceptance.",
+  "source_commit": "8c059c07e784b110021623d9be329728a2a49f12",
+  "scenario": "incomplete-artifact",
+  "worker_provider": "opencode",
+  "worker_model": "mimo-v2.6-flash-free",
+  "matched_sha256": {
+    "public-task.json": "8639134bd445bd6f641f28e074594caf88f202e99f5ad7edabafe78f1194a691"
+  },
+  "baseline": {
+    "initial_pytest_exit_code": null,
+    "final_pytest_exit_code": null,
+    "initial_stage_exact": true,
+    "initial_final_absent": true,
+    "final_stage_exact": true,
+    "final_exact": false,
+    "worker_completed": true,
+    "wall_seconds": 43.61,
+    "followup_count": 0,
+    "event_count": 58,
+    "raw_sse_sha256": "f5e13c9b05450a89c4fc793abdac5b025a1c74f1cbfd47a1f84cc9f647d0b583"
+  },
+  "treatment": {
+    "pex_mode": "deterministic",
+    "initial_pytest_exit_code": null,
+    "final_pytest_exit_code": null,
+    "initial_stage_exact": true,
+    "initial_final_absent": true,
+    "final_stage_exact": true,
+    "final_exact": true,
+    "passed": true,
+    "wall_seconds": 98.86,
+    "followup_count": 1,
+    "actions_in_time_order": [
+      "SEND_NUDGE",
+      "NOOP"
+    ],
+    "event_count": 168,
+    "raw_sse_sha256": "425401964a46085fe4c2c3bdd87db35c979762c40ca5618c10a83e8039347eb5",
+    "supervisor_model": "disabled",
+    "supervisor_model_calls": 0,
+    "supervisor_input_tokens": 0,
+    "supervisor_output_tokens": 0
+  },
+  "blockers": []
+}
