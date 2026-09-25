@@ -36,10 +36,49 @@ from scripts.opencode_recovery_once import (
     POST_STOP_SETTLEMENT_SECONDS,
     _recovery_deadline,
     false_claim_recovery_succeeded,
+    no_model_reviews_succeeded,
     run_workspace_pytest,
     scenario_spec,
     seed_scenario,
 )
+
+
+def test_no_model_recovery_accepts_a_correction_but_rejects_any_provider_call():
+    result = {
+        "used_llm": False,
+        "inference_status": "not_attempted",
+        "transport_status": "not_attempted",
+        "model_call_count": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "provider": None,
+        "action": {"type": "SEND_NUDGE"},
+    }
+    journal = [{"plan": {"supervisor_result": result}}]
+    assert no_model_reviews_succeeded(journal)
+    charged = deepcopy(journal)
+    charged[0]["plan"]["supervisor_result"]["model_call_count"] = 1
+    assert not no_model_reviews_succeeded(charged)
+
+
+def test_deterministic_recovery_rejects_paid_worker_before_creating_a_run(tmp_path):
+    runner = Path(__file__).resolve().parents[2] / "scripts/opencode_recovery_once.py"
+    run_directory = runner.parent.parent / "build" / "must-not-exist"
+    assert not run_directory.exists()
+    result = subprocess.run(
+        [
+            sys.executable, str(runner), "--run-name", "must-not-exist",
+            "--pex-mode", "deterministic",
+            "--worker-model", "nvidia/nemotron-3-super-120b-a12b",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "requires a listed free OpenCode worker model" in result.stderr
+    assert not run_directory.exists()
 
 
 @pytest.mark.parametrize(
@@ -114,6 +153,14 @@ def test_opencode_executable_resolution_supports_posix_and_owned_windows_layout(
     windows.parent.mkdir(parents=True)
     windows.write_bytes(b"fixture")
     assert resolve_opencode_executable(str(shim), platform="nt") == windows
+
+    npx_shim = tmp_path / "npx" / "node_modules" / ".bin" / "opencode.cmd"
+    npx_shim.parent.mkdir(parents=True)
+    npx_shim.write_text("@echo off\n", encoding="utf-8")
+    npx_binary = npx_shim.parent.parent / "opencode-ai/bin/opencode.exe"
+    npx_binary.parent.mkdir(parents=True)
+    npx_binary.write_bytes(b"fixture")
+    assert resolve_opencode_executable(str(npx_shim), platform="nt") == npx_binary
 
 
 def test_opencode_executable_resolution_rejects_missing_owned_target(tmp_path):

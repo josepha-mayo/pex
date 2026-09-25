@@ -63,7 +63,11 @@ def resolve_opencode_executable(shim: str, *, platform: str | None = None) -> Pa
     platform = os.name if platform is None else platform
     discovered = Path(shim)
     if platform == "nt":
-        executable = discovered.resolve().parent / "node_modules/opencode-ai/bin/opencode.exe"
+        parent = discovered.resolve().parent
+        candidates = [parent / "node_modules/opencode-ai/bin/opencode.exe"]
+        if parent.name == ".bin":
+            candidates.append(parent.parent / "opencode-ai/bin/opencode.exe")
+        executable = next((item for item in candidates if item.is_file()), candidates[0])
     else:
         executable = discovered.resolve()
     if not executable.is_file():

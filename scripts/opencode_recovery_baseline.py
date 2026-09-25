@@ -235,6 +235,8 @@ async def main() -> int:
         root / "opencode.json",
         {
             "$schema": "https://opencode.ai/config.json",
+            "model": f"opencode/{args.worker_model}",
+            "small_model": f"opencode/{args.worker_model}",
             "provider": {
                 "opencode": {
                     "npm": "@ai-sdk/openai-compatible",

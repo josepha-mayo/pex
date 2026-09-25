@@ -29,6 +29,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from benchmarks.opencode_proof_route import (  # noqa: E402
+    FREE_OPENCODE_MODELS,
     PROOF_WORKER_MODELS,
     ProofRouteError,
     proof_worker_base_url,
@@ -51,7 +52,15 @@ def _parse_cli() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
         choices=PROOF_WORKER_MODELS,
         default="mimo-v2.6-flash-free",
     )
+    parser.add_argument(
+        "--pex-mode",
+        choices=("semantic", "deterministic"),
+        default="semantic",
+        help="Deterministic mode disables PEX model calls and requires a free OpenCode worker.",
+    )
     args = parser.parse_args()
+    if args.pex_mode == "deterministic" and args.worker_model not in FREE_OPENCODE_MODELS:
+        parser.error("deterministic mode requires a listed free OpenCode worker model")
     if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,100}", args.run_name) is None:
         parser.error("--run-name must contain lowercase letters, digits and hyphens only")
     return parser, args
@@ -216,6 +225,34 @@ def false_claim_recovery_succeeded(rows: object, followups: object) -> bool:
     )
 
 
+def no_model_reviews_succeeded(journal: list[object]) -> bool:
+    """Require every planned decision to have zero provider dispatches."""
+    observed = False
+    for row in journal:
+        if not isinstance(row, dict):
+            return False
+        plan = row.get("plan")
+        if plan is None:
+            continue
+        if not isinstance(plan, dict):
+            return False
+        result = plan.get("supervisor_result")
+        if result is None:
+            continue
+        if not isinstance(result, dict) or not (
+            result.get("used_llm") is False
+            and result.get("inference_status") == "not_attempted"
+            and result.get("transport_status") == "not_attempted"
+            and result.get("model_call_count") == 0
+            and result.get("input_tokens") == 0
+            and result.get("output_tokens") == 0
+            and result.get("provider") is None
+        ):
+            return False
+        observed = True
+    return observed
+
+
 def run_workspace_pytest(workspace: Path) -> dict[str, object]:
     completed = subprocess.run(
         [sys.executable, "-m", "pytest", "-q"],
@@ -247,17 +284,19 @@ def source_is_clean() -> bool:
 
 async def run_recovery(
     root: Path,
-    model: object,
+    model: object | None,
     server: subprocess.Popen[bytes],
     *,
     worker_provider: str,
     worker_model: str,
     scenario: str,
+    pex_mode: str = "semantic",
 ) -> dict:
     from benchmarks.opencode_completion import (
         QuietCompletionFence,
         belongs_to_case,
         completed_generation,
+        deterministic_review_completed_for_event,
         recovery_interventions_succeeded,
         retryable_provider_abort,
         review_completed_for_event,
@@ -290,7 +329,7 @@ async def run_recovery(
             home=root,
             autonomy="manage",
             codex_attach=False,
-            supervisor_max_dispatches_per_session=3,
+            supervisor_max_dispatches_per_session=0 if pex_mode == "deterministic" else 3,
         ),
         model=model,
     )
@@ -424,7 +463,11 @@ async def run_recovery(
             complete = bool(journal) and all(
                 row and row["state"] in {"complete", "record_only_complete"} for row in journal
             )
-            semantic_completed = semantic_reviews_succeeded(journal)
+            semantic_completed = (
+                semantic_reviews_succeeded(journal)
+                if pex_mode == "semantic"
+                else no_model_reviews_succeeded(journal)
+            )
             recovery_completed = (
                 false_claim_recovery_succeeded(serialized_rows, followups)
                 if scenario == "false-test-claim"
@@ -451,7 +494,12 @@ async def run_recovery(
                 if first_stop and stop_ids and stop_ids[-1] != first_stop["event_id"]
                 else None
             )
-            final_review = review_completed_for_event(
+            final_review_check = (
+                review_completed_for_event
+                if pex_mode == "semantic"
+                else deterministic_review_completed_for_event
+            )
+            final_review = final_review_check(
                 journal,
                 event_id=final_stop_id,
                 session_id=session.id,
@@ -543,6 +591,10 @@ async def run_recovery(
             "final_stop_event_id": final_stop_id,
             "all_observed_events_settled": complete,
             "all_semantic_reviews_completed": semantic_completed,
+            "pex_mode": pex_mode,
+            "all_no_model_reviews_completed": (
+                semantic_completed if pex_mode == "deterministic" else None
+            ),
             "causal_recovery_proof_passed": recovery_completed,
             "session_id": session.id,
             "goal_id": goal.id,
@@ -603,16 +655,22 @@ async def main() -> int:
     helper_bytes = (REPO / "benchmarks/opencode_completion.py").read_bytes()
     (root / "completion-fence.py").write_bytes(helper_bytes)
     start_commit = source_commit()
-    choice = load_supervisor_choice(Path.home() / ".pex/supervisor.json")
-    if not choice or not all((choice.provider, choice.model_id, choice.base_url)):
-        raise RuntimeError("saved supervisor routing is incomplete")
-    if choice.credential_source != "secret_store":
-        raise RuntimeError("saved supervisor does not use the OS credential vault")
-    SUPERVISOR_MODEL = choice.model_id
+    choice = None
+    if args.pex_mode == "semantic":
+        choice = load_supervisor_choice(Path.home() / ".pex/supervisor.json")
+        if not choice or not all((choice.provider, choice.model_id, choice.base_url)):
+            raise RuntimeError("saved supervisor routing is incomplete")
+        if choice.credential_source != "secret_store":
+            raise RuntimeError("saved supervisor does not use the OS credential vault")
+        SUPERVISOR_MODEL = choice.model_id
+    else:
+        SUPERVISOR_MODEL = "disabled"
+        if not os.environ.get("PEX_PROOF_WORKER_KEY"):
+            raise RuntimeError("deterministic mode requires a separate free worker credential")
     has_separate_worker_credential = "PEX_PROOF_WORKER_KEY" in os.environ
     try:
         worker_provider, provider_name = proof_worker_route(
-            choice.provider,
+            choice.provider if choice is not None else "zen",
             args.worker_model,
             separate_worker_credential=has_separate_worker_credential,
         )
@@ -635,18 +693,21 @@ async def main() -> int:
         write_json(root / "summary.json", result)
         print(json.dumps(result), flush=True)
         return 1
-    if choice.secret_ref is None:
-        raise RuntimeError("saved supervisor vault credential reference is unavailable")
-    supervisor_secret = KeyringSupervisorSecretStore().get(
-        choice.secret_ref, audience=choice.credential_audience()
-    )
-    if not supervisor_secret:
-        raise RuntimeError("saved supervisor vault credential is unavailable")
+    supervisor_secret = None
+    if choice is not None:
+        if choice.secret_ref is None:
+            raise RuntimeError("saved supervisor vault credential reference is unavailable")
+        supervisor_secret = KeyringSupervisorSecretStore().get(
+            choice.secret_ref, audience=choice.credential_audience()
+        )
+        if not supervisor_secret:
+            raise RuntimeError("saved supervisor vault credential is unavailable")
     worker_secret = (
         validate_supervisor_secret(os.environ["PEX_PROOF_WORKER_KEY"])
         if has_separate_worker_credential
         else supervisor_secret
     )
+    assert worker_secret is not None
     worker_credential_source = (
         "separate_environment" if has_separate_worker_credential else "saved_supervisor"
     )
@@ -658,16 +719,22 @@ async def main() -> int:
     environment["PEX_PROOF_PROVIDER_KEY"] = worker_secret
     for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
         environment[f"XDG_{kind}_HOME"] = str(root / kind.lower())
-    pins = {
-        "PEX_SUPERVISOR_PROVIDER": choice.provider,
-        "PEX_SUPERVISOR_MODEL": choice.model_id,
-        "PEX_SUPERVISOR_API_KEY": supervisor_secret,
-        "PEX_SUPERVISOR_BASE_URL": choice.base_url,
-    }
+    pins = (
+        {
+            "PEX_SUPERVISOR_PROVIDER": choice.provider,
+            "PEX_SUPERVISOR_MODEL": choice.model_id,
+            "PEX_SUPERVISOR_API_KEY": supervisor_secret,
+            "PEX_SUPERVISOR_BASE_URL": choice.base_url,
+        }
+        if choice is not None
+        else {"PEX_SUPERVISOR_DISABLE": "1"}
+    )
     write_json(
         root / "opencode.json",
         {
             "$schema": "https://opencode.ai/config.json",
+            "model": f"{worker_provider}/{args.worker_model}",
+            "small_model": f"{worker_provider}/{args.worker_model}",
             "provider": {
                 worker_provider: {
                     "npm": "@ai-sdk/openai-compatible",
@@ -693,8 +760,8 @@ async def main() -> int:
     receipt: dict = {}
     error_type: str | None = None
     try:
-        model = load_supervisor_model()
-        if model is None:
+        model = load_supervisor_model() if args.pex_mode == "semantic" else None
+        if args.pex_mode == "semantic" and model is None:
             raise RuntimeError("saved supervisor model did not construct")
         with (root / "server.log").open("x", encoding="utf-8") as log:
             server = subprocess.Popen(
@@ -730,6 +797,7 @@ async def main() -> int:
                 worker_provider=worker_provider,
                 worker_model=args.worker_model,
                 scenario=args.scenario,
+                pex_mode=args.pex_mode,
             )
     except Exception as exc:
         error_type = type(exc).__name__
@@ -760,7 +828,8 @@ async def main() -> int:
         "error_type": error_type,
         "worker_provider": worker_provider,
         "worker_credential_source": worker_credential_source,
-        "supervisor_provider": choice.provider,
+        "supervisor_provider": choice.provider if choice is not None else None,
+        "pex_mode": args.pex_mode,
         "passed": receipt.get("passed") is True
         and source_commit() == start_commit
         and source_is_clean(),

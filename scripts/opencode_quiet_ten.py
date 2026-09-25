@@ -912,6 +912,8 @@ async def main():
         ROOT / "opencode.json",
         {
             "$schema": "https://opencode.ai/config.json",
+            "model": f"{WORKER_PROVIDER}/{WORKER_MODEL}",
+            "small_model": f"{WORKER_PROVIDER}/{WORKER_MODEL}",
             "provider": {
                 WORKER_PROVIDER: {
                     "npm": "@ai-sdk/openai-compatible",
