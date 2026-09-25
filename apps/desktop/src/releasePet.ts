@@ -14,14 +14,23 @@ export function reconcilePetVisibilityNote(note: string | null, visible: boolean
   return note === petVisibilityNote(!visible) ? petVisibilityNote(visible) : note;
 }
 
+export function defaultPetOverlayVisible(isNative: boolean, userAgent: string): boolean {
+  // An X11 session without a compositor renders the transparent pet canvas as
+  // an opaque black rectangle. Keep a fresh Linux install's workspace usable;
+  // people with composited desktops can explicitly enable the overlay.
+  return !(isNative && /\bLinux\b/i.test(userAgent));
+}
+
 export function petOverlayVisible(): boolean {
   if (typeof window === "undefined") return true;
+  const defaultVisible = defaultPetOverlayVisible(TAURI, window.navigator?.userAgent || "");
   try {
-    return window.localStorage.getItem(PET_VISIBLE_KEY) !== "false";
+    const saved = window.localStorage.getItem(PET_VISIBLE_KEY);
+    return saved === null ? defaultVisible : saved !== "false";
   } catch {
-    // A blocked/corrupt WebView store must not blank the app. Treat the pet as
-    // visible for this process; the native window remains the source of truth.
-    return true;
+    // Storage failure must not turn a clean Linux workspace into an opaque
+    // overlay. The main window remains available on every platform.
+    return defaultVisible;
   }
 }
 

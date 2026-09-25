@@ -92,7 +92,14 @@ if [[ "$workspace_ready" != 1 ]]; then
   exit 1
 fi
 
-# The always-on-top pet must leave the main command bar usable on this screen.
+# An uncomposited Xvfb desktop renders a transparent overlay as an opaque black
+# rectangle. A fresh Linux install keeps it hidden until the user opts in.
+if xdotool search --onlyvisible --name '^PEX pet$' >/dev/null 2>&1; then
+  echo 'Fresh Linux desktop unexpectedly showed the transparent pet overlay' >&2
+  exit 1
+fi
+
+# The main command bar must remain usable on this screen.
 window_x=$(sed -n 's/^X=//p' build/linux-desktop-window-geometry.txt)
 window_y=$(sed -n 's/^Y=//p' build/linux-desktop-window-geometry.txt)
 if [[ ! "$window_x" =~ ^-?[0-9]+$ || ! "$window_y" =~ ^-?[0-9]+$ ]]; then
@@ -115,10 +122,10 @@ for iteration in $(seq 1 8); do
   sleep 1
 done
 if [[ "$settings_ready" != 1 ]]; then
-  echo 'Installed PEX Settings navigation was not visible with the companion present; OCR:' >&2
+  echo 'Installed PEX Settings navigation was not visible; OCR:' >&2
   cat build/linux-desktop-settings-ocr.txt >&2
   exit 1
 fi
 
-printf '%s\n' '{"schema":"pex.linux-desktop-smoke.v1","window_visible":true,"fresh_state_visible":true,"settings_navigation_visible":true,"anonymous_bridge_status":401,"fresh_profile":true,"cloud_reasoning_requested_off":true}' \
+printf '%s\n' '{"schema":"pex.linux-desktop-smoke.v1","window_visible":true,"fresh_state_visible":true,"settings_navigation_visible":true,"pet_overlay_default_hidden":true,"anonymous_bridge_status":401,"fresh_profile":true,"cloud_reasoning_requested_off":true}' \
   >build/linux-desktop-smoke.json

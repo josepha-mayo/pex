@@ -50,6 +50,13 @@ test("pet overlay opts out of an opaque themed canvas", async () => {
   assert.match(petHtml, /html\.pet-shell\s*\{\s*color-scheme:\s*normal;\s*\}/u);
 });
 
+test("fresh Linux native installs keep the transparent overlay hidden", async () => {
+  const { defaultPetOverlayVisible } = await import("./releasePet.ts");
+  assert.equal(defaultPetOverlayVisible(true, "X11; Linux x86_64"), false);
+  assert.equal(defaultPetOverlayVisible(true, "Windows NT 10.0"), true);
+  assert.equal(defaultPetOverlayVisible(false, "X11; Linux x86_64"), true);
+});
+
 test("showing the pet never changes the main window background", async () => {
   const source = await readFile(new URL("./releasePet.ts", import.meta.url), "utf8");
   assert.doesNotMatch(source, /await pet\.setBackgroundColor\(/u);
