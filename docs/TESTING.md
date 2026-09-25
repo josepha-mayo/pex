@@ -51,7 +51,9 @@ arm retained processed events and its review journal, but this runner did not
 capture its raw SSE. See
 [`docs/evidence/opencode-controlled-recovery-pair-9c505e0.json`](evidence/opencode-controlled-recovery-pair-9c505e0.json).
 This is a single controlled diagnostic with an extra persistent goal in the
-PEX arm, not a representative reliability or productivity benchmark.
+PEX arm, not a representative reliability or productivity benchmark. The
+current pair reporter now requires raw SSE from both arms, so this older
+uncaptured pair remains historical evidence rather than an admitted pair.
 The same false-claim scenario was repeated on source `6682328` with a free
 OpenCode worker in both arms and a Nebius Nemotron supervisor only in the PEX
 arm. The independent pytest failed before and after the baseline worker's

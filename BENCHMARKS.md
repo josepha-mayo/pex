@@ -179,8 +179,9 @@ python scripts/opencode_recovery_pair_report.py --baseline build/<baseline-name>
 
 The reporter checks source, task, test and checker hashes; initial and final
 independent pytest; baseline raw SSE; and treatment event and review settlement.
-New treatment runs also retain raw SSE, which the reporter rehashes when present.
-Older treatment receipts without raw SSE remain visibly weaker evidence.
+Both arms retain raw SSE. The reporter rehashes each stream and refuses a pair
+when either capture is missing or invalid; older treatment receipts without raw
+SSE remain historical evidence, not an admitted pair.
 This is one controlled failure diagnostic with PEX's goal and model-backed
 follow-ups in the treatment arm. It does not freeze PexBench or establish a
 population-level quality or speed result.

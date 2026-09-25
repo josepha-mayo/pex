@@ -19,6 +19,23 @@ def _hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _valid_sse_capture(root: Path, capture: object) -> bool:
+    path = root / "opencode-global-event.sse"
+    return (
+        isinstance(capture, dict)
+        and path.is_file()
+        and not path.is_symlink()
+        and type(capture.get("bytes")) is int
+        and 0 < capture["bytes"] <= 64 * 1024 * 1024
+        and path.stat().st_size == capture["bytes"]
+        and type(capture.get("chunks")) is int
+        and capture["chunks"] > 0
+        and capture.get("stream_count") == 1
+        and capture.get("scope") == "post_content_decoding_sse_bytes"
+        and capture.get("sha256") == _hash(path)
+    )
+
+
 def build_report(baseline_root: Path, treatment_root: Path) -> dict:
     baseline_root, treatment_root = baseline_root.resolve(), treatment_root.resolve()
     if baseline_root == treatment_root:
@@ -70,28 +87,12 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             blockers.append(f"{name} differs between arms")
         matched_hashes[name] = base_hash
 
-    capture = base_receipt.get("raw_sse_capture") or {}
-    sse_path = baseline_root / "opencode-global-event.sse"
-    if (
-        not sse_path.is_file()
-        or sse_path.is_symlink()
-        or capture.get("sha256") != _hash(sse_path)
-        or capture.get("bytes") != sse_path.stat().st_size
-        or capture.get("stream_count") != 1
-    ):
+    capture = base_receipt.get("raw_sse_capture")
+    if not _valid_sse_capture(baseline_root, capture):
         blockers.append("baseline raw OpenCode SSE is missing or invalid")
     treatment_capture = pex_receipt.get("raw_sse_capture")
-    if treatment_capture is not None:
-        treatment_sse = treatment_root / "opencode-global-event.sse"
-        if (
-            not isinstance(treatment_capture, dict)
-            or not treatment_sse.is_file()
-            or treatment_sse.is_symlink()
-            or treatment_capture.get("sha256") != _hash(treatment_sse)
-            or treatment_capture.get("bytes") != treatment_sse.stat().st_size
-            or treatment_capture.get("stream_count") != 1
-        ):
-            blockers.append("treatment raw OpenCode SSE is invalid")
+    if not _valid_sse_capture(treatment_root, treatment_capture):
+        blockers.append("treatment raw OpenCode SSE is missing or invalid")
     if (
         not (treatment_root / "events.json").is_file()
         or not (treatment_root / "journal.json").is_file()
@@ -165,7 +166,7 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             "wall_seconds": base_receipt.get("wall_seconds"),
             "followup_count": base_receipt.get("followup_count"),
             "event_count": base_receipt.get("event_count"),
-            "raw_sse_sha256": capture.get("sha256"),
+            "raw_sse_sha256": capture.get("sha256") if isinstance(capture, dict) else None,
         },
         "treatment": {
             "initial_pytest_exit_code": pex_initial.get("exit_code"),
