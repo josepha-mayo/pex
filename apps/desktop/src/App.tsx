@@ -607,6 +607,21 @@ export function App() {
     }
   }, [markCanonical]);
 
+  useEffect(() => {
+    if (!TAURI || !bridgeAvailable || pageVisible || shell === "pet") return;
+    // Some Linux webviews paint their native window before reporting the page
+    // visible. Acquire one bounded local snapshot even then; normal background
+    // polling remains paused until the visibility event arrives.
+    const controller = new AbortController();
+    void refreshPet(controller.signal);
+    void loadBaseState(controller.signal);
+    return () => {
+      petRequestSequence.current += 1;
+      baseRequestSequence.current += 1;
+      controller.abort();
+    };
+  }, [bridgeAvailable, loadBaseState, pageVisible, refreshPet, shell]);
+
   const loadCursorRejections = useCallback(async (signal?: AbortSignal) => {
     const requestSequence = ++cursorRejectionRequestSequence.current;
     try {

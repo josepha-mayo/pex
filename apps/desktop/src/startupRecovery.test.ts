@@ -306,6 +306,12 @@ test("native bootstrap reads resolve startup while hidden and back off after rea
   assert.match(source, /\[acceptBridgeStartupStatus, bridgeStartup\.phase, pageVisible, pollBridgeBootstrap\]/u);
 });
 
+test("a native window acquires initial local state before WebKit reports it visible", async () => {
+  const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  assert.match(source, /if \(!TAURI \|\| !bridgeAvailable \|\| pageVisible \|\| shell === "pet"\) return;[\s\S]*?void refreshPet\(controller\.signal\);\s*void loadBaseState\(controller\.signal\);/u);
+  assert.match(source, /petRequestSequence\.current \+= 1;\s*baseRequestSequence\.current \+= 1;\s*controller\.abort\(\);/u);
+});
+
 test("retry bridge IPC is bounded and single-flight without automatic reissue", async () => {
   const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
   assert.match(source, /const retryNativeBridgeBootstrap = boundedSingleFlightRead\(async \(\) => \{[\s\S]*?return call<unknown>\("retry_bridge"\);\s*\}\);/u);
