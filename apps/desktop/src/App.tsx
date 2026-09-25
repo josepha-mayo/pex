@@ -1427,6 +1427,7 @@ export function App() {
   const petState = canonicalResources.pet;
   const sessionStateFresh = !bridgeError
     && canonicalResourcesAreFresh(canonicalResources, ["pet"]);
+  const railSessions = sessionStateFresh ? homeSessions : [];
   const goalStateFresh = canonicalResourcesAreFresh(canonicalResources, ["goals"]);
   const goalMutationAvailable = goalStateFresh && (!current || sessionStateFresh);
   const goalLedgerEditable = goalMutationAvailable && canEditGoalLedger(
@@ -2495,10 +2496,10 @@ export function App() {
           <aside className="worker-rail" aria-label="Your workers">
             <div className="worker-rail-heading">
               <p className="eyebrow">Workers</p>
-              <span>{sessionStateFresh ? `${homeSessions.length} detected` : "checking"}</span>
+              <span>{bridgeError ? "unavailable" : sessionStateFresh ? `${railSessions.length} detected` : "checking"}</span>
             </div>
             <div className="worker-list">
-            {homeSessions.map((session) => (
+            {railSessions.map((session) => (
               <button key={session.id} type="button" className="worker-choice"
                 aria-pressed={current?.id === session.id}
                 onClick={() => setSelectedId(session.id)}>
@@ -2508,17 +2509,17 @@ export function App() {
               </button>
             ))}
             </div>
-            {!homeSessions.length ? (
+            {!railSessions.length ? (
               <div className="harness-empty" aria-label="Supported agent harnesses">
                 <span><i aria-hidden="true">O</i><strong>OpenCode</strong></span>
                 <span><i aria-hidden="true">C</i><strong>Codex</strong></span>
-                <small>{sessionStateFresh ? "No worker detected yet" : "Waiting for local state"}</small>
+                <small>{bridgeError ? "Worker state unavailable" : sessionStateFresh ? "No worker detected yet" : "Waiting for local state"}</small>
               </div>
             ) : null}
             <button type="button" className="ghost" onClick={() => openSettings("connections")}>Connect a worker</button>
             <div className="workspace-rail-footer">
               <span className="status-dot" aria-hidden="true" />
-              <span>{sessionStateFresh ? "Local bridge connected" : "Waiting for local bridge"}</span>
+              <span>{bridgeError ? "Local bridge unavailable" : sessionStateFresh ? "Local bridge connected" : "Waiting for local bridge"}</span>
             </div>
           </aside>
           <div className="compact-companion">

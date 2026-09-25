@@ -1646,9 +1646,10 @@ test("compact home presents the supported MVP harnesses and a readable companion
   ]);
   assert.match(app, /Workers/u);
   assert.match(app, /Supported agent harnesses[\s\S]*OpenCode[\s\S]*Codex/u);
-  assert.match(app, /`\$\{homeSessions\.length\} detected`/u);
-  assert.match(app, /homeSessions\.map\(/u);
-  assert.doesNotMatch(app, /homeSessions\.slice\(0, 8\)/u);
+  assert.match(app, /const railSessions = sessionStateFresh \? homeSessions : \[\]/u);
+  assert.match(app, /`\$\{railSessions\.length\} detected`/u);
+  assert.match(app, /railSessions\.map\(/u);
+  assert.doesNotMatch(app, /railSessions\.slice\(0, 8\)/u);
   assert.match(app, /selectedId \? explicitlySelected : selectPrimarySession\(pet \? homeSessions : sessions\)/u);
   assert.match(app, /function openInspector\(sessionId: string \| undefined = current\?\.id\)/u);
   assert.match(app, /if \(sessionId\) setSelectedId\(sessionId\)/u);
