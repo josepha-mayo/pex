@@ -42,6 +42,8 @@ from benchmarks.opencode_proof_route import (  # noqa: E402
 )
 from benchmarks.opencode_sse_journal import OpenCodeSseJournal  # noqa: E402
 from scripts.opencode_recovery_once import (  # noqa: E402
+    EXPECTED_FINAL,
+    EXPECTED_STAGE,
     run_workspace_pytest,
     scenario_spec,
     seed_scenario,
@@ -67,7 +69,9 @@ def source_is_clean() -> bool:
     ).strip()
 
 
-async def run_case(root: Path, server: subprocess.Popen[bytes], worker_model: str) -> dict:
+async def run_case(
+    root: Path, server: subprocess.Popen[bytes], worker_model: str, scenario: str
+) -> dict:
     workspace = root / "workspace"
     workspace.mkdir(parents=True, exist_ok=False)
     subprocess.run(
@@ -75,8 +79,8 @@ async def run_case(root: Path, server: subprocess.Popen[bytes], worker_model: st
         check=True,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
-    seed_scenario(workspace, "false-test-claim")
-    spec = scenario_spec("false-test-claim")
+    seed_scenario(workspace, scenario)
+    spec = scenario_spec(scenario)
     write_json(root / "public-task.json", {"task": spec["task"]})
     write_json(root / "goal.json", spec)
 
@@ -100,7 +104,12 @@ async def run_case(root: Path, server: subprocess.Popen[bytes], worker_model: st
             first_stop = {
                 "event_id": event.event_id,
                 "observed_at": datetime.now(UTC).isoformat(),
-                "independent_initial_pytest": run_workspace_pytest(workspace),
+                "independent_initial_pytest": (
+                    run_workspace_pytest(workspace) if scenario == "false-test-claim" else None
+                ),
+                "stage_exact": (workspace / "stage-one.txt").is_file()
+                and (workspace / "stage-one.txt").read_bytes() == EXPECTED_STAGE,
+                "final_absent": not (workspace / "final.txt").exists(),
                 "followup_count": 0,
             }
             write_json(root / "first-stop-observation.json", first_stop)
@@ -161,18 +170,31 @@ async def run_case(root: Path, server: subprocess.Popen[bytes], worker_model: st
                 break
             await asyncio.sleep(1)
 
-        final_test = run_workspace_pytest(workspace)
+        final_test = run_workspace_pytest(workspace) if scenario == "false-test-claim" else None
+        stage_exact = (workspace / "stage-one.txt").is_file() and (
+            workspace / "stage-one.txt"
+        ).read_bytes() == EXPECTED_STAGE
+        final_exact = (workspace / "final.txt").is_file() and (
+            workspace / "final.txt"
+        ).read_bytes() == EXPECTED_FINAL
+        scenario_solved = (
+            final_test is not None and final_test["exit_code"] == 0
+            if scenario == "false-test-claim"
+            else stage_exact and final_exact
+        )
         receipt = {
             "schema": "pex.live-opencode-recovery-baseline.v1",
             "arm": "baseline",
-            "scenario": "false-test-claim",
+            "scenario": scenario,
             "pex_attached": False,
             "worker_model": worker_model,
             "worker_provider": "opencode",
             "first_stop_observation": first_stop,
             "independent_final_pytest": final_test,
+            "stage_one_exact": stage_exact,
+            "final_exact": final_exact,
             "worker_completed": bool(quiet and generation and first_stop),
-            "worker_solved_task": bool(quiet and generation and final_test["exit_code"] == 0),
+            "worker_solved_task": bool(quiet and generation and scenario_solved),
             "latest_completed_generation": generation,
             "infrastructure_abort_reason": abort_reason,
             "event_count": len(observed),
@@ -207,6 +229,11 @@ async def run_case(root: Path, server: subprocess.Popen[bytes], worker_model: st
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-name", required=True)
+    parser.add_argument(
+        "--scenario",
+        choices=("false-test-claim", "incomplete-artifact"),
+        default="false-test-claim",
+    )
     parser.add_argument(
         "--worker-model", choices=FREE_OPENCODE_MODELS, default="mimo-v2.6-flash-free"
     )
@@ -289,7 +316,7 @@ async def main() -> int:
                             break
                         except httpx.HTTPError:
                             await asyncio.sleep(0.5)
-            receipt = await run_case(root, server, args.worker_model)
+            receipt = await run_case(root, server, args.worker_model, args.scenario)
     except Exception as exc:
         error_type = type(exc).__name__
         write_json(

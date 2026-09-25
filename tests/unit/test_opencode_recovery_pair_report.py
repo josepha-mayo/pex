@@ -26,23 +26,32 @@ def _capture(root: Path) -> dict:
     }
 
 
-def _pair(tmp_path: Path) -> tuple[Path, Path]:
+def _pair(
+    tmp_path: Path, scenario: str = "false-test-claim"
+) -> tuple[Path, Path]:
     baseline, treatment = tmp_path / "baseline", tmp_path / "treatment"
     for root in (baseline, treatment):
         (root / "workspace").mkdir(parents=True)
-        for name in ("public-task.json", "workspace/test_csv_utils.py", "workspace/verify.py"):
+        names = ["public-task.json"]
+        if scenario == "false-test-claim":
+            names.extend(("workspace/test_csv_utils.py", "workspace/verify.py"))
+        for name in names:
             path = root / name
             path.write_text(name, encoding="utf-8")
     base_receipt = {
-        "arm": "baseline", "pex_attached": False, "scenario": "false-test-claim",
+        "arm": "baseline", "pex_attached": False, "scenario": scenario,
         "worker_model": "free-model", "worker_provider": "opencode",
         "worker_completed": True, "followup_count": 0, "event_count": 1,
-        "first_stop_observation": {"independent_initial_pytest": {"exit_code": 1}},
+        "first_stop_observation": {
+            "independent_initial_pytest": {"exit_code": 1},
+            "stage_exact": True, "final_absent": True,
+        },
         "independent_final_pytest": {"exit_code": 1},
+        "stage_one_exact": True, "final_exact": False,
         "raw_sse_capture": _capture(baseline),
     }
     treatment_receipt = {
-        "schema": "pex.live-opencode-recovery.v2", "scenario": "false-test-claim",
+        "schema": "pex.live-opencode-recovery.v2", "scenario": scenario,
         "worker_model": "free-model", "event_count": 1,
         "all_observed_events_settled": True,
         "all_semantic_reviews_completed": True,
@@ -50,8 +59,10 @@ def _pair(tmp_path: Path) -> tuple[Path, Path]:
         "first_stop_observation": {
             "false_test_claim_observed": True,
             "independent_initial_pytest": {"exit_code": 1},
+            "stage_exact": True, "final_absent": True,
         },
         "independent_final_pytest": {"exit_code": 0},
+        "stage_one_exact": True, "final_exact": True,
         "raw_sse_capture": _capture(treatment),
     }
     _write_json(baseline / "summary.json", {
@@ -119,3 +130,22 @@ def test_deterministic_pair_requires_zero_model_calls_and_reports_its_mode(tmp_p
     report = build_report(baseline, treatment)
     assert report["valid_pair"] is False
     assert "deterministic treatment made or omitted supervisor model calls" in report["blockers"]
+
+
+def test_incomplete_artifact_pair_requires_initial_and_final_independent_state(
+    tmp_path: Path,
+) -> None:
+    baseline, treatment = _pair(tmp_path, "incomplete-artifact")
+    report = build_report(baseline, treatment)
+    assert report["valid_pair"] is True
+    assert report["scenario"] == "incomplete-artifact"
+    assert report["baseline"]["initial_final_absent"] is True
+    assert report["treatment"]["final_exact"] is True
+
+    path = baseline / "summary.json"
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    summary["receipt"]["first_stop_observation"]["final_absent"] = False
+    _write_json(path, summary)
+    report = build_report(baseline, treatment)
+    assert report["valid_pair"] is False
+    assert "baseline initial artifact state is unproven" in report["blockers"]
