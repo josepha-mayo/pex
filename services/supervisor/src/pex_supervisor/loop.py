@@ -13,7 +13,7 @@ from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
-from pex_protocol.enums import Authority
+from pex_protocol.enums import Authority, EventType
 from pex_protocol.redaction import redact_text
 from pex_protocol.supervisor import (
     IndependentVerifierReceipt,
@@ -1435,6 +1435,37 @@ async def decide_async(
             inference_status="not_attempted",
         )
     deterministic = plan_deterministic(request)
+    verification = (request.scores.features or {}).get("verification") or {}
+    gathering = verification.get("evidence_gathering") or {}
+    unobserved_pytest_claim = any(
+        isinstance(verdict, dict)
+        and verdict.get("status") == "uncertain"
+        and "no_pytest_observed" in (verdict.get("evidence") or [])
+        and isinstance(verdict.get("claim"), dict)
+        and verdict["claim"].get("kind") == "tests_pass"
+        and verdict["claim"].get("polarity") == "asserted"
+        for verdict in verification.get("verdicts") or []
+    )
+    # A typed, request-bound probe is already a complete deterministic decision:
+    # ask the worker for observable evidence before spending model calls to
+    # interpret a completion that cannot yet be verified.  The bridge still
+    # binds and validates the probe before dispatching it.
+    if (
+        not force_llm
+        and os.environ.get("PEX_FORCE_LLM") != "1"
+        and request.event.event_type == EventType.STOP
+        and deterministic.type == InterventionType.REQUEST_VERIFICATION
+        and verification.get("status") == "uncertain"
+        and gathering.get("reason") == "typed_verification_probe_available"
+        and (gathering.get("probe") or {}).get("kind") == "pytest"
+        and unobserved_pytest_claim
+    ):
+        return SupervisorResult(
+            action=deterministic,
+            used_llm=False,
+            diagnosis="typed_verification_fast_path",
+            inference_status="not_attempted",
+        )
     if model is None and (force_llm or os.environ.get("PEX_FORCE_LLM") == "1"):
         model = load_supervisor_model()
     if model is None:

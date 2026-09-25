@@ -904,6 +904,69 @@ async def test_uncertain_verification_receipt_alone_cannot_authorize_interventio
 
 
 @pytest.mark.asyncio
+async def test_unobserved_pytest_claim_skips_model_until_worker_returns_evidence():
+    request = _request(0.1)
+    request.scores.features["verification"] = {
+        "status": "uncertain",
+        "acceptance_status": "uncertain",
+        "verdicts": [{
+            "status": "uncertain",
+            "evidence": ["no_pytest_observed"],
+            "claim": {"kind": "tests_pass", "polarity": "asserted"},
+        }],
+        "evidence_gathering": {
+            "state": "inspected",
+            "reason": "typed_verification_probe_available",
+            "probe": {
+                "id": "verification_probe_test",
+                "kind": "pytest",
+                "relative_targets": [],
+            },
+        },
+    }
+    model = FakeStructuredModel("SEND_NUDGE")
+
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "REQUEST_VERIFICATION"
+    assert result.action.payload["probe"]["id"] == "verification_probe_test"
+    assert result.diagnosis == "typed_verification_fast_path"
+    assert result.model_call_count == 0
+    assert result.used_llm is False
+    assert model.captured_messages == []
+
+
+@pytest.mark.asyncio
+async def test_uncertain_probe_without_unobserved_pytest_claim_still_gets_semantic_review():
+    request = _request(0.1)
+    request.scores.features["verification"] = {
+        "status": "uncertain",
+        "acceptance_status": "uncertain",
+        "verdicts": [{
+            "status": "uncertain",
+            "evidence": ["temporarily_unreadable:report.txt"],
+            "claim": {"kind": "complete", "polarity": "asserted"},
+        }],
+        "evidence_gathering": {
+            "state": "inspected",
+            "reason": "typed_verification_probe_available",
+            "probe": {
+                "id": "verification_probe_test",
+                "kind": "pytest",
+                "relative_targets": [],
+            },
+        },
+    }
+    model = FakeStructuredModel("NOOP")
+
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "NOOP"
+    assert result.used_llm is True
+    assert result.model_call_count > 0
+
+
+@pytest.mark.asyncio
 async def test_uncertain_verifier_preserves_only_the_safe_typed_probe_request():
     request = _request(0.1)
     request.scores.features["verification"] = {
@@ -924,7 +987,7 @@ async def test_uncertain_verifier_preserves_only_the_safe_typed_probe_request():
         verifier_evidence_tool_calls=1,
     )
 
-    result = await decide_async(request, model=model)
+    result = await decide_async(request, model=model, force_llm=True)
 
     assert result.action.type.value == "REQUEST_VERIFICATION"
     assert result.action.payload["probe"]["id"] == "verification_probe_test"
@@ -954,7 +1017,7 @@ async def test_rejecting_verifier_cannot_veto_a_safe_typed_probe_request():
         verifier_evidence_tool_calls=1,
     )
 
-    result = await decide_async(request, model=model)
+    result = await decide_async(request, model=model, force_llm=True)
 
     assert result.action.type.value == "REQUEST_VERIFICATION"
     assert result.action.payload["probe"]["id"] == "verification_probe_test"
