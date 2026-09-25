@@ -297,6 +297,7 @@ async def run_recovery(
         belongs_to_case,
         completed_generation,
         deterministic_review_completed_for_event,
+        poll_opencode_get,
         recovery_interventions_succeeded,
         retryable_provider_abort,
         review_completed_for_event,
@@ -475,11 +476,15 @@ async def run_recovery(
                     serialized_rows, followups, semantic=pex_mode == "semantic"
                 )
             )
-            messages = await transport.request(
-                "GET", registry.opencode._scoped_path(f"/session/{vendor}/message", str(workspace))
+            messages = await poll_opencode_get(
+                transport,
+                registry.opencode._scoped_path(f"/session/{vendor}/message", str(workspace)),
+                deadline=deadline,
             )
-            statuses = await transport.request(
-                "GET", registry.opencode._scoped_path("/session/status", str(workspace))
+            statuses = await poll_opencode_get(
+                transport,
+                registry.opencode._scoped_path("/session/status", str(workspace)),
+                deadline=deadline,
             )
             infrastructure_abort_reason = retryable_provider_abort(messages, vendor)
             if infrastructure_abort_reason:

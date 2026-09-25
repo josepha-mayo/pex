@@ -1,9 +1,12 @@
+import asyncio
 import subprocess
 import sys
+import time
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import pytest
 
 from benchmarks.opencode_completion import (
@@ -12,6 +15,7 @@ from benchmarks.opencode_completion import (
     completed_generation,
     deterministic_review_completed_for_event,
     deterministic_reviews_succeeded,
+    poll_opencode_get,
     recovery_interventions_succeeded,
     retryable_provider_abort,
     review_completed_for_event,
@@ -41,6 +45,39 @@ from scripts.opencode_recovery_once import (
     scenario_spec,
     seed_scenario,
 )
+
+
+def test_read_only_worker_poll_retries_timeout_without_replaying_a_mutation():
+    class Transport:
+        def __init__(self):
+            self.calls = []
+
+        async def request(self, method, path):
+            self.calls.append((method, path))
+            if len(self.calls) == 1:
+                raise httpx.ReadTimeout("busy OpenCode server")
+            return {"ok": True}
+
+    transport = Transport()
+    result = asyncio.run(
+        poll_opencode_get(transport, "/session/status", deadline=time.monotonic() + 5)
+    )
+    assert result == {"ok": True}
+    assert transport.calls == [("GET", "/session/status")] * 2
+
+
+def test_read_only_worker_poll_stops_after_bounded_timeouts():
+    class Transport:
+        calls = 0
+
+        async def request(self, method, path):
+            self.calls += 1
+            raise httpx.ReadTimeout("busy OpenCode server")
+
+    transport = Transport()
+    with pytest.raises(httpx.ReadTimeout):
+        asyncio.run(poll_opencode_get(transport, "/session/status", deadline=time.monotonic() + 5))
+    assert transport.calls == 3
 
 
 def test_no_model_recovery_accepts_a_correction_but_rejects_any_provider_call():

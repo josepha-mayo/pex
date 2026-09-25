@@ -33,6 +33,7 @@ from benchmarks.opencode_completion import (  # noqa: E402
     QuietCompletionFence,
     belongs_to_case,
     completed_generation,
+    poll_opencode_get,
     retryable_provider_abort,
 )
 from benchmarks.opencode_proof_route import (  # noqa: E402
@@ -148,11 +149,15 @@ async def run_case(
         while time.monotonic() - started < MAX_SECONDS:
             if server.poll() is not None:
                 raise RuntimeError("owned server exited")
-            messages = await transport.request(
-                "GET", registry.opencode._scoped_path(f"/session/{vendor}/message", str(workspace))
+            messages = await poll_opencode_get(
+                transport,
+                registry.opencode._scoped_path(f"/session/{vendor}/message", str(workspace)),
+                deadline=started + MAX_SECONDS,
             )
-            statuses = await transport.request(
-                "GET", registry.opencode._scoped_path("/session/status", str(workspace))
+            statuses = await poll_opencode_get(
+                transport,
+                registry.opencode._scoped_path("/session/status", str(workspace)),
+                deadline=started + MAX_SECONDS,
             )
             abort_reason = retryable_provider_abort(messages, vendor)
             if abort_reason:

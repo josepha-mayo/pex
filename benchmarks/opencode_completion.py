@@ -7,10 +7,26 @@ idle only within a successfully fetched dictionary, never on transport failure.
 
 from __future__ import annotations
 
+import asyncio
 import math
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+
+import httpx
+
+
+async def poll_opencode_get(transport: Any, path: str, *, deadline: float) -> Any:
+    """Retry only a timed-out, read-only OpenCode observation within the proof window."""
+    for attempt in range(3):
+        try:
+            return await transport.request("GET", path)
+        except httpx.ReadTimeout:
+            if attempt == 2 or time.monotonic() >= deadline:
+                raise
+            await asyncio.sleep(0.25)
+    raise AssertionError("unreachable")
 
 
 def _timestamp(value: Any) -> bool:
