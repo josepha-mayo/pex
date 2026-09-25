@@ -40,6 +40,7 @@ const BRIDGE_IDENTITY_RETRY_ATTEMPTS: usize = 6;
 const BRIDGE_IDENTITY_MONITOR_INTERVAL: Duration = Duration::from_secs(2);
 const BRIDGE_IDENTITY_MISS_LIMIT: u8 = 5;
 const PET_NATIVE_DISMISSED_EVENT: &str = "pex-pet-native-dismissed";
+const BRIDGE_BOOTSTRAP_EVENT: &str = "pex-bridge-bootstrap";
 type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -703,6 +704,9 @@ fn fail_bridge_attempt(
     }
     let current = runtime.status();
     if current.attempt == attempt && current.phase == BridgeBootstrapPhase::Failed {
+        let _ = app.emit(BRIDGE_BOOTSTRAP_EVENT, current.clone());
+    }
+    if current.attempt == attempt && current.phase == BridgeBootstrapPhase::Failed {
         if let Some(pet) = app.get_webview_window("pet") {
             let _ = pet.hide();
         }
@@ -995,6 +999,10 @@ fn run_bridge_bootstrap(app: tauri::AppHandle, attempt: u64) {
         }
         if bridge_is_healthy_at_until(&address, &token, deadline) {
             app.state::<BridgeRuntime>().finish_ready(attempt);
+            let current = app.state::<BridgeRuntime>().status();
+            if current.attempt == attempt && current.phase == BridgeBootstrapPhase::Ready {
+                let _ = app.emit(BRIDGE_BOOTSTRAP_EVENT, current);
+            }
             monitor_owned_bridge(app, attempt, token, events);
             return;
         }

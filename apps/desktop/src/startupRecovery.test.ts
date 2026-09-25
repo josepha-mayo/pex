@@ -304,6 +304,8 @@ test("native bootstrap reads resolve startup while hidden and back off after rea
   assert.match(source, /if \(!pollBridgeBootstrap \|\| !shouldObserveBridgeBootstrap\(pageVisible, bridgeStartup\.phase\)\) return;\s*const stopPolling = startSerialPolling\(async \(signal\) => \{\s*const next = await readBridgeBootstrapStatus\(signal\);\s*if \(signal.aborted\) return;/u);
   assert.match(source, /if \(next\) acceptBridgeStartupStatus\(next\);\s*\}, bridgeBootstrapPollInterval\(bridgeStartup\.phase\)\);\s*return stopPolling;/u);
   assert.match(source, /\[acceptBridgeStartupStatus, bridgeStartup\.phase, pageVisible, pollBridgeBootstrap\]/u);
+  assert.match(source, /listen<unknown>\("pex-bridge-bootstrap", \(event\) => accept\(event\.payload\)\)/u);
+  assert.match(source, /const current = await readBridgeBootstrapStatus\(\);\s*if \(current\) accept\(current\);/u);
 });
 
 test("a native window acquires initial local state before WebKit reports it visible", async () => {

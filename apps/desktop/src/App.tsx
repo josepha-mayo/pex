@@ -527,6 +527,30 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (!TAURI || shell === "pet") return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    const accept = (payload: unknown) => {
+      if (disposed) return;
+      const next = normalizeBridgeBootstrapStatus(payload);
+      if (next.code === "desktop_control_unavailable" || next.code === "desktop_state_unavailable") return;
+      setBridgeControlAvailable(true);
+      acceptBridgeStartupStatus(next);
+    };
+    void import("@tauri-apps/api/event")
+      .then(({ listen }) => listen<unknown>("pex-bridge-bootstrap", (event) => accept(event.payload)))
+      .then(async (stop) => {
+        if (disposed) { stop(); return; }
+        unlisten = stop;
+        // The bridge may have become ready before this webview subscribed.
+        const current = await readBridgeBootstrapStatus();
+        if (current) accept(current);
+      })
+      .catch(() => { /* Bounded native polling remains the recovery path. */ });
+    return () => { disposed = true; unlisten?.(); };
+  }, [acceptBridgeStartupStatus, shell]);
+
+  useEffect(() => {
     if (!pollBridgeBootstrap || !shouldObserveBridgeBootstrap(pageVisible, bridgeStartup.phase)) return;
     const stopPolling = startSerialPolling(async (signal) => {
       const next = await readBridgeBootstrapStatus(signal);

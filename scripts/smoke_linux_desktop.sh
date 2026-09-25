@@ -72,15 +72,10 @@ for iteration in $(seq 1 30); do
   # Click the empty strip below the command bar to expose the current frame.
   xdotool mousemove --window "$window_id" "$((858 + iteration % 2))" 47 click 1
   if (( iteration == 5 || iteration == 15 || iteration == 25 )); then
-    # A one-pixel resize and native focus cycle force a full software-compositor
-    # repaint. Xvfb/WebKit can otherwise retain the first frame even after the
-    # authenticated bridge and React state have both advanced.
+    # A one-pixel resize asks the software compositor for a fresh frame without
+    # reloading the app or changing its bridge state. Restore the exact size.
     xdotool windowsize "$window_id" "$((window_width - 1))" "$window_height"
     xdotool windowsize "$window_id" "$window_width" "$window_height"
-    xdotool windowminimize "$window_id"
-    sleep 0.2
-    xdotool windowactivate --sync "$window_id"
-    xdotool windowraise "$window_id"
     sleep 0.2
   fi
   scrot -z build/linux-desktop-smoke.png
