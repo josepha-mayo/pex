@@ -71,6 +71,17 @@ follow-up, and made zero supervisor model calls. See
 [`docs/evidence/opencode-deterministic-paired-diagnostic-63dc5cd.json`](evidence/opencode-deterministic-paired-diagnostic-63dc5cd.json).
 This is attachment, observation, restraint, and overhead evidence; semantic
 supervision was disabled and it is not a productivity benchmark.
+On exact source `a957c2d`, a further no-spend controlled recovery pair used the
+same free OpenCode worker and public false-test-claim task in both arms. The
+unassisted worker completed with independent pytest still failing (exit 1).
+With PEX's deterministic supervisor attached, the initial pytest also failed;
+PEX requested verification, sent a same-session correction, and the final
+independent pytest passed (exit 0). The final review was quiet, and PEX made
+zero supervisor model calls. Both arms retained raw SSE and passed the matched
+pair validator. PEX took 129.12 seconds versus 43.23 seconds without it. See
+[`docs/evidence/opencode-deterministic-recovery-pair-a957c2d.json`](evidence/opencode-deterministic-recovery-pair-a957c2d.json).
+This one controlled diagnostic does not establish a general reliability rate,
+speedup, Nebius semantic-model performance, or native desktop acceptance.
 Privacy-safe earlier-build Home, Inspector, and Settings screenshots are retained
 under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
 in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json).

@@ -1,0 +1,43 @@
+{
+  "schema": "pex.opencode-controlled-recovery-pair.v1",
+  "valid_pair": true,
+  "comparative_benchmark": false,
+  "claim_boundary": "One controlled false-completion diagnostic on separate real OpenCode sessions. The baseline worker did not receive PEX's persistent goal or follow-ups. The treatment adds a persistent goal, local verification, and same-session follow-ups with zero supervisor model calls. A single pair does not establish a reliability rate, representative speedup, or native desktop acceptance.",
+  "source_commit": "a957c2d47091aabc1da51268fef2fdd2aa00da68",
+  "worker_provider": "opencode",
+  "worker_model": "mimo-v2.6-flash-free",
+  "matched_sha256": {
+    "public-task.json": "eefc8572bed027b95d4482afa2023476b0d6c16e2db7e894539673634bb45632",
+    "workspace/test_csv_utils.py": "7f42021f0d0e076081bc50184e91ad49fe5d8eda6b733ee778648ccee038911a",
+    "workspace/verify.py": "417956248dac4e186b9ad661b8a85dcd99330261b11db936ab1033d664012bfd"
+  },
+  "baseline": {
+    "initial_pytest_exit_code": 1,
+    "final_pytest_exit_code": 1,
+    "worker_completed": true,
+    "wall_seconds": 43.23,
+    "followup_count": 0,
+    "event_count": 42,
+    "raw_sse_sha256": "2af49d2f91866ee75ddb59c96df240d41b5adfce68b668f24c2d5ba115d60d19"
+  },
+  "treatment": {
+    "pex_mode": "deterministic",
+    "initial_pytest_exit_code": 1,
+    "final_pytest_exit_code": 0,
+    "passed": true,
+    "wall_seconds": 129.12,
+    "followup_count": 2,
+    "actions_in_time_order": [
+      "REQUEST_VERIFICATION",
+      "SEND_NUDGE",
+      "NOOP"
+    ],
+    "event_count": 200,
+    "raw_sse_sha256": "0924932c2cfd3a049bed470a754822bc4e1da63adf2c40938747788c4b4716a7",
+    "supervisor_model": "disabled",
+    "supervisor_model_calls": 0,
+    "supervisor_input_tokens": 0,
+    "supervisor_output_tokens": 0
+  },
+  "blockers": []
+}

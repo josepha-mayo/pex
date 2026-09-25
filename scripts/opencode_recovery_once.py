@@ -590,7 +590,9 @@ async def run_recovery(
             "latest_completed_generation": generation,
             "final_stop_event_id": final_stop_id,
             "all_observed_events_settled": complete,
-            "all_semantic_reviews_completed": semantic_completed,
+            "all_semantic_reviews_completed": (
+                semantic_completed if pex_mode == "semantic" else None
+            ),
             "pex_mode": pex_mode,
             "all_no_model_reviews_completed": (
                 semantic_completed if pex_mode == "deterministic" else None

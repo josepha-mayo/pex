@@ -92,3 +92,30 @@ def test_recovery_pair_rejects_tampered_treatment_raw_stream(tmp_path: Path) -> 
     report = build_report(baseline, treatment)
     assert report["valid_pair"] is False
     assert "treatment raw OpenCode SSE is missing or invalid" in report["blockers"]
+
+
+def test_deterministic_pair_requires_zero_model_calls_and_reports_its_mode(tmp_path: Path) -> None:
+    baseline, treatment = _pair(tmp_path)
+    path = treatment / "summary.json"
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    receipt = summary["receipt"]
+    receipt.update({
+        "pex_mode": "deterministic",
+        "all_semantic_reviews_completed": None,
+        "all_no_model_reviews_completed": True,
+        "supervisor_model": "disabled",
+        "model_call_count": 0,
+    })
+    _write_json(path, summary)
+
+    report = build_report(baseline, treatment)
+    assert report["valid_pair"] is True
+    assert report["treatment"]["pex_mode"] == "deterministic"
+    assert "zero supervisor model calls" in report["claim_boundary"]
+    assert "Nebius model" not in report["claim_boundary"]
+
+    receipt["model_call_count"] = 1
+    _write_json(path, summary)
+    report = build_report(baseline, treatment)
+    assert report["valid_pair"] is False
+    assert "deterministic treatment made or omitted supervisor model calls" in report["blockers"]

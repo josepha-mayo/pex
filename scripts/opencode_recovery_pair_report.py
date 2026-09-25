@@ -45,6 +45,9 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
     base_receipt = baseline.get("receipt") or {}
     pex_receipt = treatment.get("receipt") or {}
     blockers: list[str] = []
+    pex_mode = pex_receipt.get("pex_mode", "semantic")
+    if pex_mode not in {"semantic", "deterministic"}:
+        blockers.append("treatment supervisor mode is unsupported")
     if baseline.get("source_commit") != treatment.get("source_commit"):
         blockers.append("source commits differ")
     for name, summary in (("baseline", baseline), ("treatment", treatment)):
@@ -107,8 +110,17 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             blockers.append("treatment processing journal does not cover all events")
     if pex_receipt.get("all_observed_events_settled") is not True:
         blockers.append("treatment event processing did not settle")
-    if pex_receipt.get("all_semantic_reviews_completed") is not True:
-        blockers.append("treatment semantic review did not settle")
+    if pex_mode == "semantic":
+        if pex_receipt.get("all_semantic_reviews_completed") is not True:
+            blockers.append("treatment semantic review did not settle")
+    elif pex_mode == "deterministic":
+        if pex_receipt.get("all_no_model_reviews_completed") is not True:
+            blockers.append("treatment no-model reviews did not settle")
+        calls = pex_receipt.get("model_call_count")
+        if type(calls) is not int or calls != 0:
+            blockers.append("deterministic treatment made or omitted supervisor model calls")
+        if pex_receipt.get("supervisor_model") != "disabled":
+            blockers.append("deterministic treatment supervisor model was not disabled")
 
     base_initial = (base_receipt.get("first_stop_observation") or {}).get(
         "independent_initial_pytest"
@@ -152,7 +164,13 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
         "claim_boundary": (
             "One controlled false-completion diagnostic on separate real OpenCode sessions. "
             "The baseline worker did not receive PEX's persistent goal or follow-ups. "
-            "The treatment adds a Nebius model, verification, and time. A single pair does not "
+            + (
+                "The treatment adds a persistent goal, local verification, and same-session "
+                "follow-ups with zero supervisor model calls. "
+                if pex_mode == "deterministic"
+                else "The treatment adds a configured semantic model, verification, and time. "
+            )
+            + "A single pair does not "
             "establish a reliability rate, representative speedup, or native desktop acceptance."
         ),
         "source_commit": baseline.get("source_commit") if valid else None,
@@ -169,6 +187,7 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             "raw_sse_sha256": capture.get("sha256") if isinstance(capture, dict) else None,
         },
         "treatment": {
+            "pex_mode": pex_mode,
             "initial_pytest_exit_code": pex_initial.get("exit_code"),
             "final_pytest_exit_code": pex_final.get("exit_code"),
             "passed": pex_receipt.get("passed"),
