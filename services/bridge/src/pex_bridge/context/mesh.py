@@ -155,7 +155,7 @@ def _target_relevance_terms(target: HarnessSession) -> set[str]:
 
 def _is_unresolved(item: ContextItem, item_terms: set[str] | None = None) -> bool:
     terms = item_terms if item_terms is not None else _item_relevance_terms(item)
-    return bool(item.metadata.get("unresolved")) or bool(
+    return item.metadata.get("unresolved") is True or bool(
         terms & {"blocked", "dependency", "missing", "unresolved"}
     )
 

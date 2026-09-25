@@ -6230,7 +6230,7 @@ class Pipeline:
         session = live_source
         content = (event.message_delta or event.command or "").strip()
         project_key = session.project_id or session.cwd
-        explicitly_relevant = bool((event.metadata or {}).get("handoff_relevant"))
+        explicitly_relevant = (event.metadata or {}).get("handoff_relevant") is True
         if len(content) < 12 or not session.goal_id or not project_key:
             return
         if is_desktop_observe_session(session):

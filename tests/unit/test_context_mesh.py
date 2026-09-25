@@ -189,6 +189,22 @@ def test_declared_target_keeps_goal_wide_constraints_and_unresolved_dependencies
     assert bundle.critical_decisions == [f"Constraint: {constraint.content}"]
 
 
+def test_false_like_unresolved_metadata_does_not_route_unrelated_context() -> None:
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    target = _target(task="frontend pet sprites atlas")
+    unrelated = _item(
+        "backend",
+        "Release artifact for backend database migration",
+        now,
+        kind=ContextKind.ARTIFACT,
+        metadata={"unresolved": "false"},
+    )
+
+    bundle = build_bundle(goal, target, [unrelated], [], [])
+    assert bundle.items == []
+
+
 def test_target_without_declared_work_uses_goal_relevance_fallback() -> None:
     now = datetime.now(UTC)
     goal = _goal(now)
