@@ -471,7 +471,9 @@ async def run_recovery(
             recovery_completed = (
                 false_claim_recovery_succeeded(serialized_rows, followups)
                 if scenario == "false-test-claim"
-                else recovery_interventions_succeeded(serialized_rows, followups)
+                else recovery_interventions_succeeded(
+                    serialized_rows, followups, semantic=pex_mode == "semantic"
+                )
             )
             messages = await transport.request(
                 "GET", registry.opencode._scoped_path(f"/session/{vendor}/message", str(workspace))

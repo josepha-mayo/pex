@@ -175,7 +175,9 @@ def semantic_reviews_succeeded(journal: list[Any]) -> bool:
     return completed_model_review
 
 
-def recovery_interventions_succeeded(rows: Any, followups: Any) -> bool:
+def recovery_interventions_succeeded(
+    rows: Any, followups: Any, *, semantic: bool = True
+) -> bool:
     """Require one exact worker-facing correction, helped outcome, then quiet completion."""
     if not isinstance(rows, list) or not isinstance(followups, list) or len(followups) != 1:
         return False
@@ -210,6 +212,18 @@ def recovery_interventions_succeeded(rows: Any, followups: Any) -> bool:
         "SEND_NUDGE": "sent",
         "CONTINUE_SESSION": "continued",
     }.get(action_taken)
+    correction_review_valid = (
+        metadata.get("used_llm") is True
+        and metadata.get("inference_status") == "completed"
+        and isinstance(verifier, dict)
+        and verifier.get("approved") is True
+        and verifier.get("status") == "approved"
+        if semantic
+        else metadata.get("used_llm") is False
+        and metadata.get("inference_status") == "not_attempted"
+        and metadata.get("model_call_count") == 0
+        and verifier is None
+    ) if isinstance(metadata, dict) else False
     if not (
         expected_result is not None
         and isinstance(text, str)
@@ -221,23 +235,26 @@ def recovery_interventions_succeeded(rows: Any, followups: Any) -> bool:
         and isinstance(correction.get("worker_response"), str)
         and bool(correction["worker_response"])
         and isinstance(metadata, dict)
-        and metadata.get("used_llm") is True
-        and metadata.get("inference_status") == "completed"
+        and correction_review_valid
         and metadata.get("outcome_final") is True
-        and isinstance(verifier, dict)
-        and verifier.get("approved") is True
-        and verifier.get("status") == "approved"
     ):
         return False
     for row in ordered[correction_index + 1 :]:
         metadata = row.get("metadata")
         verification = metadata.get("verification") if isinstance(metadata, dict) else None
+        quiet_review_valid = (
+            metadata.get("used_llm") is True
+            and metadata.get("inference_status") == "completed"
+            if semantic
+            else metadata.get("used_llm") is False
+            and metadata.get("inference_status") == "not_attempted"
+            and metadata.get("model_call_count") == 0
+        ) if isinstance(metadata, dict) else False
         if (
             row.get("action_taken") == "NOOP"
             and row.get("result") == "noop"
             and isinstance(metadata, dict)
-            and metadata.get("used_llm") is True
-            and metadata.get("inference_status") == "completed"
+            and quiet_review_valid
             and isinstance(verification, dict)
             and verification.get("acceptance_status") == "supported"
         ):

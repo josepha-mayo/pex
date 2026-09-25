@@ -304,6 +304,22 @@ def test_recovery_accepts_verified_continue_session_route():
     assert recovery_interventions_succeeded(rows, followups)
 
 
+def test_deterministic_recovery_requires_no_model_correction_and_supported_noop():
+    rows, followups = recovery_rows()
+    for row in rows:
+        row["metadata"].update({
+            "used_llm": False,
+            "inference_status": "not_attempted",
+            "model_call_count": 0,
+            "independent_verifier": None,
+        })
+    assert recovery_interventions_succeeded(rows, followups, semantic=False)
+    assert not recovery_interventions_succeeded(rows, followups, semantic=True)
+
+    rows[1]["metadata"]["model_call_count"] = 1
+    assert not recovery_interventions_succeeded(rows, followups, semantic=False)
+
+
 @pytest.mark.parametrize("mutation", [
     lambda rows, followups: followups.append("again"),
     lambda rows, followups: followups.__setitem__(0, "different"),
@@ -588,7 +604,8 @@ def test_recovery_runner_requires_explicit_valid_run_name_before_any_work(args, 
 def test_recovery_runner_uses_strict_causal_proof_and_owned_cleanup_only():
     root = Path(__file__).resolve().parents[2]
     source = (root / "scripts/opencode_recovery_once.py").read_text(encoding="utf-8")
-    assert "recovery_interventions_succeeded(serialized_rows, followups)" in source
+    assert "recovery_interventions_succeeded(" in source
+    assert 'serialized_rows, followups, semantic=pex_mode == "semantic"' in source
     assert "minimum_user_count=1 + len(followups)" in source
     assert 'first_stop["final_absent"]' in source
     assert 'first_stop["prior_followup_count"] == 0' in source
