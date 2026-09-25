@@ -153,6 +153,7 @@ export function SettingsPage({
   );
   const supervisorAuthOptions = supervisorAuthModes(supervisorProvider, supervisor?.provider_auth_modes);
   const supervisorUsesCredential = ["api_key", "custom"].includes(supervisorAuth);
+  const providerDraftChanged = supervisor !== null && supervisorProvider !== (supervisor.backend || "");
 
   return (
     <main
@@ -368,44 +369,13 @@ export function SettingsPage({
           <section className="settings-card settings-wide">
             <p className="eyebrow">Supervisor inference</p>
             <h2>PEX model</h2>
-            {settingsAvailable ? <details className="settings-advanced">
-              <summary>
-                Automatic reviews · {supervisor?.max_dispatches_per_session === 0
-                  ? "Paused"
-                  : supervisor?.max_dispatches_per_session === null
-                    ? "Uncapped"
-                    : supervisor?.max_dispatches_per_session === undefined
-                      ? "Unavailable"
-                      : `${supervisor.max_dispatches_per_session} per session`}
-              </summary>
-            <p className="settings-note" aria-label="Supervisor review limit">
-              {supervisorReviewLimitCopy(settingsAvailable && !settingsIssue
-                ? supervisor?.max_dispatches_per_session : undefined)}
-              {" "}This counts dispatches, not dollars, tokens or individual model calls.
-              One review can make multiple model calls. A free model label is not a billing guarantee.
-              {" "}A finite limit enables bounded mid-task reviews, at least 60 seconds apart.
-            </p>
-            <label>
-              Saved review limit per session
-              <input
-                type="text"
-                inputMode="numeric"
-                value={supervisorDispatchLimit ?? ""}
-                maxLength={6}
-                disabled={!settingsAvailable || savingSupervisor || supervisorDispatchLimit === undefined}
-                onChange={(event) => onSupervisorDispatchLimit?.(event.target.value)}
-                placeholder={supervisorDispatchLimit === undefined ? "Reload settings to edit" : "Use startup setting"}
-                aria-describedby="supervisor-review-limit-help"
-              />
-              <span className="settings-note" id="supervisor-review-limit-help">
-                Set 0 to pause automatic model reviews, or 1–100000 to cap them. Choose Save supervisor.
-                Blank uses the bridge’s startup setting.
-                Saving or restarting never resets used reviews; lowering the limit can stop further reviews immediately.
-                This does not cancel a review already in flight.
-              </span>
-            </label>
-            </details> : null}
-            {supervisor ? <>
+            {supervisor ? providerDraftChanged ? (
+              <p className="settings-note" role="status">
+                Provider change is unsaved. {supervisorUsesCredential
+                  ? "Paste this provider’s API key to store it in the OS vault. Saving does not call the model."
+                  : "Review this provider’s authentication method before saving."}
+              </p>
+            ) : <>
               <p className="settings-note">{supervisorHonestyCopy(supervisor)}</p>
               <p className="settings-note">{supervisor.login_note || "This is PEX’s supervisor model, not a worker harness. Use the displayed credential source."}</p>
             </> : null}
@@ -454,12 +424,22 @@ export function SettingsPage({
                 </select>
               </label>
             </div>
-            <label>
-              Model id
-              <input disabled={!settingsAvailable || savingSupervisor} value={supervisorModel} onChange={(event) => onSupervisorModel(event.target.value)} placeholder="Any supported vendor id" />
-            </label>
-            <div className="form-grid two-column">
+            {visibleCatalog.length > 0 ? (
+              <details className="settings-advanced" open={!inCatalog}>
+                <summary>{inCatalog ? "Use a different model ID" : "Enter a model ID"}</summary>
+                <label>
+                  Model id
+                  <input disabled={!settingsAvailable || savingSupervisor} value={supervisorModel} onChange={(event) => onSupervisorModel(event.target.value)} placeholder="Any supported vendor id" />
+                </label>
+              </details>
+            ) : (
               <label>
+                Model id
+                <input disabled={!settingsAvailable || savingSupervisor} value={supervisorModel} onChange={(event) => onSupervisorModel(event.target.value)} placeholder="Any supported vendor id" />
+              </label>
+            )}
+            <div className="form-grid two-column">
+              {(supervisorAuthOptions.length > 1 || !supervisorAuthOptions.includes(supervisorAuth)) ? <label>
                 Authentication
                 <select
                   value={supervisorAuth}
@@ -473,7 +453,7 @@ export function SettingsPage({
                     <option value={mode} key={mode}>{mode.replace("_", " ")}</option>
                   ))}
                 </select>
-              </label>
+              </label> : null}
               {supervisorProvider === "custom" ? (
                 <label>
                   Endpoint protocol
@@ -499,23 +479,6 @@ export function SettingsPage({
                   autoComplete="off"
                   spellCheck={false}
                 />
-              </label>
-            ) : supervisorProvider ? (
-              <label>
-                Provider endpoint · credential destination
-                <input
-                  value={supervisorBaseUrl}
-                  disabled={!settingsAvailable || savingSupervisor}
-                  readOnly
-                  placeholder="Built-in provider endpoint"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <span className="settings-note">
-                  {supervisorBaseUrl
-                    ? "This saved endpoint is included when you save. Choose custom to edit the destination."
-                    : "Saving selects this provider’s built-in endpoint. Choose custom for a different destination."}
-                </span>
               </label>
             ) : null}
             {supervisorUsesCredential ? (
@@ -564,6 +527,64 @@ export function SettingsPage({
               {savingSupervisor ? "Saving…" : "Save supervisor"}
             </button>
             </div>
+            {supervisorProvider && supervisorProvider !== "custom" ? (
+              <details className="settings-advanced">
+                <summary>Provider endpoint</summary>
+                <label>
+                  Provider endpoint · credential destination
+                  <input
+                    value={supervisorBaseUrl}
+                    disabled={!settingsAvailable || savingSupervisor}
+                    readOnly
+                    placeholder="Built-in provider endpoint"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <span className="settings-note">
+                    {supervisorBaseUrl
+                      ? "This saved endpoint is included when you save. Choose custom to edit the destination."
+                      : "Saving selects this provider’s built-in endpoint. Choose custom for a different destination."}
+                  </span>
+                </label>
+              </details>
+            ) : null}
+            <details className="settings-advanced">
+              <summary>
+                Automatic reviews · {supervisor?.max_dispatches_per_session === 0
+                  ? "Paused"
+                  : supervisor?.max_dispatches_per_session === null
+                    ? "Uncapped"
+                    : supervisor?.max_dispatches_per_session === undefined
+                      ? "Unavailable"
+                      : `${supervisor.max_dispatches_per_session} per session`}
+              </summary>
+              <p className="settings-note" aria-label="Supervisor review limit">
+                {supervisorReviewLimitCopy(settingsAvailable && !settingsIssue
+                  ? supervisor?.max_dispatches_per_session : undefined)}
+                {" "}This counts dispatches, not dollars, tokens or individual model calls.
+                One review can make multiple model calls. A free model label is not a billing guarantee.
+                {" "}A finite limit enables bounded mid-task reviews, at least 60 seconds apart.
+              </p>
+              <label>
+                Saved review limit per session
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={supervisorDispatchLimit ?? ""}
+                  maxLength={6}
+                  disabled={!settingsAvailable || savingSupervisor || supervisorDispatchLimit === undefined}
+                  onChange={(event) => onSupervisorDispatchLimit?.(event.target.value)}
+                  placeholder={supervisorDispatchLimit === undefined ? "Reload settings to edit" : "Use startup setting"}
+                  aria-describedby="supervisor-review-limit-help"
+                />
+                <span className="settings-note" id="supervisor-review-limit-help">
+                  Set 0 to pause automatic model reviews, or 1–100000 to cap them. Choose Save supervisor.
+                  Blank uses the bridge’s startup setting.
+                  Saving or restarting never resets used reviews; lowering the limit can stop further reviews immediately.
+                  This does not cancel a review already in flight.
+                </span>
+              </label>
+            </details>
             </> : null}
           </section>
           ) : null}

@@ -2649,8 +2649,6 @@ textarea::placeholder {
 }
 
 .settings-page-note {
-  position: sticky;
-  bottom: 0;
   padding: 10px 12px;
   border: 1px solid rgba(229, 184, 107, 0.25);
   border-radius: 9px;

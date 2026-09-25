@@ -288,7 +288,8 @@ test("source contract wires destination guards and disables every supervisor inp
   assert.match(app, /if \(supervisorSaveInFlight\.current \|\| current === next\) return/);
   const form = settings.slice(settings.indexOf('<p className="eyebrow">Supervisor inference</p>'), settings.indexOf('<p className="eyebrow">Attention</p>'));
   const controls = form.match(/<(?:input|select)\b[^>]*>/g) || [];
-  assert.equal(controls.length, 10);
+  // The suggested-model and custom-model branches each render a disabled input.
+  assert.equal(controls.length, 11);
   for (const control of controls) assert.match(control, /disabled=\{!settingsAvailable \|\| savingSupervisor(?: \|\| supervisorDispatchLimit === undefined)?\}/);
   assert.match(app, /changeSupervisorDraft\(supervisorDispatchLimit \?\? "", value, setSupervisorDispatchLimit\)/);
   assert.match(app, /if \(supervisorSaveInFlight\.current\) return;\s+const requestSequence = \+\+settingsRequestSequence\.current/);
