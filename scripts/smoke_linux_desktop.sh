@@ -54,6 +54,13 @@ fi
 window_id=$(xdotool search --onlyvisible --name '^PEX$' | sed -n '1p')
 xdotool windowactivate "$window_id"
 xdotool getwindowgeometry --shell "$window_id" >build/linux-desktop-window-geometry.txt
+window_width=$(sed -n 's/^WIDTH=//p' build/linux-desktop-window-geometry.txt)
+window_height=$(sed -n 's/^HEIGHT=//p' build/linux-desktop-window-geometry.txt)
+if [[ ! "$window_width" =~ ^[0-9]+$ || ! "$window_height" =~ ^[0-9]+$ ||
+      "$window_width" -le 800 || "$window_height" -le 560 ]]; then
+  echo 'Installed PEX window size is invalid for the repaint check' >&2
+  exit 1
+fi
 
 workspace_ready=0
 for iteration in $(seq 1 30); do
@@ -64,6 +71,13 @@ for iteration in $(seq 1 30); do
   # Xvfb/WebKit can retain the first composited frame until UI input.
   # Click the empty strip below the command bar to expose the current frame.
   xdotool mousemove --window "$window_id" "$((858 + iteration % 2))" 47 click 1
+  if (( iteration == 5 || iteration == 15 || iteration == 25 )); then
+    # A one-pixel resize asks the software compositor for a fresh frame without
+    # reloading the app or changing its bridge state. Restore the exact size.
+    xdotool windowsize "$window_id" "$((window_width - 1))" "$window_height"
+    xdotool windowsize "$window_id" "$window_width" "$window_height"
+    sleep 0.2
+  fi
   scrot -z build/linux-desktop-smoke.png
   if [[ "$iteration" == 1 || "$iteration" == 15 || "$iteration" == 30 ]]; then
     cp build/linux-desktop-smoke.png "build/linux-desktop-check-${iteration}.png"
