@@ -158,6 +158,7 @@ def handle_payload(
         request,
         model=configured_model,
         force_llm=(os.environ.get("PEX_FORCE_LLM") == "1" if force_llm is None else force_llm),
+        allow_deterministic_fast_path=False,
     )
     _validate_result_binding(request, result)
     response = {

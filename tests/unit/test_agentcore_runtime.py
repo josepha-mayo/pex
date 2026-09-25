@@ -94,8 +94,9 @@ def test_handle_payload_passes_configured_model_and_returns_versioned_result(mon
     sentinel = object()
     captured = {}
 
-    def fake_decide(seen, model=None, force_llm=False):
-        captured.update(request=seen, model=model, force_llm=force_llm)
+    def fake_decide(seen, model=None, force_llm=False, allow_deterministic_fast_path=True):
+        captured.update(request=seen, model=model, force_llm=force_llm,
+                        allow_deterministic_fast_path=allow_deterministic_fast_path)
         return _result(seen)
 
     monkeypatch.setattr(runtime, "decide", fake_decide)
@@ -106,6 +107,7 @@ def test_handle_payload_passes_configured_model_and_returns_versioned_result(mon
     assert response["result"]["runtime"] == "strands-agents"
     assert captured["model"] is sentinel
     assert captured["request"].session.id == request.session.id
+    assert captured["allow_deterministic_fast_path"] is False
 
 
 def test_handle_payload_loads_runtime_model_when_not_injected(monkeypatch):
@@ -114,7 +116,7 @@ def test_handle_payload_loads_runtime_model_when_not_injected(monkeypatch):
     captured = {}
     monkeypatch.setattr(runtime, "_runtime_model", lambda: sentinel)
 
-    def fake_decide(seen, model=None, force_llm=False):
+    def fake_decide(seen, model=None, force_llm=False, allow_deterministic_fast_path=True):
         captured["model"] = model
         return _result(seen)
 
@@ -221,7 +223,7 @@ def test_explicit_local_http_contract_matches_agentcore_envelope(monkeypatch):
     monkeypatch.setattr(
         runtime,
         "decide",
-        lambda seen, model=None, force_llm=False: _result(seen),
+        lambda seen, model=None, force_llm=False, allow_deterministic_fast_path=True: _result(seen),
     )
     client = TestClient(runtime._fastapi_app(model=object()))
 
@@ -312,7 +314,7 @@ def test_runtime_rejects_oversized_model_response(monkeypatch):
     monkeypatch.setattr(
         runtime,
         "decide",
-        lambda seen, model=None, force_llm=False: result,
+        lambda seen, model=None, force_llm=False, allow_deterministic_fast_path=True: result,
     )
 
     with pytest.raises(ValueError, match="response exceeds"):
@@ -329,7 +331,7 @@ def test_local_http_smoke_never_loads_or_forces_ambient_model(monkeypatch):
         lambda: pytest.fail("local HTTP smoke must not load ambient model credentials"),
     )
 
-    def fake_decide(seen, model=None, force_llm=False):
+    def fake_decide(seen, model=None, force_llm=False, allow_deterministic_fast_path=True):
         captured.update(request=seen, model=model, force_llm=force_llm)
         return _result(seen)
 
@@ -349,7 +351,7 @@ def test_runtime_rejects_a_result_bound_to_another_session(monkeypatch):
     monkeypatch.setattr(
         runtime,
         "decide",
-        lambda seen, model=None, force_llm=False: result,
+        lambda seen, model=None, force_llm=False, allow_deterministic_fast_path=True: result,
     )
 
     with pytest.raises(ValueError, match="result.*different session"):
@@ -362,7 +364,7 @@ def test_real_agentcore_sdk_app_exposes_required_http_contract(monkeypatch):
     monkeypatch.setattr(
         runtime,
         "decide",
-        lambda seen, model=None, force_llm=False: _result(seen),
+        lambda seen, model=None, force_llm=False, allow_deterministic_fast_path=True: _result(seen),
     )
     client = TestClient(runtime._agentcore_app(model=object()))
 

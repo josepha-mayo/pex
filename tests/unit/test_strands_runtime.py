@@ -935,6 +935,14 @@ async def test_unobserved_pytest_claim_skips_model_until_worker_returns_evidence
     assert result.used_llm is False
     assert model.captured_messages == []
 
+    remote_review = await decide_async(
+        request,
+        model=FakeStructuredModel("NOOP"),
+        allow_deterministic_fast_path=False,
+    )
+    assert remote_review.used_llm is True
+    assert remote_review.model_call_count > 0
+
 
 @pytest.mark.asyncio
 async def test_uncertain_probe_without_unobserved_pytest_claim_still_gets_semantic_review():
@@ -960,6 +968,80 @@ async def test_uncertain_probe_without_unobserved_pytest_claim_still_gets_semant
     model = FakeStructuredModel("NOOP")
 
     result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "NOOP"
+    assert result.used_llm is True
+    assert result.model_call_count > 0
+
+
+@pytest.mark.asyncio
+async def test_observed_failed_pytest_claim_sends_precise_correction_without_model():
+    request = _request(0.1)
+    request.scores.features["verification"] = {
+        "status": "contradicted",
+        "correction": "Observed pytest failed (exit 1). Fix test_csv.py::test_quotes.",
+        "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
+        "pytest_event_id": "evt_pytest",
+        "pytest_observation": {
+            "basis": "observed_worker_command",
+            "event_id": "evt_pytest",
+            "exit_code": 1,
+            "later_file_edits_observed": False,
+        },
+        "verdicts": [{
+            "status": "contradicted",
+            "claim": {"kind": "tests_pass", "polarity": "asserted"},
+        }],
+    }
+    model = FakeStructuredModel("NOOP")
+
+    result = await decide_async(request, model=model)
+
+    assert result.action.type.value == "SEND_NUDGE"
+    assert "test_csv.py::test_quotes" in result.action.payload["text"]
+    assert result.diagnosis == "observed_pytest_failure_fast_path"
+    assert result.model_call_count == 0
+    assert result.used_llm is False
+    assert model.captured_messages == []
+
+    remote_review = await decide_async(
+        request,
+        model=FakeStructuredModel("NOOP"),
+        allow_deterministic_fast_path=False,
+    )
+    assert remote_review.used_llm is True
+    assert remote_review.model_call_count > 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("unsafe_change", ["basis", "later_edit", "event_id"])
+async def test_failed_pytest_fast_path_needs_current_observed_command(unsafe_change):
+    request = _request(0.1)
+    observation = {
+        "basis": "observed_worker_command",
+        "event_id": "evt_pytest",
+        "exit_code": 1,
+        "later_file_edits_observed": False,
+    }
+    if unsafe_change == "basis":
+        observation["basis"] = "worker_claim"
+    elif unsafe_change == "later_edit":
+        observation["later_file_edits_observed"] = True
+    else:
+        observation["event_id"] = "stale_event"
+    request.scores.features["verification"] = {
+        "status": "contradicted",
+        "correction": "Observed pytest failed (exit 1). Fix test_csv.py::test_quotes.",
+        "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
+        "pytest_event_id": "evt_pytest",
+        "pytest_observation": observation,
+        "verdicts": [{
+            "status": "contradicted",
+            "claim": {"kind": "tests_pass", "polarity": "asserted"},
+        }],
+    }
+
+    result = await decide_async(request, model=FakeStructuredModel("NOOP"))
 
     assert result.action.type.value == "NOOP"
     assert result.used_llm is True

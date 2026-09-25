@@ -1420,6 +1420,7 @@ async def decide_async(
     request: SupervisorRequest,
     model=None,
     force_llm: bool = False,
+    allow_deterministic_fast_path: bool = True,
 ) -> SupervisorResult:
     # Pause is user intent, not a model-routing preference. Keep this boundary
     # self-contained even when callers bypass the bridge's earlier pause gate.
@@ -1451,7 +1452,8 @@ async def decide_async(
     # interpret a completion that cannot yet be verified.  The bridge still
     # binds and validates the probe before dispatching it.
     if (
-        not force_llm
+        allow_deterministic_fast_path
+        and not force_llm
         and os.environ.get("PEX_FORCE_LLM") != "1"
         and request.event.event_type == EventType.STOP
         and deterministic.type == InterventionType.REQUEST_VERIFICATION
@@ -1464,6 +1466,34 @@ async def decide_async(
             action=deterministic,
             used_llm=False,
             diagnosis="typed_verification_fast_path",
+            inference_status="not_attempted",
+        )
+    pytest_observation = verification.get("pytest_observation") or {}
+    if (
+        allow_deterministic_fast_path
+        and not force_llm
+        and os.environ.get("PEX_FORCE_LLM") != "1"
+        and request.event.event_type == EventType.STOP
+        and deterministic.type == InterventionType.SEND_NUDGE
+        and verification.get("status") == "contradicted"
+        and pytest_observation.get("basis") == "observed_worker_command"
+        and type(pytest_observation.get("exit_code")) is int
+        and pytest_observation["exit_code"] != 0
+        and pytest_observation.get("later_file_edits_observed") is False
+        and pytest_observation.get("event_id") == verification.get("pytest_event_id")
+        and any(
+            isinstance(verdict, dict)
+            and verdict.get("status") == "contradicted"
+            and isinstance(verdict.get("claim"), dict)
+            and verdict["claim"].get("kind") == "tests_pass"
+            and verdict["claim"].get("polarity") == "asserted"
+            for verdict in verification.get("verdicts") or []
+        )
+    ):
+        return SupervisorResult(
+            action=deterministic,
+            used_llm=False,
+            diagnosis="observed_pytest_failure_fast_path",
             inference_status="not_attempted",
         )
     if model is None and (force_llm or os.environ.get("PEX_FORCE_LLM") == "1"):
@@ -1544,11 +1574,21 @@ async def decide_async(
         return semantic
 
 
-def decide(request: SupervisorRequest, model=None, force_llm: bool = False) -> SupervisorResult:
+def decide(
+    request: SupervisorRequest,
+    model=None,
+    force_llm: bool = False,
+    allow_deterministic_fast_path: bool = True,
+) -> SupervisorResult:
     """Synchronous entry point for CLI/AgentCore callers outside an event loop."""
 
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        return asyncio.run(decide_async(request, model=model, force_llm=force_llm))
+        return asyncio.run(decide_async(
+            request,
+            model=model,
+            force_llm=force_llm,
+            allow_deterministic_fast_path=allow_deterministic_fast_path,
+        ))
     raise RuntimeError("decide() cannot run inside an event loop; await decide_async()")
