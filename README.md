@@ -269,6 +269,11 @@ in [`integrations/opencode-plugin/README.md`](integrations/opencode-plugin/READM
 If Codex CLI is installed, this starts a new isolated Codex App Server transport;
 it does not take control of ChatGPT.exe or an arbitrary existing Codex task:
 
+Open **PEX Settings → Connections → Connect isolated Codex** to do this from
+the app without editing an environment variable. The connection probe makes no
+model turn; return Home to choose a discovered CLI thread and attach its goal.
+The source-development equivalent is:
+
 ```powershell
 $env:PEX_CODEX_ATTACH="1"
 npm --prefix apps/desktop run tauri dev

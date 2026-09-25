@@ -23,6 +23,7 @@ import { PetStage } from "./components/PetStage";
 import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
 import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { OpenCodeConnectionPanel } from "./components/OpenCodeConnectionPanel";
+import { CodexConnectionPanel } from "./components/CodexConnectionPanel";
 import { createOperatorRequest } from "./operatorRequest";
 import { canEditGoalLedger, goalLedgerKey, readGoalDecisions } from "./goalLedger";
 import { usePageVisibility } from "./pageVisibility";
@@ -1467,6 +1468,14 @@ export function App() {
   const sessionStateFresh = !bridgeError
     && canonicalResourcesAreFresh(canonicalResources, ["pet"]);
   const railSessions = sessionStateFresh ? homeSessions : [];
+  const railLabels = railSessions.map((session) =>
+    session.label || session.cwd?.split(/[\\/]/).filter(Boolean).pop() || "Existing session"
+  );
+  const railLabelCounts = new Map<string, number>();
+  railSessions.forEach((session, index) => {
+    const key = `${session.harness_type}:${railLabels[index]}`;
+    railLabelCounts.set(key, (railLabelCounts.get(key) || 0) + 1);
+  });
   const goalStateFresh = canonicalResourcesAreFresh(canonicalResources, ["goals"]);
   const goalMutationAvailable = goalStateFresh && (!current || sessionStateFresh);
   const goalLedgerEditable = goalMutationAvailable && canEditGoalLedger(
@@ -2409,6 +2418,8 @@ export function App() {
         workerConnection={<>
           <OpenCodeConnectionPanel request={sharedConnectionRequest} available={sessionStateFresh}
             onChanged={() => void loadBaseState()} />
+          <CodexConnectionPanel request={sharedConnectionRequest} available={sessionStateFresh}
+            onChanged={() => { void loadBaseState(); void refreshPet(); }} />
           <details className="settings-disclosure settings-wide">
             <summary>
               <span>
@@ -2538,12 +2549,14 @@ export function App() {
               <span>{bridgeError ? "unavailable" : sessionStateFresh ? `${railSessions.length} detected` : "checking"}</span>
             </div>
             <div className="worker-list">
-            {railSessions.map((session) => (
+            {railSessions.map((session, index) => (
               <button key={session.id} type="button" className="worker-choice"
                 aria-pressed={current?.id === session.id}
+                title={session.id}
                 onClick={() => setSelectedId(session.id)}>
                 <strong>{titleCase(session.harness_type)}</strong>
-                <small>{session.label || session.cwd?.split(/[\\/]/).filter(Boolean).pop() || "Existing session"}</small>
+                <small>{railLabels[index]}{(railLabelCounts.get(`${session.harness_type}:${railLabels[index]}`) || 0) > 1
+                  ? ` · ${session.id.slice(-6)}` : ""}</small>
                 <small>{titleCase(session.status)}</small>
               </button>
             ))}
