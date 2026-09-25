@@ -40,3 +40,19 @@ def test_explicit_lf_acceptance_checks_the_whole_file(tmp_path, suffix, content,
 )
 def test_unsupported_newline_prose_is_not_silently_weakened(suffix):
     assert _expected_content(f"status.txt contains exactly ready followed by {suffix}") is None
+
+
+def test_missing_exact_artifact_routes_its_content_into_the_worker_correction(tmp_path):
+    result = verify_claims(
+        [], [],
+        _goal(
+            acceptance_criteria=[
+                "final.txt contains exactly pex-supervised-ok followed by one newline"
+            ],
+            evidence_requirements=["final.txt"],
+        ),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert result["acceptance_status"] == "unsatisfied"
+    assert "exact content 'pex-supervised-ok\\n'" in result["correction"]
+    assert "current workspace" in result["correction"]

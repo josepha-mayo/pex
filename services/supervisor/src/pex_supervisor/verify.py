@@ -911,15 +911,31 @@ def _missing_file_verdict(
     if not missing:
         return None
     name = missing[0]
+    correction = (
+        f"{name} is missing from the current workspace. Complete the attached "
+        "objective and verify this required artifact before stopping."
+    )
+    if goal is not None:
+        for raw in goal.acceptance_criteria:
+            expected = _expected_content(str(raw or ""))
+            if (
+                expected is not None
+                and expected[0].replace("\\", "/") == name.replace("\\", "/")
+                and expected[2]
+                and len(expected[1]) <= 160
+            ):
+                correction = (
+                    f"{name} is missing from the current workspace. The attached "
+                    f"acceptance criterion requires exact content {expected[1]!r}. "
+                    "Create and verify that file here before stopping."
+                )
+                break
     return {
         "claim": claim,
         "status": "unsatisfied" if claim is None else "contradicted",
         "basis": "acceptance_criterion" if claim is None else "worker_claim",
         "evidence": [f"missing:{item}" for item in missing],
-        "correction": (
-            f"{name} is missing from the workspace. Complete the attached objective "
-            "and verify this required artifact before stopping."
-        ),
+        "correction": correction,
     }
 
 
