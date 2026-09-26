@@ -27,14 +27,39 @@ from pex_protocol.session import HarnessSession
 
 PROCESS = Path(__file__).with_name("pex_supervisor_process.py")
 _SUPERVISOR_CREDENTIAL_ENV = {
-    "ANTHROPIC_API_KEY", "AWS_ACCESS_KEY_ID", "AWS_PROFILE", "AZURE_OPENAI_API_KEY",
-    "COHERE_API_KEY", "DASHSCOPE_API_KEY", "DEEPSEEK_API_KEY", "FIREWORKS_API_KEY",
-    "GEMINI_API_KEY", "GITHUB_TOKEN", "GOOGLE_API_KEY", "GROK_API_KEY", "GROQ_API_KEY",
-    "HERMES_API_KEY", "HF_TOKEN", "HUGGINGFACEHUB_API_TOKEN", "KIMI_API_KEY",
-    "LITELLM_API_KEY", "LLAMA_API_KEY", "MISTRAL_API_KEY", "MOONSHOT_API_KEY",
-    "NEBIUS_API_KEY", "NOUS_API_KEY", "NVIDIA_API_KEY", "OPENAI_API_KEY",
-    "OPENCODE_API_KEY", "OPENCODE_GO_API_KEY", "OPENROUTER_API_KEY", "PERPLEXITY_API_KEY",
-    "PEX_SUPERVISOR_API_KEY", "PEX_ZEN_API_KEY", "TOGETHER_API_KEY", "WRITER_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_PROFILE",
+    "AZURE_OPENAI_API_KEY",
+    "COHERE_API_KEY",
+    "DASHSCOPE_API_KEY",
+    "DEEPSEEK_API_KEY",
+    "FIREWORKS_API_KEY",
+    "GEMINI_API_KEY",
+    "GITHUB_TOKEN",
+    "GOOGLE_API_KEY",
+    "GROK_API_KEY",
+    "GROQ_API_KEY",
+    "HERMES_API_KEY",
+    "HF_TOKEN",
+    "HUGGINGFACEHUB_API_TOKEN",
+    "KIMI_API_KEY",
+    "LITELLM_API_KEY",
+    "LLAMA_API_KEY",
+    "MISTRAL_API_KEY",
+    "MOONSHOT_API_KEY",
+    "NEBIUS_API_KEY",
+    "NOUS_API_KEY",
+    "NVIDIA_API_KEY",
+    "OPENAI_API_KEY",
+    "OPENCODE_API_KEY",
+    "OPENCODE_GO_API_KEY",
+    "OPENROUTER_API_KEY",
+    "PERPLEXITY_API_KEY",
+    "PEX_SUPERVISOR_API_KEY",
+    "PEX_ZEN_API_KEY",
+    "TOGETHER_API_KEY",
+    "WRITER_API_KEY",
     "XAI_API_KEY",
 }
 _PUBLIC_OBSERVATION_FIELDS = {
@@ -87,15 +112,38 @@ def _supervisor_environment() -> dict[str, str]:
     filesystem and network boundary before a natural-task run is eligible.
     """
     allowed = {
-        "PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT",
-        "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH",
-        "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE",
-        "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE",
-        "PEX_SUPERVISOR_PROVIDER", "PEX_SUPERVISOR_MODEL", "PEX_SUPERVISOR_API_KEY",
-        "PEX_SUPERVISOR_BASE_URL", "PEX_SUPERVISOR_AUTH", "PEX_SUPERVISOR_DISABLE",
-        "PEX_SUPERVISOR_TIMEOUT", "PEX_FORCE_LLM",
-        "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
-        "AWS_CONFIG_FILE", "AWS_SHARED_CREDENTIALS_FILE",
+        "PATH",
+        "SYSTEMROOT",
+        "WINDIR",
+        "COMSPEC",
+        "PATHEXT",
+        "HOME",
+        "USERPROFILE",
+        "HOMEDRIVE",
+        "HOMEPATH",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+        "REQUESTS_CA_BUNDLE",
+        "PEX_SUPERVISOR_PROVIDER",
+        "PEX_SUPERVISOR_MODEL",
+        "PEX_SUPERVISOR_API_KEY",
+        "PEX_SUPERVISOR_BASE_URL",
+        "PEX_SUPERVISOR_AUTH",
+        "PEX_SUPERVISOR_DISABLE",
+        "PEX_SUPERVISOR_TIMEOUT",
+        "PEX_FORCE_LLM",
+        "AWS_REGION",
+        "AWS_DEFAULT_REGION",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+        "AWS_CONFIG_FILE",
+        "AWS_SHARED_CREDENTIALS_FILE",
     }
     allowed.update(_SUPERVISOR_CREDENTIAL_ENV)
     # Windows environment names are case-insensitive. Preserve each actual key
@@ -224,8 +272,7 @@ def _public_observation(observed: dict[str, Any]) -> dict[str, Any]:
             or int(row["size_bytes"]) < 0
             or len(str(row.get("sha256") or "")) != 64
             or any(
-                character not in "0123456789abcdef"
-                for character in str(row.get("sha256") or "")
+                character not in "0123456789abcdef" for character in str(row.get("sha256") or "")
             )
         ):
             raise RuntimeError("refusing malformed public file manifest")
@@ -257,9 +304,7 @@ def _public_observation(observed: dict[str, Any]) -> dict[str, Any]:
     controller_verification = public.get("controller_verification")
     if controller_verification is not None:
         expected_targets = [
-            name
-            for name in files
-            if Path(name).name.startswith("test_") and name.endswith(".py")
+            name for name in files if Path(name).name.startswith("test_") and name.endswith(".py")
         ]
         provenance = (
             controller_verification.get("provenance")
@@ -417,16 +462,13 @@ def _bind_controller_verification(
         or not isinstance(integrity, dict)
         or integrity.get("intact") is not True
         or not isinstance(pytest_result, dict)
-        or before.get("public_workspace_sha256")
-        != observed.get("public_workspace_sha256")
+        or before.get("public_workspace_sha256") != observed.get("public_workspace_sha256")
     ):
         return observed
     tests = [
         name
         for name in before.get("files") or []
-        if isinstance(name, str)
-        and Path(name).name.startswith("test_")
-        and name.endswith(".py")
+        if isinstance(name, str) and Path(name).name.startswith("test_") and name.endswith(".py")
     ]
     if not tests:
         return observed
@@ -537,15 +579,23 @@ def _observe_controlled_workspace(
 
         from benchmarks.linux_sandbox import public_pytest_command
 
-        tests = [name for name in before["files"]
-                 if Path(name).name.startswith("test_") and name.endswith(".py")]
+        tests = [
+            name
+            for name in before["files"]
+            if Path(name).name.startswith("test_") and name.endswith(".py")
+        ]
         command = public_pytest_command(workspace, tests)
-        executed_argv = command[command.index("--") + 1:]
+        executed_argv = command[command.index("--") + 1 :]
         pytest_result = _run_public_pytest(
-            workspace, tests, "", isolated_command=command, deadline=deadline,
+            workspace,
+            tests,
+            "",
+            isolated_command=command,
+            deadline=deadline,
         )
         observed = _bind_public_test_integrity(
-            snapshot(workspace, run_pytest=False), expected_sha256,
+            snapshot(workspace, run_pytest=False),
+            expected_sha256,
         )
         observed["pytest"] = pytest_result
         observed = _bind_controller_verification(observed, before=before, workspace=workspace)
@@ -556,9 +606,11 @@ def _observe_controlled_workspace(
             receipt["provenance"]["executed_argv"] = executed_argv
         return observed
     observed = _bind_public_test_integrity(
-        snapshot(workspace, run_pytest=run_public_tests,
-                 **({"pytest_deadline": deadline}
-                    if run_public_tests and deadline is not None else {})),
+        snapshot(
+            workspace,
+            run_pytest=run_public_tests,
+            **({"pytest_deadline": deadline} if run_public_tests and deadline is not None else {}),
+        ),
         expected_sha256,
     )
     return _bind_controller_verification(observed, before=before, workspace=workspace)
@@ -606,7 +658,8 @@ async def supervise_isolated_codex(
     followups = 0
     remaining_budget()
     observed = _observe_controlled_workspace(
-        workspace, public_test_sha256,
+        workspace,
+        public_test_sha256,
         deadline=deadline,
         **({"isolated_tests": True} if offline_runtime is not None else {}),
     )
@@ -668,7 +721,8 @@ async def supervise_isolated_codex(
         followups += 1
         remaining_budget()
         next_observed = _observe_controlled_workspace(
-            workspace, public_test_sha256,
+            workspace,
+            public_test_sha256,
             deadline=deadline,
             **({"isolated_tests": True} if offline_runtime is not None else {}),
         )
@@ -752,8 +806,11 @@ def _audit(
         "model_name": decision.get("model_name"),
         "input_tokens": decision.get("input_tokens") or 0,
         "output_tokens": decision.get("output_tokens") or 0,
-        **({"execution_boundary": decision["execution_boundary"]}
-           if "execution_boundary" in decision else {}),
+        **(
+            {"execution_boundary": decision["execution_boundary"]}
+            if "execution_boundary" in decision
+            else {}
+        ),
     }
 
 
@@ -768,7 +825,13 @@ async def _decide_out_of_process(
     control_dir: Path,
     timeout: float,
     offline_runtime: Path | None = None,
+    model_relay: Any | None = None,
 ) -> dict[str, Any]:
+    if model_relay is not None:
+        from benchmarks.model_relay import PinnedModelRelay
+
+        if offline_runtime is None or not isinstance(model_relay, PinnedModelRelay):
+            raise ValueError("model relay requires an isolated runtime and pinned controller relay")
     if len(task_md) > _MAX_TASK_CHARS:
         raise RuntimeError("public benchmark task exceeds the control limit")
     _assert_public_text(task_md, "public task")
@@ -795,9 +858,7 @@ async def _decide_out_of_process(
                 for message in agent_messages[-_MAX_AGENT_MESSAGES:]
             ],
             "last_message": (
-                str(agent_messages[-1])[:_MAX_MESSAGE_CHARS]
-                if agent_messages
-                else "stopped"
+                str(agent_messages[-1])[:_MAX_MESSAGE_CHARS] if agent_messages else "stopped"
             ),
         }
         if offline_runtime is not None:
@@ -821,11 +882,9 @@ async def _decide_out_of_process(
                     )
                 targets = receipt["relative_targets"]
                 python = str(_runtime_python())
-                if (
-                    receipt["command"] != isolated_pytest_display(python, targets)
-                    or receipt["provenance"].get("executed_argv")
-                    != isolated_pytest_argv(python, targets)
-                ):
+                if receipt["command"] != isolated_pytest_display(python, targets) or receipt[
+                    "provenance"
+                ].get("executed_argv") != isolated_pytest_argv(python, targets):
                     raise RuntimeError(
                         "offline pytest receipt has an incompatible execution command"
                     )
@@ -853,21 +912,16 @@ async def _decide_out_of_process(
             from benchmarks.linux_sandbox import supervisor_command
 
             command = supervisor_command(workspace, offline_runtime, Path(tmp))
-        proc = await asyncio.create_subprocess_exec(
-            *command,
-            cwd=workspace,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
-            env={} if offline_runtime is not None else _supervisor_environment(),
+        exit_code, relay_receipts = await _run_supervisor_command(
+            command=command,
+            workspace=workspace,
+            runtime=offline_runtime,
+            control=Path(tmp),
+            timeout=timeout,
+            model_relay=model_relay,
         )
-        try:
-            await asyncio.wait_for(proc.wait(), timeout=timeout)
-        except TimeoutError:
-            proc.kill()
-            await proc.wait()
-            raise RuntimeError("PEX supervisor process timed out") from None
-        if proc.returncode != 0 or _is_link_like(response_path) or not response_path.is_file():
-            raise RuntimeError(f"PEX supervisor process failed with exit {proc.returncode}")
+        if exit_code != 0 or _is_link_like(response_path) or not response_path.is_file():
+            raise RuntimeError(f"PEX supervisor process failed with exit {exit_code}")
         with response_path.open("rb") as handle:
             raw_response = handle.read(_MAX_CONTROL_BYTES + 1)
         if len(raw_response) > _MAX_CONTROL_BYTES:
@@ -882,15 +936,90 @@ async def _decide_out_of_process(
             raise RuntimeError("supervisor response is not valid UTF-8 JSON") from exc
         decision = _validate_decision(decoded, session_id=session.id, goal_id=goal_id)
         if offline_runtime is not None:
-            if decision["used_llm"] or decision["input_tokens"] or decision["output_tokens"]:
+            if model_relay is None and (
+                decision["used_llm"] or decision["input_tokens"] or decision["output_tokens"]
+            ):
                 raise RuntimeError("offline supervisor reported live inference")
+            if (
+                model_relay is not None
+                and decision["used_llm"]
+                and not any(row["status"] == "completed" for row in relay_receipts)
+            ):
+                raise RuntimeError(
+                    "supervisor inference lacks a completed controller relay receipt"
+                )
             decision["execution_boundary"] = {
-                "mode": "offline-linux-bwrap",
+                "mode": "relay-linux-bwrap" if model_relay is not None else "offline-linux-bwrap",
                 "request_sha256": hashlib.sha256(encoded_request).hexdigest(),
                 "response_sha256": hashlib.sha256(raw_response).hexdigest(),
-                "model_transport": "disabled",
+                "model_transport": "pinned-unix-relay" if model_relay is not None else "disabled",
+                **(
+                    {"relay_receipts": relay_receipts, "model": model_relay.model}
+                    if model_relay is not None
+                    else {}
+                ),
             }
         return decision
+
+
+async def _run_supervisor_command(
+    *,
+    command: list[str],
+    workspace: Path,
+    runtime: Path | None,
+    control: Path,
+    timeout: float,
+    model_relay: Any | None,
+) -> tuple[int, list[dict]]:
+    """Own child and optional listener lifetimes, including cancellation cleanup."""
+    from contextlib import ExitStack
+
+    if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("supervisor timeout must be finite and positive")
+    server = None
+    proc = None
+    start = len(model_relay.audit) if model_relay is not None else 0
+    with ExitStack() as cleanup:
+        try:
+            if model_relay is not None:
+                from benchmarks.linux_sandbox import supervisor_relay_command
+
+                if runtime is None:
+                    raise ValueError("relay supervisor requires an isolated runtime")
+                remaining = model_relay.deadline - time.perf_counter()
+                if remaining <= 0:
+                    raise TimeoutError("supervisor relay deadline expired")
+                timeout = min(timeout, remaining)
+                root = Path(cleanup.enter_context(TemporaryDirectory(prefix="pex-relay-")))
+                root.chmod(0o700)
+                path = root / "relay.sock"
+                server = await model_relay.listen(path)
+                command = supervisor_relay_command(
+                    workspace, runtime, control, path, model_relay.model
+                )
+            proc = await asyncio.create_subprocess_exec(
+                *command,
+                cwd=workspace,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+                env={} if runtime is not None else _supervisor_environment(),
+            )
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=timeout)
+            except TimeoutError:
+                raise RuntimeError("PEX supervisor process timed out") from None
+            exit_code = proc.returncode
+        finally:
+            if proc is not None and proc.returncode is None:
+                proc.kill()
+                await proc.wait()
+            if server is not None:
+                server.close()
+                await server.wait_closed()
+                await model_relay.close_active()
+        return exit_code, (
+            [dict(row) for row in model_relay.audit[start:]] if model_relay is not None else []
+        )
 
 
 async def _execute_public_intervention(

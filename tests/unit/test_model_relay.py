@@ -81,6 +81,31 @@ def request(request_id="call_1", **body):
 
 
 @pytest.mark.asyncio
+async def test_close_active_cancels_inflight_backend_without_releasing_call_budget():
+    started = asyncio.Event()
+    async def backend(_body):
+        started.set()
+        await asyncio.sleep(30)
+    relay = PinnedModelRelay(model="pinned", max_calls=1,
+                            deadline=time.perf_counter()+5, backend=backend)
+    reader = asyncio.StreamReader()
+    raw = request()
+    reader.feed_data(struct.pack("!I", len(raw))+raw)
+    class Writer:
+        def close(self):
+            pass
+        async def wait_closed(self):
+            pass
+    task = asyncio.create_task(relay.handle(reader, Writer()))
+    await asyncio.wait_for(started.wait(), timeout=1)
+    await relay.close_active()
+    assert task.cancelled()
+    assert relay._handlers == set()
+    assert relay.audit[0]["status"] == "cancelled_uncertain"
+    assert (await relay.dispatch(request("other")))["error"] == "call_budget_exhausted"
+
+
+@pytest.mark.asyncio
 async def test_relay_reserves_shared_budget_before_concurrent_backend_calls():
     calls = []
     async def backend(body):
@@ -212,4 +237,46 @@ def test_actual_unix_relay_preserves_framing_and_deduplicates():
                 server.close()
                 await server.wait_closed()
             assert calls == [1, 1, 1]
+    asyncio.run(check())
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
+    reason="Linux bwrap required",
+)
+def test_controller_owns_relay_child_and_records_completed_call():
+    from benchmarks.pex_attach import _run_supervisor_command
+
+    async def check():
+        async def backend(_body):
+            return {"model": "pinned", "choices": [{"message": {
+                "role": "assistant", "content": "controlled response",
+            }}]}
+        relay = PinnedModelRelay(model="pinned", max_calls=1,
+                                deadline=time.perf_counter()+10, backend=backend)
+        with TemporaryDirectory(prefix="pex-controller-") as root:
+            workspace, runtime, control = [
+                Path(root)/name for name in ("worker", "runtime", "control")
+            ]
+            for directory in (workspace, runtime, control):
+                directory.mkdir()
+            (control/"request.json").write_text("{}")
+            (runtime/"pex_supervisor_process.py").write_text(
+                "import socket,struct,json\n"
+                "s=socket.socket(socket.AF_UNIX); s.connect('/model-relay.sock')\n"
+                f"raw={request()!r}\n"
+                "s.sendall(struct.pack('!I',len(raw))+raw); f=s.makefile('rb')\n"
+                "size=struct.unpack('!I',f.read(4))[0]; reply=json.loads(f.read(size))\n"
+                "assert reply['ok']; assert reply['body']['model']=='pinned'; s.close()\n"
+            )
+            code, receipts = await _run_supervisor_command(
+                command=[], workspace=workspace, runtime=runtime, control=control,
+                timeout=5, model_relay=relay,
+            )
+            assert code == 0
+            assert len(receipts) == 1
+            assert receipts[0]["status"] == "completed"
+            assert len(receipts[0]["response_sha256"]) == 64
+            assert relay._handlers == set()
+            assert "controlled response" not in json.dumps(receipts)
     asyncio.run(check())

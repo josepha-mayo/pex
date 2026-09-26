@@ -757,3 +757,17 @@ optional AgentCore endpoint proposes an action.
   live controller relay. This therefore establishes the model constructor,
   process selection and socket mount separately, not a complete supervised
   task or an eligible comparative benchmark. No provider call was made.
+- `_decide_out_of_process` now accepts an explicitly supplied pinned relay for
+  an isolated runtime. The controller owns the listener and child, restricts
+  their wait to the remaining relay deadline, and attaches only this decision's
+  call hashes/statuses to its execution receipt. A claimed LLM decision without
+  a completed relay call is refused. Child timeout/cancellation kills the owned
+  process; listener cleanup cancels outstanding calls while retaining their
+  consumed budget and uncertainty. Forty-four relay/execution-safety checks
+  passed on Windows with two Linux skips, plus 13 existing public-process and
+  environment checks. A real WSL bubblewrap child completed a framed request
+  through the controller helper and produced a hashed receipt, with no active
+  handler left afterward (25 async cases deselected, eight host pytest warnings).
+  That child was a controlled protocol probe, not the full PEX model runtime.
+  Model SDK dependency packaging, full isolated decision acceptance and real
+  worker comparisons remain outstanding. No provider request was made.

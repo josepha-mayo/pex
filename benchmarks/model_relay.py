@@ -106,6 +106,7 @@ class PinnedModelRelay:
         self.audit: list[dict] = []
         self._ids: set[str] = set()
         self._connections = 0
+        self._handlers: set[asyncio.Task] = set()
 
     def _validate(self, payload: object) -> tuple[str, dict]:
         if not isinstance(payload, dict) or set(payload) != {"schema", "request_id", "body"}:
@@ -185,6 +186,9 @@ class PinnedModelRelay:
             writer.close()
             return
         self._connections += 1
+        task = asyncio.current_task()
+        if task is not None:
+            self._handlers.add(task)
         try:
             timeout = min(5, max(0, self.deadline - time.perf_counter()))
             header = await asyncio.wait_for(reader.readexactly(4), timeout=timeout)
@@ -203,11 +207,21 @@ class PinnedModelRelay:
             pass
         finally:
             self._connections -= 1
+            if task is not None:
+                self._handlers.discard(task)
             writer.close()
             try:
                 await asyncio.wait_for(writer.wait_closed(), timeout=1)
             except (TimeoutError, OSError):
                 pass
+
+    async def close_active(self) -> None:
+        """Cancel outstanding socket requests; preserve attempted-call uncertainty."""
+        handlers = list(self._handlers)
+        for task in handlers:
+            task.cancel()
+        if handlers:
+            await asyncio.gather(*handlers, return_exceptions=True)
 
     async def listen(self, path: Path) -> asyncio.AbstractServer:
         parent = path.parent.resolve(strict=True)
