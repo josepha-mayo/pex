@@ -51,6 +51,13 @@ if [[ "$ready" != 1 ]]; then
   # Preserve which half of readiness failed before the owned app is stopped.
   echo "Last anonymous bridge health status: $status" >&2
   xdotool search --onlyvisible --name '.*' getwindowname %@ >&2 || true
+  # Keep hidden/unmapped windows and WM state visible in the diagnostic receipt.
+  # A ready bridge or committed webview is not proof of a mapped desktop window.
+  xdotool search --name '.*' getwindowname %@ \
+    >build/linux-desktop-all-window-names.txt 2>&1 || true
+  xwininfo -root -tree >build/linux-desktop-window-tree.txt 2>&1 || true
+  xprop -root _NET_CLIENT_LIST _NET_SUPPORTING_WM_CHECK \
+    >build/linux-desktop-window-state.txt 2>&1 || true
   scrot -o -z build/linux-desktop-smoke.png || true
   curl --silent --show-error --max-time 5 \
     --dump-header build/linux-desktop-identity-headers.txt --output /dev/null \

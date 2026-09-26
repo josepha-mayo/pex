@@ -155,3 +155,6 @@ jobs:
             build/linux-desktop-identity-headers.txt
             build/linux-desktop-window-manager.log
             build/linux-desktop-window-geometry.txt
+            build/linux-desktop-all-window-names.txt
+            build/linux-desktop-window-tree.txt
+            build/linux-desktop-window-state.txt

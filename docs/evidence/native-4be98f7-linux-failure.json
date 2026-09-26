@@ -1,0 +1,17 @@
+{
+  "schema": "pex.native-acceptance-diagnostic.v1",
+  "source_sha": "4be98f73bf6fa4d8adbbb2c0c2064dd813aed333",
+  "run_id": 36272673120,
+  "linux_job_id": 108489468928,
+  "linux_native_conclusion": "failure",
+  "linux_failed_step": "Verify installed Linux desktop window and bridge",
+  "anonymous_bridge_health_status": 401,
+  "visible_window_found": false,
+  "startup_log_frontend_committed_main_ms": 645,
+  "startup_log_token_identity_verified_ms": 647,
+  "linux_packaged_byok_roundtrip": true,
+  "provider_calls": 0,
+  "windows_native_job_id": 108489468795,
+  "windows_native_conclusion": "success",
+  "scope": "Linux package build, bridge and BYOK storage passed; installed visible-window acceptance failed. Windows native job passed, including bootstrap, bridge identity and credential/BYOK storage. No Windows interactive GUI acceptance is inferred. Root cause of the missing Linux window remains undetermined."
+}
