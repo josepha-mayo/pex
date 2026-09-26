@@ -588,3 +588,13 @@ optional AgentCore endpoint proposes an action.
   and selected correction evidence; stale events, later edits and claim-only
   observations remain outside this fast path. All 103 runtime/supervisor-loop
   checks passed locally. These use fake models, not paid provider calls.
+- Exact-source run `36264663510` at `d4fa36e` failed its Linux installed
+  visual gate because the script still required the retired text "Connect an
+  existing worker". The retained Home screenshot and OCR show "Give your work
+  a goal" and the current OpenCode/isolated Codex guidance; native startup
+  diagnostics recorded the committed main surface at 474 ms. This does not
+  establish Settings navigation, which the failed gate never reached. The
+  script now requires both current Home markers, rather than accepting the
+  command bar's connection label alone. Bash syntax validation and matching
+  against the retained actual OCR passed. A replay of the same package is
+  required before claiming installed visual acceptance.

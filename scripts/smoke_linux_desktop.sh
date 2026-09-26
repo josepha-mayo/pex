@@ -92,7 +92,12 @@ for iteration in $(seq 1 30); do
   fi
   tesseract build/linux-desktop-smoke.png stdout --psm 11 2>/dev/null \
     >build/linux-desktop-smoke-ocr.txt
-  if grep -Eiq 'Connect an existing worker' build/linux-desktop-smoke-ocr.txt; then
+  # Require the loaded Home surface and its current connection guidance.
+  # The connection label alone also appears in the command bar, so it cannot
+  # establish that authenticated workspace state rendered successfully.
+  if grep -Eiq 'Give your work a goal' build/linux-desktop-smoke-ocr.txt &&
+     grep -Eiq 'Connect a running OpenCode session or create an isolated Codex' \
+       build/linux-desktop-smoke-ocr.txt; then
     workspace_ready=1
     break
   fi
