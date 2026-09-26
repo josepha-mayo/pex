@@ -28,6 +28,22 @@ MAX_RESPONSE_BYTES = 1_048_576
 _BODY_FIELDS = {"model", "messages", "max_tokens", "temperature", "tools", "tool_choice", "stream"}
 
 
+def _reported_usage(value: object, max_tokens: int) -> dict | None:
+    """Preserve only valid provider token totals; omission is unknown, never zero."""
+    if value is None:
+        return None
+    names = ("prompt_tokens", "completion_tokens", "total_tokens")
+    if not isinstance(value, dict) or any(
+        type(value.get(name)) is not int or not 0 <= value[name] <= 2**53 - 1
+        for name in names
+    ):
+        raise ValueError("backend token usage is invalid")
+    if (value["total_tokens"] != value["prompt_tokens"] + value["completion_tokens"]
+            or value["completion_tokens"] > max_tokens):
+        raise ValueError("backend token usage violates the request bound")
+    return {name: value[name] for name in names}
+
+
 class PinnedChatBackend:
     """Controller-only HTTPS client. One POST, no redirects or automatic retry."""
 
@@ -49,6 +65,7 @@ class PinnedChatBackend:
             raise ValueError("backend timeout must be finite and between zero and 60 seconds")
         self.endpoint, self.model, self.timeout = endpoint, model, timeout
         self._api_key, self._transport = api_key, transport
+        self.audit: list[dict] = []
 
     async def __call__(self, body: dict) -> dict:
         if (not isinstance(body, dict) or set(body) - _BODY_FIELDS
@@ -59,6 +76,27 @@ class PinnedChatBackend:
         encoded = strict_json_dumps(body).encode("utf-8")
         if len(encoded) > MAX_REQUEST_BYTES:
             raise ValueError("backend request exceeds bound")
+        receipt = {"schema": "pex.pinned-chat-backend-receipt.v1",
+                   "request_sha256": hashlib.sha256(encoded).hexdigest(),
+                   "endpoint": self.endpoint, "model": self.model,
+                   "max_tokens": body["max_tokens"], "status": "reserved",
+                   "usage_available": False, "usage": None}
+        self.audit.append(receipt)
+        started = time.perf_counter()
+        try:
+            result = await self._send(encoded, body["max_tokens"], receipt)
+            receipt["status"] = "completed"
+            return result
+        except asyncio.CancelledError:
+            receipt["status"] = "cancelled_uncertain"
+            raise
+        except Exception:
+            receipt["status"] = "failed_uncertain"
+            raise
+        finally:
+            receipt["latency_ms"] = max(0, round((time.perf_counter() - started) * 1000))
+
+    async def _send(self, encoded: bytes, max_tokens: int, receipt: dict) -> dict:
         transport = self._transport or httpx.AsyncHTTPTransport(retries=0, trust_env=False)
         async with httpx.AsyncClient(
             transport=transport, timeout=self.timeout, follow_redirects=False, trust_env=False,
@@ -69,6 +107,7 @@ class PinnedChatBackend:
                          "Content-Type": "application/json", "Accept": "application/json",
                          "Accept-Encoding": "identity"},
             ) as response:
+                receipt["http_status"] = response.status_code
                 if response.status_code != 200:
                     raise RuntimeError("backend did not return a successful response")
                 if response.headers.get("Content-Encoding", "identity").lower() != "identity":
@@ -78,9 +117,12 @@ class PinnedChatBackend:
                     if len(data) + len(chunk) > MAX_RESPONSE_BYTES:
                         raise ValueError("backend response exceeds bound")
                     data.extend(chunk)
+        receipt["response_sha256"] = hashlib.sha256(data).hexdigest()
         result = strict_json_loads(data)
         if not isinstance(result, dict) or result.get("model") != self.model:
             raise ValueError("backend response does not bind the pinned model")
+        receipt["usage"] = _reported_usage(result.get("usage"), max_tokens)
+        receipt["usage_available"] = receipt["usage"] is not None
         choices = result.get("choices")
         if not isinstance(choices, list) or not 1 <= len(choices) <= 16 or any(
             not isinstance(choice, dict) or not isinstance(choice.get("message"), dict)

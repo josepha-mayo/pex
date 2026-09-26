@@ -1008,3 +1008,12 @@ optional AgentCore endpoint proposes an action.
   matched its official registry integrity hash. No upstream provider request
   occurred. Natural-task comparative execution and action-time backend receipts
   are still required; eligibility gates remain unchanged.
+- The pinned chat backend now emits credential-free receipts with the exact
+  request/response wire hashes, HTTP status, latency and validated provider
+  token totals. Missing usage remains unknown. A failed completion preserves
+  independently valid usage; cancellation and transport failure remain
+  uncertain and do not release the relay's consumed reservation. The output
+  bound is captured before transport awaits, so a caller cannot change the
+  limit after the request is sent. Mock-transport checks cover those outcomes
+  without provider calls. These receipts add accounting evidence; they do not
+  establish natural-task quality gains or change benchmark eligibility.

@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import struct
 import sys
@@ -78,6 +79,138 @@ def request(request_id="call_1", **body):
         "model": "pinned", "messages": [{"role": "user", "content": "public task"}],
         "max_tokens": 128, **body,
     }}).encode()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("usage", [None, {
+    "prompt_tokens": 30, "completion_tokens": 8, "total_tokens": 38,
+    "private_untrusted_extension": "not retained",
+}])
+async def test_backend_receipt_binds_wire_outcome_and_available_usage(usage):
+    payload = {"model": "pinned", "choices": [{"message": {
+        "role": "assistant", "content": "private completion not retained",
+    }}]}
+    if usage is not None:
+        payload["usage"] = usage
+    raw = json.dumps(payload).encode()
+    backend = PinnedChatBackend(
+        endpoint="https://provider.example/v1/chat/completions",
+        model="pinned", api_key="receipt-secret-canary",
+        transport=httpx.MockTransport(lambda _: httpx.Response(
+            200, stream=httpx.ByteStream(raw),
+        )),
+    )
+    relay = PinnedModelRelay(model="pinned", max_calls=1,
+                            deadline=time.perf_counter()+5, backend=backend)
+    assert (await relay.dispatch(request()))["ok"] is True
+    receipt = backend.audit[0]
+    assert receipt["status"] == "completed" and receipt["http_status"] == 200
+    assert len(receipt["request_sha256"]) == len(receipt["response_sha256"]) == 64
+    assert receipt["response_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert receipt["usage_available"] is (usage is not None)
+    assert receipt["usage"] == (None if usage is None else {
+        "prompt_tokens": 30, "completion_tokens": 8, "total_tokens": 38,
+    })
+    assert receipt["latency_ms"] >= 0
+    assert "receipt-secret-canary" not in json.dumps(receipt)
+    assert "private completion" not in json.dumps(receipt)
+    assert "private_untrusted_extension" not in json.dumps(receipt)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("usage", [
+    {"prompt_tokens": True, "completion_tokens": 1, "total_tokens": 2},
+    {"prompt_tokens": 1, "completion_tokens": -1, "total_tokens": 0},
+    {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 8},
+    {"prompt_tokens": 1, "completion_tokens": 129, "total_tokens": 130},
+    {"prompt_tokens": 1, "completion_tokens": 2.0, "total_tokens": 3},
+    {"prompt_tokens": 1, "completion_tokens": 2},
+])
+async def test_invalid_usage_keeps_attempt_uncertain_and_consumes_budget(usage):
+    payload = {"model": "pinned", "choices": [{"message": {
+        "role": "assistant", "content": "reply",
+    }}], "usage": usage}
+    backend = PinnedChatBackend(
+        endpoint="https://provider.example/v1/chat/completions", model="pinned",
+        api_key="test-canary", transport=httpx.MockTransport(lambda _: httpx.Response(
+            200, stream=httpx.ByteStream(json.dumps(payload).encode()),
+        )),
+    )
+    relay = PinnedModelRelay(model="pinned", max_calls=1,
+                            deadline=time.perf_counter()+5, backend=backend)
+    assert (await relay.dispatch(request()))["error"] == "backend_failed_uncertain"
+    assert backend.audit[0]["status"] == "failed_uncertain"
+    assert backend.audit[0]["http_status"] == 200
+    assert backend.audit[0]["usage_available"] is False
+    assert (await relay.dispatch(request("second")))["error"] == "call_budget_exhausted"
+
+
+@pytest.mark.asyncio
+async def test_backend_usage_bound_is_the_sent_limit_despite_caller_mutation():
+    body = json.loads(request())["body"]
+    wire = []
+    async def handler(req):
+        wire.append(req.content)
+        body["max_tokens"] = 1000
+        return httpx.Response(200, stream=httpx.ByteStream(json.dumps({
+            "model": "pinned", "choices": [{"message": {"role": "assistant"}}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 129, "total_tokens": 130},
+        }).encode()))
+    backend = PinnedChatBackend(
+        endpoint="https://provider.example/v1/chat/completions", model="pinned",
+        api_key="test-canary", transport=httpx.MockTransport(handler),
+    )
+    with pytest.raises(ValueError, match="request bound"):
+        await backend(body)
+    receipt = backend.audit[0]
+    assert json.loads(wire[0])["max_tokens"] == receipt["max_tokens"] == 128
+    assert receipt["request_sha256"] == hashlib.sha256(wire[0]).hexdigest()
+    assert receipt["status"] == "failed_uncertain"
+
+
+@pytest.mark.asyncio
+async def test_failed_completion_preserves_valid_provider_reported_usage():
+    payload = {"model": "pinned", "choices": [], "usage": {
+        "prompt_tokens": 30, "completion_tokens": 8, "total_tokens": 38,
+    }}
+    backend = PinnedChatBackend(
+        endpoint="https://provider.example/v1/chat/completions", model="pinned",
+        api_key="test-canary", transport=httpx.MockTransport(lambda _: httpx.Response(
+            200, stream=httpx.ByteStream(json.dumps(payload).encode()),
+        )),
+    )
+    with pytest.raises(ValueError, match="assistant completion"):
+        await backend(json.loads(request())["body"])
+    receipt = backend.audit[0]
+    assert receipt["status"] == "failed_uncertain"
+    assert receipt["usage_available"] is True
+    assert receipt["usage"] == payload["usage"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("outcome", ["cancel", "timeout", "http_error"])
+async def test_backend_failed_wire_outcome_keeps_unknown_usage(outcome):
+    async def handler(req):
+        if outcome == "cancel":
+            raise asyncio.CancelledError
+        if outcome == "timeout":
+            raise httpx.ReadTimeout("private error", request=req)
+        return httpx.Response(429)
+    backend = PinnedChatBackend(
+        endpoint="https://provider.example/v1/chat/completions", model="pinned",
+        api_key="test-canary", transport=httpx.MockTransport(handler),
+    )
+    error = {"cancel": asyncio.CancelledError, "timeout": httpx.ReadTimeout,
+             "http_error": RuntimeError}[outcome]
+    with pytest.raises(error):
+        await backend(json.loads(request())["body"])
+    receipt = backend.audit[0]
+    assert receipt["status"] == ("cancelled_uncertain" if outcome == "cancel"
+                                 else "failed_uncertain")
+    assert receipt["usage_available"] is False and receipt["usage"] is None
+    assert receipt.get("http_status") == (429 if outcome == "http_error" else None)
+    assert receipt["latency_ms"] >= 0
+    assert "private error" not in json.dumps(receipt)
 
 
 @pytest.mark.asyncio
