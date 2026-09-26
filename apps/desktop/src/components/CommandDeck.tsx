@@ -997,12 +997,19 @@ function ContextView({
           <>
             <h2>{selectedWorkerUnavailable ? "Selected worker unavailable" : goal?.title || (selected?.goal_id ? "Attached goal unavailable" : "No goal attached")}</h2>
             {goal ? <>
+            <details className="context-objective">
+              <summary>Objective</summary>
+              <p>{goal.objective}</p>
+            </details>
             <ContextBoundary label="Constraints" values={goal?.constraints} />
             <ContextBoundary label="Forbidden outcomes" values={goal?.forbidden_outcomes} />
             <ContextBoundary label="Non-goals" values={goal?.non_goals} />
             <ContextBoundary label="Preferences" values={goal?.preferences} />
             <ContextBoundary label="Acceptance" values={goal?.acceptance_criteria} />
             <ContextBoundary label="Required evidence" values={goal?.evidence_requirements} />
+            {![goal.constraints, goal.forbidden_outcomes, goal.non_goals, goal.preferences,
+              goal.acceptance_criteria, goal.evidence_requirements].some((values) => values?.length)
+              ? <p>No additional boundaries recorded.</p> : null}
             </> : <p>{selectedWorkerUnavailable
               ? "The selected worker is not in the current session state. Select an available worker to inspect its context."
               : selected?.goal_id
@@ -1432,10 +1439,11 @@ function Metric({ label, value, percent = false }: { label: string; value?: numb
 }
 
 function ContextBoundary({ label, values }: { label: string; values?: string[] }) {
+  if (!values?.length) return null;
   return (
     <section>
       <h3>{label}</h3>
-      {values?.length ? <ul>{values.map((value) => <li key={value}>{value}</li>)}</ul> : <p>None recorded</p>}
+      <ul>{values.map((value) => <li key={value}>{value}</li>)}</ul>
     </section>
   );
 }

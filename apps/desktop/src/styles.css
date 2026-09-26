@@ -2217,6 +2217,24 @@ textarea::placeholder {
   background: var(--panel-soft);
 }
 
+.context-objective {
+  margin: 12px 0;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+
+.context-objective summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.context-objective p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
 .context-boundaries h2 {
   font-size: 15px;
 }
