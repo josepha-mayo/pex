@@ -6,6 +6,7 @@ A STOP with no contradicting evidence stays uncertain. Uncertain is silence.
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -66,6 +67,30 @@ _GENERIC_DONE = re.compile(
 )
 MAX_EXPECTED_ROWS = 1_000_000_000
 MAX_EXPECTED_TESTS = 1_000_000_000
+_ASCII_CASE_FOLD = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+
+
+def _windows_workspace(workspace: dict[str, Any]) -> bool:
+    root = str(workspace.get("workspace") or "")
+    return re.match(r"^[A-Za-z]:[/\\]", root) is not None or root.startswith("\\\\")
+
+
+def _workspace_path_key(path: str, workspace: dict[str, Any]) -> str:
+    if _windows_workspace(workspace):
+        return path.replace("\\", "/").translate(_ASCII_CASE_FOLD)
+    # POSIX and unclassified roots retain exact filename spelling. A literal
+    # POSIX backslash is not a directory separator.
+    return path
+
+
+def _native_workspace_root(workspace: dict[str, Any]) -> Path | None:
+    raw = str(workspace.get("workspace") or "")
+    if not raw or _windows_workspace(workspace) != (os.name == "nt"):
+        return None
+    root = Path(raw)
+    return root.resolve() if root.is_absolute() else None
+
+
 _PYTEST_REQUIREMENT = re.compile(
     r"\b(?:pytest|test\s+suite|tests?\s+(?:pass|passing|green|succeed))\b",
     re.I,
@@ -515,8 +540,8 @@ def _artifact_rows(
     for item in workspace.get("artifacts") or []:
         if not isinstance(item, dict):
             continue
-        path = str(item.get("path") or "").replace("\\", "/")
-        if path.casefold() != wanted.casefold():
+        path = str(item.get("path") or "")
+        if _workspace_path_key(path, workspace) != _workspace_path_key(wanted, workspace):
             continue
         count = item.get("row_count")
         # bool is an int subclass, but neither booleans nor negative values
@@ -529,9 +554,8 @@ def _artifact_rows(
         return path, None
     # The exact required artifact may be nested and therefore absent from the
     # compact root-artifact preview. Read only that goal-declared path.
-    root_raw = workspace.get("workspace")
     try:
-        root = Path(str(root_raw)).resolve() if root_raw else None
+        root = _native_workspace_root(workspace)
         target = (root / wanted).resolve() if root is not None else None
         if root is None or target is None:
             return wanted, None
@@ -554,7 +578,7 @@ def _observed_files(workspace: dict[str, Any]) -> set[str] | None:
     files = workspace.get("files")
     if not isinstance(files, list):
         return None
-    return {str(name).replace("\\", "/").casefold() for name in files}
+    return {_workspace_path_key(str(name), workspace) for name in files}
 
 
 def _required_files(goal: Goal | None) -> list[str]:
@@ -592,14 +616,13 @@ def _missing_required_files(goal: Goal | None, workspace: dict[str, Any]) -> lis
     observed = _observed_files(workspace)
     if observed is None:
         return None
-    root_raw = workspace.get("workspace")
     try:
-        root = Path(str(root_raw)).resolve() if root_raw else None
+        root = _native_workspace_root(workspace)
     except (OSError, ValueError):
         root = None
     missing: list[str] = []
     for name in _required_files(goal):
-        if name.casefold() in observed:
+        if _workspace_path_key(name, workspace) in observed:
             continue
         exists = False
         if root is not None:
@@ -896,7 +919,9 @@ def _evaluation_verdict(
                 "evidence": [f"expected_rows={expected}", f"row_count_unavailable:{path}"],
                 "correction": None,
             }
-        if path.casefold() not in {item.casefold() for item in missing}:
+        if _workspace_path_key(path, workspace) not in {
+            _workspace_path_key(item, workspace) for item in missing
+        }:
             return {
                 "claim": claim,
                 "status": "uncertain",
@@ -1029,11 +1054,12 @@ def _read_goal_file(
     relpath: str,
     limit: int = 4_000_000,
 ) -> tuple[str, bool] | None:
-    root_raw = workspace.get("workspace")
-    if not root_raw or not _visible_goal_path(relpath):
+    if not _visible_goal_path(relpath):
         return None
     try:
-        root = Path(str(root_raw)).resolve()
+        root = _native_workspace_root(workspace)
+        if root is None:
+            return None
         target = (root / relpath).resolve()
         target.relative_to(root)
         if not target.is_file():

@@ -516,3 +516,15 @@ optional AgentCore endpoint proposes an action.
   passed, including two actual same-session synthetic deliveries of the exit-2
   correction and the existing false-claim scenario. Seven focused checks passed
   after adding explicit exit-code provenance. No live inference was used.
+- Artifact verification preserves POSIX filename case and literal backslashes.
+  `REPORT.json` no longer satisfies a Linux requirement for `report.json`, and
+  the row count of a case-distinct artifact cannot substitute for the required
+  file. Windows drive/UNC snapshot names retain ASCII case-insensitive matching;
+  unclassified roots use exact spelling. Content/row/existence fallback reads
+  are limited to native absolute workspace roots, preventing foreign snapshot
+  paths from resolving against the controller host. Four regressions reproduced
+  incorrect acceptance before the fix. Windows verification/exact-content/LF
+  checks passed 157 tests with one Linux-only skip. All seven path checks passed
+  in WSL, including an actual case-sensitive directory; system pytest emitted
+  two unknown asyncio-config warnings. Three existing backend correction cases
+  also passed. These are offline verification checks, not live model results.
