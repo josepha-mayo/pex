@@ -45,6 +45,7 @@ import {
   permissionRequestDetails,
   type ProjectIdentityResolutionAttempt,
   requestedHumanDecisionDetails,
+  starterHarnessLabel,
   starterHarnessInventoryCopy,
   titleCase,
 } from "../viewModel";
@@ -1289,7 +1290,7 @@ function AgentsView({
             <div className="card-heading">
               <span>
                 <small>Harness fingerprint</small>
-                <strong>{titleCase(harness)}</strong>
+                <strong>{starterHarnessLabel(harness)}</strong>
               </span>
               <span className="support-pill">
                 {titleCase(String(adapter?.capabilities?.support_label || "unprobed"))}
@@ -1317,7 +1318,7 @@ function AgentsView({
                   className="text-button"
                   disabled={!connectAvailable}
                   onClick={onConnectWorker}
-                  aria-label={`Connect a ${titleCase(harness)} worker`}
+                  aria-label={`Connect a ${starterHarnessLabel(harness)} worker`}
                 >
                   Connect worker
                 </button>

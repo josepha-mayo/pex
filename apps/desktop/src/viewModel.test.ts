@@ -138,6 +138,7 @@ import {
   statusCopy,
   settleCanonicalResource,
   starterHarnessInventoryCopy,
+  starterHarnessLabel,
   starterInventoryFromDiscover,
   STARTER_HARNESS_IDS,
   supportsCapability,
@@ -952,7 +953,7 @@ test("empty harness cards open the existing worker connection flow only with fre
   assert.match(app, /onConnectWorker=\{\(\) => openSettings\("connections"\)\}/u);
   assert.match(deck, /connectAvailable=\{bridgeOnline && agentsFresh\}/u);
   assert.match(deck, /sourceFresh && !observed\.length[\s\S]*?No live sessions observed[\s\S]*?disabled=\{!connectAvailable\}[\s\S]*?onClick=\{onConnectWorker\}/u);
-  assert.match(deck, /aria-label=\{`Connect a \$\{titleCase\(harness\)\} worker`\}/u);
+  assert.match(deck, /aria-label=\{`Connect a \$\{starterHarnessLabel\(harness\)\} worker`\}/u);
 });
 
 test("malformed context expiry fails closed as stale", () => {
@@ -1957,6 +1958,7 @@ test("context items mark superseded facts without inventing a graph", () => {
 });
 
 test("starter harness inventory copy stays generic and is never a freeze", () => {
+  assert.equal(starterHarnessLabel("opencode"), "OpenCode");
   assert.deepEqual([...STARTER_HARNESS_IDS], [
     "cursor",
     "codex",
