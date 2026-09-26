@@ -944,6 +944,17 @@ test("offline state immediately suppresses stale agent prompts", async () => {
   assert.match(deck, /sessionObservationCopy\(session, degraded \|\| !sourceFresh\)/);
 });
 
+test("empty harness cards open the existing worker connection flow only with fresh bridge state", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const deck = await readFile(new URL("./components/CommandDeck.tsx", import.meta.url), "utf8");
+
+  assert.match(app, /onConnectWorker=\{\(\) => openSettings\("connections"\)\}/u);
+  assert.match(deck, /connectAvailable=\{bridgeOnline && agentsFresh\}/u);
+  assert.match(deck, /sourceFresh && !observed\.length[\s\S]*?No live sessions observed[\s\S]*?disabled=\{!connectAvailable\}[\s\S]*?onClick=\{onConnectWorker\}/u);
+  assert.match(deck, /aria-label=\{`Connect a \$\{titleCase\(harness\)\} worker`\}/u);
+});
+
 test("malformed context expiry fails closed as stale", () => {
   assert.equal(isStale("not-a-timestamp"), true);
   assert.equal(isStale(null), false);

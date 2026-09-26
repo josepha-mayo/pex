@@ -133,6 +133,7 @@ export function CommandDeck({
   onResolveIdentity,
   onLoadMoreIdentityConflicts,
   onLoadMoreIdentityCandidates,
+  onConnectWorker,
   onQuestion,
   onAsk,
   onAskPrompt,
@@ -185,6 +186,7 @@ export function CommandDeck({
   onResolveIdentity: (attempt: ProjectIdentityResolutionAttempt) => void;
   onLoadMoreIdentityConflicts: () => void;
   onLoadMoreIdentityCandidates: () => void;
+  onConnectWorker: () => void;
   onQuestion: (value: string) => void;
   onAsk: (event: React.FormEvent) => void;
   onAskPrompt?: (prompt: string) => void;
@@ -311,7 +313,14 @@ export function CommandDeck({
             />
           ) : null}
           {activeView === "agents" ? (
-            <AgentsView sessions={sessions} fingerprints={fingerprints} adapters={adapters} sourceFresh={agentsFresh} />
+            <AgentsView
+              sessions={sessions}
+              fingerprints={fingerprints}
+              adapters={adapters}
+              sourceFresh={agentsFresh}
+              connectAvailable={bridgeOnline && agentsFresh}
+              onConnectWorker={onConnectWorker}
+            />
           ) : null}
           {activeView === "bench" ? <BenchView bench={bench} bridgeOnline={bridgeOnline} /> : null}
         </div>
@@ -1234,11 +1243,15 @@ function AgentsView({
   fingerprints,
   adapters,
   sourceFresh,
+  connectAvailable,
+  onConnectWorker,
 }: {
   sessions: SessionRow[];
   fingerprints: Fingerprint[];
   adapters: AdapterRow[];
   sourceFresh: boolean;
+  connectAvailable: boolean;
+  onConnectWorker: () => void;
 }) {
   const adapterByName = useMemo(() => new Map(adapters.map((item) => [item.name, item])), [adapters]);
   const sessionsByHarness = useMemo(() => {
@@ -1296,6 +1309,20 @@ function AgentsView({
                 <dd>{String(adapter?.capabilities?.notes || "No live capability note returned.")}</dd>
               </div>
             </dl>
+            {sourceFresh && !observed.length ? (
+              <footer className="agent-connect">
+                <span>No live sessions observed</span>
+                <button
+                  type="button"
+                  className="text-button"
+                  disabled={!connectAvailable}
+                  onClick={onConnectWorker}
+                  aria-label={`Connect a ${titleCase(harness)} worker`}
+                >
+                  Connect worker
+                </button>
+              </footer>
+            ) : null}
           </article>
         );
       })}

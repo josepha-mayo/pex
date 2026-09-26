@@ -2437,6 +2437,18 @@ textarea::placeholder {
   font-size: 10px;
 }
 
+.agent-connect {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--faint);
+  font-size: 10px;
+}
+
 .bench-layout {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr);

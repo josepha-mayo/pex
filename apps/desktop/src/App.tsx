@@ -2813,6 +2813,7 @@ export function App() {
           onResolveIdentity={(attempt) => void resolveProjectIdentity(attempt)}
           onLoadMoreIdentityConflicts={loadMoreIdentityConflicts}
           onLoadMoreIdentityCandidates={loadMoreIdentityCandidates}
+          onConnectWorker={() => openSettings("connections")}
           onQuestion={setQuestion}
           onAsk={(event) => void askPex(event)}
           onAskPrompt={(prompt) => void askPex(null, prompt)}
