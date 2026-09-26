@@ -579,3 +579,12 @@ optional AgentCore endpoint proposes an action.
   platform-specific skip, including a real sleeping test stopped by a
   one-second budget. This is bounded local evidence, not a performance score
   or live provider verification.
+- The model-enabled supervisor now takes the observed-pytest failure fast path
+  when a worker stops without claiming success. Previously the deterministic
+  correction was sent through semantic review, where a fake model returning
+  NOOP suppressed it. The regression first reproduced that silence and now
+  gives the failing test's precise correction with zero model calls. The
+  acceptance-gap verdict must bind the same event, nonzero integer exit code
+  and selected correction evidence; stale events, later edits and claim-only
+  observations remain outside this fast path. All 103 runtime/supervisor-loop
+  checks passed locally. These use fake models, not paid provider calls.

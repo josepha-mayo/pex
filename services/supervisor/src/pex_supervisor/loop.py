@@ -1556,7 +1556,7 @@ async def decide_async(
         and os.environ.get("PEX_FORCE_LLM") != "1"
         and request.event.event_type == EventType.STOP
         and deterministic.type == InterventionType.SEND_NUDGE
-        and verification.get("status") == "contradicted"
+        and verification.get("status") in {"contradicted", "acceptance_gap"}
         and pytest_observation.get("basis") == "observed_worker_command"
         and type(pytest_observation.get("exit_code")) is int
         and pytest_observation["exit_code"] != 0
@@ -1564,10 +1564,25 @@ async def decide_async(
         and pytest_observation.get("event_id") == verification.get("pytest_event_id")
         and any(
             isinstance(verdict, dict)
-            and verdict.get("status") == "contradicted"
-            and isinstance(verdict.get("claim"), dict)
-            and verdict["claim"].get("kind") == "tests_pass"
-            and verdict["claim"].get("polarity") == "asserted"
+            and (
+                (
+                    verdict.get("status") == "contradicted"
+                    and isinstance(verdict.get("claim"), dict)
+                    and verdict["claim"].get("kind") == "tests_pass"
+                    and verdict["claim"].get("polarity") == "asserted"
+                )
+                or (
+                    verdict.get("status") == "unsatisfied"
+                    and verdict.get("claim") is None
+                    and verdict.get("basis") == "acceptance_criterion"
+                    and f"pytest_event_id={pytest_observation.get('event_id')}"
+                    in (verdict.get("evidence") or [])
+                    and f"pytest_exit_code={pytest_observation['exit_code']}"
+                    in (verdict.get("evidence") or [])
+                    and set(verification.get("evidence") or [])
+                    == set(verdict.get("evidence") or [])
+                )
+            )
             for verdict in verification.get("verdicts") or []
         )
     ):

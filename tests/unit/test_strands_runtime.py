@@ -1128,10 +1128,11 @@ async def test_uncertain_probe_without_unobserved_pytest_claim_still_gets_semant
 
 
 @pytest.mark.asyncio
-async def test_observed_failed_pytest_claim_sends_precise_correction_without_model():
+@pytest.mark.parametrize("claimed_success", [True, False])
+async def test_observed_failed_pytest_claim_sends_precise_correction_without_model(claimed_success):
     request = _request(0.1)
     request.scores.features["verification"] = {
-        "status": "contradicted",
+        "status": "contradicted" if claimed_success else "acceptance_gap",
         "correction": "Observed pytest failed (exit 1). Fix test_csv.py::test_quotes.",
         "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
         "pytest_event_id": "evt_pytest",
@@ -1142,8 +1143,10 @@ async def test_observed_failed_pytest_claim_sends_precise_correction_without_mod
             "later_file_edits_observed": False,
         },
         "verdicts": [{
-            "status": "contradicted",
-            "claim": {"kind": "tests_pass", "polarity": "asserted"},
+            "status": "contradicted" if claimed_success else "unsatisfied",
+            "claim": {"kind": "tests_pass", "polarity": "asserted"} if claimed_success else None,
+            "basis": "acceptance_criterion",
+            "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
         }],
     }
     model = FakeStructuredModel("NOOP")
@@ -1168,7 +1171,10 @@ async def test_observed_failed_pytest_claim_sends_precise_correction_without_mod
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("unsafe_change", ["basis", "later_edit", "event_id"])
-async def test_failed_pytest_fast_path_needs_current_observed_command(unsafe_change):
+@pytest.mark.parametrize("claimed_success", [True, False])
+async def test_failed_pytest_fast_path_needs_current_observed_command(
+    unsafe_change, claimed_success,
+):
     request = _request(0.1)
     observation = {
         "basis": "observed_worker_command",
@@ -1183,14 +1189,16 @@ async def test_failed_pytest_fast_path_needs_current_observed_command(unsafe_cha
     else:
         observation["event_id"] = "stale_event"
     request.scores.features["verification"] = {
-        "status": "contradicted",
+        "status": "contradicted" if claimed_success else "acceptance_gap",
         "correction": "Observed pytest failed (exit 1). Fix test_csv.py::test_quotes.",
         "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
         "pytest_event_id": "evt_pytest",
         "pytest_observation": observation,
         "verdicts": [{
-            "status": "contradicted",
-            "claim": {"kind": "tests_pass", "polarity": "asserted"},
+            "status": "contradicted" if claimed_success else "unsatisfied",
+            "claim": {"kind": "tests_pass", "polarity": "asserted"} if claimed_success else None,
+            "basis": "acceptance_criterion",
+            "evidence": ["pytest_event_id=evt_pytest", "pytest_exit_code=1"],
         }],
     }
 
