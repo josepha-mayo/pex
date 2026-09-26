@@ -6,6 +6,7 @@ export type GoalDraft = {
   objective: string;
   acceptance: string;
   constraints: string;
+  forbiddenOutcomes?: string;
   nonGoals: string;
   preferences: string;
   evidence: string;
@@ -103,6 +104,15 @@ export function GoalEditor({
           />
         </label>
       </div>
+      <label>
+        Forbidden outcomes · must never happen
+        <textarea
+          value={draft.forbiddenOutcomes || ""}
+          onChange={(event) => onChange("forbiddenOutcomes", event.target.value)}
+          rows={2}
+          placeholder="Do not spend paid credits&#10;Do not publish a release"
+        />
+      </label>
       <label>
         Preferences · how the work should feel
         <textarea

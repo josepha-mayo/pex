@@ -895,6 +895,7 @@ export function createGoalPayload(input: {
   objective: string;
   acceptance: string;
   constraints: string;
+  forbiddenOutcomes?: string;
   nonGoals: string;
   evidence: string;
   preferences?: string;
@@ -915,6 +916,7 @@ export function createGoalPayload(input: {
     objective: input.objective.trim(),
     acceptance_criteria: normalizeLines(input.acceptance),
     constraints: normalizeLines(input.constraints),
+    forbidden_outcomes: normalizeLines(input.forbiddenOutcomes || ""),
     non_goals: normalizeLines(input.nonGoals),
     preferences: normalizeLines(input.preferences || ""),
     evidence_requirements: normalizeLines(input.evidence),
@@ -929,6 +931,7 @@ export function updateGoalPayload(input: {
   objective: string;
   acceptance: string;
   constraints: string;
+  forbiddenOutcomes?: string;
   nonGoals: string;
   evidence: string;
   preferences?: string;
@@ -943,6 +946,7 @@ export function updateGoalPayload(input: {
   objective: string;
   acceptance_criteria: string[];
   constraints: string[];
+  forbidden_outcomes: string[];
   non_goals: string[];
   preferences: string[];
   evidence_requirements: string[];
@@ -962,6 +966,7 @@ export function updateGoalPayload(input: {
     objective: created.objective,
     acceptance_criteria: created.acceptance_criteria || [],
     constraints: created.constraints || [],
+    forbidden_outcomes: created.forbidden_outcomes || [],
     non_goals: created.non_goals || [],
     preferences: created.preferences || [],
     evidence_requirements: created.evidence_requirements || [],
@@ -1008,6 +1013,7 @@ export function goalToDraft(goal: Goal, projectId = "", decisions: LedgerDecisio
   objective: string;
   acceptance: string;
   constraints: string;
+  forbiddenOutcomes: string;
   nonGoals: string;
   preferences: string;
   evidence: string;
@@ -1022,6 +1028,7 @@ export function goalToDraft(goal: Goal, projectId = "", decisions: LedgerDecisio
     objective: goal.objective,
     acceptance: (goal.acceptance_criteria || []).join("\n"),
     constraints: (goal.constraints || []).join("\n"),
+    forbiddenOutcomes: (goal.forbidden_outcomes || []).join("\n"),
     nonGoals: (goal.non_goals || []).join("\n"),
     preferences: (goal.preferences || []).join("\n"),
     evidence: (goal.evidence_requirements || []).join("\n"),

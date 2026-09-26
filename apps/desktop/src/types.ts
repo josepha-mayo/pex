@@ -153,6 +153,7 @@ export type Goal = {
   objective: string;
   acceptance_criteria?: string[];
   constraints?: string[];
+  forbidden_outcomes?: string[];
   non_goals?: string[];
   evidence_requirements?: string[];
   preferences?: string[];

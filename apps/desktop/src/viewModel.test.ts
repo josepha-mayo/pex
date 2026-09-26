@@ -488,6 +488,7 @@ test("goal payload keeps constraints and non-goals separate", () => {
     objective: " Win honestly ",
     acceptance: "build passes\n demo works",
     constraints: "no fake benchmark\nno secrets",
+    forbiddenOutcomes: " never spend card funds\n never publish without approval ",
     nonGoals: "rewrite every adapter\nsubmit automatically",
     evidence: "full suite exits 0\nlive recovery trace exists",
     idempotencyKey: "goal-create-fixed-0001",
@@ -495,6 +496,9 @@ test("goal payload keeps constraints and non-goals separate", () => {
 
   assert.equal(payload.idempotency_key, "goal-create-fixed-0001");
   assert.deepEqual(payload.constraints, ["no fake benchmark", "no secrets"]);
+  assert.deepEqual(payload.forbidden_outcomes, [
+    "never spend card funds", "never publish without approval",
+  ]);
   assert.deepEqual(payload.non_goals, ["rewrite every adapter", "submit automatically"]);
   assert.deepEqual(payload.evidence_requirements, ["full suite exits 0", "live recovery trace exists"]);
   assert.deepEqual(payload.preferences, []);
@@ -1710,6 +1714,7 @@ test("ledger edit maps the stored goal onto a PATCH update payload", () => {
       objective: "Win honestly\n\nAcceptance criteria:\n- report.txt contains shipped",
       acceptance_criteria: ["report.txt contains shipped"],
       constraints: ["no fake benchmark"],
+      forbidden_outcomes: ["never spend card funds", "never publish without approval"],
       non_goals: ["submit automatically"],
       preferences: ["smallest reversible change"],
       evidence_requirements: ["full suite exits 0"],
@@ -1720,6 +1725,7 @@ test("ledger edit maps the stored goal onto a PATCH update payload", () => {
   );
   assert.equal(draft.acceptance, "report.txt contains shipped");
   assert.equal(draft.constraints, "no fake benchmark");
+  assert.equal(draft.forbiddenOutcomes, "never spend card funds\nnever publish without approval");
   const payload = updateGoalPayload({
     ...draft,
     acceptance: "",
@@ -1728,6 +1734,9 @@ test("ledger edit maps the stored goal onto a PATCH update payload", () => {
   assert.equal(payload.expected_intent_revision, 7);
   assert.deepEqual(payload.acceptance_criteria, []);
   assert.deepEqual(payload.constraints, ["no fake benchmark"]);
+  assert.deepEqual(payload.forbidden_outcomes, [
+    "never spend card funds", "never publish without approval",
+  ]);
   assert.deepEqual(payload.non_goals, ["submit automatically"]);
   assert.deepEqual(payload.preferences, ["smallest reversible change"]);
 });

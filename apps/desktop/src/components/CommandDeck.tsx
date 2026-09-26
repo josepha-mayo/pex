@@ -995,6 +995,7 @@ function ContextView({
           <>
             <h2>{goal?.title || "No goal selected"}</h2>
             <ContextBoundary label="Constraints" values={goal?.constraints} />
+            <ContextBoundary label="Forbidden outcomes" values={goal?.forbidden_outcomes} />
             <ContextBoundary label="Non-goals" values={goal?.non_goals} />
             <ContextBoundary label="Preferences" values={goal?.preferences} />
             <ContextBoundary label="Acceptance" values={goal?.acceptance_criteria} />
