@@ -311,10 +311,19 @@ def build_bundle(
 
     excluded = exclude_item_ids or set()
     previously_delivered = [item for item in items if item.id in excluded]
+    human_commitments = {
+        item.id for item in items
+        if item.provenance == SourceKind.HUMAN
+        and item.kind in {ContextKind.CONSTRAINT, ContextKind.DECISION}
+        and item.goal_id in {None, goal.id}
+        and project_binding_key(item.project_id) == project_binding_key(goal.project_id)
+        and _as_utc(item.valid_from) <= now
+    }
     superseded = {
         item.supersedes
         for item in items
         if item.supersedes
+        and (item.supersedes not in human_commitments or item.provenance == SourceKind.HUMAN)
         and item.goal_id in {None, goal.id}
         and project_binding_key(item.project_id) == project_binding_key(goal.project_id)
         and _as_utc(item.valid_from) <= now

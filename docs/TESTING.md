@@ -644,3 +644,19 @@ optional AgentCore endpoint proposes an action.
   path, then removal of the hint and enabled Connect after entering a valid
   loopback origin. No attach or worker/model turn was dispatched. Nine
   OpenCode/Codex connection checks and the production build passed.
+- Nonhuman context replacements no longer retire human constraints or
+  decisions from supervisor retrieval and worker handoff. The regression
+  first reproduced four lost-commitment cases in the supervisor packet.
+  Stored authority retrieval now applies the same rule before pagination, so
+  a newer replacement outside the returned page cannot hide the commitment.
+  The handoff selector also preserves it. Human replacements still retire
+  their predecessors; existing expiry, scope, sensitivity and budget rules
+  remain in force. Ninety-seven context/authority checks and 38 handoff/
+  evidence checks passed, with lint clean. This improves preservation of
+  user intent; it does not establish live model compliance or benchmark gains.
+- The Windows source job in exact-source run `36264663510` completed:
+  4878 backend tests passed, 21 skipped, 16 deselected; all 325 desktop checks
+  and the production build passed. The overall run remains failed because
+  its original Linux visual gate failed. Same-package replay `36265714639`
+  separately establishes installed Home/Settings acceptance after correcting
+  the test script. These results belong to `d4fa36e`, not later source edits.

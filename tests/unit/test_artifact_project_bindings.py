@@ -495,8 +495,9 @@ async def test_goal_context_query_can_include_project_wide_without_foreign_goal(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("replacement_time", ["active", "expired", "future", "other_goal"])
+@pytest.mark.parametrize("replacement_source", [SourceKind.HUMAN, SourceKind.WORKSPACE])
 async def test_supervisor_page_cannot_revive_retired_context_outside_page(
-    tmp_path, replacement_time,
+    tmp_path, replacement_time, replacement_source,
 ):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
@@ -516,7 +517,7 @@ async def test_supervisor_page_cannot_revive_retired_context_outside_page(
         replacement = base.model_copy(update={
             "id": "replacement",
             "goal_id": other_goal.id if replacement_time == "other_goal" else None,
-            "kind": ContextKind.FACT, "provenance": SourceKind.WORKSPACE,
+            "kind": ContextKind.FACT, "provenance": replacement_source,
             "supersedes": original.id, "valid_from": replacement_from,
             "stale_after": (
                 observed_at - timedelta(minutes=1) if replacement_time == "expired" else None
@@ -541,6 +542,7 @@ async def test_supervisor_page_cannot_revive_retired_context_outside_page(
         )
         assert (original.id in {item.id for item in current_page}) is (
             replacement_time in {"future", "other_goal"}
+            or replacement_source != SourceKind.HUMAN
         )
         assert replacement.id not in {item.id for item in current_page}
     finally:

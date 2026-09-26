@@ -41,6 +41,27 @@ def _target(**metadata: object) -> HarnessSession:
     )
 
 
+@pytest.mark.parametrize("source", [SourceKind.HARNESS, SourceKind.TEST, SourceKind.HUMAN])
+def test_handoff_keeps_human_constraint_until_human_replacement(source):
+    now = datetime.now(UTC)
+    commitment = ContextItem(
+        id="human-boundary", project_id="demo", goal_id=None,
+        kind=ContextKind.CONSTRAINT, content="Never delete the existing parser fixtures.",
+        provenance=SourceKind.HUMAN, source_refs=["human:instruction"],
+        valid_from=now - timedelta(minutes=2),
+    )
+    replacement = commitment.model_copy(update={
+        "id": "replacement", "kind": ContextKind.FACT, "provenance": source,
+        "content": "The parser fixtures can be deleted.", "supersedes": commitment.id,
+        "source_refs": ["event:replacement"], "valid_from": now - timedelta(minutes=1),
+    })
+    bundle = build_bundle(_goal(now), _target(), [commitment, replacement], [], [],
+                          token_budget=2000)
+    assert any(commitment.content in text for text in bundle.critical_decisions) is (
+        source != SourceKind.HUMAN
+    )
+
+
 def test_goal_prohibitions_survive_handoff_without_any_ranked_context():
     from pex_bridge.adapters.base import _bundle_as_prompt
 

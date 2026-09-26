@@ -28533,6 +28533,10 @@ class Store:
                         "AND NOT EXISTS (SELECT 1 FROM context_items AS replacement "
                         "WHERE replacement.project_binding = context_items.project_binding "
                         "AND json_extract(replacement.json, '$.supersedes') = context_items.id "
+                        "AND (NOT (json_extract(context_items.json, '$.provenance') = 'human' "
+                        "AND json_extract(context_items.json, '$.kind') "
+                        "IN ('constraint', 'decision')) "
+                        "OR json_extract(replacement.json, '$.provenance') = 'human') "
                         "AND pex_context_observed(json_extract(replacement.json, '$.valid_from'))"
                     )
                     if goal_id is not None:

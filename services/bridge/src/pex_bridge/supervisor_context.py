@@ -190,10 +190,16 @@ def build_supervisor_context(
     # A valid in-scope replacement suppresses its predecessor even when the
     # replacement itself is expired or too sensitive to disclose to the model.
     # Expiry invalidates the replacement; it does not revive a retired fact.
+    human_commitments = {
+        item.id for item in in_scope
+        if item.provenance == SourceKind.HUMAN
+        and item.kind in {ContextKind.CONSTRAINT, ContextKind.DECISION}
+    }
     superseded_ids = {
         superseded
         for item in in_scope
         if (superseded := _clean_id(item.supersedes)) is not None
+        and (superseded not in human_commitments or item.provenance == SourceKind.HUMAN)
     }
     selected_context: list[SupervisorContextItem] = []
     selected_context_ids: set[str] = set()

@@ -419,6 +419,24 @@ def test_harness_metadata_cannot_upgrade_self_report_to_verified_context():
     assert envelope.context_items[0].verified is False
 
 
+@pytest.mark.parametrize("kind", [ContextKind.CONSTRAINT, ContextKind.DECISION])
+@pytest.mark.parametrize(
+    "replacement_source", [SourceKind.HARNESS, SourceKind.TEST, SourceKind.HUMAN],
+)
+def test_only_human_context_can_retire_human_commitment(kind, replacement_source):
+    now = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    session, _, _ = _bound(now)
+    commitment = _context(now, "user-boundary", goal_id=None)
+    commitment.kind = kind
+    commitment.provenance = SourceKind.HUMAN
+    replacement = _context(now, "result", supersedes=commitment.id)
+    replacement.provenance = replacement_source
+    envelope = build_supervisor_context(session, [commitment, replacement], [], now=now)
+    assert (commitment.id in envelope.offered_context_ids) is (
+        replacement_source != SourceKind.HUMAN
+    )
+
+
 def test_evidence_tools_page_and_retrieve_offered_records_beyond_first_page():
     now = datetime(2026, 9, 5, 12, tzinfo=UTC)
     session, goal, event = _bound(now)
