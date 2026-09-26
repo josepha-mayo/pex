@@ -313,6 +313,69 @@ async def _bind_cursor_conversation(
     assert attached.status_code == 200, attached.text
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "presentation", ["failed_listener", "stalled_listener", "stalled_snapshot"]
+)
+async def test_delivered_handoff_receipt_is_independent_of_presentation(
+    client, monkeypatch, presentation
+):
+    source = state.adapters.synthetic.seed_session(vendor_id="presentation-source")
+    target = state.adapters.synthetic.seed_session(vendor_id="presentation-target")
+    await state.store.upsert_session(source)
+    await state.store.upsert_session(target)
+    goal_response = await client.post(
+        "/v1/goals",
+        json={
+            "project_id": "demo", "title": "Reliable delivery", "objective": "Share parser context"
+        },
+    )
+    goal = goal_response.json()
+    for session in (source, target):
+        attached = await client.post(
+            f"/v1/sessions/{session.id}/attach", json={"goal_id": goal["id"]}
+        )
+        assert attached.status_code == 200
+    discovered = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": source.id,
+            "event_type": EventType.FILE_READ.value,
+            "message": "The parser implementation is at src/parser.py. Preserve it.",
+            "file_paths": ["src/parser.py"],
+        },
+    )
+    assert discovered.status_code == 200
+
+    async def listener(topic, payload):
+        if topic != "intervention":
+            return
+        if presentation == "failed_listener":
+            raise RuntimeError("presentation is unavailable")
+        if presentation == "stalled_listener":
+            await asyncio.Event().wait()
+
+    async def stalled_snapshot():
+        await asyncio.Event().wait()
+
+    state.pipeline.bus.subscribe(listener)
+    if presentation == "stalled_snapshot":
+        monkeypatch.setattr(state.pipeline, "pet_snapshot", stalled_snapshot)
+    request = {"idempotency_key": "presentation-handoff-0001", "target_session_id": target.id}
+    response = await asyncio.wait_for(
+        client.post(f"/v1/sessions/{source.id}/handoff", json=request), timeout=10
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "delivered"
+    assert state.adapters.synthetic.inbox[target.id]
+    replay = await client.post(f"/v1/sessions/{source.id}/handoff", json=request)
+    assert replay.status_code == 200
+    assert replay.json()["replayed"] is True
+    assert replay.json()["effect"]["effect_id"] == body["effect"]["effect_id"]
+    assert len(state.adapters.synthetic.inbox[target.id]) == 1
+
+
 async def _deliver_synthetic_artifact_handoff(
     client: AsyncClient,
     *,

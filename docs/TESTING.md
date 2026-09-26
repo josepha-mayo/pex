@@ -874,3 +874,12 @@ optional AgentCore endpoint proposes an action.
   diagnostic stack showed a database connection being opened, not a failed
   assertion. That stress case remains unverified in this run. These are local
   correctness checks, not model-quality benchmarks.
+- Delivered handoff receipts no longer wait for pet projection reads. The
+  existing coalesced background refresher handles presentation updates, and
+  intervention listeners use bounded post-commit publication. Three API
+  regressions cover failed/stalled listeners and a stalled snapshot, including
+  idempotent replay with exactly one worker delivery. Together with normal
+  bundle delivery, operator effects, assimilation, timeout safety, publication
+  and snapshot-coalescing checks, 36 tests passed. The 65-handoff capacity
+  rerun is tracked separately; no throughput improvement is claimed from
+  these correctness checks.

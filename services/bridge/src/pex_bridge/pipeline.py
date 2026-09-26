@@ -5805,8 +5805,10 @@ class Pipeline:
                     result["worker_delivery_receipt"] = message_resolution.worker_delivery_receipt
                 final = await durable_finalize("delivered", result)
         response = await self._operator_handoff_response(final, replayed=replayed)
-        await self.bus.publish("intervention", response["intervention"])
-        await self.bus.publish("pet", await self.pet_snapshot())
+        await self.bus.publish_committed(
+            "intervention", response["intervention"], timeout_seconds=0.1
+        )
+        self._schedule_event_pet_publication()
         return response
 
     async def verify_reported_claim(
