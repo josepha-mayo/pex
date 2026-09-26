@@ -627,3 +627,12 @@ optional AgentCore endpoint proposes an action.
   confirm 21 Rust checks and Windows vault/packaged BYOK roundtrips, with zero
   provider calls and no worker attached. The Ubuntu source job confirms 4877
   backend passes, 22 skips, 16 deselections and a successful production build.
+- Supervisor setup now keeps a short activation status above the form and
+  discloses authentication/connection explanation on demand. Loading, failed,
+  timed-out and launch-disabled statuses remain visible. The current source
+  was reviewed through browser Home -> Settings at 1280 and 800 px: the
+  disclosure expands/collapses, the form remains available, and document
+  width matches each viewport without horizontal overflow. Production build
+  passed. This used a disposable local bridge profile and made no provider
+  call or credential save; it is browser layout evidence, not native or live
+  inference acceptance.

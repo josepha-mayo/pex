@@ -10,6 +10,7 @@ import type {
 import {
   channelStatusCopy,
   cursorRejectionReasonCopy,
+  supervisorActivationCopy,
   supervisorHonestyCopy,
 } from "../viewModel";
 
@@ -376,8 +377,16 @@ export function SettingsPage({
                   : "Review this provider’s authentication method before saving."}
               </p>
             ) : <>
-              <p className="settings-note">{supervisorHonestyCopy(supervisor)}</p>
-              <p className="settings-note">{supervisor.login_note || "This is PEX’s supervisor model, not a worker harness. Use the displayed credential source."}</p>
+              <p className="settings-note" role="status">
+                {supervisorActivationCopy(supervisor) || (supervisor.model_loaded
+                  ? "Model configured. Connection and inference have not been verified."
+                  : "Connect a model to enable semantic supervision. PEX can still use deterministic checks.")}
+              </p>
+              <details className="settings-advanced">
+                <summary>Authentication and connection details</summary>
+                <p className="settings-note">{supervisorHonestyCopy(supervisor)}</p>
+                <p className="settings-note">{supervisor.login_note || "Use a BYOK key, a local runtime, or a custom endpoint for PEX’s supervisor model."}</p>
+              </details>
             </> : null}
             {settingsIssue ? (
               <div className="canonical-state-warning" role="status" aria-live="polite">
