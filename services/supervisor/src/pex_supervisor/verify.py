@@ -619,6 +619,38 @@ def _tests_pass_verdict(
     events: list[HarnessEvent],
     goal: Goal | None,
 ) -> dict[str, Any]:
+    requirements = _goal_requirement_text(goal)
+    if not (
+        re.search(r"\bpytest\b", requirements, re.I)
+        and _UNITTEST_REQUIREMENT.search(requirements)
+    ):
+        return _single_tests_pass_verdict(claim, events, goal)
+    pytest_verdict = _single_tests_pass_verdict(
+        claim, [event for event in events if _unittest_info(event) is None], goal,
+    )
+    unittest_events = [event for event in events if _pytest_info(event) is None]
+    unittest_verdict = (
+        _single_tests_pass_verdict(claim, unittest_events, goal)
+        if _latest_unittest(unittest_events) is not None
+        else {"status": "uncertain", "evidence": ["no_unittest_observed"], "correction": None}
+    )
+    verdicts = [pytest_verdict, unittest_verdict]
+    status = (
+        "contradicted" if any(item["status"] == "contradicted" for item in verdicts)
+        else "supported" if all(item["status"] == "supported" for item in verdicts)
+        else "uncertain"
+    )
+    corrections = [item["correction"] for item in verdicts if item.get("correction")]
+    return {
+        "claim": claim, "status": status,
+        "evidence": [value for item in verdicts for value in item["evidence"]],
+        "correction": " ".join(corrections) if corrections else None,
+    }
+
+
+def _single_tests_pass_verdict(
+    claim: dict[str, Any], events: list[HarnessEvent], goal: Goal | None,
+) -> dict[str, Any]:
     latest_unittest = _latest_unittest(events)
     latest_pytest = _latest_pytest(events)
     if latest_unittest is not None and (
@@ -1340,8 +1372,10 @@ def required_verification_probe_kind(
             edits=_later_edits(events, index),
             goal=goal,
         ):
-            return None
-        return VerificationProbeKind.PYTHON_UNITTEST
+            if re.search(r"\bpytest\b", _goal_requirement_text(goal), re.I) is None:
+                return None
+        else:
+            return VerificationProbeKind.PYTHON_UNITTEST
     goal_requires_pytest = _PYTEST_REQUIREMENT.search(_goal_requirement_text(goal)) is not None
     if claims_require_tests or goal_requires_pytest:
         if _test_count_requirement(goal).status == "ambiguous":

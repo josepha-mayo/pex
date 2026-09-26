@@ -182,6 +182,38 @@ def test_goal_required_unittest_without_result_mints_exact_typed_probe():
     assert verification_probe_targets(kind, goal) == ("test_timeline.py",)
 
 
+@pytest.mark.parametrize(
+    "runs,status,probe",
+    [
+        ([("unittest", 0)], "uncertain", "pytest"),
+        ([("pytest", 0)], "uncertain", "python_unittest"),
+        ([("pytest", 1), ("unittest", 0)], "contradicted", None),
+        ([("unittest", 1), ("pytest", 0)], "contradicted", None),
+        ([("pytest", 0), ("unittest", 0)], "supported", None),
+        ([("unittest", 0), ("pytest", 0)], "supported", None),
+    ],
+)
+def test_explicit_both_framework_goal_needs_independent_results(runs, status, probe):
+    goal = _goal(evidence_requirements=["pytest and python -m unittest must both pass."])
+    claims = [{"statement": "All requested tests passed", "kind": "tests_pass",
+               "polarity": "asserted", "source_event_id": "stop"}]
+    events = [
+        _event(
+            event_id=f"{framework}-{index}", event_type=EventType.SHELL,
+            command="pytest" if framework == "pytest" else "python -m unittest",
+            process_state={framework: {"ok": code == 0, "exit_code": code, "passed": 4}},
+        )
+        for index, (framework, code) in enumerate(runs)
+    ]
+    result = verify_claims(claims, events, goal, {})
+    assert result["status"] == status
+    assert required_verification_probe_kind(claims, events, goal, result) == probe
+    if status == "supported":
+        evidence = result["verdicts"][0]["evidence"]
+        assert "pytest_ok=true" in evidence
+        assert "unittest_ok=true" in evidence
+
+
 def test_goal_required_unittest_pass_needs_no_probe_when_claim_extraction_is_empty():
     goal = _goal(
         acceptance_criteria=["The immutable unit tests pass."],
