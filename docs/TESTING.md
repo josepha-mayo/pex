@@ -6,6 +6,16 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Main-branch verification checkpoints
 
+Exact source `ea049d2` also reported a green workflow in
+[run 36258099806](https://github.com/josepha-mayo/pex/actions/runs/36258099806).
+Its Ubuntu backend passed 4,802 tests and its 324 desktop tests passed. Windows
+backend passed 4,809 tests, but the desktop log retained the same two
+symlink-containment failures masked by the combined build step. Both native
+packages passed 20 Rust tests, bridge identity and OS-vault/BYOK roundtrips with
+zero provider calls. This does not establish full acceptance for that source.
+The corrected workflow and canonical runtime-root handling at `a05958e` are
+running in [run 36258789552](https://github.com/josepha-mayo/pex/actions/runs/36258789552).
+
 Exact source `6edbb89` was reported green by all Windows and Ubuntu jobs in
 [run 36257145205](https://github.com/josepha-mayo/pex/actions/runs/36257145205).
 Ubuntu backend checks passed 4,791 tests (19 skipped, 16 deselected), and
@@ -373,6 +383,13 @@ optional AgentCore endpoint proposes an action.
 - Amazon Bedrock AgentCore support is implemented and offline-tested; no
   deployed AgentCore Runtime is claimed.
 - PexBench is unfrozen; no comparative productivity score is claimed.
+- Routine read permission classification preserves POSIX case and uses Windows
+  drive path semantics for Windows workers. Case-fold collisions, drive-relative
+  paths, rooted paths without a drive, UNC paths and alternate data streams do
+  not qualify for low-risk automatic approval. Ordinary workspace reads still
+  qualify. Planner/policy checks passed 84 tests and three existing end-to-end
+  permission scenarios passed. This is lexical classification, not a filesystem
+  identity or symlink-containment witness.
 - The Now view puts current workers and their controls before historical
   attention measurements. History expands on demand without changing metric
   values or coverage labels. Browser review at 1280px and 800px confirmed visible

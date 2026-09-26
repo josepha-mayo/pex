@@ -142,6 +142,45 @@ def test_external_or_sensitive_read_permission_stays_medium_risk(path):
     assert plan_deterministic(request).risk == RiskLevel.MEDIUM
 
 
+@pytest.mark.parametrize(
+    "cwd,path,expected",
+    [
+        ("/work/project", "/work/project/src/main.py", RiskLevel.LOW),
+        ("/work/project", "src/main.py", RiskLevel.LOW),
+        ("/work/project", "/work/PROJECT/private.txt", RiskLevel.MEDIUM),
+        ("/work/project", "/work/project-extra/private.txt", RiskLevel.MEDIUM),
+        ("/work/ß", "/work/ss/private.txt", RiskLevel.MEDIUM),
+        ("/work/project", r"..\outside.txt", RiskLevel.MEDIUM),
+        ("C:/project", "c:/PROJECT/src/main.py", RiskLevel.LOW),
+        ("C:/project", r"src\main.py", RiskLevel.LOW),
+        ("C:/straße", "C:/strasse/private.txt", RiskLevel.MEDIUM),
+        ("C:/project", "C:outside.txt", RiskLevel.MEDIUM),
+        ("C:/project", r"\outside.txt", RiskLevel.MEDIUM),
+        ("C:/project", "src/main.py:private", RiskLevel.MEDIUM),
+        ("C:/project", "C:/project/src/main.py:private", RiskLevel.MEDIUM),
+        ("C:/project", r"\\server\project\main.py", RiskLevel.MEDIUM),
+        ("project", "src/main.py", RiskLevel.MEDIUM),
+    ],
+)
+def test_read_permission_uses_worker_path_semantics(cwd, path, expected):
+    request = SupervisorRequest(
+        session=_session().model_copy(update={"cwd": cwd}),
+        goal=_goal(),
+        event=_event(
+            EventType.PERMISSION_REQUEST,
+            phase=EventPhase.BEFORE,
+            tool_name="read",
+            file_paths=[path],
+            approval_request={"request_id": "perm-read"},
+        ),
+        scores=TrajectoryScores(),
+    )
+    action = plan_deterministic(request)
+    assert action.risk == expected
+    if expected == RiskLevel.MEDIUM:
+        assert PolicyEngine(AutonomyLevel.MANAGE).decide(action) == PolicyVerdict.ASK_HUMAN
+
+
 def test_eval_command_does_not_invent_missing_dataset_evidence():
     now = datetime.now(UTC)
     goal = Goal(

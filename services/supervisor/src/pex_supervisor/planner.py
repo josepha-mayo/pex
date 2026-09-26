@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import re
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, PureWindowsPath
 from uuid import uuid4
 
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.enums import Authority, EventPhase, EventType, HarnessType
 from pex_protocol.overlay import Overlay, OverlayDiff
+from pex_protocol.project_binding import project_binding_key
 from pex_protocol.redaction import redact_text
 from pex_protocol.supervisor import SupervisorRequest
 
@@ -83,20 +84,32 @@ def _safe_workspace_read_permission(request: SupervisorRequest) -> bool:
     event = request.event
     if str(event.tool_name or "").strip().casefold() != "read" or not event.file_paths:
         return False
-    workspace = str(request.session.cwd or "").replace("\\", "/").rstrip("/")
-    if not workspace:
+    workspace = str(request.session.cwd or "")
+    windows = bool(re.match(r"^[a-zA-Z]:[\\/]", workspace))
+    if not windows and (not workspace.startswith("/") or workspace.startswith("//")):
         return False
-    workspace_folded = workspace.casefold()
+    root = PureWindowsPath(workspace) if windows else PurePosixPath(workspace)
+    root_key = project_binding_key(root.as_posix()) if windows else root.as_posix()
     for raw_path in event.file_paths:
-        path = str(raw_path or "").replace("\\", "/").strip()
-        if not path or _SENSITIVE_READ_PATH.search(path):
+        text = str(raw_path or "")
+        if not text or text != text.strip() or any(ord(char) < 32 for char in text):
             return False
-        if ".." in PurePosixPath(path).parts:
+        path = PureWindowsPath(text) if windows else PurePosixPath(text)
+        if ".." in path.parts or _SENSITIVE_READ_PATH.search(path.as_posix()):
             return False
-        absolute = path.startswith("/") or bool(re.match(r"^[a-zA-Z]:/", path))
-        if absolute:
-            folded = path.rstrip("/").casefold()
-            if folded != workspace_folded and not folded.startswith(f"{workspace_folded}/"):
+        if windows:
+            # Drive-relative, rooted-without-drive, device/UNC and alternate
+            # stream paths do not establish a workspace-local read.
+            if (path.drive or path.root) and not re.match(r"^[a-zA-Z]:[\\/]", text):
+                return False
+            components = path.parts[1:] if path.is_absolute() else path.parts
+            if any(":" in part for part in components):
+                return False
+        elif "\\" in text or re.match(r"^[a-zA-Z]:", text) or text.startswith("//"):
+            return False
+        if path.is_absolute():
+            key = project_binding_key(path.as_posix()) if windows else path.as_posix()
+            if key != root_key and not key.startswith(f"{root_key.rstrip('/')}/"):
                 return False
     return True
 
