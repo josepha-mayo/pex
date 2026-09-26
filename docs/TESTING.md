@@ -15,6 +15,11 @@ packages passed 20 Rust tests, bridge identity and OS-vault/BYOK roundtrips with
 zero provider calls. This does not establish full acceptance for that source.
 The corrected workflow and canonical runtime-root handling at `a05958e` are
 running in [run 36258789552](https://github.com/josepha-mayo/pex/actions/runs/36258789552).
+Its Linux native job failed the installed fresh-state gate despite both software
+renderer settings. The 60-second capture showed desktop recovery; the
+post-failure input/capture showed Home. Packaging, 20 Rust tests, bridge identity
+and Secret Service/BYOK checks passed with zero provider calls. Earlier visual
+passes are exact-run evidence, not proof of reliable startup across builds.
 
 Exact source `6edbb89` was reported green by all Windows and Ubuntu jobs in
 [run 36257145205](https://github.com/josepha-mayo/pex/actions/runs/36257145205).
@@ -383,6 +388,13 @@ optional AgentCore endpoint proposes an action.
 - Amazon Bedrock AgentCore support is implemented and offline-tested; no
   deployed AgentCore Runtime is claimed.
 - PexBench is unfrozen; no comparative productivity score is claimed.
+- Compaction recovery excludes stored artifact/result/fact file-state records
+  that predate a later observed edit of the associated file. Recovery can use
+  the latest edit description, but an undescribed edit does not revive the old
+  state. Durable decisions and constraints survive file edits. The combined
+  context-health/planner suite passed 85 tests and both backend recovery cases
+  passed. These records remain in the ledger; only their use as current
+  file-state recovery evidence changes.
 - Context health no longer uses repeated reads that precede a later edit of
   the same file to trigger forgotten-fact recovery. When no durable item supplies
   the fact, fallback edit evidence uses the latest observed description; an

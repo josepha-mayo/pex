@@ -26,6 +26,7 @@ _DURABLE_KINDS = {
     ContextKind.DECISION,
     ContextKind.CONSTRAINT,
 }
+_FILE_STATE_KINDS = {ContextKind.ARTIFACT, ContextKind.RESULT, ContextKind.FACT}
 _CONTRADICTED = {"contradicted", "conflict", "conflicting", "acceptance_gap"}
 _PROGRESS_EVENTS = {
     EventType.FILE_EDIT,
@@ -180,22 +181,31 @@ def _forgotten_facts(
     for index, compact in enumerate(ordered):
         if compact.event_type != EventType.COMPACTION:
             continue
+        prior_edits: dict[str, tuple[datetime, str]] = {}
+        for prior in ordered[:index]:
+            if prior.event_type != EventType.FILE_EDIT:
+                continue
+            content = (prior.message_delta or prior.command or "").strip()[:400]
+            for name in _file_names(prior.file_paths, prior.project_id):
+                prior_edits[name] = (_as_utc(prior.ts), content)
         known: dict[str, str] = {}
         for item in durable:
             if _as_utc(item.valid_from) > _as_utc(compact.ts):
                 continue
             content = _safe_content(item)
             for name in _item_files(item):
+                latest_edit = prior_edits.get(name)
+                if (
+                    item.kind in _FILE_STATE_KINDS
+                    and latest_edit is not None
+                    and latest_edit[0] > _as_utc(item.valid_from)
+                ):
+                    # This file-state record predates an observed change.
+                    # Decisions and constraints remain durable independently.
+                    continue
                 if content:
                     known.setdefault(name, content)
-        prior_edits: dict[str, str] = {}
-        for prior in ordered[:index]:
-            if prior.event_type != EventType.FILE_EDIT:
-                continue
-            content = (prior.message_delta or prior.command or "").strip()[:400]
-            for name in _file_names(prior.file_paths, prior.project_id):
-                prior_edits[name] = content
-        for name, content in prior_edits.items():
+        for name, (_, content) in prior_edits.items():
             if content:
                 known.setdefault(name, content)
         if not known:

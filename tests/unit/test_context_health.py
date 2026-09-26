@@ -78,7 +78,8 @@ def test_repeated_forgotten_fact_after_compaction_lowers_health() -> None:
     artifact = _item(
         "schema",
         "schema.json is the source of truth for the parser.",
-        now - timedelta(minutes=10),
+        # The fact was confirmed after the preceding file edit.
+        now - timedelta(minutes=8),
         files=["src/schema.json"],
     )
     schema = ["src/schema.json"]
@@ -137,8 +138,9 @@ def test_edit_after_repeated_reads_retires_the_forgotten_fact() -> None:
 
 
 @pytest.mark.parametrize("latest_description", ["Current parser layout.", ""])
+@pytest.mark.parametrize("stored_old_fact", [False, True])
 def test_edit_fallback_restores_latest_observed_state_after_next_compaction(
-    latest_description: str,
+    latest_description: str, stored_old_fact: bool,
 ) -> None:
     now = datetime.now(UTC)
     schema = ["src/schema.json"]
@@ -158,8 +160,31 @@ def test_edit_fallback_restores_latest_observed_state_after_next_compaction(
         _event("new-read-1", EventType.FILE_READ, now - timedelta(minutes=2), file_paths=schema),
         _event("new-read-2", EventType.FILE_READ, now - timedelta(minutes=1), file_paths=schema),
     ]
-    report = assess_context_health(events, [], now=now)
+    items = [
+        _item("old-layout", "Old parser layout.", now - timedelta(minutes=8), files=schema)
+    ] if stored_old_fact else []
+    report = assess_context_health(events, items, now=now)
     assert report.forgotten_facts == ([latest_description] if latest_description else [])
+
+
+@pytest.mark.parametrize("kind", [ContextKind.DECISION, ContextKind.CONSTRAINT])
+def test_file_edits_do_not_retire_durable_decisions_or_constraints(kind) -> None:
+    now = datetime.now(UTC)
+    paths = ["src/schema.json"]
+    item = _item(
+        "durable-rule", "Never send private schema data to an external provider.",
+        now - timedelta(minutes=8), kind=kind, files=paths,
+    )
+    events = [
+        _event(
+            "edit", EventType.FILE_EDIT, now - timedelta(minutes=4),
+            file_paths=paths, message_delta="Update the parser layout.",
+        ),
+        _event("compact", EventType.COMPACTION, now - timedelta(minutes=3)),
+        _event("read-1", EventType.FILE_READ, now - timedelta(minutes=2), file_paths=paths),
+        _event("read-2", EventType.FILE_READ, now - timedelta(minutes=1), file_paths=paths),
+    ]
+    assert assess_context_health(events, [item], now=now).forgotten_facts == [item.content]
 
 
 @pytest.mark.parametrize(
