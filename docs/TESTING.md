@@ -1021,3 +1021,11 @@ optional AgentCore endpoint proposes an action.
   carried into the controller's execution-boundary receipt, including uncertain
   failures. Concurrent request checks confirm receipts stay bound to the right
   token limit and relay identity.
+- On the `706d38c` source UI, the settings flow connected OpenCode 1.18.32 at
+  loopback and completed a basic Codex App Server handshake. The OpenCode
+  fixture denied tools, and PEX made only session/event reads. Its disposable
+  bridge had cloud reasoning off, a zero supervisor dispatch budget, and no
+  provider credentials. The UI confirmed neither connection started a worker
+  turn. No provider request occurred. This verifies the local UI connection
+  flow, not a supervised task, desktop Codex control, packaged startup, or
+  comparative performance; see [the receipt](evidence/pex-browser-connections-706d38c.json).

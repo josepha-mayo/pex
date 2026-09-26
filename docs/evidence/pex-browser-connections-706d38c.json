@@ -1,0 +1,36 @@
+{
+  "schema": "pex.browser-connection-check.v1",
+  "checked_at": "2026-09-27T00:01:23+01:00",
+  "source_commit": "706d38c7319556349cc5e588678b223bbcadc9cb",
+  "surface": "PEX Vite development UI in the in-app browser",
+  "fixture": {
+    "path": "build/browser_onboarding_bridge.py",
+    "sha256": "6dedbf4776ba1c5eebaa565a8a87d4a39970f71e6b7fdd49f9b2e5ce08feb7a4",
+    "profile": "disposable local profile",
+    "cloud_reasoning": false,
+    "supervisor_dispatch_limit": 0,
+    "bridge_auth": "disabled by explicit test-only Settings.for_test",
+    "provider_credentials": false
+  },
+  "opencode": {
+    "version": "1.18.32",
+    "binary_sha256": "cf664aa1da32b788f9b2699b84a9bb9be30b7e025693b90f9b85829d5fe4e252",
+    "endpoint": "http://127.0.0.1:4096",
+    "permission": "deny",
+    "pex_ui_connection": "connected",
+    "pex_observed_requests": [
+      "GET /session",
+      "GET /global/event"
+    ],
+    "worker_session_created": false,
+    "worker_turn_started": false
+  },
+  "codex": {
+    "version": "codex-cli 0.158.0-alpha.2.1",
+    "connection": "Codex App Server connected (basic)",
+    "worker_turn_started": false
+  },
+  "provider_requests": 0,
+  "result": "Both UI connection flows completed without a worker turn or provider call.",
+  "scope_limit": "This proves local UI connection setup and basic App Server handshake. It does not prove task supervision, artifact delivery, desktop Codex control, packaged desktop startup, or comparative performance."
+}
