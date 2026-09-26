@@ -45,7 +45,7 @@ export function OpenCodeConnectionPanel({ request, onChanged, available }: {
     }
   }
 
-  return <section className="settings-card settings-wide">
+  return <section className="settings-card">
     <p className="eyebrow">OpenCode</p>
     <h2>Connect OpenCode</h2>
     <p className="settings-note">Enter the address of an OpenCode server running on this computer.</p>

@@ -39,7 +39,7 @@ export function CodexConnectionPanel({ request, onChanged, available }: {
     }
   }
 
-  return <section className="settings-card settings-wide">
+  return <section className="settings-card">
     <p className="eyebrow">Codex CLI</p>
     <h2>Connect Codex CLI</h2>
     <p className="settings-note">

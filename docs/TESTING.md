@@ -16,6 +16,16 @@ a blocked native status command, but does not prove a renderer cause or pass.
 The overall workflow and Windows checks were still running when this diagnostic
 was recorded.
 
+That same package subsequently passed both
+[combined-renderer replay 36256759610](https://github.com/josepha-mayo/pex/actions/runs/36256759610)
+and [confirmation 36256944664](https://github.com/josepha-mayo/pex/actions/runs/36256944664)
+with `WEBKIT_DISABLE_COMPOSITING_MODE=1` and `LIBGL_ALWAYS_SOFTWARE=1`.
+Both retained the existing 90-second bridge/window and 60-second fresh-state
+gates, Settings navigation, hidden overlay, and anonymous HTTP 401 checks.
+The native CI Xvfb step now uses this verified combination. The production app
+does not impose these overrides on users, and hardware-backed Linux rendering
+is not established by a headless software-renderer replay.
+
 Exact source `1e21082` passed the
 [Windows and Ubuntu source workflow](https://github.com/josepha-mayo/pex/actions/runs/36252854380):
 4,776 backend tests passed on Windows (12 skipped, 16 deselected), and 4,769

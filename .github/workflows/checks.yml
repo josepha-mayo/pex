@@ -124,6 +124,11 @@ jobs:
         run: dbus-run-session -- bash scripts/smoke_linux_keyring.sh "${{ matrix.bridge }}"
       - name: Verify installed Linux desktop window and bridge
         if: runner.os == 'Linux'
+        # Xvfb has no hardware renderer. This exact combination passed both
+        # package replays; it affects only this headless acceptance process.
+        env:
+          WEBKIT_DISABLE_COMPOSITING_MODE: '1'
+          LIBGL_ALWAYS_SOFTWARE: '1'
         run: bash scripts/smoke_linux_desktop.sh apps/desktop/src-tauri/target/release/bundle/deb/PEX_0.1.0_amd64.deb
       - name: Retain packages and startup receipt
         if: always()
