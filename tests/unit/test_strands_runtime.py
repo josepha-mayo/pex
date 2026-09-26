@@ -539,6 +539,9 @@ def test_supervisor_prompt_bounds_untrusted_goal_and_event_fields():
     request.goal.objective = "A" * 100_000
     request.goal.acceptance_criteria = ["B" * 10_000 for _ in range(100)]
     request.goal.evidence_requirements = ["C" * 10_000 for _ in range(100)]
+    request.goal.constraints = ["G" * 10_000 for _ in range(100)]
+    request.goal.forbidden_outcomes = ["H" * 10_000 for _ in range(100)]
+    request.goal.non_goals = ["I" * 10_000 for _ in range(100)]
     request.event.message_delta = "D" * 100_000
     request.scores.features["claims"] = {"value": "E" * 100_000}
     request.scores.features["verification"] = {"value": "F" * 100_000}
@@ -549,6 +552,27 @@ def test_supervisor_prompt_bounds_untrusted_goal_and_event_fields():
     assert "A" * 4_001 not in rendered
     assert "D" * 2_001 not in rendered
     assert "call inspect_acceptance exactly once" in rendered
+
+
+@pytest.mark.parametrize("verifier", [False, True])
+def test_both_supervision_prompts_include_redacted_goal_boundaries(verifier):
+    from pex_protocol.actions import InterventionType, ProposedAction
+    from pex_supervisor.loop import _format_verifier_user
+
+    request = _request(0.1)
+    request.session.cwd = "C:/PRIVATE_BOUNDARY_WORKSPACE"
+    request.goal.constraints = ["Preserve C:/PRIVATE_BOUNDARY_WORKSPACE/data"]
+    request.goal.forbidden_outcomes = ["Never spend card funds"]
+    request.goal.non_goals = ["Do not publish a release"]
+    proposal = ProposedAction(
+        type=InterventionType.NOOP, session_id=request.session.id, rationale="Observe"
+    )
+    rendered = _format_verifier_user(request, proposal) if verifier else _format_user(request)
+
+    assert "Preserve <workspace>/data" in rendered
+    assert "Never spend card funds" in rendered
+    assert "Do not publish a release" in rendered
+    assert "PRIVATE_BOUNDARY_WORKSPACE" not in rendered
 
 
 def test_supervisor_and_verifier_prompts_treat_observed_text_as_untrusted_data():
