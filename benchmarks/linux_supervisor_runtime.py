@@ -13,6 +13,7 @@ import json
 import shutil
 import stat
 import zipfile
+from contextlib import ExitStack
 from pathlib import Path, PurePosixPath
 
 REPO = Path(__file__).resolve().parents[1]
@@ -79,11 +80,12 @@ def build_runtime(wheelhouse: Path, destination: Path) -> dict:
         raise ValueError("public process source must be a regular unlinked file")
     site = destination / "site-packages"
     site.mkdir(parents=True)
-    for relative, (wheel, member) in members.items():
-        target = site / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with zipfile.ZipFile(wheel) as archive:
-            target.write_bytes(archive.read(member))
+    with ExitStack() as resources:
+        archives = {wheel: resources.enter_context(zipfile.ZipFile(wheel)) for wheel in wheels}
+        for relative, (wheel, member) in members.items():
+            target = site / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(archives[wheel].read(member))
     for source, relative in sources:
         target = site / relative
         target.parent.mkdir(parents=True, exist_ok=True)

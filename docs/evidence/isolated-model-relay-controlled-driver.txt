@@ -1,0 +1,58 @@
+import asyncio, hashlib, json, sys, time
+from pathlib import Path
+sys.path[:0] = ['/mnt/d/PEX-work', '/mnt/d/PEX-work/build/isolated-supervisor-runtime/public-model-runtime-v1/site-packages']
+from benchmarks.pex_attach import _decide_out_of_process, _observe_controlled_workspace
+from benchmarks.model_relay import PinnedModelRelay
+from pex_protocol.session import HarnessSession
+from pex_protocol.enums import HarnessType, SessionStatus
+
+root = Path('/mnt/d/PEX-work/build/isolated-supervisor-runtime/model-attempt-5')
+root.mkdir()
+workspace = root/'worker'
+workspace.mkdir()
+task = 'Review the implementation and determine whether there is enough evidence to claim completion.'
+(workspace/'TASK.md').write_text(task)
+(workspace/'solver.py').write_text('def answer():\n    return 1\n')
+session = HarnessSession(id='codex:relay-controlled', harness_type=HarnessType.CODEX,
+    vendor_session_id='relay-controlled', project_id=str(workspace), cwd=str(workspace), status=SessionStatus.STOPPED)
+requests = []
+async def responder(body):
+    requests.append({'model':body['model'], 'tool_names':[t['function']['name'] for t in body.get('tools',[])]})
+    structured = [tool for tool in body.get('tools',[]) if 'action_type' in tool['function'].get('parameters',{}).get('properties',{})]
+    if structured:
+        message = {'role':'assistant','content':None,'tool_calls':[{'id':'controlled-decision','type':'function',
+            'function':{'name':structured[0]['function']['name'],'arguments':json.dumps({
+                'action_type':'NOOP','rationale':'Controlled transport acceptance: no unsupported completion claim.',
+                'evidence':[],'evidence_refs':[],'message':'','payload':{},'confidence':0.8,'risk':'low'})}}]}
+        reason = 'tool_calls'
+    else:
+        message = {'role':'assistant','content':'There is insufficient observed evidence to claim verified completion.'}
+        reason = 'stop'
+    return {'id':'controlled-completion','object':'chat.completion','created':1,'model':'pinned',
+        'choices':[{'index':0,'message':message,'finish_reason':reason}],
+        'usage':{'prompt_tokens':10,'completion_tokens':10,'total_tokens':20}}
+
+async def check():
+    relay = PinnedModelRelay(model='pinned', max_calls=4, deadline=time.perf_counter()+40, backend=responder)
+    result = await _decide_out_of_process(task_md=task, workspace=workspace, session=session,
+        observed=_observe_controlled_workspace(workspace, None),
+        agent_messages=['Implementation updated; awaiting review.'], goal_id='goal:relay-controlled',
+        control_dir=root/'control', timeout=35,
+        offline_runtime=Path('/tmp/pex-model-runtime-Hz8V5b'), model_relay=relay)
+    receipt = {'schema':'pex.controlled-isolated-model-decision.v1',
+        'scope':'Actual PEX decision process and model SDK, injected responder. No provider call or performance claim.',
+        'source_sha': '3a988e3',
+        'runtime_manifest_sha256':hashlib.sha256((root.parent/'public-model-runtime-v1/runtime-manifest.json').read_bytes()).hexdigest(),
+        'requests':requests,'result':result}
+    (root/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+    assert result['used_llm'] is True, result['diagnosis']
+    assert result['action']['type']=='NOOP'
+    assert result['execution_boundary']['mode']=='relay-linux-bwrap'
+    assert any(row['status']=='completed' for row in result['execution_boundary']['relay_receipts'])
+    print(json.dumps({'used_llm':result['used_llm'], 'action':result['action']['type'], 'calls':len(requests), 'diagnosis':result['diagnosis']}))
+asyncio.run(check())
+
+
+
+
+

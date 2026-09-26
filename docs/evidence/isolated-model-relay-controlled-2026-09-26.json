@@ -1,0 +1,270 @@
+{
+  "schema": "pex.controlled-isolated-model-decision.v1",
+  "scope": "Actual PEX decision process and model SDK, injected responder. No provider call or performance claim.",
+  "runtime_manifest_sha256": "d7686de25b86bf4b311ae451536673a5dd16fea96860a200b18b8154bef7d6f8",
+  "requests": [
+    {
+      "model": "pinned",
+      "tool_names": [
+        "inspect_acceptance",
+        "SupervisorDecision"
+      ]
+    }
+  ],
+  "result": {
+    "backend": {
+      "provider": "controller-relay",
+      "model_id": "pinned",
+      "auth_mode": "controller-held",
+      "generation_api": "chat",
+      "base_url": "http://pex-relay.invalid/v1"
+    },
+    "action": {
+      "type": "NOOP",
+      "session_id": "codex:relay-controlled",
+      "goal_id": "goal:relay-controlled",
+      "payload": {},
+      "rationale": "Controlled transport acceptance: no unsupported completion claim.",
+      "evidence": [],
+      "confidence": 0.8,
+      "risk": "low",
+      "reversible": false,
+      "expected_benefit": "",
+      "cooldown_seconds": 30,
+      "authority_required": "local_policy",
+      "requires_capability": null
+    },
+    "diagnosis": "strands_structured_decision",
+    "used_llm": true,
+    "model_name": "pinned",
+    "inference_request_id": null,
+    "input_tokens": 10,
+    "output_tokens": 10,
+    "latency_ms": 1004,
+    "execution_boundary": {
+      "mode": "relay-linux-bwrap",
+      "request_sha256": "1ef333d65055c92afe65542150f782f83a50c51335a3e1a86a2b9aa622566f49",
+      "response_sha256": "90159cd5879e6823eb4e31e607d464f60ef6c494447fbf45d2b5a7b1c8bfeef9",
+      "model_transport": "pinned-unix-relay",
+      "relay_receipts": [
+        {
+          "request_id": "69e0d6f3561d47cca437ab0189a30e17",
+          "request_sha256": "33baabb0616d844c5d4d4ab9f24a049c1443bbe6f19113b0a3836c0cb0497dce",
+          "status": "completed",
+          "response_sha256": "e12a6c0309f9377a4a7d51c0589ccace610d459b2d75396a287592c337392509"
+        }
+      ],
+      "model": "pinned"
+    }
+  },
+  "base_source_sha": "3a988e3",
+  "source_scope": "Working tree based on 3a988e3; controller source hashes below bind the tested additions.",
+  "controller_source_sha256": {
+    "benchmarks/pex_attach.py": "7606ad85fa4a6a76674c1c0ca87c1238647c68a1007678b7aaf3755754fe4777",
+    "benchmarks/model_relay.py": "861a13fbe205a43438499cc00029fead843894b6525c1c7dd9ccf4b90d18c7f3",
+    "benchmarks/linux_sandbox.py": "69407f520f235b0fcba263261f2fa59b551046ef254a1eb9f1f33495039e4677"
+  },
+  "runtime_file_count": 5329,
+  "locked_wheels": [
+    {
+      "file": "aiosqlite-0.22.1-py3-none-any.whl",
+      "sha256": "21c002eb13823fad740196c5a2e9d8e62f6243bd9e7e4a1f87fb5e44ecb4fceb"
+    },
+    {
+      "file": "annotated_types-0.8.0-py3-none-any.whl",
+      "sha256": "f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0"
+    },
+    {
+      "file": "anyio-4.14.2-py3-none-any.whl",
+      "sha256": "9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494"
+    },
+    {
+      "file": "attrs-26.1.0-py3-none-any.whl",
+      "sha256": "c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309"
+    },
+    {
+      "file": "boto3-1.43.79-py3-none-any.whl",
+      "sha256": "4c2381cf99abf749c82762a636337f4aba4800fda6525412fcae2bebe4f72748"
+    },
+    {
+      "file": "botocore-1.43.79-py3-none-any.whl",
+      "sha256": "19b2c772ea2590d0baad6ae004a0e478cf2c982e0e6a39c8e2f882d9b2981445"
+    },
+    {
+      "file": "certifi-2026.7.22-py3-none-any.whl",
+      "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775"
+    },
+    {
+      "file": "click-8.4.2-py3-none-any.whl",
+      "sha256": "e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76"
+    },
+    {
+      "file": "distro-1.9.0-py3-none-any.whl",
+      "sha256": "7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2"
+    },
+    {
+      "file": "docstring_parser-0.18.0-py3-none-any.whl",
+      "sha256": "b3fcbed555c47d8479be0796ef7e19c2670d428d72e96da63f3a40122860374b"
+    },
+    {
+      "file": "h11-0.16.0-py3-none-any.whl",
+      "sha256": "63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"
+    },
+    {
+      "file": "httpcore-1.0.9-py3-none-any.whl",
+      "sha256": "2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"
+    },
+    {
+      "file": "httpx-0.28.1-py3-none-any.whl",
+      "sha256": "d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad"
+    },
+    {
+      "file": "httpx_sse-0.4.3-py3-none-any.whl",
+      "sha256": "0ac1c9fe3c0afad2e0ebb25a934a59f4c7823b60792691f779fad2c5568830fc"
+    },
+    {
+      "file": "idna-3.19-py3-none-any.whl",
+      "sha256": "815e7be7a7806d54abb586dc943addc79e8b2ee16915059658cbeff4b1b43bf4"
+    },
+    {
+      "file": "jiter-0.16.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "sha256": "46add52f4ad47a08bfb1219f3e673da972191489a33016edefdb5ea55bfa8c48"
+    },
+    {
+      "file": "jmespath-1.1.0-py3-none-any.whl",
+      "sha256": "a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64"
+    },
+    {
+      "file": "jsonschema-4.26.0-py3-none-any.whl",
+      "sha256": "d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce"
+    },
+    {
+      "file": "jsonschema_specifications-2025.9.1-py3-none-any.whl",
+      "sha256": "98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe"
+    },
+    {
+      "file": "mcp-1.29.1-py3-none-any.whl",
+      "sha256": "b6310eeb59153300c4ab8b9aec4c52f4819a2d6a8e429eb43d908bed7c783648"
+    },
+    {
+      "file": "openai-2.54.0-py3-none-any.whl",
+      "sha256": "89089789197ccdb87f173a03145ed1598d00795220c93e96cf712b1cbf5e5f2b"
+    },
+    {
+      "file": "opentelemetry_api-1.44.0-py3-none-any.whl",
+      "sha256": "94b98c893a91b88657eaac1e3ba89618cdb85be6918196705354f34728b2cdef"
+    },
+    {
+      "file": "opentelemetry_instrumentation-0.65b0-py3-none-any.whl",
+      "sha256": "ea967a72b9939b5fcfdad572753b4306c59dcb99e3f382d95dae04286805e137"
+    },
+    {
+      "file": "opentelemetry_instrumentation_threading-0.65b0-py3-none-any.whl",
+      "sha256": "d8a1a1f35418a32769d469ef2d7e8401935e097a8553abcfba833da9c74736ce"
+    },
+    {
+      "file": "opentelemetry_sdk-1.44.0-py3-none-any.whl",
+      "sha256": "df081c4c6bcfdb1211e3e86140376792643128a25f8d72d1d27675936e7e96ad"
+    },
+    {
+      "file": "opentelemetry_semantic_conventions-0.65b0-py3-none-any.whl",
+      "sha256": "1cacde7b0ad306f84c5ef08c3dbe1bbaf20165bba6f8bff43b670e555a086bcb"
+    },
+    {
+      "file": "packaging-26.3-py3-none-any.whl",
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+    },
+    {
+      "file": "pydantic-2.13.4-py3-none-any.whl",
+      "sha256": "45a282cde31d808236fd7ea9d919b128653c8b38b393d1c4ab335c62924d9aba"
+    },
+    {
+      "file": "pydantic_core-2.46.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "sha256": "926c9541b14b12b1681dca8a0b75feb510b06c6341b70a8e500c2fdcff837cce"
+    },
+    {
+      "file": "pydantic_settings-2.15.0-py3-none-any.whl",
+      "sha256": "0ba092c291c94baceb5eff768aa0d56400a457585bc0175925a5a5510303da42"
+    },
+    {
+      "file": "pyjwt-2.13.0-py3-none-any.whl",
+      "sha256": "66adcc2aff09b3f1bbd95fc1e1577df8ac8723c978552fd43304c8a290ac5728"
+    },
+    {
+      "file": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "sha256": "a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427"
+    },
+    {
+      "file": "python_dotenv-1.2.3-py3-none-any.whl",
+      "sha256": "904552145e8bfed22162c09dab1c2b9b54fefa7b23ba780f4f26ca0316b0f0d9"
+    },
+    {
+      "file": "python_multipart-0.0.32-py3-none-any.whl",
+      "sha256": "ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23"
+    },
+    {
+      "file": "pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc"
+    },
+    {
+      "file": "referencing-0.37.0-py3-none-any.whl",
+      "sha256": "381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231"
+    },
+    {
+      "file": "rpds_py-2026.6.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "sha256": "ecabd69db66de867690f9797f2f8fa27ba501bbc24540cbdbdc649cd15888ba6"
+    },
+    {
+      "file": "s3transfer-0.19.2-py3-none-any.whl",
+      "sha256": "d8168eccca828cbb2cd573675333f3bddd254313a9c42494b84c76b539e8ba25"
+    },
+    {
+      "file": "six-1.17.0-py2.py3-none-any.whl",
+      "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"
+    },
+    {
+      "file": "sniffio-1.3.1-py3-none-any.whl",
+      "sha256": "2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2"
+    },
+    {
+      "file": "sse_starlette-3.4.8-py3-none-any.whl",
+      "sha256": "6e82314c786709a3cd9520f2285cf9fff90e181e598e8a357b0cf80f66afba0d"
+    },
+    {
+      "file": "starlette-1.6.0-py3-none-any.whl",
+      "sha256": "a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c"
+    },
+    {
+      "file": "strands_agents-1.53.0-py3-none-any.whl",
+      "sha256": "35b28436208486320ed121cbfe425368318847193d57c175823e82e5cc7700de"
+    },
+    {
+      "file": "tqdm-4.70.0-py3-none-any.whl",
+      "sha256": "7f585706bfddbdebf89daac705b2dfcc16890130727d3197ca62c732b4310953"
+    },
+    {
+      "file": "typing_extensions-4.16.0-py3-none-any.whl",
+      "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+    },
+    {
+      "file": "typing_inspection-0.4.4-py3-none-any.whl",
+      "sha256": "65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147"
+    },
+    {
+      "file": "urllib3-2.7.0-py3-none-any.whl",
+      "sha256": "9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897"
+    },
+    {
+      "file": "uvicorn-0.52.4-py3-none-any.whl",
+      "sha256": "f86e41a149d7d05a9969337e3946a9c171c06a5d42680896daaba624aeac8da1"
+    },
+    {
+      "file": "watchdog-6.0.0-py3-none-manylinux2014_x86_64.whl",
+      "sha256": "20ffe5b202af80ab4266dcd3e91aae72bf2da48c0d33bdb15c66658e685e94e2"
+    },
+    {
+      "file": "wrapt-2.3.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl",
+      "sha256": "5d221a6e6ddd302b8397433184e96b59f259f50024b854db1c411a881586b6b8"
+    }
+  ]
+}

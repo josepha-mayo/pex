@@ -628,6 +628,7 @@ async def supervise_isolated_codex(
     decision_timeout: float = 180,
     public_test_sha256: str | None = None,
     offline_runtime: Path | None = None,
+    model_relay: Any | None = None,
 ) -> dict[str, Any]:
     """Observe a completed/stopped worker turn, reason, maybe intervene, observe again."""
     if type(max_followups) is not int or not 0 <= max_followups <= 10:
@@ -678,6 +679,7 @@ async def supervise_isolated_codex(
             control_dir=store_path.parent,
             timeout=min(remaining_budget(), decision_timeout),
             **({"offline_runtime": offline_runtime} if offline_runtime is not None else {}),
+            **({"model_relay": model_relay} if model_relay is not None else {}),
         )
         elapsed = int((time.perf_counter() - started) * 1000)
         backend = decision.get("backend") or {}
@@ -908,10 +910,12 @@ async def _decide_out_of_process(
             os.fsync(handle.fileno())
         if offline_runtime is None:
             command = [sys.executable, "-I", str(PROCESS), str(request_path), str(response_path)]
-        else:
+        elif model_relay is None:
             from benchmarks.linux_sandbox import supervisor_command
 
             command = supervisor_command(workspace, offline_runtime, Path(tmp))
+        else:
+            command = []  # The relay helper constructs and audits the isolated command once.
         exit_code, relay_receipts = await _run_supervisor_command(
             command=command,
             workspace=workspace,
@@ -997,6 +1001,12 @@ async def _run_supervisor_command(
                 command = supervisor_relay_command(
                     workspace, runtime, control, path, model_relay.model
                 )
+                remaining = model_relay.deadline - time.perf_counter()
+                if remaining <= 0:
+                    raise TimeoutError(
+                        "supervisor relay deadline expired during boundary validation"
+                    )
+                timeout = min(timeout, remaining)
             proc = await asyncio.create_subprocess_exec(
                 *command,
                 cwd=workspace,

@@ -771,3 +771,23 @@ optional AgentCore endpoint proposes an action.
   That child was a controlled protocol probe, not the full PEX model runtime.
   Model SDK dependency packaging, full isolated decision acceptance and real
   worker comparisons remain outstanding. No provider request was made.
+- Full isolated model-decision acceptance passed with the actual public PEX
+  process, Strands adapter and Unix relay. The controller injected one structured
+  chat completion; PEX reported `used_llm=true`, `strands_structured_decision`
+  and a validated NOOP with a completed hashed relay receipt. The
+  [retained receipt](evidence/isolated-model-relay-controlled-2026-09-26.json)
+  binds controller source hashes, the runtime manifest hash and all 50 locked
+  wheel hashes; the [driver](evidence/isolated-model-relay-controlled-driver.txt)
+  records the controlled responder. The 5,329-file runtime was copied to native
+  Linux storage after boundary auditing on Windows-mounted storage exhausted
+  the original deadline before inference. The controller now avoids duplicate
+  relay-runtime audits and checks the deadline again after validation. Earlier
+  driver setup failures occurred before model dispatch; their local attempt
+  directories remain retained. The final formatted controller was rechecked
+  in a separate fresh attempt to bind the recorded source hashes. Runtime
+  extraction now reuses open wheel archives rather than reopening an archive
+  for every member; six packaging checks passed. Twenty-five focused runtime,
+  public-process and environment checks and lint passed. The Codex supervision
+  loop forwards an explicitly supplied relay, but this acceptance exercised a
+  single decision, not a live worker correction or full comparative run.
+  No upstream model call, billed request or performance claim was made.
