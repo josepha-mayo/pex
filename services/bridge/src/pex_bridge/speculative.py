@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from pex_protocol.enums import DecisionStatus
+from pex_protocol.enums import DecisionStatus, EventType
+from pex_protocol.verification import PytestInvocationScope, classify_pytest_invocation
 
 PROBE_BUDGET_TOOL_CALLS = 8
 CHEAP_APPROACH_MAX_CHARS = 400
@@ -93,11 +94,39 @@ def probe_result_from_stop(
 ) -> dict[str, Any]:
     pytest_ok: bool | None = None
     for event in reversed(list(recent)):
+        if getattr(event, "session_id", None) != getattr(session, "id", None):
+            continue
+        if getattr(event, "event_type", None) == EventType.FILE_EDIT:
+            # An older result does not verify the worker's current files.
+            break
+        metadata = getattr(event, "metadata", None) or {}
+        scoped_command = metadata.get("opencode_scoped_test_command")
+        invocation = classify_pytest_invocation(
+            scoped_command if isinstance(scoped_command, str) else getattr(event, "command", None)
+        )
+        if invocation is None:
+            continue
         state = getattr(event, "process_state", None) or {}
         info = state.get("pytest") if isinstance(state, dict) else None
-        if isinstance(info, dict) and "ok" in info:
-            pytest_ok = bool(info.get("ok"))
-            break
+        info = info if isinstance(info, dict) else {}
+        exit_code = info.get("exit_code")
+        ok = info.get("ok")
+        if (
+            getattr(event, "error", None)
+            or (type(exit_code) is int and exit_code != 0)
+            or ok is False
+        ):
+            pytest_ok = False
+        elif (
+            ok is True
+            and type(exit_code) is int
+            and exit_code == 0
+            and invocation.scope == PytestInvocationScope.FULL_SUITE
+        ):
+            pytest_ok = True
+        # The latest actual test invocation supersedes older results, including
+        # when its outcome is incomplete or covers only a selected test.
+        break
     pair = speculative_pair(session) or {}
     return {
         "session_id": getattr(session, "id", ""),

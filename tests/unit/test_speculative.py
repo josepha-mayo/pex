@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
 from pex_bridge.speculative import (
     cheap_competing_approaches,
     compare_probe_results,
@@ -36,9 +37,7 @@ def test_cheap_competing_approaches_need_two_short_unresolved_questions():
         "Try a sqlite index first",
     ]
     assert cheap_competing_approaches(rows[:1]) == []
-    assert cheap_competing_approaches(
-        [_decision("rejected", kind="rejected_approach"), *rows]
-    ) == [
+    assert cheap_competing_approaches([_decision("rejected", kind="rejected_approach"), *rows]) == [
         "Try an in-memory index first",
         "Try a sqlite index first",
     ]
@@ -97,11 +96,60 @@ def test_probe_result_reads_pytest_from_recent_events():
         harness_type=HarnessType.SYNTHETIC,
         session_id="synthetic:s1",
         event_type=EventType.SHELL,
+        command="pytest -q",
         process_state={"pytest": {"ok": True, "exit_code": 0}},
     )
     result = probe_result_from_stop(session, {"status": "supported"}, [event])
     assert result["pytest_ok"] is True
     assert result["approach"] == "sqlite"
+
+
+@pytest.mark.parametrize(
+    "ok,exit_code,expected",
+    [("false", 0, None), (1, 0, None), (True, 1, False), (True, False, None)],
+)
+def test_probe_result_does_not_promote_ambiguous_or_failed_test_evidence(ok, exit_code, expected):
+    session = HarnessSession(
+        id="synthetic:probe", harness_type=HarnessType.SYNTHETIC, vendor_session_id="probe"
+    )
+    event = HarnessEvent(
+        event_id="ambiguous",
+        ts=datetime.now(UTC),
+        harness_type=HarnessType.SYNTHETIC,
+        session_id=session.id,
+        event_type=EventType.SHELL,
+        command="pytest -q",
+        process_state={"pytest": {"ok": ok, "exit_code": exit_code}},
+    )
+    assert (
+        probe_result_from_stop(session, {"status": "uncertain"}, [event])["pytest_ok"] is expected
+    )
+
+
+@pytest.mark.parametrize("invalid", ["foreign", "non_test", "selected", "later_edit"])
+def test_probe_test_bonus_requires_current_full_suite_in_own_session(invalid):
+    session = HarnessSession(
+        id="synthetic:probe", harness_type=HarnessType.SYNTHETIC, vendor_session_id="probe"
+    )
+    event = HarnessEvent(
+        event_id="result",
+        ts=datetime.now(UTC),
+        harness_type=HarnessType.SYNTHETIC,
+        session_id="synthetic:foreign" if invalid == "foreign" else session.id,
+        event_type=EventType.SHELL,
+        command="echo pytest"
+        if invalid == "non_test"
+        else "pytest test_small.py"
+        if invalid == "selected"
+        else "pytest -q",
+        process_state={"pytest": {"ok": True, "exit_code": 0}},
+    )
+    events = [event]
+    if invalid == "later_edit":
+        events.append(
+            event.model_copy(update={"event_id": "edit", "event_type": EventType.FILE_EDIT})
+        )
+    assert probe_result_from_stop(session, {"status": "uncertain"}, events)["pytest_ok"] is None
 
 
 def test_probe_already_running_sees_sibling_probe_metadata():

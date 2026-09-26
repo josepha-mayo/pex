@@ -916,3 +916,13 @@ optional AgentCore endpoint proposes an action.
   that path. This establishes deterministic correction, actual harness tool
   execution and public-test verification, not OS-isolated benchmark
   acceptance, live semantic-model benefit or a with/without comparison.
+- Speculative approach comparison now reads only the current worker's actual
+  pytest invocations. Passing-test bonuses require literal `ok=true`, integer
+  exit code zero and full-suite scope; failed exits/errors remain failures.
+  A subsequent file edit invalidates older test evidence, and an incomplete
+  latest test invocation cannot fall back to an older passing result. Eight
+  regression cases failed before the fix (ambiguous values, conflicting exit
+  status, foreign-session results, non-test commands, selected scope and
+  later edits). The speculative unit/end-to-end and probe responsiveness
+  checks passed together: 18 tests. This verifies comparison evidence handling,
+  not that speculative execution improves real task quality or throughput.
