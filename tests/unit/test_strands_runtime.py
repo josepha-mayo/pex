@@ -1170,6 +1170,45 @@ async def test_observed_failed_pytest_claim_sends_precise_correction_without_mod
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("later_edit", [False, True])
+async def test_real_no_claim_verification_flows_into_model_enabled_supervision(later_edit):
+    from pex_protocol.enums import EventType
+    from pex_supervisor.verify import verify_claims
+
+    request = _request(0.1)
+    request.event.message_delta = ""
+    failure = request.event.model_copy(update={
+        "event_id": "observed-failure",
+        "event_type": EventType.SHELL,
+        "command": "pytest -q",
+        "process_state": {"pytest": {
+            "exit_code": 1, "output": "FAILED test_csv.py::test_quotes",
+        }},
+    })
+    events = [failure]
+    if later_edit:
+        events.append(request.event.model_copy(update={
+            "event_id": "repair", "event_type": EventType.FILE_EDIT,
+            "file_paths": ["solver.py"],
+        }))
+    events.append(request.event)
+    request.scores.features["verification"] = verify_claims([], events, request.goal, {})
+    model = FakeStructuredModel("NOOP")
+
+    result = await decide_async(request, model=model)
+
+    if later_edit:
+        assert result.action.type.value == "NOOP"
+        assert result.diagnosis != "observed_pytest_failure_fast_path"
+    else:
+        assert result.action.type.value == "SEND_NUDGE"
+        assert "test_csv.py::test_quotes" in result.action.payload["text"]
+        assert result.diagnosis == "observed_pytest_failure_fast_path"
+        assert result.model_call_count == 0
+        assert model.captured_messages == []
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("unsafe_change", ["basis", "later_edit", "event_id"])
 @pytest.mark.parametrize("claimed_success", [True, False])
 async def test_failed_pytest_fast_path_needs_current_observed_command(

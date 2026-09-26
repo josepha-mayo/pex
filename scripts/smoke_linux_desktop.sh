@@ -51,7 +51,7 @@ if [[ "$ready" != 1 ]]; then
   # Preserve which half of readiness failed before the owned app is stopped.
   echo "Last anonymous bridge health status: $status" >&2
   xdotool search --onlyvisible --name '.*' getwindowname %@ >&2 || true
-  scrot -z build/linux-desktop-smoke.png || true
+  scrot -o -z build/linux-desktop-smoke.png || true
   curl --silent --show-error --max-time 5 \
     --dump-header build/linux-desktop-identity-headers.txt --output /dev/null \
     "http://127.0.0.1:7420/health/identity?challenge=$(printf '0%.0s' {1..64})" || true
@@ -86,7 +86,9 @@ for iteration in $(seq 1 30); do
     xdotool windowsize "$window_id" "$window_width" "$window_height"
     sleep 0.2
   fi
-  scrot -z build/linux-desktop-smoke.png
+  # Without overwrite, scrot creates numbered files and OCR keeps reading
+  # the first frame forever, even after the live window has become ready.
+  scrot -o -z build/linux-desktop-smoke.png
   if [[ "$iteration" == 1 || "$iteration" == 15 || "$iteration" == 30 ]]; then
     cp build/linux-desktop-smoke.png "build/linux-desktop-check-${iteration}.png"
   fi
@@ -109,7 +111,7 @@ if [[ "$workspace_ready" != 1 ]]; then
   # Distinguish a live React view with stuck native IPC from a frozen webview.
   xdotool mousemove --window "$window_id" 859 47 click 1
   sleep 2
-  scrot -z build/linux-desktop-after-settings-click.png
+  scrot -o -z build/linux-desktop-after-settings-click.png
   tesseract build/linux-desktop-after-settings-click.png stdout --psm 11 \
     >build/linux-desktop-after-settings-click-ocr.txt 2>/dev/null || true
   cat build/linux-desktop-after-settings-click-ocr.txt >&2
@@ -139,7 +141,7 @@ xdotool click 1
 settings_ready=0
 for iteration in $(seq 1 8); do
   xdotool mousemove --window "$window_id" "$((858 + iteration % 2))" 47 click 1
-  scrot -z build/linux-desktop-settings.png
+  scrot -o -z build/linux-desktop-settings.png
   tesseract build/linux-desktop-settings.png stdout --psm 11 2>/dev/null \
     >build/linux-desktop-settings-ocr.txt
   if grep -Eiq 'WORKSPACE PREFERENCES|Choose PEX.s model' build/linux-desktop-settings-ocr.txt; then

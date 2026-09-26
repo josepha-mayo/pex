@@ -588,6 +588,11 @@ optional AgentCore endpoint proposes an action.
   and selected correction evidence; stale events, later edits and claim-only
   observations remain outside this fast path. All 103 runtime/supervisor-loop
   checks passed locally. These use fake models, not paid provider calls.
+  A further regression feeds actual event-derived `verify_claims` output into
+  model-enabled supervision with no extracted completion claim. It confirms
+  the failing node reaches the correction with zero model calls, and that a
+  later source edit retires the stale failure. Ten focused cases passed,
+  including current/stale provenance checks.
 - Exact-source run `36264663510` at `d4fa36e` failed its Linux installed
   visual gate because the script still required the retired text "Connect an
   existing worker". The retained Home screenshot and OCR show "Give your work
@@ -598,3 +603,13 @@ optional AgentCore endpoint proposes an action.
   command bar's connection label alone. Bash syntax validation and matching
   against the retained actual OCR passed. A replay of the same package is
   required before claiming installed visual acceptance.
+- Replay `36265473015` failed while reading its initial startup screenshot.
+  Its retained numbered later screenshots visibly show the current Home;
+  startup diagnostics record main at 672 ms. The smoke loop used `scrot`
+  without overwrite, which creates numbered images when the destination
+  exists, so OCR repeatedly read the obsolete first frame. All screenshot
+  calls now use overwrite explicitly, including repeated Settings captures.
+  This supersedes the initial paint-freeze interpretation of this replay;
+  the replay did not establish a frozen live webview. Installed Home/Settings
+  acceptance still requires a new replay with the corrected capture loop.
+  The combined event-verifier/runtime/supervisor checks passed 217 tests.
