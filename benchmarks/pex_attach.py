@@ -518,6 +518,8 @@ def _seeded_public_test_is_intact(workspace: Path, expected_sha256: str) -> bool
 def _observe_controlled_workspace(
     workspace: Path,
     expected_sha256: str | None,
+    *,
+    isolated_tests: bool = False,
 ) -> dict[str, Any]:
     """Observe safely; execute only the exact controller-seeded fixture test."""
     _assert_unlinked_workspace(workspace)
@@ -528,6 +530,28 @@ def _observe_controlled_workspace(
         and _seeded_public_test_is_intact(workspace, expected_sha256)
     )
     before = snapshot(workspace, run_pytest=False) if run_public_tests else None
+    if isolated_tests and run_public_tests:
+        from pex_bridge.observe import _run_public_pytest
+        from pex_protocol.isolated_pytest import EXECUTOR, isolated_pytest_display
+
+        from benchmarks.linux_sandbox import public_pytest_command
+
+        tests = [name for name in before["files"]
+                 if Path(name).name.startswith("test_") and name.endswith(".py")]
+        command = public_pytest_command(workspace, tests)
+        executed_argv = command[command.index("--") + 1:]
+        pytest_result = _run_public_pytest(workspace, tests, "", isolated_command=command)
+        observed = _bind_public_test_integrity(
+            snapshot(workspace, run_pytest=False), expected_sha256,
+        )
+        observed["pytest"] = pytest_result
+        observed = _bind_controller_verification(observed, before=before, workspace=workspace)
+        receipt = observed["controller_verification"]
+        if receipt is not None:
+            receipt["executor"] = EXECUTOR
+            receipt["command"] = isolated_pytest_display(executed_argv[0], tests)
+            receipt["provenance"]["executed_argv"] = executed_argv
+        return observed
     observed = _bind_public_test_integrity(
         snapshot(workspace, run_pytest=run_public_tests), expected_sha256
     )
@@ -550,8 +574,6 @@ async def supervise_isolated_codex(
     """Observe a completed/stopped worker turn, reason, maybe intervene, observe again."""
     if type(max_followups) is not int or not 0 <= max_followups <= 10:
         raise ValueError("max_followups is outside the public benchmark bound")
-    if offline_runtime is not None and public_test_sha256 is not None:
-        raise ValueError("offline isolation cannot accept host-executed public test receipts")
     if (
         isinstance(turn_timeout, bool)
         or isinstance(decision_timeout, bool)
@@ -577,7 +599,10 @@ async def supervise_isolated_codex(
     outgoing_messages: list[str] = []
     followups = 0
     remaining_budget()
-    observed = _observe_controlled_workspace(workspace, public_test_sha256)
+    observed = _observe_controlled_workspace(
+        workspace, public_test_sha256,
+        **({"isolated_tests": True} if offline_runtime is not None else {}),
+    )
     backend: dict[str, Any] = {}
     goal_id = f"public-{session.id}"
 
@@ -635,7 +660,10 @@ async def supervise_isolated_codex(
         worker_followup_wall_seconds += time.perf_counter() - worker_started
         followups += 1
         remaining_budget()
-        next_observed = _observe_controlled_workspace(workspace, public_test_sha256)
+        next_observed = _observe_controlled_workspace(
+            workspace, public_test_sha256,
+            **({"isolated_tests": True} if offline_runtime is not None else {}),
+        )
         audit["result_afterward"] = _observed_outcome(
             outcome,
             before=observed,
@@ -700,6 +728,7 @@ def _audit(
             "public_workspace_sha256": observed.get("public_workspace_sha256"),
             "public_test_integrity": observed.get("public_test_integrity"),
             "pytest": observed.get("pytest"),
+            "controller_verification": observed.get("controller_verification"),
             "trigger": "stop",
             "evidence": (decision.get("action") or {}).get("evidence") or [],
         },
@@ -764,11 +793,34 @@ async def _decide_out_of_process(
             ),
         }
         if offline_runtime is not None:
+            public = control_payload["public_observation"]
             if (
-                control_payload["public_observation"].get("controller_verification") is not None
-                or control_payload["public_observation"].get("pytest") is not None
+                public.get("pytest") is not None
+                or public.get("controller_verification") is not None
             ):
-                raise RuntimeError("offline isolation cannot rebind host-executed test evidence")
+                from pex_protocol.isolated_pytest import (
+                    EXECUTOR,
+                    isolated_pytest_argv,
+                    isolated_pytest_display,
+                )
+
+                from benchmarks.linux_sandbox import _runtime_python
+
+                receipt = public.get("controller_verification")
+                if not isinstance(receipt, dict) or receipt.get("executor") != EXECUTOR:
+                    raise RuntimeError(
+                        "offline isolation cannot rebind host-executed test evidence"
+                    )
+                targets = receipt["relative_targets"]
+                python = str(_runtime_python())
+                if (
+                    receipt["command"] != isolated_pytest_display(python, targets)
+                    or receipt["provenance"].get("executed_argv")
+                    != isolated_pytest_argv(python, targets)
+                ):
+                    raise RuntimeError(
+                        "offline pytest receipt has an incompatible execution command"
+                    )
             # Validate host session identity first, then expose only its public
             # mount identity. Never rewrite an executed command or test receipt.
             control_payload["project_id"] = "/workspace"

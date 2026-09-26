@@ -19,6 +19,7 @@ from pex_bridge.scoring import score_trajectory
 from pex_bridge.store import new_id
 from pex_protocol.enums import EventPhase, EventType, SessionStatus
 from pex_protocol.goal import Goal
+from pex_protocol.isolated_pytest import EXECUTOR, isolated_pytest_argv, isolated_pytest_display
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorRequest
 from pex_supervisor.loop import decide
@@ -151,6 +152,16 @@ def _controller_verification(
         and name.endswith(".py")
     ]
     expected_command = _public_pytest_command(workspace, tests) if tests else None
+    expected_argv = _public_pytest_argv(workspace, tests)
+    executor = raw.get("executor") if isinstance(raw, dict) else None
+    if executor is not None:
+        if (
+            executor != EXECUTOR or str(workspace) != "/workspace"
+            or os.environ.get("PEX_SUPERVISOR_DISABLE") != "1"
+        ):
+            raise ValueError("isolated pytest receipt requires the offline workspace namespace")
+        expected_command = isolated_pytest_display(sys.executable, tests)
+        expected_argv = isolated_pytest_argv(sys.executable, tests)
     if (
         not isinstance(raw, dict)
         or raw.get("owner") != "benchmark_controller"
@@ -171,7 +182,7 @@ def _controller_verification(
         != observation.get("public_workspace_sha256")
         or provenance.get("public_test_sha256") != integrity.get("expected_sha256")
         or provenance.get("workspace_stable_during_verification") is not True
-        or provenance.get("executed_argv") != _public_pytest_argv(workspace, tests)
+        or provenance.get("executed_argv") != expected_argv
     ):
         raise ValueError("controller pytest verification is not bound to this observation")
     return {

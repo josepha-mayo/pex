@@ -1,0 +1,711 @@
+{
+  "schema": "pex.offline-isolated-test-supervision.v1",
+  "scope": "Controlled worker; actual isolated pytest and PEX decisions. No live model turn or comparative performance.",
+  "parent_source_sha256": "70c553129372c83a0db188352d6916613c2783ca2f6e4fc4bd7b545bf0229134",
+  "runtime_manifest_sha256": "8109969cba12a72050fd7b8916e39c96f476b0f726e8213fd6121aaa22306508",
+  "result": {
+    "backend": {
+      "backend": null,
+      "has_api_key": false,
+      "disabled": true,
+      "catalog_size": 60,
+      "providers": [
+        "anthropic",
+        "azure_openai",
+        "bedrock",
+        "cohere",
+        "custom",
+        "dashscope",
+        "deepseek",
+        "fireworks",
+        "github_models",
+        "google",
+        "grok",
+        "groq",
+        "hermes",
+        "huggingface",
+        "litellm",
+        "llama_api",
+        "llamacpp",
+        "lmstudio",
+        "mistral",
+        "moonshot",
+        "nebius",
+        "nvidia",
+        "ollama",
+        "openai",
+        "opencode_go",
+        "openrouter",
+        "perplexity",
+        "sagemaker",
+        "together",
+        "vllm",
+        "writer",
+        "zen"
+      ],
+      "provider_auth_modes": {
+        "openai": [
+          "api_key"
+        ],
+        "azure_openai": [
+          "api_key"
+        ],
+        "anthropic": [
+          "api_key"
+        ],
+        "google": [
+          "api_key"
+        ],
+        "grok": [
+          "api_key"
+        ],
+        "openrouter": [
+          "api_key"
+        ],
+        "zen": [
+          "api_key"
+        ],
+        "opencode_go": [
+          "api_key"
+        ],
+        "hermes": [
+          "api_key"
+        ],
+        "bedrock": [
+          "aws_sigv4"
+        ],
+        "mistral": [
+          "api_key"
+        ],
+        "groq": [
+          "api_key"
+        ],
+        "together": [
+          "api_key"
+        ],
+        "fireworks": [
+          "api_key"
+        ],
+        "deepseek": [
+          "api_key"
+        ],
+        "moonshot": [
+          "api_key"
+        ],
+        "dashscope": [
+          "api_key"
+        ],
+        "nvidia": [
+          "api_key"
+        ],
+        "nebius": [
+          "api_key"
+        ],
+        "perplexity": [
+          "api_key"
+        ],
+        "cohere": [
+          "api_key"
+        ],
+        "huggingface": [
+          "api_key"
+        ],
+        "ollama": [
+          "local"
+        ],
+        "lmstudio": [
+          "local"
+        ],
+        "llamacpp": [
+          "local"
+        ],
+        "vllm": [
+          "local",
+          "custom"
+        ],
+        "custom": [
+          "custom",
+          "api_key"
+        ],
+        "litellm": [
+          "api_key",
+          "custom"
+        ],
+        "github_models": [
+          "api_key"
+        ],
+        "writer": [
+          "api_key"
+        ],
+        "sagemaker": [
+          "api_key"
+        ],
+        "llama_api": [
+          "api_key"
+        ]
+      }
+    },
+    "used_llm": false,
+    "followups": 1,
+    "audits": [
+      {
+        "timestamp": "2026-09-26T18:58:27.771349+00:00",
+        "persistent_goal": "Fix solver.py and verify test_public.py.\n",
+        "observable_evidence": {
+          "files": [
+            "TASK.md",
+            "solver.py",
+            "test_public.py"
+          ],
+          "file_manifest": [
+            {
+              "path": "TASK.md",
+              "sha256": "6265276158edad9edeeaf3d6096b4ca91527749fa81c47ee7f0932a0658b43fb",
+              "size_bytes": 41
+            },
+            {
+              "path": "solver.py",
+              "sha256": "5e7c6287257979441f2066c84b1875a918f8d7c6f66ac0499710c137bb698648",
+              "size_bytes": 27
+            },
+            {
+              "path": "test_public.py",
+              "sha256": "31351f5cfba9426cc8d7b8f1c0d54149ba51959f570b1758e1b60f11d0b7bba4",
+              "size_bytes": 111
+            }
+          ],
+          "public_workspace_sha256": "606b62a76fcf8e67f16e42fe05c4110907d96a6354f83e2f9ad6dcf999b6ebae",
+          "public_test_integrity": {
+            "path": "test_public.py",
+            "expected_sha256": "31351f5cfba9426cc8d7b8f1c0d54149ba51959f570b1758e1b60f11d0b7bba4",
+            "observed_sha256": "31351f5cfba9426cc8d7b8f1c0d54149ba51959f570b1758e1b60f11d0b7bba4",
+            "intact": true
+          },
+          "pytest": {
+            "ok": false,
+            "exit_code": 1,
+            "output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n/workspace/test_public.py:4: assert 0 == 1\n=========================== short test summary info ============================\nFAILED test_public.py::test_answer - assert 0 == 1\n1 failed in 0.03s\n",
+            "timed_out": false
+          },
+          "controller_verification": {
+            "owner": "benchmark_controller",
+            "kind": "pytest",
+            "command": "/usr/bin/python3 -m pytest -q --tb=line -p no:cacheprovider --confcutdir=/workspace -o=testpaths= -o=addopts= test_public.py",
+            "invocation_scope": "targeted",
+            "relative_targets": [
+              "test_public.py"
+            ],
+            "result": {
+              "ok": false,
+              "exit_code": 1,
+              "output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n/workspace/test_public.py:4: assert 0 == 1\n=========================== short test summary info ============================\nFAILED test_public.py::test_answer - assert 0 == 1\n1 failed in 0.03s\n",
+              "timed_out": false
+            },
+            "provenance": {
+              "public_workspace_sha256": "606b62a76fcf8e67f16e42fe05c4110907d96a6354f83e2f9ad6dcf999b6ebae",
+              "public_test_sha256": "31351f5cfba9426cc8d7b8f1c0d54149ba51959f570b1758e1b60f11d0b7bba4",
+              "workspace_stable_during_verification": true,
+              "executed_argv": [
+                "/usr/bin/python3",
+                "-I",
+                "-B",
+                "-X",
+                "pycache_prefix=/tmp/pycache",
+                "-m",
+                "pytest",
+                "-q",
+                "--tb=line",
+                "-p",
+                "no:cacheprovider",
+                "--rootdir",
+                "/workspace",
+                "--confcutdir",
+                "/workspace",
+                "-c",
+                "/dev/null",
+                "-o",
+                "testpaths=",
+                "-o",
+                "addopts=",
+                "test_public.py"
+              ]
+            },
+            "executor": "linux-bwrap-public-pytest-v1"
+          },
+          "trigger": "stop",
+          "evidence": [
+            "pytest_event_id=evt_47c24341ca4c45afb7275db2a30f04a6",
+            "pytest_scope=targeted",
+            "pytest_ok=False",
+            "pytest_exit_code=1",
+            "failed:test_public.py::test_answer"
+          ]
+        },
+        "PEX_backend": {
+          "backend": null,
+          "has_api_key": false,
+          "disabled": true,
+          "catalog_size": 60,
+          "providers": [
+            "anthropic",
+            "azure_openai",
+            "bedrock",
+            "cohere",
+            "custom",
+            "dashscope",
+            "deepseek",
+            "fireworks",
+            "github_models",
+            "google",
+            "grok",
+            "groq",
+            "hermes",
+            "huggingface",
+            "litellm",
+            "llama_api",
+            "llamacpp",
+            "lmstudio",
+            "mistral",
+            "moonshot",
+            "nebius",
+            "nvidia",
+            "ollama",
+            "openai",
+            "opencode_go",
+            "openrouter",
+            "perplexity",
+            "sagemaker",
+            "together",
+            "vllm",
+            "writer",
+            "zen"
+          ],
+          "provider_auth_modes": {
+            "openai": [
+              "api_key"
+            ],
+            "azure_openai": [
+              "api_key"
+            ],
+            "anthropic": [
+              "api_key"
+            ],
+            "google": [
+              "api_key"
+            ],
+            "grok": [
+              "api_key"
+            ],
+            "openrouter": [
+              "api_key"
+            ],
+            "zen": [
+              "api_key"
+            ],
+            "opencode_go": [
+              "api_key"
+            ],
+            "hermes": [
+              "api_key"
+            ],
+            "bedrock": [
+              "aws_sigv4"
+            ],
+            "mistral": [
+              "api_key"
+            ],
+            "groq": [
+              "api_key"
+            ],
+            "together": [
+              "api_key"
+            ],
+            "fireworks": [
+              "api_key"
+            ],
+            "deepseek": [
+              "api_key"
+            ],
+            "moonshot": [
+              "api_key"
+            ],
+            "dashscope": [
+              "api_key"
+            ],
+            "nvidia": [
+              "api_key"
+            ],
+            "nebius": [
+              "api_key"
+            ],
+            "perplexity": [
+              "api_key"
+            ],
+            "cohere": [
+              "api_key"
+            ],
+            "huggingface": [
+              "api_key"
+            ],
+            "ollama": [
+              "local"
+            ],
+            "lmstudio": [
+              "local"
+            ],
+            "llamacpp": [
+              "local"
+            ],
+            "vllm": [
+              "local",
+              "custom"
+            ],
+            "custom": [
+              "custom",
+              "api_key"
+            ],
+            "litellm": [
+              "api_key",
+              "custom"
+            ],
+            "github_models": [
+              "api_key"
+            ],
+            "writer": [
+              "api_key"
+            ],
+            "sagemaker": [
+              "api_key"
+            ],
+            "llama_api": [
+              "api_key"
+            ]
+          }
+        },
+        "inference_request_id": null,
+        "diagnosis": "deterministic_triage_no_supervisor_model",
+        "proposed_action": {
+          "type": "SEND_NUDGE",
+          "session_id": "codex:controlled-tests",
+          "goal_id": "public-codex:controlled-tests",
+          "payload": {
+            "text": "The latest observed pytest run failed (exit 1). Failing test: test_public.py::test_answer. Continue from that failure."
+          },
+          "rationale": "Observed workspace state does not satisfy an explicit acceptance criterion.",
+          "evidence": [
+            "pytest_event_id=evt_47c24341ca4c45afb7275db2a30f04a6",
+            "pytest_scope=targeted",
+            "pytest_ok=False",
+            "pytest_exit_code=1",
+            "failed:test_public.py::test_answer"
+          ],
+          "confidence": 0.86,
+          "risk": "low",
+          "reversible": false,
+          "expected_benefit": "Redirect the worker toward evidenced progress without interrupting the human.",
+          "cooldown_seconds": 45,
+          "authority_required": "local_policy",
+          "requires_capability": "send_message"
+        },
+        "policy_result": "allow",
+        "actual_action_sent": "SEND_NUDGE",
+        "result_afterward": {
+          "delivery": "sent",
+          "followup_turn_id": "turn-2",
+          "public_workspace_sha256": "c0796280617184de82241d2919de98adf87f75d7757fdf77b823806a0c44ebfd",
+          "workspace_changed": true,
+          "pytest_before": false,
+          "pytest_after": true,
+          "helped": true
+        },
+        "latency_ms": 8610,
+        "used_llm": false,
+        "model_name": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "execution_boundary": {
+          "mode": "offline-linux-bwrap",
+          "request_sha256": "c61a424107ba43a3f478749325b13a021075f003550db07ea4983f87a02e7b79",
+          "response_sha256": "765323ff2ec6922baca001c11bb6cc4c89ac9d1f04eaa77aaeb9d0552e19c20a",
+          "model_transport": "disabled"
+        }
+      },
+      {
+        "timestamp": "2026-09-26T18:58:38.704750+00:00",
+        "persistent_goal": "Fix solver.py and verify test_public.py.\n",
+        "observable_evidence": {
+          "files": [
+            "TASK.md",
+            "solver.py",
+            "test_public.py"
+          ],
+          "file_manifest": [
+            {
+              "path": "TASK.md",
+              "sha256": "6265276158edad9edeeaf3d6096b4ca91527749fa81c47ee7f0932a0658b43fb",
+              "size_bytes": 41
+            },
+            {
+              "path": "solver.py",
+              "sha256": "dd46cb2f80fe2d22e284d503f04d3f7c6a66956a171eaa0e8d128e7e2dee5a0e",
+              "size_bytes": 27
+            },
+            {
+              "path": "test_public.py",
+              "sha256": "31351f5cfba9426cc8d7b8f1c0d54149ba51959f570b1758e1b60f11d0b7bba4",
+              "size_bytes": 111
+            }
+          ],
+          "public_workspace_sha256": "c0796280617184de82241d2919de98adf87f75d7757fdf77b823806a0c44ebfd",
+          "public_test_integrity": {
+            "path": "test_public.py",
+            "expected_sha256": "31351f5cfba9426cc8d7b8f1c0d54149ba51959f570b1758e1b60f11d0b7bba4",
+            "observed_sha256": "31351f5cfba9426cc8d7b8f1c0d54149ba51959f570b1758e1b60f11d0b7bba4",
+            "intact": true
+          },
+          "pytest": {
+            "ok": true,
+            "exit_code": 0,
+            "output": ".                                                                        [100%]\n1 passed in 0.02s\n",
+            "timed_out": false
+          },
+          "controller_verification": {
+            "owner": "benchmark_controller",
+            "kind": "pytest",
+            "command": "/usr/bin/python3 -m pytest -q --tb=line -p no:cacheprovider --confcutdir=/workspace -o=testpaths= -o=addopts= test_public.py",
+            "invocation_scope": "targeted",
+            "relative_targets": [
+              "test_public.py"
+            ],
+            "result": {
+              "ok": true,
+              "exit_code": 0,
+              "output": ".                                                                        [100%]\n1 passed in 0.02s\n",
+              "timed_out": false
+            },
+            "provenance": {
+              "public_workspace_sha256": "c0796280617184de82241d2919de98adf87f75d7757fdf77b823806a0c44ebfd",
+              "public_test_sha256": "31351f5cfba9426cc8d7b8f1c0d54149ba51959f570b1758e1b60f11d0b7bba4",
+              "workspace_stable_during_verification": true,
+              "executed_argv": [
+                "/usr/bin/python3",
+                "-I",
+                "-B",
+                "-X",
+                "pycache_prefix=/tmp/pycache",
+                "-m",
+                "pytest",
+                "-q",
+                "--tb=line",
+                "-p",
+                "no:cacheprovider",
+                "--rootdir",
+                "/workspace",
+                "--confcutdir",
+                "/workspace",
+                "-c",
+                "/dev/null",
+                "-o",
+                "testpaths=",
+                "-o",
+                "addopts=",
+                "test_public.py"
+              ]
+            },
+            "executor": "linux-bwrap-public-pytest-v1"
+          },
+          "trigger": "stop",
+          "evidence": [
+            "stop"
+          ]
+        },
+        "PEX_backend": {
+          "backend": null,
+          "has_api_key": false,
+          "disabled": true,
+          "catalog_size": 60,
+          "providers": [
+            "anthropic",
+            "azure_openai",
+            "bedrock",
+            "cohere",
+            "custom",
+            "dashscope",
+            "deepseek",
+            "fireworks",
+            "github_models",
+            "google",
+            "grok",
+            "groq",
+            "hermes",
+            "huggingface",
+            "litellm",
+            "llama_api",
+            "llamacpp",
+            "lmstudio",
+            "mistral",
+            "moonshot",
+            "nebius",
+            "nvidia",
+            "ollama",
+            "openai",
+            "opencode_go",
+            "openrouter",
+            "perplexity",
+            "sagemaker",
+            "together",
+            "vllm",
+            "writer",
+            "zen"
+          ],
+          "provider_auth_modes": {
+            "openai": [
+              "api_key"
+            ],
+            "azure_openai": [
+              "api_key"
+            ],
+            "anthropic": [
+              "api_key"
+            ],
+            "google": [
+              "api_key"
+            ],
+            "grok": [
+              "api_key"
+            ],
+            "openrouter": [
+              "api_key"
+            ],
+            "zen": [
+              "api_key"
+            ],
+            "opencode_go": [
+              "api_key"
+            ],
+            "hermes": [
+              "api_key"
+            ],
+            "bedrock": [
+              "aws_sigv4"
+            ],
+            "mistral": [
+              "api_key"
+            ],
+            "groq": [
+              "api_key"
+            ],
+            "together": [
+              "api_key"
+            ],
+            "fireworks": [
+              "api_key"
+            ],
+            "deepseek": [
+              "api_key"
+            ],
+            "moonshot": [
+              "api_key"
+            ],
+            "dashscope": [
+              "api_key"
+            ],
+            "nvidia": [
+              "api_key"
+            ],
+            "nebius": [
+              "api_key"
+            ],
+            "perplexity": [
+              "api_key"
+            ],
+            "cohere": [
+              "api_key"
+            ],
+            "huggingface": [
+              "api_key"
+            ],
+            "ollama": [
+              "local"
+            ],
+            "lmstudio": [
+              "local"
+            ],
+            "llamacpp": [
+              "local"
+            ],
+            "vllm": [
+              "local",
+              "custom"
+            ],
+            "custom": [
+              "custom",
+              "api_key"
+            ],
+            "litellm": [
+              "api_key",
+              "custom"
+            ],
+            "github_models": [
+              "api_key"
+            ],
+            "writer": [
+              "api_key"
+            ],
+            "sagemaker": [
+              "api_key"
+            ],
+            "llama_api": [
+              "api_key"
+            ]
+          }
+        },
+        "inference_request_id": null,
+        "diagnosis": "deterministic_triage_no_supervisor_model",
+        "proposed_action": {
+          "type": "NOOP",
+          "session_id": "codex:controlled-tests",
+          "goal_id": "public-codex:controlled-tests",
+          "payload": {},
+          "rationale": "No deterministic fact requires interruption. Stop/completion needs supervisor inference or silence.",
+          "evidence": [
+            "stop"
+          ],
+          "confidence": 0.7,
+          "risk": "none",
+          "reversible": false,
+          "expected_benefit": "",
+          "cooldown_seconds": 5,
+          "authority_required": "local_policy",
+          "requires_capability": null
+        },
+        "policy_result": null,
+        "actual_action_sent": null,
+        "result_afterward": null,
+        "latency_ms": 9378,
+        "used_llm": false,
+        "model_name": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "execution_boundary": {
+          "mode": "offline-linux-bwrap",
+          "request_sha256": "028d4a81213cd3815b8b7b79016763fc9fad4bd59d8abf03003c0588faf58987",
+          "response_sha256": "05eb3f6932e18ad33278c912df001b68dc8be0df3a33eafb2c26f462da898f0f",
+          "model_transport": "disabled"
+        }
+      }
+    ],
+    "observed_files": [
+      "TASK.md",
+      "solver.py",
+      "test_public.py"
+    ],
+    "model": null,
+    "outgoing_messages": [
+      "The latest observed pytest run failed (exit 1). Failing test: test_public.py::test_answer. Continue from that failure."
+    ],
+    "supervisor_process_isolated": true,
+    "worker_followup_wall_seconds": 0.003998,
+    "supervisor_wall_seconds": 21.041356
+  }
+}

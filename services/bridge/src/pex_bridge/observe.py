@@ -271,7 +271,9 @@ def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
         return _run_public_pytest(root, tests, cache)
 
 
-def _run_public_pytest(root: Path, tests: list[str], cache: str) -> dict[str, Any]:
+def _run_public_pytest(
+    root: Path, tests: list[str], cache: str, *, isolated_command: list[str] | None = None,
+) -> dict[str, Any]:
     # The worker tests are untrusted input.  Never copy the bridge process's
     # provider tokens, auth material, or arbitrary environment into them.
     env = {key: os.environ[key] for key in _PUBLIC_ENV_KEYS if key in os.environ}
@@ -285,7 +287,7 @@ def _run_public_pytest(root: Path, tests: list[str], cache: str) -> dict[str, An
     if os.name == "nt":
         creation_flags |= CREATE_SUSPENDED
     proc = subprocess.Popen(
-        [
+        isolated_command if isolated_command is not None else [
             sys.executable,
             "-m",
             "pytest",
@@ -304,7 +306,7 @@ def _run_public_pytest(root: Path, tests: list[str], cache: str) -> dict[str, An
         cwd=root,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        env=env,
+        env={} if isolated_command is not None else env,
         creationflags=creation_flags,
         start_new_session=os.name != "nt",
         bufsize=0,

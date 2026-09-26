@@ -8,7 +8,6 @@ so enabling this module alone never makes a presentation run eligible.
 from __future__ import annotations
 
 import os
-import re
 import stat
 import sys
 from pathlib import Path
@@ -172,36 +171,14 @@ def hidden_command(workspace: Path, checker: Path, module: str, function: str) -
 
 
 def public_pytest_command(workspace: Path, files: list[str]) -> list[str]:
-    if not files or any(
-        re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*\.py", name) is None or ".." in name
-        for name in files
-    ):
-        raise ValueError("public test filenames must be plain workspace basenames")
+    from pex_protocol.isolated_pytest import isolated_pytest_argv
+
+    argv = isolated_pytest_argv("/usr/bin/python3", files)
+    argv[0] = str(_runtime_python())
     prefix = _prefix(workspace)
     return [
         *prefix[:-3],
         "--setenv", "PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1",
         *prefix[-3:],
-        str(_runtime_python()),
-        "-I",
-        "-B",
-        "-X",
-        "pycache_prefix=/tmp/pycache",
-        "-m",
-        "pytest",
-        "-q",
-        "--tb=line",
-        "-p",
-        "no:cacheprovider",
-        "--rootdir",
-        "/workspace",
-        "--confcutdir",
-        "/workspace",
-        "-c",
-        "/dev/null",
-        "-o",
-        "testpaths=",
-        "-o",
-        "addopts=",
-        *files,
+        *argv,
     ]

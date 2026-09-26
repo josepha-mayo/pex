@@ -103,9 +103,17 @@ async def test_offline_child_does_not_rewrite_host_test_receipts(tmp_path, monke
         await pex_attach._decide_out_of_process(**arguments)
 
 
-async def test_offline_supervision_rejects_public_test_execution_before_observation(tmp_path):
+async def test_offline_supervision_selects_isolated_public_test_execution(tmp_path, monkeypatch):
     arguments = _arguments(tmp_path)
-    with pytest.raises(ValueError, match="host-executed public test receipts"):
+
+    def observe(workspace, fingerprint, *, isolated_tests):
+        assert workspace == arguments["workspace"]
+        assert fingerprint == "a" * 64
+        assert isolated_tests is True
+        raise RuntimeError("observation boundary selected")
+
+    monkeypatch.setattr(pex_attach, "_observe_controlled_workspace", observe)
+    with pytest.raises(RuntimeError, match="observation boundary selected"):
         await pex_attach.supervise_isolated_codex(
             object(), arguments["session"], arguments["workspace"], arguments["task_md"],
             store_path=tmp_path / "private" / "store.sqlite",

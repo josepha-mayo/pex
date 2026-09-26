@@ -547,3 +547,26 @@ optional AgentCore endpoint proposes an action.
   boundary/execution-safety checks passed 21 tests with seven Linux-only skips.
   This improves the public-test primitive; it does not yet integrate its
   receipts into the offline supervision loop or enable live comparisons.
+- Offline Linux supervision now accepts controller-seeded public tests executed
+  in the public-test sandbox. This supersedes the earlier mode restriction that
+  refused all public-test execution. Seed hash/import validation remains in
+  force; snapshots before/after execution must match before a receipt is bound.
+  Host-run receipts are still rejected. A shared public command contract binds
+  namespace cwd, exact executed argv, test targets, seed hash and workspace hash;
+  the child accepts this executor only with model loading disabled and the
+  `/workspace` namespace. Action audits retain the controller receipt alongside
+  request/response hashes. Scope display is a classifier projection; provenance
+  retains the complete executed argv including isolation, bytecode and config
+  options. Controller fingerprints now cover the observer and shared contract.
+  The [actual WSL receipt](evidence/linux-isolated-test-supervision-2026-09-26.json),
+  [exact controlled driver](evidence/linux-isolated-test-supervision-driver.txt)
+  and [runtime manifest](evidence/linux-isolated-test-runtime-manifest.json)
+  retain failing isolated pytest -> PEX SEND_NUDGE naming its node -> one
+  controlled-worker repair -> passing isolated pytest -> PEX NOOP. No live
+  model turn, full-suite completion claim, natural-task eligibility or comparative
+  performance is established. Fourteen Linux boundary/receipt checks passed,
+  with two host pytest warnings for unavailable asyncio config options. Twenty-
+  seven local isolation/cleanup/public-evidence checks and five fingerprint
+  cases passed. The cleanup test loader was repaired to remove another import-
+  order dependency exposed by the standalone run. Live worker/model transport
+  and complete execution-backend eligibility remain outstanding.

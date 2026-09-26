@@ -1,0 +1,40 @@
+import asyncio, hashlib, json, sys
+from pathlib import Path
+sys.path[:0] = ['/mnt/d/PEX-work', '/mnt/d/PEX-work/build/isolated-supervisor-runtime/public-runtime-v3/site-packages']
+from benchmarks.pex_attach import supervise_isolated_codex
+from pex_protocol.session import HarnessSession
+from pex_protocol.enums import HarnessType, SessionStatus
+root = Path('/mnt/d/PEX-work/build/isolated-supervisor-runtime/test-loop-attempt-1')
+root.mkdir()
+workspace = root / 'worker'
+workspace.mkdir()
+task = 'Fix solver.py and verify test_public.py.\n'
+(workspace / 'TASK.md').write_text(task)
+(workspace / 'solver.py').write_text('def answer():\n    return 0\n')
+public = workspace / 'test_public.py'
+public.write_text("import importlib\nsolver = importlib.import_module('solver')\ndef test_answer():\n    assert solver.answer() == 1\n")
+fingerprint = hashlib.sha256(public.read_bytes()).hexdigest()
+session = HarnessSession(id='codex:controlled-tests', harness_type=HarnessType.CODEX, vendor_session_id='controlled-tests', project_id=str(workspace), cwd=str(workspace), status=SessionStatus.STOPPED)
+class ControlledWorker:
+    isolated_agent_messages = ['Awaiting the next step.']
+    last_turn_id = 'turn-1'
+    async def send_message(self, received_session, text):
+        assert received_session is session
+        assert 'test_public.py::test_answer' in text
+        self.last_turn_id = 'turn-2'
+        return True
+    async def wait_for_turn_completion(self, received_session, turn, timeout):
+        assert received_session is session and turn == 'turn-2'
+        (workspace / 'solver.py').write_text('def answer():\n    return 1\n')
+        self.isolated_agent_messages.append('Updated solver.py.')
+        return {'status':'completed'}
+result = asyncio.run(supervise_isolated_codex(ControlledWorker(), session, workspace, task, store_path=root/'private'/'store.sqlite', max_followups=1, offline_runtime=root.parent/'public-runtime-v3', public_test_sha256=fingerprint, turn_timeout=60, decision_timeout=15))
+assert result['followups'] == 1 and not result['used_llm']
+assert [a['proposed_action']['type'] for a in result['audits']] == ['SEND_NUDGE','NOOP']
+assert [a['observable_evidence']['pytest']['ok'] for a in result['audits']] == [False,True]
+for audit in result['audits']:
+    assert audit['observable_evidence']['controller_verification']['executor'] == 'linux-bwrap-public-pytest-v1'
+    assert audit['observable_evidence']['controller_verification']['provenance']['executed_argv'][-1] == 'test_public.py'
+receipt = {'schema':'pex.offline-isolated-test-supervision.v1', 'scope':'Controlled worker; actual isolated pytest and PEX decisions. No live model turn or comparative performance.', 'parent_source_sha256':hashlib.sha256(Path('/mnt/d/PEX-work/benchmarks/pex_attach.py').read_bytes()).hexdigest(), 'runtime_manifest_sha256':hashlib.sha256((root.parent/'public-runtime-v3/runtime-manifest.json').read_bytes()).hexdigest(), 'result':result}
+(root/'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n')
+print(json.dumps({'followups':result['followups'],'actions':[a['proposed_action']['type'] for a in result['audits']], 'pytest_ok':[a['observable_evidence']['pytest']['ok'] for a in result['audits']], 'used_llm':result['used_llm']}))

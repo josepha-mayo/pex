@@ -16,7 +16,7 @@ import pytest
 
 def _evaluator():
     path = Path(__file__).resolve().parents[2] / "benchmarks" / "evaluator.py"
-    spec = importlib.util.spec_from_file_location("pexbench_evaluator_cleanup", path)
+    spec = importlib.util.spec_from_file_location("benchmarks.pexbench_evaluator_cleanup", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
