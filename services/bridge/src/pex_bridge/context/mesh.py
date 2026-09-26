@@ -407,14 +407,14 @@ def build_bundle(
         # Only a trusted supported verdict whose claim states the exact criterion
         # may advance the handoff to the next one.
         evidenced = {
-            str(claim.get("statement") or "").strip().casefold()
+            str(claim.get("statement") or "").strip()
             for item in [*delivered_evidence, *chosen]
             if _is_supported_result(item)
             if isinstance(claim := item.metadata.get("claim"), dict)
         }
         for criterion in goal.acceptance_criteria:
             cleaned = contract_text(criterion)
-            if cleaned.casefold() in evidenced:
+            if cleaned in evidenced:
                 continue
             if cleaned:
                 return cleaned

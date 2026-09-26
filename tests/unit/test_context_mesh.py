@@ -680,6 +680,29 @@ def test_later_handoff_keeps_previously_delivered_supported_criterion_complete()
     assert bundle.next_objective == "release artifact exists"
 
 
+@pytest.mark.parametrize("delivered", [False, True])
+@pytest.mark.parametrize("criteria", [
+    ["REPORT.json exists", "report.json exists"],
+    ["report.txt contains exactly 'OK'", "report.txt contains exactly 'ok'"],
+])
+def test_handoff_does_not_merge_case_distinct_acceptance_contracts(criteria, delivered):
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    goal.objective = "Produce the required report artifacts"
+    goal.acceptance_criteria = criteria
+    verified = _item(
+        "verified-contract", criteria[0], now,
+        kind=ContextKind.RESULT, provenance=SourceKind.TEST,
+        metadata={"verified": True, "status": "supported",
+                  "claim": {"statement": criteria[0]}},
+    )
+    bundle = build_bundle(
+        goal, _target(task=criteria[0]), [verified], [], [],
+        exclude_item_ids={verified.id} if delivered else set(),
+    )
+    assert bundle.next_objective == criteria[1]
+
+
 def test_handoff_does_not_promote_worker_metadata_or_completion_words() -> None:
     now = datetime.now(UTC)
     goal = _goal(now)

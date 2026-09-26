@@ -528,3 +528,12 @@ optional AgentCore endpoint proposes an action.
   in WSL, including an actual case-sensitive directory; system pytest emitted
   two unknown asyncio-config warnings. Three existing backend correction cases
   also passed. These are offline verification checks, not live model results.
+- Handoff next-objective selection preserves acceptance-contract case. A
+  supported result for `REPORT.json exists` cannot also retire `report.json
+  exists`; exact-content evidence for `OK` cannot retire a requirement for
+  `ok`. This applies to newly selected and previously delivered evidence.
+  Four regression cases reproduced the incorrect fallback to the goal title
+  before the fix. Context mesh, handoff protocol and supervisor-context checks
+  passed 92 tests. Three backend scenarios passed: bundle injection, exact
+  delivered-context acknowledgement and isolated Codex-to-Cursor routing.
+  These are controlled offline checks; no live worker/model efficacy is claimed.
