@@ -1,0 +1,14 @@
+{
+  "schema": "pex.isolated-supervisor-decision.v1",
+  "request_sha256": "2c58679f122abb0e8eeed15cc844320a72c269c8d15e75fb3b331a03d76892f0",
+  "response_sha256": "70ca28781d11273772d251f2feed9fdcd1c6282a0044df345a16735e5c2c9f4b",
+  "runtime_manifest_sha256": "92fc32229beb80e553fdb327fef3c2e690f7f8730ceaab0c2324e958fd76c7de",
+  "returncode": 0,
+  "used_llm": false,
+  "action": "SEND_NUDGE",
+  "diagnosis": "deterministic_triage_no_supervisor_model",
+  "scope": "offline decision only; no worker dispatch or live provider transport",
+  "boundary": "Linux bubblewrap; read-only public workspace/runtime/request; writable response directory; cleared environment; network namespace; model loading disabled",
+  "verification_scope": "Actual PEX offline decision. No worker continuation, live inference, natural-task comparison or benchmark eligibility is established.",
+  "first_attempt": "Failed on checkout-only dotenv ancestor-depth assumption; retained in tool output. Second attempt used corrected provider source."
+}

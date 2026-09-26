@@ -95,9 +95,18 @@ def _load_dotenv() -> None:
     global _DOTENV_LOADED
     if _DOTENV_LOADED:
         return
-    root = Path(__file__).resolve().parents[4]
-    path = root / ".env"
     _DOTENV_LOADED = True
+    module_path = Path(__file__).resolve()
+    if len(module_path.parents) <= 4:
+        return
+    root = module_path.parents[4]
+    # Legacy dotenv support is confined to the actual source-checkout layout.
+    # Installed packages must not probe arbitrary ancestors for credentials.
+    if module_path != root / "services/supervisor/src/pex_supervisor/providers.py":
+        return
+    if not (root / "pyproject.toml").is_file():
+        return
+    path = root / ".env"
     if not path.is_file():
         return
     try:

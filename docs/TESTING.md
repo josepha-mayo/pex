@@ -13,8 +13,8 @@ backend passed 4,809 tests, but the desktop log retained the same two
 symlink-containment failures masked by the combined build step. Both native
 packages passed 20 Rust tests, bridge identity and OS-vault/BYOK roundtrips with
 zero provider calls. This does not establish full acceptance for that source.
-The corrected workflow and canonical runtime-root handling at `a05958e` are
-running in [run 36258789552](https://github.com/josepha-mayo/pex/actions/runs/36258789552).
+The corrected workflow and canonical runtime-root handling at `a05958e` completed
+in [run 36258789552](https://github.com/josepha-mayo/pex/actions/runs/36258789552).
 Its Linux native job failed the installed fresh-state gate despite both software
 renderer settings. The 60-second capture showed desktop recovery; the
 post-failure input/capture showed Home. Packaging, 20 Rust tests, bridge identity
@@ -443,3 +443,31 @@ optional AgentCore endpoint proposes an action.
   an arbitrary private Codex desktop conversation.
 - The installer is unsigned; source and SHA-256 hashes are published with the
   accepted candidate.
+
+- The actual offline PEX decision child ran inside the Linux supervisor boundary.
+  Its public task required `report.json`; the worker reported completion while
+  the public observation contained no files. PEX returned `SEND_NUDGE` naming
+  the missing artifact, with `used_llm=false`, zero tokens and no worker dispatch.
+  The [decision receipt](evidence/linux-isolated-supervisor-decision-2026-09-26.json)
+  binds the retained request, response and runtime manifest hashes. The curated
+  runtime contains only public PEX packages and dependency wheels matching
+  `uv.lock`, excluding controller/evaluator sources and credentials. This proves
+  an offline decision, not live worker improvement or comparative performance.
+  The first attempt exposed an installed-package crash in checkout-only dotenv
+  discovery. Dotenv now loads only from a verified source-checkout layout;
+  packaged providers do not probe arbitrary ancestors. Runtime, provider and
+  execution-safety checks passed 113 tests; the strengthened oversized-dotenv
+  check and three other dotenv cases passed afterward. Full benchmark integration,
+  live model transport and complete action-time receipts remain outstanding.
+- Exact source `a05958e` Windows backend passed 4,818 tests (12 skipped,
+  16 deselected), and all 325 desktop checks passed without skips, including
+  privileged symlink containment. Its Linux installed visual gate still failed.
+- Exact source `a2dff00` Linux native job in
+  [run 36260871093](https://github.com/josepha-mayo/pex/actions/runs/36260871093)
+  passed 21 Rust tests, bridge identity, Secret Service/BYOK storage and the
+  installed fresh-profile Home/Settings visual gate with zero provider calls.
+  The [installed receipt](evidence/linux-installed-smoke-a2dff00.json) and
+  [startup trace](evidence/linux-startup-ipc-a2dff00.log) retain that result.
+  React reported main at 1,106 ms and settings at 2,966 ms. The Home screenshot
+  was also inspected. This is an exact-run pass; the preceding visual failure
+  remains relevant to startup reliability, and live worker quality is unproven.

@@ -104,26 +104,53 @@ def test_nebius_environment_key_never_inherits_another_vendors_key(monkeypatch):
 def test_dotenv_loader_refuses_oversized_files(monkeypatch, tmp_path):
     import pex_supervisor.providers as providers
 
-    marker = "PEX_OVERSIZED_DOTENV_MARKER"
+    marker = "PEX_SUPERVISOR_MODEL"
     monkeypatch.delenv(marker, raising=False)
     (tmp_path / ".env").write_bytes(
         f"{marker}=must-not-load\n".encode() + (b"x" * 1_048_576)
     )
 
-    class ModulePath:
-        def resolve(self):
-            return self
-
-        @property
-        def parents(self):
-            return [tmp_path, tmp_path, tmp_path, tmp_path, tmp_path]
-
-    monkeypatch.setattr(providers, "Path", lambda _value: ModulePath())
+    source = tmp_path / "services/supervisor/src/pex_supervisor/providers.py"
+    source.parent.mkdir(parents=True)
+    source.touch()
+    (tmp_path / "pyproject.toml").touch()
+    monkeypatch.setattr(providers, "__file__", str(source))
     monkeypatch.setattr(providers, "_DOTENV_LOADED", False)
 
     providers._load_dotenv()
 
     assert marker not in os.environ
+
+
+@pytest.mark.parametrize("layout", ["/pex_supervisor/providers.py", "installed"])
+def test_installed_provider_does_not_probe_ancestor_dotenv(monkeypatch, tmp_path, layout):
+    import pex_supervisor.providers as providers
+
+    source = (
+        tmp_path / "lib/python3.12/site-packages/pex_supervisor/providers.py"
+        if layout == "installed" else providers.Path(layout)
+    )
+    (tmp_path / ".env").write_text("PEX_SUPERVISOR_MODEL=untrusted-ancestor\n")
+    monkeypatch.delenv("PEX_SUPERVISOR_MODEL", raising=False)
+    monkeypatch.setattr(providers, "__file__", str(source))
+    monkeypatch.setattr(providers, "_DOTENV_LOADED", False)
+    providers._load_dotenv()
+    assert "PEX_SUPERVISOR_MODEL" not in os.environ
+
+
+def test_source_checkout_dotenv_remains_supported(monkeypatch, tmp_path):
+    import pex_supervisor.providers as providers
+
+    source = tmp_path / "services/supervisor/src/pex_supervisor/providers.py"
+    source.parent.mkdir(parents=True)
+    source.touch()
+    (tmp_path / "pyproject.toml").touch()
+    (tmp_path / ".env").write_text("PEX_SUPERVISOR_MODEL=checkout-model\n")
+    monkeypatch.delenv("PEX_SUPERVISOR_MODEL", raising=False)
+    monkeypatch.setattr(providers, "__file__", str(source))
+    monkeypatch.setattr(providers, "_DOTENV_LOADED", False)
+    providers._load_dotenv()
+    assert os.environ["PEX_SUPERVISOR_MODEL"] == "checkout-model"
 
 
 def test_login_auth_is_declared_unimplemented_and_does_not_become_the_live_mode(monkeypatch):
