@@ -898,3 +898,21 @@ optional AgentCore endpoint proposes an action.
   (320 passed, five platform skips) and the production build passed. This
   proves local UI rendering and API correctness, not live-model quality or
   installed native-app acceptance at this revision.
+- Real Codex tool repair passed at source `4be98f7`. The
+  [receipt](evidence/codex-controlled-repair-4be98f7.json) records a seeded
+  failing `test_public.py::test_answer`, the actual PEX public decision
+  process's SEND_NUDGE naming that test, real adapter follow-up delivery,
+  Codex shell execution, unchanged public-test hash and a passing rerun.
+  The next PEX decision was NOOP, not model-reviewed goal completion.
+  Two turns shared one new ephemeral thread; the follow-up's official
+  completed turn and normalized stop event retained its exact returned ID.
+  Three local Responses replies scripted acknowledgement, one bounded file
+  edit command in the fresh workspace and the final response. No upstream
+  provider call or card funds were used. The
+  [driver](evidence/codex-controlled-repair-driver.txt) closes the owned App
+  Server and responder. An earlier adapter-only repair trial passed; the
+  first attempt to add the PEX decision process failed on the driver's
+  missing repository import path before startup, then passed after fixing
+  that path. This establishes deterministic correction, actual harness tool
+  execution and public-test verification, not OS-isolated benchmark
+  acceptance, live semantic-model benefit or a with/without comparison.
