@@ -13,6 +13,28 @@ from pex_supervisor.verify import verify_claims
 from test_supervisor_loop import _request
 
 
+@pytest.mark.parametrize("field", ["constraints", "forbidden_outcomes", "non_goals"])
+@pytest.mark.parametrize("values", [["X" * 201], [str(i) for i in range(13)]])
+def test_long_goal_boundaries_offer_read_even_with_supported_acceptance(field, values):
+    request = _request(0.1)
+    setattr(request.goal, field, values)
+    request.scores.features["verification"] = {
+        "status": "supported", "acceptance_status": "supported",
+    }
+    assert select_evidence_tool_names(request) == ("get_goal",)
+
+
+@pytest.mark.parametrize("length,complete", [(201, True), (1001, False)])
+def test_goal_read_discloses_whether_boundary_text_is_complete(length, complete):
+    request = _request(0.1)
+    request.goal.constraints = ["X" * length]
+    tool = next(item for item in build_evidence_tools(request, [])
+                if item.tool_name == "get_goal")
+    result = json.loads(tool())
+    assert result["constraints"] == ["X" * min(length, 1000)]
+    assert result["boundaries_complete"] is complete
+
+
 @pytest.mark.parametrize("name", ["durations.json", "summary.md", "exports/report.csv"])
 def test_named_output_artifact_is_read_and_audited_without_fixed_filename(tmp_path, name):
     request = _request(0.1)

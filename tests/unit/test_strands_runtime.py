@@ -575,6 +575,66 @@ def test_both_supervision_prompts_include_redacted_goal_boundaries(verifier):
     assert "PRIVATE_BOUNDARY_WORKSPACE" not in rendered
 
 
+@pytest.mark.asyncio
+async def test_intervention_cannot_skip_reading_long_goal_boundaries():
+    request = _request(0.1)
+    request.goal.constraints = ["Preserve data. " * 20]
+    result = await run_strands_async(request, model=FakeStructuredModel("SEND_NUDGE"))
+    assert result.action.type.value == "NOOP"
+    assert result.diagnosis.endswith("goal_boundaries_unread")
+
+
+@pytest.mark.asyncio
+async def test_verifier_cannot_approve_without_reading_long_goal_boundaries():
+    from pex_protocol.actions import InterventionType, ProposedAction
+    from pex_supervisor.loop import run_independent_verifier_async
+
+    request = _request(0.1)
+    request.goal.constraints = ["Preserve data. " * 20]
+    proposal = ProposedAction(
+        type=InterventionType.SEND_NUDGE, session_id=request.session.id,
+        rationale="Correct artifact", payload={"message": "Create report.txt"},
+    )
+    result = await run_independent_verifier_async(
+        request, proposal,
+        model=FakeStructuredModel(verifier_evidence_tool_calls=1),
+    )
+    assert result["approved"] is False
+    assert result["status"] == "goal_boundaries_unread"
+
+
+@pytest.mark.parametrize("length,complete", [(201, True), (1001, False)])
+def test_long_goal_read_requires_cited_complete_receipt(length, complete):
+    from pex_supervisor.loop import _goal_boundaries_observed
+
+    request = _request(0.1)
+    request.goal.constraints = ["X" * length]
+    collector = EvidenceObservationCollector(request, stage="main", invocation_id="boundaries")
+    from pex_supervisor.evidence_tools import build_evidence_tools
+
+    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
+                if item.tool_name == "get_goal")
+    tool()
+    refs = [collector.observations[0].observation_id]
+    assert _goal_boundaries_observed(request, list(collector.observations), refs) is complete
+    assert not _goal_boundaries_observed(request, list(collector.observations), [])
+
+
+def test_goal_read_transport_preview_cannot_count_as_complete_boundaries():
+    from pex_supervisor.evidence_tools import build_evidence_tools
+    from pex_supervisor.loop import _goal_boundaries_observed
+
+    request = _request(0.1)
+    request.goal.constraints = ["X" * 900 for _ in range(12)]
+    collector = EvidenceObservationCollector(request, stage="main", invocation_id="boundary-limit")
+    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
+                if item.tool_name == "get_goal")
+    result = json.loads(tool())
+    assert result["truncated"] is True
+    refs = [collector.observations[0].observation_id]
+    assert not _goal_boundaries_observed(request, list(collector.observations), refs)
+
+
 def test_supervisor_and_verifier_prompts_treat_observed_text_as_untrusted_data():
     from pex_supervisor.loop import _system_prompt, _verifier_system_prompt
 

@@ -28,6 +28,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pex_supervisor.evidence_observations import EvidenceObservationCollector
 from pex_supervisor.evidence_tools import (
     build_evidence_tools,
+    goal_boundaries_truncated,
     select_evidence_tool_names,
 )
 from pex_supervisor.planner import plan_deterministic
@@ -76,6 +77,38 @@ def _bounded_items(values: object, *, count: int = 24, width: int = 500) -> list
     if not isinstance(values, (list, tuple)):
         return []
     return [_clip(value, width) for value in values[:count]]
+
+
+def _goal_boundary_read_instruction(request: SupervisorRequest) -> str:
+    if not goal_boundaries_truncated(request):
+        return ""
+    return (
+        "Goal boundary excerpts are incomplete. Call get_goal in the same evidence "
+        "round before proposing or approving any intervention, and cite its observation. "
+        "If boundaries_complete is false, the rules remain incomplete; choose NOOP "
+        "or reject the intervention and explain the limitation.\n"
+    )
+
+
+def _goal_boundaries_observed(
+    request: SupervisorRequest,
+    observations: list[SupervisorEvidenceObservation],
+    evidence_refs: list[str],
+) -> bool:
+    if not goal_boundaries_truncated(request):
+        return True
+    import json
+
+    for observation in observations:
+        if observation.tool_name != "get_goal" or observation.observation_id not in evidence_refs:
+            continue
+        try:
+            value = json.loads(observation.output)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(value, dict) and value.get("boundaries_complete") is True:
+            return True
+    return False
 
 
 def _confidence(value: object) -> float:
@@ -253,6 +286,7 @@ def _format_user(request: SupervisorRequest) -> str:
         "Forbidden outcomes: "
         f"{_bounded_items(goal.forbidden_outcomes, count=12, width=200) if goal else []}\n"
         f"Non-goals: {_bounded_items(goal.non_goals, count=12, width=200) if goal else []}\n"
+        f"{_goal_boundary_read_instruction(request)}"
         f"Acceptance: {_bounded_items(goal.acceptance_criteria) if goal else []}\n"
         f"Evidence requirements: {_bounded_items(goal.evidence_requirements) if goal else []}\n"
         f"Extracted claims: {_clip(claims, 4_000)}\n"
@@ -570,6 +604,7 @@ def _format_verifier_user(
         "ForbiddenOutcomes="
         f"{_bounded_items(goal.forbidden_outcomes, count=12, width=200) if goal else []}\n"
         f"NonGoals={_bounded_items(goal.non_goals, count=12, width=200) if goal else []}\n"
+        f"{_goal_boundary_read_instruction(request)}"
         f"Acceptance={_bounded_items(goal.acceptance_criteria) if goal else []}\n"
         f"Verification={_clip(features.get('verification') or 'none', 6_000)}\n"
         "OfferedContext="
@@ -916,6 +951,18 @@ async def run_strands_async(
         proposal["evidence"] = evidence_refs
         evidence_bound_from_refs = True
     action = _action_from_proposal(request, proposal)
+    boundaries_observed = _goal_boundaries_observed(
+        request, list(collector.observations), evidence_refs,
+    )
+    if action.type != InterventionType.NOOP and not boundaries_observed:
+        action = _action_from_proposal(
+            request,
+            {
+                "type": "NOOP",
+                "rationale": "Complete goal boundaries were not read and cited.",
+                "evidence": ["goal_boundaries_unread"],
+            },
+        )
     if action.type != InterventionType.NOOP and (not refs_valid or not evidence_refs):
         action = _action_from_proposal(
             request,
@@ -931,6 +978,8 @@ async def run_strands_async(
         diagnosis=(
             "strands_structured_decision"
             if action.type == structured.action_type
+            else "strands_structured_decision:goal_boundaries_unread"
+            if not boundaries_observed
             else "strands_structured_decision:invalid_evidence_refs"
         ),
         traces=[
@@ -1085,6 +1134,9 @@ async def run_independent_verifier_async(
         }
     )
     uncertain_verification_only = _uncertain_verification_only(request, unique_tools)
+    boundaries_observed = _goal_boundaries_observed(
+        request, list(collector.observations), evidence_refs,
+    )
     approved = bool(
         structured.approved
         and evidence
@@ -1092,9 +1144,12 @@ async def run_independent_verifier_async(
         and bool(evidence_refs)
         and evidence_tool_used
         and not uncertain_verification_only
+        and boundaries_observed
     )
     if approved:
         status = "approved"
+    elif structured.approved and not boundaries_observed:
+        status = "goal_boundaries_unread"
     elif structured.approved and evidence and uncertain_verification_only:
         status = "uncertain_evidence"
     elif structured.approved and (not refs_valid or not evidence_refs):

@@ -69,6 +69,16 @@ _EVIDENCE_TOOL_ORDER = (
 )
 
 
+def goal_boundaries_truncated(
+    request: SupervisorRequest, *, count: int = 12, width: int = 200,
+) -> bool:
+    goal = request.goal
+    return goal is not None and any(
+        len(values) > count or any(len(value) > width for value in values)
+        for values in (goal.constraints, goal.forbidden_outcomes, goal.non_goals)
+    )
+
+
 def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
     """Offer only evidence surfaces that can matter to this exact review.
 
@@ -104,6 +114,8 @@ def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
             "inspect_artifact",
             "run_verification",
         }
+    if goal_boundaries_truncated(request):
+        selected.add("get_goal")
     context = request.supervisor_context
     if not acceptance_supported and context is not None and context.offered_context_ids:
         selected.add("get_context_items")
@@ -434,6 +446,9 @@ def build_evidence_tools(
                     _clip(item, 1_000) for item in goal.forbidden_outcomes[:40]
                 ],
                 "non_goals": [_clip(item, 1_000) for item in goal.non_goals[:40]],
+                "boundaries_complete": not goal_boundaries_truncated(
+                    request, count=40, width=1_000,
+                ),
                 "evidence_requirements": [
                     _clip(item, 1_000) for item in goal.evidence_requirements[:40]
                 ],
