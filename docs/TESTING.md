@@ -613,3 +613,17 @@ optional AgentCore endpoint proposes an action.
   the replay did not establish a frozen live webview. Installed Home/Settings
   acceptance still requires a new replay with the corrected capture loop.
   The combined event-verifier/runtime/supervisor checks passed 217 tests.
+- Corrected capture replay `36265714639` completed successfully. It installs
+  the unchanged `d4fa36e` Linux package from run `36264663510`, using the smoke
+  script at `016978e`. Both retained screenshots were visually inspected:
+  current Home and Supervisor Settings rendered. The [receipt](evidence/linux-installed-smoke-d4fa36e-replay.json)
+  confirms a fresh profile, visible Home/Settings, hidden default pet and
+  anonymous bridge status 401. The [startup trace](evidence/linux-startup-ipc-d4fa36e-replay.txt)
+  records main at 728 ms and Settings at 2586 ms. The original native run and
+  first replay remain failures; the second replay resolves the stale-copy and
+  stale-image verification defects for this exact package. This is installed
+  acceptance in the Xvfb test environment, not proof for every Linux desktop
+  or later source revision. Windows native logs at the same package source
+  confirm 21 Rust checks and Windows vault/packaged BYOK roundtrips, with zero
+  provider calls and no worker attached. The Ubuntu source job confirms 4877
+  backend passes, 22 skips, 16 deselections and a successful production build.

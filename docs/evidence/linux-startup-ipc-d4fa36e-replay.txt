@@ -1,0 +1,21 @@
+
+(pex-desktop:3891): dbind-WARNING **: 19:21:06.537: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
+libEGL warning: DRI3 error: Could not get DRI3 device
+libEGL warning: Ensure your X server supports DRI3 to get accelerated rendering
+PEX desktop startup trace: bootstrap IPC entered at 0ms
+PEX desktop startup trace: frontend committed recovery at 0ms
+PEX desktop startup trace: bootstrap IPC returning starting at 0ms
+PEX desktop startup trace: bootstrap IPC entered at 6ms
+PEX desktop startup trace: frontend committed recovery at 6ms
+PEX desktop startup trace: bootstrap IPC returning starting at 6ms
+PEX desktop bridge ready (attempt 1)
+PEX desktop startup trace: token IPC entered at 728ms
+PEX desktop startup trace: token identity lock acquired at 728ms
+PEX desktop startup trace: bootstrap IPC entered at 728ms
+PEX desktop startup trace: frontend committed main at 728ms
+PEX desktop startup trace: bootstrap IPC returning ready at 728ms
+PEX desktop startup trace: token identity verified at 730ms
+PEX desktop startup trace: token IPC returning at 730ms
+PEX desktop startup trace: bootstrap IPC entered at 2586ms
+PEX desktop startup trace: frontend committed settings at 2586ms
+PEX desktop startup trace: bootstrap IPC returning ready at 2586ms
