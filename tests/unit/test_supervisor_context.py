@@ -476,10 +476,34 @@ def test_evidence_tools_page_and_retrieve_offered_records_beyond_first_page():
     assert context_detail.get("truncated") is not True
     assert context_detail["item"]["id"] == context_id
     assert context_detail["item"]["content"].startswith("marker-context-")
-    assert context_detail["item"]["content_truncated"] is True
+    assert context_detail["item"]["content"] == envelope.context_items[-1].content
+    assert context_detail["item"]["content_truncated"] is False
     assert decision_detail.get("truncated") is not True
     assert decision_detail["decision"]["id"] == decision_id
     assert decision_detail["decision"]["statement"].startswith("marker-decision-")
     assert decision_detail["decision"]["statement_truncated"] is False
     assert len(context_detail_raw) < 8_000
     assert len(decision_detail_raw) < 8_000
+
+
+@pytest.mark.parametrize("oversized", [False, True])
+def test_exact_context_lookup_preserves_tail_constraint_and_reports_source_truncation(oversized):
+    now = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    session, goal, event = _bound(now)
+    tail = " Do not publish or deploy without human approval."
+    content = "background " * 140 + tail
+    if oversized:
+        content += " additional context" * 100
+    context = _context(now, "human-boundary", content=content)
+    context.kind = ContextKind.CONSTRAINT
+    context.provenance = SourceKind.HUMAN
+    envelope = build_supervisor_context(session, [context], [], now=now)
+    request = SupervisorRequest(
+        session=session, goal=goal, event=event, recent_events=[event],
+        supervisor_context=envelope,
+    )
+    tools = {tool.tool_name: tool for tool in build_evidence_tools(request, [])}
+    detail = json.loads(tools["get_context_items"](context_id=context.id))
+    assert tail.strip() in detail["item"]["content"]
+    assert detail["item"]["content"] == envelope.context_items[0].content
+    assert detail["item"]["content_truncated"] is oversized

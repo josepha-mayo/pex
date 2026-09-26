@@ -238,7 +238,7 @@ def _clip(value: object, limit: int) -> str:
     return str(value or "").encode("utf-8", "replace").decode("utf-8")[:limit]
 
 
-def _bounded(value: object, *, depth: int = 0) -> object:
+def _bounded(value: object, *, depth: int = 0, string_limit: int = 1_200) -> object:
     if depth >= 5:
         return "[truncated]"
     if value is None or isinstance(value, bool):
@@ -248,14 +248,17 @@ def _bounded(value: object, *, depth: int = 0) -> object:
     if isinstance(value, float):
         return value if math.isfinite(value) else None
     if isinstance(value, str):
-        return _clip(value, 1_200)
+        return _clip(value, string_limit)
     if isinstance(value, dict):
         return {
-            _clip(key, 80): _bounded(item, depth=depth + 1)
+            _clip(key, 80): _bounded(item, depth=depth + 1, string_limit=string_limit)
             for key, item in list(value.items())[:40]
         }
     if isinstance(value, (list, tuple)):
-        return [_bounded(item, depth=depth + 1) for item in list(value)[:40]]
+        return [
+            _bounded(item, depth=depth + 1, string_limit=string_limit)
+            for item in list(value)[:40]
+        ]
     return _clip(value, 300)
 
 
@@ -324,6 +327,7 @@ def _context_item_summary(item: SupervisorContextItem) -> dict[str, object]:
         "provenance": str(getattr(item, "provenance", "")),
         "verified": bool(getattr(item, "verified", False)),
         "content_preview": _clip(getattr(item, "content", ""), 240),
+        "source_content_truncated": item.content_truncated,
         "source_session_id": _clip(getattr(item, "source_session_id", ""), 200)
         or None,
     }
@@ -335,8 +339,8 @@ def _context_item_detail(item: SupervisorContextItem) -> dict[str, object]:
     tags = list(getattr(item, "relevance_tags", ()) or ())
     return {
         **_context_item_summary(item),
-        "content": _clip(content, 1_200),
-        "content_truncated": len(content) > 1_200,
+        "content": content,
+        "content_truncated": item.content_truncated,
         "source_refs": [_clip(value, 200) for value in source_refs[:6]],
         "source_refs_omitted": max(0, len(source_refs) - 6),
         "relevance_tags": [_clip(value, 120) for value in tags[:8]],
@@ -417,11 +421,13 @@ def build_evidence_tools(
         name: str,
         value: object,
         arguments: dict[str, object] | None = None,
+        *,
+        string_limit: int = 1_200,
     ) -> str:
         used_tools.append(name)
         # Bound depth/count/width before any recursive masking or redaction so a
         # malformed internal Any value cannot overflow the evidence tool.
-        masked = _mask_local_strings(_bounded(value), local_values)
+        masked = _mask_local_strings(_bounded(value, string_limit=string_limit), local_values)
         cleaned, _ = redact_mapping({"evidence": masked})
         raw_arguments = _mask_local_strings(_bounded(arguments or {}), local_values)
         cleaned_arguments, _ = redact_mapping({"arguments": raw_arguments})
@@ -769,7 +775,9 @@ def build_evidence_tools(
         name="get_context_items",
         description=(
             "Page through bounded provenance-bearing durable context, or retrieve one "
-            "offered item by exact context_id. Use next_offset until it is null."
+            "offered item by exact context_id. Exact lookup returns the entire offered "
+            "content; content_truncated identifies an incomplete source record, whose "
+            "missing constraints must not be inferred. Use next_offset until it is null."
         ),
     )
     def get_context_items(context_id: str = "", offset: int = 0) -> str:
@@ -778,6 +786,7 @@ def build_evidence_tools(
                 "get_context_items",
                 value,
                 {"context_id": context_id, "offset": offset},
+                string_limit=2_000 if context_id else 1_200,
             )
 
         envelope = request.supervisor_context

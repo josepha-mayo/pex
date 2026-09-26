@@ -206,7 +206,8 @@ def build_supervisor_context(
             or item.sensitivity not in _ALLOWED_SENSITIVITY
         ):
             continue
-        content = _clean_text(item.content, 2_000)
+        cleaned_content = _clean_text(item.content, len(item.content))
+        content = cleaned_content[:2_000]
         if not content or context_text + len(content) > _MAX_CONTEXT_TEXT:
             continue
         metadata = item.metadata if isinstance(item.metadata, dict) else {}
@@ -225,6 +226,7 @@ def build_supervisor_context(
                 goal_id=item.goal_id,
                 kind=item.kind,
                 content=content,
+                content_truncated=len(cleaned_content) > len(content),
                 semantic_kind=semantic_kind,
                 status=_context_status(item),
                 source_refs=source_refs,

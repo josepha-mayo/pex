@@ -267,6 +267,15 @@ optional AgentCore endpoint proposes an action.
 
 ## Honest boundaries
 
+- Exact supervisor `get_context_items(context_id=...)` lookups return the full
+  offered content, rather than clipping it again at 1,200 characters. The
+  envelope still caps each record at 2,000 characters and now carries
+  `content_truncated` when the sanitized source exceeded that cap. Page previews
+  expose `source_content_truncated`; missing source text is not complete authority.
+  The tail-constraint and source-truncation regressions, context selection, and
+  Codex supervision pipeline passed (22 tests). Evidence tools and observation
+  receipts passed 61 tests with four platform skips. These checks use no live
+  model calls and do not prove live inference quality.
 - A writable Linux worker-tool primitive passed the retained WSL smoke in
   [`linux-worker-boundary-wsl-2026-09-26.json`](evidence/linux-worker-boundary-wsl-2026-09-26.json):
   task reads/writes worked while the private oracle, controller source, and

@@ -65,6 +65,7 @@ class SupervisorContextItem(BaseModel):
     goal_id: str | None = Field(default=None, min_length=1, max_length=512)
     kind: ContextKind
     content: str = Field(min_length=1, max_length=2_000)
+    content_truncated: bool = Field(default=False, strict=True)
     semantic_kind: str | None = Field(default=None, min_length=1, max_length=80)
     status: str = Field(default="active", min_length=1, max_length=80)
     source_refs: tuple[_ContextId, ...] = Field(default_factory=tuple, max_length=16)
