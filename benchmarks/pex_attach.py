@@ -520,6 +520,7 @@ def _observe_controlled_workspace(
     expected_sha256: str | None,
     *,
     isolated_tests: bool = False,
+    deadline: float | None = None,
 ) -> dict[str, Any]:
     """Observe safely; execute only the exact controller-seeded fixture test."""
     _assert_unlinked_workspace(workspace)
@@ -540,7 +541,9 @@ def _observe_controlled_workspace(
                  if Path(name).name.startswith("test_") and name.endswith(".py")]
         command = public_pytest_command(workspace, tests)
         executed_argv = command[command.index("--") + 1:]
-        pytest_result = _run_public_pytest(workspace, tests, "", isolated_command=command)
+        pytest_result = _run_public_pytest(
+            workspace, tests, "", isolated_command=command, deadline=deadline,
+        )
         observed = _bind_public_test_integrity(
             snapshot(workspace, run_pytest=False), expected_sha256,
         )
@@ -553,7 +556,10 @@ def _observe_controlled_workspace(
             receipt["provenance"]["executed_argv"] = executed_argv
         return observed
     observed = _bind_public_test_integrity(
-        snapshot(workspace, run_pytest=run_public_tests), expected_sha256
+        snapshot(workspace, run_pytest=run_public_tests,
+                 **({"pytest_deadline": deadline}
+                    if run_public_tests and deadline is not None else {})),
+        expected_sha256,
     )
     return _bind_controller_verification(observed, before=before, workspace=workspace)
 
@@ -601,6 +607,7 @@ async def supervise_isolated_codex(
     remaining_budget()
     observed = _observe_controlled_workspace(
         workspace, public_test_sha256,
+        deadline=deadline,
         **({"isolated_tests": True} if offline_runtime is not None else {}),
     )
     backend: dict[str, Any] = {}
@@ -662,6 +669,7 @@ async def supervise_isolated_codex(
         remaining_budget()
         next_observed = _observe_controlled_workspace(
             workspace, public_test_sha256,
+            deadline=deadline,
             **({"isolated_tests": True} if offline_runtime is not None else {}),
         )
         audit["result_afterward"] = _observed_outcome(

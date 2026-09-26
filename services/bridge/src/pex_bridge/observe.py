@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import signal
 import stat
@@ -261,19 +262,28 @@ def _manifest_sha256(rows: list[dict[str, Any]]) -> str:
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def _public_pytest(root: Path, files: list[str]) -> dict[str, Any] | None:
+def _public_pytest(
+    root: Path, files: list[str], *, deadline: float | None = None,
+) -> dict[str, Any] | None:
     tests = [name for name in files if Path(name).name.startswith("test_") and name.endswith(".py")]
     if not tests:
         return None
     if len(tests) > _MAX_PUBLIC_TEST_FILES:
         raise ValueError("workspace exceeds the 256-test-file observation bound")
     with TemporaryDirectory(prefix="pex-public-bytecode-") as cache:
-        return _run_public_pytest(root, tests, cache)
+        options = {"deadline": deadline} if deadline is not None else {}
+        return _run_public_pytest(root, tests, cache, **options)
 
 
 def _run_public_pytest(
     root: Path, tests: list[str], cache: str, *, isolated_command: list[str] | None = None,
+    deadline: float | None = None,
 ) -> dict[str, Any]:
+    if deadline is not None:
+        if type(deadline) not in {int, float} or not math.isfinite(deadline):
+            raise ValueError("public pytest deadline must be finite")
+        if deadline <= time.perf_counter():
+            raise TimeoutError("public pytest task budget expired before dispatch")
     # The worker tests are untrusted input.  Never copy the bridge process's
     # provider tokens, auth material, or arbitrary environment into them.
     env = {key: os.environ[key] for key in _PUBLIC_ENV_KEYS if key in os.environ}
@@ -331,7 +341,10 @@ def _run_public_pytest(
     timed_out = False
     try:
         try:
-            exit_code = proc.wait(timeout=_PYTEST_TIMEOUT_SECONDS)
+            wait_timeout = _PYTEST_TIMEOUT_SECONDS if deadline is None else min(
+                _PYTEST_TIMEOUT_SECONDS, max(0.0, deadline - time.perf_counter()),
+            )
+            exit_code = proc.wait(timeout=wait_timeout)
         except subprocess.TimeoutExpired:
             timed_out = True
             _terminate_process_tree(proc)
@@ -344,7 +357,7 @@ def _run_public_pytest(
         if any(marker.lower() in output.lower() for marker in HIDDEN_NAME_MARKERS):
             output = "[public pytest output withheld: hidden benchmark marker detected]"
         if timed_out:
-            output = f"[public pytest timed out after {_PYTEST_TIMEOUT_SECONDS}s]\n{output}".strip()
+            output = f"[public pytest timed out after {wait_timeout:g}s]\n{output}".strip()
         return {
             "ok": not timed_out and exit_code == 0,
             "exit_code": exit_code,
@@ -367,13 +380,18 @@ def _run_public_pytest(
             _terminate_process_tree(proc)
 
 
-def snapshot(workspace: Path, *, run_pytest: bool = False) -> dict[str, Any]:
+def snapshot(
+    workspace: Path, *, run_pytest: bool = False, pytest_deadline: float | None = None,
+) -> dict[str, Any]:
     """Observe public state; execute workspace tests only after explicit authorization."""
     root = workspace.resolve()
     if not root.is_dir():
         raise ValueError(f"workspace is not a directory: {root}")
     before = _public_file_manifest(root)
-    pytest_result = _public_pytest(root, [row["path"] for row in before]) if run_pytest else None
+    pytest_options = {"deadline": pytest_deadline} if pytest_deadline is not None else {}
+    pytest_result = _public_pytest(
+        root, [row["path"] for row in before], **pytest_options,
+    ) if run_pytest else None
     # Public tests can legitimately write artifacts. Re-scan afterward so the
     # fingerprint describes the state actually presented to the supervisor.
     manifest = _public_file_manifest(root) if run_pytest else before

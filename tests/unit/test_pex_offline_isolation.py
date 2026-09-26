@@ -106,10 +106,11 @@ async def test_offline_child_does_not_rewrite_host_test_receipts(tmp_path, monke
 async def test_offline_supervision_selects_isolated_public_test_execution(tmp_path, monkeypatch):
     arguments = _arguments(tmp_path)
 
-    def observe(workspace, fingerprint, *, isolated_tests):
+    def observe(workspace, fingerprint, *, isolated_tests, deadline):
         assert workspace == arguments["workspace"]
         assert fingerprint == "a" * 64
         assert isolated_tests is True
+        assert deadline > 0
         raise RuntimeError("observation boundary selected")
 
     monkeypatch.setattr(pex_attach, "_observe_controlled_workspace", observe)

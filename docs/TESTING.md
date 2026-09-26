@@ -570,3 +570,12 @@ optional AgentCore endpoint proposes an action.
   cases passed. The cleanup test loader was repaired to remove another import-
   order dependency exposed by the standalone run. Live worker/model transport
   and complete execution-backend eligibility remain outstanding.
+- Public verification in the isolated Codex comparison loop now shares the
+  task's absolute deadline. Both host and sandbox test runners cap their wait
+  by the remaining budget; an expired budget refuses process dispatch, and
+  timeout cleanup still terminates the process tree. Ordinary bridge snapshots
+  retain their existing default timeout. Forty-one focused observation,
+  isolation, deadline and cleanup checks passed on Windows with one
+  platform-specific skip, including a real sleeping test stopped by a
+  one-second budget. This is bounded local evidence, not a performance score
+  or live provider verification.
