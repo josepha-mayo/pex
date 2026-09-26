@@ -487,6 +487,33 @@ def test_evidence_tools_page_and_retrieve_offered_records_beyond_first_page():
 
 
 @pytest.mark.parametrize("oversized", [False, True])
+def test_exact_decision_lookup_preserves_tail_authority_and_reports_source_truncation(oversized):
+    now = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    session, goal, event = _bound(now)
+    decision = _decision(now, "human-authority")
+    decision.statement = "background " * 140 + " Do not publish without approval."
+    decision.rationale = "r" * 850 + " Keep customer data private."
+    decision.scope = "Apply only to the current goal."
+    if oversized:
+        decision.statement += "x" * 2_000
+        decision.rationale += "x" * 1_000
+        decision.scope += "x" * 500
+    envelope = build_supervisor_context(session, [], [decision], now=now)
+    request = SupervisorRequest(
+        session=session, goal=goal, event=event, recent_events=[event],
+        supervisor_context=envelope,
+    )
+    tools = {tool.tool_name: tool for tool in build_evidence_tools(request, [])}
+    detail = json.loads(tools["get_decisions"](decision_id=decision.id))
+    offered = envelope.decisions[0]
+    assert "Do not publish without approval." in detail["decision"]["statement"]
+    assert "Keep customer data private." in detail["decision"]["rationale"]
+    for field in ("statement", "rationale", "scope"):
+        assert detail["decision"][field] == getattr(offered, field)
+        assert detail["decision"][f"{field}_truncated"] is oversized
+
+
+@pytest.mark.parametrize("oversized", [False, True])
 def test_exact_context_lookup_preserves_tail_constraint_and_reports_source_truncation(oversized):
     now = datetime(2026, 9, 5, 12, tzinfo=UTC)
     session, goal, event = _bound(now)

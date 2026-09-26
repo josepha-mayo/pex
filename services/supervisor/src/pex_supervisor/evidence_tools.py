@@ -359,6 +359,9 @@ def _decision_summary(item: SupervisorDecisionItem) -> dict[str, object]:
     return {
         "id": item.id,
         "statement_preview": _clip(getattr(item, "statement", ""), 240),
+        "source_statement_truncated": item.statement_truncated,
+        "source_rationale_truncated": item.rationale_truncated,
+        "source_scope_truncated": item.scope_truncated,
         "source": str(getattr(item, "source", "")),
         "status": str(getattr(item, "status", "")),
         "confidence": getattr(item, "confidence", None),
@@ -374,13 +377,14 @@ def _decision_detail(item: SupervisorDecisionItem) -> dict[str, object]:
     source_refs = list(getattr(item, "source_refs", ()) or ())
     return {
         **_decision_summary(item),
-        "statement": _clip(statement, 1_200),
-        "statement_truncated": len(statement) > 1_200,
-        "rationale": _clip(rationale, 800) or None,
-        "rationale_truncated": len(rationale) > 800,
+        "statement": statement,
+        "statement_truncated": item.statement_truncated,
+        "rationale": rationale or None,
+        "rationale_truncated": item.rationale_truncated,
         "alternatives_rejected": [_clip(value, 500) for value in alternatives[:6]],
         "alternatives_omitted": max(0, len(alternatives) - 6),
         "scope": _clip(getattr(item, "scope", ""), 500) or None,
+        "scope_truncated": item.scope_truncated,
         "created_at": item.created_at.isoformat(),
         "source_refs": [_clip(value, 200) for value in source_refs[:6]],
         "source_refs_omitted": max(0, len(source_refs) - 6),
@@ -852,7 +856,9 @@ def build_evidence_tools(
         name="get_decisions",
         description=(
             "Page through bounded active or unresolved durable decisions, or retrieve one "
-            "offered decision by exact decision_id. Use next_offset until it is null."
+            "offered decision by exact decision_id. Exact lookup preserves the offered "
+            "statement, rationale and scope; their truncation flags identify incomplete "
+            "source authority. Use next_offset until it is null."
         ),
     )
     def get_decisions(decision_id: str = "", offset: int = 0) -> str:
@@ -861,6 +867,7 @@ def build_evidence_tools(
                 "get_decisions",
                 value,
                 {"decision_id": decision_id, "offset": offset},
+                string_limit=2_000 if decision_id else 1_200,
             )
 
         envelope = request.supervisor_context

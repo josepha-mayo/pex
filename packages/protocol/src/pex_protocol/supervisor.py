@@ -135,11 +135,14 @@ class SupervisorDecisionItem(BaseModel):
     id: _ContextId
     goal_id: str = Field(min_length=1, max_length=512)
     statement: str = Field(min_length=1, max_length=2_000)
+    statement_truncated: bool = Field(default=False, strict=True)
     rationale: str = Field(default="", max_length=1_000)
+    rationale_truncated: bool = Field(default=False, strict=True)
     alternatives_rejected: tuple[Annotated[str, Field(min_length=1, max_length=1_000)], ...] = (
         Field(default_factory=tuple, max_length=12)
     )
     scope: str = Field(default="", max_length=500)
+    scope_truncated: bool = Field(default=False, strict=True)
     confidence: float = Field(ge=0.0, le=1.0)
     source: DecisionSource
     status: Literal[DecisionStatus.ACTIVE, DecisionStatus.UNCERTAIN]

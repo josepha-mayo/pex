@@ -263,9 +263,12 @@ def build_supervisor_context(
     for decision in sorted(eligible_decisions, key=_decision_rank, reverse=True):
         if decision.id in selected_decision_ids:
             continue
-        statement = _clean_text(decision.statement, 2_000)
-        rationale = _clean_text(decision.rationale, 1_000)
-        scope = _clean_text(decision.scope, 500)
+        cleaned_statement = _clean_text(decision.statement, len(decision.statement))
+        cleaned_rationale = _clean_text(decision.rationale, len(decision.rationale))
+        cleaned_scope = _clean_text(decision.scope, len(decision.scope))
+        statement = cleaned_statement[:2_000]
+        rationale = cleaned_rationale[:1_000]
+        scope = cleaned_scope[:500]
         alternatives = tuple(
             value
             for value in (
@@ -285,9 +288,12 @@ def build_supervisor_context(
                 id=decision.id,
                 goal_id=goal_id,
                 statement=statement,
+                statement_truncated=len(cleaned_statement) > len(statement),
                 rationale=rationale,
+                rationale_truncated=len(cleaned_rationale) > len(rationale),
                 alternatives_rejected=alternatives,
                 scope=scope,
+                scope_truncated=len(cleaned_scope) > len(scope),
                 confidence=decision.confidence,
                 source=decision.source,
                 status=decision.status,

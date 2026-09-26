@@ -276,6 +276,13 @@ optional AgentCore endpoint proposes an action.
   Codex supervision pipeline passed (22 tests). Evidence tools and observation
   receipts passed 61 tests with four platform skips. These checks use no live
   model calls and do not prove live inference quality.
+- Exact `get_decisions(decision_id=...)` reads likewise preserve the offered
+  statement, rationale and scope. Each field reports whether source selection
+  shortened it; list summaries expose the same source flags. Approval and privacy
+  tail restrictions are covered by regressions. The combined context, evidence
+  tools and receipt suite passed 81 tests with four platform skips. Rejected
+  alternatives remain bounded previews, and large UTF-8 outputs still use the
+  existing explicitly marked observation limit.
 - A writable Linux worker-tool primitive passed the retained WSL smoke in
   [`linux-worker-boundary-wsl-2026-09-26.json`](evidence/linux-worker-boundary-wsl-2026-09-26.json):
   task reads/writes worked while the private oracle, controller source, and
