@@ -14,8 +14,17 @@ production builds passed. This run did not execute native package jobs.
 
 The later adapter workspace changes at `6a048c4` are undergoing the full
 [source and native workflow](https://github.com/josepha-mayo/pex/actions/runs/36253951573).
-Its result is pending; the earlier source checkpoint does not prove those
-changes or the subsequent Context UI changes passed installed-app acceptance.
+Windows native packaging, authenticated bridge startup, OS-vault and packaged
+BYOK checks passed. Ubuntu source checks passed, but its installed-window smoke
+failed before fresh state was visible. The
+[exact-package default-renderer replay](https://github.com/josepha-mayo/pex/actions/runs/36254900699)
+also failed; a
+[software-compositing replay](https://github.com/josepha-mayo/pex/actions/runs/36254914344)
+passed Home, Settings, hidden pet and anonymous HTTP 401 checks. The Xvfb CI
+smoke now requests software compositing; the installed product's default renderer
+is unchanged. These results do not establish reliable physical-Linux startup or
+accept the subsequent Context UI changes. The full workflow's Windows source
+job was still running when this checkpoint was recorded.
 
 Exact source `907395e` passed the full
 [Windows and Ubuntu workflow](https://github.com/josepha-mayo/pex/actions/runs/36246994582):

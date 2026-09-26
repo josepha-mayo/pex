@@ -124,6 +124,10 @@ jobs:
         run: dbus-run-session -- bash scripts/smoke_linux_keyring.sh "${{ matrix.bridge }}"
       - name: Verify installed Linux desktop window and bridge
         if: runner.os == 'Linux'
+        # Xvfb has no accelerated graphics device. The exact-package diagnostic
+        # passed in software mode after two default-renderer readiness failures.
+        env:
+          WEBKIT_DISABLE_COMPOSITING_MODE: '1'
         run: bash scripts/smoke_linux_desktop.sh apps/desktop/src-tauri/target/release/bundle/deb/PEX_0.1.0_amd64.deb
       - name: Retain packages and startup receipt
         if: always()
