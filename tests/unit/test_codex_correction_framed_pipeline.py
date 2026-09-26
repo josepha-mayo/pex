@@ -270,6 +270,8 @@ async def emit_trigger(case) -> None:
 
 
 async def initial_settled(case):
+    observed = {}
+
     async def wait():
         while True:
             events = await case.bound.store.recent_events(case.bound.adapter.session.id)
@@ -277,6 +279,7 @@ async def initial_settled(case):
                 if event.event_type != EventType.AGENT_RESPONSE:
                     continue
                 processing = await case.bound.store.get_event_processing(event.event_id)
+                observed[event.event_id] = processing and processing.get("state")
                 if processing and processing["state"] == "complete":
                     effect = await case.bound.store.get_event_effect(event.event_id, "main")
                     if effect is not None:
@@ -289,7 +292,20 @@ async def initial_settled(case):
                 )
             await asyncio.sleep(0.01)
 
-    return await asyncio.wait_for(wait(), 8)
+    try:
+        return await asyncio.wait_for(wait(), 8)
+    except TimeoutError as exc:
+        adapter = case.bound.adapter
+        transport = adapter.transport
+        pump_frames = [frame.f_code.co_name for frame in case.bound.task.get_stack()]
+        raise AssertionError(
+            f"correction settlement exceeded 8s; event_states={observed}; "
+            f"pump_error={adapter.last_pump_error}; pump_frames={pump_frames}; "
+            f"receive_pending={transport._receive_pending}; "
+            f"rpc_pending={len(transport._pending)}; "
+            f"input_bootstrap_complete={adapter._input_bootstrap_complete}; "
+            f"ingesting={adapter._ingesting}"
+        ) from exc
 
 
 async def correction_echo_settled(case, effect_id: str):
