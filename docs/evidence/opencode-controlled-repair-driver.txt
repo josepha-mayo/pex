@@ -1,0 +1,152 @@
+import asyncio, hashlib, json, os, socket, subprocess, threading, time
+from datetime import UTC, datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+import httpx
+from pex_bridge.adapters.opencode import OpenCodeAdapter
+from pex_bridge.adapters.http_json import LiveHttpTransport
+from benchmarks.pex_attach import _observe_controlled_workspace, _decide_out_of_process
+
+async def main():
+    root = (Path('build/opencode-repair')/datetime.now(UTC).strftime('%Y%m%dT%H%M%S')).resolve()
+    root.mkdir(parents=True)
+    workspace=root/'worker'; workspace.mkdir()
+    task='Fix solver.py and verify test_public.py.'
+    (workspace/'TASK.md').write_text(task)
+    (workspace/'solver.py').write_text('def answer():\n    return 0\n')
+    public=workspace/'test_public.py'
+    public.write_text("import importlib\nsolver=importlib.import_module('solver')\ndef test_answer():\n    assert solver.answer()==1\n")
+    fingerprint=hashlib.sha256(public.read_bytes()).hexdigest()
+    os.environ['PEX_SUPERVISOR_DISABLE']='1'
+    binary = Path('build/npm-cache-opencode/_npx/3937505dc0158d98/node_modules/opencode-windows-x64/bin/opencode.exe').resolve()
+    calls = []
+    stages=[]
+    class Model(BaseHTTPRequestHandler):
+        def log_message(self, *args): pass
+        def do_POST(self):
+            size = int(self.headers.get('Content-Length', '0'))
+            if self.path != '/v1/chat/completions' or not 0 < size <= 262144 or len(calls) >= 8:
+                self.send_error(400); return
+            body = json.loads(self.rfile.read(size))
+            assert body['model'] == 'pinned'
+            calls.append({'model':body['model'],'stream':body.get('stream',False)})
+            names=[tool['function']['name'] for tool in body.get('tools',[])]
+            if 'write' in names and 'read' in names and len(stages)<2:
+                name='read' if not stages else 'write'
+                args={'filePath':str(workspace/'solver.py')}
+                if name=='write': args['content']='def answer():\n    return 1\n'
+                stages.append(name)
+                delta={'role':'assistant','tool_calls':[{'index':0,'id':f'controlled-{name}','type':'function',
+                    'function':{'name':name,'arguments':json.dumps(args)}}]}
+                chunks=[(delta,None),({},'tool_calls')]
+            else:
+                chunks=[({'role':'assistant','content':'Controlled local response: correction received.'},None),({},'stop')]
+            base={'id':'local-controlled','object':'chat.completion.chunk','created':1,'model':'pinned'}
+            self.send_response(200)
+            self.send_header('Content-Type','text/event-stream')
+            self.send_header('Connection','close'); self.end_headers()
+            for delta, finish in chunks:
+                self.wfile.write(('data: '+json.dumps({**base,'choices':[{'index':0,'delta':delta,'finish_reason':finish}]})+'\n\n').encode())
+            self.wfile.write(b'data: [DONE]\n\n'); self.wfile.flush()
+    model_server = ThreadingHTTPServer(('127.0.0.1',0),Model)
+    thread=threading.Thread(target=model_server.serve_forever,daemon=True); thread.start()
+    with socket.socket() as address:
+        address.bind(('127.0.0.1',0)); port=address.getsockname()[1]
+    env={key:value for key,value in os.environ.items() if key.upper() in {'PATH','PATHEXT','SYSTEMROOT','WINDIR','TEMP','TMP','COMSPEC'}}
+    env.update(HOME=str(root),USERPROFILE=str(root))
+    for kind in ('CONFIG','CACHE','DATA','STATE'): env[f'XDG_{kind}_HOME']=str(root/kind.lower())
+    env['OPENCODE_CONFIG_CONTENT']=json.dumps({'autoupdate':False,'model':'controlled/pinned',
+        'small_model':'controlled/pinned','enabled_providers':['controlled'],
+        'permission':{'*':'deny','edit':{'*':'deny','*solver.py':'allow'},'read':{'*':'deny','*solver.py':'allow'}},
+        'provider':{'controlled':{'npm':'@ai-sdk/openai-compatible','name':'Controlled local responder',
+            'options':{'baseURL':f'http://127.0.0.1:{model_server.server_port}/v1','apiKey':'local-placeholder'},
+            'models':{'pinned':{'name':'Controlled responder','limit':{'context':32000,'output':1200}}}}}})
+    transport=LiveHttpTransport(f'http://127.0.0.1:{port}')
+    adapter=OpenCodeAdapter(); adapter.attach_transport(transport)
+    events=[]
+    async def ingest(event, observed_session): events.append(event)
+    with (root/'server.log').open('wb') as log:
+        proc=subprocess.Popen([str(binary),'serve','--hostname','127.0.0.1','--port',str(port)],cwd=workspace,env=env,
+            stdout=log,stderr=subprocess.STDOUT,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                base=f'http://127.0.0.1:{port}'
+                deadline=time.monotonic()+30
+                while True:
+                    try:
+                        response=await client.get(base+'/global/health')
+                        if response.status_code==200: break
+                    except httpx.HTTPError: pass
+                    if proc.poll() is not None or time.monotonic()>deadline: raise RuntimeError('OpenCode readiness failed')
+                    await asyncio.sleep(.2)
+                target=(await client.post(base+'/session',json={'title':'PEX controlled delivery'})).json()
+                other=(await client.post(base+'/session',json={'title':'Untouched control session'})).json()
+                sessions=await adapter.discover_sessions()
+                session=next(item for item in sessions if item.vendor_session_id==target['id'])
+                adapter.start_pipeline_pump(ingest)
+                for _ in range(50):
+                    if adapter._events_connected(): break
+                    await asyncio.sleep(.1)
+                before=_observe_controlled_workspace(workspace,fingerprint)
+                assert before['pytest']['ok'] is False
+                correction=await _decide_out_of_process(task_md=task, workspace=workspace, session=session,
+                    observed=before, agent_messages=['Awaiting the next step.'], goal_id='goal:repair',
+                    control_dir=root/'controller',timeout=15)
+                assert correction['action']['type']=='SEND_NUDGE',correction
+                text=correction['action']['payload']['text']
+                assert 'test_public.py::test_answer' in text
+                delivered=await adapter.send_message(session,text)
+                assert delivered
+                deadline=time.monotonic()+40
+                while True:
+                    response=await client.get(base+f'/session/{target["id"]}/message')
+                    messages=response.json()
+                    completed=[item for item in messages if item['info'].get('role')=='assistant'
+                        and item['info'].get('finish')=='stop' and item['info'].get('time',{}).get('completed')]
+                    if completed: break
+                    if time.monotonic()>deadline: raise TimeoutError('Controlled worker response not completed')
+                    await asyncio.sleep(.2)
+                deadline=time.monotonic()+5
+                while True:
+                    terminal=[event for event in events if event.session_id==session.id and event.event_type.value=='stop'
+                        and any(isinstance(value,dict) and value.get('parent_message_id')==getattr(delivered,'vendor_turn_id',None)
+                            and value.get('assistant_finish')=='stop' for value in event.metadata.values())]
+                    if terminal: break
+                    if time.monotonic()>deadline: raise TimeoutError('No terminal event bound to delivered turn')
+                    await asyncio.sleep(.1)
+                untouched=(await client.get(base+f'/session/{other["id"]}/message')).json()
+                assert untouched==[]
+                assert any('correction received' in str(item.get('parts')) for item in completed)
+                after=_observe_controlled_workspace(workspace,fingerprint)
+                assert after['pytest']['ok'] is True,after['pytest']
+                assert hashlib.sha256(public.read_bytes()).hexdigest()==fingerprint
+                reviewed=await _decide_out_of_process(task_md=task,workspace=workspace,session=session,
+                    observed=after,agent_messages=['Updated solver.py.'],goal_id='goal:repair',
+                    control_dir=root/'controller',timeout=15)
+                assert reviewed['action']['type']=='NOOP',reviewed
+                receipt={'schema':'pex.opencode-controlled-repair.v1','source_sha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+                    'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),'accepted':True,
+                    'target_session_id':session.id,'target_vendor_session_id':target['id'],
+                    'vendor_turn_id':getattr(delivered,'vendor_turn_id',None),'completed_assistant_messages':len(completed),
+                    'unrelated_session_messages':len(untouched),'local_model_requests':calls,
+                    'observed_event_types':sorted({event.event_type.value for event in events}),
+                    'bound_terminal_event_id':terminal[0].event_id,
+                    'bound_terminal_metadata':terminal[0].metadata,
+                    'public_test_sha256':fingerprint,'pytest_before':before['pytest'], 'pytest_after':after['pytest'],
+                    'supervisor_actions':[correction['action'],reviewed['action']], 'worker_tools':stages,
+                    'scope':'Real OpenCode tools, deterministic PEX correction and test verification, controlled local model. No provider call or quality comparison.'}
+        finally:
+            (root/'diagnostic.json').write_text(json.dumps({'calls':calls,'stages':stages,
+                'events':[{'type':e.event_type.value,'tool':e.tool_name,'error':e.error,'metadata':e.metadata} for e in events]},indent=2))
+            if adapter._pump_task:
+                adapter._pump_task.cancel(); await asyncio.gather(adapter._pump_task,return_exceptions=True)
+            await transport.aclose()
+            proc.terminate()
+            try: proc.wait(timeout=5)
+            except subprocess.TimeoutExpired: proc.kill(); proc.wait(timeout=5)
+            model_server.shutdown(); model_server.server_close(); thread.join(timeout=5)
+    receipt['owned_process_closed']=proc.poll() is not None
+    (root/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+    print(json.dumps(receipt)); print(str(root/'receipt.json'))
+asyncio.run(main())
+

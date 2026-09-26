@@ -826,3 +826,23 @@ optional AgentCore endpoint proposes an action.
   used. This verifies live vendor prompt delivery and normalized observation;
   it does not establish desktop attachment, file repair, autonomous correction
   quality, a real model's compliance or comparative performance gains.
+- The real OpenCode tool workflow passed a controlled repair at PEX source
+  `23c19d0`. The [receipt](evidence/opencode-controlled-repair-23c19d0.json)
+  records a seeded failing `test_public.py::test_answer`, PEX's actual public
+  decision-process SEND_NUDGE naming that node, live adapter delivery, worker
+  read/write tools, exact-parent terminal lineage and the same public test
+  passing after `solver.py` changed. The public test hash stayed unchanged and
+  a second session remained empty. PEX's subsequent decision was NOOP; it did
+  not establish model-reviewed goal completion. The
+  [driver](evidence/opencode-controlled-repair-driver.txt) uses a fresh worker
+  workspace/profile, disables the PEX model, and permits only reads/edits of
+  the solver filename while other tools are denied. Three local streaming
+  responses scripted the worker's read, write and final message. The first
+  repair attempt used a filename pattern that did not match a relative path
+  and waited after an intermediate tool message; the corrected driver waits
+  for final `finish=stop` and passed in a fresh session. Both test invocations
+  emitted two pytest configuration warnings. Owned servers closed cleanly.
+  This is actual harness tool execution, deterministic PEX correction and
+  verification with a controlled responder, not live-model effectiveness,
+  OS-isolated benchmark acceptance or a with/without performance comparison.
+  No upstream provider call or card funds were used.
