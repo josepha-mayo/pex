@@ -164,14 +164,17 @@ def _ordered_events(events: list[HarnessEvent]) -> list[HarnessEvent]:
 def _forgotten_facts(
     events: list[HarnessEvent],
     items: list[ContextItem],
+    now: datetime,
 ) -> list[str]:
     """Durable facts re-read twice after compaction without an edit of that file."""
 
-    ordered = _ordered_events(events)
+    ordered = _ordered_events([event for event in events if _as_utc(event.ts) <= now])
     durable = [
         item
         for item in items
-        if item.kind in _DURABLE_KINDS and item.sensitivity not in _SECRET
+        if item.kind in _DURABLE_KINDS
+        and item.sensitivity not in _SECRET
+        and (item.stale_after is None or _as_utc(item.stale_after) > now)
     ]
     seen: list[str] = []
     for index, compact in enumerate(ordered):
@@ -223,7 +226,7 @@ def assess_context_health(
 ) -> ContextHealthReport:
     instant = now or datetime.now(UTC)
     ordered = _ordered_events(events)
-    forgotten = _forgotten_facts(ordered, items)
+    forgotten = _forgotten_facts(ordered, items, _as_utc(instant))
     compaction_count = sum(
         1 for event in ordered if event.event_type == EventType.COMPACTION
     )

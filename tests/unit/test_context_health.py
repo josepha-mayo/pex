@@ -154,6 +154,38 @@ def test_editing_same_basename_in_other_directory_does_not_hide_forgotten_fact()
     assert assess_context_health(events, [artifact], now=now).forgotten_facts == [artifact.content]
 
 
+@pytest.mark.parametrize("expiry", ["before_compaction", "after_compaction"])
+def test_expired_fact_is_not_restored_after_compaction(expiry):
+    now = datetime.now(UTC)
+    artifact = _item(
+        "expired", "Use the retired configuration.", now - timedelta(minutes=10),
+        files=["src/config.py"],
+        stale_after=now - timedelta(minutes=5 if expiry == "before_compaction" else 2),
+    )
+    events = [
+        _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
+        _event("read-1", EventType.FILE_READ, now - timedelta(minutes=3),
+               file_paths=["src/config.py"]),
+        _event("read-2", EventType.FILE_READ, now - timedelta(minutes=1),
+               file_paths=["src/config.py"]),
+    ]
+    assert assess_context_health(events, [artifact], now=now).forgotten_facts == []
+
+
+def test_future_reads_do_not_prove_current_context_was_forgotten():
+    now = datetime.now(UTC)
+    artifact = _item("current", "Keep the current configuration.",
+                     now - timedelta(minutes=10), files=["src/config.py"])
+    events = [
+        _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
+        _event("read-1", EventType.FILE_READ, now + timedelta(minutes=1),
+               file_paths=["src/config.py"]),
+        _event("read-2", EventType.FILE_READ, now + timedelta(minutes=2),
+               file_paths=["src/config.py"]),
+    ]
+    assert assess_context_health(events, [artifact], now=now).forgotten_facts == []
+
+
 @pytest.mark.parametrize("project,read", [
     ("/work/pex", "/work/pex/src/config.py"),
     (r"C:\Work\PEX", r"c:\work\pex\SRC\CONFIG.PY"),

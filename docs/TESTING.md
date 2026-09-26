@@ -6,15 +6,16 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Main-branch verification checkpoints
 
-Exact source `6edbb89` passed the Ubuntu source and native jobs in
+Exact source `6edbb89` passed all Windows and Ubuntu source/native jobs in
 [run 36257145205](https://github.com/josepha-mayo/pex/actions/runs/36257145205).
 Ubuntu backend checks passed 4,791 tests (19 skipped, 16 deselected), and the
 all 324 desktop checks and the production build passed. Native packaging,
 20 bootstrap tests, packaged
 bridge identity, Secret Service storage, and the installed Home/Settings check
 passed with the verified Xvfb software renderer. Windows native packaging,
-bridge startup/identity, OS-vault and packaged BYOK checks also passed; its source
-job was still running when this checkpoint was recorded. Later context changes require their own
+bridge startup/identity, OS-vault and packaged BYOK checks also passed. Windows
+backend checks passed 4,798 tests (12 skipped, 16 deselected), and its desktop
+checks and production build passed. Later context changes require their own
 source and package acceptance; this is not a claim about latest HEAD.
 
 The instrumented Linux package at `fd16129` still failed its fresh-state window
@@ -298,6 +299,11 @@ optional AgentCore endpoint proposes an action.
 
 ## Honest boundaries
 
+- Compaction recovery excludes facts expired at the observation time, including
+  facts that were valid during compaction but expired before the recovery check.
+  Future-dated reads cannot establish a current forgotten-fact signal. Expired
+  decision counts remain available as health diagnostics; they are not restored
+  as working instructions. Health and planner regressions passed 63 tests.
 - Context health identifies files by their complete lexical path rather than
   basename. POSIX case and literal backslashes remain distinct; relative paths
   are joined to a known absolute project root, with conservative Windows path
