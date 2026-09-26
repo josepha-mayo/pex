@@ -354,6 +354,38 @@ def test_decision_text_budget_includes_scope():
     assert envelope.offered_decision_ids == tuple(item.id for item in envelope.decisions)
 
 
+@pytest.mark.parametrize("goal_id", ["goal-one", None])
+def test_human_constraint_survives_a_full_verified_result_context_budget(goal_id):
+    now = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    session, _, _ = _bound(now)
+    results = [_context(now, f"result-{index:02d}") for index in range(40)]
+    constraint = _context(
+        now,
+        "human-boundary",
+        goal_id=goal_id,
+        content="Do not change the public API or delete existing user data.",
+        valid_from=now - timedelta(days=2),
+        metadata={"verified": False},
+    )
+    constraint.kind = ContextKind.CONSTRAINT
+    constraint.provenance = SourceKind.HUMAN
+    constraint.confidence = 1.0
+    worker_claim = constraint.model_copy(update={
+        "id": "worker-claimed-boundary",
+        "provenance": SourceKind.HARNESS,
+        "valid_from": now,
+    })
+
+    envelope = build_supervisor_context(
+        session, [*results, worker_claim, constraint], [], now=now,
+    )
+
+    assert len(envelope.context_items) == 32
+    assert envelope.offered_context_ids[0] == "human-boundary"
+    assert envelope.context_items[0].verified is False
+    assert "worker-claimed-boundary" not in envelope.offered_context_ids
+
+
 def test_harness_metadata_cannot_upgrade_self_report_to_verified_context():
     now = datetime(2026, 9, 5, 12, tzinfo=UTC)
     session, _, _ = _bound(now)

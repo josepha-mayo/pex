@@ -116,10 +116,15 @@ def _context_verified(item: ContextItem) -> bool:
 
 def _context_rank(
     item: ContextItem, goal_id: str
-) -> tuple[int, int, int, int, float, datetime, str]:
+) -> tuple[int, int, int, int, int, float, datetime, str]:
     metadata = item.metadata if isinstance(item.metadata, dict) else {}
     status = str(metadata.get("status") or "").casefold()
     return (
+        # Human commitments remain binding even when a busy goal has produced
+        # enough verified results to fill the packet. This includes project-wide
+        # constraints; verification proves results, not authority over intent.
+        1 if item.provenance == SourceKind.HUMAN
+        and item.kind in {ContextKind.CONSTRAINT, ContextKind.DECISION} else 0,
         1 if item.goal_id == goal_id else 0,
         1 if _context_verified(item) else 0,
         1 if item.provenance in _STRONG_PROVENANCE else 0,

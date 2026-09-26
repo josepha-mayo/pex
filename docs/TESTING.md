@@ -4,6 +4,22 @@ PEX is a Windows and Linux x64 desktop companion that supervises coding workers 
 supported local interfaces. The primary paths use OpenCode HTTP and an
 isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
+## Main-branch verification checkpoints
+
+Exact source `5b67c3e` passed the full
+[Windows and Ubuntu workflow](https://github.com/josepha-mayo/pex/actions/runs/36143226693):
+source tests and desktop builds, native NSIS/DEB packages, authenticated packaged
+bridge startup, native credential storage, and the installed Linux Home/Settings
+visual smoke. Native bridge readiness is delivered to the webview as a typed
+event, with bounded polling retained for recovery. This is Ubuntu/Xvfb evidence,
+not a physical Linux workstation acceptance claim.
+
+The later `c0220d6` connection UI was exercised in browser mode against a
+throwaway, test-scoped local bridge with cloud reasoning disabled. The Codex CLI
+button completed a real isolated App Server handshake, returned Basic support,
+and populated Home with available CLI threads; no model turn was requested.
+This does not establish control of an arbitrary open Codex desktop task.
+
 ## Fastest evaluation path
 
 **Current release candidate:** download
