@@ -119,6 +119,49 @@ def test_post_compaction_edit_is_not_a_forgotten_fact() -> None:
     assert report.signals["forgotten_fact_count"] == 0
 
 
+def test_edit_after_repeated_reads_retires_the_forgotten_fact() -> None:
+    now = datetime.now(UTC)
+    schema = ["src/schema.json"]
+    artifact = _item(
+        "schema", "Use the old schema layout.", now - timedelta(minutes=10), files=schema,
+    )
+    events = [
+        _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
+        _event("read-1", EventType.FILE_READ, now - timedelta(minutes=3), file_paths=schema),
+        _event("read-2", EventType.FILE_READ, now - timedelta(minutes=2), file_paths=schema),
+        _event("edit", EventType.FILE_EDIT, now - timedelta(minutes=1), file_paths=schema),
+    ]
+    report = assess_context_health(events, [artifact], now=now)
+    assert report.forgotten_facts == []
+    assert report.signals["forgotten_fact_count"] == 0
+
+
+@pytest.mark.parametrize("latest_description", ["Current parser layout.", ""])
+def test_edit_fallback_restores_latest_observed_state_after_next_compaction(
+    latest_description: str,
+) -> None:
+    now = datetime.now(UTC)
+    schema = ["src/schema.json"]
+    events = [
+        _event(
+            "old-edit", EventType.FILE_EDIT, now - timedelta(minutes=8),
+            file_paths=schema, message_delta="Old parser layout.",
+        ),
+        _event("first-compact", EventType.COMPACTION, now - timedelta(minutes=7)),
+        _event("old-read-1", EventType.FILE_READ, now - timedelta(minutes=6), file_paths=schema),
+        _event("old-read-2", EventType.FILE_READ, now - timedelta(minutes=5), file_paths=schema),
+        _event(
+            "new-edit", EventType.FILE_EDIT, now - timedelta(minutes=4),
+            file_paths=schema, message_delta=latest_description,
+        ),
+        _event("second-compact", EventType.COMPACTION, now - timedelta(minutes=3)),
+        _event("new-read-1", EventType.FILE_READ, now - timedelta(minutes=2), file_paths=schema),
+        _event("new-read-2", EventType.FILE_READ, now - timedelta(minutes=1), file_paths=schema),
+    ]
+    report = assess_context_health(events, [], now=now)
+    assert report.forgotten_facts == ([latest_description] if latest_description else [])
+
+
 @pytest.mark.parametrize(
     "known,read",
     [("src/config.py", "tests/config.py"), ("src/Config.py", "src/config.py"),

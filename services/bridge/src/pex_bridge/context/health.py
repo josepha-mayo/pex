@@ -188,13 +188,16 @@ def _forgotten_facts(
             for name in _item_files(item):
                 if content:
                     known.setdefault(name, content)
+        prior_edits: dict[str, str] = {}
         for prior in ordered[:index]:
             if prior.event_type != EventType.FILE_EDIT:
                 continue
             content = (prior.message_delta or prior.command or "").strip()[:400]
             for name in _file_names(prior.file_paths, prior.project_id):
-                if content:
-                    known.setdefault(name, content)
+                prior_edits[name] = content
+        for name, content in prior_edits.items():
+            if content:
+                known.setdefault(name, content)
         if not known:
             continue
         reads: Counter[str] = Counter()
@@ -203,6 +206,10 @@ def _forgotten_facts(
             names = _file_names(event.file_paths, event.project_id)
             if event.event_type == EventType.FILE_EDIT:
                 edited.update(names)
+                # Earlier repeated reads describe the state before this edit.
+                # Do not restore that state into the worker's current context.
+                for name in names:
+                    reads.pop(name, None)
                 continue
             if event.event_type != EventType.FILE_READ:
                 continue

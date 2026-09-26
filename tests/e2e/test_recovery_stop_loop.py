@@ -858,8 +858,9 @@ async def test_compaction_checkpoints_durable_ledger(client: AsyncClient, tmp_pa
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("edit_after_reads", [False, True])
 async def test_repeated_forgotten_facts_after_compaction_apply_context_overlay(
-    client: AsyncClient, tmp_path
+    client: AsyncClient, tmp_path, edit_after_reads: bool,
 ):
     worker = tmp_path / "health-worker"
     worker.mkdir()
@@ -901,6 +902,17 @@ async def test_repeated_forgotten_facts_after_compaction_apply_context_overlay(
                 "message": "Read schema.json",
             },
         )
+    if edit_after_reads:
+        changed = await client.post(
+            "/v1/synthetic/events",
+            json={
+                "session_id": session.id,
+                "event_type": EventType.FILE_EDIT.value,
+                "file_paths": ["src/schema.json"],
+                "message": "Update schema.json with the revised parser layout.",
+            },
+        )
+        assert changed.status_code == 200
     second = await client.post(
         "/v1/synthetic/events",
         json={
@@ -910,6 +922,13 @@ async def test_repeated_forgotten_facts_after_compaction_apply_context_overlay(
         },
     )
     intervention = second.json()["intervention"]
+    if edit_after_reads:
+        assert intervention["action_taken"] == "SUPPRESSED_COOLDOWN"
+        assert intervention["proposed_action"]["type"] == "SEND_NUDGE"
+        saved = await state.store.get_session(session.id)
+        assert saved is not None
+        assert (saved.metadata.get("context_health_signals") or {}).get("forgotten_fact_count") == 0
+        return
     assert intervention["action_taken"] == "APPLY_OVERLAY"
     assert intervention["result"] == "overlay_applied"
     assert intervention["reversible"] is True

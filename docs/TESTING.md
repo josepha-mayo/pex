@@ -383,6 +383,13 @@ optional AgentCore endpoint proposes an action.
 - Amazon Bedrock AgentCore support is implemented and offline-tested; no
   deployed AgentCore Runtime is claimed.
 - PexBench is unfrozen; no comparative productivity score is claimed.
+- Context health no longer uses repeated reads that precede a later edit of
+  the same file to trigger forgotten-fact recovery. When no durable item supplies
+  the fact, fallback edit evidence uses the latest observed description; an
+  undescribed latest edit does not revive an older description. Context-health
+  and planner checks passed 81 tests. Two backend compaction cases confirmed
+  delivery of recovery without an edit and cooldown suppression of the ledger
+  nudge after an edit, with no context-health overlay in the latter case.
 - Routine read permission classification preserves POSIX case and uses Windows
   drive path semantics for Windows workers. Case-fold collisions, drive-relative
   paths, rooted paths without a drive, UNC paths and alternate data streams do
