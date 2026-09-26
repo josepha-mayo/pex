@@ -156,7 +156,9 @@ def test_actual_unix_relay_preserves_framing_and_deduplicates():
         calls = []
         async def backend(_body):
             calls.append(1)
-            return {"model": "pinned", "choices": [{"message": {"role": "assistant", "content": "local echo"}}]}
+            return {"model": "pinned", "choices": [{"message": {
+                "role": "assistant", "content": "local echo",
+            }}]}
         relay = PinnedModelRelay(model="pinned", max_calls=3,
                                 deadline=time.perf_counter()+5, backend=backend)
         with TemporaryDirectory(prefix="pex-model-") as root:
