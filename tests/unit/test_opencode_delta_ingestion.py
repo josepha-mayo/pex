@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.http_json import MemoryHttpTransport
-from pex_bridge.adapters.opencode import _scoped_test_command
+from pex_bridge.adapters.opencode import OpenCodeAdapter, _same_path, _scoped_test_command
 from pex_bridge.adapters.opencode_outcomes import OPENCODE_MESSAGE_LINEAGE_KEY
 from pex_bridge.bus import EventBus
 from pex_bridge.config import Settings
@@ -38,6 +38,49 @@ def test_scoped_test_command_unwraps_only_the_exact_bound_workspace():
         )
         == r"cd D:\work\case && python -m pytest -q && echo done"
     )
+
+
+@pytest.mark.parametrize(
+    ("bound", "observed", "matches"),
+    [
+        ("/work/PEX", "/work/pex", False),
+        ("/work/case", "/work/case", True),
+        ("/work/a/../case", "/work/case", False),
+        ("project:PEX", "project:pex", False),
+        (r"D:\work\case", "d:/WORK/case", True),
+        (r"D:\work\case", r"D:\other\case", False),
+        ("/work/straße", "/work/strasse", False),
+    ],
+)
+def test_opencode_workspace_comparison_preserves_posix_and_opaque_identity(
+    bound, observed, matches
+):
+    assert _same_path(bound, observed) is matches
+    command = f'cd "{observed}" && python -m pytest -q'
+    assert _scoped_test_command(command, bound) == (
+        "python -m pytest -q" if matches else command
+    )
+
+
+def test_opencode_rejects_case_distinct_posix_events_without_rebinding_the_worker():
+    adapter = OpenCodeAdapter()
+    payload = {
+        "type": "session.idle",
+        "properties": {"sessionID": "case-sensitive", "cwd": "/work/PEX"},
+    }
+    session = adapter._session_for(payload)
+    assert session is not None
+    session.goal_id = "goal-original"
+    session.supervision_paused = True
+    foreign = {
+        **payload,
+        "properties": {**payload["properties"], "cwd": "/work/pex"},
+    }
+    assert adapter._session_for(foreign) is None
+    assert session.cwd == "/work/PEX"
+    assert session.goal_id == "goal-original"
+    assert session.supervision_paused is True
+    assert adapter._session_for(payload) is session
 
 
 async def _bound_opencode_pipeline(tmp_path):

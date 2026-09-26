@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import math
-import ntpath
 from datetime import UTC, datetime
 from time import monotonic
 from urllib.parse import quote
@@ -23,6 +22,7 @@ from pex_protocol.capabilities import (
     PermissionResponseMode,
 )
 from pex_protocol.enums import EventPhase, EventType, HarnessType, SessionStatus
+from pex_protocol.project_binding import project_binding_key
 from pex_protocol.session import HarnessEvent, HarnessSession
 
 from pex_bridge.adapters.base import (
@@ -82,7 +82,7 @@ def _scoped_test_command(command: str | None, cwd: str) -> str | None:
     raw_path = prefix[3:].strip()
     if len(raw_path) >= 2 and raw_path[0] == raw_path[-1] and raw_path[0] in {"'", '"'}:
         raw_path = raw_path[1:-1]
-    if ntpath.normcase(ntpath.normpath(raw_path)) != ntpath.normcase(ntpath.normpath(cwd)):
+    if not _same_path(raw_path, cwd):
         return command
     normalized = candidate.strip()
     return normalized or command
@@ -1655,4 +1655,4 @@ def _optional_bounded_path(value: object) -> str | None:
 
 
 def _same_path(left: str, right: str) -> bool:
-    return ntpath.normcase(ntpath.normpath(left)) == ntpath.normcase(ntpath.normpath(right))
+    return project_binding_key(left) == project_binding_key(right)
