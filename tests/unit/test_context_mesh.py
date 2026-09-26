@@ -53,6 +53,7 @@ def test_goal_prohibitions_survive_handoff_without_any_ranked_context():
         "Constraint: Do not expose secrets",
         *[f"Forbidden outcome: {value}" for value in goal.forbidden_outcomes],
         "Non-goal: Do not rewrite unrelated projects",
+        "Evidence requirement: pytest result",
     ]
     rendered = _bundle_as_prompt(bundle)
     assert goal.forbidden_outcomes[1] in rendered
@@ -75,6 +76,9 @@ def test_full_goal_and_all_acceptance_requirements_survive_handoff():
     goal.objective = "Public implementation detail. " * 160 + "Verify on both operating systems."
     goal.acceptance_criteria = [f"Requirement {index} is verified" for index in range(33)]
     goal.acceptance_criteria[0] = "Public test detail. " * 60 + "The Linux result must also pass."
+    goal.evidence_requirements = [
+        "Retain the exact command and exit code. " * 35 + "Keep failures too."
+    ]
     bundle = build_bundle(goal, _target(), [], [], [])
     assert bundle.goal_summary == goal.objective
     assert bundle.acceptance_criteria == goal.acceptance_criteria
@@ -83,6 +87,7 @@ def test_full_goal_and_all_acceptance_requirements_survive_handoff():
     assert goal.objective in rendered
     assert goal.acceptance_criteria[0] in rendered
     assert goal.acceptance_criteria[-1] in rendered
+    assert goal.evidence_requirements[0] in rendered
 
 
 def test_shortened_supported_claim_cannot_complete_long_requirement():
@@ -254,7 +259,8 @@ def test_declared_target_keeps_goal_wide_constraints_and_unresolved_dependencies
 
     assert {item.id for item in bundle.items} == {"constraint", "blocker"}
     assert bundle.critical_decisions == [
-        "Constraint: Do not expose secrets", f"Constraint: {constraint.content}",
+        "Constraint: Do not expose secrets", "Evidence requirement: pytest result",
+        f"Constraint: {constraint.content}",
     ]
 
 

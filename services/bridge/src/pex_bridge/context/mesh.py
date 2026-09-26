@@ -359,6 +359,7 @@ def build_bundle(
             ("Constraint", goal.constraints),
             ("Forbidden outcome", goal.forbidden_outcomes),
             ("Non-goal", goal.non_goals),
+            ("Evidence requirement", goal.evidence_requirements),
         )
         for value in values
         if (cleaned := contract_text(value))
