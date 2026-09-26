@@ -75,7 +75,12 @@ test("OpenCode attach sends one bridge request and validates its acknowledgement
 test("OpenCode setup rejects invalid origins before I/O", async () => {
   await assert.rejects(connectOpenCode(async () => {
     assert.fail("must not send");
-  }, "http://remote.example", new AbortController().signal));
+  }, "http://remote.example", new AbortController().signal), (error: unknown) => {
+    const notice = openCodeConnectionFailure(error);
+    assert.match(notice, /local HTTP server address/);
+    assert.doesNotMatch(notice, /remote.example|lost response/);
+    return true;
+  });
 });
 
 test("OpenCode password is sent only in the authenticated bridge body", async () => {
@@ -96,8 +101,16 @@ test("OpenCode malformed server credentials fail before I/O", async () => {
     { username: "opencode", password: "secret\n" },
     { username: "opencode", password: "x".repeat(4097) },
   ]) {
-    await assert.rejects(connectOpenCode(async () => assert.fail("must not send"),
-      "http://localhost:4096", new AbortController().signal, credentials));
+    try {
+      await connectOpenCode(async () => assert.fail("must not send"),
+        "http://localhost:4096", new AbortController().signal, credentials);
+      assert.fail("malformed credentials accepted");
+    } catch (error) {
+      const notice = openCodeConnectionFailure(error);
+      assert.match(notice, /username and password/);
+      assert.match(notice, /No connection request was sent/);
+      assert.doesNotMatch(notice, /secret|lost response|rolled back/);
+    }
   }
 });
 

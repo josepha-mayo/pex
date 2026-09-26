@@ -636,3 +636,11 @@ optional AgentCore endpoint proposes an action.
   passed. This used a disposable local bridge profile and made no provider
   call or credential save; it is browser layout evidence, not native or live
   inference acceptance.
+- OpenCode connection setup now distinguishes local input rejection from a
+  lost-response outcome. Invalid server credentials report that no request
+  was sent; arbitrary server/network diagnostics remain withheld. Invalid
+  origins show an accessible local-address hint rather than only disabling
+  Connect. Browser review confirmed the hint and disabled button for a remote
+  path, then removal of the hint and enabled Connect after entering a valid
+  loopback origin. No attach or worker/model turn was dispatched. Nine
+  OpenCode/Codex connection checks and the production build passed.

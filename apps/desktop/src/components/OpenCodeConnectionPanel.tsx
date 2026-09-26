@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { connectOpenCode, openCodeConnectionFailure, openCodeOrigin } from "../openCodeConnection";
+import {
+  connectOpenCode, openCodeConnectionFailure, openCodeOrigin, OPENCODE_ADDRESS_GUIDANCE,
+} from "../openCodeConnection";
 import type { SharedRequest } from "../sharedConnection";
 
 export function OpenCodeConnectionPanel({ request, onChanged, available }: {
@@ -52,8 +54,12 @@ export function OpenCodeConnectionPanel({ request, onChanged, available }: {
     <label>OpenCode server address
       <input type="url" value={url} maxLength={2048} disabled={busy}
         onChange={(event) => setUrl(event.target.value)} autoComplete="off"
-        spellCheck={false} placeholder="http://127.0.0.1:4096" />
+        spellCheck={false} placeholder="http://127.0.0.1:4096"
+        aria-invalid={!openCodeOrigin(url)}
+        aria-describedby={!openCodeOrigin(url) ? "opencode-address-guidance" : undefined} />
     </label>
+    {!openCodeOrigin(url) ? <p className="settings-note" id="opencode-address-guidance"
+      role="status">{OPENCODE_ADDRESS_GUIDANCE}</p> : null}
     <details className="settings-advanced">
       <summary>Server password (optional)</summary>
       <p className="settings-note">Use your OpenCode server credentials, separate from your model API key.

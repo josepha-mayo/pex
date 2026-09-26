@@ -1,8 +1,18 @@
 import type { SharedRequest } from "./sharedConnection.ts";
 import { BridgeRequestError } from "./decisionContract.ts";
 
+export const OPENCODE_ADDRESS_GUIDANCE = "Enter a local HTTP server address, such as http://127.0.0.1:4096, without a path, password or API key.";
+
+class OpenCodeInputError extends Error {
+  constructor(field: "address" | "credentials") {
+    super(field === "address" ? OPENCODE_ADDRESS_GUIDANCE
+      : "Check the OpenCode server username and password. No connection request was sent.");
+  }
+}
+
 /** Explain verified failures without reflecting arbitrary server diagnostics. */
 export function openCodeConnectionFailure(error: unknown): string {
+  if (error instanceof OpenCodeInputError) return error.message;
   if (error instanceof BridgeRequestError) {
     if (error.status === 401 || error.status === 403) {
       return "PEX could not authorize this connection request. Restart PEX to refresh its local bridge connection; do not paste your Zen key into the server address.";
@@ -34,13 +44,13 @@ export async function connectOpenCode(
   credentials?: { username: string; password: string },
 ) {
   const url = openCodeOrigin(value);
-  if (!url) throw new Error("Enter a local HTTP origin, such as http://127.0.0.1:4096.");
+  if (!url) throw new OpenCodeInputError("address");
   const auth = credentials?.password ? {
     username: credentials.username.trim() || "opencode", password: credentials.password,
   } : undefined;
   if (auth && (auth.username.length > 256 || /[^\x21-\x7e]/u.test(auth.username)
     || auth.password.length > 4096 || /[\r\n\0]/u.test(auth.password))) {
-    throw new Error("Enter a valid OpenCode server username and password.");
+    throw new OpenCodeInputError("credentials");
   }
   const result = await request("/v1/adapters/opencode/attach", {
     method: "POST", headers: { "Content-Type": "application/json" },
