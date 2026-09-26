@@ -1105,7 +1105,13 @@ async def test_model_constructor_timeout_quarantines_until_worker_finishes(
         # Synchronize on entry; keep it blocked until quarantine is inspected.
         assert await asyncio.to_thread(entered.wait, 1)
         assert timed_out.status_code == 504
-        assert (await asyncio.wait_for(client.get("/health"), 0.25)).status_code == 200
+        # /health includes bounded adapter discovery, whose scheduling is
+        # independent of model activation. Probe event-loop liveness and the
+        # actual supervisor control read while the constructor stays blocked.
+        assert (await asyncio.wait_for(client.get("/health/live"), 0.25)).status_code == 200
+        settings = await asyncio.wait_for(client.get("/v1/supervisor"), 0.25)
+        assert settings.status_code == 200
+        assert settings.json()["revision"] == 1
         refused = await client.patch(
             "/v1/supervisor",
             json={"expected_revision": 1, "model_id": "must-not-overlap"},

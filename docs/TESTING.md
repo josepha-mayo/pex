@@ -12,7 +12,7 @@ Exact source `1e21082` passed the
 passed on Ubuntu (19 skipped, 16 deselected). Both desktop test suites and
 production builds passed. This run did not execute native package jobs.
 
-The later adapter workspace changes at `6a048c4` are undergoing the full
+The later adapter workspace changes at `6a048c4` completed the full
 [source and native workflow](https://github.com/josepha-mayo/pex/actions/runs/36253951573).
 Windows native packaging, authenticated bridge startup, OS-vault and packaged
 BYOK checks passed. Ubuntu source checks passed, but its installed-window smoke
@@ -25,8 +25,13 @@ passed Home, Settings, hidden pet and anonymous HTTP 401 checks, but its
 failed the fresh-state gate. Software compositing therefore remains a diagnostic
 option and is not the CI default. The installed product's renderer is unchanged.
 These results do not establish reliable physical-Linux startup or
-accept the subsequent Context UI changes. The full workflow's Windows source
-job was still running when this checkpoint was recorded.
+accept the subsequent Context UI changes. Windows source finished with one
+failure and 4,789 passing tests: the model-constructor quarantine test's 250 ms
+health check expired during adapter probing. Its worker had started and remained
+blocked. The test now checks cheap `/health/live` and the actual supervisor
+settings read under the same deadline, retaining quarantine and rollback checks;
+six focused activation/cancellation tests passed locally. This is a corrected
+responsiveness contract, not proof of a repaired model-activation race.
 
 Exact source `907395e` passed the full
 [Windows and Ubuntu workflow](https://github.com/josepha-mayo/pex/actions/runs/36246994582):
