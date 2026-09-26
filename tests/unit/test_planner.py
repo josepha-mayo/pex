@@ -276,7 +276,8 @@ def test_repeated_identical_failures_apply_debug_overlay():
     assert action.type == InterventionType.APPLY_OVERLAY
     overlay = action.payload["overlay"]
     assert overlay["diff"]["extra"]["phase"] == "debug"
-    assert "WebSearch" in overlay["diff"]["tools_disabled"]
+    assert overlay["diff"]["tools_disabled"] is None
+    assert "Stay on the failing reproduction" in overlay["diff"]["system_instructions"]
 
 
 def test_contradicted_stop_sends_specific_evidence():
@@ -779,9 +780,14 @@ def test_compaction_checkpoints_forgotten_facts_without_overlay_on_first_sample(
 
 
 def test_repeated_forgotten_context_applies_health_overlay_on_compaction():
+    goal = _goal().model_copy(
+        update={
+            "objective": "Research official API documentation in the browser and repair the parser."
+        }
+    )
     request = SupervisorRequest(
         session=_session(),
-        goal=_goal(),
+        goal=goal,
         event=_event(EventType.COMPACTION, message_delta="Compacting context."),
         scores=TrajectoryScores(
             features={
@@ -796,7 +802,8 @@ def test_repeated_forgotten_context_applies_health_overlay_on_compaction():
     overlay = action.payload.get("overlay") or {}
     diff = overlay.get("diff") or {}
     assert "schema.json is the source of truth" in str(diff.get("system_instructions") or "")
-    assert "WebSearch" in (diff.get("tools_disabled") or [])
+    assert diff["tools_disabled"] is None
+    assert goal.objective in diff["system_instructions"]
     assert action.reversible is True
 
 

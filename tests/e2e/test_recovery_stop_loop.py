@@ -921,6 +921,7 @@ async def test_repeated_forgotten_facts_after_compaction_apply_context_overlay(
     assert parent is not None and parent["state"] == "delivered"
     assert operation["parent_effect_id"] == parent["effect_id"]
     assert parent["downstream_operation_id"] == operation["operation_id"]
+    assert (overlay.get("diff") or {}).get("tools_disabled") is None
     instructions = str((overlay.get("diff") or {}).get("system_instructions") or "")
     assert "schema.json is the source of truth" in instructions
     saved = await state.store.get_session(session.id)

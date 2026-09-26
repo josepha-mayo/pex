@@ -336,7 +336,6 @@ def _debug_overlay(request: SupervisorRequest, evidence: list[str]) -> ProposedA
         session_id=request.session.id,
         reason="Repeated identical failures; switch to a debug-phase overlay.",
         diff=OverlayDiff(
-            tools_disabled=["WebSearch", "Browser", "web_search"],
             extra=extra,
             system_instructions=instructions,
         ),
@@ -356,7 +355,7 @@ def _debug_overlay(request: SupervisorRequest, evidence: list[str]) -> ProposedA
         confidence=0.8,
         risk=RiskLevel.LOW,
         reversible=True,
-        expected_benefit="Temporarily pin debug tools and drop unrelated research tools.",
+        expected_benefit="Focus diagnosis on the failing reproduction while preserving task tools.",
         cooldown_seconds=120,
         requires_capability="modify_config",
     )
@@ -766,10 +765,9 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
                 session_id=request.session.id,
                 reason=(
                     "Context health degraded after repeated forgotten facts; "
-                    "checkpoint durable context and drop unrelated research tools."
+                    "checkpoint durable context while preserving task tools."
                 ),
                 diff=OverlayDiff(
-                    tools_disabled=["WebSearch", "Browser", "web_search"],
                     extra={"phase": "context-health", "pin": "durable-facts"},
                     system_instructions=correction,
                 ),
@@ -783,7 +781,7 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
                 payload={"overlay": overlay.model_dump(mode="json")},
                 rationale=(
                     "Worker context compacted twice and re-acquired durable facts; "
-                    "pin those facts and reduce irrelevant tools."
+                    "pin those facts without removing tools the task may require."
                 ),
                 evidence=evidence,
                 confidence=0.8,

@@ -373,6 +373,11 @@ optional AgentCore endpoint proposes an action.
 - Amazon Bedrock AgentCore support is implemented and offline-tested; no
   deployed AgentCore Runtime is claimed.
 - PexBench is unfrozen; no comparative productivity score is claimed.
+- Deterministic debug and compaction recovery overlays preserve worker tools.
+  Repeated errors or forgotten facts alone do not establish that browser/search
+  access is irrelevant. Recovery still pins the reproduction and durable goal
+  context. Planner and delivered compaction-overlay regressions passed 49 tests;
+  these are offline checks, not evidence of live model performance.
 - Codex support means an isolated `codex app-server` connection, not control of
   an arbitrary private Codex desktop conversation.
 - The installer is unsigned; source and SHA-256 hashes are published with the
