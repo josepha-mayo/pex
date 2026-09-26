@@ -395,8 +395,8 @@ optional AgentCore endpoint proposes an action.
   denied access to a private host file, controller environment and listening
   socket, and denied writes to task/runtime/request while writing its response.
   Local Windows boundary/execution-safety checks passed 21 tests with five Linux
-  skips. This was a boundary probe, not the actual PEX decision child. Curated
-  dependency packaging, workspace payload rebinding, live model transport and
+  skips. This initial run was a boundary probe, not the actual PEX decision child.
+  Workspace payload rebinding, live model transport and
   complete action-time receipts remain required; the execution gate stays shut.
 - Opt-in installed startup traces now include the last React-committed surface
   reported through the existing bootstrap status call. Rust accepts only five
