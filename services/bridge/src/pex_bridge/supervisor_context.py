@@ -182,14 +182,14 @@ def build_supervisor_context(
             or project_binding_key(item.project_id) != project_binding_key(project_id)
             or item.goal_id not in {None, goal_id}
             or item.valid_from > observed_at
-            or (item.stale_after is not None and item.stale_after <= observed_at)
             or _clean_id(item.id) is None
         ):
             continue
         in_scope.append(item)
 
     # A valid in-scope replacement suppresses its predecessor even when the
-    # replacement itself is too sensitive to disclose to the model.
+    # replacement itself is expired or too sensitive to disclose to the model.
+    # Expiry invalidates the replacement; it does not revive a retired fact.
     superseded_ids = {
         superseded
         for item in in_scope
@@ -202,6 +202,7 @@ def build_supervisor_context(
         if (
             item.id in superseded_ids
             or item.id in selected_context_ids
+            or (item.stale_after is not None and item.stale_after <= observed_at)
             or item.sensitivity not in _ALLOWED_SENSITIVITY
         ):
             continue

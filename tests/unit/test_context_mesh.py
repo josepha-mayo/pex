@@ -351,6 +351,17 @@ def test_delivered_successor_never_revives_superseded_context() -> None:
     assert bundle.items == []
 
 
+def test_expired_successor_never_revives_superseded_handoff_context() -> None:
+    now = datetime.now(UTC)
+    retired = _item("retired", "Use the old parser release path", now)
+    successor = _item(
+        "expired-successor", "Use the new parser release path", now, stale_after=now
+    ).model_copy(update={"supersedes": retired.id})
+    assert build_bundle(
+        _goal(now), _target(task="parser release"), [retired, successor], [], []
+    ).items == []
+
+
 def test_private_successor_retires_old_public_context_without_crossing_scope() -> None:
     now = datetime.now(UTC)
     goal = _goal(now)

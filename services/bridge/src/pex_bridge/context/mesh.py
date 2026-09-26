@@ -310,7 +310,6 @@ def build_bundle(
         and item.goal_id == goal.id
         and project_binding_key(item.project_id) == project_binding_key(goal.project_id)
         and _as_utc(item.valid_from) <= now
-        and (item.stale_after is None or _as_utc(item.stale_after) > now)
         and item.source_refs
     }
     verified_refs = {

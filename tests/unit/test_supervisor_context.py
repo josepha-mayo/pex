@@ -332,6 +332,22 @@ def test_secret_replacement_suppresses_predecessor_without_disclosing_replacemen
     assert envelope.context_items == ()
 
 
+def test_expired_replacement_does_not_revive_retired_supervisor_context():
+    now = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    session, _, _ = _bound(now)
+    envelope = build_supervisor_context(
+        session,
+        [
+            _context(now, "retired"),
+            _context(now, "expired-successor", supersedes="retired", stale_after=now),
+        ],
+        [],
+        now=now,
+    )
+    assert envelope.offered_context_ids == ()
+    assert envelope.context_items == ()
+
+
 def test_decision_text_budget_includes_scope():
     from pex_bridge.supervisor_context import _MAX_DECISION_TEXT
 
