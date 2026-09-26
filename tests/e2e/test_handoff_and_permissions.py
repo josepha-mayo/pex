@@ -3672,6 +3672,41 @@ async def test_verification_request_without_send_capability_is_unavailable(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("ok", [None, True])
+async def test_nonzero_pytest_exit_nudges_same_worker_without_claim(
+    client: AsyncClient, tmp_path, ok,
+):
+    worker = tmp_path / "failed-exit-worker"
+    worker.mkdir()
+    adapter = state.adapters.synthetic
+    session = adapter.seed_session(vendor_id="failed-exit", cwd=str(worker))
+    await state.store.upsert_session(session)
+    goal = (await client.post("/v1/goals", json={
+        "project_id": "demo", "title": "Finish parser",
+        "objective": "Implement the parser with passing tests",
+        "acceptance_criteria": ["tests pass"],
+    })).json()
+    await client.post(f"/v1/sessions/{session.id}/attach", json={"goal_id": goal["id"]})
+    shell = await client.post("/v1/synthetic/events", json={
+        "session_id": session.id, "event_type": EventType.SHELL.value,
+        "command": "pytest -q", "process_state": {
+            "pytest": {"ok": ok, "exit_code": 2},
+        },
+    })
+    assert shell.status_code == 200
+    stopped = await client.post("/v1/synthetic/events", json={
+        "session_id": session.id, "event_type": EventType.STOP.value,
+        "message": "Awaiting the next step.",
+    })
+    assert stopped.status_code == 200
+    intervention = stopped.json()["intervention"]
+    assert intervention["action_taken"] == "SEND_NUDGE"
+    assert intervention["metadata"]["verification"]["status"] == "acceptance_gap"
+    assert "(exit 2)" in adapter.inbox[session.id][-1]
+    assert "Continue from that failure" in adapter.inbox[session.id][-1]
+
+
+@pytest.mark.asyncio
 async def test_false_test_claim_nudges_with_failing_pytest(client: AsyncClient, tmp_path):
     worker = tmp_path / "worker"
     worker.mkdir()

@@ -1633,6 +1633,40 @@ def test_ok_true_with_nonzero_exit_cannot_support():
     assert "pytest_exit_code=1" in result["verdicts"][0]["evidence"]
 
 
+@pytest.mark.parametrize("ok", [None, True])
+@pytest.mark.parametrize("exit_code", [1, 2])
+def test_nonzero_pytest_exit_is_unfinished_without_completion_claim(ok, exit_code):
+    events = [
+        _event(
+            event_id="failed-run", event_type=EventType.SHELL, command="pytest -q",
+            process_state={"pytest": {"ok": ok, "exit_code": exit_code}},
+        ),
+        _event(event_id="stop", event_type=EventType.STOP),
+    ]
+    result = verify_claims([], events, _goal(acceptance_criteria=["tests pass"]), {})
+    assert result["status"] == "acceptance_gap"
+    assert f"(exit {exit_code})" in result["correction"]
+    assert "pytest_event_id=failed-run" in result["evidence"]
+    assert f"pytest_exit_code={exit_code}" in result["evidence"]
+
+    events.insert(1, _event(event_type=EventType.FILE_EDIT, file_paths=["solver.py"]))
+    after_edit = verify_claims([], events, _goal(acceptance_criteria=["tests pass"]), {})
+    assert after_edit["status"] == "no_claims"
+    assert after_edit["correction"] is None
+
+
+@pytest.mark.parametrize("exit_code", [True, "1", None])
+def test_untyped_pytest_exit_is_not_failure_proof_without_claim(exit_code):
+    events = [
+        _event(event_type=EventType.SHELL, command="pytest -q",
+               process_state={"pytest": {"exit_code": exit_code}}),
+        _event(event_type=EventType.STOP),
+    ]
+    result = verify_claims([], events, _goal(acceptance_criteria=["tests pass"]), {})
+    assert result["status"] == "no_claims"
+    assert result["correction"] is None
+
+
 def test_uncertain_unreadable_file_selects_file_count_probe():
     goal = _goal(
         objective="Ship the report artifact",

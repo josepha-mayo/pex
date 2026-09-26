@@ -506,3 +506,13 @@ optional AgentCore endpoint proposes an action.
   at 800px. The bridge/tab/dev server were closed afterward. Eight first-run
   checks and the production build passed. No worker was connected in this UI
   check, and no model turn or provider call was started.
+- Stopping after a typed nonzero pytest exit is unfinished work even when no
+  completion claim was extracted and the `ok` flag is absent or inconsistent.
+  PEX now returns an acceptance gap with the observed event ID and exit code,
+  rather than remaining silent. Later observed file edits retire that failure
+  as current evidence; boolean/string exit values do not prove a failed run.
+  Four regression cases reproduced silence before the fix. Verification,
+  claim-protocol and planner checks passed 182 tests. Three backend scenarios
+  passed, including two actual same-session synthetic deliveries of the exit-2
+  correction and the existing false-claim scenario. Seven focused checks passed
+  after adding explicit exit-code provenance. No live inference was used.

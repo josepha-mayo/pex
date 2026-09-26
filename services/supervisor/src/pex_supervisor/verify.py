@@ -1236,7 +1236,9 @@ def _unfinished_pytest_verdict(
     node = _failed_node(info, event)
     if _later_edits(events, index):
         return None
-    if ok is False or (ok is None and (event.error or node)):
+    exit_code = info.get("exit_code")
+    failed_exit = type(exit_code) is int and exit_code != 0
+    if failed_exit or ok is False or (ok is None and (event.error or node)):
         bits = ["The latest observed pytest run failed"]
         if info.get("exit_code") not in (None, ""):
             bits.append(f"(exit {info.get('exit_code')})")
@@ -1252,11 +1254,11 @@ def _unfinished_pytest_verdict(
                 f"pytest_event_id={event.event_id}",
                 f"pytest_scope={invocation.scope.value}",
                 f"pytest_ok={ok}",
+                *([f"pytest_exit_code={exit_code}"] if type(exit_code) is int else []),
                 *([f"failed:{node}"] if node else []),
             ],
             "correction": detail,
         }
-    exit_code = info.get("exit_code")
     if (
         ok is not True
         or not isinstance(exit_code, int)
