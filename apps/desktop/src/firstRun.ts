@@ -96,15 +96,15 @@ export function firstRunGuidance({
     return {
       state: "connect_worker",
       title: "Worker detected, control unavailable",
-      detail: "PEX can see this worker but cannot attach a goal or supervise its session. Connect a supported OpenCode or Codex session to continue.",
+      detail: "PEX can see this worker but cannot attach a goal or control its session. Connect OpenCode or create an isolated Codex connection to attach a goal and supervise work.",
       cta: { intent: "connect", label: "How to connect a worker" },
     };
   }
   if (!current) {
     return {
       state: "connect_worker",
-      title: "Connect an existing worker",
-      detail: "Open a supported worker first. PEX discovers existing sessions without starting a new harness.",
+      title: "Connect a worker",
+      detail: "Connect a running OpenCode session or create an isolated Codex connection.",
       cta: { intent: "connect", label: "How to connect a worker" },
     };
   }

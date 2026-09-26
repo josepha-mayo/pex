@@ -489,3 +489,20 @@ optional AgentCore endpoint proposes an action.
   All ten targeted checks passed after those repairs. Three fingerprint cases
   also passed: controller identity now includes the sandbox and runtime builder
   alongside the Codex protocol journal. The entire broad suite was not rerun.
+- Exact-source run `36260871093` at `a2dff00` completed successfully in all
+  four jobs. Retained job logs show Ubuntu backend 4,834 passed (19 skipped,
+  16 deselected), Windows backend 4,841 passed (12 skipped, 16 deselected),
+  and desktop 325 passed with zero failures/skips on both platforms. Both
+  production builds passed. Native packages passed 21 Rust tests apiece,
+  identity and OS-vault/BYOK roundtrips with zero provider calls. Linux also
+  passed its installed fresh-profile Home/Settings visual check. This evidence
+  belongs to that source; subsequent integration changes require their own CI.
+- First-run guidance distinguishes connecting a running OpenCode session from
+  creating an isolated Codex connection. A detected worker without control
+  remains explicitly unavailable for goal attachment and supervision. Browser
+  verification used a disposable bridge with cloud reasoning disabled and zero
+  automatic dispatch allowance. Home-to-Connections navigation worked, both
+  connection paths were visible, and Home/Connections had no horizontal overflow
+  at 800px. The bridge/tab/dev server were closed afterward. Eight first-run
+  checks and the production build passed. No worker was connected in this UI
+  check, and no model turn or provider call was started.

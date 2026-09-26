@@ -41,7 +41,7 @@ test("first-run guidance distinguishes no usable worker from an attachable unbou
   const noWorker = firstRunGuidance({ sessionFresh: true, goalFresh: true });
   assert.deepEqual(noWorker?.cta, { intent: "connect", label: "How to connect a worker" });
   const petWindowNoWorker = firstRunGuidance({ sessionFresh: true, goalFresh: false });
-  assert.equal(petWindowNoWorker?.title, "Connect an existing worker");
+  assert.equal(petWindowNoWorker?.title, "Connect a worker");
 
   const desktopOnly = firstRunGuidance({
     current: { ...worker, id: "codex:desktop", metadata: { source: "desktop" } },
@@ -139,8 +139,8 @@ test("first-run wording only replaces a genuinely quiet unpaused status", () => 
   assert.ok(connect);
   assert.deepEqual(statusWithFirstRunGuidance(quiet, connect, false), {
     tone: "quiet",
-    label: "Connect an existing worker",
-    detail: "Open a supported worker first. PEX discovers existing sessions without starting a new harness.",
+    label: "Connect a worker",
+    detail: "Connect a running OpenCode session or create an isolated Codex connection.",
   });
 
   const paused: StatusCopy = { tone: "quiet", label: "PEX", detail: "Supervision is paused. PEX will not intervene until it is resumed." };
