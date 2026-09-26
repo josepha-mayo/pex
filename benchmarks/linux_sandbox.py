@@ -177,8 +177,11 @@ def public_pytest_command(workspace: Path, files: list[str]) -> list[str]:
         for name in files
     ):
         raise ValueError("public test filenames must be plain workspace basenames")
+    prefix = _prefix(workspace)
     return [
-        *_prefix(workspace),
+        *prefix[:-3],
+        "--setenv", "PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1",
+        *prefix[-3:],
         str(_runtime_python()),
         "-I",
         "-B",
@@ -190,6 +193,8 @@ def public_pytest_command(workspace: Path, files: list[str]) -> list[str]:
         "--tb=line",
         "-p",
         "no:cacheprovider",
+        "--rootdir",
+        "/workspace",
         "--confcutdir",
         "/workspace",
         "-c",

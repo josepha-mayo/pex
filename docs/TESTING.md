@@ -537,3 +537,13 @@ optional AgentCore endpoint proposes an action.
   passed 92 tests. Three backend scenarios passed: bundle injection, exact
   delivered-context acknowledgement and isolated Codex-to-Cursor routing.
   These are controlled offline checks; no live worker/model efficacy is claimed.
+- The isolated Linux public-pytest command explicitly disables external plugin
+  autoload inside the cleared sandbox environment. It also pins pytest rootdir
+  to `/workspace` while using `/dev/null` as config. Two actual WSL regressions
+  reproduced the missing environment setting and the incorrect failing node
+  `../dev/::test_failure`; after repair, the failure names
+  `test_public.py::test_failure`. All nine Linux boundary checks passed in WSL,
+  with two host pytest warnings for unavailable asyncio config options. Windows
+  boundary/execution-safety checks passed 21 tests with seven Linux-only skips.
+  This improves the public-test primitive; it does not yet integrate its
+  receipts into the offline supervision loop or enable live comparisons.

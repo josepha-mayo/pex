@@ -27,6 +27,44 @@ def test_public_test_path_must_be_a_basename(tmp_path: Path) -> None:
     sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
     reason="Linux bwrap required",
 )
+def test_public_pytest_disables_external_plugin_autoload(tmp_path: Path) -> None:
+    workspace = tmp_path / "worker"
+    workspace.mkdir()
+    (workspace / "test_public.py").write_text(
+        "import os\n"
+        "def test_runtime_environment():\n"
+        "    assert os.environ.get('PYTEST_DISABLE_PLUGIN_AUTOLOAD') == '1'\n",
+        encoding="utf-8",
+    )
+    completed = subprocess.run(
+        linux_sandbox.public_pytest_command(workspace, ["test_public.py"]),
+        capture_output=True, text=True, timeout=20,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
+    reason="Linux bwrap required",
+)
+def test_public_pytest_failure_names_the_actual_workspace_test(tmp_path: Path) -> None:
+    workspace = tmp_path / "worker"
+    workspace.mkdir()
+    (workspace / "test_public.py").write_text(
+        "def test_failure():\n    assert False\n", encoding="utf-8",
+    )
+    completed = subprocess.run(
+        linux_sandbox.public_pytest_command(workspace, ["test_public.py"]),
+        capture_output=True, text=True, timeout=20,
+    )
+    assert completed.returncode == 1
+    assert "FAILED test_public.py::test_failure" in completed.stdout
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
+    reason="Linux bwrap required",
+)
 def test_hidden_candidate_cannot_read_host_or_write_workspace(tmp_path: Path) -> None:
     workspace = tmp_path / "worker"
     workspace.mkdir()
