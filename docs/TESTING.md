@@ -6,6 +6,17 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Main-branch verification checkpoints
 
+Exact source `1e21082` passed the
+[Windows and Ubuntu source workflow](https://github.com/josepha-mayo/pex/actions/runs/36252854380):
+4,776 backend tests passed on Windows (12 skipped, 16 deselected), and 4,769
+passed on Ubuntu (19 skipped, 16 deselected). Both desktop test suites and
+production builds passed. This run did not execute native package jobs.
+
+The later adapter workspace changes at `6a048c4` are undergoing the full
+[source and native workflow](https://github.com/josepha-mayo/pex/actions/runs/36253951573).
+Its result is pending; the earlier source checkpoint does not prove those
+changes or the subsequent Context UI changes passed installed-app acceptance.
+
 Exact source `907395e` passed the full
 [Windows and Ubuntu workflow](https://github.com/josepha-mayo/pex/actions/runs/36246994582):
 source tests and desktop builds, native NSIS/DEB packages, authenticated packaged
