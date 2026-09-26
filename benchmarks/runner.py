@@ -43,6 +43,7 @@ _CONTROLLER_FILES = (
     "cursor_capture.py",
     "pex_supervisor_process.py",
     "linux_sandbox.py",
+    "model_relay.py",
     "linux_supervisor_runtime.py",
     "../packages/protocol/src/pex_protocol/isolated_pytest.py",
     "../services/bridge/src/pex_bridge/observe.py",

@@ -701,3 +701,18 @@ optional AgentCore endpoint proposes an action.
   model relay: request restrictions, call budgets, live harness/proxy
   integration and action-time backend receipts remain required. The natural
   comparison eligibility gate is unchanged and no provider call was made.
+- A controller IPC relay now accepts pinned, bounded non-streaming chat
+  requests through length-prefixed strict JSON. It rejects changed models,
+  caller-supplied endpoint fields, streaming requests, missing output limits,
+  duplicate keys and oversized frames. Call reservations occur before awaiting
+  the trusted backend callback; concurrent calls share one cap and absolute
+  deadline, and duplicate request IDs never dispatch again. Failed or timed-
+  out calls retain their reservation and return fixed uncertainty codes without
+  provider diagnostics. Audit rows retain request/response hashes, not bodies.
+  Eleven Windows protocol/budget checks passed with one Linux skip. An actual
+  WSL Unix socket round trip and a bubblewrap-isolated worker request passed
+  against a local injected responder, with six host pytest config/marker
+  warnings and 11 deselected async cases. The controller fingerprint includes
+  this module. No provider client or credential is created by this relay;
+  streaming HTTP/harness integration and action-time backend receipts are
+  still required. The benchmark eligibility gate remains closed.
