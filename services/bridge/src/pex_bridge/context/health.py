@@ -5,14 +5,17 @@ Unmeasured fields stay null. The score is written onto HarnessSession.context_he
 
 from __future__ import annotations
 
+import ntpath
+import posixpath
+import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import PurePosixPath
 from typing import Any
 
 from pex_protocol.context import ContextItem
 from pex_protocol.enums import ContextKind, EventType, Sensitivity
+from pex_protocol.project_binding import project_binding_key
 from pex_protocol.session import HarnessEvent
 
 _SECRET = {Sensitivity.SECRET, Sensitivity.LOCAL_ONLY}
@@ -51,19 +54,32 @@ def _as_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
-def _file_names(paths: object) -> set[str]:
+def _file_names(paths: object, project_id: str | None = None) -> set[str]:
     names: set[str] = set()
     if not isinstance(paths, (list, tuple)):
         return names
     for path in paths:
-        name = PurePosixPath(str(path).replace("\\", "/")).name.casefold()
+        raw = str(path)
+        if not raw.strip():
+            continue
+        windows_root = bool(project_id and re.match(r"^[A-Za-z]:[\\/]", project_id))
+        if re.match(r"^[A-Za-z]:[\\/]", raw):
+            name = project_binding_key(raw)
+        elif windows_root:
+            name = project_binding_key(ntpath.join(project_id or "", raw))
+        else:
+            # Directory and POSIX case are part of file identity. Backslashes
+            # are literal POSIX filename characters, not path separators.
+            if project_id and project_id.startswith("/"):
+                raw = posixpath.join(project_id, raw)
+            name = posixpath.normpath(raw)
         if name:
             names.add(name)
     return names
 
 
 def _item_files(item: ContextItem) -> set[str]:
-    return _file_names(item.metadata.get("files"))
+    return _file_names(item.metadata.get("files"), item.project_id)
 
 
 def _safe_content(item: ContextItem) -> str:
@@ -107,7 +123,7 @@ def _repeated_reads(events: list[HarnessEvent]) -> int:
     for event in events:
         if event.event_type != EventType.FILE_READ:
             continue
-        names.extend(_file_names(event.file_paths))
+        names.extend(_file_names(event.file_paths, event.project_id))
     return sum(count - 1 for count in Counter(names).values() if count > 1)
 
 
@@ -173,7 +189,7 @@ def _forgotten_facts(
             if prior.event_type != EventType.FILE_EDIT:
                 continue
             content = (prior.message_delta or prior.command or "").strip()[:400]
-            for name in _file_names(prior.file_paths):
+            for name in _file_names(prior.file_paths, prior.project_id):
                 if content:
                     known.setdefault(name, content)
         if not known:
@@ -181,7 +197,7 @@ def _forgotten_facts(
         reads: Counter[str] = Counter()
         edited: set[str] = set()
         for event in ordered[index + 1 :]:
-            names = _file_names(event.file_paths)
+            names = _file_names(event.file_paths, event.project_id)
             if event.event_type == EventType.FILE_EDIT:
                 edited.update(names)
                 continue

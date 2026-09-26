@@ -298,6 +298,13 @@ optional AgentCore endpoint proposes an action.
 
 ## Honest boundaries
 
+- Context health identifies files by their complete lexical path rather than
+  basename. POSIX case and literal backslashes remain distinct; relative paths
+  are joined to a known absolute project root, with conservative Windows path
+  normalization. This prevents another directory's reads from minting a
+  forgotten-fact signal, or its edits from hiding one. Path matching here is a
+  telemetry signal, not a filesystem identity or correctness proof. Context
+  health, mesh and supervisor-context checks passed 75 tests.
 - Handoffs include active project-wide human constraints in the mandatory contract,
   preserving full redacted text even after an earlier delivery. The immutable
   project check remains required at selection, reservation, and dispatch.

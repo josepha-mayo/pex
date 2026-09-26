@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from pex_bridge.context.health import assess_context_health
 from pex_protocol.context import ContextItem
 from pex_protocol.enums import ContextKind, EventType, HarnessType, Sensitivity, SourceKind
@@ -116,6 +117,61 @@ def test_post_compaction_edit_is_not_a_forgotten_fact() -> None:
     report = assess_context_health(events, [artifact], now=now)
     assert artifact.content not in report.forgotten_facts
     assert report.signals["forgotten_fact_count"] == 0
+
+
+@pytest.mark.parametrize(
+    "known,read",
+    [("src/config.py", "tests/config.py"), ("src/Config.py", "src/config.py"),
+     (r"src\config.py", "src/config.py")],
+)
+def test_other_file_reads_do_not_mint_forgotten_facts(known, read):
+    now = datetime.now(UTC)
+    artifact = _item("config", "Use the source configuration.", now - timedelta(minutes=10),
+                     files=[known])
+    events = [
+        _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
+        _event("read-1", EventType.FILE_READ, now - timedelta(minutes=3), file_paths=[read]),
+        _event("read-2", EventType.FILE_READ, now - timedelta(minutes=1), file_paths=[read]),
+    ]
+    report = assess_context_health(events, [artifact], now=now)
+    assert report.forgotten_facts == []
+    assert report.signals["forgotten_fact_count"] == 0
+
+
+def test_editing_same_basename_in_other_directory_does_not_hide_forgotten_fact():
+    now = datetime.now(UTC)
+    artifact = _item("config", "Source config is already recorded.",
+                     now - timedelta(minutes=10), files=["src/config.py"])
+    events = [
+        _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
+        _event("edit", EventType.FILE_EDIT, now - timedelta(minutes=3),
+               file_paths=["tests/config.py"]),
+        _event("read-1", EventType.FILE_READ, now - timedelta(minutes=2),
+               file_paths=["src/config.py"]),
+        _event("read-2", EventType.FILE_READ, now - timedelta(minutes=1),
+               file_paths=["src/config.py"]),
+    ]
+    assert assess_context_health(events, [artifact], now=now).forgotten_facts == [artifact.content]
+
+
+@pytest.mark.parametrize("project,read", [
+    ("/work/pex", "/work/pex/src/config.py"),
+    (r"C:\Work\PEX", r"c:\work\pex\SRC\CONFIG.PY"),
+])
+def test_relative_context_file_matches_absolute_read_in_same_project(project, read):
+    now = datetime.now(UTC)
+    artifact = _item("config", "Keep the recorded config.", now - timedelta(minutes=10),
+                     files=["src/config.py"]).model_copy(update={"project_id": project})
+    events = [
+        _event("compact", EventType.COMPACTION, now - timedelta(minutes=4)),
+        *[
+            _event(f"read-{index}", EventType.FILE_READ, now - timedelta(minutes=index),
+                   file_paths=[read]).model_copy(update={"project_id": project})
+            for index in (3, 1)
+        ],
+    ]
+    report = assess_context_health(events, [artifact], now=now)
+    assert report.forgotten_facts == [artifact.content]
 
 
 def test_secret_items_are_excluded_from_forgotten_facts() -> None:
