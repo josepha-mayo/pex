@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import ntpath
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -12,6 +11,7 @@ from pex_protocol.capabilities import AdapterCapabilities, AdapterSupportLabel
 from pex_protocol.context import ContextBundle
 from pex_protocol.enums import EventType, HarnessType, PolicyVerdict
 from pex_protocol.intervention import Intervention
+from pex_protocol.project_binding import project_binding_key
 from pex_protocol.redaction import redact_mapping, redact_text
 from pex_protocol.session import HarnessEvent, HarnessSession
 
@@ -476,7 +476,7 @@ def _compatible_binding(left: str | None, right: str | None, *, path_like: bool)
         return True
     if not path_like:
         return left == right
-    return ntpath.normcase(ntpath.normpath(left)) == ntpath.normcase(ntpath.normpath(right))
+    return project_binding_key(left) == project_binding_key(right)
 
 
 def _same_present_binding(left: str | None, right: str | None, *, path_like: bool) -> bool:
