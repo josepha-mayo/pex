@@ -880,6 +880,9 @@ optional AgentCore endpoint proposes an action.
   regressions cover failed/stalled listeners and a stalled snapshot, including
   idempotent replay with exactly one worker delivery. Together with normal
   bundle delivery, operator effects, assimilation, timeout safety, publication
-  and snapshot-coalescing checks, 36 tests passed. The 65-handoff capacity
-  rerun is tracked separately; no throughput improvement is claimed from
+  and snapshot-coalescing checks, 36 tests passed. At source `b5337f4`, the
+  65-handoff capacity test also passed in 182.30 seconds: the target's later
+  read of the oldest artifact retained both acknowledgement and artifact-read
+  evidence after all deliveries. This verifies routing beyond the newest 64
+  handoffs. No throughput improvement or live-model benefit is claimed from
   these correctness checks.
