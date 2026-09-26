@@ -2645,6 +2645,7 @@ class Pipeline:
                 goal_id=goal.id if goal is not None else None,
                 include_project_wide=goal is not None,
                 prioritize_human_commitments=True,
+                observed_at=event.ts,
                 limit=256,
             )
         health_items = [*context_items]

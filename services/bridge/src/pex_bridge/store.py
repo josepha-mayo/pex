@@ -7943,6 +7943,10 @@ class Store:
                 "CREATE INDEX IF NOT EXISTS idx_context_items_project_goal_id "
                 "ON context_items(project_id, goal_id, id)"
             )
+            await self.db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_context_items_binding_supersedes "
+                "ON context_items(project_binding, json_extract(json, '$.supersedes'))"
+            )
             bound_context_cursor = await self.db.execute(
                 "SELECT id, project_id, project_binding, goal_id, json FROM context_items "
                 "WHERE project_binding IS NOT NULL ORDER BY id"
@@ -28464,6 +28468,7 @@ class Store:
         goal_id: str | None = None,
         include_project_wide: bool = False,
         prioritize_human_commitments: bool = False,
+        observed_at: datetime | None = None,
         limit: int = MAX_LIST_QUERY_LIMIT,
         offset: int = 0,
     ) -> list[ContextItem]:
@@ -28476,6 +28481,10 @@ class Store:
             raise ValueError("project-wide context requires a bound goal")
         if goal_id is not None:
             _validate_store_id(goal_id, label="context goal id")
+        if observed_at is not None and (
+            observed_at.tzinfo is None or observed_at.utcoffset() is None
+        ):
+            raise ValueError("context observation time must be timezone-aware")
         async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
             await _configure_connection(transaction)
             await transaction.execute("BEGIN")
@@ -28503,6 +28512,34 @@ class Store:
                     live_binding = await _project_binding_snapshot(transaction, project_id)
                     query = "SELECT json FROM context_items WHERE project_binding = ?"
                     parameters = [live_binding]
+                if observed_at is not None:
+                    def observed(value: object) -> bool:
+                        try:
+                            instant = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+                            return (
+                                instant.tzinfo is not None
+                                and instant.utcoffset() is not None
+                                and instant <= observed_at
+                            )
+                        except (ValueError, TypeError):
+                            return False
+
+                    await transaction.create_function("pex_context_observed", 1, observed)
+                    query += (
+                        " AND pex_context_observed(json_extract(json, '$.valid_from')) "
+                        "AND NOT EXISTS (SELECT 1 FROM context_items AS replacement "
+                        "WHERE replacement.project_binding = context_items.project_binding "
+                        "AND json_extract(replacement.json, '$.supersedes') = context_items.id "
+                        "AND pex_context_observed(json_extract(replacement.json, '$.valid_from'))"
+                    )
+                    if goal_id is not None:
+                        query += (
+                            " AND (replacement.goal_id = ? OR replacement.goal_id IS NULL)"
+                            if include_project_wide
+                            else " AND replacement.goal_id = ?"
+                        )
+                        parameters.append(goal_id)
+                    query += ")"
                 query += " ORDER BY "
                 if prioritize_human_commitments:
                     query += (

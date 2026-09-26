@@ -287,6 +287,13 @@ optional AgentCore endpoint proposes an action.
 
 ## Honest boundaries
 
+- Supervisor context retirement is applied before the Store page limit. The
+  observation-time query checks all replacements in the same immutable project
+  binding and current goal/shared scope, including expired replacements. This
+  prevents a prioritized human constraint from returning merely because its
+  replacement fell outside the 256-record page. Future replacements do not
+  retire current context. Ordinary history/UI queries retain their existing
+  behavior; the supervisor opts into this observation-time selection.
 - Exact supervisor `get_context_items(context_id=...)` lookups return the full
   offered content, rather than clipping it again at 1,200 characters. The
   envelope still caps each record at 2,000 characters and now carries

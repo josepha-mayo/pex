@@ -494,6 +494,60 @@ async def test_goal_context_query_can_include_project_wide_without_foreign_goal(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("replacement_time", ["active", "expired", "future", "other_goal"])
+async def test_supervisor_page_cannot_revive_retired_context_outside_page(
+    tmp_path, replacement_time,
+):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        goal = _goal("retirement-goal", "retirement-project")
+        await store.upsert_goal(goal)
+        other_goal = _goal("other-goal", goal.project_id)
+        await store.upsert_goal(other_goal)
+        _, base = _pair(goal)
+        observed_at = base.valid_from + timedelta(hours=1)
+        original = base.model_copy(update={"id": "retired-human", "goal_id": None})
+        await store.add_context(original)
+        replacement_from = (
+            observed_at + timedelta(microseconds=1)
+            if replacement_time == "future" else base.valid_from + timedelta(minutes=1)
+        )
+        replacement = base.model_copy(update={
+            "id": "replacement",
+            "goal_id": other_goal.id if replacement_time == "other_goal" else None,
+            "kind": ContextKind.FACT, "provenance": SourceKind.WORKSPACE,
+            "supersedes": original.id, "valid_from": replacement_from,
+            "stale_after": (
+                observed_at - timedelta(minutes=1) if replacement_time == "expired" else None
+            ),
+        })
+        await store.add_context(replacement)
+        for index in range(4):
+            await store.add_context(base.model_copy(update={
+                "id": f"new-fact-{index}", "kind": ContextKind.FACT,
+                "provenance": SourceKind.WORKSPACE,
+                "valid_from": base.valid_from + timedelta(minutes=index + 2),
+            }))
+        original_page = await store.list_context_for_authority(
+            goal.project_id, goal_id=goal.id, include_project_wide=True,
+            prioritize_human_commitments=True, limit=2,
+        )
+        assert original.id in {item.id for item in original_page}
+        assert replacement.id not in {item.id for item in original_page}
+        current_page = await store.list_context_for_authority(
+            goal.project_id, goal_id=goal.id, include_project_wide=True,
+            prioritize_human_commitments=True, observed_at=observed_at, limit=2,
+        )
+        assert (original.id in {item.id for item in current_page}) is (
+            replacement_time in {"future", "other_goal"}
+        )
+        assert replacement.id not in {item.id for item in current_page}
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_supervisor_context_page_retains_shared_human_commitments_before_goal_facts(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
