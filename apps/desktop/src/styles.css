@@ -769,6 +769,10 @@ p {
 }
 .compact-setup h2 { margin: 5px 0 8px; font-size: clamp(20px, 3vw, 26px); }
 .compact-setup p:not(.eyebrow) { color: var(--muted); line-height: 1.6; margin: 0 0 16px; }
+.setup-explanation { margin: 0 0 18px; }
+.setup-explanation summary { color: var(--muted); cursor: pointer; font-size: 13px; }
+.setup-explanation summary:hover { color: var(--paper); }
+.setup-explanation summary:focus-visible { outline: 2px solid var(--mint); outline-offset: 4px; }
 .supervision-loop {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

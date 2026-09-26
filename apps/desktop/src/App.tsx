@@ -2535,7 +2535,7 @@ export function App() {
       <header className="topbar">
         <BrandMark label />
         <span className="topbar-state" role="status" aria-live="polite">
-          <span className="status-dot" aria-hidden="true" />{surface === "compact" ? homeStatus.label : status.label}
+          <span className="status-dot" aria-hidden="true" />{surface === "deck" ? status.label : homeStatus.label}
         </span>
         <nav className="surface-switch" aria-label="Progressive PEX surfaces">
           {(["compact", "inspector", "deck"] as Surface[]).map((item) => (
@@ -2642,6 +2642,8 @@ export function App() {
                 <p className="eyebrow">Your next step</p>
                 <h2>{setup.title}</h2>
                 <p>{setup.detail}</p>
+                <details className="setup-explanation">
+                  <summary>How PEX supervises work</summary>
                 <div className="supervision-loop" aria-label="PEX supervision loop">
                   <div>
                     <span aria-hidden="true">01</span>
@@ -2659,6 +2661,7 @@ export function App() {
                     <small>Check the requested evidence before PEX accepts a completion claim.</small>
                   </div>
                 </div>
+                </details>
                 <div className="button-row">
                   {setup.cta ? (
                     <button type="button" className="solid" onClick={() => {

@@ -791,3 +791,18 @@ optional AgentCore endpoint proposes an action.
   loop forwards an explicitly supplied relay, but this acceptance exercised a
   single decision, not a live worker correction or full comparative run.
   No upstream model call, billed request or performance claim was made.
+- Browser verification used the corrected fixture that sets its local profile,
+  cloud-disabled and zero-review environment before importing AppState. Home
+  and Inspector now retain the same selected-worker status; an observe-only
+  worker no longer changes from "control unavailable" to "All quiet" merely
+  when opening Inspector. Home's supervision explanation is collapsed by
+  default, and an observe-only worker's goal editor is collapsed with explicit
+  attachment guidance. Both disclosures opened and closed in the browser;
+  the manually opened goal editor remained available without submitting it.
+  Agent-browser 0.38.1 found meaningful rendered content, working Home/Inspector
+  navigation, no error overlay, no reported browser errors and no horizontal
+  overflow at 1280 and 800 pixels. Home/Inspector screenshots were inspected
+  locally. The production TypeScript/Vite build passed. The check discovered
+  a desktop Codex row but did not attach it, save credentials, create a goal,
+  ask the supervisor a question or initiate a worker/model turn. This establishes
+  those layout and navigation states, not an end-to-end supervised task.

@@ -323,12 +323,14 @@ export function Inspector({
             ) : null}
           </>
         ) : (
-          <p className="empty-copy">Give PEX a goal to supervise this session.</p>
+          <p className="empty-copy">{canAttach
+            ? "Give PEX a goal to supervise this session."
+            : "This worker is observe-only. Connect OpenCode or an isolated Codex session before attaching a goal."}</p>
         )}
         <details
           className="goal-editor"
           key={editingGoal ? "editing" : "create"}
-          {...(editingGoal || !goal ? { open: true } : {})}
+          {...(editingGoal || (!goal && canAttach) ? { open: true } : {})}
         >
           <summary>
             {editingGoal
