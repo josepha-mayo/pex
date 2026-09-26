@@ -373,6 +373,13 @@ optional AgentCore endpoint proposes an action.
 - Amazon Bedrock AgentCore support is implemented and offline-tested; no
   deployed AgentCore Runtime is claimed.
 - PexBench is unfrozen; no comparative productivity score is claimed.
+- The Now view puts current workers and their controls before historical
+  attention measurements. History expands on demand without changing metric
+  values or coverage labels. Browser review at 1280px and 800px confirmed visible
+  worker controls and expandable, scrollable history. The production build
+  passed; local Windows desktop checks passed 320 tests with five symlink
+  permission skips. This browser check used a disposable, unauthenticated bridge
+  with cloud reasoning and automatic dispatch disabled, not live worker control.
 - Deterministic debug and compaction recovery overlays preserve worker tools.
   Repeated errors or forgotten facts alone do not establish that browser/search
   access is irrelevant. Recovery still pins the reproduction and durable goal

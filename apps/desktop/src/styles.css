@@ -1674,6 +1674,42 @@ textarea::placeholder {
   gap: 12px;
 }
 
+.now-grid > .session-card:only-child {
+  grid-column: 1 / -1;
+}
+
+.attention-history {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-soft);
+}
+
+.attention-history > summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.attention-history > summary small {
+  margin-left: 12px;
+  color: var(--faint);
+  font-size: 10px;
+}
+
+.attention-history > summary:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+.attention-history-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
 .attention-metrics {
   width: 100%;
   min-width: 0;

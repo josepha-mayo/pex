@@ -369,76 +369,6 @@ function NowView({
 
   return (
     <div className="now-layout">
-      {attentionMetrics ? (
-      <>
-      <dl className="attention-metrics" aria-label="Human attention metrics">
-        <div>
-          <dt>Human interventions</dt>
-          <dd>{attentionMetrics?.human_interventions.value ?? "Not fully measured"}</dd>
-          <small>
-            {attentionMetrics
-              ? `${attentionMetrics.human_interventions.observed_count} authenticated actions recorded; coverage incomplete`
-              : "Backend aggregate unavailable"}
-          </small>
-        </div>
-        <div>
-          <dt>Human active seconds</dt>
-          <dd>{attentionMetrics?.human_active_seconds.value ?? "Not measured"}</dd>
-          <small>
-            {attentionMetrics
-              ? "Consent-gated focus timing is not configured"
-              : "Backend aggregate unavailable"}
-          </small>
-        </div>
-        <div>
-          <dt>Resolved decisions</dt>
-          <dd>{attentionMetrics?.decisions.resolved ?? "Unavailable"}</dd>
-          <small>
-            {attentionMetrics
-              ? `${attentionMetrics.decisions.requested} requests in durable history`
-              : "Backend aggregate unavailable"}
-          </small>
-        </div>
-        <div>
-          <dt>Unnecessary alert rate</dt>
-          <dd>{attentionMetrics?.unnecessary_alert_rate.value ?? "Not measured"}</dd>
-          <small>
-            {attentionMetrics
-              ? `${attentionMetrics.unnecessary_alert_rate.denominator} alerts adjudicated`
-              : "Backend aggregate unavailable"}
-          </small>
-        </div>
-        <div>
-          <dt>Avg auto-resolution confidence</dt>
-          <dd>{attentionMetrics?.average_auto_resolution_confidence.value ?? "Not measured"}</dd>
-          <small>
-            {attentionMetrics
-              ? `${attentionMetrics.average_auto_resolution_confidence.sample_count} eligible samples`
-              : "Backend aggregate unavailable"}
-          </small>
-        </div>
-        <div>
-          <dt>Reversals of PEX actions</dt>
-          <dd>{attentionMetrics?.reversals.completed ?? "Unavailable"}</dd>
-          <small>
-            {attentionMetrics
-              ? `${attentionMetrics.reversals.attempted} attempts · ${attentionMetrics.reversals.delivery_uncertain} uncertain`
-              : "Backend aggregate unavailable"}
-          </small>
-        </div>
-      </dl>
-      <p className="attention-basis">
-        {attentionMetrics
-          ? `All durable local history · exact aggregate · as of ${new Date(attentionMetrics.window.as_of).toLocaleString()} · not benchmark evidence`
-          : "Attention metrics are unavailable; recent intervention rows are not used as a substitute."}
-      </p>
-      </>
-      ) : (
-        <p className="attention-unavailable" role="status">
-          <strong>Attention metrics unavailable</strong>
-          <span>The bridge aggregate could not be refreshed. Recent intervention rows are not a substitute.</span>
-        </p>
-      )}
       <div className="now-grid">
       {!sessions.length ? (
         <EmptyState
@@ -495,6 +425,84 @@ function NowView({
         );
       })}
       </div>
+      <details className="attention-history">
+        <summary>
+          <span>Human attention history</span>
+          <small>{attentionMetrics ? "Local measurements" : "Unavailable"}</small>
+        </summary>
+        <div className="attention-history-body">
+          {attentionMetrics ? (
+          <>
+          <dl className="attention-metrics" aria-label="Human attention metrics">
+            <div>
+              <dt>Human interventions</dt>
+              <dd>{attentionMetrics?.human_interventions.value ?? "Not fully measured"}</dd>
+              <small>
+                {attentionMetrics
+                  ? `${attentionMetrics.human_interventions.observed_count} authenticated actions recorded; coverage incomplete`
+                  : "Backend aggregate unavailable"}
+              </small>
+            </div>
+            <div>
+              <dt>Human active seconds</dt>
+              <dd>{attentionMetrics?.human_active_seconds.value ?? "Not measured"}</dd>
+              <small>
+                {attentionMetrics
+                  ? "Consent-gated focus timing is not configured"
+                  : "Backend aggregate unavailable"}
+              </small>
+            </div>
+            <div>
+              <dt>Resolved decisions</dt>
+              <dd>{attentionMetrics?.decisions.resolved ?? "Unavailable"}</dd>
+              <small>
+                {attentionMetrics
+                  ? `${attentionMetrics.decisions.requested} requests in durable history`
+                  : "Backend aggregate unavailable"}
+              </small>
+            </div>
+            <div>
+              <dt>Unnecessary alert rate</dt>
+              <dd>{attentionMetrics?.unnecessary_alert_rate.value ?? "Not measured"}</dd>
+              <small>
+                {attentionMetrics
+                  ? `${attentionMetrics.unnecessary_alert_rate.denominator} alerts adjudicated`
+                  : "Backend aggregate unavailable"}
+              </small>
+            </div>
+            <div>
+              <dt>Avg auto-resolution confidence</dt>
+              <dd>{attentionMetrics?.average_auto_resolution_confidence.value ?? "Not measured"}</dd>
+              <small>
+                {attentionMetrics
+                  ? `${attentionMetrics.average_auto_resolution_confidence.sample_count} eligible samples`
+                  : "Backend aggregate unavailable"}
+              </small>
+            </div>
+            <div>
+              <dt>Reversals of PEX actions</dt>
+              <dd>{attentionMetrics?.reversals.completed ?? "Unavailable"}</dd>
+              <small>
+                {attentionMetrics
+                  ? `${attentionMetrics.reversals.attempted} attempts · ${attentionMetrics.reversals.delivery_uncertain} uncertain`
+                  : "Backend aggregate unavailable"}
+              </small>
+            </div>
+          </dl>
+          <p className="attention-basis">
+            {attentionMetrics
+              ? `All durable local history · exact aggregate · as of ${new Date(attentionMetrics.window.as_of).toLocaleString()} · not benchmark evidence`
+              : "Attention metrics are unavailable; recent intervention rows are not used as a substitute."}
+          </p>
+          </>
+          ) : (
+            <p className="attention-unavailable" role="status">
+              <strong>Attention metrics unavailable</strong>
+              <span>The bridge aggregate could not be refreshed. Recent intervention rows are not a substitute.</span>
+            </p>
+          )}
+        </div>
+      </details>
     </div>
   );
 }
