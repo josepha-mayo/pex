@@ -148,6 +148,14 @@ class ContextItem(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+def is_shared_human_constraint(item: ContextItem) -> bool:
+    return (
+        item.goal_id is None
+        and item.kind == ContextKind.CONSTRAINT
+        and item.provenance == SourceKind.HUMAN
+    )
+
+
 class ContextBundle(BaseModel):
     goal_id: str
     target_session_id: str

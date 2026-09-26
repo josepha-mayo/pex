@@ -60,6 +60,47 @@ def test_goal_prohibitions_survive_handoff_without_any_ranked_context():
     assert goal.non_goals[0] in rendered
 
 
+def test_shared_human_constraint_survives_handoff_even_when_previously_delivered():
+    from pex_bridge.adapters.base import _bundle_as_prompt
+
+    now = datetime.now(UTC)
+    content = "Project operating rule. " * 180 + "Do not publish without human approval."
+    item = _item(
+        "shared-boundary", content, now,
+        kind=ContextKind.CONSTRAINT, provenance=SourceKind.HUMAN,
+    ).model_copy(update={"goal_id": None})
+    bundle = build_bundle(
+        _goal(now), _target(), [item], [], ["synthetic:source"],
+        exclude_item_ids={item.id},
+    )
+    assert f"Project constraint [{item.id}]: {content}" in bundle.critical_decisions
+    assert content in _bundle_as_prompt(bundle)
+    with pytest.raises(ValueError, match="mandatory goal contract"):
+        build_bundle(_goal(now), _target(), [item], [], [], token_budget=256)
+
+
+@pytest.mark.parametrize(
+    "invalid", ["foreign_project", "foreign_goal", "expired", "private", "worker"],
+)
+def test_handoff_shared_constraint_requires_current_human_project_authority(invalid):
+    now = datetime.now(UTC)
+    item = _item(
+        "shared-boundary", "SHARED_CONSTRAINT_SENTINEL", now,
+        kind=ContextKind.CONSTRAINT, provenance=SourceKind.HUMAN,
+    ).model_copy(update={"goal_id": None})
+    updates = {
+        "foreign_project": {"project_id": "foreign"},
+        "foreign_goal": {"goal_id": "foreign"},
+        "expired": {"stale_after": now - timedelta(seconds=1)},
+        "private": {"sensitivity": Sensitivity.LOCAL_ONLY},
+        "worker": {"provenance": SourceKind.HARNESS},
+    }
+    item = item.model_copy(update=updates[invalid])
+    bundle = build_bundle(_goal(now), _target(), [item], [], [])
+    assert item.id not in {candidate.id for candidate in bundle.items}
+    assert not any("SHARED_CONSTRAINT_SENTINEL" in row for row in bundle.critical_decisions)
+
+
 def test_goal_prohibitions_cannot_be_dropped_to_fit_handoff_budget():
     now = datetime.now(UTC)
     goal = _goal(now)

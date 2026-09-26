@@ -30,6 +30,7 @@ from pex_protocol.context import (
     HandoffAssimilationEvidence,
     HumanDecisionRequest,
     ProgressEvidenceReference,
+    is_shared_human_constraint,
 )
 from pex_protocol.enums import (
     ContextKind,
@@ -19487,7 +19488,7 @@ class Store:
                     raise PermissionError("handoff target cannot inject context")
                 for item in bundle.items:
                     if (
-                        item.goal_id != goal.id
+                        (item.goal_id != goal.id and not is_shared_human_constraint(item))
                         or await _project_binding_snapshot(transaction, item.project_id)
                         != goal_project_binding
                     ):
@@ -19504,7 +19505,7 @@ class Store:
 
                 context_cursor = await transaction.execute(
                     "SELECT id, project_id, project_binding, goal_id, json FROM context_items "
-                    "WHERE project_binding = ? AND goal_id = ? "
+                    "WHERE project_binding = ? AND (goal_id = ? OR goal_id IS NULL) "
                     "ORDER BY rowid DESC LIMIT 1001",
                     (goal_project_binding, goal.id),
                 )
@@ -19519,7 +19520,7 @@ class Store:
                         or stored_item.project_id != row["project_id"]
                         or row["project_binding"] != goal_project_binding
                         or stored_item.goal_id != row["goal_id"]
-                        or stored_item.goal_id != goal.id
+                        or stored_item.goal_id not in {None, goal.id}
                     ):
                         raise RuntimeError("stored handoff context authority is corrupt")
                     try:
@@ -19922,7 +19923,9 @@ class Store:
                 ):
                     raise ValueError("stored handoff bundle binding is invalid")
                 for item in bundle.items:
-                    if item.goal_id != goal.id or not await _same_live_project_binding(
+                    if (
+                        item.goal_id != goal.id and not is_shared_human_constraint(item)
+                    ) or not await _same_live_project_binding(
                         transaction, item.project_id, source_project_id
                     ):
                         raise ValueError("stored handoff item identity is invalid")

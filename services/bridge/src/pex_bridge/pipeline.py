@@ -24,6 +24,7 @@ from pex_protocol.context import (
     ContextItem,
     HumanDecisionRequest,
     ProgressReport,
+    is_shared_human_constraint,
 )
 from pex_protocol.enums import (
     Authority,
@@ -4832,7 +4833,9 @@ class Pipeline:
             raise ValueError("handoff_project_mismatch")
         project_id = source.project_id or source.cwd
         for item in bundle.items:
-            if item.goal_id != source.goal_id or not _same_project(
+            if (
+                item.goal_id != source.goal_id and not is_shared_human_constraint(item)
+            ) or not _same_project(
                 item.project_id,
                 project_id,
             ):
@@ -5507,6 +5510,9 @@ class Pipeline:
         items = await self.store.list_context_for_authority(
             source_project_id,
             goal_id=goal.id,
+            include_project_wide=True,
+            prioritize_human_commitments=True,
+            observed_at=datetime.now(UTC),
         )
         recent = await self.store.recent_events_for_authority(
             session_id=source.id,
@@ -6275,6 +6281,9 @@ class Pipeline:
         items = await self.store.list_context_for_authority(
             project_key,
             goal_id=goal.id,
+            include_project_wide=True,
+            prioritize_human_commitments=True,
+            observed_at=datetime.now(UTC),
         )
         recent = await self.store.recent_events_for_authority(
             session_id=session.id,

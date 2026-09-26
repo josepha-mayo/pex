@@ -6,6 +6,17 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Main-branch verification checkpoints
 
+Exact source `6edbb89` passed the Ubuntu source and native jobs in
+[run 36257145205](https://github.com/josepha-mayo/pex/actions/runs/36257145205).
+Ubuntu backend checks passed 4,791 tests (19 skipped, 16 deselected), and the
+all 324 desktop checks and the production build passed. Native packaging,
+20 bootstrap tests, packaged
+bridge identity, Secret Service storage, and the installed Home/Settings check
+passed with the verified Xvfb software renderer. Windows native packaging,
+bridge startup/identity, OS-vault and packaged BYOK checks also passed; its source
+job was still running when this checkpoint was recorded. Later context changes require their own
+source and package acceptance; this is not a claim about latest HEAD.
+
 The instrumented Linux package at `fd16129` still failed its fresh-state window
 gate in [run 36255800464](https://github.com/josepha-mayo/pex/actions/runs/36255800464).
 Its [startup diagnostic](evidence/linux-startup-ipc-fd16129.json) records prompt
@@ -287,6 +298,17 @@ optional AgentCore endpoint proposes an action.
 
 ## Honest boundaries
 
+- Handoffs include active project-wide human constraints in the mandatory contract,
+  preserving full redacted text even after an earlier delivery. The immutable
+  project check remains required at selection, reservation, and dispatch.
+  Shared worker-authored records are not admitted as human constraints, and
+  foreign-goal/project, private, expired and superseded records remain excluded.
+  An insufficient token budget rejects the contract rather than shortening a
+  prohibition. Goal-wide optional evidence retains its bounded selection.
+  Context and reservation checks passed 62 tests, including the new reserved-to-
+  delivered shared-constraint case. Handoff permissions, timeout safety and
+  assimilation checks passed another 72 tests. These are controlled local
+  adapter checks; live worker/model effectiveness still requires separate proof.
 - Supervisor context retirement is applied before the Store page limit. The
   observation-time query checks all replacements in the same immutable project
   binding and current goal/shared scope, including expired replacements. This

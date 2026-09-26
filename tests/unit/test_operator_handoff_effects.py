@@ -169,6 +169,42 @@ def _artifacts(
 
 
 @pytest.mark.asyncio
+async def test_shared_human_constraint_survives_reserved_and_dispatched_handoff(tmp_path):
+    store = Store(tmp_path / "pex.sqlite", process_boot_id="boot_shared_constraint")
+    await store.connect()
+    try:
+        goal, source, target = await _seed(store)
+        item, _, event, intervention = _artifacts(goal, source, target)
+        constraint = item.model_copy(update={
+            "id": "shared-human-constraint", "goal_id": None,
+            "kind": ContextKind.CONSTRAINT, "provenance": SourceKind.HUMAN,
+            "content": "Do not publish without human approval.",
+        })
+        await store.add_context(item)
+        await store.add_context(constraint)
+        bundle = build_bundle(goal, target, [item, constraint], [], [source.id], token_budget=2_000)
+        intervention.proposed_action.payload = {"bundle": bundle.model_dump(mode="json")}
+        intervention.metadata["human_requested"] = True
+        reserved = await store.reserve_operator_handoff(
+            principal_id=PRINCIPAL, idempotency_key=KEY,
+            source_session_id=source.id, target_session_id=target.id,
+            token_budget=2_000, bundle=bundle, event=event, intervention=intervention,
+            actor_assurance="bridge_bearer",
+        )
+        dispatch = await store.start_operator_handoff_dispatch(reserved["effect"]["effect_id"])
+        assert dispatch["granted"] is True
+        assert constraint.id in {entry.id for entry in dispatch["bundle"].items}
+        assert any(constraint.content in row for row in dispatch["bundle"].critical_decisions)
+        final = await store.finalize_operator_handoff(
+            effect_id=reserved["effect"]["effect_id"], state="delivered",
+            result=_synthetic_delivery_result(target),
+        )
+        assert final["effect"]["state"] == "delivered"
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_handoff_reservation_is_atomic_replayable_and_finalizes_one_receipt(tmp_path):
     store = Store(tmp_path / "pex.sqlite", process_boot_id="boot_handoff_one")
     await store.connect()

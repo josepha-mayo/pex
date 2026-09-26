@@ -4,7 +4,12 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
-from pex_protocol.context import ContextBundle, ContextItem, ContextKind
+from pex_protocol.context import (
+    ContextBundle,
+    ContextItem,
+    ContextKind,
+    is_shared_human_constraint,
+)
 from pex_protocol.enums import DecisionStatus, EventType, Sensitivity, SourceKind
 from pex_protocol.goal import Goal
 from pex_protocol.project_binding import project_binding_key
@@ -212,7 +217,10 @@ def score_item(
         return -1.0
     if (
         project_binding_key(item.project_id) != project_binding_key(goal.project_id)
-        or item.goal_id != goal.id
+        or (
+            item.goal_id != goal.id
+            and not is_shared_human_constraint(item)
+        )
     ):
         return -1.0
     if target.project_id and (
@@ -307,7 +315,7 @@ def build_bundle(
         item.supersedes
         for item in items
         if item.supersedes
-        and item.goal_id == goal.id
+        and item.goal_id in {None, goal.id}
         and project_binding_key(item.project_id) == project_binding_key(goal.project_id)
         and _as_utc(item.valid_from) <= now
         and item.source_refs
@@ -363,6 +371,17 @@ def build_bundle(
         for value in values
         if (cleaned := contract_text(value))
     ]
+    # Shared human constraints bind each worker in the project. Reassert their
+    # full text even if an earlier delivery or a small optional evidence budget
+    # would otherwise omit the ranked ContextItem.
+    goal_boundaries.extend(
+        f"Project constraint [{_safe_text(item.id, 512)}]: {cleaned}"
+        for item in sorted(items, key=lambda item: (_as_utc(item.valid_from), item.id))
+        if is_shared_human_constraint(item)
+        and item.id not in superseded
+        and score_item(item, goal, target, now=now) > 0
+        if (cleaned := contract_text(item.content))
+    )
     delivered_evidence = [
         item
         for item in previously_delivered
