@@ -713,6 +713,17 @@ optional AgentCore endpoint proposes an action.
   WSL Unix socket round trip and a bubblewrap-isolated worker request passed
   against a local injected responder, with six host pytest config/marker
   warnings and 11 deselected async cases. The controller fingerprint includes
-  this module. No provider client or credential is created by this relay;
+  this module. The relay itself does not load provider settings or credentials;
   streaming HTTP/harness integration and action-time backend receipts are
   still required. The benchmark eligibility gate remains closed.
+- The controller now has an explicitly configured HTTPS chat backend for that
+  relay. It pins the endpoint and model, disables ambient proxies, redirects
+  and automatic retries, and bounds the request, raw response and timeout.
+  Credentials stay in the controller client; errors and relay audit rows do
+  not include them. Compressed responses, changed response models, duplicate
+  JSON keys, non-finite values and oversized responses are refused. Forty-three
+  relay/execution-safety checks passed on Windows, with one Linux-only skip;
+  lint passed. Provider behavior was injected through a fake HTTP transport:
+  no upstream model call was made and no credit or card funds were consumed.
+  This establishes the client contract, not live provider compatibility,
+  streaming harness integration or comparative agent performance.

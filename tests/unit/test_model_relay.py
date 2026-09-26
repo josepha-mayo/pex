@@ -6,9 +6,71 @@ import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import httpx
 import pytest
 
-from benchmarks.model_relay import MAX_REQUEST_BYTES, SCHEMA, PinnedModelRelay
+from benchmarks.model_relay import (
+    MAX_REQUEST_BYTES,
+    MAX_RESPONSE_BYTES,
+    SCHEMA,
+    PinnedChatBackend,
+    PinnedModelRelay,
+)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [200, 302, 429, 500])
+async def test_pinned_backend_sends_one_authenticated_request_and_never_follows_or_retries(status):
+    requests = []
+    async def handler(req):
+        requests.append(req)
+        assert str(req.url) == "https://provider.example/v1/chat/completions"
+        assert req.headers["authorization"] == "Bearer test-credential-canary"
+        assert req.headers["accept-encoding"] == "identity"
+        assert json.loads(req.content)["model"] == "pinned"
+        payload = {"model": "pinned", "choices": [{
+            "message": {"role": "assistant", "content": "local response"},
+        }]}
+        return httpx.Response(status, headers={"Location": "https://untrusted.example/"},
+                              stream=httpx.ByteStream(json.dumps(payload).encode()))
+    backend = PinnedChatBackend(endpoint="https://provider.example/v1/chat/completions",
+        model="pinned", api_key="test-credential-canary", transport=httpx.MockTransport(handler))
+    relay = PinnedModelRelay(model="pinned", max_calls=1,
+                            deadline=time.perf_counter()+5, backend=backend)
+    result = await relay.dispatch(request())
+    assert result["ok"] is (status == 200)
+    assert len(requests) == 1
+    assert "test-credential-canary" not in json.dumps(result)
+    assert "test-credential-canary" not in json.dumps(relay.audit)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("response", [
+    b'{"model":"other"}', b'{"model":"pinned","model":"pinned"}',
+    b'{"model":"pinned","value":NaN}', b"x" * (MAX_RESPONSE_BYTES+1),
+], ids=["wrong_model", "duplicate_keys", "nan", "oversize"])
+async def test_pinned_backend_rejects_unbound_or_invalid_response(response):
+    backend = PinnedChatBackend(endpoint="https://provider.example/v1/chat/completions",
+        model="pinned", api_key="test-credential-canary",
+        transport=httpx.MockTransport(lambda _req: httpx.Response(
+            200, stream=httpx.ByteStream(response),
+        )))
+    relay = PinnedModelRelay(model="pinned", max_calls=1,
+                            deadline=time.perf_counter()+5, backend=backend)
+    assert (await relay.dispatch(request()))["error"] == "backend_failed_uncertain"
+    assert len(relay.audit) == 1
+
+
+@pytest.mark.parametrize("endpoint", [
+    "http://provider.example/v1/chat/completions",
+    "https://user:password@provider.example/v1/chat/completions",
+    "https://provider.example/v1/chat/completions?key=secret",
+    "https://provider.example/v1/chat/completions#fragment",
+    "https://provider.example/private",
+])
+def test_backend_endpoint_contract_rejects_redirectable_or_credential_urls(endpoint):
+    with pytest.raises(ValueError, match="fixed HTTPS"):
+        PinnedChatBackend(endpoint=endpoint, model="pinned", api_key="test-credential-canary")
 
 
 def request(request_id="call_1", **body):

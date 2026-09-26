@@ -1,8 +1,8 @@
 """Bounded controller IPC for pinned non-streaming model requests.
 
-No provider client or credentials are created here. A trusted controller supplies
-the backend callback; harness HTTP/streaming integration and backend receipts
-remain separate requirements before any benchmark can become eligible.
+No ambient provider settings or credentials are loaded. A trusted controller
+explicitly configures the backend; harness HTTP/streaming integration and backend
+receipts remain separate requirements before any benchmark can become eligible.
 """
 from __future__ import annotations
 
@@ -17,13 +17,77 @@ import struct
 import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from urllib.parse import urlsplit
 
+import httpx
 from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
 
 SCHEMA = "pex.model-relay.v1"
 MAX_REQUEST_BYTES = 262_144
 MAX_RESPONSE_BYTES = 1_048_576
 _BODY_FIELDS = {"model", "messages", "max_tokens", "temperature", "tools", "tool_choice", "stream"}
+
+
+class PinnedChatBackend:
+    """Controller-only HTTPS client. One POST, no redirects or automatic retry."""
+
+    def __init__(
+        self, *, endpoint: str, model: str, api_key: str, timeout: float = 30,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
+        parsed = urlsplit(endpoint)
+        if (parsed.scheme != "https" or not parsed.hostname or parsed.username is not None
+                or parsed.password is not None or parsed.query or parsed.fragment
+                or not parsed.path.endswith("/chat/completions")):
+            raise ValueError("backend requires a fixed HTTPS chat-completions endpoint")
+        if not isinstance(model, str) or not model or len(model) > 256:
+            raise ValueError("backend requires a bounded pinned model")
+        if (not isinstance(api_key, str) or not api_key or len(api_key) > 16_384
+                or any(ord(char) < 33 or ord(char) > 126 for char in api_key)):
+            raise ValueError("backend requires a bounded credential")
+        if type(timeout) not in {int, float} or not math.isfinite(timeout) or not 0 < timeout <= 60:
+            raise ValueError("backend timeout must be finite and between zero and 60 seconds")
+        self.endpoint, self.model, self.timeout = endpoint, model, timeout
+        self._api_key, self._transport = api_key, transport
+
+    async def __call__(self, body: dict) -> dict:
+        if (not isinstance(body, dict) or set(body) - _BODY_FIELDS
+                or body.get("model") != self.model or body.get("stream", False) is not False
+                or type(body.get("max_tokens")) is not int
+                or not 1 <= body["max_tokens"] <= 16_384):
+            raise ValueError("backend request does not match its pinned contract")
+        encoded = strict_json_dumps(body).encode("utf-8")
+        if len(encoded) > MAX_REQUEST_BYTES:
+            raise ValueError("backend request exceeds bound")
+        transport = self._transport or httpx.AsyncHTTPTransport(retries=0, trust_env=False)
+        async with httpx.AsyncClient(
+            transport=transport, timeout=self.timeout, follow_redirects=False, trust_env=False,
+        ) as client:
+            async with client.stream(
+                "POST", self.endpoint, content=encoded,
+                headers={"Authorization": f"Bearer {self._api_key}",
+                         "Content-Type": "application/json", "Accept": "application/json",
+                         "Accept-Encoding": "identity"},
+            ) as response:
+                if response.status_code != 200:
+                    raise RuntimeError("backend did not return a successful response")
+                if response.headers.get("Content-Encoding", "identity").lower() != "identity":
+                    raise ValueError("backend compression is outside the bounded wire contract")
+                data = bytearray()
+                async for chunk in response.aiter_raw():
+                    if len(data) + len(chunk) > MAX_RESPONSE_BYTES:
+                        raise ValueError("backend response exceeds bound")
+                    data.extend(chunk)
+        result = strict_json_loads(data)
+        if not isinstance(result, dict) or result.get("model") != self.model:
+            raise ValueError("backend response does not bind the pinned model")
+        choices = result.get("choices")
+        if not isinstance(choices, list) or not 1 <= len(choices) <= 16 or any(
+            not isinstance(choice, dict) or not isinstance(choice.get("message"), dict)
+            or choice["message"].get("role") != "assistant" for choice in choices
+        ):
+            raise ValueError("backend response has no bounded assistant completion")
+        return result
 
 
 class PinnedModelRelay:
