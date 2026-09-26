@@ -26,6 +26,17 @@ from pex_protocol.enums import HarnessType, SessionStatus
 from pex_protocol.session import HarnessSession
 
 PROCESS = Path(__file__).with_name("pex_supervisor_process.py")
+_SUPERVISOR_CREDENTIAL_ENV = {
+    "ANTHROPIC_API_KEY", "AWS_ACCESS_KEY_ID", "AWS_PROFILE", "AZURE_OPENAI_API_KEY",
+    "COHERE_API_KEY", "DASHSCOPE_API_KEY", "DEEPSEEK_API_KEY", "FIREWORKS_API_KEY",
+    "GEMINI_API_KEY", "GITHUB_TOKEN", "GOOGLE_API_KEY", "GROK_API_KEY", "GROQ_API_KEY",
+    "HERMES_API_KEY", "HF_TOKEN", "HUGGINGFACEHUB_API_TOKEN", "KIMI_API_KEY",
+    "LITELLM_API_KEY", "LLAMA_API_KEY", "MISTRAL_API_KEY", "MOONSHOT_API_KEY",
+    "NEBIUS_API_KEY", "NOUS_API_KEY", "NVIDIA_API_KEY", "OPENAI_API_KEY",
+    "OPENCODE_API_KEY", "OPENCODE_GO_API_KEY", "OPENROUTER_API_KEY", "PERPLEXITY_API_KEY",
+    "PEX_SUPERVISOR_API_KEY", "PEX_ZEN_API_KEY", "TOGETHER_API_KEY", "WRITER_API_KEY",
+    "XAI_API_KEY",
+}
 _PUBLIC_OBSERVATION_FIELDS = {
     "files",
     "file_manifest",
@@ -67,6 +78,29 @@ _PRIVATE_TEXT_MARKERS = (
 def _is_link_like(path: Path) -> bool:
     is_junction = getattr(path, "is_junction", None)
     return path.is_symlink() or bool(is_junction and is_junction())
+
+
+def _supervisor_environment() -> dict[str, str]:
+    """Forward declared runtime/provider settings, never arbitrary controller state.
+
+    This narrows environment disclosure only; the child still needs an enforced
+    filesystem and network boundary before a natural-task run is eligible.
+    """
+    allowed = {
+        "PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT",
+        "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH",
+        "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE",
+        "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE",
+        "PEX_SUPERVISOR_PROVIDER", "PEX_SUPERVISOR_MODEL", "PEX_SUPERVISOR_API_KEY",
+        "PEX_SUPERVISOR_BASE_URL", "PEX_SUPERVISOR_AUTH", "PEX_SUPERVISOR_DISABLE",
+        "PEX_SUPERVISOR_TIMEOUT", "PEX_FORCE_LLM",
+        "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+        "AWS_CONFIG_FILE", "AWS_SHARED_CREDENTIALS_FILE",
+    }
+    allowed.update(_SUPERVISOR_CREDENTIAL_ENV)
+    # Windows environment names are case-insensitive. Preserve each actual key
+    # spelling rather than accidentally dropping SystemRoot on native Windows.
+    return {key: value for key, value in os.environ.items() if key.upper() in allowed}
 
 
 def _raise_walk_error(error: OSError) -> None:
@@ -744,22 +778,7 @@ async def _decide_out_of_process(
             cwd=workspace,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
-            env={
-                key: value
-                for key, value in os.environ.items()
-                if not any(
-                    marker in key.upper()
-                    for marker in (
-                        "EVALUATOR",
-                        "PEX_BENCH",
-                        "PYTEST_CURRENT_TEST",
-                        "STRESSOR",
-                        "TASK_ID",
-                        "PYTHONPATH",
-                        "PYTHONHOME",
-                    )
-                )
-            },
+            env=_supervisor_environment(),
         )
         try:
             await asyncio.wait_for(proc.wait(), timeout=timeout)

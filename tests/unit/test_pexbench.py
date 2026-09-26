@@ -1602,6 +1602,34 @@ def test_evaluator_subprocess_environment_is_allowlisted(monkeypatch):
     assert child_env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
 
 
+def test_supervisor_subprocess_environment_excludes_arbitrary_controller_state(monkeypatch):
+    attach = _pex_attach()
+    monkeypatch.setenv("PRIVATE_EXPECTED_OUTPUT", "controller-only")
+    monkeypatch.setenv("UNRELATED_DATABASE_PASSWORD", "controller-only")
+    monkeypatch.setenv("PYTHONPATH", "/private/controller")
+    monkeypatch.setenv("PEX_SUPERVISOR_MODEL", "test-model")
+    monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "test-provider-key")
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-nebius-key")
+    monkeypatch.setenv("SystemRoot", "test-windows-runtime")
+    child_env = attach._supervisor_environment()
+    for key in ("PRIVATE_EXPECTED_OUTPUT", "UNRELATED_DATABASE_PASSWORD", "PYTHONPATH"):
+        assert key not in child_env
+    assert child_env["PEX_SUPERVISOR_MODEL"] == "test-model"
+    assert child_env["PEX_SUPERVISOR_API_KEY"] == "test-provider-key"
+    assert child_env["NEBIUS_API_KEY"] == "test-nebius-key"
+    assert {key.upper(): value for key, value in child_env.items()}["SYSTEMROOT"] == (
+        "test-windows-runtime"
+    )
+
+
+def test_supervisor_credential_allowlist_matches_declared_provider_registry():
+    from pex_supervisor.providers import PROVIDERS
+
+    assert _pex_attach()._SUPERVISOR_CREDENTIAL_ENV == {
+        name for spec in PROVIDERS.values() for name in spec.key_envs
+    }
+
+
 def test_drift_fails_if_legacy_is_rewritten(tmp_path):
     ev = _evaluator()
     seed = ev.seed_workspace("pexbench_002_drift", tmp_path)
