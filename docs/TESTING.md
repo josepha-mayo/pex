@@ -846,3 +846,20 @@ optional AgentCore endpoint proposes an action.
   verification with a controlled responder, not live-model effectiveness,
   OS-isolated benchmark acceptance or a with/without performance comparison.
   No upstream provider call or card funds were used.
+- Real Codex App Server follow-up delivery passed at source `1bc0eb7`.
+  The [receipt](evidence/codex-real-followup-1bc0eb7.json) binds the installed
+  binary hash, one new ephemeral thread, two distinct delivered turn IDs and
+  their official `turn/completed` notifications. PEX's actual adapter sent both
+  turns, waited for completed status and ingested user-prompt, assistant and
+  stop events; the follow-up stop carries its exact returned turn ID. The
+  [driver](evidence/codex-real-followup-driver.txt) sets a fresh USERPROFILE and
+  an explicit local custom provider using
+  [official Codex configuration settings](https://developers.openai.com/codex/config-reference).
+  The local Responses server refuses authorization headers, other routes and
+  more than two requests; provider request/stream retries are disabled. Two
+  controlled streaming responses completed, with no tools requested. The
+  default workspace-write isolated thread was used and the owned App Server
+  and local responder closed cleanly. This establishes real same-thread turn
+  delivery and normalized observation, not file repair, supervision of an
+  existing desktop conversation, actual model compliance or comparative
+  performance. No upstream model call or card funds were used.

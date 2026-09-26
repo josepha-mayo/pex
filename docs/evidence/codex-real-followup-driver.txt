@@ -1,0 +1,100 @@
+import asyncio, hashlib, json, os, subprocess, threading, time
+from datetime import UTC, datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from pex_bridge.adapters.codex import CodexAdapter, CodexStdioTransport
+from pex_bridge.adapters.codex_bin import resolve_codex_bin
+
+async def main():
+    root=(Path('build/codex-delivery')/datetime.now(UTC).strftime('%Y%m%dT%H%M%S')).resolve()
+    root.mkdir(parents=True)
+    workspace=root/'worker'; workspace.mkdir()
+    profile=root/'profile'; profile.mkdir()
+    os.environ['USERPROFILE']=str(profile)
+    calls=[]; methods=[]; events=[]
+    class Model(BaseHTTPRequestHandler):
+        def log_message(self,*args): pass
+        def do_POST(self):
+            size=int(self.headers.get('Content-Length','0'))
+            if self.path!='/v1/responses' or not 0<size<=1048576 or len(calls)>=2 or self.headers.get('Authorization'):
+                self.send_error(400); return
+            body=json.loads(self.rfile.read(size))
+            assert body['model']=='pinned'
+            calls.append({'model':body['model'],'stream':body.get('stream',False)})
+            text='Controlled Codex response: correction received.'
+            item={'id':f'msg-controlled-{len(calls)}','type':'message','role':'assistant','status':'completed',
+                'phase':'final_answer','content':[{'type':'output_text','text':text,'annotations':[]}]}
+            response={'id':f'resp-controlled-{len(calls)}','object':'response','created_at':1,'model':'pinned',
+                'status':'completed','output':[item], 'usage':{'input_tokens':10,'output_tokens':10,'total_tokens':20}}
+            payloads=[{'type':'response.created','response':{**response,'status':'in_progress','output':[]}},
+                {'type':'response.output_item.added','output_index':0,'item':{**item,'status':'in_progress','content':[]}},
+                {'type':'response.content_part.added','item_id':item['id'],'output_index':0,'content_index':0,
+                    'part':{'type':'output_text','text':'','annotations':[]}},
+                {'type':'response.output_text.delta','item_id':item['id'],'output_index':0,'content_index':0,'delta':text},
+                {'type':'response.output_text.done','item_id':item['id'],'output_index':0,'content_index':0,'text':text},
+                {'type':'response.output_item.done','output_index':0,'item':item},
+                {'type':'response.completed','response':response}]
+            self.send_response(200); self.send_header('Content-Type','text/event-stream')
+            self.send_header('Connection','close'); self.end_headers()
+            for sequence,payload in enumerate(payloads):
+                payload['sequence_number']=sequence
+                self.wfile.write(('event: '+payload['type']+'\ndata: '+json.dumps(payload)+'\n\n').encode())
+            self.wfile.flush()
+    server=ThreadingHTTPServer(('127.0.0.1',0),Model)
+    thread=threading.Thread(target=server.serve_forever,daemon=True); thread.start()
+    binary=resolve_codex_bin(); assert binary
+    config={'model':'pinned','model_provider':'controlled','model_providers.controlled.name':'Controlled local responder',
+        'model_providers.controlled.base_url':f'http://127.0.0.1:{server.server_port}/v1',
+        'model_providers.controlled.wire_api':'responses','model_providers.controlled.requires_openai_auth':False,
+        'model_providers.controlled.supports_websockets':False,'model_providers.controlled.request_max_retries':0,
+        'model_providers.controlled.stream_max_retries':0}
+    command=[str(binary)]
+    for key,value in config.items(): command.extend(['-c',key+'='+json.dumps(value)])
+    command.append('app-server')
+    def observe(direction,payload):
+        if direction=='stdin':
+            row=json.loads(payload)
+            if isinstance(row.get('method'),str): methods.append(row['method'])
+    transport=CodexStdioTransport(command,protocol_observer=observe)
+    adapter=CodexAdapter(transport)
+    async def ingest(event,session): events.append(event)
+    try:
+        await asyncio.wait_for(adapter.probe(),timeout=30)
+        session=await asyncio.wait_for(adapter.start_isolated_thread(str(workspace),name='PEX controlled delivery'),timeout=30)
+        adapter.start_pipeline_pump(ingest)
+        initial=await asyncio.wait_for(adapter.send_message(session,
+            'Initial local test turn. Acknowledge only; do not run tools or change files.'),timeout=30)
+        assert initial and initial.vendor_turn_id
+        initial_result=await adapter.wait_for_turn_completion(session,initial.vendor_turn_id,timeout=30)
+        assert initial_result['status']=='completed'
+        delivered=await asyncio.wait_for(adapter.send_message(session,
+            'PEX delivery check: acknowledge this correction. Do not run tools or change files.'),timeout=30)
+        assert delivered and delivered.vendor_turn_id
+        completed=await adapter.wait_for_turn_completion(session,delivered.vendor_turn_id,timeout=30)
+        assert completed['status']=='completed',completed
+        deadline=time.monotonic()+5
+        while not any(event.event_type.value=='stop' and event.metadata.get('vendor_turn_id')==delivered.vendor_turn_id for event in events):
+            if time.monotonic()>deadline: raise TimeoutError('No normalized stop event')
+            await asyncio.sleep(.1)
+        receipt={'schema':'pex.codex-real-delivery.v1','source_sha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            'binary_sha256':hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
+            'vendor_session_id':session.vendor_session_id,'vendor_turn_id':delivered.vendor_turn_id,
+            'initial_vendor_turn_id':initial.vendor_turn_id,
+            'completion_status':completed['status'],'local_model_requests':calls,
+            'event_types':sorted({event.event_type.value for event in events}),
+            'terminal_metadata':[event.metadata for event in events if event.event_type.value=='stop'],
+            'outbound_method_counts':{method:methods.count(method) for method in sorted(set(methods))},
+            'scope':'Two real turns in one isolated Codex thread, controlled local Responses responder; no provider call or quality comparison.'}
+        assert initial.vendor_turn_id!=delivered.vendor_turn_id
+        assert len(calls)==2
+    finally:
+        if adapter._pump_task:
+            adapter._pump_task.cancel(); await asyncio.gather(adapter._pump_task,return_exceptions=True)
+        await transport.close()
+        server.shutdown(); server.server_close(); thread.join(timeout=5)
+        (root/'diagnostic.json').write_text(json.dumps({'calls':calls,'methods':methods,
+            'events':[{'type':event.event_type.value,'metadata':event.metadata} for event in events]},indent=2))
+    receipt['owned_process_closed']=transport._proc is None or transport._proc.returncode is not None
+    (root/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+    print(json.dumps(receipt)); print(str(root/'receipt.json'))
+asyncio.run(main())

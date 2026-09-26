@@ -1,0 +1,45 @@
+{
+  "schema": "pex.codex-real-delivery.v1",
+  "source_sha": "1bc0eb7dde2c7417115ae7ea0eb5b36bff635fd8",
+  "binary_sha256": "8f0554ede25bbc5450921897c468b2e84635aa513c5017457997af0954581f49",
+  "vendor_session_id": "01a0df77-7ec7-7bb1-a2e8-09a0880742c1",
+  "vendor_turn_id": "01a0df77-9924-7562-acbd-a6a8da8a8a83",
+  "initial_vendor_turn_id": "01a0df77-8ca5-76f1-b632-3ea6bcb30dd8",
+  "completion_status": "completed",
+  "local_model_requests": [
+    {
+      "model": "pinned",
+      "stream": true
+    },
+    {
+      "model": "pinned",
+      "stream": true
+    }
+  ],
+  "event_types": [
+    "agent_response",
+    "stop",
+    "user_prompt"
+  ],
+  "terminal_metadata": [
+    {
+      "raw_method": "turn/completed",
+      "turn_status": "completed",
+      "vendor_turn_id": "01a0df77-8ca5-76f1-b632-3ea6bcb30dd8"
+    },
+    {
+      "raw_method": "turn/completed",
+      "turn_status": "completed",
+      "vendor_turn_id": "01a0df77-9924-7562-acbd-a6a8da8a8a83"
+    }
+  ],
+  "outbound_method_counts": {
+    "initialize": 1,
+    "initialized": 1,
+    "thread/list": 3,
+    "thread/start": 1,
+    "turn/start": 2
+  },
+  "scope": "Two real turns in one isolated Codex thread, controlled local Responses responder; no provider call or quality comparison.",
+  "owned_process_closed": true
+}
