@@ -676,3 +676,14 @@ optional AgentCore endpoint proposes an action.
   The local driver now sets the profile, cloud-disabled and zero-review
   environment before importing AppState. No credential save or worker turn
   was initiated by those layout checks.
+- A real OpenCode 1.18.32 local server probe passed at source `c689a20`.
+  The [receipt](evidence/opencode-live-handshake-c689a20.json) binds the installed
+  binary hash and source revision; the [driver](evidence/opencode-live-handshake-driver.txt)
+  starts an owned loopback server with a fresh HOME/XDG configuration and
+  without provider environment credentials. The actual HTTP health and
+  session-list probes succeeded. Support was Strong before the pipeline pump
+  and Deep after the global SSE stream connected. Its adapter request guard
+  allowed GET only: three requests, zero worker mutations. The owned server
+  and stream closed cleanly. This confirms the real transport and observation
+  readiness, not a model turn, corrective delivery, desktop attachment,
+  useful supervision of a real task or comparative performance.

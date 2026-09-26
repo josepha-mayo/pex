@@ -1,0 +1,16 @@
+{
+  "schema": "pex.opencode-live-handshake.v1",
+  "source_sha": "c689a207eba68512dc979185d9bea0259d5d2ab9",
+  "binary_sha256": "cf664aa1da32b788f9b2699b84a9bb9be30b7e025693b90f9b85829d5fe4e252",
+  "health_verified": true,
+  "support_before_pump": "strong",
+  "support_after_pump": "deep",
+  "sse_connected": true,
+  "adapter_request_methods": [
+    "GET"
+  ],
+  "adapter_request_count": 3,
+  "worker_mutations": 0,
+  "scope": "real local HTTP session probe and SSE observation; no worker turn",
+  "owned_process_closed": true
+}

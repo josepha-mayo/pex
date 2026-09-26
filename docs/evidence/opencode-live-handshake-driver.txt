@@ -1,0 +1,105 @@
+import asyncio
+import hashlib
+import json
+import os
+from pathlib import Path
+import socket
+import subprocess
+import time
+from datetime import datetime, UTC
+
+import httpx
+from pex_bridge.adapters.opencode import OpenCodeAdapter
+from pex_bridge.adapters.http_json import LiveHttpTransport
+
+
+async def main():
+    binary = Path('build/npm-cache-opencode/_npx/3937505dc0158d98/node_modules/opencode-windows-x64/bin/opencode.exe').resolve()
+    root = Path('build/opencode-current-handshake') / datetime.now(UTC).strftime('%Y%m%dT%H%M%S')
+    root.mkdir(parents=True)
+    root = root.resolve()
+    with socket.socket() as address:
+        address.bind(('127.0.0.1', 0))
+        port = address.getsockname()[1]
+    environment = {key: value for key, value in os.environ.items()
+                   if key.upper() in {'PATH','PATHEXT','SYSTEMROOT','WINDIR','TEMP','TMP','COMSPEC'}}
+    environment['USERPROFILE'] = str(root)
+    environment['HOME'] = str(root)
+    for kind in ('CONFIG','CACHE','DATA','STATE'):
+        environment[f'XDG_{kind}_HOME'] = str(root / kind.lower())
+    environment['OPENCODE_CONFIG_CONTENT'] = json.dumps({'autoupdate':False})
+    requests = []
+
+    class ObservedTransport(LiveHttpTransport):
+        async def request(self, method, path, **kwargs):
+            requests.append((method, path))
+            if method != 'GET':
+                raise RuntimeError('diagnostic refuses worker mutations')
+            return await super().request(method, path, **kwargs)
+
+    transport = ObservedTransport(f'http://127.0.0.1:{port}')
+    adapter = OpenCodeAdapter()
+    adapter.attach_transport(transport)
+    with (root / 'server.log').open('wb') as log:
+        proc = subprocess.Popen([str(binary), 'serve', '--hostname','127.0.0.1','--port',str(port)],
+            cwd=root, env=environment, stdout=log, stderr=subprocess.STDOUT,
+            creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        try:
+            async with httpx.AsyncClient(timeout=2) as client:
+                deadline = time.monotonic() + 30
+                while True:
+                    if proc.poll() is not None:
+                        raise RuntimeError('OpenCode server exited before readiness')
+                    try:
+                        health = await client.get(f'http://127.0.0.1:{port}/global/health')
+                        if health.status_code == 200:
+                            break
+                    except httpx.HTTPError:
+                        pass
+                    if time.monotonic() > deadline:
+                        raise TimeoutError('OpenCode server readiness expired')
+                    await asyncio.sleep(.2)
+            before = await adapter.probe()
+            assert before.send_message
+            async def ingest(_event):
+                pass
+            adapter.start_pipeline_pump(ingest)
+            deadline = time.monotonic() + 10
+            while True:
+                after = await adapter.probe()
+                if after.observe_messages:
+                    break
+                if time.monotonic() > deadline:
+                    raise TimeoutError('OpenCode event stream did not become healthy')
+                await asyncio.sleep(.1)
+            receipt = {
+                'schema':'pex.opencode-live-handshake.v1',
+                'source_sha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+                'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),
+                'health_verified':True,
+                'support_before_pump':before.support_label.value,
+                'support_after_pump':after.support_label.value,
+                'sse_connected':adapter._events_connected(),
+                'adapter_request_methods':sorted({method for method,_ in requests}),
+                'adapter_request_count':len(requests),
+                'worker_mutations':0,
+                'scope':'real local HTTP session probe and SSE observation; no worker turn',
+            }
+        finally:
+            if adapter._pump_task is not None:
+                adapter._pump_task.cancel()
+                await asyncio.gather(adapter._pump_task,return_exceptions=True)
+            await transport.aclose()
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=5)
+    receipt['owned_process_closed'] = proc.poll() is not None
+    (root / 'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8')
+    print(json.dumps(receipt))
+    print(str(root / 'receipt.json'))
+
+
+asyncio.run(main())
