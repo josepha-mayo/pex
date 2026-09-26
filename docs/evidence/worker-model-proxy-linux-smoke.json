@@ -1,0 +1,16 @@
+{
+  "loopback_http": true,
+  "mounted_unix_relay": true,
+  "buffered_sse": true,
+  "upstream_streaming": false,
+  "controller_calls": 1,
+  "scope": "Controlled IPC transport inside Linux bubblewrap; no coding harness or upstream provider call.",
+  "schema": "pex.worker-model-proxy-smoke.v1",
+  "source_base_sha": "fefc5ed480858bd7ba0ae00f488b8b5c9846a955",
+  "module_sha256": "f78d30b6f165d73a9431e5bc1ea417293c315d7f6150ec08ada03f8b9ad7ac84",
+  "unit_checks": {
+    "passed": 40,
+    "skipped": 11,
+    "scope": "worker HTTP proxy, pinned relay, Linux sandbox unit checks on Windows; Linux-specific skips supplemented by actual WSL smoke"
+  }
+}

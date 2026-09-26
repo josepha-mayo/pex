@@ -978,3 +978,16 @@ optional AgentCore endpoint proposes an action.
   [integration driver](evidence/codex-nebius-artifact-check-driver.txt), and
   [bounded model driver](evidence/nebius_guarded_model-driver.txt). Full local
   diagnostics remain outside the repository.
+- The worker-side model HTTP adapter now binds only to loopback and forwards
+  chat requests through the controller's bounded Unix relay. It carries no
+  provider credential, rejects alternate routes and credentials, and preserves
+  tool-call IDs/arguments, finish reasons and usage when translating complete
+  non-streaming responses into buffered SSE. Upstream streaming latency is
+  explicitly not claimed. Proxy/relay/sandbox checks passed together on Windows
+  (40 passed, 11 Linux-specific skips). An actual WSL bubblewrap smoke then
+  exercised loopback HTTP and the mounted Unix relay with one controlled
+  controller request; [the receipt](evidence/worker-model-proxy-linux-smoke.json)
+  binds the tested module hash and [driver](evidence/worker-proxy-linux-smoke-driver.txt).
+  No provider request occurred. This closes a transport primitive gap; real
+  coding-client launch, action-time backend receipts and comparative execution
+  remain required. Benchmark eligibility gates were not changed.
