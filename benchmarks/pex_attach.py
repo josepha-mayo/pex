@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import copy
 import hashlib
 import json
 import math
@@ -1028,7 +1029,8 @@ async def _run_supervisor_command(
                 await server.wait_closed()
                 await model_relay.close_active()
         return exit_code, (
-            [dict(row) for row in model_relay.audit[start:]] if model_relay is not None else []
+            [copy.deepcopy(row) for row in model_relay.audit[start:]]
+            if model_relay is not None else []
         )
 
 

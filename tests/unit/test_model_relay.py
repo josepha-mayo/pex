@@ -107,6 +107,10 @@ async def test_backend_receipt_binds_wire_outcome_and_available_usage(usage):
     assert receipt["status"] == "completed" and receipt["http_status"] == 200
     assert len(receipt["request_sha256"]) == len(receipt["response_sha256"]) == 64
     assert receipt["response_sha256"] == hashlib.sha256(raw).hexdigest()
+    relay_receipt = relay.audit[0]
+    assert relay_receipt["provider_receipt"] == receipt
+    assert relay_receipt["provider_receipt"]["relay_request_id"] == "call_1"
+    assert relay_receipt["provider_receipt"]["relay_correlation_id"]
     assert receipt["usage_available"] is (usage is not None)
     assert receipt["usage"] == (None if usage is None else {
         "prompt_tokens": 30, "completion_tokens": 8, "total_tokens": 38,
@@ -211,6 +215,60 @@ async def test_backend_failed_wire_outcome_keeps_unknown_usage(outcome):
     assert receipt.get("http_status") == (429 if outcome == "http_error" else None)
     assert receipt["latency_ms"] >= 0
     assert "private error" not in json.dumps(receipt)
+
+
+@pytest.mark.asyncio
+async def test_concurrent_relay_receipts_bind_each_pinned_backend_attempt():
+    async def handler(req):
+        sent = json.loads(req.content)
+        await asyncio.sleep(.02 if sent["max_tokens"] == 128 else 0)
+        payload = {"model": "pinned", "choices": [{
+            "message": {"role": "assistant", "content": "bounded"},
+        }], "usage": {"prompt_tokens": 10, "completion_tokens": 3,
+                       "total_tokens": 13}}
+        return httpx.Response(200, stream=httpx.ByteStream(json.dumps(payload).encode()))
+    backend = PinnedChatBackend(
+        endpoint="https://provider.example/v1/chat/completions", model="pinned",
+        api_key="test-canary", transport=httpx.MockTransport(handler),
+    )
+    relay = PinnedModelRelay(model="pinned", max_calls=2,
+                            deadline=time.perf_counter()+5, backend=backend)
+    results = await asyncio.gather(
+        relay.dispatch(request("slow", max_tokens=128)),
+        relay.dispatch(request("fast", max_tokens=127)),
+    )
+    assert all(result["ok"] for result in results)
+    indexed = {row["request_id"]: row["provider_receipt"] for row in relay.audit}
+    assert indexed["slow"]["relay_request_id"] == "slow"
+    assert indexed["slow"]["max_tokens"] == 128
+    assert indexed["fast"]["relay_request_id"] == "fast"
+    assert indexed["fast"]["max_tokens"] == 127
+    assert all(row["usage_available"] for row in indexed.values())
+    assert all(row["relay_correlation_id"] for row in indexed.values())
+    backend.audit[0]["usage"]["total_tokens"] = 999
+    assert all(row["usage"]["total_tokens"] == 13 for row in indexed.values())
+
+
+@pytest.mark.asyncio
+async def test_relays_sharing_backend_use_unique_provider_receipt_correlation():
+    async def handler(_req):
+        await asyncio.sleep(.01)
+        payload = {"model": "pinned", "choices": [{
+            "message": {"role": "assistant", "content": "bounded"},
+        }]}
+        return httpx.Response(200, stream=httpx.ByteStream(json.dumps(payload).encode()))
+    backend = PinnedChatBackend(
+        endpoint="https://provider.example/v1/chat/completions", model="pinned",
+        api_key="test-canary", transport=httpx.MockTransport(handler),
+    )
+    relays = [PinnedModelRelay(
+        model="pinned", max_calls=1, deadline=time.perf_counter()+5, backend=backend,
+    ) for _ in range(2)]
+    results = await asyncio.gather(*(relay.dispatch(request()) for relay in relays))
+    assert all(result["ok"] for result in results)
+    receipts = [relay.audit[0]["provider_receipt"] for relay in relays]
+    assert all(receipt["relay_request_id"] == "call_1" for receipt in receipts)
+    assert len({receipt["relay_correlation_id"] for receipt in receipts}) == 2
 
 
 @pytest.mark.asyncio

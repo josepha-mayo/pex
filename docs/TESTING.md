@@ -1017,3 +1017,7 @@ optional AgentCore endpoint proposes an action.
   limit after the request is sent. Mock-transport checks cover those outcomes
   without provider calls. These receipts add accounting evidence; they do not
   establish natural-task quality gains or change benchmark eligibility.
+  Each provider receipt is correlated to its relay request in async context and
+  carried into the controller's execution-boundary receipt, including uncertain
+  failures. Concurrent request checks confirm receipts stay bound to the right
+  token limit and relay identity.

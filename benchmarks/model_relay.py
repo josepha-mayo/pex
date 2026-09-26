@@ -15,7 +15,9 @@ import socket
 import stat
 import struct
 import time
+import uuid
 from collections.abc import Awaitable, Callable
+from contextvars import ContextVar
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -25,6 +27,9 @@ from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
 SCHEMA = "pex.model-relay.v1"
 MAX_REQUEST_BYTES = 262_144
 MAX_RESPONSE_BYTES = 1_048_576
+_RELAY_CORRELATION: ContextVar[tuple[str, str] | None] = ContextVar(
+    "pex_relay_correlation", default=None,
+)
 _BODY_FIELDS = {"model", "messages", "max_tokens", "temperature", "tools", "tool_choice", "stream"}
 
 
@@ -81,6 +86,11 @@ class PinnedChatBackend:
                    "endpoint": self.endpoint, "model": self.model,
                    "max_tokens": body["max_tokens"], "status": "reserved",
                    "usage_available": False, "usage": None}
+        correlation = _RELAY_CORRELATION.get()
+        if correlation is not None:
+            correlation_id, relay_request_id = correlation
+            receipt["relay_correlation_id"] = correlation_id
+            receipt["relay_request_id"] = relay_request_id
         self.audit.append(receipt)
         started = time.perf_counter()
         try:
@@ -201,6 +211,8 @@ class PinnedModelRelay:
         receipt = {"request_id": request_id, "request_sha256": hashlib.sha256(raw).hexdigest(),
                    "status": "reserved"}
         self.audit.append(receipt)
+        correlation_id = uuid.uuid4().hex
+        context_token = _RELAY_CORRELATION.set((correlation_id, request_id))
         try:
             response = await asyncio.wait_for(
                 self.backend(body), timeout=max(0, self.deadline - time.perf_counter()),
@@ -222,6 +234,27 @@ class PinnedModelRelay:
             receipt["status"] = "failed_uncertain"
             return {"schema": SCHEMA, "request_id": request_id, "ok": False,
                     "error": "backend_failed_uncertain"}
+        finally:
+            _RELAY_CORRELATION.reset(context_token)
+            provider_audit = getattr(self.backend, "audit", None)
+            if isinstance(provider_audit, list):
+                matches = [
+                    row for row in provider_audit
+                    if isinstance(row, dict)
+                    and row.get("schema") == "pex.pinned-chat-backend-receipt.v1"
+                    and row.get("relay_correlation_id") == correlation_id
+                    and row.get("relay_request_id") == request_id
+                ]
+                if len(matches) == 1:
+                    provider_receipt = dict(matches[0])
+                    usage = provider_receipt.get("usage")
+                    if isinstance(usage, dict):
+                        provider_receipt["usage"] = {
+                            key: usage[key] for key in (
+                                "prompt_tokens", "completion_tokens", "total_tokens",
+                            ) if key in usage
+                        }
+                    receipt["provider_receipt"] = provider_receipt
 
     async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         if self._connections >= 4:
