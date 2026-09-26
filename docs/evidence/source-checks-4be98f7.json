@@ -1,0 +1,25 @@
+{
+  "source_sha": "4be98f73bf6fa4d8adbbb2c0c2064dd813aed333",
+  "run": "https://github.com/josepha-mayo/pex/actions/runs/36272673120",
+  "scope": "Source pytest suites only. Overall run failed its original Linux installed-window gate; separate exact-package replay succeeded.",
+  "suites": {
+    "tests-ubuntu-24.04": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "26",
+      "tests": "4982",
+      "time": "499.964",
+      "timestamp": "2026-09-26T21:22:16.413117+00:00"
+    },
+    "tests-windows-latest": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "30",
+      "tests": "4982",
+      "time": "1317.623",
+      "timestamp": "2026-09-26T21:23:13.320906+00:00"
+    }
+  }
+}

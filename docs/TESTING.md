@@ -942,3 +942,23 @@ optional AgentCore endpoint proposes an action.
   readiness gates and software-renderer settings were retained. This proves
   a successful exact-package replay, not a fix for the intermittent startup
   failure or native acceptance of subsequent agent-scoring changes.
+- The complete source suites for `4be98f7` finished with 4,956 passed / 26
+  skipped on Ubuntu and 4,952 passed / 30 skipped on Windows, with no failures
+  or errors. [The receipt](evidence/source-checks-4be98f7.json) preserves the
+  exact revision and run; its original Linux installed-window failure remains
+  separate from the successful source suites and subsequent package replay.
+- At `a31f4f3`, a bounded live Nebius Nemotron check inspected a genuinely
+  missing required local report in a synthetic stopped session. The main
+  supervisor proposed a specific `SEND_NUDGE`, and an independent verifier
+  inspected acceptance separately and approved it. Four requests completed
+  with 8,710 input and 740 output tokens, estimated $0.003279 before tax at
+  the account's displayed rates. SDK retries were disabled; the driver capped
+  requests, request bytes, model identity, endpoint and output tokens while
+  retaining PEX's guarded transport. Earlier driver attempts stopped locally
+  before transmission because the extra hostname guard ran after address
+  pinning; moving that guard earlier resolved the test-driver issue. See
+  [the receipt](evidence/nebius-bounded-supervisor-a31f4f3.json) and
+  [driver](evidence/nebius-bounded-supervisor-driver.txt). This case proves
+  live supervisor and verifier inference, not worker delivery or comparative
+  task-quality improvement. Free Builder credit and remaining trial credit
+  were verified in the account before this bounded run.
