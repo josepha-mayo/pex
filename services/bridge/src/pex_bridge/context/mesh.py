@@ -522,10 +522,14 @@ def items_from_verification(
 ) -> list[ContextItem]:
     """Turn supported checks into reusable evidence; never promote raw claims."""
     items: list[ContextItem] = []
+    observed_event_ids = {
+        candidate.event_id for candidate in recent if candidate.session_id == event.session_id
+    }
     latest_pytest_ref = next(
         (
             candidate.event_id
             for candidate in reversed(recent)
+            if candidate.session_id == event.session_id
             if isinstance((candidate.process_state or {}).get("pytest"), dict)
             or isinstance((candidate.process_state or {}).get("unittest"), dict)
             or "pytest" in (candidate.command or "").casefold()
@@ -546,8 +550,22 @@ def items_from_verification(
         )
         provenance = SourceKind.TEST if is_test else SourceKind.WORKSPACE
         source_refs = [str(claim.get("source_event_id") or event.event_id)]
-        if is_test and latest_pytest_ref:
-            source_refs.append(latest_pytest_ref)
+        if is_test:
+            declared_refs = list(dict.fromkeys(
+                value.partition("=")[2]
+                for value in evidence
+                if value.startswith(("pytest_event_id=", "unittest_event_id="))
+            ))
+            if declared_refs:
+                if any(ref not in observed_event_ids for ref in declared_refs):
+                    continue
+                source_refs.extend(declared_refs)
+            elif latest_pytest_ref in observed_event_ids:
+                # Older supported receipts lack explicit event ids. Keep their
+                # observed fallback, never substitute it for a declared source.
+                source_refs.append(latest_pytest_ref)
+            else:
+                continue
         elif not is_test:
             source_refs.append(f"workspace_snapshot:{event.event_id}")
         source_refs = list(dict.fromkeys(source_refs))

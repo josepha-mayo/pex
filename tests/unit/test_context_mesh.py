@@ -544,6 +544,37 @@ def test_handoff_does_not_mark_a_partial_acceptance_phrase_complete() -> None:
     assert bundle.next_objective == "parser tests pass on Windows and Linux"
 
 
+@pytest.mark.parametrize("source_state", ["present", "missing", "other_session"])
+def test_supported_test_context_retains_exact_multiple_run_sources(source_state):
+    now = datetime.now(UTC)
+    def event(event_id, command="", session_id="synthetic:source"):
+        return HarnessEvent(
+            event_id=event_id, ts=now, harness_type=HarnessType.SYNTHETIC,
+            session_id=session_id, event_type=EventType.SHELL if command else EventType.STOP,
+            command=command,
+        )
+    pytest_event = event("pytest-proof", "pytest")
+    unittest_event = event("unittest-proof", "python -m unittest")
+    unrelated = event("later-unrelated-test", "pytest tests/other.py")
+    stop = event("stop")
+    recent = [pytest_event, unrelated, stop]
+    if source_state == "other_session":
+        unittest_event.session_id = "synthetic:other-worker"
+    if source_state != "missing":
+        recent.insert(1, unittest_event)
+    verification = {"verdicts": [{
+        "status": "supported",
+        "claim": {"statement": "Both required suites pass", "source_event_id": "stop"},
+        "evidence": ["pytest_event_id=pytest-proof", "unittest_event_id=unittest-proof",
+                     "pytest_ok=true", "unittest_ok=true"],
+    }]}
+    items = items_from_verification("demo", "goal_context", stop, verification, recent)
+    if source_state != "present":
+        assert items == []
+    else:
+        assert items[0].source_refs == ["stop", "pytest-proof", "unittest-proof"]
+
+
 def test_handoff_advances_only_after_exact_supported_acceptance_claim() -> None:
     now = datetime.now(UTC)
     goal = _goal(now)
