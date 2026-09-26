@@ -994,7 +994,15 @@ async def main():
                 )
                 results.append(receipt)
                 print(json.dumps(receipt), flush=True)
-                if not receipt["passed"]:
+                if (
+                    receipt.get("observation_incomplete") is not False
+                    or receipt.get("infrastructure_abort_reason") is not None
+                    or (args.arm == "pex" and (
+                        receipt.get("terminal_review_failed") is not False
+                        or receipt.get("all_observed_events_settled") is not True
+                        or receipt.get("all_pex_reviews_completed") is not True
+                    ))
+                ):
                     break
     except Exception as exc:
         error_type = type(exc).__name__

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import statistics
 from pathlib import Path
@@ -98,8 +99,14 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
         baseline_cases, treatment_cases = [], []
     if len(baseline_cases) != len(treatment_cases):
         blockers.append("paired case count mismatch")
+    requested = baseline.get("requested_case_count")
+    if type(requested) is not int or not 1 <= requested <= 10:
+        blockers.append("requested case count is invalid")
+    elif len(baseline_cases) != requested or len(treatment_cases) != requested:
+        blockers.append("requested cases were not all observed")
 
     pairs = []
+    seen = set()
     for index, (base, pex) in enumerate(zip(baseline_cases, treatment_cases, strict=False), 1):
         if not isinstance(base, dict) or not isinstance(pex, dict):
             blockers.append(f"case {index} receipt is malformed")
@@ -118,6 +125,24 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
         ):
             blockers.append(f"case {index} identity is invalid")
             continue
+        if identity in seen:
+            blockers.append(f"case {index} identity is duplicated")
+        seen.add(identity)
+        for receipt, label in ((base, "baseline"), (pex, "treatment")):
+            if (
+                receipt.get("worker_completion_fence_passed") is not True
+                or receipt.get("observation_incomplete") is not False
+                or receipt.get("infrastructure_abort_reason") is not None
+                or type(receipt.get("worker_completed_correctly")) is not bool
+                or type(receipt.get("passed")) is not bool
+            ):
+                blockers.append(f"case {index} {label} observation is incomplete")
+        if (
+            pex.get("all_observed_events_settled") is not True
+            or pex.get("all_pex_reviews_completed") is not True
+            or pex.get("terminal_review_failed") is not False
+        ):
+            blockers.append(f"case {index} treatment supervision is incomplete")
         if base.get("arm") != "baseline" or base.get("pex_attached") is not False:
             blockers.append(f"case {index} baseline identity mismatch")
         if pex.get("arm") != "pex" or pex.get("pex_attached") is not True:
@@ -146,10 +171,12 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             blockers.append(f"case {index} public task mismatch")
         base_wall = base.get("wall_seconds")
         pex_wall = pex.get("wall_seconds")
-        if isinstance(base_wall, bool) or not isinstance(base_wall, (int, float)):
+        if (type(base_wall) not in (int, float) or not math.isfinite(base_wall)
+                or base_wall < 0):
             blockers.append(f"case {index} baseline wall time is unavailable")
             continue
-        if isinstance(pex_wall, bool) or not isinstance(pex_wall, (int, float)):
+        if (type(pex_wall) not in (int, float) or not math.isfinite(pex_wall)
+                or pex_wall < 0):
             blockers.append(f"case {index} treatment wall time is unavailable")
             continue
         pairs.append(
@@ -157,8 +184,10 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
                 "number": identity[0],
                 "case": identity[1],
                 "public_task_sha256": baseline_task_sha,
-                "baseline_success": base.get("passed") is True,
-                "pex_success": pex.get("passed") is True,
+                "baseline_success": base.get("worker_completed_correctly"),
+                "pex_success": pex.get("worker_completed_correctly"),
+                "baseline_diagnostic_passed": base.get("passed"),
+                "pex_diagnostic_passed": pex.get("passed"),
                 "baseline_wall_seconds": base_wall,
                 "pex_wall_seconds": pex_wall,
                 "pex_minus_baseline_wall_seconds": round(pex_wall - base_wall, 2),
@@ -167,8 +196,6 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
             }
         )
 
-    if baseline.get("passed") is not True or treatment.get("passed") is not True:
-        blockers.append("both paired runs must pass before comparative metrics are reported")
     comparable = not blockers and len(pairs) == len(baseline_cases) > 0
     deltas = [row["pex_minus_baseline_wall_seconds"] for row in pairs]
     metrics = None

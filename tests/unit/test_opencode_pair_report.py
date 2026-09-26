@@ -1,6 +1,8 @@
 import hashlib
 import json
 
+import pytest
+
 from scripts.opencode_pair_report import build_report
 
 
@@ -31,6 +33,9 @@ def write_pair(tmp_path):
         "pex_attached": False,
         "passed": True,
         "wall_seconds": 20.0,
+        "worker_completed_correctly": True,
+        "worker_completion_fence_passed": True,
+        "observation_incomplete": False,
         "worker_model": common["worker_model"],
         "worker_provider": common["worker_provider"],
     }
@@ -41,6 +46,9 @@ def write_pair(tmp_path):
         "wall_seconds": 23.0,
         "followup_count": 0,
         "model_call_count": 1,
+        "all_observed_events_settled": True,
+        "all_pex_reviews_completed": True,
+        "terminal_review_failed": False,
     }
     (baseline / "summary.json").write_text(
         json.dumps({**common, "arm": "baseline", "pex_attached": False, "cases": [base_case]}),
@@ -90,6 +98,60 @@ def test_open_code_pair_report_requires_and_reports_a_true_pair(tmp_path):
         "pex_followups": 0,
         "pex_model_calls": 1,
     }
+
+
+def test_pair_retains_completed_failures_and_separates_restraint_from_task_success(tmp_path):
+    baseline, treatment = write_pair(tmp_path)
+    for root in (baseline, treatment):
+        path = root / "summary.json"
+        summary = json.loads(path.read_text())
+        summary["passed"] = False
+        summary["cases"][0]["passed"] = False
+        if root == baseline:
+            summary["cases"][0]["worker_completed_correctly"] = False
+        path.write_text(json.dumps(summary))
+    report = build_report(baseline, treatment)
+    assert report["comparable"] is True
+    assert report["metrics"]["baseline_successes"] == 0
+    assert report["metrics"]["pex_successes"] == 1
+    assert report["pairs"][0]["pex_diagnostic_passed"] is False
+
+
+@pytest.mark.parametrize("field,value", [
+    ("observation_incomplete", True), ("worker_completion_fence_passed", False),
+    ("infrastructure_abort_reason", "stream_gap"), ("all_pex_reviews_completed", False),
+    ("terminal_review_failed", True), ("wall_seconds", float("nan")),
+])
+def test_pair_rejects_incomplete_or_invalid_failure_evidence(tmp_path, field, value):
+    baseline, treatment = write_pair(tmp_path)
+    path = treatment / "summary.json"
+    summary = json.loads(path.read_text())
+    summary["cases"][0][field] = value
+    path.write_text(json.dumps(summary))
+    report = build_report(baseline, treatment)
+    assert report["comparable"] is False
+    assert report["metrics"] is None
+
+
+def test_pair_rejects_partial_sample_even_when_all_retained_cases_pass(tmp_path):
+    baseline, treatment = write_pair(tmp_path)
+    for root in (baseline, treatment):
+        path = root / "summary.json"
+        summary = json.loads(path.read_text())
+        summary["requested_case_count"] = 2
+        path.write_text(json.dumps(summary))
+    assert "requested cases were not all observed" in build_report(baseline, treatment)["blockers"]
+
+
+def test_pair_rejects_missing_outcome_without_crashing(tmp_path):
+    baseline, treatment = write_pair(tmp_path)
+    path = baseline / "summary.json"
+    summary = json.loads(path.read_text())
+    del summary["cases"][0]["worker_completed_correctly"]
+    path.write_text(json.dumps(summary))
+    report = build_report(baseline, treatment)
+    assert report["comparable"] is False
+    assert "case 1 baseline observation is incomplete" in report["blockers"]
 
 
 def test_open_code_pair_report_fails_closed_on_task_or_route_drift(tmp_path):

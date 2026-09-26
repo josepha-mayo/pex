@@ -230,6 +230,11 @@ optional AgentCore endpoint proposes an action.
 
 ## Honest boundaries
 
+- The OpenCode paired diagnostic retains completed task failures. It reports
+  worker correctness separately from the restraint diagnostic, and does not stop
+  sampling merely because a completed case failed. Metrics require every
+  requested case, complete worker observations, settled PEX reviews, and intact
+  raw SSE evidence. Infrastructure aborts and partial samples are not compared.
 - Amazon Bedrock AgentCore support is implemented and offline-tested; no
   deployed AgentCore Runtime is claimed.
 - PexBench is unfrozen; no comparative productivity score is claimed.
