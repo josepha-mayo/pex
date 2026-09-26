@@ -467,7 +467,7 @@ optional AgentCore endpoint proposes an action.
   passed 21 Rust tests, bridge identity, Secret Service/BYOK storage and the
   installed fresh-profile Home/Settings visual gate with zero provider calls.
   The [installed receipt](evidence/linux-installed-smoke-a2dff00.json) and
-  [startup trace](evidence/linux-startup-ipc-a2dff00.log) retain that result.
+  [startup trace](evidence/linux-startup-ipc-a2dff00.txt) retain that result.
   React reported main at 1,106 ms and settings at 2,966 ms. The Home screenshot
   was also inspected. This is an exact-run pass; the preceding visual failure
   remains relevant to startup reliability, and live worker quality is unproven.

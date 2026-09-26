@@ -1,0 +1,22 @@
+
+(pex-desktop:19757): dbind-WARNING **: 18:12:17.569: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
+PEX desktop startup trace: bootstrap IPC entered at 0ms
+PEX desktop startup trace: frontend committed recovery at 0ms
+PEX desktop startup trace: bootstrap IPC returning starting at 0ms
+PEX desktop startup trace: bootstrap IPC entered at 7ms
+PEX desktop startup trace: frontend committed recovery at 7ms
+PEX desktop startup trace: bootstrap IPC returning starting at 7ms
+PEX desktop startup trace: bootstrap IPC entered at 757ms
+PEX desktop startup trace: frontend committed recovery at 757ms
+PEX desktop startup trace: bootstrap IPC returning starting at 757ms
+PEX desktop bridge ready (attempt 1)
+PEX desktop startup trace: token IPC entered at 1106ms
+PEX desktop startup trace: token identity lock acquired at 1106ms
+PEX desktop startup trace: bootstrap IPC entered at 1106ms
+PEX desktop startup trace: frontend committed main at 1106ms
+PEX desktop startup trace: bootstrap IPC returning ready at 1106ms
+PEX desktop startup trace: token identity verified at 1107ms
+PEX desktop startup trace: token IPC returning at 1107ms
+PEX desktop startup trace: bootstrap IPC entered at 2966ms
+PEX desktop startup trace: frontend committed settings at 2966ms
+PEX desktop startup trace: bootstrap IPC returning ready at 2966ms
