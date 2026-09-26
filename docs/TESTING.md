@@ -838,8 +838,8 @@ optional AgentCore endpoint proposes an action.
   workspace/profile, disables the PEX model, and permits only reads/edits of
   the solver filename while other tools are denied. Three local streaming
   responses scripted the worker's read, write and final message. The first
-  repair attempt used a filename pattern that did not match a relative path
-  and waited after an intermediate tool message; the corrected driver waits
+  repair attempt used a narrower filename pattern and stopped its completion
+  polling after an intermediate tool message; the corrected driver waits
   for final `finish=stop` and passed in a fresh session. Both test invocations
   emitted two pytest configuration warnings. Owned servers closed cleanly.
   This is actual harness tool execution, deterministic PEX correction and
