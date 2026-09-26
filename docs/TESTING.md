@@ -962,3 +962,19 @@ optional AgentCore endpoint proposes an action.
   live supervisor and verifier inference, not worker delivery or comparative
   task-quality improvement. Free Builder credit and remaining trial credit
   were verified in the account before this bounded run.
+- At `0a3c7a5`, live Nemotron supervision was connected to a real Codex
+  artifact-repair flow in a temporary Windows workspace. An initial stopped
+  thread left the required `report.txt` missing and its unchanged public test
+  failing. The live supervisor inspected acceptance, issued `SEND_NUDGE`,
+  and obtained independent verifier approval. The adapter delivered that
+  correction to the same thread; real Codex executed `exec_command` to write
+  the artifact. The public test then passed, the required bytes were observed,
+  and a second live supervisor review returned `NOOP`. Six capped Nebius
+  requests succeeded, estimated $0.0050322 before tax at the observed rates.
+  The owned Codex process and local responder were closed. Codex model
+  responses were controlled locally; this is an integration proof, not a
+  natural-worker quality comparison or an OS-isolated benchmark. See
+  [the compact receipt](evidence/codex-nebius-artifact-0a3c7a5.json),
+  [integration driver](evidence/codex-nebius-artifact-check-driver.txt), and
+  [bounded model driver](evidence/nebius_guarded_model-driver.txt). Full local
+  diagnostics remain outside the repository.

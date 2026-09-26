@@ -1,0 +1,55 @@
+import asyncio
+import json
+import os
+import subprocess
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'tests/unit'))
+from test_supervisor_loop import _request
+from pex_bridge.supervisor_config import KeyringSupervisorSecretStore, load_supervisor_choice
+from pex_supervisor.providers import SupervisorRuntimeConfig, load_supervisor_model
+from pex_supervisor.loop import decide_async
+from pex_supervisor.verify import verify_claims
+
+def build_guarded_model():
+    choice = load_supervisor_choice(ROOT / 'build/nebius-authorized-reference.json')
+    assert choice and choice.provider == 'nebius'
+    assert choice.model_id == 'nvidia/nemotron-3-super-120b-a12b'
+    secret = KeyringSupervisorSecretStore().get(choice.secret_ref, audience=choice.credential_audience())
+    assert secret
+    os.environ.pop('PEX_SUPERVISOR_DISABLE', None)
+    cfg = SupervisorRuntimeConfig(provider=choice.provider, model_id=choice.model_id,
+        base_url=choice.base_url, auth_mode=choice.auth_mode, protocol=choice.protocol,
+        credential_source='secret_store', api_key=secret)
+    model = load_supervisor_model(cfg)
+    assert model is not None
+    model.client_args['max_retries'] = 0
+    factory = model._http_client_factory
+    calls = []
+    guard_checks = []
+    async def guard(request):
+        raw = await request.aread()
+        body = json.loads(raw)
+        guard_checks.append({'url': str(request.url), 'bytes':len(raw), 'model':body.get('model'),
+            'stream':body.get('stream'), 'max_tokens':body.get('max_tokens')})
+        assert str(request.url) == 'https://api.tokenfactory.nebius.com/v1/chat/completions'
+        assert body['model'] == choice.model_id and body.get('stream') is False
+        assert type(body.get('max_tokens')) is int and 0 < body['max_tokens'] <= 1200
+        assert len(raw) <= 65536 and len(calls) < 6
+        calls.append({'bytes': len(raw), 'max_tokens': body['max_tokens'], 'status': None})
+    async def response_receipt(response):
+        await response.aread()
+        calls[-1]['status'] = response.status_code
+        if response.status_code == 200:
+            body = response.json()
+            calls[-1]['usage'] = body.get('usage')
+    def bounded_client():
+        client = factory()
+        client.event_hooks['request'].insert(0, guard)
+        client.event_hooks['response'].append(response_receipt)
+        return client
+    model._http_client_factory = bounded_client
+    return model, calls, guard_checks

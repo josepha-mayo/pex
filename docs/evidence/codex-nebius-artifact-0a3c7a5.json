@@ -1,0 +1,256 @@
+{
+  "schema": "pex.codex-nebius-artifact.v1",
+  "source_sha": "0a3c7a519dee87d1fb0bf727e4108b17f3b444c7",
+  "binary_sha256": "8f0554ede25bbc5450921897c468b2e84635aa513c5017457997af0954581f49",
+  "completion_status": "completed",
+  "event_types": [
+    "agent_response",
+    "shell",
+    "stop",
+    "user_prompt"
+  ],
+  "outbound_method_counts": {
+    "initialize": 1,
+    "initialized": 1,
+    "thread/list": 8,
+    "thread/start": 1,
+    "turn/start": 2
+  },
+  "public_test_sha256": "1aa5464ebe1702645e79303ebacc9eb12e02c79d4147775922b0ed73acf25d35",
+  "before_exit_code": 1,
+  "after_exit_code": 0,
+  "report_content": "shipped\n",
+  "owned_process_closed": true,
+  "scope": "Real Codex worker edited a required artifact after live Nebius Nemotron supervisor and independent verifier approval. Codex Responses were controlled locally; no natural-worker comparison or OS isolation claim.",
+  "estimated_pre_tax_usd": 0.0050322,
+  "same_thread": true,
+  "different_turn_ids": true,
+  "controlled_worker_model_requests": 3,
+  "provider_calls": [
+    {
+      "bytes": 8810,
+      "max_tokens": 1200,
+      "status": 200,
+      "usage": {
+        "completion_tokens": 37,
+        "prompt_tokens": 2449,
+        "total_tokens": 2486,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": null,
+          "audio_tokens": null,
+          "reasoning_tokens": 18,
+          "rejected_prediction_tokens": null
+        },
+        "prompt_tokens_details": {
+          "audio_tokens": null,
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 2449
+      }
+    },
+    {
+      "bytes": 9733,
+      "max_tokens": 1200,
+      "status": 200,
+      "usage": {
+        "completion_tokens": 248,
+        "prompt_tokens": 2732,
+        "total_tokens": 2980,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": null,
+          "audio_tokens": null,
+          "reasoning_tokens": 70,
+          "rejected_prediction_tokens": null
+        },
+        "prompt_tokens_details": {
+          "audio_tokens": null,
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 2732
+      }
+    },
+    {
+      "bytes": 6503,
+      "max_tokens": 1200,
+      "status": 200,
+      "usage": {
+        "completion_tokens": 64,
+        "prompt_tokens": 1773,
+        "total_tokens": 1837,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": null,
+          "audio_tokens": null,
+          "reasoning_tokens": 45,
+          "rejected_prediction_tokens": null
+        },
+        "prompt_tokens_details": {
+          "audio_tokens": null,
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 1773
+      }
+    },
+    {
+      "bytes": 7426,
+      "max_tokens": 1200,
+      "status": 200,
+      "usage": {
+        "completion_tokens": 220,
+        "prompt_tokens": 2056,
+        "total_tokens": 2276,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": null,
+          "audio_tokens": null,
+          "reasoning_tokens": 57,
+          "rejected_prediction_tokens": null
+        },
+        "prompt_tokens_details": {
+          "audio_tokens": null,
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 2056
+      }
+    },
+    {
+      "bytes": 8412,
+      "max_tokens": 1200,
+      "status": 200,
+      "usage": {
+        "completion_tokens": 106,
+        "prompt_tokens": 2367,
+        "total_tokens": 2473,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": null,
+          "audio_tokens": null,
+          "reasoning_tokens": 87,
+          "rejected_prediction_tokens": null
+        },
+        "prompt_tokens_details": {
+          "audio_tokens": null,
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 2367
+      }
+    },
+    {
+      "bytes": 9229,
+      "max_tokens": 1200,
+      "status": 200,
+      "usage": {
+        "completion_tokens": 246,
+        "prompt_tokens": 2634,
+        "total_tokens": 2880,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": null,
+          "audio_tokens": null,
+          "reasoning_tokens": 103,
+          "rejected_prediction_tokens": null
+        },
+        "prompt_tokens_details": {
+          "audio_tokens": null,
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 2634
+      }
+    }
+  ],
+  "guard": {
+    "requests": 6,
+    "request_bytes": 65536,
+    "output_tokens_per_request": 1200,
+    "sdk_retries": 0
+  },
+  "supervisor_reviews": [
+    {
+      "action": {
+        "type": "SEND_NUDGE",
+        "payload": {
+          "text": "Please create report.txt in the workspace containing exactly the word shipped."
+        },
+        "rationale": "The acceptance check shows report.txt is missing. Need to prompt the worker to create the file with the exact content 'shipped'.",
+        "evidence": [
+          "report.txt is missing from the current workspace."
+        ],
+        "confidence": 0.9,
+        "risk": "low",
+        "reversible": false,
+        "expected_benefit": "",
+        "cooldown_seconds": 30,
+        "authority_required": "local_policy",
+        "requires_capability": "send_message"
+      },
+      "used_llm": true,
+      "inference_status": "completed",
+      "model_name": "nvidia/nemotron-3-super-120b-a12b",
+      "provider": "nebius",
+      "model_call_count": 4,
+      "input_tokens": 9010,
+      "output_tokens": 569,
+      "latency_ms": 14467,
+      "evidence_tools": [
+        "inspect_acceptance"
+      ]
+    },
+    {
+      "action": {
+        "type": "NOOP",
+        "payload": {},
+        "rationale": "Acceptance criteria satisfied: report.txt exists and contains exactly 'shipped'.",
+        "evidence": [
+          "Acceptance verified"
+        ],
+        "confidence": 0.95,
+        "risk": "none",
+        "reversible": false,
+        "expected_benefit": "",
+        "cooldown_seconds": 30,
+        "authority_required": "local_policy",
+        "requires_capability": null
+      },
+      "used_llm": true,
+      "inference_status": "completed",
+      "model_name": "nvidia/nemotron-3-super-120b-a12b",
+      "provider": "nebius",
+      "model_call_count": 2,
+      "input_tokens": 5001,
+      "output_tokens": 352,
+      "latency_ms": 3896,
+      "evidence_tools": [
+        "inspect_acceptance"
+      ]
+    }
+  ],
+  "independent_verifier": {
+    "approved": true,
+    "status": "approved",
+    "evidence_tools": [
+      "inspect_acceptance"
+    ],
+    "model_call_count": 2,
+    "input_tokens": 3829,
+    "output_tokens": 284
+  },
+  "pricing_source": "https://tokenfactory.nebius.com/organization/prices",
+  "rates_usd_per_million": {
+    "input": 0.3,
+    "output": 0.9
+  }
+}
