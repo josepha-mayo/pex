@@ -186,6 +186,40 @@ async def _drain_presentations(pipeline: Pipeline) -> None:
         await asyncio.gather(*tuple(pipeline._presentation_tasks), return_exceptions=True)
 
 
+@pytest.mark.asyncio
+async def test_compaction_contract_reaches_worker_after_durable_pipeline(tmp_path):
+    store, adapters, session, pipeline = await _pipeline(tmp_path)
+    goal = await store.get_goal(session.goal_id)
+    goal.objective = "Keep the complete release objective. " * 10 + "Verify Linux too."
+    fields = (
+        "acceptance_criteria", "constraints", "forbidden_outcomes", "non_goals",
+        "evidence_requirements",
+    )
+    for field in fields:
+        setattr(goal, field, [f"{field} requirement {index}" for index in range(5)])
+    await store.upsert_goal(goal)
+    pipeline.model = None
+    pipeline.settings.supervisor_max_dispatches_per_session = 0
+    try:
+        intervention = await pipeline.ingest_event(
+            _event(session, "full-contract-compaction", event_type=EventType.COMPACTION),
+            session,
+        )
+        assert intervention is not None
+        assert intervention.proposed_action.type == InterventionType.SEND_NUDGE
+        messages = adapters.synthetic.inbox.get(session.id, [])
+        assert len(messages) == 1
+        text = messages[0]
+        assert goal.objective in text
+        for field in fields:
+            assert getattr(goal, field)[-1] in text
+        persisted = await store.list_interventions(session.id)
+        assert persisted[0].proposed_action.payload["text"] == text
+    finally:
+        await _drain_presentations(pipeline)
+        await store.close()
+
+
 def test_local_supervisor_dispatch_budget_outlives_main_agent_budget():
     assert LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS == 70.0
     assert REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS == 30.0
