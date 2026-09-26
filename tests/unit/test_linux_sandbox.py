@@ -5,11 +5,82 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 
 from benchmarks import linux_sandbox
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
+    reason="Linux bwrap required",
+)
+def test_worker_relay_socket_preserves_host_files_and_network_boundary(tmp_path):
+    workspace = tmp_path / "worker"
+    workspace.mkdir()
+    private = tmp_path / "private.txt"
+    private.write_text("private controller value", encoding="utf-8")
+    received = []
+    with TemporaryDirectory(prefix="pex-relay-") as relay_root:
+        endpoint = Path(relay_root) / "relay.sock"
+        with socket.socket(socket.AF_UNIX) as relay, socket.socket() as host_network:
+            relay.bind(str(endpoint))
+            endpoint.chmod(0o600)
+            relay.listen()
+            relay.settimeout(5)
+            host_network.bind(("127.0.0.1", 0))
+            host_network.listen()
+            port = host_network.getsockname()[1]
+            with socket.create_connection(("127.0.0.1", port), timeout=1):
+                pass
+
+            def exchange():
+                with relay.accept()[0] as connection:
+                    connection.settimeout(2)
+                    received.append(connection.recv(64))
+                    connection.sendall(b"echo")
+
+            server = threading.Thread(target=exchange)
+            server.start()
+            script = (
+                "import json,os,socket; from pathlib import Path; "
+                "s=socket.socket(socket.AF_UNIX); s.settimeout(2); "
+                "s.connect(os.environ['PEX_MODEL_RELAY_SOCKET']); "
+                "s.sendall(b'bounded probe'); reply=s.recv(64).decode(); s.close(); "
+                "Path('/workspace/result.txt').write_text(reply); "
+                "network=False\n"
+                f"try:\n socket.create_connection(('127.0.0.1',{port}),timeout=.2); "
+                "network=True\nexcept OSError:\n pass\n"
+                f"print(json.dumps({{'reply':reply,'network':network,"
+                f"'private_visible':Path({str(private)!r}).exists()}}))"
+            )
+            try:
+                completed = subprocess.run(
+                    linux_sandbox.worker_relay_command(
+                        workspace, ["/usr/bin/python3", "-I", "-c", script], endpoint,
+                    ), capture_output=True, text=True, timeout=10, check=True,
+                )
+            finally:
+                server.join(timeout=6)
+            assert not server.is_alive()
+            assert received == [b"bounded probe"]
+            assert json.loads(completed.stdout) == {
+                "reply": "echo", "network": False, "private_visible": False,
+            }
+            assert (workspace / "result.txt").read_text() == "echo"
+            endpoint.chmod(0o644)
+            with pytest.raises(ValueError, match="owner-only"):
+                linux_sandbox.worker_relay_command(workspace, ["/usr/bin/true"], endpoint)
+            endpoint.chmod(0o600)
+            alias = Path(relay_root) / "alias.sock"
+            alias.symlink_to(endpoint)
+            with pytest.raises(ValueError, match="unlinked"):
+                linux_sandbox.worker_relay_command(workspace, ["/usr/bin/true"], alias)
+            with pytest.raises(ValueError, match="Unix socket"):
+                linux_sandbox.worker_relay_command(workspace, ["/usr/bin/true"], private)
 
 
 def test_sandbox_mode_rejects_unknown_value(monkeypatch: pytest.MonkeyPatch) -> None:

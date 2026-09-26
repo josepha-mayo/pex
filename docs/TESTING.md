@@ -687,3 +687,17 @@ optional AgentCore endpoint proposes an action.
   and stream closed cleanly. This confirms the real transport and observation
   readiness, not a model turn, corrective delivery, desktop attachment,
   useful supervision of a real task or comparative performance.
+- The Linux writable-worker boundary now has an optional single-socket IPC
+  primitive for future controller model transport. It mounts only an absolute,
+  unlinked, owner-only Unix socket outside the task at `/model-relay.sock`;
+  host networking remains unshared and controller directories are not mounted.
+  A real WSL test exchanged bounded echo bytes with a host listener, wrote a
+  task result and confirmed that a private host file and a live host TCP
+  listener remained inaccessible. Regular files, symlink socket paths and
+  permissive socket modes were rejected. Ten WSL boundary checks passed,
+  with two host pytest asyncio-config warnings; Windows ran two applicable
+  checks with eight Linux skips; 19 execution-safety checks also passed.
+  This is IPC capability, not an implemented
+  model relay: request restrictions, call budgets, live harness/proxy
+  integration and action-time backend receipts remain required. The natural
+  comparison eligibility gate is unchanged and no provider call was made.

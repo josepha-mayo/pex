@@ -123,6 +123,37 @@ def worker_command(workspace: Path, command: list[str]) -> list[str]:
     return [*_prefix(workspace, writable_worker=True), *command]
 
 
+def worker_relay_command(workspace: Path, command: list[str], relay_socket: Path) -> list[str]:
+    """Expose one controller-owned IPC socket without sharing host networking.
+
+    This is an IPC primitive, not a model relay implementation. The listener
+    must separately enforce model-only requests, limits and backend receipts.
+    Neither this socket mount nor a successful echo makes a run eligible.
+    """
+    base = worker_command(workspace, command)
+    socket_path = relay_socket.resolve(strict=True)
+    if socket_path != relay_socket.absolute():
+        raise ValueError("worker relay socket must be an absolute unlinked path")
+    metadata = socket_path.stat(follow_symlinks=False)
+    if (
+        not stat.S_ISSOCK(metadata.st_mode)
+        or metadata.st_uid != os.getuid()
+        or stat.S_IMODE(metadata.st_mode) != 0o600
+        or metadata.st_nlink != 1
+    ):
+        raise ValueError("worker relay must be an owner-only, single-link Unix socket")
+    if socket_path.is_relative_to(workspace.resolve(strict=True)):
+        raise ValueError("worker relay socket must be outside the writable task")
+    # Insert before chdir/--, retaining every existing mount/network boundary.
+    boundary = base.index("--")
+    return [
+        *base[:boundary - 2],
+        "--ro-bind", str(socket_path), "/model-relay.sock",
+        "--setenv", "PEX_MODEL_RELAY_SOCKET", "/model-relay.sock",
+        *base[boundary - 2:],
+    ]
+
+
 def supervisor_command(workspace: Path, runtime: Path, control: Path) -> list[str]:
     """Isolate an offline PEX child with a controller-curated public runtime.
 
