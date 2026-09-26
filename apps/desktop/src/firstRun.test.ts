@@ -49,8 +49,20 @@ test("first-run guidance distinguishes no usable worker from an attachable unbou
     goalFresh: true,
   });
   assert.equal(desktopOnly?.cta?.intent, "connect");
-  assert.equal(desktopOnly?.title, "Worker detected, control unavailable");
-  assert.equal(desktopOnly?.detail.includes("cannot attach a goal"), true);
+  assert.equal(desktopOnly?.title, "Connect a supported session");
+  assert.equal(desktopOnly?.detail.includes("Codex session record"), true);
+  assert.equal(desktopOnly?.detail.includes("start or resume a Codex CLI thread"), true);
+  assert.equal(desktopOnly?.detail.includes("does not control Codex Desktop tasks"), true);
+  assert.deepEqual(desktopOnly?.cta, { intent: "connect", label: "Open Connections" });
+
+  const detachedOpenCode = firstRunGuidance({
+    current: { ...worker, id: "opencode:session-1", harness_type: "opencode", status: "detached" },
+    sessionFresh: true,
+    goalFresh: true,
+  });
+  assert.equal(detachedOpenCode?.detail.includes("OpenCode session record"), true);
+  assert.equal(detachedOpenCode?.detail.includes("running OpenCode server session"), true);
+  assert.equal(detachedOpenCode?.detail.includes("Codex Desktop"), false);
 
   for (const current of [
     { ...worker, status: "detached" },

@@ -93,11 +93,18 @@ export function firstRunGuidance({
     };
   }
   if (current && !isCurrentlyObservableWorker(current)) {
+    const harness = current.harness_type;
+    const harnessLabel = harness === "opencode" ? "OpenCode" : titleCase(harness || "worker");
+    const nextStep = harness === "codex"
+      ? "In Connections, connect the isolated Codex App Server, then start or resume a Codex CLI thread. PEX does not control Codex Desktop tasks."
+      : harness === "opencode"
+        ? "In Connections, attach PEX to a running OpenCode server session."
+        : "In Connections, attach a running OpenCode session or an isolated Codex CLI thread.";
     return {
       state: "connect_worker",
-      title: "Worker detected, control unavailable",
-      detail: "PEX can see this worker but cannot attach a goal or control its session. Connect OpenCode or create an isolated Codex connection to attach a goal and supervise work.",
-      cta: { intent: "connect", label: "How to connect a worker" },
+      title: "Connect a supported session",
+      detail: `PEX has a ${harnessLabel} session record, but it isn't currently available for supervision. ${nextStep}`,
+      cta: { intent: "connect", label: "Open Connections" },
     };
   }
   if (!current) {
