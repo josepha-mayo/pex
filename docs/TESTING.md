@@ -14,6 +14,16 @@ visual smoke. Native bridge readiness is delivered to the webview as a typed
 event, with bounded polling retained for recovery. This is Ubuntu/Xvfb evidence,
 not a physical Linux workstation acceptance claim.
 
+The later `28032d9` package had an intermittent Linux startup-smoke failure in
+[its original run](https://github.com/josepha-mayo/pex/actions/runs/36248029746):
+the bridge logged readiness, but the combined visible-window/anonymous-HTTP
+condition did not pass within 90 seconds. The
+[exact-package diagnostic replay](https://github.com/josepha-mayo/pex/actions/runs/36248956418)
+passed Home, Settings, hidden pet, and anonymous HTTP 401 checks in a fresh
+profile. Both outcomes remain relevant; the replay is not a startup repair or
+proof of consistent native reliability. The smoke now captures window names,
+HTTP status, and a screenshot if that early condition fails again.
+
 The connection UI at `c0220d6` was exercised in browser mode against a
 throwaway, test-scoped local bridge with cloud reasoning disabled. The Codex CLI
 button completed a real isolated App Server handshake, returned Basic support,
