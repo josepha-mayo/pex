@@ -7,6 +7,11 @@ on:
         description: Checks run containing the built Linux Debian package
         required: true
         type: string
+      software_compositing:
+        description: Diagnostic replay with WebKit compositing disabled; readiness gates stay unchanged
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -33,7 +38,13 @@ jobs:
           [[ "${#packages[@]}" -eq 1 ]]
           printf '%s\n' "${packages[0]}" > build/native-replay-package-path.txt
       - name: Verify installed window and authenticated bridge
-        run: bash scripts/smoke_linux_desktop.sh "$(cat build/native-replay-package-path.txt)"
+        env:
+          SOFTWARE_COMPOSITING: ${{ inputs.software_compositing }}
+        run: |
+          if [[ "$SOFTWARE_COMPOSITING" == true ]]; then
+            export WEBKIT_DISABLE_COMPOSITING_MODE=1
+          fi
+          bash scripts/smoke_linux_desktop.sh "$(cat build/native-replay-package-path.txt)"
       - name: Retain visual receipt
         if: always()
         uses: actions/upload-artifact@v7
