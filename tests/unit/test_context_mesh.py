@@ -100,6 +100,46 @@ def test_shared_human_constraint_survives_handoff_even_when_previously_delivered
         build_bundle(_goal(now), _target(), [item], [], [], token_budget=256)
 
 
+@pytest.mark.parametrize("kind", [ContextKind.CONSTRAINT, ContextKind.DECISION])
+def test_goal_human_commitment_survives_prior_delivery_and_preserves_full_text(kind):
+    from pex_bridge.adapters.base import _bundle_as_prompt
+
+    now = datetime.now(UTC)
+    content = "Preserve the agreed parser implementation. " * 110 + "Never delete the old fixtures."
+    item = _item("human-goal-boundary", content, now, kind=kind, provenance=SourceKind.HUMAN)
+    bundle = build_bundle(
+        _goal(now), _target(), [item], [], [], exclude_item_ids={item.id}, token_budget=4000
+    )
+    assert any(content in row for row in bundle.critical_decisions)
+    assert content in _bundle_as_prompt(bundle)
+    with pytest.raises(ValueError, match="mandatory goal contract"):
+        build_bundle(_goal(now), _target(), [item], [], [], token_budget=256)
+
+
+@pytest.mark.parametrize("kind", [ContextKind.CONSTRAINT, ContextKind.DECISION])
+@pytest.mark.parametrize("invalid", ["foreign_goal", "expired", "private", "superseded"])
+def test_goal_mandatory_human_commitment_still_requires_current_authority(kind, invalid):
+    now = datetime.now(UTC)
+    item = _item(
+        "human-boundary", "HUMAN_BOUNDARY_SENTINEL", now, kind=kind, provenance=SourceKind.HUMAN
+    )
+    updates = {
+        "foreign_goal": {"goal_id": "foreign"},
+        "expired": {"stale_after": now - timedelta(seconds=1)},
+        "private": {"sensitivity": Sensitivity.LOCAL_ONLY},
+        "superseded": {},
+    }
+    item = item.model_copy(update=updates[invalid])
+    items = [item]
+    if invalid == "superseded":
+        replacement = _item(
+            "replacement", "Updated human commitment", now, kind=kind, provenance=SourceKind.HUMAN
+        ).model_copy(update={"supersedes": item.id})
+        items.append(replacement)
+    bundle = build_bundle(_goal(now), _target(), items, [], [])
+    assert not any("HUMAN_BOUNDARY_SENTINEL" in row for row in bundle.critical_decisions)
+
+
 @pytest.mark.parametrize(
     "invalid", ["foreign_project", "foreign_goal", "expired", "private", "worker"],
 )

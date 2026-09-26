@@ -863,3 +863,14 @@ optional AgentCore endpoint proposes an action.
   delivery and normalized observation, not file repair, supervision of an
   existing desktop conversation, actual model compliance or comparative
   performance. No upstream model call or card funds were used.
+- Human commitments are mandatory handoff context: active goal-scoped human
+  constraints and decisions retain their full redacted text even after prior
+  delivery. A budget too small for this contract is rejected. Regression
+  tests exercise both kinds, prompt rendering, and rejection of foreign,
+  expired, private or human-superseded commitments. The focused context and
+  supervision unit checks passed (160 tests), as did the handoff timeout
+  check and eight focused API delivery/authentication checks. The broader
+  end-to-end run was interrupted during the 65-handoff capacity case; a
+  diagnostic stack showed a database connection being opened, not a failed
+  assertion. That stress case remains unverified in this run. These are local
+  correctness checks, not model-quality benchmarks.

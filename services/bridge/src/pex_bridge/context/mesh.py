@@ -380,16 +380,24 @@ def build_bundle(
         for value in values
         if (cleaned := contract_text(value))
     ]
-    # Shared human constraints bind each worker in the project. Reassert their
-    # full text even if an earlier delivery or a small optional evidence budget
-    # would otherwise omit the ranked ContextItem.
+    # Active human commitments remain mandatory on every handoff. Prior delivery
+    # does not mean a new receiving worker already knows them. Scope, validity,
+    # sensitivity and supersession still apply before preserving their full text.
     goal_boundaries.extend(
-        f"Project constraint [{_safe_text(item.id, 512)}]: {cleaned}"
+        f"{label} [{_safe_text(item.id, 512)}]: {cleaned}"
         for item in sorted(items, key=lambda item: (_as_utc(item.valid_from), item.id))
-        if is_shared_human_constraint(item)
+        if item.provenance == SourceKind.HUMAN
+        and item.kind in {ContextKind.CONSTRAINT, ContextKind.DECISION}
         and item.id not in superseded
         and score_item(item, goal, target, now=now) > 0
         if (cleaned := contract_text(item.content))
+        for label in [
+            "Project constraint"
+            if is_shared_human_constraint(item)
+            else "Goal constraint"
+            if item.kind == ContextKind.CONSTRAINT
+            else "Human decision"
+        ]
     )
     delivered_evidence = [
         item
