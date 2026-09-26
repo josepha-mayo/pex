@@ -633,8 +633,8 @@ optional AgentCore endpoint proposes an action.
   was reviewed through browser Home -> Settings at 1280 and 800 px: the
   disclosure expands/collapses, the form remains available, and document
   width matches each viewport without horizontal overflow. Production build
-  passed. This used a disposable local bridge profile and made no provider
-  call or credential save; it is browser layout evidence, not native or live
+  passed. This used a local browser bridge and initiated no provider action
+  or credential save; it is browser layout evidence, not native or live
   inference acceptance.
 - OpenCode connection setup now distinguishes local input rejection from a
   lost-response outcome. Invalid server credentials report that no request
@@ -660,3 +660,19 @@ optional AgentCore endpoint proposes an action.
   its original Linux visual gate failed. Same-package replay `36265714639`
   separately establishes installed Home/Settings acceptance after correcting
   the test script. These results belong to `d4fa36e`, not later source edits.
+- A real local Codex App Server adapter probe passed at source `1e28811`.
+  The [receipt](evidence/codex-live-handshake-1e28811.json) binds the installed
+  binary hash and source revision. The [driver](evidence/codex-live-handshake-driver.txt)
+  captured outgoing method names only: initialize, initialized and three
+  indexed thread/list requests. Support was Basic before the pipeline pump
+  and Deep after it became healthy; handshake initialization and send-message
+  capability were confirmed. No turn request was sent, no transcript contents
+  were retained, and the owned process closed cleanly. This verifies the real
+  transport/observation handshake, not message delivery, supervision of a
+  real worker task, arbitrary desktop-task control or performance gains.
+  Browser-fixture scope correction: assigning new Settings after AppState
+  construction did not relocate its existing Store/Pipeline. Earlier browser
+  layout checks therefore did not establish disposable storage isolation.
+  The local driver now sets the profile, cloud-disabled and zero-review
+  environment before importing AppState. No credential save or worker turn
+  was initiated by those layout checks.

@@ -1,0 +1,16 @@
+{
+  "schema": "pex.codex-live-handshake.v1",
+  "source_sha": "1e288115d4457bd6721cc9087684621f24505cfc",
+  "binary_sha256": "8f0554ede25bbc5450921897c468b2e84635aa513c5017457997af0954581f49",
+  "handshake_initialized": true,
+  "support_before_pump": "basic",
+  "support_after_pump": "deep",
+  "outbound_method_counts": {
+    "initialize": 1,
+    "initialized": 1,
+    "thread/list": 3
+  },
+  "turn_requests": 0,
+  "scope": "real local stdio handshake and indexed thread listing; no worker turn",
+  "owned_process_closed": true
+}

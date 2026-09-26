@@ -1,0 +1,58 @@
+import asyncio
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+
+from pex_bridge.adapters.codex import CodexAdapter, CodexStdioTransport
+from pex_bridge.adapters.codex_bin import resolve_codex_bin
+
+
+async def main():
+    binary = resolve_codex_bin()
+    if binary is None:
+        raise RuntimeError('Codex CLI unavailable')
+    outbound_methods = []
+
+    def observe(direction, payload):
+        if direction == 'stdin':
+            row = json.loads(payload)
+            if isinstance(row.get('method'), str):
+                outbound_methods.append(row['method'])
+
+    transport = CodexStdioTransport(binary, protocol_observer=observe)
+    adapter = CodexAdapter(transport)
+    try:
+        before = await asyncio.wait_for(adapter.probe(), timeout=30)
+        assert transport.initialized and before.send_message
+        async def ingest(_event):
+            pass
+        adapter.start_pipeline_pump(ingest)
+        after = await asyncio.wait_for(adapter.probe(), timeout=30)
+        assert after.observe_messages and after.send_message
+        assert not any(method.startswith('turn/') for method in outbound_methods)
+        receipt = {
+            'schema': 'pex.codex-live-handshake.v1',
+            'source_sha': subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(),
+            'binary_sha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
+            'handshake_initialized': transport.initialized,
+            'support_before_pump': before.support_label.value,
+            'support_after_pump': after.support_label.value,
+            'outbound_method_counts': {method: outbound_methods.count(method)
+                                       for method in sorted(set(outbound_methods))},
+            'turn_requests': 0,
+            'scope': 'real local stdio handshake and indexed thread listing; no worker turn',
+        }
+    finally:
+        if adapter._pump_task is not None:
+            adapter._pump_task.cancel()
+            await asyncio.gather(adapter._pump_task, return_exceptions=True)
+        await transport.close()
+    receipt['owned_process_closed'] = transport._proc is None or transport._proc.returncode is not None
+    assert receipt['owned_process_closed']
+    Path('build/codex-live-handshake-current.json').write_text(
+        json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
+    print(json.dumps(receipt))
+
+
+asyncio.run(main())
