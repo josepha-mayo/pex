@@ -1,0 +1,43 @@
+{
+  "schema": "pex.opencode-real-delivery.v1",
+  "source_sha": "4edf141166d7877bd7c9bae32d1d6f030404992f",
+  "binary_sha256": "cf664aa1da32b788f9b2699b84a9bb9be30b7e025693b90f9b85829d5fe4e252",
+  "accepted": true,
+  "target_session_id": "opencode:ses_f20931af1ffewVnVW3KmMFryHA",
+  "target_vendor_session_id": "ses_f20931af1ffewVnVW3KmMFryHA",
+  "vendor_turn_id": "msg_0df6ce64d001jyMIzgXIFlGi4S",
+  "completed_assistant_messages": 1,
+  "unrelated_session_messages": 0,
+  "local_model_requests": [
+    {
+      "model": "pinned",
+      "stream": true
+    }
+  ],
+  "observed_event_types": [
+    "agent_response",
+    "status",
+    "stop",
+    "user_prompt"
+  ],
+  "bound_terminal_event_id": "opencode:ses_f20931af1ffewVnVW3KmMFryHA:sse:527b69513e5453b5973ca131",
+  "bound_terminal_metadata": {
+    "sse_type": "message.updated",
+    "opencode_message_lineage": {
+      "schema": "pex.opencode-message-lineage.v1",
+      "target_session_id": "opencode:ses_f20931af1ffewVnVW3KmMFryHA",
+      "vendor_session_id": "ses_f20931af1ffewVnVW3KmMFryHA",
+      "message_id": "msg_0df6cea99001rnirfibEG5W67B",
+      "role": "assistant",
+      "parent_message_id": "msg_0df6ce64d001jyMIzgXIFlGi4S",
+      "source_event_type": "message.updated",
+      "stream_contiguous": true,
+      "parent_removed_observed": false,
+      "assistant_message_completed": true,
+      "assistant_message_error": false,
+      "assistant_finish": "stop"
+    }
+  },
+  "scope": "Real OpenCode prompt delivery and local controlled model response; no provider call or quality comparison.",
+  "owned_process_closed": true
+}

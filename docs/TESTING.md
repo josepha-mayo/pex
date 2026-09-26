@@ -806,3 +806,23 @@ optional AgentCore endpoint proposes an action.
   a desktop Codex row but did not attach it, save credentials, create a goal,
   ask the supervisor a question or initiate a worker/model turn. This establishes
   those layout and navigation states, not an end-to-end supervised task.
+- Real OpenCode 1.18.32 corrective delivery and observation passed at exact
+  PEX source `4edf141`. The [receipt](evidence/opencode-real-delivery-4edf141.json)
+  binds the installed binary hash, target session, returned vendor turn ID and
+  terminal event lineage. PEX's actual adapter delivered one prompt through
+  `prompt_async`; OpenCode completed one assistant response using a local
+  controlled streaming chat responder. PEX ingested user-prompt, assistant,
+  status and stop events. The stop event's parent matches the exact returned
+  turn, with contiguous stream, no observed parent removal and completed,
+  non-error assistant status. A separately created session retained zero
+  messages. The [driver](evidence/opencode-real-delivery-driver.txt) uses a fresh
+  HOME/XDG profile, strips provider credentials, enables only its local custom
+  provider and denies tools. The custom-provider setup follows
+  [OpenCode's provider documentation](https://opencode.ai/docs/providers).
+  Its first version supplied a one-argument ingestion callback instead of the
+  adapter's two-argument contract, so that attempt proved delivery only; the
+  corrected callback and exact terminal-lineage check passed in fresh sessions.
+  Both owned servers closed cleanly. No provider model call or card funds were
+  used. This verifies live vendor prompt delivery and normalized observation;
+  it does not establish desktop attachment, file repair, autonomous correction
+  quality, a real model's compliance or comparative performance gains.
