@@ -47,6 +47,13 @@ for _ in $(seq 1 90); do
   sleep 1
 done
 if [[ "$ready" != 1 ]]; then
+  # Preserve which half of readiness failed before the owned app is stopped.
+  echo "Last anonymous bridge health status: $status" >&2
+  xdotool search --onlyvisible --name '.*' getwindowname %@ >&2 || true
+  scrot -z build/linux-desktop-smoke.png || true
+  curl --silent --show-error --max-time 5 \
+    --dump-header build/linux-desktop-identity-headers.txt --output /dev/null \
+    "http://127.0.0.1:7420/health/identity?challenge=$(printf '0%.0s' {1..64})" || true
   echo 'Installed PEX did not show a window and authenticated bridge within 90 seconds' >&2
   exit 1
 fi
