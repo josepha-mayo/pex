@@ -81,6 +81,7 @@ import {
   goalToDraft,
   updateGoalPayload,
   currentGoals,
+  contextGoal,
   cursorRejectionReasonCopy,
   canonicalEventCursor,
   encodeWebSocketTokenProtocol,
@@ -141,6 +142,20 @@ import {
   undoFailureMessage,
   undoResponsePresentation,
 } from "./viewModel.ts";
+
+test("context boundaries never borrow another worker's goal", () => {
+  const goal = { id: "goal-a", title: "Bound goal", objective: "Finish the task" };
+  const sessions = [
+    { id: "bound-worker", harness_type: "synthetic", goal_id: goal.id },
+    { id: "unattached-worker", harness_type: "synthetic" },
+    { id: "missing-goal-worker", harness_type: "synthetic", goal_id: "unavailable-goal" },
+  ];
+  assert.equal(contextGoal([goal], sessions, "bound-worker"), goal);
+  assert.equal(contextGoal([goal], sessions, "unattached-worker"), undefined);
+  assert.equal(contextGoal([goal], sessions, "missing-goal-worker"), undefined);
+  assert.equal(contextGoal([goal], sessions, "missing-worker"), undefined);
+  assert.equal(contextGoal([goal], sessions), goal);
+});
 
 test("selected Home status never borrows the fleet's progress or review", () => {
   const fleet = { tone: "work", label: "1 working", detail: "OTHER WORKER CORRECTION" } as const;

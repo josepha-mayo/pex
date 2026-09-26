@@ -21,6 +21,16 @@ import type { PetMood } from "./pets/atlas";
 
 const LIFECYCLE_ACTIONS = new Set(["START_AGENT", "STOP_AGENT", "FORK_PROBE", "CLEANUP"]);
 
+export function contextGoal(
+  goals: Goal[], sessions: SessionRow[], selectedSessionId?: string,
+): Goal | undefined {
+  if (selectedSessionId) {
+    const selected = sessions.find((session) => session.id === selectedSessionId);
+    return selected?.goal_id ? goals.find((goal) => goal.id === selected.goal_id) : undefined;
+  }
+  return goals.find((goal) => sessions.some((session) => session.goal_id === goal.id)) || goals[0];
+}
+
 export function actionReviewIncomplete(action?: LastAction | null): boolean {
   return action?.action === "NOOP" && (
     action.inference_status === "failed" || action.inference_status === "timeout"

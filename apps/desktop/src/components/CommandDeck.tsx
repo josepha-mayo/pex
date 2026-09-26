@@ -24,6 +24,7 @@ import {
   askPexQuestions,
   canOpenSession,
   contextHealthCopy,
+  contextGoal,
   contextItemMarks,
   fingerprintCompletionReliability,
   fingerprintFailureModes,
@@ -981,9 +982,7 @@ function ContextView({
   sourceFresh: boolean;
 }) {
   const selected = sessions.find((session) => session.id === selectedSessionId);
-  const goal = goals.find((item) => item.id === selected?.goal_id) ||
-    goals.find((item) => sessions.some((session) => session.goal_id === item.id)) ||
-    goals[0];
+  const goal = contextGoal(goals, sessions, selectedSessionId);
   const staleCount = items.filter((item) => isStale(item.stale_after)).length;
   const health = contextHealthCopy(selected, staleCount);
 
@@ -993,12 +992,17 @@ function ContextView({
         <p className="eyebrow">Active goal boundaries</p>
         {sourceFresh ? (
           <>
-            <h2>{goal?.title || "No goal selected"}</h2>
+            <h2>{goal?.title || (selected?.goal_id ? "Attached goal unavailable" : "No goal attached")}</h2>
+            {goal ? <>
             <ContextBoundary label="Constraints" values={goal?.constraints} />
             <ContextBoundary label="Forbidden outcomes" values={goal?.forbidden_outcomes} />
             <ContextBoundary label="Non-goals" values={goal?.non_goals} />
             <ContextBoundary label="Preferences" values={goal?.preferences} />
             <ContextBoundary label="Acceptance" values={goal?.acceptance_criteria} />
+            <ContextBoundary label="Required evidence" values={goal?.evidence_requirements} />
+            </> : <p>{selected?.goal_id
+              ? "The attached goal is not in the current project state."
+              : "Select a worker with an attached goal to inspect its boundaries."}</p>}
             <p className={`context-health ${health.warning ? "warning" : ""}`}>
               {health.label}
             </p>
