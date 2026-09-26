@@ -213,9 +213,11 @@ let bridgeTokenRequest: Promise<string> | null = null;
 
 // Native IPC reads cannot be aborted by fetch's signal. Share one pending call,
 // retire a timed-out result, and require a fresh observation after it settles.
+let committedStartupSurface: "unmounted" | "recovery" | "main" | "settings" | "pet" = "unmounted";
+
 const readNativeBridgeBootstrap = boundedSingleFlightRead(async () => {
   const { invoke: call } = await import("@tauri-apps/api/core");
-  return call<unknown>("bridge_bootstrap_status");
+  return call<unknown>("bridge_bootstrap_status", { frontendSurface: committedStartupSurface });
 });
 
 async function readBridgeBootstrapStatus(signal?: AbortSignal): Promise<BridgeBootstrapStatus | null> {
@@ -512,6 +514,12 @@ export function App() {
     bridgeControlAvailable,
     bridgeStartup,
   );
+
+  useEffect(() => {
+    // Runs after the React commit. Native opt-in traces can compare this fixed
+    // surface name with the captured frame without reading any page content.
+    committedStartupSurface = bridgeAvailable ? shell : "recovery";
+  }, [bridgeAvailable, shell]);
 
   const acceptBridgeStartupStatus = useCallback((incoming: BridgeBootstrapStatus) => {
     const previous = bridgeStartupRef.current;
@@ -1503,7 +1511,7 @@ export function App() {
     && goalEvidenceFresh
     && contextStateFresh;
   const inspectorIssue = !bridgeError && contextGoalId !== contextScopeGoalId
-    ? "Checking context for the selected worker…"
+    ? "Checking context for the selected workerâ€¦"
     : inspectorCanonicalIssue(
     canonicalResources, bridgeError, projectId, contextProjectId, Boolean(attachedGoal),
   );

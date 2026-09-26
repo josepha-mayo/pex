@@ -54,11 +54,33 @@ fn trace_desktop_startup(stage: &str) {
         return;
     }
     let start = START.get_or_init(Instant::now);
-    if COUNT.fetch_add(1, Ordering::Relaxed) < 64 {
+    if COUNT.fetch_add(1, Ordering::Relaxed) < 96 {
         eprintln!(
             "PEX desktop startup trace: {stage} at {}ms",
             start.elapsed().as_millis()
         );
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum FrontendStartupSurface {
+    Unmounted,
+    Recovery,
+    Main,
+    Settings,
+    Pet,
+}
+
+impl FrontendStartupSurface {
+    fn trace_stage(&self) -> &'static str {
+        match self {
+            Self::Unmounted => "frontend surface unmounted",
+            Self::Recovery => "frontend committed recovery",
+            Self::Main => "frontend committed main",
+            Self::Settings => "frontend committed settings",
+            Self::Pet => "frontend committed pet",
+        }
     }
 }
 
@@ -703,8 +725,14 @@ async fn bridge_token(
 }
 
 #[tauri::command]
-fn bridge_bootstrap_status(runtime: tauri::State<'_, BridgeRuntime>) -> BridgeBootstrapStatus {
+fn bridge_bootstrap_status(
+    runtime: tauri::State<'_, BridgeRuntime>,
+    frontend_surface: Option<FrontendStartupSurface>,
+) -> BridgeBootstrapStatus {
     trace_desktop_startup("bootstrap IPC entered");
+    if let Some(surface) = frontend_surface {
+        trace_desktop_startup(surface.trace_stage());
+    }
     let status = runtime.status();
     trace_desktop_startup(match status.phase {
         BridgeBootstrapPhase::Starting => "bootstrap IPC returning starting",
@@ -1178,10 +1206,23 @@ mod tests {
         command_event_is_terminal, is_pex_identity_response, normalize_bridge_token,
         packaged_bridge_path, remaining_timeout, resolved_bridge_data_paths,
         trusted_webview_navigation, window_close_action, BridgeAuth, BridgeBootstrapPhase,
-        BridgePortState, BridgeRuntime, BridgeSource, WindowCloseAction, BRIDGE_EXECUTABLE_NAME,
+        BridgePortState, BridgeRuntime, BridgeSource, FrontendStartupSurface, WindowCloseAction,
+        BRIDGE_EXECUTABLE_NAME,
         BRIDGE_IDENTITY_MISS_LIMIT, BRIDGE_IDENTITY_MONITOR_INTERVAL, BRIDGE_PYTHON_RUNTIME_NAME,
         MAX_BRIDGE_TOKEN_CHARS,
     };
+
+    #[test]
+    fn frontend_startup_trace_accepts_only_fixed_surface_names() {
+        for value in ["unmounted", "recovery", "main", "settings", "pet"] {
+            let surface: FrontendStartupSurface =
+                serde_json::from_str(&format!("\"{value}\"")).unwrap();
+            assert!(surface.trace_stage().starts_with("frontend "));
+        }
+        for raw in ["\"page contents\"", "\"provider-secret\"", "{}", "42"] {
+            assert!(serde_json::from_str::<FrontendStartupSurface>(raw).is_err());
+        }
+    }
 
     #[test]
     fn bridge_runtime_requires_fixed_complete_resource_layout() {

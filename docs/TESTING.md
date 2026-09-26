@@ -388,6 +388,14 @@ optional AgentCore endpoint proposes an action.
 - Amazon Bedrock AgentCore support is implemented and offline-tested; no
   deployed AgentCore Runtime is claimed.
 - PexBench is unfrozen; no comparative productivity score is claimed.
+- Opt-in installed startup traces now include the last React-committed surface
+  reported through the existing bootstrap status call. Rust accepts only five
+  fixed names (unmounted, recovery, main, settings, pet), and the existing trace
+  switch and bounded output apply. No DOM text, URLs or credentials are read.
+  This diagnoses frontend-transition versus captured-frame differences; it
+  does not bypass authentication or establish a startup fix. Production build
+  and 320 local desktop checks passed, with five Windows permission skips.
+  Native compilation and installed behavior require the next exact-source run.
 - Compaction recovery excludes stored artifact/result/fact file-state records
   that predate a later observed edit of the associated file. Recovery can use
   the latest edit description, but an undescribed edit does not revive the old
