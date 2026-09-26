@@ -6,6 +6,16 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Main-branch verification checkpoints
 
+The instrumented Linux package at `fd16129` still failed its fresh-state window
+gate in [run 36255800464](https://github.com/josepha-mayo/pex/actions/runs/36255800464).
+Its [startup diagnostic](evidence/linux-startup-ipc-fd16129.json) records prompt
+native bootstrap returns and a 2 ms identity check. Ready-state polling continued
+for over 80 seconds while the saved frame showed recovery; the post-failure
+diagnostic capture showed Home. This points toward stale rendering, rather than
+a blocked native status command, but does not prove a renderer cause or pass.
+The overall workflow and Windows checks were still running when this diagnostic
+was recorded.
+
 Exact source `1e21082` passed the
 [Windows and Ubuntu source workflow](https://github.com/josepha-mayo/pex/actions/runs/36252854380):
 4,776 backend tests passed on Windows (12 skipped, 16 deselected), and 4,769

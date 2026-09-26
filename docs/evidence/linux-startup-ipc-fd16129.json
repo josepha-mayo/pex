@@ -1,0 +1,19 @@
+{
+  "schema": "pex.desktop-startup-diagnostic.v1",
+  "source_commit": "fd1612909b1d670739700e37662b94d5506b15fc",
+  "workflow_run": "https://github.com/josepha-mayo/pex/actions/runs/36255800464",
+  "native_job_id": 108442235432,
+  "platform": "ubuntu-24.04",
+  "installed_window_acceptance": "failed",
+  "first_bootstrap_return_ms": 0,
+  "first_ready_bootstrap_return_ms": 917,
+  "first_token_ipc_enter_ms": 922,
+  "first_token_identity_verified_ms": 924,
+  "first_token_ipc_return_ms": 924,
+  "last_ready_bootstrap_return_ms": 80959,
+  "post_ready_poll_interval_ms": 5000,
+  "failed_gate_ocr": "PEX cannot read desktop recovery state",
+  "post_failure_diagnostic_ocr": "Connect an existing worker",
+  "interpretation": "Native bootstrap and identity calls completed promptly. Poll cadence is consistent with the frontend accepting ready state. A stale rendered frame is suspected, but the renderer cause is not proven and installed acceptance remains failed.",
+  "live_model_calls": 0
+}
