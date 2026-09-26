@@ -635,6 +635,75 @@ def test_goal_read_transport_preview_cannot_count_as_complete_boundaries():
     assert not _goal_boundaries_observed(request, list(collector.observations), refs)
 
 
+def test_goal_boundary_pages_require_every_page_cited_without_duplicates():
+    from pex_supervisor.evidence_tools import build_evidence_tools, goal_boundary_page_count
+    from pex_supervisor.loop import _goal_boundaries_observed
+
+    request = _request(0.1)
+    request.goal.constraints = ["A" * 2500]
+    collector = EvidenceObservationCollector(request, stage="main", invocation_id="boundary-pages")
+    tool = next(item for item in build_evidence_tools(request, [], collector=collector)
+                if item.tool_name == "get_goal")
+    for page in range(goal_boundary_page_count(request)):
+        tool(boundary_page=page)
+    observations = list(collector.observations)
+    refs = [item.observation_id for item in observations]
+    assert _goal_boundaries_observed(request, observations, refs)
+    assert not _goal_boundaries_observed(request, observations, refs[:-1])
+    assert not _goal_boundaries_observed(request, observations, [refs[0]] * len(refs))
+
+
+@pytest.mark.asyncio
+async def test_paginated_goal_boundaries_allow_verified_intervention():
+    from pex_supervisor.evidence_tools import goal_boundary_page_count
+
+    request = _request(0.1)
+    request.goal.constraints = ["Preserve input data. " * 100]
+    request.scores.features["verification"] = {
+        "status": "acceptance_gap", "acceptance_status": "unsatisfied",
+        "missing_files": ["report.txt"],
+    }
+
+    class BoundaryReadingModel(FakeStructuredModel):
+        read_stages: set[str]
+
+        def __init__(self):
+            super().__init__("SEND_NUDGE", evidence_tool_calls=0)
+            self.read_stages = set()
+
+        async def stream(self, messages, tool_specs=None, system_prompt=None, **kwargs):
+            stage = "verifier" if any(
+                spec["name"] == "IndependentVerifierDecision" for spec in tool_specs or []
+            ) else "main"
+            if stage not in self.read_stages:
+                self.read_stages.add(stage)
+                reads = [("inspect_acceptance", {})] + [
+                    ("get_goal", {"boundary_page": page})
+                    for page in range(goal_boundary_page_count(request))
+                ]
+                yield {"messageStart": {"role": "assistant"}}
+                for index, (name, arguments) in enumerate(reads):
+                    yield {"contentBlockStart": {"start": {"toolUse": {
+                        "toolUseId": f"{stage}-{index}", "name": name,
+                    }}}}
+                    yield {"contentBlockDelta": {"delta": {"toolUse": {
+                        "input": json.dumps(arguments),
+                    }}}}
+                    yield {"contentBlockStop": {}}
+                yield {"messageStop": {"stopReason": "tool_use"}}
+                return
+            async for event in super().stream(
+                messages, tool_specs, system_prompt, **kwargs,
+            ):
+                yield event
+
+    result = await decide_async(request, model=BoundaryReadingModel())
+    assert result.action.type.value == "SEND_NUDGE"
+    assert result.independent_verifier.authorizes_intervention()
+    assert result.model_call_count == 4
+    assert result.independent_verifier.model_call_count == 2
+
+
 def test_supervisor_and_verifier_prompts_treat_observed_text_as_untrusted_data():
     from pex_supervisor.loop import _system_prompt, _verifier_system_prompt
 

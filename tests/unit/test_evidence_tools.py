@@ -35,6 +35,63 @@ def test_goal_read_discloses_whether_boundary_text_is_complete(length, complete)
     assert result["boundaries_complete"] is complete
 
 
+def test_goal_boundary_pages_preserve_long_rules_and_every_field():
+    from pex_supervisor.evidence_tools import goal_boundary_page_count
+
+    request = _request(0.1)
+    request.goal.constraints = ["Start " + "界" * 1001 + " final prohibition"]
+    request.goal.forbidden_outcomes = [f"Forbidden {i}" for i in range(45)]
+    request.goal.non_goals = ["Not a release"]
+    tool = next(item for item in build_evidence_tools(request, [])
+                if item.tool_name == "get_goal")
+    rebuilt = {}
+    for page in range(goal_boundary_page_count(request)):
+        result = json.loads(tool(boundary_page=page))
+        assert result["boundary_page_complete"] is True
+        assert "truncated" not in result
+        for chunk in result["chunks"]:
+            key = (chunk["field"], chunk["index"])
+            text = rebuilt.get(key, "")
+            assert chunk["offset"] == len(text)
+            rebuilt[key] = text + chunk["text"]
+    for field in ("constraints", "forbidden_outcomes", "non_goals"):
+        for index, value in enumerate(getattr(request.goal, field)):
+            assert rebuilt[field, index] == value
+
+
+def test_goal_boundary_page_masks_private_path_before_splitting():
+    request = _request(0.1)
+    request.session.cwd = "C:/SECRET_PAGE_WORKSPACE"
+    request.goal.constraints = ["A" * 155 + request.session.cwd + "/data"]
+    tool = next(item for item in build_evidence_tools(request, [])
+                if item.tool_name == "get_goal")
+    result = json.loads(tool(boundary_page=0))
+    text = "".join(chunk["text"] for chunk in result["chunks"])
+    assert text == "A" * 155 + "<workspace>/data"
+    assert "SECRET_PAGE_WORKSPACE" not in text
+
+
+def test_goal_boundary_page_redacts_credentials_before_splitting():
+    request = _request(0.1)
+    request.goal.constraints = ["A" * 155 + " Bearer SECRET_BOUNDARY_TOKEN retain files"]
+    tool = next(item for item in build_evidence_tools(request, [])
+                if item.tool_name == "get_goal")
+    result = json.loads(tool(boundary_page=0))
+    text = "".join(chunk["text"] for chunk in result["chunks"])
+    assert "SECRET_BOUNDARY_TOKEN" not in text
+    assert "[REDACTED:bearer]" in text
+    assert text.endswith(" retain files")
+
+
+@pytest.mark.parametrize("page", [-1, 100, True, "0"])
+def test_goal_boundary_page_rejects_invalid_offsets(page):
+    request = _request(0.1)
+    request.goal.constraints = ["Do not delete data"]
+    tool = next(item for item in build_evidence_tools(request, [])
+                if item.tool_name == "get_goal")
+    assert json.loads(tool(boundary_page=page))["error"] == "invalid_boundary_page"
+
+
 @pytest.mark.parametrize("name", ["durations.json", "summary.md", "exports/report.csv"])
 def test_named_output_artifact_is_read_and_audited_without_fixed_filename(tmp_path, name):
     request = _request(0.1)

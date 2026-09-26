@@ -6,8 +6,8 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Main-branch verification checkpoints
 
-Exact source `5b67c3e` passed the full
-[Windows and Ubuntu workflow](https://github.com/josepha-mayo/pex/actions/runs/36143226693):
+Exact source `1eca1d3` passed the full
+[Windows and Ubuntu workflow](https://github.com/josepha-mayo/pex/actions/runs/36244051311):
 source tests and desktop builds, native NSIS/DEB packages, authenticated packaged
 bridge startup, native credential storage, and the installed Linux Home/Settings
 visual smoke. Native bridge readiness is delivered to the webview as a typed

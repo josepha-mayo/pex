@@ -14,11 +14,12 @@ from collections.abc import Callable, Collection, Iterator, MutableSequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
+from itertools import islice
 from pathlib import Path
 from typing import Any
 
 from pex_protocol.enums import EventType
-from pex_protocol.redaction import redact_mapping
+from pex_protocol.redaction import redact_mapping, redact_text
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import (
     SupervisorContextItem,
@@ -32,6 +33,8 @@ from pex_supervisor.evidence_observations import (
 )
 
 _CONTEXT_PAGE_SIZE = 3
+_BOUNDARY_CHUNK_WIDTH = 160
+_BOUNDARY_PAGE_SIZE = 6
 _SCORE_FEATURES = {
     "event_count",
     "repeated_command_count",
@@ -77,6 +80,37 @@ def goal_boundaries_truncated(
         len(values) > count or any(len(value) > width for value in values)
         for values in (goal.constraints, goal.forbidden_outcomes, goal.non_goals)
     )
+
+
+def goal_boundary_page_count(request: SupervisorRequest) -> int:
+    chunks = sum(
+        max(1, (len(value) + _BOUNDARY_CHUNK_WIDTH - 1) // _BOUNDARY_CHUNK_WIDTH)
+        for _, _, value in _goal_boundary_values(request)
+    )
+    return (chunks + _BOUNDARY_PAGE_SIZE - 1) // _BOUNDARY_PAGE_SIZE
+
+
+def _goal_boundary_values(request: SupervisorRequest) -> Iterator[tuple[str, int, str]]:
+    goal = request.goal
+    if goal is None:
+        return
+    local_values = tuple(value for value in (
+        request.session.cwd, request.session.repo, request.session.external_url,
+    ) if value)
+    for field in ("constraints", "forbidden_outcomes", "non_goals"):
+        for index, value in enumerate(getattr(goal, field)):
+            masked = _mask_local_strings(value, local_values)
+            cleaned, _ = redact_text(str(masked))
+            yield field, index, cleaned or ""
+
+
+def _goal_boundary_chunks(request: SupervisorRequest) -> Iterator[dict[str, object]]:
+    for field, index, value in _goal_boundary_values(request):
+        for offset in range(0, max(1, len(value)), _BOUNDARY_CHUNK_WIDTH):
+            yield {
+                "field": field, "index": index, "offset": offset,
+                "text": value[offset:offset + _BOUNDARY_CHUNK_WIDTH],
+            }
 
 
 def select_evidence_tool_names(request: SupervisorRequest) -> tuple[str, ...]:
@@ -425,12 +459,32 @@ def build_evidence_tools(
 
     @tool(
         name="get_goal",
-        description="Return the persistent goal and explicit acceptance contract for this session.",
+        description=(
+            "Return the persistent goal and acceptance contract. Set boundary_page to read "
+            "one ordered page of complete constraints, forbidden outcomes and non-goals."
+        ),
     )
-    def get_goal() -> str:
+    def get_goal(boundary_page: int | None = None) -> str:
         goal = request.goal
         if goal is None:
             return record("get_goal", {"attached": False})
+        if boundary_page is not None:
+            pages = goal_boundary_page_count(request)
+            arguments = {"boundary_page": boundary_page}
+            if type(boundary_page) is not int or not 0 <= boundary_page < pages:
+                return record("get_goal", {"error": "invalid_boundary_page"}, arguments)
+            start = boundary_page * _BOUNDARY_PAGE_SIZE
+            return record(
+                "get_goal",
+                {
+                    "attached": True, "boundary_page": boundary_page,
+                    "boundary_page_count": pages, "boundary_page_complete": True,
+                    "chunks": list(islice(
+                        _goal_boundary_chunks(request), start, start + _BOUNDARY_PAGE_SIZE,
+                    )),
+                },
+                arguments,
+            )
         return record(
             "get_goal",
             {

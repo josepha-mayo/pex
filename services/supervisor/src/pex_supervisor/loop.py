@@ -29,6 +29,7 @@ from pex_supervisor.evidence_observations import EvidenceObservationCollector
 from pex_supervisor.evidence_tools import (
     build_evidence_tools,
     goal_boundaries_truncated,
+    goal_boundary_page_count,
     select_evidence_tool_names,
 )
 from pex_supervisor.planner import plan_deterministic
@@ -83,10 +84,13 @@ def _goal_boundary_read_instruction(request: SupervisorRequest) -> str:
     if not goal_boundaries_truncated(request):
         return ""
     return (
-        "Goal boundary excerpts are incomplete. Call get_goal in the same evidence "
-        "round before proposing or approving any intervention, and cite its observation. "
-        "If boundaries_complete is false, the rules remain incomplete; choose NOOP "
-        "or reject the intervention and explain the limitation.\n"
+        "Goal boundary excerpts are incomplete. Before proposing or approving an "
+        "intervention, batch get_goal reads in the same evidence round and cite them. "
+        f"The complete rules span {goal_boundary_page_count(request)} boundary pages: "
+        "call get_goal with boundary_page=0 through page_count-1. Each page preserves "
+        "rule text in ordered chunks. A default get_goal read also suffices when "
+        "boundaries_complete is true. If all pages cannot fit the evidence budget, "
+        "choose NOOP or reject and explain the limitation.\n"
     )
 
 
@@ -99,6 +103,8 @@ def _goal_boundaries_observed(
         return True
     import json
 
+    pages: set[int] = set()
+    expected_pages = goal_boundary_page_count(request)
     for observation in observations:
         if observation.tool_name != "get_goal" or observation.observation_id not in evidence_refs:
             continue
@@ -108,7 +114,15 @@ def _goal_boundaries_observed(
             continue
         if isinstance(value, dict) and value.get("boundaries_complete") is True:
             return True
-    return False
+        if (
+            isinstance(value, dict)
+            and value.get("boundary_page_complete") is True
+            and value.get("boundary_page_count") == expected_pages
+            and type(value.get("boundary_page")) is int
+            and 0 <= value["boundary_page"] < expected_pages
+        ):
+            pages.add(value["boundary_page"])
+    return len(pages) == expected_pages and expected_pages > 0
 
 
 def _confidence(value: object) -> float:
@@ -1397,6 +1411,10 @@ def _apply_verifier_receipt(
         if item.observation_id in referenced_ids
     }
     verifier_tools = list(dict.fromkeys(item.tool_name for item in observations))[:20]
+    if receipt.get("approved") is True and not _goal_boundaries_observed(
+        request, observations, verifier_refs,
+    ):
+        status = "goal_boundaries_unread"
     if receipt.get("approved") is True and (
         not refs_valid or _uncertain_verification_only(request, referenced_tools)
     ):
