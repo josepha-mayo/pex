@@ -12,6 +12,11 @@ on:
         required: false
         default: false
         type: boolean
+      software_gl:
+        description: Diagnostic replay forcing Mesa software GL; readiness gates stay unchanged
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -40,10 +45,15 @@ jobs:
       - name: Verify installed window and authenticated bridge
         env:
           SOFTWARE_COMPOSITING: ${{ inputs.software_compositing }}
+          SOFTWARE_GL: ${{ inputs.software_gl }}
         run: |
           if [[ "$SOFTWARE_COMPOSITING" == true ]]; then
             export WEBKIT_DISABLE_COMPOSITING_MODE=1
           fi
+          if [[ "$SOFTWARE_GL" == true ]]; then
+            export LIBGL_ALWAYS_SOFTWARE=1
+          fi
+          printf 'software_compositing=%s\nsoftware_gl=%s\n' "$SOFTWARE_COMPOSITING" "$SOFTWARE_GL" > build/linux-desktop-renderer-settings.txt
           bash scripts/smoke_linux_desktop.sh "$(cat build/native-replay-package-path.txt)"
       - name: Retain visual receipt
         if: always()
