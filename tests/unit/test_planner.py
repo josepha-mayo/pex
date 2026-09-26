@@ -719,6 +719,44 @@ def test_pre_hook_compaction_annotates_instead_of_nudging():
     assert not text.startswith("PEX:")
 
 
+@pytest.mark.parametrize("phase", [EventPhase.BEFORE, EventPhase.TERMINAL])
+def test_compaction_preserves_later_goal_requirements_and_full_objective(phase):
+    goal = _goal()
+    goal.objective = "Maintain this exact requirement. " * 12 + "Preserve the final condition."
+    for field in (
+        "acceptance_criteria", "constraints", "forbidden_outcomes", "non_goals",
+        "evidence_requirements",
+    ):
+        setattr(goal, field, [f"{field} rule {index}" for index in range(5)])
+    request = SupervisorRequest(
+        session=_session(), goal=goal,
+        event=_event(EventType.COMPACTION, phase=phase), scores=TrajectoryScores(),
+    )
+    action = plan_deterministic(request)
+    text = str(action.payload.get("text") or "")
+    assert goal.objective in text
+    for field in (
+        "acceptance_criteria", "constraints", "forbidden_outcomes", "non_goals",
+        "evidence_requirements",
+    ):
+        assert getattr(goal, field)[-1] in text
+    assert "Required evidence:" in text
+
+
+def test_compaction_contract_redacts_credentials_before_worker_delivery():
+    goal = _goal()
+    secret = "sk-" + "a" * 24
+    goal.objective = f"Configure the provider with api_key={secret} and verify the connection"
+    request = SupervisorRequest(
+        session=_session(), goal=goal, event=_event(EventType.COMPACTION),
+        scores=TrajectoryScores(),
+    )
+    action = plan_deterministic(request)
+    text = str(action.payload.get("text") or "")
+    assert secret not in text
+    assert "verify the connection" in text
+
+
 def test_compaction_checkpoints_forgotten_facts_without_overlay_on_first_sample():
     request = SupervisorRequest(
         session=_session(),

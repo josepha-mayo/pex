@@ -7,6 +7,7 @@ from uuid import uuid4
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.enums import Authority, EventPhase, EventType, HarnessType
 from pex_protocol.overlay import Overlay, OverlayDiff
+from pex_protocol.redaction import redact_text
 from pex_protocol.supervisor import SupervisorRequest
 
 from pex_supervisor.background import find_abandoned_background
@@ -730,15 +731,18 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
     if event.event_type == EventType.COMPACTION and goal is not None:
         title = (goal.title or "").strip() or "attached goal"
         acceptance = (
-            "; ".join(item for item in goal.acceptance_criteria[:3] if item)
-            or (goal.objective[:200])
+            "; ".join(item for item in goal.acceptance_criteria if item)
+            or goal.objective
         )
-        constraints = "; ".join(item for item in goal.constraints[:3] if item)
-        forbidden = "; ".join(item for item in goal.forbidden_outcomes[:3] if item)
-        non_goals = "; ".join(item for item in goal.non_goals[:3] if item)
-        files = ", ".join(required_files(goal)[:6])
+        constraints = "; ".join(item for item in goal.constraints if item)
+        forbidden = "; ".join(item for item in goal.forbidden_outcomes if item)
+        non_goals = "; ".join(item for item in goal.non_goals if item)
+        required_evidence = "; ".join(item for item in goal.evidence_requirements if item)
+        files = ", ".join(required_files(goal))
         forgotten = _forgotten_facts(request)
         lines = [f"Persistent ledger '{title}' still applies after compaction."]
+        if goal.objective:
+            lines.append(f"Objective: {goal.objective}")
         if acceptance:
             lines.append(f"Acceptance: {acceptance}")
         if constraints:
@@ -747,18 +751,15 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             lines.append(f"Forbidden outcomes: {forbidden}")
         if non_goals:
             lines.append(f"Non-goals: {non_goals}")
-        if any(len(values) > 3 for values in (
-            goal.constraints, goal.forbidden_outcomes, goal.non_goals,
-        )):
-            lines.append("This reminder lists only the first three rules per field; "
-                         "the complete persistent goal contract still applies.")
+        if required_evidence:
+            lines.append(f"Required evidence: {required_evidence}")
         if files:
             lines.append(f"Required files: {files}")
         if forgotten:
             lines.append("Do not forget: " + "; ".join(forgotten[:4]))
         lines.append("Keep these facts in working context.")
         evidence = [f"goal:{goal.id}", "event:compaction", *forgotten[:4]]
-        correction = " ".join(lines)
+        correction = redact_text(" ".join(lines))[0] or ""
         if _context_health_overlay_ready(request):
             overlay = Overlay(
                 id=f"ovl_{uuid4().hex[:12]}",
