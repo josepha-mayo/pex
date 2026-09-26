@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+import pytest
 from pex_bridge.scoring import extract_features, score_trajectory
 from pex_protocol.enums import EventType, HarnessType
 from pex_protocol.session import HarnessEvent
@@ -133,3 +134,50 @@ def test_repeated_identical_command_errors_reach_redirect_drift():
     assert scores.features["repeated_command_count"] >= 3
     assert scores.features["identical_error_count"] >= 3
     assert scores.drift >= 0.75
+
+
+@pytest.mark.parametrize(
+    "runner,command", [("pytest", "pytest -q"), ("unittest", "python -m unittest")]
+)
+def test_failed_exit_overrides_passing_flag_in_trajectory(runner, command):
+    features = extract_features(
+        [
+            _event(
+                event_type=EventType.SHELL,
+                command=command,
+                process_state={runner: {"ok": True, "exit_code": 1}},
+            )
+        ]
+    )
+    assert features["pytest_failed"] is True
+
+
+def test_echoed_test_name_and_payload_do_not_count_as_executed_tests():
+    features = extract_features(
+        [
+            _event(
+                event_type=EventType.SHELL,
+                command="echo pytest",
+                process_state={"pytest": {"ok": False, "exit_code": 1}},
+            )
+        ]
+    )
+    assert features["tests_run"] == 0
+    assert features["pytest_failed"] is False
+
+
+@pytest.mark.parametrize("new_event", [EventType.FILE_EDIT, EventType.SHELL])
+def test_stale_failure_is_not_current_after_edit_or_incomplete_new_run(new_event):
+    features = extract_features(
+        [
+            _event(
+                event_type=EventType.SHELL,
+                command="pytest -q",
+                process_state={"pytest": {"ok": False, "exit_code": 1}},
+            ),
+            _event(
+                event_type=new_event, command="pytest -q" if new_event == EventType.SHELL else None
+            ),
+        ]
+    )
+    assert features["pytest_failed"] is False

@@ -10,6 +10,7 @@ from pex_protocol.enums import EventType
 from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent
 from pex_protocol.supervisor import TrajectoryScores
+from pex_protocol.verification import classify_pytest_invocation, classify_unittest_invocation
 
 # Phrase-level only. Bare "done" matches ordinary chat and is not a completion claim.
 SUCCESS_CLAIM_RE = re.compile(
@@ -39,13 +40,19 @@ def extract_features(events: list[HarnessEvent]) -> dict:
     latest_pytest_ok: bool | None = None
     for event in ordered_events:
         is_test_event = False
+        scoped_command = event.metadata.get("opencode_scoped_test_command")
+        test_command = scoped_command if isinstance(scoped_command, str) else event.command
+        pytest_invocation = classify_pytest_invocation(test_command)
+        unittest_invocation = classify_unittest_invocation(test_command)
+        python_runner = (
+            "pytest" if pytest_invocation else "unittest" if unittest_invocation else None
+        )
+        if python_runner:
+            is_test_event = True
         if event.command:
             commands.append(event.command.strip())
             lowered = event.command.lower()
-            if any(
-                token in lowered
-                for token in ("pytest", "-m unittest", "npm test", "cargo test", "go test")
-            ):
+            if any(token in lowered for token in ("npm test", "cargo test", "go test")):
                 is_test_event = True
         if event.tool_name:
             tools.append(event.tool_name)
@@ -56,19 +63,21 @@ def extract_features(events: list[HarnessEvent]) -> dict:
             stops += 1
         if event.event_type == EventType.FILE_EDIT:
             edits += 1
-        if isinstance(event.process_state, dict):
-            pytest_info = event.process_state.get("pytest")
-            if isinstance(pytest_info, dict):
-                if pytest_info.get("ok") is True:
-                    is_test_event = True
-                    latest_pytest_ok = True
-                elif pytest_info.get("ok") is False:
-                    is_test_event = True
-                    latest_pytest_ok = False
-            unittest_info = event.process_state.get("unittest")
-            if isinstance(unittest_info, dict) and isinstance(unittest_info.get("ok"), bool):
-                is_test_event = True
-                latest_pytest_ok = unittest_info["ok"]
+            latest_pytest_ok = None
+        if python_runner:
+            state = event.process_state if isinstance(event.process_state, dict) else {}
+            raw_info = state.get(python_runner)
+            info = raw_info if isinstance(raw_info, dict) else {}
+            exit_code = info.get("exit_code")
+            latest_pytest_ok = None
+            if (
+                event.error
+                or (type(exit_code) is int and exit_code != 0)
+                or info.get("ok") is False
+            ):
+                latest_pytest_ok = False
+            elif info.get("ok") is True and type(exit_code) is int and exit_code == 0:
+                latest_pytest_ok = True
         if is_test_event:
             tests_run += 1
         worker_narration = event.event_type in {

@@ -1,0 +1,20 @@
+{
+  "schema": "pex.linux-desktop-smoke.v1",
+  "window_visible": true,
+  "fresh_state_visible": true,
+  "settings_navigation_visible": true,
+  "pet_overlay_default_hidden": true,
+  "anonymous_bridge_status": 401,
+  "fresh_profile": true,
+  "cloud_reasoning_requested_off": true,
+  "native_source_sha": "4be98f73bf6fa4d8adbbb2c0c2064dd813aed333",
+  "native_run_id": 36272673120,
+  "replay_run_id": 36273657697,
+  "replay_script_sha": "ed11fee1a6d798b5aea43a44c8b66f0bc07c7aeb",
+  "package_sha256": "05c3b872f84b1fe62ee85d4472898a6f9f44dfc27c921e8a7d966ec0f2ac1dc5",
+  "software_compositing": true,
+  "software_gl": true,
+  "original_native_job_conclusion": "failure",
+  "replay_conclusion": "success",
+  "scope": "Exact package replay showed Home and Settings. Original missing-window failure is preserved; intermittent startup cause remains unproven. No native acceptance for later scoring changes is inferred."
+}

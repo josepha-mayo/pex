@@ -926,3 +926,19 @@ optional AgentCore endpoint proposes an action.
   later edits). The speculative unit/end-to-end and probe responsiveness
   checks passed together: 18 tests. This verifies comparison evidence handling,
   not that speculative execution improves real task quality or throughput.
+- Trajectory scoring now recognizes actual pytest/unittest invocations instead
+  of treating echoed names and accompanying payloads as executed Python tests.
+  Nonzero exits override a passing flag; edits and incomplete newer runs clear
+  stale failure signals. Five regression cases failed before this fix, and
+  scoring/policy, Strands runtime and causal verification attribution checks
+  passed together (132 tests). Other runner detection remains unchanged.
+- Exact Linux package `4be98f7` passed installed Home/Settings acceptance in
+  [replay 36273657697](https://github.com/josepha-mayo/pex/actions/runs/36273657697).
+  The [receipt](evidence/linux-installed-replay-4be98f7.json) binds the package
+  hash, original run and replay-script revision. Both screenshots were
+  inspected. The original run's missing visible window and black screenshot
+  remain recorded in [the failure receipt](evidence/native-4be98f7-linux-failure.json).
+  The only replay-script change added failure diagnostics; the original
+  readiness gates and software-renderer settings were retained. This proves
+  a successful exact-package replay, not a fix for the intermittent startup
+  failure or native acceptance of subsequent agent-scoring changes.
