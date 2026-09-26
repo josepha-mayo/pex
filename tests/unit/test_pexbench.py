@@ -937,7 +937,7 @@ def test_benchmark_boundary_hashing_streams_files(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize(
     "source_name", ["codex_protocol_journal.py", "linux_sandbox.py", "linux_supervisor_runtime.py",
-                    "isolated_pytest.py", "observe.py"],
+                    "isolated_pytest.py", "observe.py", "relay_transport.py"],
 )
 def test_controller_fingerprint_binds_execution_sources(monkeypatch, source_name):
     runner = _runner()

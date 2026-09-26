@@ -131,6 +131,18 @@ def worker_relay_command(workspace: Path, command: list[str], relay_socket: Path
     Neither this socket mount nor a successful echo makes a run eligible.
     """
     base = worker_command(workspace, command)
+    socket_path = _relay_socket(workspace, relay_socket)
+    # Insert before chdir/--, retaining every existing mount/network boundary.
+    boundary = base.index("--")
+    return [
+        *base[:boundary - 2],
+        "--ro-bind", str(socket_path), "/model-relay.sock",
+        "--setenv", "PEX_MODEL_RELAY_SOCKET", "/model-relay.sock",
+        *base[boundary - 2:],
+    ]
+
+
+def _relay_socket(workspace: Path, relay_socket: Path) -> Path:
     socket_path = relay_socket.resolve(strict=True)
     if socket_path != relay_socket.absolute():
         raise ValueError("worker relay socket must be an absolute unlinked path")
@@ -144,14 +156,7 @@ def worker_relay_command(workspace: Path, command: list[str], relay_socket: Path
         raise ValueError("worker relay must be an owner-only, single-link Unix socket")
     if socket_path.is_relative_to(workspace.resolve(strict=True)):
         raise ValueError("worker relay socket must be outside the writable task")
-    # Insert before chdir/--, retaining every existing mount/network boundary.
-    boundary = base.index("--")
-    return [
-        *base[:boundary - 2],
-        "--ro-bind", str(socket_path), "/model-relay.sock",
-        "--setenv", "PEX_MODEL_RELAY_SOCKET", "/model-relay.sock",
-        *base[boundary - 2:],
-    ]
+    return socket_path
 
 
 def supervisor_command(workspace: Path, runtime: Path, control: Path) -> list[str]:
@@ -185,6 +190,32 @@ def supervisor_command(workspace: Path, runtime: Path, control: Path) -> list[st
         *prefix[-3:],
         str(_runtime_python()), "-I", "-B",
         "/runtime/pex_supervisor_process.py", "/control/request.json", "/control/response.json",
+    ]
+
+
+def supervisor_relay_command(
+    workspace: Path, runtime: Path, control: Path, relay_socket: Path, model: str,
+) -> list[str]:
+    """Route isolated PEX inference through a single controller-owned socket.
+
+    The runtime must contain its locked model dependencies. Controller budget
+    enforcement and action-time receipts remain necessary for eligible runs.
+    """
+    if not isinstance(model, str) or not model or len(model) > 256 or "\x00" in model:
+        raise ValueError("supervisor relay requires a bounded pinned model")
+    socket_path = _relay_socket(workspace, relay_socket)
+    if any(socket_path.is_relative_to(root.resolve(strict=True)) for root in (runtime, control)):
+        raise ValueError("supervisor relay socket must be outside runtime and control")
+    command = supervisor_command(workspace, runtime, control)
+    disabled = command.index("PEX_SUPERVISOR_DISABLE")
+    command[disabled + 1] = "0"
+    boundary = command.index("--")
+    return [
+        *command[:boundary - 2],
+        "--ro-bind", str(socket_path), "/model-relay.sock",
+        "--setenv", "PEX_MODEL_RELAY_SOCKET", "/model-relay.sock",
+        "--setenv", "PEX_MODEL_RELAY_MODEL", model,
+        *command[boundary - 2:],
     ]
 
 

@@ -47,6 +47,7 @@ _CONTROLLER_FILES = (
     "linux_supervisor_runtime.py",
     "../packages/protocol/src/pex_protocol/isolated_pytest.py",
     "../services/bridge/src/pex_bridge/observe.py",
+    "../services/supervisor/src/pex_supervisor/relay_transport.py",
     "report.py",
     "runner.py",
 )

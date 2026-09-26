@@ -157,7 +157,8 @@ def _controller_verification(
     if executor is not None:
         if (
             executor != EXECUTOR or str(workspace) != "/workspace"
-            or os.environ.get("PEX_SUPERVISOR_DISABLE") != "1"
+            or (os.environ.get("PEX_SUPERVISOR_DISABLE") != "1"
+                and os.environ.get("PEX_MODEL_RELAY_SOCKET") != "/model-relay.sock")
         ):
             raise ValueError("isolated pytest receipt requires the offline workspace namespace")
         expected_command = isolated_pytest_display(sys.executable, tests)
@@ -344,10 +345,21 @@ def decide_public_observation(payload: dict) -> dict:
         scores=scores,
         notes="",
     )
-    model = load_supervisor_model()
+    relay_socket = os.environ.get("PEX_MODEL_RELAY_SOCKET")
+    if relay_socket and os.environ.get("PEX_SUPERVISOR_DISABLE") != "1":
+        if relay_socket != "/model-relay.sock" or str(expected_workspace) != "/workspace":
+            raise ValueError("supervisor relay requires its isolated namespace")
+        from pex_supervisor.relay_transport import relay_supervisor_model
+        model = relay_supervisor_model(
+            socket_path=relay_socket, model=os.environ.get("PEX_MODEL_RELAY_MODEL", ""),
+        )
+        backend = dict(model._pex_provenance)
+    else:
+        model = load_supervisor_model()
+        backend = describe_backend()
     result = decide(request, model=model)
     return {
-        "backend": describe_backend(),
+        "backend": backend,
         "action": result.action.model_dump(mode="json"),
         "diagnosis": result.diagnosis,
         "used_llm": result.used_llm,

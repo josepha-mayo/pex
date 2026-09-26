@@ -15,6 +15,38 @@ _REQUEST_LIMIT = 262_144
 _RESPONSE_LIMIT = 1_048_576
 
 
+def relay_supervisor_model(*, socket_path: str, model: str, timeout: float = 30):
+    """Build PEX's real chat adapter with explicit IPC routing and no ambient key."""
+    from pex_supervisor.openai_chat import OpenAIChatModel
+
+    # Validate before constructing the SDK adapter or opening any socket.
+    UnixChatRelayTransport(socket_path=socket_path, model=model, timeout=timeout)
+    result = OpenAIChatModel(
+        model_id=model,
+        stream=False,
+        params={"max_tokens": 1200, "stream": False},
+        client_args={
+            "api_key": "pex-relay-no-credential",
+            "base_url": "http://pex-relay.invalid/v1",
+            "max_retries": 0,
+            "timeout": timeout,
+        },
+        http_client_factory=lambda: httpx.AsyncClient(
+            transport=UnixChatRelayTransport(socket_path=socket_path, model=model, timeout=timeout),
+            trust_env=False,
+            follow_redirects=False,
+        ),
+    )
+    result._pex_provenance = {
+        "provider": "controller-relay",
+        "model_id": model,
+        "auth_mode": "controller-held",
+        "generation_api": "chat",
+        "base_url": "http://pex-relay.invalid/v1",
+    }
+    return result
+
+
 class UnixChatRelayTransport(httpx.AsyncBaseTransport):
     """Map a fixed SDK chat route to framed IPC. SDK callers must set max_retries=0."""
 

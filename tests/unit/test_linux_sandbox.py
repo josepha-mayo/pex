@@ -18,6 +18,54 @@ from benchmarks import linux_sandbox
     sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
     reason="Linux bwrap required",
 )
+def test_supervisor_relay_mount_keeps_public_workspace_readonly(tmp_path):
+    workspace, runtime, control = [tmp_path / name for name in ("worker", "runtime", "control")]
+    for directory in (workspace, runtime, control):
+        directory.mkdir()
+    (control / "request.json").write_text("{}")
+    (workspace / "TASK.md").write_text("public task")
+    (runtime / "pex_supervisor_process.py").write_text(
+        "import os,socket,json\n"
+        "s=socket.socket(socket.AF_UNIX); s.settimeout(2)\n"
+        "s.connect(os.environ['PEX_MODEL_RELAY_SOCKET']); s.sendall(b'probe')\n"
+        "assert s.recv(5)==b'reply'; s.close()\n"
+        "try:\n"
+        " open('/workspace/TASK.md','w').write('changed'); writable=True\n"
+        "except OSError: writable=False\n"
+        "json.dump({'writable':writable,'disabled':os.environ['PEX_SUPERVISOR_DISABLE'],"
+        "'model':os.environ['PEX_MODEL_RELAY_MODEL']},open('/control/response.json','w'))\n"
+    )
+    with TemporaryDirectory(prefix="pex-supervisor-relay-") as relay_root:
+        path = Path(relay_root) / "relay.sock"
+        with socket.socket(socket.AF_UNIX) as listener:
+            listener.bind(str(path))
+            path.chmod(0o600)
+            listener.listen()
+            listener.settimeout(5)
+            received = []
+            def respond():
+                connection, _ = listener.accept()
+                with connection:
+                    received.append(connection.recv(5))
+                    connection.sendall(b"reply")
+            thread = threading.Thread(target=respond)
+            thread.start()
+            subprocess.run(linux_sandbox.supervisor_relay_command(
+                workspace, runtime, control, path, "pinned",
+            ), capture_output=True, timeout=10, check=True)
+            thread.join(timeout=5)
+            assert not thread.is_alive()
+            assert received == [b"probe"]
+    assert json.loads((control / "response.json").read_text()) == {
+        "writable": False, "disabled": "0", "model": "pinned",
+    }
+    assert (workspace / "TASK.md").read_text() == "public task"
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
+    reason="Linux bwrap required",
+)
 def test_worker_relay_socket_preserves_host_files_and_network_boundary(tmp_path):
     workspace = tmp_path / "worker"
     workspace.mkdir()

@@ -10,8 +10,11 @@ from benchmarks.pex_supervisor_process import _controller_verification
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux namespace command contract")
 @pytest.mark.parametrize("mutation", [None, "argv", "command", "executor", "digest"])
-def test_child_binds_isolated_receipt_to_command_and_snapshot(monkeypatch, mutation):
-    monkeypatch.setenv("PEX_SUPERVISOR_DISABLE", "1")
+@pytest.mark.parametrize("transport", ["offline", "relay"])
+def test_child_binds_isolated_receipt_to_command_and_snapshot(monkeypatch, mutation, transport):
+    monkeypatch.setenv("PEX_SUPERVISOR_DISABLE", "1" if transport == "offline" else "0")
+    if transport == "relay":
+        monkeypatch.setenv("PEX_MODEL_RELAY_SOCKET", "/model-relay.sock")
     result = {"ok": True, "exit_code": 0, "output": "1 passed"}
     observation = {
         "files": ["test_public.py"], "public_workspace_sha256": "a" * 64,

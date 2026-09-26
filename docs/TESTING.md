@@ -740,3 +740,20 @@ optional AgentCore endpoint proposes an action.
   isolated supervisor is still offline: model construction, sandbox socket
   mounting and action-time receipt integration are not yet wired into it.
   No provider request or comparative performance claim follows from this check.
+- The public supervisor process now selects an explicit relay model only in
+  its `/workspace` and `/model-relay.sock` namespace. The real PEX chat adapter
+  uses a harmless SDK placeholder, a fresh IPC client per turn, non-streaming
+  requests and zero SDK retries; it does not resolve an ambient provider key.
+  `supervisor_relay_command` mounts the owner-only socket while preserving
+  read-only public inputs and network isolation. A real WSL child exchanged
+  probe bytes and failed to modify its public task. Eleven adapter checks
+  passed, including successive PEX adapter turns and one-attempt failure
+  behavior. Nine existing public-supervisor checks and ten WSL test-receipt
+  checks passed; receipt validation covers both offline and relay namespaces.
+  The Linux checks each emitted two host pytest config warnings. The relay
+  adapter is included in the controller fingerprint, with its mutation check
+  passing. Lint passed. The existing curated runtime still lacks the model SDK
+  dependencies, and `_decide_out_of_process` does not yet create or record a
+  live controller relay. This therefore establishes the model constructor,
+  process selection and socket mount separately, not a complete supervised
+  task or an eligible comparative benchmark. No provider call was made.

@@ -5,12 +5,15 @@ import struct
 import httpx
 import openai
 import pytest
-from pex_supervisor.relay_transport import UnixChatRelayTransport
+from pex_supervisor.relay_transport import UnixChatRelayTransport, relay_supervisor_model
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mode", ["success", "wrong_id", "oversize", "failed"])
-async def test_real_sdk_uses_framed_relay_without_forwarding_credentials(monkeypatch, mode):
+@pytest.mark.parametrize("adapter", ["sdk", "pex"])
+async def test_real_sdk_uses_framed_relay_without_forwarding_credentials(
+    monkeypatch, mode, adapter
+):
     opened, frames = [], []
     reader = asyncio.StreamReader()
 
@@ -59,6 +62,25 @@ async def test_real_sdk_uses_framed_relay_without_forwarding_credentials(monkeyp
         return reader, Writer()
 
     monkeypatch.setattr(asyncio, "open_unix_connection", connect, raising=False)
+    if adapter == "pex":
+        monkeypatch.setenv("OPENAI_API_KEY", "ambient-key-must-not-enter-frame")
+        model = relay_supervisor_model(socket_path="/model-relay.sock", model="pinned")
+        assert model._pex_provenance["auth_mode"] == "controller-held"
+        messages = [{"role": "user", "content": [{"text": "public task"}]}]
+        if mode == "success":
+            chunks = [chunk async for chunk in model.stream(messages)]
+            assert "verified local result" in json.dumps(chunks)
+            # A second turn uses a fresh client instead of the one closed above.
+            reader = asyncio.StreamReader()
+            chunks = [chunk async for chunk in model.stream(messages)]
+            assert "verified local result" in json.dumps(chunks)
+            assert len(frames) == 2
+        else:
+            with pytest.raises(openai.APIConnectionError):
+                _ = [chunk async for chunk in model.stream(messages)]
+            assert len(frames) == 1
+        assert all("ambient-key-must-not-enter-frame" not in json.dumps(frame) for frame in frames)
+        return
     transport = UnixChatRelayTransport(socket_path="/model-relay.sock", model="pinned")
     async with openai.AsyncOpenAI(
         api_key="sdk-placeholder-secret",
@@ -107,4 +129,3 @@ async def test_relay_transport_refuses_route_model_and_stream_before_connect(
     ) as client:
         with pytest.raises(httpx.RequestError):
             await client.post(url, json=body)
-
