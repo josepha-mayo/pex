@@ -33,6 +33,28 @@ def _runtime_python() -> Path:
     return python
 
 
+def _audited_directory(directory: Path, label: str) -> Path:
+    root = directory.resolve(strict=True)
+    if root != directory.absolute() or not root.is_dir() or os.path.ismount(root):
+        raise RuntimeError(f"{label} must be a real, unlinked directory")
+    entries = 0
+    for current, directories, files in os.walk(root, followlinks=False):
+        for name in (*directories, *files):
+            entries += 1
+            if entries > 20_000:
+                raise RuntimeError(f"{label} exceeds the sandbox entry limit")
+            item = Path(current) / name
+            if item.is_symlink() or os.path.ismount(item):
+                raise RuntimeError(f"{label} contains a link or mount")
+            metadata = item.stat(follow_symlinks=False)
+            if name in files:
+                if not stat.S_ISREG(metadata.st_mode):
+                    raise RuntimeError(f"{label} contains a special file")
+                if metadata.st_nlink > 1:
+                    raise RuntimeError(f"{label} contains a hard-linked file")
+    return root
+
+
 def _prefix(
     workspace: Path, checker: Path | None = None, *, writable_worker: bool = False,
 ) -> list[str]:
@@ -46,24 +68,7 @@ def _prefix(
     metadata = binary.stat()
     if metadata.st_uid != 0 or metadata.st_mode & 0o022:
         raise RuntimeError("Linux bubblewrap evaluator requires a trusted root-owned binary")
-    root = workspace.resolve(strict=True)
-    if root != workspace.absolute() or not root.is_dir() or os.path.ismount(root):
-        raise RuntimeError("candidate workspace must be a real, unlinked directory")
-    entries = 0
-    for current, directories, files in os.walk(root, followlinks=False):
-        for name in (*directories, *files):
-            entries += 1
-            if entries > 20_000:
-                raise RuntimeError("candidate workspace exceeds the sandbox entry limit")
-            item = Path(current) / name
-            if item.is_symlink() or os.path.ismount(item):
-                raise RuntimeError("candidate workspace contains a link or mount")
-            metadata = item.stat(follow_symlinks=False)
-            if name in files:
-                if not stat.S_ISREG(metadata.st_mode):
-                    raise RuntimeError("candidate workspace contains a special file")
-                if metadata.st_nlink > 1:
-                    raise RuntimeError("candidate workspace contains a hard-linked file")
+    root = _audited_directory(workspace, "candidate workspace")
     command = [
         str(binary),
         "--unshare-all",
@@ -117,6 +122,40 @@ def worker_command(workspace: Path, command: list[str]) -> list[str]:
     if not command or any(not isinstance(arg, str) or "\x00" in arg for arg in command):
         raise ValueError("worker command must be a nonempty argument vector")
     return [*_prefix(workspace, writable_worker=True), *command]
+
+
+def supervisor_command(workspace: Path, runtime: Path, control: Path) -> list[str]:
+    """Isolate an offline PEX child with a controller-curated public runtime.
+
+    Runtime packaging, payload rebinding and live model transport are separate
+    requirements. This primitive never makes a presentation run eligible.
+    """
+    prefix = _prefix(workspace)
+    runtime_root = _audited_directory(runtime, "supervisor runtime")
+    control_root = _audited_directory(control, "supervisor control")
+    roots = [workspace.resolve(strict=True), runtime_root, control_root]
+    for index, root in enumerate(roots):
+        for other in roots[index + 1:]:
+            if root.is_relative_to(other) or other.is_relative_to(root):
+                raise ValueError("supervisor workspace, runtime and control must be disjoint")
+    if not (runtime_root / "pex_supervisor_process.py").is_file():
+        raise ValueError("supervisor runtime must contain its public process entry")
+    if {item.name for item in control_root.iterdir()} != {"request.json"}:
+        raise ValueError("supervisor control must contain only a fresh request.json")
+    request = control_root / "request.json"
+    if not request.is_file() or request.stat().st_size > 512_000:
+        raise ValueError("supervisor request must be a bounded regular file")
+    return [
+        *prefix[:-3],
+        "--ro-bind", str(runtime_root), "/runtime",
+        "--bind", str(control_root), "/control",
+        "--ro-bind", str(request), "/control/request.json",
+        "--setenv", "PEX_SUPERVISOR_DISABLE", "1",
+        "--setenv", "PEX_HOME", "/tmp/pex",
+        *prefix[-3:],
+        str(_runtime_python()), "-I", "-B",
+        "/runtime/pex_supervisor_process.py", "/control/request.json", "/control/response.json",
+    ]
 
 
 def hidden_command(workspace: Path, checker: Path, module: str, function: str) -> list[str]:

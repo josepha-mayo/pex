@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import os
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -92,3 +94,70 @@ def test_sandbox_refuses_fifo_in_workspace(tmp_path: Path) -> None:
     os.mkfifo(workspace / "pipe")
     with pytest.raises(RuntimeError, match="special file"):
         linux_sandbox.public_pytest_command(workspace, ["test_public.py"])
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
+    reason="Linux bwrap required",
+)
+def test_supervisor_boundary_excludes_controller_and_protects_public_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace, runtime, control = [tmp_path / name for name in ("worker", "runtime", "control")]
+    for directory in (workspace, runtime, control):
+        directory.mkdir()
+    (workspace / "TASK.md").write_text("Public task", encoding="utf-8")
+    private = tmp_path / "oracle.txt"
+    private.write_text("private expected answer", encoding="utf-8")
+    monkeypatch.setenv("PEX_BOUNDARY_PRIVATE_MARKER", "private controller environment")
+    entry = runtime / "pex_supervisor_process.py"
+    entry.write_text(
+        "import json, os, socket, sys\n"
+        "from pathlib import Path\n"
+        "payload = json.loads(Path(sys.argv[1]).read_text())\n"
+        "def can_write(path):\n"
+        "    try:\n"
+        "        Path(path).write_text('changed')\n"
+        "        return True\n"
+        "    except OSError:\n"
+        "        return False\n"
+        "try:\n"
+        "    connection = socket.create_connection(('127.0.0.1', payload['port']), timeout=.2)\n"
+        "    connection.close()\n"
+        "    network = True\n"
+        "except OSError:\n"
+        "    network = False\n"
+        "result = {'private_exists': Path(payload['private']).exists(),\n"
+        "          'private_env': 'PEX_BOUNDARY_PRIVATE_MARKER' in os.environ,\n"
+        "          'network': network, 'public_task': Path('/workspace/TASK.md').read_text(),\n"
+        "          'workspace_write': can_write('/workspace/TASK.md'),\n"
+        "          'runtime_write': can_write('/runtime/pex_supervisor_process.py'),\n"
+        "          'request_write': can_write('/control/request.json'),\n"
+        "          'model_disabled': os.environ.get('PEX_SUPERVISOR_DISABLE') == '1'}\n"
+        "Path(sys.argv[2]).write_text(json.dumps(result))\n",
+        encoding="utf-8",
+    )
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        port = listener.getsockname()[1]
+        with socket.create_connection(("127.0.0.1", port), timeout=1):
+            pass
+        request = control / "request.json"
+        request.write_text(json.dumps({"private": str(private), "port": port}), encoding="utf-8")
+        original_request = request.read_bytes()
+        original_entry = entry.read_bytes()
+        subprocess.run(
+            linux_sandbox.supervisor_command(workspace, runtime, control),
+            capture_output=True, text=True, timeout=10, check=True,
+        )
+    assert json.loads((control / "response.json").read_text()) == {
+        "private_exists": False, "private_env": False, "network": False,
+        "public_task": "Public task", "workspace_write": False, "runtime_write": False,
+        "request_write": False, "model_disabled": True,
+    }
+    assert request.read_bytes() == original_request
+    assert entry.read_bytes() == original_entry
+    assert (workspace / "TASK.md").read_text() == "Public task"
+    with pytest.raises(ValueError, match="fresh request"):
+        linux_sandbox.supervisor_command(workspace, runtime, control)

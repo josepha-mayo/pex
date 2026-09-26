@@ -388,6 +388,16 @@ optional AgentCore endpoint proposes an action.
 - Amazon Bedrock AgentCore support is implemented and offline-tested; no
   deployed AgentCore Runtime is claimed.
 - PexBench is unfrozen; no comparative productivity score is claimed.
+- The Linux supervisor boundary primitive mounts a controller-curated public
+  runtime and task read-only, exposes only a dedicated request/response control
+  directory, clears inherited environment, disables model loading and excludes
+  host networking. Seven WSL boundary checks passed, including a probe child
+  denied access to a private host file, controller environment and listening
+  socket, and denied writes to task/runtime/request while writing its response.
+  Local Windows boundary/execution-safety checks passed 21 tests with five Linux
+  skips. This was a boundary probe, not the actual PEX decision child. Curated
+  dependency packaging, workspace payload rebinding, live model transport and
+  complete action-time receipts remain required; the execution gate stays shut.
 - Opt-in installed startup traces now include the last React-committed surface
   reported through the existing bootstrap status call. Rust accepts only five
   fixed names (unmounted, recovery, main, settings, pet), and the existing trace
