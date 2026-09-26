@@ -734,6 +734,8 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             or (goal.objective[:200])
         )
         constraints = "; ".join(item for item in goal.constraints[:3] if item)
+        forbidden = "; ".join(item for item in goal.forbidden_outcomes[:3] if item)
+        non_goals = "; ".join(item for item in goal.non_goals[:3] if item)
         files = ", ".join(required_files(goal)[:6])
         forgotten = _forgotten_facts(request)
         lines = [f"Persistent ledger '{title}' still applies after compaction."]
@@ -741,6 +743,15 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             lines.append(f"Acceptance: {acceptance}")
         if constraints:
             lines.append(f"Constraints: {constraints}")
+        if forbidden:
+            lines.append(f"Forbidden outcomes: {forbidden}")
+        if non_goals:
+            lines.append(f"Non-goals: {non_goals}")
+        if any(len(values) > 3 for values in (
+            goal.constraints, goal.forbidden_outcomes, goal.non_goals,
+        )):
+            lines.append("This reminder lists only the first three rules per field; "
+                         "the complete persistent goal contract still applies.")
         if files:
             lines.append(f"Required files: {files}")
         if forgotten:

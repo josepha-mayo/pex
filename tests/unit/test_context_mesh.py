@@ -41,6 +41,32 @@ def _target(**metadata: object) -> HarnessSession:
     )
 
 
+def test_goal_prohibitions_survive_handoff_without_any_ranked_context():
+    from pex_bridge.adapters.base import _bundle_as_prompt
+
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    goal.forbidden_outcomes = ["Never spend card funds", "Do not publish " + "X" * 1100]
+    goal.non_goals = ["Do not rewrite unrelated projects"]
+    bundle = build_bundle(goal, _target(), [], [], [], token_budget=2000)
+    assert bundle.critical_decisions == [
+        "Constraint: Do not expose secrets",
+        *[f"Forbidden outcome: {value}" for value in goal.forbidden_outcomes],
+        "Non-goal: Do not rewrite unrelated projects",
+    ]
+    rendered = _bundle_as_prompt(bundle)
+    assert goal.forbidden_outcomes[1] in rendered
+    assert goal.non_goals[0] in rendered
+
+
+def test_goal_prohibitions_cannot_be_dropped_to_fit_handoff_budget():
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    goal.forbidden_outcomes = ["Never discard this prohibition. " * 100]
+    with pytest.raises(ValueError, match="mandatory goal contract"):
+        build_bundle(goal, _target(), [], [], [], token_budget=256)
+
+
 def _item(
     item_id: str,
     content: str,
@@ -186,7 +212,9 @@ def test_declared_target_keeps_goal_wide_constraints_and_unresolved_dependencies
     bundle = build_bundle(goal, target, [unrelated, constraint, blocker], [], [])
 
     assert {item.id for item in bundle.items} == {"constraint", "blocker"}
-    assert bundle.critical_decisions == [f"Constraint: {constraint.content}"]
+    assert bundle.critical_decisions == [
+        "Constraint: Do not expose secrets", f"Constraint: {constraint.content}",
+    ]
 
 
 def test_false_like_unresolved_metadata_does_not_route_unrelated_context() -> None:

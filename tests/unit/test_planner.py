@@ -688,11 +688,15 @@ def test_compaction_checkpoints_the_attached_ledger():
         event=_event(EventType.COMPACTION, message_delta="Compacting context."),
         scores=TrajectoryScores(),
     )
+    request.goal.forbidden_outcomes = ["Never spend card funds"]
+    request.goal.non_goals = ["Do not publish releases"]
     action = plan_deterministic(request)
     assert action.type == InterventionType.SEND_NUDGE
     text = str(action.payload.get("text") or "")
     assert "Ship eval" in text
     assert "results.json" in text
+    assert "Forbidden outcomes: Never spend card funds" in text
+    assert "Non-goals: Do not publish releases" in text
     assert not text.startswith("PEX:")
 
 

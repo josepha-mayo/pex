@@ -235,6 +235,7 @@ def score_item(
         goal.objective,
         goal.acceptance_criteria,
         goal.constraints,
+        goal.forbidden_outcomes,
         goal.non_goals,
         goal.preferences,
         goal.evidence_requirements,
@@ -346,6 +347,19 @@ def build_bundle(
     acceptance_criteria = [
         text for value in goal.acceptance_criteria[:32] if (text := _safe_text(value, 1_000))
     ]
+    # Human goal boundaries are mandatory contract, not ranked context items.
+    # Preserve their full redacted text; reject an undersized budget below
+    # rather than silently dropping a prohibition to fit optional evidence.
+    goal_boundaries = [
+        f"{label}: {cleaned}"
+        for label, values in (
+            ("Constraint", goal.constraints),
+            ("Forbidden outcome", goal.forbidden_outcomes),
+            ("Non-goal", goal.non_goals),
+        )
+        for value in values
+        if (cleaned := (redact_text(str(value))[0] or "").strip())
+    ]
     delivered_evidence = [
         item
         for item in previously_delivered
@@ -435,7 +449,7 @@ def build_bundle(
             source_session_ids=bounded_source_session_ids,
             goal_summary=goal_summary,
             acceptance_criteria=acceptance_criteria,
-            critical_decisions=critical,
+            critical_decisions=[*goal_boundaries, *critical],
             relevant_artifacts=[
                 item.content for item in selected if item.kind == ContextKind.ARTIFACT
             ][:8],
