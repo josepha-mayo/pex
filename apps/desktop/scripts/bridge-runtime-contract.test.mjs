@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import test from "node:test";
 
 import {
@@ -138,6 +138,29 @@ test("rejects symbolic links that escape the runtime", (t) => withFixture((root)
     assert.throws(() => materializeBridgeRuntimeSymlinks(root), /escapes the bridge runtime/u);
   } finally {
     rmSync(outside, { force: true });
+  }
+}));
+
+test("materializes in-tree links through a canonicalized ancestor alias", (t) => withFixture((root) => {
+  const alias = join(dirname(root), `${basename(root)}-ancestor-alias`);
+  const link = join(root, "_internal", "linked.dll");
+  try {
+    try {
+      symlinkSync(dirname(root), alias, process.platform === "win32" ? "junction" : "dir");
+      symlinkSync("python312.dll", link, "file");
+    } catch (error) {
+      if (error?.code === "EPERM" || error?.code === "EACCES") {
+        t.skip(`symbolic-link creation is unavailable: ${error.code}`);
+        return;
+      }
+      throw error;
+    }
+    const aliasedRoot = join(alias, basename(root));
+    assert.deepEqual(materializeBridgeRuntimeSymlinks(aliasedRoot), ["_internal/linked.dll"]);
+    assert.equal(readFileSync(link, "utf8"), "python");
+    assert.equal(lstatSync(link).isSymbolicLink(), false);
+  } finally {
+    rmSync(alias, { force: true });
   }
 }));
 

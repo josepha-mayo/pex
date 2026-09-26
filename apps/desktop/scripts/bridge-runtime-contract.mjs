@@ -39,7 +39,10 @@ function assertRuntimeRoot(root) {
   if (entry.isSymbolicLink() || !entry.isDirectory()) {
     throw new Error("Bridge runtime root must be a non-symbolic-link directory");
   }
-  return resolved;
+  // Windows temporary paths can use an 8.3 ancestor spelling while native
+  // realpath expands targets to the long spelling. Compare both sides in the
+  // same canonical tree without relaxing the final-root symlink prohibition.
+  return realpathSync.native(resolved);
 }
 
 function canonicalRelativePath(root, path) {

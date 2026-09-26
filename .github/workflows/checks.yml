@@ -51,11 +51,12 @@ jobs:
           tests/unit/test_codex_shared_transport.py::test_native_private_leaf_does_not_bypass_unsafe_ancestor_acl
       - name: Backend, adapters, policy and persistence
         run: uv run --frozen pytest -q -m "not live_llm and not live_codex and not live_opencode and not live_agentcore" --junitxml=build/test-results.xml
-      - name: Desktop behavior and production build
+      - name: Desktop behavior
         working-directory: apps/desktop
-        run: |
-          npm test
-          npm run build
+        run: npm test
+      - name: Desktop production build
+        working-directory: apps/desktop
+        run: npm run build
       - name: Retain test report
         if: always()
         uses: actions/upload-artifact@v7

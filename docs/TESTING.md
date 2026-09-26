@@ -6,16 +6,20 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Main-branch verification checkpoints
 
-Exact source `6edbb89` passed all Windows and Ubuntu source/native jobs in
+Exact source `6edbb89` was reported green by all Windows and Ubuntu jobs in
 [run 36257145205](https://github.com/josepha-mayo/pex/actions/runs/36257145205).
-Ubuntu backend checks passed 4,791 tests (19 skipped, 16 deselected), and the
+Ubuntu backend checks passed 4,791 tests (19 skipped, 16 deselected), and
 all 324 desktop checks and the production build passed. Native packaging,
 20 bootstrap tests, packaged
 bridge identity, Secret Service storage, and the installed Home/Settings check
 passed with the verified Xvfb software renderer. Windows native packaging,
 bridge startup/identity, OS-vault and packaged BYOK checks also passed. Windows
 backend checks passed 4,798 tests (12 skipped, 16 deselected), and its desktop
-checks and production build passed. Later context changes require their own
+production build passed, but its desktop log contained 322 passes and two
+symlink-containment failures. The combined PowerShell test/build step masked the
+test failure with a successful build. Desktop tests and builds are now separate
+steps so failure cannot be overwritten. Full acceptance for this source is not
+claimed despite its workflow conclusion. Later context changes require their own
 source and package acceptance; this is not a claim about latest HEAD.
 
 The instrumented Linux package at `fd16129` still failed its fresh-state window
@@ -41,8 +45,10 @@ is not established by a headless software-renderer replay.
 Exact source `1e21082` passed the
 [Windows and Ubuntu source workflow](https://github.com/josepha-mayo/pex/actions/runs/36252854380):
 4,776 backend tests passed on Windows (12 skipped, 16 deselected), and 4,769
-passed on Ubuntu (19 skipped, 16 deselected). Both desktop test suites and
-production builds passed. This run did not execute native package jobs.
+passed on Ubuntu (19 skipped, 16 deselected). Both production builds and Ubuntu
+desktop tests passed. A subsequent log audit found the same two Windows desktop
+symlink-containment failures masked by the successful build step; its reported
+green result is not complete acceptance. This run did not execute native jobs.
 
 The later adapter workspace changes at `6a048c4` completed the full
 [source and native workflow](https://github.com/josepha-mayo/pex/actions/runs/36253951573).
@@ -299,6 +305,13 @@ optional AgentCore endpoint proposes an action.
 
 ## Honest boundaries
 
+- Runtime-tree containment canonicalizes the root through native realpath before
+  comparing resolved symlink targets. This avoids false escapes from ancestor
+  aliases or Windows short/long path spellings while retaining rejection of a
+  symlink root, escaping targets, dangling links and directory targets. All nine
+  runtime-contract tests passed under WSL, including an ancestor-alias regression.
+  Local Windows desktop checks passed 320 tests with five symlink-permission
+  skips; privileged Windows execution still requires the corrected CI run.
 - Compaction recovery excludes facts expired at the observation time, including
   facts that were valid during compaction but expired before the recovery check.
   Future-dated reads cannot establish a current forgotten-fact signal. Expired
