@@ -991,3 +991,20 @@ optional AgentCore endpoint proposes an action.
   No provider request occurred. This closes a transport primitive gap; real
   coding-client launch, action-time backend receipts and comparative execution
   remain required. Benchmark eligibility gates were not changed.
+- Real OpenCode 1.18.32 now completed a controlled turn through the worker
+  HTTP proxy on Windows, with the pinned relay dispatcher validating its
+  request and no message sent to an unrelated session. A matching official
+  Linux binary then completed inside bubblewrap through loopback HTTP and
+  the mounted Unix relay. The client runtime was mounted read-only and
+  disjoint from the writable task; direct checks confirmed both permissions.
+  The Linux client made two controlled model requests. Two earlier smoke
+  attempts timed out because their fixture served one connection; those
+  failures are retained separately from the bounded multi-request success.
+  Proxy/relay/sandbox checks passed together (43 passed, 12 platform skips),
+  and Ruff passed. See [Linux receipt](evidence/opencode-isolated-proxy-44d910c.json),
+  [Windows receipt](evidence/opencode-windows-proxy-44d910c.json),
+  [Linux driver](evidence/opencode-proxy-linux-smoke-driver.txt), and
+  [Windows driver](evidence/opencode-proxy-check-driver.txt). The Linux package
+  matched its official registry integrity hash. No upstream provider request
+  occurred. Natural-task comparative execution and action-time backend receipts
+  are still required; eligibility gates remain unchanged.

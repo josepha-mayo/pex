@@ -1,0 +1,36 @@
+{
+  "schema": "pex.opencode-real-delivery.v1",
+  "source_sha": "44d910cbed91fee182b750108985a987acf9b728",
+  "binary_sha256": "cf664aa1da32b788f9b2699b84a9bb9be30b7e025693b90f9b85829d5fe4e252",
+  "accepted": true,
+  "completed_assistant_messages": 1,
+  "unrelated_session_messages": 0,
+  "local_model_requests": [
+    {
+      "model": "pinned",
+      "stream": false,
+      "keys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "stream"
+      ],
+      "max_tokens": 1200
+    }
+  ],
+  "relay_audit": [
+    {
+      "request_id": "request-1",
+      "request_sha256": "662a9f5dd8b3e5194db276eb89f63531c867d9dab5aa6984924f1e087b8c97f5",
+      "status": "completed",
+      "response_sha256": "72cb46f98f84d5a4167ca0ac4f5557a06a17c10a8f08bd07d328c65c13dd5299"
+    }
+  ],
+  "observed_event_types": [
+    "agent_response",
+    "status",
+    "stop",
+    "user_prompt"
+  ],
+  "scope": "Real Windows OpenCode prompt through worker HTTP proxy and pinned relay dispatcher. Controlled backend; no Linux client isolation, provider call or quality comparison."
+}

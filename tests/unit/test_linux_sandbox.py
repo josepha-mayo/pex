@@ -14,6 +14,66 @@ import pytest
 from benchmarks import linux_sandbox
 
 
+def test_worker_runtime_mount_is_read_only(tmp_path: Path, monkeypatch) -> None:
+    worker = tmp_path / "worker"
+    runtime = tmp_path / "runtime"
+    worker.mkdir()
+    runtime.mkdir()
+    monkeypatch.setattr(
+        linux_sandbox, "worker_relay_command",
+        lambda *args: ["bwrap", "--unshare-all", "--", "/usr/bin/true"],
+    )
+    command = linux_sandbox.worker_runtime_relay_command(
+        worker, ["/usr/bin/true"], tmp_path / "relay.sock", runtime,
+    )
+    assert command == [
+        "bwrap", "--unshare-all", "--ro-bind", str(runtime),
+        "/worker-runtime", "--", "/usr/bin/true",
+    ]
+
+
+@pytest.mark.parametrize("nested", ["runtime", "worker"])
+def test_worker_runtime_must_be_disjoint(tmp_path: Path, nested: str) -> None:
+    outer = tmp_path / "outer"
+    inner = outer / "inner"
+    inner.mkdir(parents=True)
+    worker, runtime = (outer, inner) if nested == "runtime" else (inner, outer)
+    with pytest.raises(ValueError, match="disjoint"):
+        linux_sandbox.worker_runtime_relay_command(
+            worker, ["/usr/bin/true"], tmp_path / "relay.sock", runtime,
+        )
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
+    reason="Linux bwrap required",
+)
+def test_worker_runtime_cannot_be_modified_but_task_can(tmp_path: Path) -> None:
+    worker, runtime = tmp_path / "worker", tmp_path / "runtime"
+    worker.mkdir()
+    runtime.mkdir()
+    (runtime / "runtime.txt").write_text("original")
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
+        endpoint = tmp_path / "relay.sock"
+        listener.bind(str(endpoint))
+        endpoint.chmod(0o600)
+        script = (
+            "from pathlib import Path\n"
+            "try:\n Path('/worker-runtime/runtime.txt').write_text('changed')\n"
+            "except OSError:\n pass\n"
+            "else:\n raise AssertionError('runtime was writable')\n"
+            "Path('/workspace/result.txt').write_text('worker write succeeded')\n"
+        )
+        result = subprocess.run(
+            linux_sandbox.worker_runtime_relay_command(
+                worker, ["/usr/bin/python3", "-I", "-c", script], endpoint, runtime,
+            ), capture_output=True, text=True, timeout=10,
+        )
+    assert result.returncode == 0, result.stderr
+    assert (runtime / "runtime.txt").read_text() == "original"
+    assert (worker / "result.txt").read_text() == "worker write succeeded"
+
+
 @pytest.mark.skipif(
     sys.platform != "linux" or not Path("/usr/bin/bwrap").is_file(),
     reason="Linux bwrap required",

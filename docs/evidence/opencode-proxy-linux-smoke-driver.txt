@@ -1,0 +1,113 @@
+import json
+import os
+import socket
+import struct
+import subprocess
+import sys
+import tempfile
+import threading
+from pathlib import Path
+
+repo = Path('/mnt/d/PEX-work')
+sys.path.insert(0, str(repo))
+from benchmarks.linux_sandbox import worker_runtime_relay_command
+from benchmarks.worker_model_proxy import _read
+
+with tempfile.TemporaryDirectory(prefix='pex-worker-proxy-') as temp:
+    root = Path(temp)
+    workspace = root/'worker'
+    workspace.mkdir()
+    runtime=root/'runtime'
+    runtime.mkdir()
+    import tarfile
+    package=repo/'build/linux-opencode-runtime/opencode-linux-x64-1.18.32.tgz'
+    with tarfile.open(package) as archive:
+        member=archive.getmember('package/bin/opencode')
+        assert member.isfile() and member.size<200_000_000
+        with archive.extractfile(member) as source, (runtime/'opencode').open('wb') as target:
+            import shutil
+            shutil.copyfileobj(source,target)
+    (runtime/'opencode').chmod(0o755)
+    (runtime/'guard.txt').write_text('original')
+    controller = root/'controller'
+    controller.mkdir(mode=0o700)
+    path = controller/'relay.sock'
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    listener.bind(str(path))
+    path.chmod(0o600)
+    listener.listen(1)
+    listener.settimeout(0.5)
+    calls=[]
+    errors=[]
+    stop=threading.Event()
+    def serve():
+        while not stop.is_set() and len(calls)<8:
+            try:
+                peer,_=listener.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+            try:
+                with peer:
+                    peer.settimeout(10)
+                    length=struct.unpack('!I',_read(peer,4))[0]
+                    assert 0<length<=262144
+                    envelope=json.loads(_read(peer,length))
+                    body=envelope['body']
+                    assert body['model']=='pinned' and body['stream'] is False
+                    calls.append(body)
+                    response={'schema':envelope['schema'],'request_id':envelope['request_id'],'ok':True,
+                        'body':{'id':'controlled','created':1,'model':'pinned','choices':[
+                            {'index':0,'message':{'role':'assistant','content':'bounded response'},'finish_reason':'stop'}],
+                            'usage':{'prompt_tokens':10,'completion_tokens':2,'total_tokens':12}}}
+                    raw=json.dumps(response).encode()
+                    peer.sendall(struct.pack('!I',len(raw))+raw)
+            except Exception as exc:
+                errors.append(type(exc).__name__)
+                return
+    thread=threading.Thread(target=serve,daemon=True)
+    thread.start()
+    source=(repo/'benchmarks/worker_model_proxy.py').read_text()
+    child="""
+import json,os,subprocess,threading
+namespace={'__name__':'proxy_module'}
+exec(SOURCE,namespace)
+server=namespace['make_server']('/model-relay.sock',model='pinned')
+thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+try:
+    from pathlib import Path
+    try:
+        Path('/worker-runtime/guard.txt').write_text('changed')
+    except OSError:
+        pass
+    else:
+        raise AssertionError('Worker runtime was writable')
+    Path('/workspace/result.txt').write_text('task writable')
+    config={'autoupdate':False,'model':'controlled/pinned','small_model':'controlled/pinned','enabled_providers':['controlled'],'permission':'deny',
+        'provider':{'controlled':{'npm':'@ai-sdk/openai-compatible','name':'Controlled relay','options':{'baseURL':f'http://127.0.0.1:{server.server_port}/v1','apiKey':'pex-relay-local'},
+            'models':{'pinned':{'name':'Pinned','limit':{'context':32000,'output':1200}}}}}}
+    env=dict(os.environ,OPENCODE_CONFIG_CONTENT=json.dumps(config),XDG_CONFIG_HOME='/tmp/config',XDG_DATA_HOME='/tmp/data',XDG_CACHE_HOME='/tmp/cache',XDG_STATE_HOME='/tmp/state')
+    completed=subprocess.run(['/worker-runtime/opencode','run','--format','json','--model','controlled/pinned','Acknowledge only. Do not use tools.'],env=env,capture_output=True,text=True,timeout=45)
+    assert completed.returncode==0,(completed.stdout,completed.stderr)
+    assert 'bounded response' in completed.stdout,completed.stdout+completed.stderr
+    print(json.dumps({'real_opencode':True,'loopback_http':True,'mounted_unix_relay':True,'buffered_sse':True,'upstream_streaming':False,'runtime_read_only':True,'task_writable':True,'tool_permission':'deny','worker_exit':completed.returncode}))
+finally:
+    server.shutdown();server.server_close();thread.join(timeout=5)
+""".replace('SOURCE',repr(source))
+    try:
+        result=subprocess.run(worker_runtime_relay_command(workspace,['/usr/bin/python3','-c',child],path,runtime),
+            capture_output=True,text=True,timeout=60)
+        stop.set()
+        thread.join(timeout=2)
+        (repo/'build/opencode-proxy-linux-diagnostic.json').write_text(json.dumps({'returncode':result.returncode,'errors':errors,'calls':len(calls),'stderr':result.stderr},indent=2))
+        assert result.returncode==0, result.stderr
+        assert 1<=len(calls)<=8 and not errors and not thread.is_alive(),errors
+        receipt={**json.loads(result.stdout),'controller_calls':len(calls),
+            'scope':'Real OpenCode inside Linux bubblewrap with a controlled relay backend; no upstream provider call or comparative quality claim.'}
+        (repo/'build/opencode-proxy-linux-smoke.json').write_text(json.dumps(receipt,indent=2)+'\n')
+        print(json.dumps(receipt))
+    finally:
+        stop.set()
+        listener.close()
+        thread.join(timeout=2)

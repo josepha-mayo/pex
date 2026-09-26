@@ -1,0 +1,30 @@
+{
+  "real_opencode": true,
+  "loopback_http": true,
+  "mounted_unix_relay": true,
+  "buffered_sse": true,
+  "upstream_streaming": false,
+  "runtime_read_only": true,
+  "task_writable": true,
+  "tool_permission": "deny",
+  "worker_exit": 0,
+  "controller_calls": 2,
+  "scope": "Real OpenCode inside Linux bubblewrap with a controlled relay backend; no upstream provider call or comparative quality claim.",
+  "schema": "pex.opencode-isolated-proxy.v1",
+  "source_base_sha": "44d910cbed91fee182b750108985a987acf9b728",
+  "client_version": "1.18.32",
+  "client_binary_sha256": "513f500a1a5ea1dc7d865547ac87b32a8936334e8d5abd5b3ff585c45a170080",
+  "package_integrity": "sha512-CIatvoyi8V5a56xyw6ZUnsKxB9wqYIZqfNeqUNWhBBY4aENAm907LP0xXAwL6tR0cYbqNl2+Dvx8mOqXIxbDeQ==",
+  "package_source": "https://registry.npmjs.org/opencode-linux-x64/-/opencode-linux-x64-1.18.32.tgz",
+  "checks": {
+    "passed": 43,
+    "skipped": 12,
+    "scope": "Windows proxy/relay/sandbox unit suites; actual Linux client smoke supplements platform skips"
+  },
+  "failed_fixture_attempts": {
+    "count": 2,
+    "observed": "Client timeout and relay response read timeout; second diagnostic showed one completed controller request and no backend error.",
+    "cause": "The controlled fixture served one connection; the real client required two. The bounded fixture now serves up to eight and closes its owned listener/thread.",
+    "scope": "Controlled smoke debugging, not presentation benchmark attempts."
+  }
+}

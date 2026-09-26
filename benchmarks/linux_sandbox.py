@@ -159,6 +159,24 @@ def _relay_socket(workspace: Path, relay_socket: Path) -> Path:
     return socket_path
 
 
+def worker_runtime_relay_command(
+    workspace: Path, command: list[str], relay_socket: Path, runtime: Path,
+) -> list[str]:
+    """Mount an audited coding-client runtime read-only beside the worker relay.
+
+    The controller prepares and hashes this public runtime. It must be disjoint
+    from the writable task, and does not contain evaluator or credential files.
+    This boundary alone does not establish benchmark eligibility.
+    """
+    root = _audited_directory(runtime, "worker runtime")
+    task = workspace.resolve(strict=True)
+    if root.is_relative_to(task) or task.is_relative_to(root):
+        raise ValueError("worker runtime must be disjoint from the writable task")
+    base = worker_relay_command(workspace, command, relay_socket)
+    boundary = base.index("--")
+    return [*base[:boundary], "--ro-bind", str(root), "/worker-runtime", *base[boundary:]]
+
+
 def supervisor_command(workspace: Path, runtime: Path, control: Path) -> list[str]:
     """Isolate an offline PEX child with a controller-curated public runtime.
 
