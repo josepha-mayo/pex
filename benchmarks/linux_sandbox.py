@@ -1,7 +1,8 @@
-"""Optional Linux boundary for executing benchmark candidate code.
+"""Optional Linux boundaries for benchmark candidate code and worker tools.
 
-This isolates the *evaluator's* child process. It does not isolate a coding
-worker or PEX, so enabling it alone never makes a presentation run eligible.
+The evaluator child and writable-worker primitive have distinct mounts. Live
+coding-harness/model transport and isolated PEX integration are still missing,
+so enabling this module alone never makes a presentation run eligible.
 """
 
 from __future__ import annotations
@@ -32,7 +33,11 @@ def _runtime_python() -> Path:
     return python
 
 
-def _prefix(workspace: Path, checker: Path | None = None) -> list[str]:
+def _prefix(
+    workspace: Path, checker: Path | None = None, *, writable_worker: bool = False,
+) -> list[str]:
+    if writable_worker and checker is not None:
+        raise ValueError("a worker boundary must never mount the private checker")
     if sys.platform != "linux":
         raise RuntimeError("Linux bubblewrap evaluator selected on another platform")
     binary = Path("/usr/bin/bwrap")
@@ -89,7 +94,7 @@ def _prefix(workspace: Path, checker: Path | None = None) -> list[str]:
             "/dev",
             "--tmpfs",
             "/tmp",
-            "--ro-bind",
+            "--bind" if writable_worker else "--ro-bind",
             str(root),
             "/workspace",
         )
@@ -101,6 +106,17 @@ def _prefix(workspace: Path, checker: Path | None = None) -> list[str]:
         command.extend(("--ro-bind", str(source), "/checker.py"))
     command.extend(("--chdir", "/workspace", "--"))
     return command
+
+
+def worker_command(workspace: Path, command: list[str]) -> list[str]:
+    """Run worker tools with only the task writable and no host network.
+
+    This primitive is not a live coding-harness integration. A model transport
+    and isolated PEX process still require their own verified boundaries.
+    """
+    if not command or any(not isinstance(arg, str) or "\x00" in arg for arg in command):
+        raise ValueError("worker command must be a nonempty argument vector")
+    return [*_prefix(workspace, writable_worker=True), *command]
 
 
 def hidden_command(workspace: Path, checker: Path, module: str, function: str) -> list[str]:

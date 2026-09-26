@@ -230,6 +230,13 @@ optional AgentCore endpoint proposes an action.
 
 ## Honest boundaries
 
+- A writable Linux worker-tool primitive passed the retained WSL smoke in
+  [`linux-worker-boundary-wsl-2026-09-26.json`](evidence/linux-worker-boundary-wsl-2026-09-26.json):
+  task reads/writes worked while the private oracle, controller source, and
+  controller environment were unavailable; only loopback was visible. The
+  receipt binds the boundary and smoke source hashes. Live coding-harness/model
+  transport and isolated PEX integration remain unverified, so this does not
+  satisfy the natural-task benchmark execution gate.
 - The OpenCode paired diagnostic retains completed task failures. It reports
   worker correctness separately from the restraint diagnostic, and does not stop
   sampling merely because a completed case failed. Metrics require every
