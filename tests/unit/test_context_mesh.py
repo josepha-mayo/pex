@@ -67,6 +67,47 @@ def test_goal_prohibitions_cannot_be_dropped_to_fit_handoff_budget():
         build_bundle(goal, _target(), [], [], [], token_budget=256)
 
 
+def test_full_goal_and_all_acceptance_requirements_survive_handoff():
+    from pex_bridge.adapters.base import _bundle_as_prompt
+
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    goal.objective = "Public implementation detail. " * 160 + "Verify on both operating systems."
+    goal.acceptance_criteria = [f"Requirement {index} is verified" for index in range(33)]
+    goal.acceptance_criteria[0] = "Public test detail. " * 60 + "The Linux result must also pass."
+    bundle = build_bundle(goal, _target(), [], [], [])
+    assert bundle.goal_summary == goal.objective
+    assert bundle.acceptance_criteria == goal.acceptance_criteria
+    assert bundle.next_objective == goal.acceptance_criteria[0]
+    rendered = _bundle_as_prompt(bundle)
+    assert goal.objective in rendered
+    assert goal.acceptance_criteria[0] in rendered
+    assert goal.acceptance_criteria[-1] in rendered
+
+
+def test_shortened_supported_claim_cannot_complete_long_requirement():
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    criterion = "Public test detail. " * 60 + "The Linux result must also pass."
+    goal.acceptance_criteria = [criterion, "release artifact exists"]
+    partial = _item(
+        "shortened-result", "Only the prefix was verified", now,
+        kind=ContextKind.RESULT, provenance=SourceKind.TEST,
+        metadata={"verified": True, "status": "supported",
+                  "claim": {"statement": criterion[:997].rstrip() + "..."}},
+    )
+    bundle = build_bundle(goal, _target(), [partial], [], [])
+    assert bundle.next_objective == criterion
+
+
+def test_long_acceptance_requirement_cannot_be_dropped_to_fit_budget():
+    now = datetime.now(UTC)
+    goal = _goal(now)
+    goal.acceptance_criteria = ["Verify all mandatory release requirements. " * 100]
+    with pytest.raises(ValueError, match="mandatory goal contract"):
+        build_bundle(goal, _target(), [], [], [], token_budget=256)
+
+
 def _item(
     item_id: str,
     content: str,

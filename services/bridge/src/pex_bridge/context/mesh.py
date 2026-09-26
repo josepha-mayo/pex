@@ -343,9 +343,12 @@ def build_bundle(
         reverse=True,
     )[:_MAX_HANDOFF_CANDIDATES]
 
-    goal_summary = _safe_text(goal.objective, 4_000)
+    def contract_text(value: object) -> str:
+        return (redact_text(str(value))[0] or "").strip()
+
+    goal_summary = contract_text(goal.objective)
     acceptance_criteria = [
-        text for value in goal.acceptance_criteria[:32] if (text := _safe_text(value, 1_000))
+        text for value in goal.acceptance_criteria if (text := contract_text(value))
     ]
     # Human goal boundaries are mandatory contract, not ranked context items.
     # Preserve their full redacted text; reject an undersized budget below
@@ -358,7 +361,7 @@ def build_bundle(
             ("Non-goal", goal.non_goals),
         )
         for value in values
-        if (cleaned := (redact_text(str(value))[0] or "").strip())
+        if (cleaned := contract_text(value))
     ]
     delivered_evidence = [
         item
@@ -391,7 +394,7 @@ def build_bundle(
             if isinstance(claim := item.metadata.get("claim"), dict)
         }
         for criterion in goal.acceptance_criteria:
-            cleaned = _safe_text(criterion, 1_000)
+            cleaned = contract_text(criterion)
             if cleaned.casefold() in evidenced:
                 continue
             if cleaned:
