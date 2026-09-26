@@ -56,12 +56,24 @@ score. Final recording remains. See the
 
 </details>
 
-![PEX Inspector showing the goal-first supervision harness](docs/demo/assets/pex-inspector-browser-rc13.jpg)
+![PEX Home showing the worker rail and the next step](docs/demo/assets/pex-home-browser-6ce9330.png)
 
-*RC13 browser presentation capture of the current harness layout. Browser mode intentionally cannot read
-the desktop bridge bearer, so unavailable canonical state stays visibly disabled
-instead of being invented. Authenticated live and package evidence is retained in
-the [testing guide](docs/TESTING.md).*
+*Browser capture at `6ce9330`: the worker rail, goal, and next step remain primary.
+This capture shows an unavailable bridge, with worker state explicitly unavailable.
+It is layout evidence, not a live-supervision receipt.*
+
+<details>
+<summary>Goal boundaries and optional details</summary>
+
+![PEX goal editor showing separate constraints, non-goals, and forbidden outcomes](docs/demo/assets/pex-goal-boundaries-browser-907395e.png)
+
+*Browser-verified at `907395e` against a throwaway bridge with cloud reasoning
+disabled and automatic dispatch capped at zero. The forbidden-outcome field
+accepted a draft value and retained a visible focus outline. No goal was submitted,
+key saved, or worker attached. See the [testing guide](docs/TESTING.md) for native
+package and live-provider evidence.*
+
+</details>
 
 ## The pain it removes
 

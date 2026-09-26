@@ -14,7 +14,7 @@ visual smoke. Native bridge readiness is delivered to the webview as a typed
 event, with bounded polling retained for recovery. This is Ubuntu/Xvfb evidence,
 not a physical Linux workstation acceptance claim.
 
-The later `c0220d6` connection UI was exercised in browser mode against a
+The connection UI at `c0220d6` was exercised in browser mode against a
 throwaway, test-scoped local bridge with cloud reasoning disabled. The Codex CLI
 button completed a real isolated App Server handshake, returned Basic support,
 and populated Home with available CLI threads; no model turn was requested.
