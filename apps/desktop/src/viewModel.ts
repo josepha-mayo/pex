@@ -31,6 +31,24 @@ export function contextGoal(
   return goals.find((goal) => sessions.some((session) => session.goal_id === goal.id)) || goals[0];
 }
 
+export function contextReadPath(projectId = "", goalId = ""): string {
+  const query = new URLSearchParams();
+  if (projectId) query.set("project_id", projectId);
+  if (goalId) query.set("goal_id", goalId);
+  return `/v1/context${query.size ? `?${query}` : ""}`;
+}
+
+export function contextForWorker(
+  items: ContextItem[], sessions: SessionRow[], selectedSessionId?: string,
+): ContextItem[] {
+  if (!selectedSessionId) return items;
+  const selected = sessions.find((session) => session.id === selectedSessionId);
+  if (!selected) return [];
+  return items.filter((item) => item.goal_id == null || (
+    Boolean(selected.goal_id) && item.goal_id === selected.goal_id
+  ));
+}
+
 export function actionReviewIncomplete(action?: LastAction | null): boolean {
   return action?.action === "NOOP" && (
     action.inference_status === "failed" || action.inference_status === "timeout"

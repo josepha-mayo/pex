@@ -82,6 +82,8 @@ import {
   updateGoalPayload,
   currentGoals,
   contextGoal,
+  contextReadPath,
+  contextForWorker,
   cursorRejectionReasonCopy,
   canonicalEventCursor,
   encodeWebSocketTokenProtocol,
@@ -919,10 +921,10 @@ test("intervention mutations and context stay bound to their actual live source"
   assert.match(deck, /mutationsAvailable=\{auditMutationsAvailable\}/u);
   assert.match(
     app,
-    /useEffect\(\(\) => \{\s*detailRequestSequence\.current \+= 1;\s*setContextItems\(\[\]\);\s*setContextProjectId\(null\);\s*markCanonical\("context", "reset"\);\s*\}, \[markCanonical, projectId\]\)/u,
+    /useEffect\(\(\) => \{\s*detailRequestSequence\.current \+= 1;\s*setContextItems\(\[\]\);\s*setContextProjectId\(null\);\s*setContextGoalId\(null\);\s*markCanonical\("context", "reset"\);\s*\}, \[markCanonical, projectId, contextScopeGoalId\]\)/u,
   );
   assert.match(app, /canonicalResourceIsFreshForScope\([\s\S]*?contextProjectId,[\s\S]*?projectId/u);
-  assert.match(app, /contextItems=\{contextProjectId === projectId \? contextItems : \[\]\}/u);
+  assert.match(app, /contextItems=\{contextProjectId === projectId && contextGoalId === contextScopeGoalId \? contextItems : \[\]\}/u);
 });
 
 test("offline state immediately suppresses stale agent prompts", async () => {
@@ -2204,4 +2206,31 @@ test("two-pet settings have no generation, import controls, or custom roster", a
   assert.doesNotMatch(types, /HatchJobRow|HatchBaseCandidateRequest|HatchCap/);
   assert.match(app, /\/2 available/);
   assert.match(settings, /onPetVisible/);
+});
+
+
+test("context requests bind goal and project without empty query fields", () => {
+  assert.equal(contextReadPath(), "/v1/context");
+  assert.equal(contextReadPath("", "goal/a"), "/v1/context?goal_id=goal%2Fa");
+  const query = new URL(contextReadPath("project a", "goal/a"), "http://localhost").searchParams;
+  assert.equal(query.get("project_id"), "project a");
+  assert.equal(query.get("goal_id"), "goal/a");
+  assert.equal(new URL(contextReadPath("project"), "http://localhost").searchParams.has("goal_id"), false);
+});
+
+test("worker context shares same-goal evidence without borrowing another goal", () => {
+  const sessions = [
+    { id: "worker", harness_type: "synthetic", status: "idle", goal_id: "goal-a" },
+    { id: "unattached", harness_type: "synthetic", status: "idle" },
+  ];
+  const items = [
+    { id: "own", project_id: "project", goal_id: "goal-a", source_session_id: "worker" },
+    { id: "teammate", project_id: "project", goal_id: "goal-a", source_session_id: "other-worker" },
+    { id: "other", project_id: "project", goal_id: "goal-b" },
+    { id: "shared", project_id: "project", goal_id: null },
+  ];
+  assert.deepEqual(contextForWorker(items, sessions, "worker").map(item => item.id), ["own", "teammate", "shared"]);
+  assert.deepEqual(contextForWorker(items, sessions, "unattached").map(item => item.id), ["shared"]);
+  assert.deepEqual(contextForWorker(items, sessions, "missing"), []);
+  assert.equal(contextForWorker(items, sessions), items);
 });

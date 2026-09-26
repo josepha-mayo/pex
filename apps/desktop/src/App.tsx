@@ -103,6 +103,7 @@ import {
   canonicalResourceIsFreshForScope,
   canonicalResourcesAreFresh,
   createGoalPayload,
+  contextReadPath,
   currentGoals,
   canonicalEventCursor,
   encodeWebSocketTokenProtocol,
@@ -404,6 +405,7 @@ export function App() {
   const [deck, setDeck] = useState<DeckData>({});
   const [contextItems, setContextItems] = useState<ContextItem[]>([]);
   const [contextProjectId, setContextProjectId] = useState<string | null>(null);
+  const [contextGoalId, setContextGoalId] = useState<string | null>(null);
   const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [handoffAssimilation, setHandoffAssimilation] =
     useState<Record<string, HandoffAssimilationStatus | "unreachable">>({});
@@ -1055,6 +1057,7 @@ export function App() {
   const current = selectedId ? explicitlySelected : selectPrimarySession(pet ? homeSessions : sessions);
   const attachedGoal = availableGoals.find((goal) => goal.id === current?.goal_id);
   const projectId = current?.project_id || attachedGoal?.project_id || current?.cwd || "";
+  const contextScopeGoalId = current?.goal_id || "";
   const identitySelectedProjectId = identityTargetProjectId ?? projectId;
   const identityLoading = identityConflictLoading || identityStatusLoading;
   const identityError = [identityConflictError, identityStatusError]
@@ -1065,8 +1068,9 @@ export function App() {
     detailRequestSequence.current += 1;
     setContextItems([]);
     setContextProjectId(null);
+    setContextGoalId(null);
     markCanonical("context", "reset");
-  }, [markCanonical, projectId]);
+  }, [markCanonical, projectId, contextScopeGoalId]);
 
   useEffect(() => {
     identitySelectionRevision.current += 1;
@@ -1156,7 +1160,7 @@ export function App() {
       markCanonical("interventions", "loading");
       if (includeDeck) markCanonical("deck", "loading");
     }
-    const contextPath = projectId ? `/v1/context?project_id=${encodeURIComponent(projectId)}` : "/v1/context";
+    const contextPath = contextReadPath(projectId, contextScopeGoalId);
     const interventionRequest = bridgeJson<Intervention[]>(
       "/v1/interventions?include_handoff_bundle=true",
       { signal },
@@ -1185,6 +1189,7 @@ export function App() {
     if (contextResult.status === "fulfilled" && Array.isArray(contextResult.value)) {
       setContextItems(contextResult.value);
       setContextProjectId(projectId);
+      setContextGoalId(contextScopeGoalId);
       markCanonical("context", "fresh");
     } else {
       markCanonical("context", "failed", "Context could not be refreshed.");
@@ -1234,7 +1239,7 @@ export function App() {
     // A mutation-triggered refresh can supersede the first visible read. The
     // newest accepted response owns the loading state even when it did not set it.
     setDetailsLoading(false);
-  }, [markCanonical, projectId]);
+  }, [markCanonical, projectId, contextScopeGoalId]);
 
   const loadProjectIdentityConflicts = useCallback(async (options: {
     signal?: AbortSignal;
@@ -1492,12 +1497,14 @@ export function App() {
     "context",
     contextProjectId,
     projectId,
-  );
+  ) && contextGoalId === contextScopeGoalId;
   const inspectorCanonicalStateAvailable = sessionStateFresh
     && goalStateFresh
     && goalEvidenceFresh
     && contextStateFresh;
-  const inspectorIssue = inspectorCanonicalIssue(
+  const inspectorIssue = !bridgeError && contextGoalId !== contextScopeGoalId
+    ? "Checking context for the selected worker…"
+    : inspectorCanonicalIssue(
     canonicalResources, bridgeError, projectId, contextProjectId, Boolean(attachedGoal),
   );
   const deckMutationsAvailable = canonicalResourcesAreFresh(
@@ -1519,7 +1526,7 @@ export function App() {
   const compactGoalIssue = canonicalResourceIssue(canonicalResources, ["goals"]);
   const deckIssue = bridgeError
     ? "Bridge offline. Cached rows below are not current."
-    : projectId && contextProjectId !== projectId
+    : (projectId && contextProjectId !== projectId) || contextGoalId !== contextScopeGoalId
       ? "Checking canonical context for the selected projectâ€¦"
       : canonicalResourceIssue(canonicalResources, ["deck", "context", "interventions"])
         || detailsError;
@@ -2755,11 +2762,11 @@ export function App() {
           auditInterventions={displayedInterventions}
           handoffAssimilation={handoffAssimilation}
           attentionMetrics={attentionMetrics}
-          contextItems={contextProjectId === projectId ? contextItems : []}
+          contextItems={contextProjectId === projectId && contextGoalId === contextScopeGoalId ? contextItems : []}
           fingerprints={deck.fingerprints || []}
           adapters={deck.adapters || []}
           bench={bench}
-          selectedSessionId={current?.id}
+          selectedSessionId={selectedId || current?.id}
           loading={detailsLoading}
           error={deckIssue}
           mutationsAvailable={deckMutationsAvailable}

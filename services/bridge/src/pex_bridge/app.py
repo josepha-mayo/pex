@@ -5716,10 +5716,25 @@ def create_app() -> FastAPI:
     @app.get("/v1/context")
     async def list_context(
         project_id: str | None = Query(default=None, max_length=MAX_PATH_CHARS),
+        goal_id: str | None = Query(default=None, min_length=1, max_length=MAX_ID_CHARS),
         limit: int = Query(default=200, ge=1, le=1000),
         offset: int = Query(default=0, ge=0, le=1_000_000),
         _: None = Depends(_require_token),
     ):
+        if goal_id:
+            goal = await state.store.get_goal(goal_id)
+            if goal is None:
+                raise HTTPException(404, "goal not found")
+            return [
+                item.model_dump(mode="json")
+                for item in await state.store.list_context_for_authority(
+                    project_id or goal.project_id,
+                    goal_id=goal_id,
+                    include_project_wide=True,
+                    limit=limit,
+                    offset=offset,
+                )
+            ]
         if not project_id:
             goals = await state.store.list_goals_page(limit=1)
             project_id = goals[0].project_id if goals else None

@@ -27,6 +27,7 @@ from pex_protocol.context import (
     ProgressReport,
 )
 from pex_protocol.enums import ContextKind, EventPhase, EventType, HarnessType
+from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent, HarnessSession
 from pex_protocol.supervisor import SupervisorResult
 from pex_supervisor.loop import _action_from_proposal
@@ -2351,6 +2352,51 @@ async def test_context_listing_is_paginated_and_bounded(client: AsyncClient):
             params={"project_id": "pagination-project", "limit": 1001},
         )
     ).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_goal_context_filters_before_pagination_and_keeps_shared_facts(client):
+    now = datetime.now(UTC)
+    for goal_id in ("context-goal-a", "context-goal-b"):
+        await state.store.upsert_goal(Goal(
+            id=goal_id, project_id="context-project", title=goal_id, objective="Verify work",
+            created_at=now, updated_at=now,
+        ))
+    for index, goal_id in enumerate((
+        "context-goal-a", "context-goal-a", None,
+        "context-goal-b", "context-goal-b", "context-goal-b",
+    )):
+        await state.store.add_context(ContextItem(
+            id=f"scoped-context-{index}", project_id="context-project", goal_id=goal_id,
+            kind=ContextKind.FACT, content=f"fact {index}",
+            valid_from=now + timedelta(seconds=index),
+        ))
+    query = {"project_id": "context-project", "goal_id": "context-goal-a", "limit": 2}
+    first = await client.get("/v1/context", params=query)
+    assert first.status_code == 200
+    assert [item["id"] for item in first.json()] == ["scoped-context-1", "scoped-context-0"]
+    second = await client.get("/v1/context", params={**query, "offset": 2})
+    assert [item["id"] for item in second.json()] == ["scoped-context-2"]
+    inferred = await client.get("/v1/context", params={"goal_id": "context-goal-a", "limit": 2})
+    assert inferred.json() == first.json()
+    absent = await client.get("/v1/context", params={"goal_id": "unknown-goal"})
+    assert absent.status_code == 404
+    invalid = await client.get("/v1/context", params={"goal_id": ""})
+    assert invalid.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_goal_context_rejects_another_projects_identity(client):
+    now = datetime.now(UTC)
+    for project_id in ("context-project-a", "context-project-b"):
+        await state.store.upsert_goal(Goal(
+            id=f"goal-{project_id}", project_id=project_id, title="Verify", objective="Verify work",
+            created_at=now, updated_at=now,
+        ))
+    response = await client.get("/v1/context", params={
+        "project_id": "context-project-b", "goal_id": "goal-context-project-a",
+    })
+    assert response.status_code == 409
 
 
 @pytest.mark.asyncio

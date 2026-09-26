@@ -25,6 +25,7 @@ import {
   canOpenSession,
   contextHealthCopy,
   contextGoal,
+  contextForWorker,
   contextItemMarks,
   fingerprintCompletionReliability,
   fingerprintFailureModes,
@@ -983,7 +984,8 @@ function ContextView({
 }) {
   const selected = sessions.find((session) => session.id === selectedSessionId);
   const goal = contextGoal(goals, sessions, selectedSessionId);
-  const staleCount = items.filter((item) => isStale(item.stale_after)).length;
+  const visibleItems = contextForWorker(items, sessions, selectedSessionId);
+  const staleCount = visibleItems.filter((item) => isStale(item.stale_after)).length;
   const health = contextHealthCopy(selected, staleCount);
 
   return (
@@ -1015,8 +1017,8 @@ function ContextView({
         )}
       </aside>
       <div className="context-list">
-        {items.length ? items.map((item) => {
-          const marks = contextItemMarks(item, items);
+        {visibleItems.length ? visibleItems.map((item) => {
+          const marks = contextItemMarks(item, visibleItems);
           return (
           <article
             className={`context-item ${marks.stale ? "stale" : ""} ${marks.superseded ? "superseded" : ""}`}
