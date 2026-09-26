@@ -2861,9 +2861,16 @@ html.pet-shell #root {
   .supervision-loop > div:last-child { grid-column: 1 / -1; }
 }
 
-@media (max-width: 840px) {
-  .topbar { padding-inline: 14px; }
+@media (max-width: 960px) {
+  .topbar { gap: 10px; padding-inline: 14px; }
   .topbar-state { display: none; }
+  .surface-switch button { padding-inline: 9px; }
+  .topbar-settings { margin-left: 2px; }
+  .compact-surface { grid-template-columns: 184px minmax(0, 1fr); }
+  .compact-companion { padding: clamp(20px, 3vw, 32px); }
+}
+
+@media (max-width: 840px) {
   .surface-switch { margin-left: auto; }
   .inspector-shell,
   .settings-page { padding-inline: 20px; }
