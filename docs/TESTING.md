@@ -727,3 +727,16 @@ optional AgentCore endpoint proposes an action.
   no upstream model call was made and no credit or card funds were consumed.
   This establishes the client contract, not live provider compatibility,
   streaming harness integration or comparative agent performance.
+- A credential-free `UnixChatRelayTransport` now maps the SDK's fixed chat
+  route to the framed controller relay. It bounds request/response bytes,
+  validates response identity and model, closes the socket, and refuses other
+  routes, changed models and streaming before connecting. SDK callers must
+  configure `max_retries=0`; the transport alone cannot disable SDK retries.
+  Thirty-one relay/transport checks passed on Windows with one Linux skip,
+  including actual OpenAI SDK parsing over an injected socket and one-attempt
+  failure behavior. A real WSL Unix socket round trip through this transport
+  also passed alongside the isolated-worker request (24 async cases deselected,
+  eight host pytest config/marker warnings). Lint passed. The production
+  isolated supervisor is still offline: model construction, sandbox socket
+  mounting and action-time receipt integration are not yet wired into it.
+  No provider request or comparative performance claim follows from this check.

@@ -156,8 +156,8 @@ def test_actual_unix_relay_preserves_framing_and_deduplicates():
         calls = []
         async def backend(_body):
             calls.append(1)
-            return {"choices": [{"message": {"role": "assistant", "content": "local echo"}}]}
-        relay = PinnedModelRelay(model="pinned", max_calls=2,
+            return {"model": "pinned", "choices": [{"message": {"role": "assistant", "content": "local echo"}}]}
+        relay = PinnedModelRelay(model="pinned", max_calls=3,
                                 deadline=time.perf_counter()+5, backend=backend)
         with TemporaryDirectory(prefix="pex-model-") as root:
             path = Path(root) / "relay.sock"
@@ -197,8 +197,17 @@ def test_actual_unix_relay_preserves_framing_and_deduplicates():
                 assert proc.returncode == 0, stderr.decode()
                 content = json.loads(stdout)["body"]["choices"][0]["message"]["content"]
                 assert content == "local echo"
+                from pex_supervisor.relay_transport import UnixChatRelayTransport
+                async with httpx.AsyncClient(transport=UnixChatRelayTransport(
+                    socket_path=str(path), model="pinned",
+                )) as client:
+                    response = await client.post(
+                        "http://pex-relay.invalid/v1/chat/completions",
+                        json=json.loads(request("transport_call"))["body"],
+                    )
+                    assert response.json()["choices"][0]["message"]["content"] == "local echo"
             finally:
                 server.close()
                 await server.wait_closed()
-            assert calls == [1, 1]
+            assert calls == [1, 1, 1]
     asyncio.run(check())
