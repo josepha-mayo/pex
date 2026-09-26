@@ -4,9 +4,11 @@ import type { GoalDraft } from "./GoalEditor";
 import { GoalEditor } from "./GoalEditor";
 import { AskPex } from "./AskPex";
 import { goalCompletionCopy } from "../completionPresentation";
+import { handoffAssimilationPresentation } from "../handoffPresentation";
 import type {
   Goal,
   GoalCompletion,
+  HandoffAssimilationStatus,
   LastAction,
   LedgerDecision,
   SessionRow,
@@ -36,6 +38,7 @@ export function Inspector({
   completion,
   goals,
   action,
+  handoffStatus,
   status,
   supervisorNotice,
   evidenceOpen,
@@ -74,6 +77,7 @@ export function Inspector({
   completion?: GoalCompletion | null;
   goals: Goal[];
   action?: LastAction | null;
+  handoffStatus?: HandoffAssimilationStatus | "unreachable";
   status: StatusCopy;
   supervisorNotice?: ReactNode;
   evidenceOpen: boolean;
@@ -113,6 +117,9 @@ export function Inspector({
   const ledger = partitionLedgerDecisions(ledgerDecisions);
   const actionName = recordedActionLabel(action);
   const actionWhy = actionExplanation(action);
+  const handoffCopy = action?.action === "FRESH_HANDOFF"
+    ? handoffAssimilationPresentation(handoffStatus)
+    : null;
 
   return (
     <section
@@ -224,6 +231,13 @@ export function Inspector({
               <span>Observed result</span>
               {humanize(action.result)}
             </p>
+          ) : null}
+          {handoffCopy ? (
+            <div className="result-line" role="status">
+              <span>Context handoff</span>
+              <strong>{handoffCopy.label}</strong>
+              <p>{handoffCopy.detail}</p>
+            </div>
           ) : null}
           {action?.verification_status || action?.evidence_tools?.length ? (
             <p className="result-line">

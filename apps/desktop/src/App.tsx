@@ -2705,6 +2705,7 @@ export function App() {
           completion={goalCompletion}
           goals={availableGoals}
           action={action}
+          handoffStatus={action?.id ? handoffAssimilation[action.id] : undefined}
           status={status}
           supervisorNotice={setup?.state !== "unavailable" ? supervisorNotice : null}
           evidenceOpen={evidenceOpen}

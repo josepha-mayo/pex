@@ -1490,25 +1490,30 @@ test("interventions expose honest handoff target-use evidence without claiming a
     new URL("./components/CommandDeck.tsx", import.meta.url),
     "utf8",
   );
+  const presentationSource = await readFile(new URL("./handoffPresentation.ts", import.meta.url), "utf8");
+  const inspectorSource = await readFile(new URL("./components/Inspector.tsx", import.meta.url), "utf8");
+  assert.match(deckSource, /import.*handoffAssimilationPresentation/u);
+  assert.match(inspectorSource, /import.*handoffAssimilationPresentation/u);
+  assert.match(appSource, /handoffStatus=\{action\?\.id \? handoffAssimilation\[action.id\]/u);
   const typesSource = await readFile(new URL("./types.ts", import.meta.url), "utf8");
 
   assert.match(appSource, /metadata\?\.operator_effect_id/u);
   assert.match(appSource, /\/v1\/handoffs\/\$\{encodeURIComponent\(effectId\)\}\/assimilation/u);
   assert.match(appSource, /statuses\[result\.value\.status\.handoff_intervention_id\]/u);
   assert.match(appSource, /handoffAssimilation=\{handoffAssimilation\}/u);
-  assert.match(deckSource, /Context delivered · target use not observed/u);
-  assert.match(deckSource, /Target-use check unreachable/u);
-  assert.match(deckSource, /this is not evidence that the target ignored the context/u);
+  assert.match(presentationSource, /Context delivered · target use not observed/u);
+  assert.match(presentationSource, /Target-use check unreachable/u);
+  assert.match(presentationSource, /this is not evidence that the target ignored the context/u);
   assert.match(appSource, /statuses\[effectId\] = "unreachable"/u);
-  assert.match(deckSource, /Target acknowledged receipt · self-attested/u);
-  assert.match(deckSource, /Relevant target action observed · behavioral evidence/u);
-  assert.match(deckSource, /Context delivered · legacy monitoring unavailable/u);
-  assert.match(deckSource, /predates the immutable typed-evidence candidate index/u);
-  assert.match(deckSource, /predates the causal target-action watermark/u);
-  assert.doesNotMatch(deckSource, /predates the target evidence watermark/u);
-  assert.match(deckSource, /Handoff not delivered · no target-use evidence/u);
-  assert.match(deckSource, /Assimilation evidence unavailable/u);
-  assert.match(deckSource, /possible failure; that observation is not proof/u);
+  assert.match(presentationSource, /Target acknowledged receipt · self-attested/u);
+  assert.match(presentationSource, /Relevant target action observed · behavioral evidence/u);
+  assert.match(presentationSource, /Context delivered · legacy monitoring unavailable/u);
+  assert.match(presentationSource, /predates the immutable typed-evidence candidate index/u);
+  assert.match(presentationSource, /predates the causal target-action watermark/u);
+  assert.doesNotMatch(presentationSource, /predates the target evidence watermark/u);
+  assert.match(presentationSource, /Handoff not delivered · no target-use evidence/u);
+  assert.match(presentationSource, /Assimilation evidence unavailable/u);
+  assert.match(presentationSource, /possible failure; that observation is not proof/u);
   assert.match(deckSource, /Exact delivered bundle/u);
   assert.match(deckSource, /item\.proposed_action\?\.payload\?\.bundle/u);
   assert.match(appSource, /\/v1\/interventions\?include_handoff_bundle=true/u);
@@ -1517,6 +1522,7 @@ test("interventions expose honest handoff target-use evidence without claiming a
   assert.match(typesSource, /immutable_dispatch_candidate_index/u);
   assert.match(typesSource, /capacity_limited: false/u);
 });
+
 
 test("pet overlay click-through is off unless settings explicitly enable it", async () => {
   const { petClickThroughEnabled } = await import("./releasePet.ts");

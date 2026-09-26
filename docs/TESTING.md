@@ -886,3 +886,15 @@ optional AgentCore endpoint proposes an action.
   evidence after all deliveries. This verifies routing beyond the newest 64
   handoffs. No throughput improvement or live-model benefit is claimed from
   these correctness checks.
+- The complete handoff/permissions API suite passed at backend source
+  `d07ad75`: 73 tests in 229.40 seconds, including the capacity case and the
+  presentation-failure regressions. Inspector now displays the selected
+  handoff's canonical target-use status through the same presenter as the
+  command deck. Browser inspection at 1264 and 800 pixels confirmed the
+  behavioral-evidence label and exact artifact path using a controlled React
+  fixture. The fixture initially omitted required GoalEditor draft fields;
+  correcting that fixture rendered the panel. Temporary fixture files and
+  owned browser/dev server were removed/stopped. Desktop checks passed
+  (320 passed, five platform skips) and the production build passed. This
+  proves local UI rendering and API correctness, not live-model quality or
+  installed native-app acceptance at this revision.
