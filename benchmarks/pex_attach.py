@@ -545,10 +545,13 @@ async def supervise_isolated_codex(
     turn_timeout: float = 600,
     decision_timeout: float = 180,
     public_test_sha256: str | None = None,
+    offline_runtime: Path | None = None,
 ) -> dict[str, Any]:
     """Observe a completed/stopped worker turn, reason, maybe intervene, observe again."""
     if type(max_followups) is not int or not 0 <= max_followups <= 10:
         raise ValueError("max_followups is outside the public benchmark bound")
+    if offline_runtime is not None and public_test_sha256 is not None:
+        raise ValueError("offline isolation cannot accept host-executed public test receipts")
     if (
         isinstance(turn_timeout, bool)
         or isinstance(decision_timeout, bool)
@@ -589,6 +592,7 @@ async def supervise_isolated_codex(
             goal_id=goal_id,
             control_dir=store_path.parent,
             timeout=min(remaining_budget(), decision_timeout),
+            **({"offline_runtime": offline_runtime} if offline_runtime is not None else {}),
         )
         elapsed = int((time.perf_counter() - started) * 1000)
         backend = decision.get("backend") or {}
@@ -711,6 +715,8 @@ def _audit(
         "model_name": decision.get("model_name"),
         "input_tokens": decision.get("input_tokens") or 0,
         "output_tokens": decision.get("output_tokens") or 0,
+        **({"execution_boundary": decision["execution_boundary"]}
+           if "execution_boundary" in decision else {}),
     }
 
 
@@ -724,6 +730,7 @@ async def _decide_out_of_process(
     goal_id: str,
     control_dir: Path,
     timeout: float,
+    offline_runtime: Path | None = None,
 ) -> dict[str, Any]:
     if len(task_md) > _MAX_TASK_CHARS:
         raise RuntimeError("public benchmark task exceeds the control limit")
@@ -756,6 +763,17 @@ async def _decide_out_of_process(
                 else "stopped"
             ),
         }
+        if offline_runtime is not None:
+            if (
+                control_payload["public_observation"].get("controller_verification") is not None
+                or control_payload["public_observation"].get("pytest") is not None
+            ):
+                raise RuntimeError("offline isolation cannot rebind host-executed test evidence")
+            # Validate host session identity first, then expose only its public
+            # mount identity. Never rewrite an executed command or test receipt.
+            control_payload["project_id"] = "/workspace"
+            control_payload["session"]["project_id"] = "/workspace"
+            control_payload["session"]["cwd"] = "/workspace"
         encoded_request = json.dumps(
             control_payload,
             ensure_ascii=False,
@@ -769,16 +787,18 @@ async def _decide_out_of_process(
             handle.write(encoded_request)
             handle.flush()
             os.fsync(handle.fileno())
+        if offline_runtime is None:
+            command = [sys.executable, "-I", str(PROCESS), str(request_path), str(response_path)]
+        else:
+            from benchmarks.linux_sandbox import supervisor_command
+
+            command = supervisor_command(workspace, offline_runtime, Path(tmp))
         proc = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "-I",
-            str(PROCESS),
-            str(request_path),
-            str(response_path),
+            *command,
             cwd=workspace,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
-            env=_supervisor_environment(),
+            env={} if offline_runtime is not None else _supervisor_environment(),
         )
         try:
             await asyncio.wait_for(proc.wait(), timeout=timeout)
@@ -800,7 +820,17 @@ async def _decide_out_of_process(
             )
         except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
             raise RuntimeError("supervisor response is not valid UTF-8 JSON") from exc
-        return _validate_decision(decoded, session_id=session.id, goal_id=goal_id)
+        decision = _validate_decision(decoded, session_id=session.id, goal_id=goal_id)
+        if offline_runtime is not None:
+            if decision["used_llm"] or decision["input_tokens"] or decision["output_tokens"]:
+                raise RuntimeError("offline supervisor reported live inference")
+            decision["execution_boundary"] = {
+                "mode": "offline-linux-bwrap",
+                "request_sha256": hashlib.sha256(encoded_request).hexdigest(),
+                "response_sha256": hashlib.sha256(raw_response).hexdigest(),
+                "model_transport": "disabled",
+            }
+        return decision
 
 
 async def _execute_public_intervention(

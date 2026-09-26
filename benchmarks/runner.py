@@ -42,6 +42,8 @@ _CONTROLLER_FILES = (
     "cursor_isolated_stop.py",
     "cursor_capture.py",
     "pex_supervisor_process.py",
+    "linux_sandbox.py",
+    "linux_supervisor_runtime.py",
     "report.py",
     "runner.py",
 )

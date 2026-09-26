@@ -471,3 +471,21 @@ optional AgentCore endpoint proposes an action.
   React reported main at 1,106 ms and settings at 2,966 ms. The Home screenshot
   was also inspected. This is an exact-run pass; the preceding visual failure
   remains relevant to startup reliability, and live worker quality is unproven.
+- The comparison supervision loop now has an explicit `offline_runtime` option.
+  It validates host session identity before mapping cwd/project to `/workspace`,
+  uses the audited Linux boundary, forwards no host environment and records
+  request/response SHA-256 hashes in each action audit. Host-executed pytest
+  evidence and public-test execution are refused in this mode rather than
+  relabelled as isolated evidence. Live inference reports are also refused.
+  An actual WSL loop smoke used a controlled worker: missing `report.json` led
+  to `SEND_NUDGE`, one same-session continuation created the report, and the
+  next isolated PEX decision returned `NOOP`. The retained
+  [loop receipt](evidence/linux-isolated-supervision-loop-2026-09-26.json) and
+  [exact driver](evidence/linux-isolated-supervision-loop-driver.txt) identify
+  this controlled scope. No Codex model turn, provider call, public pytest,
+  natural-task benchmark eligibility or performance improvement is claimed.  The broad local run recorded 165 passes and six failures. Two new fixture
+  failures were corrected; four exposed an import-order dependency in the
+  evaluator test loader, now loaded with its package-qualified module name.
+  All ten targeted checks passed after those repairs. Three fingerprint cases
+  also passed: controller identity now includes the sandbox and runtime builder
+  alongside the Codex protocol journal. The entire broad suite was not rerun.

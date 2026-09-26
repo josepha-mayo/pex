@@ -1,0 +1,30 @@
+import asyncio, hashlib, json, sys
+from pathlib import Path
+sys.path[:0] = ['/mnt/d/PEX-work', '/mnt/d/PEX-work/build/isolated-supervisor-runtime/public-runtime-v2/site-packages']
+from benchmarks.pex_attach import supervise_isolated_codex
+from pex_protocol.session import HarnessSession
+from pex_protocol.enums import HarnessType, SessionStatus
+root = Path('/mnt/d/PEX-work/build/isolated-supervisor-runtime/loop-attempt-1')
+root.mkdir()
+workspace = root / 'worker'
+workspace.mkdir()
+task = 'Write report.json.\nAcceptance criteria:\n- report.json exists\n'
+(workspace / 'TASK.md').write_text(task)
+session = HarnessSession(id='codex:controlled-offline', harness_type=HarnessType.CODEX, vendor_session_id='controlled-offline', project_id=str(workspace), cwd=str(workspace), status=SessionStatus.STOPPED)
+class ControlledWorker:
+    isolated_agent_messages = ['All done.']
+    last_turn_id = 'turn-1'
+    async def send_message(self, received_session, text):
+        assert received_session is session
+        assert 'report.json' in text
+        self.last_turn_id = 'turn-2'
+        return True
+    async def wait_for_turn_completion(self, received_session, turn, timeout):
+        assert received_session is session and turn == 'turn-2'
+        (workspace / 'report.json').write_text('{"status":"complete"}\n')
+        self.isolated_agent_messages.append('Created report.json.')
+        return {'status':'completed'}
+result = asyncio.run(supervise_isolated_codex(ControlledWorker(), session, workspace, task, store_path=root/'private'/'store.sqlite', max_followups=1, offline_runtime=root.parent/'public-runtime-v2', turn_timeout=30, decision_timeout=10))
+receipt = {'schema':'pex.offline-isolated-supervision-loop.v1', 'scope':'Controlled worker continuation; no Codex model turn, provider call, public pytest or comparative performance.', 'parent_source_sha256':hashlib.sha256(Path('/mnt/d/PEX-work/benchmarks/pex_attach.py').read_bytes()).hexdigest(), 'runtime_manifest_sha256':hashlib.sha256((root.parent/'public-runtime-v2/runtime-manifest.json').read_bytes()).hexdigest(), 'report_sha256':hashlib.sha256((workspace/'report.json').read_bytes()).hexdigest(), 'result':result}
+(root/'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n')
+print(json.dumps({'followups':result['followups'],'actions':[a['proposed_action']['type'] for a in result['audits']], 'used_llm':result['used_llm'], 'observed_files':result['observed_files']}))

@@ -531,7 +531,7 @@ def _four_arm():
 
 def _evaluator():
     path = Path(__file__).resolve().parents[2] / "benchmarks" / "evaluator.py"
-    spec = importlib.util.spec_from_file_location("pexbench_evaluator", path)
+    spec = importlib.util.spec_from_file_location("benchmarks.pexbench_evaluator", path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader
     spec.loader.exec_module(module)
@@ -935,14 +935,17 @@ def test_benchmark_boundary_hashing_streams_files(tmp_path, monkeypatch):
     assert boundary.workspace_manifest_sha256(tmp_path) == expected
 
 
-def test_controller_fingerprint_binds_exact_codex_protocol_journal(monkeypatch):
+@pytest.mark.parametrize(
+    "source_name", ["codex_protocol_journal.py", "linux_sandbox.py", "linux_supervisor_runtime.py"],
+)
+def test_controller_fingerprint_binds_execution_sources(monkeypatch, source_name):
     runner = _runner()
     assert "codex_protocol_journal.py" in runner._CONTROLLER_FILES
     original = runner.controller_sha256()
     real_hash = runner._bounded_file_sha256
 
     def changed_journal(path, limit, label):
-        if path.name == "codex_protocol_journal.py":
+        if path.name == source_name:
             return "0" * 64
         return real_hash(path, limit, label)
 
