@@ -11,7 +11,8 @@ permissions:
 
 concurrency:
   group: checks-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Main's Windows suite must finish even when another verified fix is pushed.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:

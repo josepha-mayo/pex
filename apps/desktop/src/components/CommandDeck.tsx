@@ -983,6 +983,7 @@ function ContextView({
   sourceFresh: boolean;
 }) {
   const selected = sessions.find((session) => session.id === selectedSessionId);
+  const selectedWorkerUnavailable = Boolean(selectedSessionId) && !selected;
   const goal = contextGoal(goals, sessions, selectedSessionId);
   const visibleItems = contextForWorker(items, sessions, selectedSessionId);
   const staleCount = visibleItems.filter((item) => isStale(item.stale_after)).length;
@@ -994,7 +995,7 @@ function ContextView({
         <p className="eyebrow">Active goal boundaries</p>
         {sourceFresh ? (
           <>
-            <h2>{goal?.title || (selected?.goal_id ? "Attached goal unavailable" : "No goal attached")}</h2>
+            <h2>{selectedWorkerUnavailable ? "Selected worker unavailable" : goal?.title || (selected?.goal_id ? "Attached goal unavailable" : "No goal attached")}</h2>
             {goal ? <>
             <ContextBoundary label="Constraints" values={goal?.constraints} />
             <ContextBoundary label="Forbidden outcomes" values={goal?.forbidden_outcomes} />
@@ -1002,7 +1003,9 @@ function ContextView({
             <ContextBoundary label="Preferences" values={goal?.preferences} />
             <ContextBoundary label="Acceptance" values={goal?.acceptance_criteria} />
             <ContextBoundary label="Required evidence" values={goal?.evidence_requirements} />
-            </> : <p>{selected?.goal_id
+            </> : <p>{selectedWorkerUnavailable
+              ? "The selected worker is not in the current session state. Select an available worker to inspect its context."
+              : selected?.goal_id
               ? "The attached goal is not in the current project state."
               : "Select a worker with an attached goal to inspect its boundaries."}</p>}
             <p className={`context-health ${health.warning ? "warning" : ""}`}>
@@ -1042,7 +1045,9 @@ function ContextView({
           </article>
           );
         }) : (
-          sourceFresh
+          sourceFresh && selectedWorkerUnavailable
+            ? <EmptyState title="Selected worker unavailable" body="Context cannot be shown until this worker is available or another worker is selected." />
+            : sourceFresh
             ? <EmptyState title="No durable context recorded" body="Facts, decisions, constraints, and artifacts appear only after real ingestion." />
             : <EmptyState title="Context unavailable" body="PEX could not refresh canonical context for this project." />
         )}
