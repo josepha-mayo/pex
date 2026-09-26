@@ -494,6 +494,35 @@ async def test_goal_context_query_can_include_project_wide_without_foreign_goal(
 
 
 @pytest.mark.asyncio
+async def test_supervisor_context_page_retains_shared_human_commitments_before_goal_facts(tmp_path):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        goal = _goal("busy-goal", "shared-project")
+        await store.upsert_goal(goal)
+        _, base = _pair(goal)
+        commitment = base.model_copy(update={"id": "shared-commitment", "goal_id": None})
+        await store.add_context(commitment)
+        for index in range(4):
+            await store.add_context(base.model_copy(update={
+                "id": f"fact-{index}", "kind": ContextKind.FACT,
+                "provenance": SourceKind.WORKSPACE,
+                "valid_from": base.valid_from + timedelta(minutes=index + 1),
+            }))
+        ordinary = await store.list_context_for_authority(
+            goal.project_id, goal_id=goal.id, include_project_wide=True, limit=2,
+        )
+        assert [item.id for item in ordinary] == ["fact-3", "fact-2"]
+        prioritized = await store.list_context_for_authority(
+            goal.project_id, goal_id=goal.id, include_project_wide=True,
+            prioritize_human_commitments=True, limit=2,
+        )
+        assert [item.id for item in prioritized] == ["shared-commitment", "fact-3"]
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_different_identity_forensic_successor_cannot_deny_live_goal_authority(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()

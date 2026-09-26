@@ -20,9 +20,11 @@ failed before fresh state was visible. The
 [exact-package default-renderer replay](https://github.com/josepha-mayo/pex/actions/runs/36254900699)
 also failed; a
 [software-compositing replay](https://github.com/josepha-mayo/pex/actions/runs/36254914344)
-passed Home, Settings, hidden pet and anonymous HTTP 401 checks. The Xvfb CI
-smoke now requests software compositing; the installed product's default renderer
-is unchanged. These results do not establish reliable physical-Linux startup or
+passed Home, Settings, hidden pet and anonymous HTTP 401 checks, but its
+[confirmation replay](https://github.com/josepha-mayo/pex/actions/runs/36255116707)
+failed the fresh-state gate. Software compositing therefore remains a diagnostic
+option and is not the CI default. The installed product's renderer is unchanged.
+These results do not establish reliable physical-Linux startup or
 accept the subsequent Context UI changes. The full workflow's Windows source
 job was still running when this checkpoint was recorded.
 

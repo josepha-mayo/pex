@@ -28463,6 +28463,7 @@ class Store:
         *,
         goal_id: str | None = None,
         include_project_wide: bool = False,
+        prioritize_human_commitments: bool = False,
         limit: int = MAX_LIST_QUERY_LIMIT,
         offset: int = 0,
     ) -> list[ContextItem]:
@@ -28502,13 +28503,20 @@ class Store:
                     live_binding = await _project_binding_snapshot(transaction, project_id)
                     query = "SELECT json FROM context_items WHERE project_binding = ?"
                     parameters = [live_binding]
+                query += " ORDER BY "
+                if prioritize_human_commitments:
+                    query += (
+                        "CASE WHEN json_extract(json, '$.provenance') = 'human' "
+                        "AND json_extract(json, '$.kind') IN ('constraint', 'decision') "
+                        "THEN 0 ELSE 1 END, "
+                    )
                 if goal_id is not None and include_project_wide:
-                    query += " ORDER BY CASE WHEN goal_id = ? THEN 0 ELSE 1 END, "
+                    query += "CASE WHEN goal_id = ? THEN 0 ELSE 1 END, "
                     parameters.append(goal_id)
                     query += "json_extract(json, '$.valid_from') DESC, id DESC LIMIT ? OFFSET ?"
                 else:
                     query += (
-                        " ORDER BY json_extract(json, '$.valid_from') DESC, id DESC "
+                        "json_extract(json, '$.valid_from') DESC, id DESC "
                         "LIMIT ? OFFSET ?"
                     )
                 parameters.extend((limit, offset))

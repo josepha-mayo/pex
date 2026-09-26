@@ -2,9 +2,12 @@
 
 # ruff: noqa: F401, F811 -- imported pytest fixture is injected by name.
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
-from pex_protocol.enums import Authority
+from pex_protocol.context import ContextItem
+from pex_protocol.enums import Authority, ContextKind, SourceKind
 from pex_protocol.supervisor import SupervisorResult
 from test_codex_correction_pipeline import (
     actual_observer_baseline_without_background_consumer,
@@ -93,6 +96,41 @@ async def test_supervisor_sees_trusted_route_state_without_capability_escalation
         assert "enables the private claimed-correction route" not in request.notes
     status = await case.store.get_autonomous_correction_grant_status(case.session.id)
     assert status["enabled"] is enabled
+
+
+async def test_busy_goal_does_not_hide_shared_human_constraint_from_supervision(
+    correction_pipeline,
+):
+    case = correction_pipeline
+    now = datetime.now(UTC) - timedelta(minutes=1)
+    commitment = ContextItem(
+        id="shared-human-constraint",
+        project_id=case.session.project_id,
+        goal_id=None,
+        kind=ContextKind.CONSTRAINT,
+        content="Keep the existing API behavior compatible.",
+        provenance=SourceKind.HUMAN,
+        source_refs=["operator:project-rule"],
+        valid_from=now,
+    )
+    await case.store.add_context(commitment)
+    for index in range(257):
+        await case.store.add_context(commitment.model_copy(update={
+            "id": f"busy-goal-fact-{index}",
+            "goal_id": case.session.goal_id,
+            "kind": ContextKind.FACT,
+            "provenance": SourceKind.WORKSPACE,
+            "valid_from": now + timedelta(seconds=1),
+            "content": f"Observed workspace fact {index}.",
+        }))
+    supervisor = _CapturingNoopSupervisor()
+    case.pipeline.supervisor = supervisor
+    await case.ingest_observed()
+    assert len(supervisor.requests) == 1
+    context = supervisor.requests[0].supervisor_context
+    assert context is not None
+    assert commitment.id in context.offered_context_ids
+    assert any(item.content == commitment.content for item in context.context_items)
 
 
 class _ForgedGrantSupervisor:
