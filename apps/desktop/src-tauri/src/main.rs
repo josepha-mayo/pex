@@ -43,6 +43,25 @@ const PET_NATIVE_DISMISSED_EVENT: &str = "pex-pet-native-dismissed";
 const BRIDGE_BOOTSTRAP_EVENT: &str = "pex-bridge-bootstrap";
 type HmacSha256 = Hmac<Sha256>;
 
+// Opt-in installed-startup diagnostics contain only fixed stage names and
+// timing. Never include tokens, provider settings, or IPC payloads.
+fn trace_desktop_startup(stage: &str) {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::OnceLock;
+    static START: OnceLock<Instant> = OnceLock::new();
+    static COUNT: AtomicUsize = AtomicUsize::new(0);
+    if std::env::var("PEX_DESKTOP_STARTUP_TRACE").as_deref() != Ok("1") {
+        return;
+    }
+    let start = START.get_or_init(Instant::now);
+    if COUNT.fetch_add(1, Ordering::Relaxed) < 64 {
+        eprintln!(
+            "PEX desktop startup trace: {stage} at {}ms",
+            start.elapsed().as_millis()
+        );
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum WindowCloseAction {
     ExitApplication,
@@ -642,10 +661,12 @@ async fn bridge_token(
     app: tauri::AppHandle,
     runtime: tauri::State<'_, BridgeRuntime>,
 ) -> Result<String, String> {
+    trace_desktop_startup("token IPC entered");
     // The UI can start several authenticated reads at once. Serialize their
     // pre-send identity proofs so a healthy single-process bridge is not
     // rejected because a burst of raw probes races its small listen backlog.
     let _verification = runtime.1.lock().await;
+    trace_desktop_startup("token identity lock acquired");
     let (attempt, token) = runtime
         .ready_token()
         .ok_or_else(|| "PEX bridge is not ready".to_string())?;
@@ -656,12 +677,14 @@ async fn bridge_token(
     .await
     .map_err(|_| "PEX bridge identity check could not complete".to_string())?;
     if verified {
+        trace_desktop_startup("token identity verified");
         if runtime
             .ready_token()
             .is_some_and(|(current_attempt, current_token)| {
                 current_attempt == attempt && current_token == token
             })
         {
+            trace_desktop_startup("token IPC returning");
             return Ok(token);
         }
         return Err(
@@ -681,7 +704,14 @@ async fn bridge_token(
 
 #[tauri::command]
 fn bridge_bootstrap_status(runtime: tauri::State<'_, BridgeRuntime>) -> BridgeBootstrapStatus {
-    runtime.status()
+    trace_desktop_startup("bootstrap IPC entered");
+    let status = runtime.status();
+    trace_desktop_startup(match status.phase {
+        BridgeBootstrapPhase::Starting => "bootstrap IPC returning starting",
+        BridgeBootstrapPhase::Ready => "bootstrap IPC returning ready",
+        BridgeBootstrapPhase::Failed => "bootstrap IPC returning failed",
+    });
+    status
 }
 
 #[tauri::command]
