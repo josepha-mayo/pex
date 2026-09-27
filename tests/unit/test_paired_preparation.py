@@ -4,11 +4,15 @@ import pytest
 
 from benchmarks import paired_preparation
 
+FINGERPRINTS = {harness: {"runtime_sha256": "a" * 64, "settings_sha256": "b" * 64}
+                for harness in ("codex", "opencode")}
+
 
 def prepare(path):
     return paired_preparation.prepare_experiment(
         path, run_id="prospective-1", seed="predeclared-order",
         models={"codex": "pinned/codex", "opencode": "pinned/opencode"},
+        worker_fingerprints=FINGERPRINTS,
     )
 
 
@@ -30,7 +34,8 @@ def test_full_pairs_have_identical_public_seeds_and_external_plan(tmp_path):
     for first, second in grouped.values():
         assert {first["condition"], second["condition"]} == {"baseline", "pex"}
         assert first["workspace"] != second["workspace"]
-        for field in ("model", "seed_manifest_sha256", "prompt_sha256", "protected_sha256"):
+        for field in ("model", "worker_profile_sha256", "seed_manifest_sha256",
+                      "prompt_sha256", "protected_sha256"):
             assert first[field] == second[field]
 
 
@@ -59,7 +64,8 @@ def test_invalid_configuration_cannot_reserve_a_directory(tmp_path):
     root = tmp_path / "experiment"
     with pytest.raises(ValueError, match="both harnesses"):
         paired_preparation.prepare_experiment(root, run_id="run", seed="seed",
-                                             models={"codex": "pinned"})
+                                             models={"codex": "pinned"},
+                                             worker_fingerprints=FINGERPRINTS)
     assert not root.exists()
 
 
@@ -85,3 +91,52 @@ def test_invalid_task_package_is_rejected_before_reservation(tmp_path, monkeypat
     with pytest.raises(RuntimeError, match="invalid PexBench suite"):
         prepare(root)
     assert not root.exists()
+
+
+@pytest.mark.parametrize("limits", [
+    {"task_wall_seconds": True}, {"task_wall_seconds": 0},
+    {"max_model_calls": 0}, {"max_followups": 11}, {"review_seconds": 601},
+])
+def test_invalid_limits_cannot_reserve_an_experiment(tmp_path, limits):
+    root = tmp_path / "experiment"
+    with pytest.raises(ValueError, match="execution budget"):
+        paired_preparation.prepare_experiment(
+            root, run_id="run", seed="seed", models={"codex": "pinned", "opencode": "pinned"},
+            worker_fingerprints=FINGERPRINTS, **limits,
+        )
+    assert not root.exists()
+
+
+@pytest.mark.parametrize("profile", [
+    {"runtime_sha256": "unknown", "settings_sha256": "b" * 64},
+    {"runtime_sha256": "a" * 64, "settings_sha256": "b" * 64, "extra": "ignored"},
+])
+def test_unknown_runtime_or_extra_configuration_cannot_be_predeclared(tmp_path, profile):
+    root = tmp_path / "experiment"
+    invalid = {**FINGERPRINTS, "codex": profile}
+    with pytest.raises(ValueError, match="fingerprints"):
+        paired_preparation.prepare_experiment(
+            root, run_id="run", seed="seed", models={"codex": "pinned", "opencode": "pinned"},
+            worker_fingerprints=invalid,
+        )
+    assert not root.exists()
+
+
+def test_changed_worker_settings_change_the_bound_profile(tmp_path):
+    original = prepare(tmp_path / "original")
+    changed = paired_preparation.prepare_experiment(
+        tmp_path / "changed", run_id="prospective-1", seed="predeclared-order",
+        models={"codex": "pinned/codex", "opencode": "pinned/opencode"},
+        worker_fingerprints={**FINGERPRINTS, "codex": {
+            "runtime_sha256": "a"*64, "settings_sha256": "c"*64,
+        }}, task_wall_seconds=300, review_seconds=60, max_model_calls=10, max_followups=1,
+    )
+    assert changed["budget"] == {
+        "task_wall_seconds": 300, "includes_worker_and_pex": True, "max_worker_model_calls": 10,
+        "max_pex_followups": 1, "max_review_seconds": 60, "evaluator_outside_task_budget": True,
+    }
+    for first, second in zip(original["schedule"], changed["schedule"], strict=True):
+        assert first["condition"] == second["condition"] and first["task"] == second["task"]
+        assert (first["worker_profile_sha256"] != second["worker_profile_sha256"]) == (
+            first["harness"] == "codex"
+        )

@@ -15,6 +15,8 @@ from benchmarks import boundary, evaluator, runner
 
 def prepare_experiment(
     destination: Path, *, run_id: str, seed: str, models: dict[str, str],
+    worker_fingerprints: dict[str, dict[str, str]], task_wall_seconds: int = 600,
+    max_model_calls: int = 100, max_followups: int = 2, review_seconds: int = 180,
 ) -> dict:
     """Create all pairs before execution; refuse reuse, including partial runs."""
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}", run_id):
@@ -28,6 +30,22 @@ def prepare_experiment(
         or any(ord(char) < 33 for char in value) for value in models.values()
     ):
         raise ValueError("both harnesses require pinned model identifiers")
+    if set(worker_fingerprints) != set(models) or any(
+        not isinstance(profile, dict) or set(profile) != {"runtime_sha256", "settings_sha256"}
+        or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value)
+               for value in profile.values()) for profile in worker_fingerprints.values()
+    ):
+        raise ValueError("both harnesses require runtime and settings fingerprints")
+    if (type(task_wall_seconds) is not int or not 1 <= task_wall_seconds <= 86_400
+            or type(max_model_calls) is not int or not 1 <= max_model_calls <= 1000
+            or type(max_followups) is not int or not 0 <= max_followups <= 10
+            or type(review_seconds) is not int or not 1 <= review_seconds <= task_wall_seconds):
+        raise ValueError("invalid shared execution budget")
+    profiles = {harness: {"model": models[harness], **worker_fingerprints[harness]}
+                for harness in sorted(models)}
+    profile_hashes = {harness: hashlib.sha256(json.dumps(
+        profile, sort_keys=True, separators=(",", ":"),
+    ).encode()).hexdigest() for harness, profile in profiles.items()}
     destination = destination.absolute()
     parent = destination.parent.resolve(strict=True)
     if parent != destination.parent or destination.exists() or runner._is_link_like(destination):
@@ -50,7 +68,8 @@ def prepare_experiment(
             f"{harness}:{task_id}:{name}"
         )):
             schedule.append({"harness": harness, "task": task_id, "condition": condition,
-                             "model": models[harness]})
+                             "model": models[harness],
+                             "worker_profile_sha256": profile_hashes[harness]})
     destination.mkdir(mode=0o700)
     workers = destination / "workers"
     workers.mkdir(mode=0o700)
@@ -75,9 +94,13 @@ def prepare_experiment(
     if runner.benchmark_sha256() != fingerprint:
         raise RuntimeError("benchmark sources changed during preparation; retain this aborted run")
     plan = {
-        "schema": "pex.paired-preparation.v1", "run_id": run_id,
+        "schema": "pex.paired-preparation.v2", "run_id": run_id,
         "randomization_seed": seed, "order_algorithm": "sha256_paired_blocks_v1",
         "benchmark_sha256": fingerprint, "schedule": rows,
+        "worker_profiles": profiles,
+        "budget": {"task_wall_seconds": task_wall_seconds, "includes_worker_and_pex": True,
+                   "max_worker_model_calls": max_model_calls, "max_pex_followups": max_followups,
+                   "max_review_seconds": review_seconds, "evaluator_outside_task_budget": True},
         "execution_boundary_verified": False, "presentation_eligible": False,
         "scope": "Prospective public-seed preparation only; no worker or evaluator executed.",
     }
