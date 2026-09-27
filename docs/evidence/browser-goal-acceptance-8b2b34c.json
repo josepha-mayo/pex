@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "source_commit": "8b2b34cf9f6a91c9705db000b835c42bcb6cbecc",
+  "observed_at_utc": "2026-09-27T02:03:30.6736336Z",
+  "browser": "Codex In-app Browser via CUA",
+  "execution": "Vite source UI and live bridge in temporary test profile",
+  "authentication": "Settings.for_test(require_auth=False), loopback only, no production auth change",
+  "worker": "synthetic:synth-1",
+  "cloud_reasoning": false,
+  "provider_calls": 0,
+  "checks": {
+    "goal_created_via_browser": true,
+    "acceptance_extracted": true,
+    "goal_attached_via_browser": true,
+    "deadline_created_utc": "2026-10-30T17:00:00Z",
+    "deadline_reloaded_in_editor": true,
+    "deadline_cleared_via_browser": true,
+    "preference_persisted": "Keep reports concise",
+    "intent_revision_after_edit": 2,
+    "page_reload_restored_goal_details": true,
+    "final_deadline": null,
+    "current_decisions": [
+      {
+        "kind": "rejected_approach",
+        "statement": "Replace report with a screenshot",
+        "status": "active"
+      },
+      {
+        "kind": "unresolved_question",
+        "statement": "Include timing?",
+        "status": "uncertain"
+      },
+      {
+        "kind": "decision",
+        "statement": "Keep the report format",
+        "status": "active"
+      }
+    ]
+  },
+  "screenshot": {
+    "local_path": "build/browser-goal-acceptance-8b2b34c.png",
+    "sha256": "0eb086b029a852e634f2744d79ef1271a4b3b4d91fc5245d4ec422cf2b598026"
+  },
+  "limitations": [
+    "Controlled synthetic worker, not real Codex/OpenCode performance",
+    "Source browser verification, not packaged native acceptance",
+    "No BYOK inference or performance benchmark performed",
+    "Playwright date fill showed a DOM value but did not update saved state; accessibility setValue was used for verified deadline flow"
+  ]
+}
