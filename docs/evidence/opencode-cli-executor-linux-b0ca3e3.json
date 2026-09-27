@@ -1,0 +1,36 @@
+{
+  "real_opencode": true,
+  "loopback_http": true,
+  "mounted_unix_relay": true,
+  "buffered_sse": true,
+  "buffered_sse_calls": 5,
+  "upstream_streaming": false,
+  "runtime_read_only": true,
+  "task_writable": true,
+  "tool_permission": "edit_allow_other_tools_deny",
+  "opencode_write_tool_completed": true,
+  "same_vendor_session": true,
+  "pex_followups": 1,
+  "public_tests_before": false,
+  "public_tests_after": true,
+  "worker_exit": 0,
+  "controller_calls": 5,
+  "scope": "Real OpenCode same-session repair with isolated deterministic PEX and public tests, controlled relay backend; no upstream provider call or comparative quality claim.",
+  "schema": "pex.opencode-cli-executor-linux.v1",
+  "source_commit_base": "b0ca3e3d8ae7e6a99fb13bffdd37a31f535c8c03",
+  "provider_calls": 0,
+  "limitations": [
+    "Scripted local model responses and induced defect; no natural-model performance evidence.",
+    "Executor runs inside caller-owned Linux boundary; whole-worker teardown remains required.",
+    "No baseline pair, hidden evaluator, or full formal benchmark runner.",
+    "Raw logs and runtime dependencies are retained locally as ignored build artifacts."
+  ],
+  "source_hashes": {
+    "benchmarks/opencode_cli.py": "13c03094ad7e54ba8eaa57819f4809bccb370bb8149e5ee651b22cf7f4ce1f1b",
+    "docs/evidence/opencode-cli-executor-linux-driver.txt": "ac98fd624a5b68ad5e7eee416cc128714f4b8163a693a10850672efad9dc3575",
+    "benchmarks/pex_attach.py": "0a9ed8ae5e295e62e2fb6f0fda5db228b417fc9d5a6518970d7b44a1be54580b",
+    "build/opencode-cli-executor-final-linux-stdout.jsonl": "54353e2921f1170ae559f916a00017635c59f4c27dff257de16774d5cb8a6976",
+    "build/opencode-cli-executor-final-linux-decisions.json": "04a191ae8b72b2a9005da6a9366ae0f9be50bc35c00aba0c458f399122aadc41",
+    "build/isolated-supervisor-runtime/public-runtime-f379031/runtime-manifest.json": "1b74579bf2b21c45923e785d43625972a57f9f7007dfbe91766358d0c844c7d6"
+  }
+}
