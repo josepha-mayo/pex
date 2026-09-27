@@ -56,10 +56,17 @@ const OBSERVABLE_SESSION_STATUSES = new Set([
 ]);
 
 function isCurrentlyObservableWorker(session: SessionRow): boolean {
+  const observationCapabilities = [
+    "observe_messages", "observe_thought_events", "observe_tool_calls",
+    "observe_file_edits", "observe_shell", "observe_context_compaction",
+    "observe_tokens", "observe_permissions", "observe_session_status",
+  ];
   return (
     canAttachPersistentGoal(session)
     && OBSERVABLE_SESSION_STATUSES.has(session.status)
     && session.capabilities?.support_label !== "unavailable"
+    // Discovery and a support label alone do not establish observation.
+    && observationCapabilities.some((name) => session.capabilities?.[name] === true)
   );
 }
 

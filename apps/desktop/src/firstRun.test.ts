@@ -9,9 +9,36 @@ const worker: SessionRow = {
   id: "codex:thread-1",
   harness_type: "codex",
   status: "idle",
+  capabilities: { observe_messages: true, support_label: "deep" },
 };
 
 const goal: Goal = { id: "goal-1", title: "Ship", objective: "Ship the release" };
+
+test("discovery cannot promise supervision without an explicit observation capability", () => {
+  for (const capabilities of [undefined, {}, { support_label: "deep" },
+    { send_message: true }, { observe_messages: "true" },
+    { observe_messages: false, observe_session_status: false }]) {
+    const current = { ...worker, status: "discovered", capabilities };
+    for (const attached of [false, true]) {
+      const guidance = firstRunGuidance({
+        current: { ...current, goal_id: attached ? goal.id : undefined },
+        attachedGoal: attached ? goal : null, sessionFresh: true, goalFresh: true,
+      });
+      assert.equal(guidance?.state, "connect_worker");
+      assert.equal(guidance?.cta?.intent, "connect");
+    }
+  }
+  for (const capabilities of [
+    { observe_session_status: true, support_label: "basic" },
+    { observe_tool_calls: true, support_label: "observe_only", send_message: false },
+  ]) {
+    const guidance = firstRunGuidance({
+      current: { ...worker, status: "discovered", capabilities },
+      sessionFresh: true, goalFresh: true,
+    });
+    assert.equal(guidance?.state, "set_goal");
+  }
+});
 
 test("first-run guidance does not infer readiness from stale session or goal state", () => {
   for (const [sessionFresh, goalFresh] of [[false, true], [true, false]]) {
