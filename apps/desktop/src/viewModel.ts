@@ -1362,8 +1362,8 @@ export function fingerprintCompletionReliability(fingerprint?: Fingerprint): str
   const inspected = fingerprint?.inspected_stop_sessions ?? 0;
   if (!fingerprint || inspected <= 0) return "Not established by this endpoint";
   const rate = fingerprint.verified_success_rate ?? 0;
-    const noun = inspected === 1 ? "session" : "sessions";
-    return `${rate.toFixed(2)} from ${inspected} ${noun} with inspected STOPs`;
+  const noun = inspected === 1 ? "session" : "sessions";
+  return `${rate.toFixed(2)} from ${inspected} ${noun} with inspected STOPs`;
 }
 
 export function fingerprintPrematureRate(fingerprint?: Fingerprint): string {
