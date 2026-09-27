@@ -917,13 +917,27 @@ export function nextExpectedEvent(session?: SessionRow): string {
   }
 }
 
-function goalDeadlinePayload(value: string): string | null {
+function deadlineWithZone(value: string): string {
+  return /(?:Z|[+-]\d{2}:\d{2})$/i.test(value) ? value : `${value}Z`;
+}
+
+function goalDeadlinePayload(value: string, source?: string | null): string | null {
   const deadline = value.trim();
   if (!deadline) return null;
   const parsed = new Date(`${deadline}Z`);
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?$/.test(deadline)
     || !Number.isFinite(parsed.getTime()) || !parsed.toISOString().startsWith(deadline)) {
     throw new Error("Choose a valid deadline in UTC, or clear the deadline.");
+  }
+  // The picker displays milliseconds. Preserve finer stored precision when
+  // the displayed deadline did not change during an unrelated ledger edit.
+  if (source) {
+    const original = new Date(deadlineWithZone(source));
+    if (Number.isFinite(original.getTime()) && original.getTime() === parsed.getTime()) {
+      const fraction = source.match(/\.(\d+)(?:Z|[+-]\d{2}:\d{2})?$/i)?.[1];
+      return fraction ? original.toISOString().replace(/\.\d{3}Z$/, `.${fraction.padEnd(3, "0")}Z`)
+        : original.toISOString();
+    }
   }
   return parsed.toISOString();
 }
@@ -939,6 +953,7 @@ export function createGoalPayload(input: {
   evidence: string;
   preferences?: string;
   deadline?: string;
+  deadlineSource?: string | null;
   decisions?: string;
   rejectedApproaches?: string;
   unresolvedQuestions?: string;
@@ -959,7 +974,8 @@ export function createGoalPayload(input: {
     forbidden_outcomes: normalizeLines(input.forbiddenOutcomes || ""),
     non_goals: normalizeLines(input.nonGoals),
     preferences: normalizeLines(input.preferences || ""),
-    ...(input.deadline !== undefined ? { deadline: goalDeadlinePayload(input.deadline) } : {}),
+    ...(input.deadline !== undefined
+      ? { deadline: goalDeadlinePayload(input.deadline, input.deadlineSource) } : {}),
     evidence_requirements: normalizeLines(input.evidence),
     decisions: normalizeLines(input.decisions || ""),
     rejected_approaches: normalizeLines(input.rejectedApproaches || ""),
@@ -977,6 +993,7 @@ export function updateGoalPayload(input: {
   evidence: string;
   preferences?: string;
   deadline?: string;
+  deadlineSource?: string | null;
   decisions?: string;
   rejectedApproaches?: string;
   unresolvedQuestions?: string;
@@ -1061,6 +1078,7 @@ export function goalToDraft(goal: Goal, projectId = "", decisions: LedgerDecisio
   nonGoals: string;
   preferences: string;
   deadline: string;
+  deadlineSource?: string | null;
   evidence: string;
   decisions: string;
   rejectedApproaches: string;
@@ -1076,7 +1094,9 @@ export function goalToDraft(goal: Goal, projectId = "", decisions: LedgerDecisio
     forbiddenOutcomes: (goal.forbidden_outcomes || []).join("\n"),
     nonGoals: (goal.non_goals || []).join("\n"),
     preferences: (goal.preferences || []).join("\n"),
-    deadline: goal.deadline ? new Date(goal.deadline).toISOString().slice(0, -1) : "",
+    deadline: goal.deadline
+      ? new Date(deadlineWithZone(goal.deadline)).toISOString().slice(0, -1) : "",
+    deadlineSource: goal.deadline,
     evidence: (goal.evidence_requirements || []).join("\n"),
     decisions: partitioned.decisions.map((item) => item.statement).join("\n"),
     rejectedApproaches: partitioned.rejected.map((item) => item.statement).join("\n"),

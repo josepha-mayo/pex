@@ -10,6 +10,7 @@ export type GoalDraft = {
   nonGoals: string;
   preferences: string;
   deadline?: string;
+  deadlineSource?: string | null;
   evidence: string;
   decisions: string;
   rejectedApproaches: string;

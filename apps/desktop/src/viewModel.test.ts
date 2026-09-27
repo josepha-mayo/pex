@@ -963,6 +963,31 @@ test("goal deadlines round-trip as UTC and can be explicitly cleared", () => {
   }
 });
 
+test("legacy UTC deadlines and fine timestamp precision survive unrelated edits", () => {
+  const priorZone = process.env.TZ;
+  process.env.TZ = "America/New_York";
+  try {
+    const legacy = goalToDraft({
+      id: "legacy-deadline", title: "Ship", objective: "Finish",
+      deadline: "2026-10-30T17:00:12.123456",
+    });
+    assert.equal(legacy.deadline, "2026-10-30T17:00:12.123");
+    assert.equal(updateGoalPayload({ ...legacy, objective: "Finish carefully" }, 1).deadline,
+      "2026-10-30T17:00:12.123456Z");
+    const offset = goalToDraft({
+      id: "offset-deadline", title: "Ship", objective: "Finish",
+      deadline: "2026-10-30T18:00:12.123456+01:00",
+    });
+    assert.equal(updateGoalPayload(offset, 1).deadline, "2026-10-30T17:00:12.123456Z");
+    assert.equal(updateGoalPayload({ ...offset, deadline: "2026-10-30T17:01" }, 1).deadline,
+      "2026-10-30T17:01:00.000Z");
+    assert.equal(updateGoalPayload({ ...offset, deadline: "" }, 1).deadline, null);
+  } finally {
+    if (priorZone === undefined) delete process.env.TZ;
+    else process.env.TZ = priorZone;
+  }
+});
+
 test("empty harness cards open the existing worker connection flow only with fresh bridge state", async () => {
   const { readFile } = await import("node:fs/promises");
   const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
