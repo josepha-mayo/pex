@@ -1,0 +1,111 @@
+import asyncio, hashlib, json, os, subprocess, threading, time, io
+from datetime import UTC, datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from pex_bridge.adapters.codex import CodexAdapter, CodexStdioTransport
+from pex_bridge.adapters.codex_bin import resolve_codex_bin
+import pex_bridge.adapters.codex as codex_module
+from benchmarks.responses_relay import PinnedResponsesRelay
+from benchmarks.worker_model_proxy import make_server
+from benchmarks.runner import benchmark_sha256
+
+async def main():
+    root=(Path('build/codex-responses-proxy')/datetime.now(UTC).strftime('%Y%m%dT%H%M%S')).resolve()
+    root.mkdir(parents=True)
+    workspace=root/'worker'; workspace.mkdir()
+    profile=root/'profile'; profile.mkdir()
+    os.environ['USERPROFILE']=str(profile)
+    original_env=codex_module._minimal_subprocess_env
+    codex_module._minimal_subprocess_env=lambda: {**original_env(), 'CODEX_HOME':str(profile)}
+    calls=[]; methods=[]; events=[]; requests=[]
+    loop=asyncio.get_running_loop()
+    async def backend(body):
+        calls.append(body)
+        number=len(calls)
+        item={'id':f'msg-controlled-{number}','type':'message','role':'assistant',
+              'status':'completed','phase':'final_answer','content':[
+                  {'type':'output_text','text':'Controlled response through PEX relay.','annotations':[]}]}
+        return {'id':f'resp-controlled-{number}','object':'response','created_at':1,
+                'model':'pinned','status':'completed','output':[item],
+                'usage':{'input_tokens':10,'output_tokens':10,'total_tokens':20}}
+    controller=PinnedResponsesRelay(model='pinned',max_calls=2,
+                                    deadline=time.perf_counter()+120,backend=backend)
+    def relay(path,body):
+        requests.append(body)
+        result=asyncio.run_coroutine_threadsafe(controller.dispatch(json.dumps({
+            'schema':'pex.model-relay.v1','request_id':f'request-{len(calls)+1}',
+            'body':body}).encode()),loop).result(timeout=45)
+        if not result.get('ok'): raise ValueError('Controller rejected request')
+        return result['body']
+    server=make_server('/unused-windows-smoke.sock',model='pinned',relay=relay,wire_api='responses')
+    original_post=server.RequestHandlerClass.do_POST
+    def inspect_post(handler):
+        size=int(handler.headers.get('Content-Length','0'))
+        raw=handler.rfile.read(size)
+        requests.append({'http_headers':dict(handler.headers),'raw_body':raw.decode('utf-8',errors='replace')})
+        handler.rfile=io.BytesIO(raw)
+        original_post(handler)
+    server.RequestHandlerClass.do_POST=inspect_post
+    thread=threading.Thread(target=server.serve_forever,daemon=True); thread.start()
+    binary=resolve_codex_bin(); assert binary
+    config={'model':'pinned','model_provider':'controlled','web_search':'disabled',
+        'features.multi_agent':False,'features.goals':False,
+        'model_providers.controlled.name':'Controlled local responder',
+        'model_providers.controlled.base_url':f'http://127.0.0.1:{server.server_port}/v1',
+        'model_providers.controlled.wire_api':'responses','model_providers.controlled.requires_openai_auth':False,
+        'model_providers.controlled.supports_websockets':False,'model_providers.controlled.request_max_retries':0,
+        'model_providers.controlled.stream_max_retries':0}
+    command=[str(binary)]
+    for key,value in config.items(): command.extend(['-c',key+'='+json.dumps(value)])
+    command.append('app-server')
+    def observe(direction,payload):
+        if direction=='stdin':
+            row=json.loads(payload)
+            if isinstance(row.get('method'),str): methods.append(row['method'])
+    transport=CodexStdioTransport(command,protocol_observer=observe)
+    adapter=CodexAdapter(transport)
+    async def ingest(event,session): events.append(event)
+    try:
+        await asyncio.wait_for(adapter.probe(),timeout=30)
+        session=await asyncio.wait_for(adapter.start_isolated_thread(str(workspace),name='PEX controlled delivery'),timeout=30)
+        adapter.start_pipeline_pump(ingest)
+        initial=await asyncio.wait_for(adapter.send_message(session,
+            'Initial local test turn. Acknowledge only; do not run tools or change files.'),timeout=30)
+        assert initial and initial.vendor_turn_id
+        initial_result=await adapter.wait_for_turn_completion(session,initial.vendor_turn_id,timeout=30)
+        assert initial_result['status']=='completed'
+        delivered=await asyncio.wait_for(adapter.send_message(session,
+            'PEX delivery check: acknowledge this correction. Do not run tools or change files.'),timeout=30)
+        assert delivered and delivered.vendor_turn_id
+        completed=await adapter.wait_for_turn_completion(session,delivered.vendor_turn_id,timeout=30)
+        assert completed['status']=='completed',completed
+        deadline=time.monotonic()+5
+        while not any(event.event_type.value=='stop' and event.metadata.get('vendor_turn_id')==delivered.vendor_turn_id for event in events):
+            if time.monotonic()>deadline: raise TimeoutError('No normalized stop event')
+            await asyncio.sleep(.1)
+        receipt={'schema':'pex.codex-real-delivery.v1','source_sha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            'benchmark_sha256':benchmark_sha256(),
+            'binary_sha256':hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
+            'vendor_session_id':session.vendor_session_id,'vendor_turn_id':delivered.vendor_turn_id,
+            'initial_vendor_turn_id':initial.vendor_turn_id,
+            'completion_status':completed['status'],'local_model_requests':[
+                {'model':body['model'],'stream':body['stream'],'store':body['store'],
+                 'max_output_tokens':body['max_output_tokens'],
+                 'tool_types':sorted({tool['type'] for tool in body.get('tools',[])})} for body in calls],
+            'event_types':sorted({event.event_type.value for event in events}),
+            'terminal_metadata':[event.metadata for event in events if event.event_type.value=='stop'],
+            'outbound_method_counts':{method:methods.count(method) for method in sorted(set(methods))},
+            'scope':'Two real Windows Codex turns through production Responses HTTP adapter and pinned controller dispatch; no Unix IPC, Linux isolation, provider call or quality comparison.', 'relay_audit':controller.audit}
+        assert initial.vendor_turn_id!=delivered.vendor_turn_id
+        assert len(calls)==2
+    finally:
+        if adapter._pump_task:
+            adapter._pump_task.cancel(); await asyncio.gather(adapter._pump_task,return_exceptions=True)
+        await transport.close()
+        await asyncio.to_thread(server.shutdown); server.server_close(); thread.join(timeout=5)
+        (root/'diagnostic.json').write_text(json.dumps({'calls':calls,'methods':methods,'requests':requests,
+            'events':[{'type':event.event_type.value,'metadata':event.metadata} for event in events]},indent=2))
+    receipt['owned_process_closed']=transport._proc is None or transport._proc.returncode is not None
+    (root/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+    print(json.dumps({'completion_status':receipt['completion_status'],'local_model_requests':len(calls),'owned_process_closed':receipt['owned_process_closed']})); print(str(root/'receipt.json'))
+asyncio.run(main())

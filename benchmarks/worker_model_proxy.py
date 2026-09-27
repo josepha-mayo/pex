@@ -122,9 +122,50 @@ def buffered_sse(result: dict) -> bytes:
     return b"".join(b"data: " + _encode(frame) + b"\n\n" for frame in frames) + b"data: [DONE]\n\n"
 
 
-def make_server(socket_path: str, *, model: str, relay=relay_request) -> HTTPServer:
+def responses_sse(result: dict) -> bytes:
+    """Emit buffered Responses lifecycle events, preserving the completed result."""
+    if result.get("status") != "completed" or not isinstance(result.get("output"), list):
+        raise ValueError("expected completed Responses result")
+    events = [{"type": "response.created", "response": {
+        **result, "status": "in_progress", "output": [],
+    }}]
+    for index, item in enumerate(result["output"]):
+        if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+            raise ValueError("invalid Responses output item")
+        events.append({"type": "response.output_item.added", "output_index": index,
+                       "item": {**item, "status": "in_progress",
+                                **({"content": []} if item.get("type") == "message" else {})}})
+        if item.get("type") == "message":
+            for content_index, part in enumerate(item.get("content", [])):
+                kind = part.get("type")
+                field = "refusal" if kind == "refusal" else "text"
+                if kind not in {"output_text", "refusal"} or not isinstance(part.get(field), str):
+                    raise ValueError("unsupported Responses message content")
+                location = {"item_id": item["id"], "output_index": index,
+                            "content_index": content_index}
+                events.extend([
+                    {"type": "response.content_part.added", **location,
+                     "part": {**part, field: ""}},
+                    {"type": f"response.{kind}.delta", **location, "delta": part[field]},
+                    {"type": f"response.{kind}.done", **location, field: part[field]},
+                    {"type": "response.content_part.done", **location, "part": part},
+                ])
+        events.append({"type": "response.output_item.done", "output_index": index,
+                       "item": item})
+    events.append({"type": "response.completed", "response": result})
+    return b"".join(
+        b"event: " + event["type"].encode("ascii") + b"\ndata: "
+        + _encode({**event, "sequence_number": sequence}) + b"\n\n"
+        for sequence, event in enumerate(events)
+    )
+
+
+def make_server(socket_path: str, *, model: str, relay=relay_request,
+                wire_api: str = "chat") -> HTTPServer:
     if not model or len(model) > 256:
         raise ValueError("a bounded pinned model is required")
+    if wire_api not in {"chat", "responses"}:
+        raise ValueError("unsupported wire API")
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.0"
@@ -140,7 +181,8 @@ def make_server(socket_path: str, *, model: str, relay=relay_request) -> HTTPSer
             try:
                 lengths = self.headers.get_all("Content-Length", [])
                 if (
-                    self.path != "/v1/chat/completions"
+                    self.path != ("/v1/responses" if wire_api == "responses"
+                                  else "/v1/chat/completions")
                     or len(lengths) != 1
                     or self.headers.get("Transfer-Encoding") is not None
                     or self.headers.get("Authorization") not in {None, "Bearer pex-relay-local"}
@@ -163,10 +205,18 @@ def make_server(socket_path: str, *, model: str, relay=relay_request) -> HTTPSer
                         raise ValueError("unsupported stream options")
                     body.pop("stream_options")
                 body["stream"] = False
+                if wire_api == "responses":
+                    # Codex may omit the token limit; the controller still receives
+                    # an explicit bounded limit. Never override a supplied limit.
+                    body.setdefault("max_output_tokens", 4096)
+                    if body.get("store", False) is not False:
+                        raise ValueError("stored Responses are not permitted")
+                    body["store"] = False
                 result = relay(socket_path, body)
                 if result.get("model") != model:
                     raise ValueError("response model is not pinned")
-                payload = buffered_sse(result) if streaming else _encode(result)
+                translator = responses_sse if wire_api == "responses" else buffered_sse
+                payload = translator(result) if streaming else _encode(result)
                 if len(payload) > MAX_RESPONSE_BYTES:
                     raise ValueError("translated response exceeds bound")
             except Exception:
@@ -187,8 +237,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--socket", required=True)
     parser.add_argument("--model", required=True)
+    parser.add_argument("--wire-api", choices=("chat", "responses"), default="chat")
     args = parser.parse_args()
-    server = make_server(args.socket, model=args.model)
+    server = make_server(args.socket, model=args.model, wire_api=args.wire_api)
     print(
         json.dumps(
             {"url": f"http://127.0.0.1:{server.server_port}/v1", "upstream_streaming": False}

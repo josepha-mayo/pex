@@ -1,0 +1,96 @@
+{
+  "schema": "pex.codex-real-delivery.v1",
+  "source_sha": "c133665db822150a4a9aa4db3394ff0c9d61162b",
+  "benchmark_sha256": "5a29d805ee1799dd7106f22de3ec40ecec11e6a33410cb9921cc2600a7e2db18",
+  "binary_sha256": "8f0554ede25bbc5450921897c468b2e84635aa513c5017457997af0954581f49",
+  "vendor_session_id": "01a0e393-8716-7e63-9c11-7a69646bc084",
+  "vendor_turn_id": "01a0e393-8d0c-7f21-98d8-937719b19f93",
+  "initial_vendor_turn_id": "01a0e393-873b-7680-83fa-004a69579b4b",
+  "completion_status": "completed",
+  "local_model_requests": [
+    {
+      "model": "pinned",
+      "stream": false,
+      "store": false,
+      "max_output_tokens": 4096,
+      "tool_types": [
+        "function"
+      ]
+    },
+    {
+      "model": "pinned",
+      "stream": false,
+      "store": false,
+      "max_output_tokens": 4096,
+      "tool_types": [
+        "function"
+      ]
+    }
+  ],
+  "event_types": [
+    "agent_response",
+    "stop",
+    "user_prompt"
+  ],
+  "terminal_metadata": [
+    {
+      "raw_method": "turn/completed",
+      "turn_status": "completed",
+      "vendor_turn_id": "01a0e393-873b-7680-83fa-004a69579b4b"
+    },
+    {
+      "raw_method": "turn/completed",
+      "turn_status": "completed",
+      "vendor_turn_id": "01a0e393-8d0c-7f21-98d8-937719b19f93"
+    }
+  ],
+  "outbound_method_counts": {
+    "initialize": 1,
+    "initialized": 1,
+    "thread/list": 3,
+    "thread/start": 1,
+    "turn/start": 2
+  },
+  "scope": "Two real Windows Codex turns through production Responses HTTP adapter and pinned controller dispatch; no Unix IPC, Linux isolation, provider call or quality comparison.",
+  "relay_audit": [
+    {
+      "request_id": "request-1",
+      "request_sha256": "1be889fa5acfd7bd9b882d429bf270317a16e4877a9175a82fb7cc8296762f06",
+      "status": "completed",
+      "response_sha256": "86b9bebfa1f3b9e71c44ff55589bc8aab420ab53f3f4622cd728b435f523593a"
+    },
+    {
+      "request_id": "request-2",
+      "request_sha256": "210ad9aa7d12a9a90c80863290dde6fa75a72723594ce34e83dcef0305f4c147",
+      "status": "completed",
+      "response_sha256": "a326b0f63364e2229cb1347879accc083859cb6c9a3789477b5dc84cb134f277"
+    }
+  ],
+  "owned_process_closed": true,
+  "driver_sha256": "15037368220005638fe067755d860e3a066e34a81ddadb0a00925601168ffef6",
+  "runtime_version": "codex-cli 0.158.0-alpha.2.1",
+  "source_changes_uncommitted_at_execution": true,
+  "provider_calls": 0,
+  "quality_measured": false,
+  "unix_ipc_verified": false,
+  "linux_isolation_verified": false,
+  "successful_tool_execution_verified": false,
+  "negative_tool_checks": [
+    {
+      "operation": "file write",
+      "result": "rejected by subprocess policy",
+      "local_model_calls": 3,
+      "completed_turns": 2,
+      "diagnostic_sha256": "bf2e6d92b57efae0e9cadd71afcfde45fe65544bb60c5b638c249316eb83fc89",
+      "successful_execution": false
+    },
+    {
+      "operation": "public fixture read",
+      "result": "rejected by subprocess policy",
+      "local_model_calls": 3,
+      "completed_turns": 2,
+      "diagnostic_sha256": "a0fb4396b0c133aed3490c241595724b55b6795d26ed3a815a2be2cc8cce86f7",
+      "successful_execution": false
+    }
+  ]
+}

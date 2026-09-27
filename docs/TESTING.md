@@ -1110,3 +1110,12 @@ optional AgentCore endpoint proposes an action.
   from these source suites; Windows GUI click-through and comparative quality
   remain separate requirements. See the [cross-platform summary](evidence/cross-platform-checks-490224a.json),
   which binds the exact revision, run, and JUnit report hashes.
+- The buffered Responses adapter completed two real Windows Codex turns in one
+  fresh profile and vendor session through pinned controller dispatch. Both
+  request reservations completed with explicit token limits and stored state
+  disabled. Local tool results were replayed, but subprocess policy rejected
+  both a write and a public fixture read; successful tool execution remains
+  unverified. No upstream provider was called. This check does not establish
+  Unix socket IPC, Linux isolation, provider streaming latency, or comparative
+  quality. See the scoped [receipt](evidence/codex-responses-windows.json) and
+  exact controlled [driver](evidence/codex-responses-windows-driver.txt).
