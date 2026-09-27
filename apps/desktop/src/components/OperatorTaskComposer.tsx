@@ -1,36 +1,115 @@
 import { useEffect, useRef, useState } from "react";
 import type { SharedRequest } from "../sharedConnection";
-import { sendOperatorTask } from "../operatorTask";
+import { advanceTaskAttemptOutcome, readOperatorTaskReceipt, sendOperatorTask,
+  type TaskAttemptOutcome, type TaskBinding } from "../operatorTask";
 
-type Binding = { sessionId: string; goalId: string; projectId: string };
-type Outcome = { kind: "delivered" | "uncertain" | "in_progress"; message: string };
+type Outcome = TaskAttemptOutcome;
 const outcomes = new Map<string, Outcome>();
 const listeners = new Map<string, Set<(value: Outcome | null) => void>>();
 
+function storageKey(bindingKey: string) {
+  return `pex.operator-task-attempt.v1.${encodeURIComponent(bindingKey)}`;
+}
+
+function storedOutcome(bindingKey: string): Outcome | null {
+  try {
+    const raw = window.sessionStorage.getItem(storageKey(bindingKey));
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const item = value as Record<string, unknown>;
+    if (typeof item.idempotencyKey !== "string"
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.idempotencyKey)
+      || !["delivered", "uncertain", "in_progress"].includes(String(item.kind))) return null;
+    return {
+      kind: item.kind as Outcome["kind"],
+      idempotencyKey: item.idempotencyKey,
+      message: "Checking the previous task receipt…",
+    };
+  } catch { return null; }
+}
+
 function setBindingOutcome(key: string, value: Outcome | null) {
-  if (value) outcomes.set(key, value);
+  if (value) {
+    const current = outcomes.get(key) || null;
+    value = advanceTaskAttemptOutcome(current, value);
+    outcomes.set(key, value);
+  }
   else outcomes.delete(key);
+  try {
+    if (value) window.sessionStorage.setItem(storageKey(key), JSON.stringify({
+      idempotencyKey: value.idempotencyKey, kind: value.kind,
+    }));
+    else window.sessionStorage.removeItem(storageKey(key));
+  } catch { /* In-memory state still prevents duplicate clicks in this app instance. */ }
   for (const listener of listeners.get(key) || []) listener(value);
 }
 
 export function OperatorTaskComposer({ request, binding, available, onDelivered, onInspect }: {
   request: SharedRequest;
-  binding: Binding;
+  binding: TaskBinding;
   available: boolean;
   onDelivered: () => void;
   onInspect: () => void;
 }) {
-  const bindingKey = `${binding.sessionId}\0${binding.goalId}`;
+  const bindingKey = `${binding.sessionId}\0${binding.goalId}\0${binding.projectId}`;
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<Outcome | null>(() => outcomes.get(bindingKey) || null);
+  const [checking, setChecking] = useState(false);
+  const [outcome, setOutcome] = useState<Outcome | null>(() => outcomes.get(bindingKey) || storedOutcome(bindingKey));
   const pending = useRef<AbortController | null>(null);
+  const checkingRef = useRef(false);
+
+  async function checkReceipt(idempotencyKey: string) {
+    if (checkingRef.current) return;
+    checkingRef.current = true;
+    setChecking(true);
+    try {
+      const receipt = await readOperatorTaskReceipt(request, binding, idempotencyKey);
+      if (outcomes.get(bindingKey)?.idempotencyKey !== idempotencyKey) return;
+      if (receipt?.status === "delivered") {
+        setBindingOutcome(bindingKey, {
+          kind: "delivered", idempotencyKey,
+          message: `Task delivered to this worker. Receipt ${receipt.effectId}.`,
+        });
+        try { onDelivered(); } catch { /* The durable receipt stays authoritative. */ }
+      } else if (receipt?.status === "reserved" || receipt?.status === "dispatching") {
+        setBindingOutcome(bindingKey, {
+          kind: "in_progress", idempotencyKey,
+          message: receipt.status === "reserved"
+            ? "The bridge reserved this task, but delivery has not started or been confirmed. It may be stranded after a restart; inspect the worker before a new task."
+            : "The bridge started dispatching this task, but delivery is not confirmed. Check the receipt and inspect the worker before a new task.",
+        });
+      } else {
+        setBindingOutcome(bindingKey, {
+          kind: "uncertain", idempotencyKey,
+          message: receipt
+            ? `The bridge recorded ${receipt.status}. Inspect the worker before a new task.`
+            : "No durable receipt was found yet. The original request may still arrive; inspect the worker before a new task.",
+        });
+      }
+    } catch {
+      if (outcomes.get(bindingKey)?.idempotencyKey === idempotencyKey) {
+        setBindingOutcome(bindingKey, {
+          kind: "uncertain", idempotencyKey,
+          message: "The previous task receipt could not be checked. Inspect the worker before a new task.",
+        });
+      }
+    } finally {
+      checkingRef.current = false;
+      setChecking(false);
+    }
+  }
+
   useEffect(() => {
     const listener = (value: Outcome | null) => setOutcome(value);
     const subscribers = listeners.get(bindingKey) || new Set();
     subscribers.add(listener);
     listeners.set(bindingKey, subscribers);
-    setOutcome(outcomes.get(bindingKey) || null);
+    const saved = outcomes.get(bindingKey) || storedOutcome(bindingKey);
+    if (saved && !outcomes.has(bindingKey)) outcomes.set(bindingKey, saved);
+    setOutcome(saved || null);
+    if (saved) void checkReceipt(saved.idempotencyKey);
     return () => {
       subscribers.delete(listener);
       if (!subscribers.size) listeners.delete(bindingKey);
@@ -44,17 +123,19 @@ export function OperatorTaskComposer({ request, binding, available, onDelivered,
     pending.current = controller;
     setBusy(true);
     const idempotencyKey = crypto.randomUUID();
-    setBindingOutcome(bindingKey, { kind: "in_progress", message: "Task delivery is in progress. Wait for its receipt before sending again." });
+    setBindingOutcome(bindingKey, { kind: "in_progress", idempotencyKey, message: "Task delivery is in progress. Wait for its receipt before sending again." });
     const timer = setTimeout(() => controller.abort(), 60_000);
     try {
       const effectId = await sendOperatorTask(request, binding, text, idempotencyKey, controller.signal);
-      const delivered = { kind: "delivered", message: `Task delivered to this worker. Receipt ${effectId}.` } as const;
+      const delivered = { kind: "delivered", idempotencyKey, message: `Task delivered to this worker. Receipt ${effectId}.` } as const;
       setBindingOutcome(bindingKey, delivered);
       setText("");
       try { onDelivered(); } catch { /* The delivery receipt remains authoritative. */ }
     } catch {
-      const uncertain = { kind: "uncertain", message: "Delivery could not be confirmed. Inspect this worker and its latest activity before sending another task; PEX will not retry automatically." } as const;
-      setBindingOutcome(bindingKey, uncertain);
+      const uncertain = { kind: "uncertain", idempotencyKey, message: "Delivery could not be confirmed. Check the durable receipt and inspect this worker before another task; PEX will not retry automatically." } as const;
+      if (outcomes.get(bindingKey)?.idempotencyKey === idempotencyKey) {
+        setBindingOutcome(bindingKey, uncertain);
+      }
     } finally {
       clearTimeout(timer);
       if (pending.current === controller) pending.current = null;
@@ -74,13 +155,17 @@ export function OperatorTaskComposer({ request, binding, available, onDelivered,
         onClick={() => void submit()}>{busy ? "Sending…" : "Send task"}</button>
     </> : <>
       <p role="status" aria-live="polite">{outcome.message}</p>
+      {outcome.kind !== "delivered" ? <button type="button" className="ghost"
+        disabled={checking || busy} onClick={() => void checkReceipt(outcome.idempotencyKey)}>
+        {checking ? "Checking receipt…" : "Check delivery receipt"}
+      </button> : null}
       {outcome.kind === "delivered" ? <button type="button" className="ghost"
         onClick={() => { setBindingOutcome(bindingKey, null); setText(""); }}>
         Write another task
       </button> : null}
-      {outcome.kind === "uncertain" ? <div className="workspace-task-recovery">
+      {outcome.kind !== "delivered" ? <div className="workspace-task-recovery">
         <button type="button" className="ghost" onClick={onInspect}>Inspect worker activity</button>
-        <button type="button" className="text-button" onClick={() => {
+        <button type="button" className="text-button" disabled={checking || busy} onClick={() => {
           setBindingOutcome(bindingKey, null);
           setText("");
         }}>I checked the worker; write a new task</button>

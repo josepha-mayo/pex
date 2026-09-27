@@ -2623,7 +2623,7 @@ export function App() {
             && (current.project_id || current.cwd)
             && current.capabilities?.send_message === true
             && (current.harness_type === "codex" || current.harness_type === "opencode") ? (
-              <OperatorTaskComposer key={`${current.id}:${attachedGoal.id}`}
+              <OperatorTaskComposer key={`${current.id}:${attachedGoal.id}:${current.project_id || current.cwd}`}
                 request={sharedConnectionRequest}
                 binding={{ sessionId: current.id, goalId: attachedGoal.id, projectId: current.project_id || current.cwd || "" }}
                 available={sessionStateFresh && goalStateFresh && !bridgeError && !current.supervision_paused}

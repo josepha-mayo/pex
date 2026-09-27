@@ -82,6 +82,7 @@ from pex_bridge.store import (
     GOAL_CONTROL_ACTION_CREATE,
     GOAL_CONTROL_ACTION_OVERRIDE,
     GOAL_CONTROL_ACTION_UPDATE,
+    OPERATOR_MESSAGE_ACTION,
     OperatorEffectConflictError,
     ProjectIdentityBlockedError,
     Store,
@@ -5223,6 +5224,40 @@ def create_app() -> FastAPI:
             reason="user_requested",
         )
         return _overlay_revert_response(result)
+
+    @app.get("/v1/sessions/{session_id}/messages/{idempotency_key}/receipt")
+    async def operator_message_receipt(
+        session_id: str,
+        idempotency_key: str,
+        actor: Annotated[OperatorActorEvidence, Depends(_require_operator_token)],
+    ):
+        try:
+            effect_id = stable_operator_effect_id(
+                actor.principal_id, OPERATOR_MESSAGE_ACTION, idempotency_key,
+            )
+        except ValueError as exc:
+            raise HTTPException(422, "invalid operator message idempotency key") from exc
+        effect = await state.store.get_operator_effect(effect_id)
+        if (
+            effect is None
+            or effect["principal_id"] != actor.principal_id
+            or effect["action_kind"] != OPERATOR_MESSAGE_ACTION
+            or effect["idempotency_key"] != idempotency_key
+            or effect["source_session_id"] != session_id
+            or effect["target_session_id"] != session_id
+        ):
+            raise HTTPException(
+                404,
+                {
+                    "code": "operator_message_receipt_not_found",
+                    "message": "operator message receipt not found",
+                },
+            )
+        return {
+            "ok": True,
+            "status": effect["state"],
+            "receipt": _public_operator_effect(effect),
+        }
 
     @app.post("/v1/sessions/{session_id}/message")
     async def message(

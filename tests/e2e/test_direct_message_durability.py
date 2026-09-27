@@ -109,6 +109,11 @@ async def test_direct_message_operator_auth_failures_precede_store_access(
     assert missing.status_code == 401
     assert wrong.status_code == 401
     assert unavailable.status_code == 503
+    receipt_missing = await client.get(
+        f"/v1/sessions/{session.id}/messages/direct-message-auth-0001/receipt",
+        headers={"Authorization": ""},
+    )
+    assert receipt_missing.status_code == 401
     assert touched is False
 
 
@@ -137,6 +142,13 @@ async def test_direct_message_refuses_test_only_no_auth_before_store_access(
             raise AssertionError("auth denial must precede Store access")
 
         monkeypatch.setattr(store, "reserve_operator_message", forbidden_reservation)
+
+        async def forbidden_lookup(_effect_id):
+            nonlocal touched
+            touched = True
+            raise AssertionError("auth denial must precede receipt lookup")
+
+        monkeypatch.setattr(store, "get_operator_effect", forbidden_lookup)
         async with AsyncClient(
             transport=ASGITransport(app=create_app()),
             base_url="http://127.0.0.1",
@@ -148,7 +160,11 @@ async def test_direct_message_refuses_test_only_no_auth_before_store_access(
                     "text": "This must be denied.",
                 },
             )
+            receipt = await client.get(
+                "/v1/sessions/synthetic:any/messages/direct-message-no-auth-0001/receipt"
+            )
         assert response.status_code == 403
+        assert receipt.status_code == 403
         assert touched is False
     finally:
         await store.close()
@@ -186,6 +202,22 @@ async def test_direct_message_requires_key_and_exact_replay_sends_once(direct_me
         "SELECT COUNT(*) FROM human_operator_terminal_actions"
     )
     assert (await cursor.fetchone())[0] == 1
+
+    receipt_path = f"/v1/sessions/{session.id}/messages/{request['idempotency_key']}/receipt"
+    receipt = await client.get(receipt_path)
+    assert receipt.status_code == 200
+    assert receipt.json()["status"] == "delivered"
+    assert receipt.json()["receipt"] == first.json()["receipt"]
+    wrong_session = await client.get(
+        f"/v1/sessions/synthetic:other/messages/{request['idempotency_key']}/receipt"
+    )
+    assert wrong_session.status_code == 404
+    missing = await client.get(f"/v1/sessions/{session.id}/messages/unseen-key-0001/receipt")
+    assert missing.status_code == 404
+    assert missing.json()["detail"]["code"] == "operator_message_receipt_not_found"
+    no_bearer = await client.get(receipt_path, headers={"Authorization": ""})
+    assert no_bearer.status_code == 401
+    assert len(adapters.synthetic.inbox[session.id]) == 1
     metrics = await store.attention_metrics()
     assert metrics["human_interventions"]["source_counts"][
         "direct_operator_message"
@@ -193,6 +225,26 @@ async def test_direct_message_requires_key_and_exact_replay_sends_once(direct_me
     assert metrics["human_interventions"]["unverified_operator_action_counts"][
         "operator_message"
     ] == 0
+
+
+@pytest.mark.asyncio
+async def test_reserved_message_receipt_is_read_only_and_does_not_dispatch(direct_message_runtime):
+    client, store, adapters, session = direct_message_runtime
+    reservation = await store.reserve_operator_message(
+        principal_id="local_bridge_operator",
+        idempotency_key="reserved-message-0001",
+        session_id=session.id,
+        text="This task has only been reserved.",
+        actor_assurance="bridge_bearer",
+    )
+    assert reservation["effect"]["state"] == "reserved"
+    response = await client.get(
+        f"/v1/sessions/{session.id}/messages/reserved-message-0001/receipt"
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "reserved"
+    assert response.json()["receipt"]["effect_id"] == reservation["effect"]["effect_id"]
+    assert adapters.synthetic.inbox[session.id] == []
 
 
 @pytest.mark.asyncio
