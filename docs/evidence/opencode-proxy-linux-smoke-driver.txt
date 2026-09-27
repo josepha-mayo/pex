@@ -73,6 +73,12 @@ with tempfile.TemporaryDirectory(prefix='pex-worker-proxy-') as temp:
 import json,os,subprocess,threading
 namespace={'__name__':'proxy_module'}
 exec(SOURCE,namespace)
+sse_calls=[]
+original_buffered_sse=namespace['buffered_sse']
+def observed_buffered_sse(result):
+    sse_calls.append(True)
+    return original_buffered_sse(result)
+namespace['buffered_sse']=observed_buffered_sse
 server=namespace['make_server']('/model-relay.sock',model='pinned')
 thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
 try:
@@ -91,7 +97,8 @@ try:
     completed=subprocess.run(['/worker-runtime/opencode','run','--format','json','--model','controlled/pinned','Acknowledge only. Do not use tools.'],env=env,capture_output=True,text=True,timeout=45)
     assert completed.returncode==0,(completed.stdout,completed.stderr)
     assert 'bounded response' in completed.stdout,completed.stdout+completed.stderr
-    print(json.dumps({'real_opencode':True,'loopback_http':True,'mounted_unix_relay':True,'buffered_sse':True,'upstream_streaming':False,'runtime_read_only':True,'task_writable':True,'tool_permission':'deny','worker_exit':completed.returncode}))
+    assert sse_calls, 'No buffered SSE response was observed'
+    print(json.dumps({'real_opencode':True,'loopback_http':True,'mounted_unix_relay':True,'buffered_sse':bool(sse_calls),'buffered_sse_calls':len(sse_calls),'upstream_streaming':False,'runtime_read_only':True,'task_writable':True,'tool_permission':'deny','worker_exit':completed.returncode}))
 finally:
     server.shutdown();server.server_close();thread.join(timeout=5)
 """.replace('SOURCE',repr(source))

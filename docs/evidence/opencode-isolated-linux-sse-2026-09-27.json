@@ -1,0 +1,24 @@
+{
+  "real_opencode": true,
+  "loopback_http": true,
+  "mounted_unix_relay": true,
+  "buffered_sse": true,
+  "buffered_sse_calls": 2,
+  "upstream_streaming": false,
+  "runtime_read_only": true,
+  "task_writable": true,
+  "tool_permission": "deny",
+  "worker_exit": 0,
+  "controller_calls": 2,
+  "scope": "Real OpenCode inside Linux bubblewrap with a controlled relay backend; no upstream provider call or comparative quality claim.",
+  "schema": "pex.opencode-isolated-linux-transport.v2",
+  "source_commit_base": "73d00e0c593290692cfad461caadd4b8a99fe2ac",
+  "driver_modified_from_base": true,
+  "source_hashes": {
+    "benchmarks\\linux_sandbox.py": "781db7f126cee25c573d44b72b55654e07f2ed455753f3a1e5dfac4e0120520f",
+    "benchmarks\\worker_model_proxy.py": "f78d30b6f165d73a9431e5bc1ea417293c315d7f6150ec08ada03f8b9ad7ac84",
+    "docs\\evidence\\opencode-proxy-linux-smoke-driver.txt": "5c016a58d0908a992df2d549424c747d6d48e40d03e727767e9476f0d1f9eaa6",
+    "build\\linux-opencode-runtime\\opencode-linux-x64-1.18.32.tgz": "da0803c85eb86709c4f084adcbfb0b5329936670bfe43d2367f0ca034be0c1de"
+  },
+  "provider_calls": 0
+}
