@@ -126,6 +126,9 @@ async def test_controller_retains_outcome_and_owns_even_a_late_spawn(
         listen=AsyncMock(return_value=server),
     )
     reservation = {"entry": {"workspace": "a" * 64, "condition": "baseline"}}
+    reservation["benchmark_sha256"] = "c" * 64
+    monkeypatch.setattr(executor.runner, "benchmark_sha256", lambda: "c" * 64)
+    monkeypatch.setattr(executor.boundary, "workspace_manifest_sha256", lambda *a, **k: "d" * 64)
     monkeypatch.setattr(executor, "measure_profile", lambda *a, **k: {"model": "pinned"})
     monkeypatch.setattr(executor, "admit_opencode_relay", lambda *a, **k: (
         relay, reservation, {"deadline": time.perf_counter() + (0.01 if late_spawn else 10),

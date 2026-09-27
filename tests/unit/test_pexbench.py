@@ -936,7 +936,8 @@ def test_benchmark_boundary_hashing_streams_files(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "source_name", ["codex_protocol_journal.py", "linux_sandbox.py", "linux_supervisor_runtime.py",
+    "source_name", ["paired_grading.py", "codex_protocol_journal.py", "linux_sandbox.py",
+                    "linux_supervisor_runtime.py",
                     "isolated_pytest.py", "observe.py", "relay_transport.py",
                     "worker_model_proxy.py", "opencode_cli.py", "opencode_completion.py",
                     "opencode_session.py", "opencode_control_relay.py",

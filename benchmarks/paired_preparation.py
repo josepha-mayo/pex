@@ -168,6 +168,7 @@ def reserve_attempt(
         "schema": "pex.paired-attempt-reservation.v1", "status": "reserved",
         "reserved_at": datetime.now(UTC).isoformat(), "run_id": plan["run_id"],
         "plan_sha256": expected_plan_sha256, "schedule_index": index,
+        "benchmark_sha256": fingerprint,
         "entry": row, "budget": plan["budget"],
         "worker_profile_sha256": row["worker_profile_sha256"],
         "execution_boundary_verified": False, "presentation_eligible": False,

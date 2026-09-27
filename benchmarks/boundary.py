@@ -11,6 +11,7 @@ import copy
 import hashlib
 import json
 import os
+import stat
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -73,14 +74,19 @@ def assert_public_prompt(task_id: str, prompt: str) -> None:
         raise AssertionError("worker prompt differs from the frozen public task prompt")
 
 
-def workspace_manifest_sha256(workspace: Path) -> str:
-    rows: list[tuple[str, str]] = []
+def workspace_manifest_sha256(workspace: Path, *, complete: bool = False) -> str:
+    """Hash public seed files, or every entry and mode for completion snapshots."""
+    if type(complete) is not bool:
+        raise ValueError("complete snapshot requirement must be boolean")
+    rows: list[tuple] = []
     is_junction = getattr(workspace, "is_junction", None)
     if workspace.is_symlink() or bool(is_junction and is_junction()):
         raise ValueError("worker workspace root cannot be linked")
     root = workspace.resolve()
     if not root.is_dir():
         raise ValueError("worker workspace is not a directory")
+    if complete:
+        rows.append(("directory", ".", stat.S_IMODE(root.stat().st_mode)))
     total_bytes = 0
     total_entries = 0
     ignored_parts = {part.casefold() for part in IGNORED_WORKSPACE_PARTS}
@@ -109,7 +115,11 @@ def workspace_manifest_sha256(workspace: Path) -> str:
             relative = path.relative_to(root)
             if link_like(path):
                 raise AssertionError(f"link present in worker workspace: {relative}")
-            if name.casefold() not in ignored_parts:
+            if complete:
+                if len(str(relative)) > _MAX_RELATIVE_PATH_CHARS or os.path.ismount(path):
+                    raise ValueError("unsafe directory in complete workspace snapshot")
+                rows.append(("directory", relative.as_posix(), stat.S_IMODE(path.stat().st_mode)))
+            if complete or name.casefold() not in ignored_parts:
                 kept_names.append(name)
         names[:] = kept_names
         for filename in sorted(filenames):
@@ -117,7 +127,11 @@ def workspace_manifest_sha256(workspace: Path) -> str:
             relative_path = path.relative_to(root)
             if link_like(path):
                 raise AssertionError(f"link present in worker workspace: {relative_path}")
-            if filename.casefold() in ignored_files or not path.is_file():
+            metadata = path.stat()
+            if complete and (not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1
+                             or os.path.ismount(path)):
+                raise ValueError("unsafe file in complete workspace snapshot")
+            if not complete and (filename.casefold() in ignored_files or not path.is_file()):
                 continue
             relative = str(relative_path).replace("\\", "/")
             if len(relative) > _MAX_RELATIVE_PATH_CHARS:
@@ -132,7 +146,9 @@ def workspace_manifest_sha256(workspace: Path) -> str:
             total_bytes += size
             if total_bytes > _MAX_WORKSPACE_TOTAL_BYTES:
                 raise ValueError("worker workspace exceeds the 512 MiB fingerprint bound")
-            rows.append((relative, sha256_file(path, max_bytes=_MAX_WORKSPACE_FILE_BYTES)))
+            digest = sha256_file(path, max_bytes=_MAX_WORKSPACE_FILE_BYTES)
+            rows.append(("file", relative, stat.S_IMODE(metadata.st_mode), digest)
+                        if complete else (relative, digest))
     rows.sort()
     return sha256_text(json.dumps(rows, separators=(",", ":")))
 

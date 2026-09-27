@@ -6,6 +6,19 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Controlled OpenCode worker verification
 
+The completed OpenCode attempt path now retains a complete workspace snapshot
+(including Git/cache files, empty directories and modes) and permits once-only
+grading through the required Linux boundary. Grading binds the prepared plan,
+completion outcome, captures, natural stops and call accounting. Consumers must
+use `benchmarks.paired_grading.read_committed_grade` to verify the separately
+persisted commit marker; a `graded` payload alone is insufficient.
+Two real Linux OpenCode launches with controlled model responses reached natural
+stops and left their starters unchanged. Both correctly failed grading, and both
+commit markers verified. The [graded launch receipt](evidence/opencode-graded-launch-linux.json)
+pins the source, retained records and [executed driver](evidence/opencode-graded-launch-linux-driver.txt).
+This verifies launch-to-grade plumbing with negative task results, not upstream
+inference, Codex, a complete paired study or PEX's comparative quality.
+
 The evaluator's explicit `require_linux_sandbox=True` path was exercised in
 WSL with the optional sandbox environment switch unset. It rejected the starter
 and accepted a synthetic reference fixture. Candidate import probes confirmed

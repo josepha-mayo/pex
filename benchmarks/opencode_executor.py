@@ -13,6 +13,7 @@ from tempfile import TemporaryDirectory
 
 from pex_bridge.adapters.strict_json import strict_json_loads
 
+from benchmarks import boundary, runner
 from benchmarks.async_budget import await_with_budget
 from benchmarks.linux_sandbox import worker_runtime_relay_command
 from benchmarks.opencode_cli import completed_turn
@@ -215,6 +216,16 @@ async def execute_attempt(
                                 await await_with_budget(server.wait_closed, budget=5)
         if time.perf_counter() >= limits["deadline"]:
             raise TimeoutError("attempt exhausted the shared task deadline")
+        if runner.benchmark_sha256() != reservation.get("benchmark_sha256", ""):
+            raise ValueError("benchmark sources changed during worker execution")
+        if measure_profile(runtime, model=model) != profile:
+            raise ValueError("worker runtime changed during execution")
+        result["workspace_snapshot_sha256"] = boundary.workspace_manifest_sha256(
+            workspace, complete=True,
+        )
+        result["stderr_sha256"] = boundary.sha256_file(control / "stderr.txt", max_bytes=MAX_OUTPUT)
+        if time.perf_counter() >= limits["deadline"]:
+            raise TimeoutError("completion capture exhausted the shared task deadline")
         result["status"] = "worker_completed_unscored"
     except BaseException as error:
         result["error_type"] = type(error).__name__

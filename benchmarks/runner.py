@@ -53,6 +53,7 @@ _CONTROLLER_FILES = (
     "opencode_worker.py",
     "opencode_runtime.py",
     "opencode_executor.py",
+    "paired_grading.py",
     "opencode_control_relay.py",
     "opencode_review_client.py",
     "opencode_sse_journal.py",
