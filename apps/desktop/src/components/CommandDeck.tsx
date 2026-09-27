@@ -1305,11 +1305,11 @@ function AgentsView({
               <div><dt>Premature STOP rate</dt><dd>{fingerprintPrematureRate(fingerprint)}</dd></div>
               <div><dt>Failure pattern</dt><dd>{fingerprintFailureModes(fingerprint)}</dd></div>
               <div><dt>Suggested configuration</dt><dd>{fingerprintSuggestedConfig(fingerprint)}</dd></div>
-              <div>
-                <dt>Adapter note</dt>
-                <dd>{String(adapter?.capabilities?.notes || "No live capability note returned.")}</dd>
-              </div>
             </dl>
+            <details className="agent-adapter-note">
+              <summary>Adapter details</summary>
+              <p>{String(adapter?.capabilities?.notes || "No live capability note returned.")}</p>
+            </details>
             {sourceFresh && !observed.length ? (
               <footer className="agent-connect">
                 <span>No live sessions observed</span>

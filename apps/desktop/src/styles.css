@@ -2437,6 +2437,35 @@ textarea::placeholder {
   font-size: 10px;
 }
 
+.agent-adapter-note {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.agent-adapter-note > summary {
+  color: var(--faint);
+  font-size: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.agent-adapter-note > summary::-webkit-details-marker { display: none; }
+.agent-adapter-note > summary::after {
+  content: "+";
+  float: right;
+  color: var(--mint);
+}
+.agent-adapter-note[open] > summary::after { content: "−"; }
+
+.agent-adapter-note > p {
+  margin: 8px 0 0;
+  color: #d6e1da;
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .agent-connect {
   display: flex;
   align-items: center;
