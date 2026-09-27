@@ -1,0 +1,112 @@
+{
+  "schema": "pex.opencode-controlled-repair.v1",
+  "source_sha": "d12405c7c9dcbd764796136d149a347013a6262f",
+  "binary_sha256": "cf664aa1da32b788f9b2699b84a9bb9be30b7e025693b90f9b85829d5fe4e252",
+  "accepted": true,
+  "target_session_id": "opencode:ses_f1f96cc79ffedq4gNIBaCgGHyF",
+  "target_vendor_session_id": "ses_f1f96cc79ffedq4gNIBaCgGHyF",
+  "vendor_turn_id": "msg_0e06957a4001l337rLnWCpzZcb",
+  "completed_assistant_messages": 1,
+  "unrelated_session_messages": 0,
+  "local_model_requests": [
+    {
+      "model": "pinned",
+      "stream": true
+    },
+    {
+      "model": "pinned",
+      "stream": true
+    },
+    {
+      "model": "pinned",
+      "stream": true
+    }
+  ],
+  "observed_event_types": [
+    "agent_response",
+    "status",
+    "stop",
+    "tool_call",
+    "tool_result",
+    "user_prompt"
+  ],
+  "bound_terminal_event_id": "opencode:ses_f1f96cc79ffedq4gNIBaCgGHyF:sse:bd9672b988b591985daf2bff",
+  "bound_terminal_metadata": {
+    "sse_type": "message.updated",
+    "opencode_message_lineage": {
+      "schema": "pex.opencode-message-lineage.v1",
+      "target_session_id": "opencode:ses_f1f96cc79ffedq4gNIBaCgGHyF",
+      "vendor_session_id": "ses_f1f96cc79ffedq4gNIBaCgGHyF",
+      "message_id": "msg_0e06980b3001vS0VBvrd6Hzi8Z",
+      "role": "assistant",
+      "parent_message_id": "msg_0e06957a4001l337rLnWCpzZcb",
+      "source_event_type": "message.updated",
+      "stream_contiguous": true,
+      "parent_removed_observed": false,
+      "assistant_message_completed": true,
+      "assistant_message_error": false,
+      "assistant_finish": "stop"
+    }
+  },
+  "public_test_sha256": "1b7fd96b95a79545e905bf964469c6e773abbb84d5e6731d8f87c18d350aa4f6",
+  "pytest_before": {
+    "ok": false,
+    "exit_code": 1,
+    "output": "F                                                                        [100%]\r\n================================== FAILURES ===================================\r\nE   assert 0 == 1\r\n     +  where 0 = <function answer at 0x00000256F3653EC0>()\r\n     +    where <function answer at 0x00000256F3653EC0> = solver.answer\r\nD:\\PEX-work\\build\\opencode-repair\\20260927T010936\\worker\\test_public.py:4: assert 0 == 1\r\n============================== warnings summary ===============================\r\n..\\..\\..\\..\\.venv\\Lib\\site-packages\\_pytest\\config\\__init__.py:1464\r\n  D:\\PEX-work\\.venv\\Lib\\site-packages\\_pytest\\config\\__init__.py:1464: PytestConfigWarning: Unknown config option: asyncio_default_fixture_loop_scope\r\n  \r\n    self._warn_or_fail_if_strict(f\"Unknown config option: {key}\\n\")\r\n\r\n..\\..\\..\\..\\.venv\\Lib\\site-packages\\_pytest\\config\\__init__.py:1464\r\n  D:\\PEX-work\\.venv\\Lib\\site-packages\\_pytest\\config\\__init__.py:1464: PytestConfigWarning: Unknown config option: asyncio_mode\r\n  \r\n    self._warn_or_fail_if_strict(f\"Unknown config option: {key}\\n\")\r\n\r\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\r\n=========================== short test summary info ===========================\r\nFAILED test_public.py::test_answer - assert 0 == 1\r\n1 failed, 2 warnings in 0.02s\r\n",
+    "timed_out": false
+  },
+  "pytest_after": {
+    "ok": true,
+    "exit_code": 0,
+    "output": ".                                                                        [100%]\r\n============================== warnings summary ===============================\r\n..\\..\\..\\..\\.venv\\Lib\\site-packages\\_pytest\\config\\__init__.py:1464\r\n  D:\\PEX-work\\.venv\\Lib\\site-packages\\_pytest\\config\\__init__.py:1464: PytestConfigWarning: Unknown config option: asyncio_default_fixture_loop_scope\r\n  \r\n    self._warn_or_fail_if_strict(f\"Unknown config option: {key}\\n\")\r\n\r\n..\\..\\..\\..\\.venv\\Lib\\site-packages\\_pytest\\config\\__init__.py:1464\r\n  D:\\PEX-work\\.venv\\Lib\\site-packages\\_pytest\\config\\__init__.py:1464: PytestConfigWarning: Unknown config option: asyncio_mode\r\n  \r\n    self._warn_or_fail_if_strict(f\"Unknown config option: {key}\\n\")\r\n\r\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\r\n1 passed, 2 warnings in 0.01s\r\n",
+    "timed_out": false
+  },
+  "supervisor_actions": [
+    {
+      "type": "SEND_NUDGE",
+      "session_id": "opencode:ses_f1f96cc79ffedq4gNIBaCgGHyF",
+      "goal_id": "goal:repair",
+      "payload": {
+        "text": "The latest observed pytest run failed (exit 1). Failing test: test_public.py::test_answer. Continue from that failure."
+      },
+      "rationale": "Observed workspace state does not satisfy an explicit acceptance criterion.",
+      "evidence": [
+        "pytest_event_id=evt_e16f9b9c4ff54f85b32c1395b406ee26",
+        "pytest_scope=targeted",
+        "pytest_ok=False",
+        "pytest_exit_code=1",
+        "failed:test_public.py::test_answer"
+      ],
+      "confidence": 0.86,
+      "risk": "low",
+      "reversible": false,
+      "expected_benefit": "Redirect the worker toward evidenced progress without interrupting the human.",
+      "cooldown_seconds": 45,
+      "authority_required": "local_policy",
+      "requires_capability": "send_message"
+    },
+    {
+      "type": "NOOP",
+      "session_id": "opencode:ses_f1f96cc79ffedq4gNIBaCgGHyF",
+      "goal_id": "goal:repair",
+      "payload": {},
+      "rationale": "No deterministic fact requires interruption. Stop/completion needs supervisor inference or silence.",
+      "evidence": [
+        "stop"
+      ],
+      "confidence": 0.7,
+      "risk": "none",
+      "reversible": false,
+      "expected_benefit": "",
+      "cooldown_seconds": 5,
+      "authority_required": "local_policy",
+      "requires_capability": null
+    }
+  ],
+  "worker_tools": [
+    "read",
+    "write"
+  ],
+  "scope": "Real OpenCode tools, deterministic PEX correction and test verification, controlled local model. No provider call or quality comparison.",
+  "owned_process_closed": true
+}
