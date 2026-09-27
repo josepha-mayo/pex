@@ -1,5 +1,6 @@
 import asyncio
 import time
+from types import SimpleNamespace
 
 import pytest
 from pex_bridge.adapters.strict_json import strict_json_dumps
@@ -99,6 +100,63 @@ async def test_cancelled_review_remains_consumed_and_uncertain():
     finally:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+    assert controller.review_audit[0]["status"] == "cancelled_uncertain"
+    assert (await controller.dispatch(request("review-2")))["error"] == "review_budget_exhausted"
+
+
+async def test_expired_review_cannot_complete_receipt_after_suppressed_cancel(monkeypatch):
+    import benchmarks.opencode_control_relay as control
+
+    async def review(*args):
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            return {"type": "NOOP"}
+
+    controller = relay(review, max_reviews=1)
+    controller.deadline = 100.01
+    monkeypatch.setattr(control, "time", SimpleNamespace(perf_counter=lambda: 100.0))
+    result = await asyncio.wait_for(controller.dispatch(request()), 1)
+    assert result["error"] == "review_failed_uncertain"
+    assert controller.review_audit[0]["status"] == "failed_uncertain"
+    assert (await controller.dispatch(request("review-2")))["error"] == "review_budget_exhausted"
+
+
+async def test_deadline_expiring_at_admission_never_starts_review(monkeypatch):
+    import benchmarks.opencode_control_relay as control
+
+    calls = []
+
+    async def review(*args):
+        calls.append(args)
+        return {"type": "NOOP"}
+
+    controller = relay(review)
+    controller.deadline = 101.0
+    ticks = iter([100.0, 102.0])
+    monkeypatch.setattr(control, "time", SimpleNamespace(perf_counter=lambda: next(ticks)))
+    result = await controller.dispatch(request())
+    assert calls == []
+    assert result["error"] == "review_failed_uncertain"
+    assert controller.review_audit[0]["status"] == "failed_uncertain"
+
+
+async def test_suppressed_caller_cancel_stays_uncertain_and_consumed():
+    entered = asyncio.Event()
+
+    async def review(*args):
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            return {"type": "NOOP"}
+
+    controller = relay(review, max_reviews=1)
+    task = asyncio.create_task(controller.dispatch(request()))
+    await asyncio.wait_for(entered.wait(), 1)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(task, 1)
     assert controller.review_audit[0]["status"] == "cancelled_uncertain"
     assert (await controller.dispatch(request("review-2")))["error"] == "review_budget_exhausted"
 

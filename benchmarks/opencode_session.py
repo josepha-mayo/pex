@@ -24,6 +24,23 @@ class SessionRun:
     followup_limit_reached: bool
 
 
+async def await_review(review: Callable[[], Awaitable[dict]], *, budget: float) -> dict:
+    """Reject expired reviews even when a callback suppresses cancellation."""
+    if budget <= 0:
+        raise TimeoutError("review exhausted the shared task deadline")
+    task = asyncio.current_task()
+    initial_cancellations = task.cancelling() if task else 0
+    try:
+        async with asyncio.timeout(budget) as window:
+            decision = await review()
+        if window.expired():
+            raise TimeoutError("review exhausted the shared task deadline")
+        return decision
+    finally:
+        if task and task.cancelling() > initial_cancellations:
+            raise asyncio.CancelledError
+
+
 async def run_session(
     *, executable: Path, workspace: Path, model: str, prompt: str,
     environment: dict[str, str], log_directory: Path, deadline: float,
@@ -69,7 +86,7 @@ async def run_session(
         if review is None:
             break
         review_budget = remaining()
-        decision = await asyncio.wait_for(review(tuple(turns)), timeout=review_budget)
+        decision = await await_review(lambda: review(tuple(turns)), budget=review_budget)
         remaining()
         if not isinstance(decision, dict) or not isinstance(decision.get("type"), str):
             raise ValueError("OpenCode session review lacks an action type")

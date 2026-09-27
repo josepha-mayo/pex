@@ -87,6 +87,40 @@ async def test_review_timeout_cancels_pending_review(execution):
     assert len(calls) == 1
 
 
+async def test_expired_review_cannot_launch_repair_after_suppressed_cancel(execution):
+    arguments, calls, _ = execution
+    arguments["deadline"] = 11.01
+
+    async def review(turns):
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            return {"type": "SEND_NUDGE", "payload": {"text": "Must not launch"}}
+
+    with pytest.raises(TimeoutError, match="shared task deadline"):
+        await asyncio.wait_for(opencode_session.run_session(**arguments, review=review), 1)
+    assert len(calls) == 1
+
+
+async def test_review_preserves_suppressed_caller_cancellation(execution):
+    arguments, calls, _ = execution
+    entered = asyncio.Event()
+
+    async def review(turns):
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            return {"type": "NOOP"}
+
+    task = asyncio.create_task(opencode_session.run_session(**arguments, review=review))
+    await asyncio.wait_for(entered.wait(), 1)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(task, 1)
+    assert len(calls) == 1
+
+
 async def test_followup_limit_records_refusal_without_sending(execution):
     arguments, calls, _ = execution
 

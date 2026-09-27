@@ -14,7 +14,7 @@ from collections.abc import Awaitable, Callable
 from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
 
 from benchmarks.model_relay import MAX_REQUEST_BYTES, PinnedModelRelay
-from benchmarks.opencode_session import REPAIR_ACTIONS
+from benchmarks.opencode_session import REPAIR_ACTIONS, await_review
 
 REVIEW_SCHEMA = "pex.opencode-review.v1"
 
@@ -85,9 +85,9 @@ class OpenCodeControlRelay(PinnedModelRelay):
         }
         self.review_audit.append(receipt)
         try:
-            decision = await asyncio.wait_for(
-                self.review(vendor, tuple(messages)),
-                timeout=max(0, self.deadline - time.perf_counter()),
+            decision = await await_review(
+                lambda: self.review(vendor, tuple(messages)),
+                budget=max(0, self.deadline - time.perf_counter()),
             )
             if time.perf_counter() >= self.deadline:
                 raise TimeoutError("review returned after task deadline")
