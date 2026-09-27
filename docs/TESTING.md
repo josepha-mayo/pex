@@ -1029,3 +1029,14 @@ optional AgentCore endpoint proposes an action.
   turn. No provider request occurred. This verifies the local UI connection
   flow, not a supervised task, desktop Codex control, packaged startup, or
   comparative performance; see [the receipt](evidence/pex-browser-connections-706d38c.json).
+- Revision `490224a` passed the Linux source suite and native Debian acceptance
+  in [checks run 36293838736](https://github.com/josepha-mayo/pex/actions/runs/36293838736).
+  The installed fresh-profile Home and Settings rendered, with the bridge
+  connected and anonymous requests rejected with HTTP 401. The packaged bridge
+  verified its identity and completed a disposable Secret Service BYOK
+  save/read/clear round trip. Cloud reasoning was off and provider calls were
+  zero. These checks did not attach a worker, establish semantic supervision,
+  or measure comparative performance. Windows jobs were still running when
+  these Linux receipts were retained. See the exact [installed desktop receipt](evidence/linux-installed-smoke-490224a.json),
+  [bridge receipt](evidence/linux-packaged-bridge-490224a.json), and
+  [BYOK receipt](evidence/linux-packaged-byok-490224a.json).

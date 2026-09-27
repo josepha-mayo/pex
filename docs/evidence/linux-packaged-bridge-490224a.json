@@ -1,0 +1,13 @@
+{
+  "authenticated_supervisor_read": true,
+  "bridge_sha256": "fb64bc542dc6f17006c58743babae5ba73451eb6b1617fcce3fffdc19147aec1",
+  "byok_roundtrip": false,
+  "cloud_reasoning": false,
+  "first_catalog_model": "big-pickle",
+  "first_catalog_provider": "zen",
+  "identity_verified": true,
+  "max_dispatches_per_session": 3,
+  "provider_calls": 0,
+  "schema": "pex.packaged-settings-smoke.v1",
+  "worker_attachment": false
+}
