@@ -21,16 +21,25 @@ async def poll_opencode_get(transport: Any, path: str, *, deadline: float) -> An
     """Retry only a timed-out, read-only OpenCode observation within the proof window."""
     if type(deadline) not in (int, float) or not math.isfinite(deadline):
         raise ValueError("OpenCode observation deadline must be finite")
+    task = asyncio.current_task()
+    initial_cancellations = task.cancelling() if task else 0
     for attempt in range(3):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("OpenCode observation exhausted the proof window")
         try:
-            result = await asyncio.wait_for(transport.request("GET", path), timeout=remaining)
-            if time.monotonic() >= deadline:
+            async with asyncio.timeout(remaining) as window:
+                result = await transport.request("GET", path)
+            if task and task.cancelling() > initial_cancellations:
+                raise asyncio.CancelledError from None
+            if window.expired() or time.monotonic() >= deadline:
                 raise TimeoutError("OpenCode observation exhausted the proof window")
             return result
         except httpx.ReadTimeout:
+            if window.expired():
+                raise TimeoutError("OpenCode observation exhausted the proof window") from None
+            if task and task.cancelling() > initial_cancellations:
+                raise asyncio.CancelledError from None
             if attempt == 2 or time.monotonic() >= deadline:
                 raise
             await asyncio.sleep(min(0.25, max(0.0, deadline - time.monotonic())))

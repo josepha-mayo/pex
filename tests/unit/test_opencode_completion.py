@@ -162,6 +162,55 @@ def test_read_only_worker_poll_rejects_a_late_result_after_cancel_suppression():
     asyncio.run(guarded_check())
 
 
+@pytest.mark.parametrize("convert_to_read_timeout", [False, True])
+def test_expired_poll_timeout_rejects_suppressed_cancel_before_clock_deadline(
+    monkeypatch, convert_to_read_timeout,
+):
+    import benchmarks.opencode_completion as completion
+
+    # The event loop can deliver its timer before the wall-clock fence advances.
+    # Patch only the observation module, preserving asyncio's real clock.
+    monkeypatch.setattr(completion, "time", SimpleNamespace(monotonic=lambda: 100.0))
+
+    class Transport:
+        async def request(self, method, path):
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                if convert_to_read_timeout:
+                    raise httpx.ReadTimeout("cancelled observation") from None
+                return {"late": True}
+
+    async def check():
+        with pytest.raises(TimeoutError, match="proof window"):
+            await poll_opencode_get(Transport(), "/session/status", deadline=100.01)
+
+    asyncio.run(asyncio.wait_for(check(), timeout=1))
+
+
+def test_poll_preserves_caller_cancellation_when_transport_suppresses_it():
+    async def check():
+        entered = asyncio.Event()
+
+        class Transport:
+            async def request(self, method, path):
+                entered.set()
+                try:
+                    await asyncio.Event().wait()
+                except asyncio.CancelledError:
+                    return {"late": True}
+
+        task = asyncio.create_task(poll_opencode_get(
+            Transport(), "/session/status", deadline=time.monotonic() + 5,
+        ))
+        await entered.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(asyncio.wait_for(check(), timeout=1))
+
+
 @pytest.mark.parametrize("deadline", [True, None, float("inf"), float("nan")])
 def test_read_only_worker_poll_rejects_invalid_deadline(deadline):
     with pytest.raises(ValueError, match="finite"):
