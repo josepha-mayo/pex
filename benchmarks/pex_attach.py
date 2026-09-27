@@ -642,9 +642,9 @@ async def supervise_isolated_codex(
         or not math.isfinite(float(turn_timeout))
         or not math.isfinite(float(decision_timeout))
         or not 0 < turn_timeout <= 86_400
-        or not 0 < decision_timeout <= turn_timeout
+        or not 0 < decision_timeout <= 86_400
     ):
-        raise ValueError("supervision timeouts must be finite and within the task budget")
+        raise ValueError("supervision timeouts must be finite and within the public bound")
     supervision_started = time.perf_counter()
     worker_followup_wall_seconds = 0.0
     deadline = time.perf_counter() + turn_timeout
@@ -682,6 +682,7 @@ async def supervise_isolated_codex(
             **({"offline_runtime": offline_runtime} if offline_runtime is not None else {}),
             **({"model_relay": model_relay} if model_relay is not None else {}),
         )
+        remaining_budget()
         elapsed = int((time.perf_counter() - started) * 1000)
         backend = decision.get("backend") or {}
         audit = _audit(decision, observed, task_md, elapsed)
@@ -699,7 +700,10 @@ async def supervise_isolated_codex(
             audit["result_afterward"] = {"delivery": "max_followups_reached"}
             break
         before_turn = getattr(adapter, "last_turn_id", None)
-        sent, outcome, text = await _execute_public_intervention(adapter, session, action)
+        sent, outcome, text = await asyncio.wait_for(
+            _execute_public_intervention(adapter, session, action),
+            timeout=remaining_budget(),
+        )
         audit["policy_result"] = "allow" if sent else "deny"
         audit["actual_action_sent"] = action_type if sent else None
         audit["result_afterward"] = {"delivery": outcome}
@@ -709,10 +713,12 @@ async def supervise_isolated_codex(
         if not sent or not after_turn or after_turn == before_turn:
             break
         worker_started = time.perf_counter()
-        completed = await adapter.wait_for_turn_completion(
-            session,
-            after_turn,
-            timeout=remaining_budget(),
+        completion_budget = remaining_budget()
+        completed = await asyncio.wait_for(
+            adapter.wait_for_turn_completion(
+                session, after_turn, timeout=completion_budget,
+            ),
+            timeout=completion_budget,
         )
         if (
             not isinstance(completed, dict)
@@ -737,6 +743,7 @@ async def supervise_isolated_codex(
         )
         observed = next_observed
 
+    remaining_budget()
     supervision_wall_seconds = time.perf_counter() - supervision_started
     return {
         "backend": backend,

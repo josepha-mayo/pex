@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import json
 from pathlib import Path
@@ -120,3 +121,112 @@ async def test_offline_supervision_selects_isolated_public_test_execution(tmp_pa
             store_path=tmp_path / "private" / "store.sqlite",
             public_test_sha256="a" * 64, offline_runtime=Path("/runtime"),
         )
+
+
+@pytest.mark.parametrize("stalled_stage", ["delivery", "completion"])
+async def test_supervision_aborts_stalled_followup_at_shared_deadline(
+    tmp_path, monkeypatch, stalled_stage,
+):
+    arguments = _arguments(tmp_path)
+    cancelled = asyncio.Event()
+    dispatches = []
+
+    async def decision(**kwargs):
+        return {
+            "action": {"type": "SEND_NUDGE", "payload": {"text": "Verify the report."}},
+            "diagnosis": "The report is missing.", "used_llm": False,
+        }
+
+    async def stall():
+        try:
+            await asyncio.sleep(1)
+            pytest.fail("follow-up ran beyond the shared task deadline")
+        finally:
+            cancelled.set()
+
+    class Adapter:
+        isolated_agent_messages = []
+        last_turn_id = "initial-turn"
+
+        async def send_message(self, session, text):
+            dispatches.append((session.id, text))
+            if stalled_stage == "delivery":
+                await stall()
+            self.last_turn_id = "followup-turn"
+            return True
+
+        async def wait_for_turn_completion(self, session, turn_id, *, timeout):
+            assert turn_id == "followup-turn"
+            assert 0 < timeout <= 0.1
+            await stall()
+
+    monkeypatch.setattr(
+        pex_attach, "_observe_controlled_workspace", lambda *a, **kw: arguments["observed"],
+    )
+    monkeypatch.setattr(pex_attach, "_decide_out_of_process", decision)
+    with pytest.raises(TimeoutError):
+        await pex_attach.supervise_isolated_codex(
+            Adapter(), arguments["session"], arguments["workspace"], arguments["task_md"],
+            store_path=tmp_path / "private" / "store.sqlite",
+            turn_timeout=0.1, decision_timeout=0.1,
+        )
+    assert cancelled.is_set()
+    assert dispatches == [(arguments["session"].id, "Verify the report.")]
+
+
+async def test_expired_supervisor_decision_cannot_dispatch_followup(tmp_path, monkeypatch):
+    arguments = _arguments(tmp_path)
+    clock = [0.0]
+
+    async def decision(**kwargs):
+        clock[0] = 2.0
+        return {
+            "action": {"type": "SEND_NUDGE", "payload": {"text": "Too late."}},
+            "diagnosis": "The report is missing.", "used_llm": False,
+        }
+
+    class Adapter:
+        isolated_agent_messages = []
+
+        async def send_message(self, *args):
+            pytest.fail("an expired decision dispatched a worker turn")
+
+    monkeypatch.setattr(pex_attach.time, "perf_counter", lambda: clock[0])
+    monkeypatch.setattr(
+        pex_attach, "_observe_controlled_workspace", lambda *a, **kw: arguments["observed"],
+    )
+    monkeypatch.setattr(pex_attach, "_decide_out_of_process", decision)
+    with pytest.raises(TimeoutError, match="shared worker-plus-supervisor task budget"):
+        await pex_attach.supervise_isolated_codex(
+            Adapter(), arguments["session"], arguments["workspace"], arguments["task_md"],
+            store_path=tmp_path / "private" / "store.sqlite",
+            turn_timeout=1, decision_timeout=1,
+        )
+
+
+async def test_supervisor_decision_cap_is_clipped_to_remaining_task_time(tmp_path, monkeypatch):
+    arguments = _arguments(tmp_path)
+    requested_timeouts = []
+
+    async def decision(**kwargs):
+        requested_timeouts.append(kwargs["timeout"])
+        return {
+            "action": {"type": "NOOP"}, "diagnosis": "No correction needed.",
+            "used_llm": False,
+        }
+
+    class Adapter:
+        isolated_agent_messages = []
+
+    monkeypatch.setattr(
+        pex_attach, "_observe_controlled_workspace", lambda *a, **kw: arguments["observed"],
+    )
+    monkeypatch.setattr(pex_attach, "_decide_out_of_process", decision)
+    result = await pex_attach.supervise_isolated_codex(
+        Adapter(), arguments["session"], arguments["workspace"], arguments["task_md"],
+        store_path=tmp_path / "private" / "store.sqlite",
+        turn_timeout=1, decision_timeout=180,
+    )
+    assert len(requested_timeouts) == 1
+    assert 0 < requested_timeouts[0] <= 1
+    assert result["followups"] == 0
