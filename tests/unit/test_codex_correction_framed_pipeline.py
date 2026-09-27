@@ -383,13 +383,81 @@ async def test_idle_start_or_active_steer_is_durable_and_exactly_echoed(framed_p
     assert event.event_id != echoed.event_id
 
 
+async def wait_for_dispatch(case, *, timeout=8):
+    """Distinguish slow admission from a stopped pump without cancelling the pump."""
+    written = asyncio.create_task(case.channel.dispatch_written.wait())
+    try:
+        done, _ = await asyncio.wait(
+            {written, case.bound.task}, timeout=timeout,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if written in done:
+            return
+        adapter = case.bound.adapter
+        state = adapter.subscription.state
+        events = await case.bound.store.recent_events(adapter.session.id)
+        processing = {
+            event.event_id: await case.bound.store.get_event_processing(event.event_id)
+            for event in events if event.event_type == EventType.AGENT_RESPONSE
+        }
+        states = {
+            event_id: {
+                "state": row and row.get("state"),
+                "receipt": row and row.get("receipt"),
+            } for event_id, row in processing.items()
+        }
+        raise AssertionError(
+            f"dispatch not written; pump_done={case.bound.task.done()}; "
+            f"pump_error={adapter.last_pump_error}; "
+            f"reason={state and state.invalidation_reason}; event_states={states}"
+        )
+    finally:
+        if not written.done():
+            written.cancel()
+        await asyncio.gather(written, return_exceptions=True)
+
+
+@pytest.mark.parametrize("stopped", [False, True])
+async def test_dispatch_wait_reports_stopped_or_pending_pump_without_cancelling_it(stopped):
+    async def pump():
+        if not stopped:
+            await asyncio.Event().wait()
+
+    async def recent_events(_session_id):
+        return []
+
+    task = asyncio.create_task(pump())
+    case = SimpleNamespace(
+        channel=SimpleNamespace(dispatch_written=asyncio.Event()),
+        bound=SimpleNamespace(
+            task=task,
+            store=SimpleNamespace(recent_events=recent_events),
+            adapter=SimpleNamespace(
+                session=SimpleNamespace(id="codex:fixture"),
+                subscription=SimpleNamespace(state=None), last_pump_error=None,
+            ),
+        ),
+    )
+    try:
+        async def check():
+            with pytest.raises(AssertionError, match=f"pump_done={stopped}"):
+                await wait_for_dispatch(case, timeout=0.01)
+
+        await asyncio.wait_for(check(), 1)
+        assert not task.cancelled()
+        assert task.done() is stopped
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+
 async def test_lost_ack_is_recovered_uncertain_without_redelivery(
     framed_pipeline, tmp_path,
 ):
     case = framed_pipeline
     case.channel.hold_dispatch_response = True
     await emit_trigger(case)
-    await asyncio.wait_for(case.channel.dispatch_written.wait(), 5)
+    await wait_for_dispatch(case)
     await asyncio.wait_for(asyncio.shield(case.bound.task), 8)
 
     events = [
