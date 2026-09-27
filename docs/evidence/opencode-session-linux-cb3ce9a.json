@@ -1,0 +1,39 @@
+{
+  "shared_session_deadline": true,
+  "real_opencode": true,
+  "loopback_http": true,
+  "mounted_unix_relay": true,
+  "buffered_sse": true,
+  "buffered_sse_calls": 5,
+  "upstream_streaming": false,
+  "runtime_read_only": true,
+  "task_writable": true,
+  "tool_permission": "edit_allow_other_tools_deny",
+  "opencode_write_tool_completed": true,
+  "same_vendor_session": true,
+  "pex_followups": 1,
+  "public_tests_before": false,
+  "public_tests_after": true,
+  "worker_exit": 0,
+  "controller_calls": 5,
+  "scope": "Real OpenCode same-session repair with isolated deterministic PEX and public tests, controlled relay backend; no upstream provider call or comparative quality claim.",
+  "schema": "pex.opencode-session-linux.v1",
+  "source_commit_base": "cb3ce9a773185802e11e2e5b57f2fb18e9bf98f7",
+  "provider_calls": 0,
+  "limitations": [
+    "Scripted local model responses and induced defect; no natural-model performance evidence.",
+    "One 45-second session deadline covers initial turn, reviews and repair in this diagnostic.",
+    "Caller owns the worker boundary and teardown; review transport and evaluator are supplied separately.",
+    "No baseline pair, hidden evaluator, or complete formal benchmark runner.",
+    "Raw logs and runtime dependencies remain ignored local build artifacts."
+  ],
+  "source_hashes": {
+    "benchmarks/opencode_session.py": "5e3ff940dcf5302454579445e25584ed6d8360638fc8f3320a9abb366c17fc96",
+    "benchmarks/opencode_cli.py": "13c03094ad7e54ba8eaa57819f4809bccb370bb8149e5ee651b22cf7f4ce1f1b",
+    "docs/evidence/opencode-session-linux-driver.txt": "c615f66b6d3813c90c24bced474260b549481fde7901a50112ef467b825d99b2",
+    "benchmarks/pex_attach.py": "0a9ed8ae5e295e62e2fb6f0fda5db228b417fc9d5a6518970d7b44a1be54580b",
+    "build/opencode-session-linux-stdout.jsonl": "47a3b9b488a513cc0f901d7107a6e7ea41148ae894c2a69ee4a9db3508263336",
+    "build/opencode-session-linux-decisions.json": "43c9246288391e530fc6d74a605613920cabb60d79340b4971d1b184699457f5",
+    "build/isolated-supervisor-runtime/public-runtime-f379031/runtime-manifest.json": "1b74579bf2b21c45923e785d43625972a57f9f7007dfbe91766358d0c844c7d6"
+  }
+}
