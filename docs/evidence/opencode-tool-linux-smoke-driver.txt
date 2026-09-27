@@ -1,0 +1,135 @@
+import json
+import os
+import socket
+import struct
+import subprocess
+import sys
+import tempfile
+import threading
+from pathlib import Path
+
+repo = Path('/mnt/d/PEX-work')
+sys.path.insert(0, str(repo))
+from benchmarks.linux_sandbox import worker_runtime_relay_command
+from benchmarks.worker_model_proxy import _read
+
+with tempfile.TemporaryDirectory(prefix='pex-worker-proxy-') as temp:
+    root = Path(temp)
+    workspace = root/'worker'
+    workspace.mkdir()
+    runtime=root/'runtime'
+    runtime.mkdir()
+    import tarfile
+    package=repo/'build/linux-opencode-runtime/opencode-linux-x64-1.18.32.tgz'
+    with tarfile.open(package) as archive:
+        member=archive.getmember('package/bin/opencode')
+        assert member.isfile() and member.size<200_000_000
+        with archive.extractfile(member) as source, (runtime/'opencode').open('wb') as target:
+            import shutil
+            shutil.copyfileobj(source,target)
+    (runtime/'opencode').chmod(0o755)
+    (runtime/'guard.txt').write_text('original')
+    controller = root/'controller'
+    controller.mkdir(mode=0o700)
+    path = controller/'relay.sock'
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    listener.bind(str(path))
+    path.chmod(0o600)
+    listener.listen(1)
+    listener.settimeout(0.5)
+    calls=[]
+    tool_issued=[]
+    errors=[]
+    stop=threading.Event()
+    def serve():
+        while not stop.is_set() and len(calls)<8:
+            try:
+                peer,_=listener.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+            try:
+                with peer:
+                    peer.settimeout(10)
+                    length=struct.unpack('!I',_read(peer,4))[0]
+                    assert 0<length<=262144
+                    envelope=json.loads(_read(peer,length))
+                    body=envelope['body']
+                    assert body['model']=='pinned' and body['stream'] is False
+                    calls.append(body)
+                    tools = body.get('tools') or []
+                    write_tool = next((row.get('function') for row in tools if row.get('function', {}).get('name') == 'write'), None)
+                    message = {'role':'assistant','content':'bounded response'}
+                    finish = 'stop'
+                    if write_tool and not tool_issued:
+                        tool_issued.append(write_tool)
+                        message = {'role':'assistant','content':None,'tool_calls':[{'id':'controlled-write-1','type':'function','function':{'name':'write','arguments':json.dumps({'filePath':'/workspace/agent-result.txt','content':'created by the OpenCode write tool\n'})}}]}
+                        finish = 'tool_calls'
+                    response={'schema':envelope['schema'],'request_id':envelope['request_id'],'ok':True,
+                        'body':{'id':'controlled','created':1,'model':'pinned','choices':[
+                            {'index':0,'message':message,'finish_reason':finish}],
+                            'usage':{'prompt_tokens':10,'completion_tokens':2,'total_tokens':12}}}
+                    raw=json.dumps(response).encode()
+                    peer.sendall(struct.pack('!I',len(raw))+raw)
+            except Exception as exc:
+                errors.append(type(exc).__name__)
+                return
+    thread=threading.Thread(target=serve,daemon=True)
+    thread.start()
+    source=(repo/'benchmarks/worker_model_proxy.py').read_text()
+    child="""
+import json,os,subprocess,threading
+namespace={'__name__':'proxy_module'}
+exec(SOURCE,namespace)
+sse_calls=[]
+original_buffered_sse=namespace['buffered_sse']
+def observed_buffered_sse(result):
+    sse_calls.append(True)
+    return original_buffered_sse(result)
+namespace['buffered_sse']=observed_buffered_sse
+server=namespace['make_server']('/model-relay.sock',model='pinned')
+thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+try:
+    from pathlib import Path
+    try:
+        Path('/worker-runtime/guard.txt').write_text('changed')
+    except OSError:
+        pass
+    else:
+        raise AssertionError('Worker runtime was writable')
+    config={'autoupdate':False,'model':'controlled/pinned','small_model':'controlled/pinned','enabled_providers':['controlled'],'permission':{'*':'deny','edit':'allow'},
+        'provider':{'controlled':{'npm':'@ai-sdk/openai-compatible','name':'Controlled relay','options':{'baseURL':f'http://127.0.0.1:{server.server_port}/v1','apiKey':'pex-relay-local'},
+            'models':{'pinned':{'name':'Pinned','limit':{'context':32000,'output':1200}}}}}}
+    env=dict(os.environ,OPENCODE_CONFIG_CONTENT=json.dumps(config),XDG_CONFIG_HOME='/tmp/config',XDG_DATA_HOME='/tmp/data',XDG_CACHE_HOME='/tmp/cache',XDG_STATE_HOME='/tmp/state')
+    completed=subprocess.run(['/worker-runtime/opencode','run','--format','json','--model','controlled/pinned','Create agent-result.txt containing created by the OpenCode write tool, then stop.'],env=env,capture_output=True,text=True,timeout=45)
+    assert completed.returncode==0,(completed.stdout,completed.stderr)
+    assert 'bounded response' in completed.stdout,completed.stdout+completed.stderr
+    assert Path('/workspace/agent-result.txt').read_text() == 'created by the OpenCode write tool\\n'
+    events=[json.loads(line) for line in completed.stdout.splitlines() if line.startswith('{')]
+    writes=[event for event in events if event.get('type')=='tool_use' and event.get('part',{}).get('tool')=='write']
+    assert len(writes)==1 and writes[0]['part']['state']['status']=='completed',events
+    Path('/workspace/_proof-stdout.jsonl').write_text(completed.stdout)
+    assert sse_calls, 'No buffered SSE response was observed'
+    print(json.dumps({'real_opencode':True,'loopback_http':True,'mounted_unix_relay':True,'buffered_sse':bool(sse_calls),'buffered_sse_calls':len(sse_calls),'upstream_streaming':False,'runtime_read_only':True,'task_writable':True,'tool_permission':'edit_allow_other_tools_deny','opencode_write_tool_completed':True,'worker_exit':completed.returncode}))
+finally:
+    server.shutdown();server.server_close();thread.join(timeout=5)
+""".replace('SOURCE',repr(source))
+    try:
+        result=subprocess.run(worker_runtime_relay_command(workspace,['/usr/bin/python3','-c',child],path,runtime),
+            capture_output=True,text=True,timeout=60)
+        stop.set()
+        thread.join(timeout=2)
+        (repo/'build/opencode-tool-linux-diagnostic.json').write_text(json.dumps({'returncode':result.returncode,'errors':errors,'calls':len(calls),'stderr':result.stderr},indent=2))
+        assert result.returncode==0, result.stderr
+        assert tool_issued and (workspace/'agent-result.txt').read_bytes()==b'created by the OpenCode write tool\n'
+        assert 1<=len(calls)<=8 and not errors and not thread.is_alive(),errors
+        (repo/'build/opencode-tool-linux-stdout.jsonl').write_bytes((workspace/'_proof-stdout.jsonl').read_bytes())
+        receipt={**json.loads(result.stdout),'controller_calls':len(calls),
+            'scope':'Real OpenCode write tool inside Linux bubblewrap with a controlled relay backend; no upstream provider call or comparative quality claim.'}
+        (repo/'build/opencode-tool-linux-smoke.json').write_text(json.dumps(receipt,indent=2)+'\n')
+        print(json.dumps(receipt))
+    finally:
+        stop.set()
+        listener.close()
+        thread.join(timeout=2)
