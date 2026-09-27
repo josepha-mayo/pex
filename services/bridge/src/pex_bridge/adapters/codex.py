@@ -1399,7 +1399,10 @@ class CodexAdapter(HarnessAdapter):
                 )
             except Exception:
                 connected = False
-        desktop = await asyncio.to_thread(chatgpt_desktop_running)
+        # A verified headless App Server does not need a desktop process scan.
+        # Slow Windows inventory must not invalidate its live control receipt;
+        # focusing the separate Desktop app would not focus this CLI worker.
+        desktop = False if connected else await asyncio.to_thread(chatgpt_desktop_running)
         pumping = (
             connected
             and self._pump_task is not None

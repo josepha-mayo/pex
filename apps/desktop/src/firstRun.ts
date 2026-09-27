@@ -103,7 +103,7 @@ export function firstRunGuidance({
     const harness = current.harness_type;
     const harnessLabel = harness === "opencode" ? "OpenCode" : titleCase(harness || "worker");
     const nextStep = harness === "codex"
-      ? "In Connections, connect the isolated Codex App Server, then start or resume a Codex CLI thread. PEX does not control Codex Desktop tasks."
+      ? "In Connections, connect the isolated Codex App Server and create a worker in your project folder, or observe an existing Codex CLI thread. PEX does not control Codex Desktop tasks."
       : harness === "opencode"
         ? "In Connections, attach PEX to a running OpenCode server session."
         : "In Connections, attach a running OpenCode session or an isolated Codex CLI thread.";

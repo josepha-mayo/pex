@@ -282,8 +282,12 @@ If Codex CLI is installed, this starts a new isolated Codex App Server transport
 it does not take control of ChatGPT.exe or an arbitrary existing Codex task:
 
 Open **PEX Settings → Connections → Connect isolated Codex** to do this from
-the app without editing an environment variable. The connection probe makes no
-model turn; return Home to choose a discovered CLI thread and attach its goal.
+the app without editing an environment variable. After the handshake, enter an
+existing absolute project folder and select **Create Codex worker**. PEX creates
+an idle, isolated thread with workspace-write permissions; it does not send a
+task or start a model turn. Select **Return Home** to choose that exact worker
+and attach its goal. Sending work is a separate operator action. If creation is
+not confirmed, inspect Home before retrying because an empty thread may exist.
 The source-development equivalent is:
 
 ```powershell

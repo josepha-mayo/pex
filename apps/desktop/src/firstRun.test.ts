@@ -78,7 +78,8 @@ test("first-run guidance distinguishes no usable worker from an attachable unbou
   assert.equal(desktopOnly?.cta?.intent, "connect");
   assert.equal(desktopOnly?.title, "Connect a supported session");
   assert.equal(desktopOnly?.detail.includes("Codex session record"), true);
-  assert.equal(desktopOnly?.detail.includes("start or resume a Codex CLI thread"), true);
+  assert.equal(desktopOnly?.detail.includes("create a worker in your project folder"), true);
+  assert.equal(desktopOnly?.detail.includes("observe an existing Codex CLI thread"), true);
   assert.equal(desktopOnly?.detail.includes("does not control Codex Desktop tasks"), true);
   assert.deepEqual(desktopOnly?.cta, { intent: "connect", label: "Open Connections" });
 

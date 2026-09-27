@@ -2503,6 +2503,18 @@ class MessageIn(_StrictRequestModel):
         return value
 
 
+class CodexThreadIn(_StrictRequestModel):
+    workspace: str = Field(min_length=1, max_length=MAX_PATH_CHARS)
+
+    @field_validator("workspace")
+    @classmethod
+    def validate_workspace(cls, value: str) -> str:
+        value = value.strip()
+        if not value or "\x00" in value:
+            raise ValueError("workspace must be a local folder path")
+        return value
+
+
 class UndoIn(_StrictRequestModel):
     idempotency_key: str = Field(
         min_length=8,
@@ -4036,6 +4048,56 @@ def create_app() -> FastAPI:
             "name": name,
             "base_url": match["base_url"],
             "support": caps.support_label.value,
+        }
+
+    @app.post("/v1/adapters/codex/threads")
+    async def create_codex_thread(
+        body: CodexThreadIn,
+        _: Annotated[OperatorActorEvidence, Depends(_require_operator_token)],
+    ):
+        from pex_bridge.adapters.codex import CodexAdapter
+
+        candidate = Path(body.workspace)
+        if not candidate.is_absolute():
+            raise HTTPException(422, "workspace must be an absolute local folder")
+        try:
+            workspace = candidate.resolve(strict=True)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise HTTPException(422, "workspace folder was not found") from exc
+        if not workspace.is_dir() or workspace == Path(workspace.anchor):
+            raise HTTPException(422, "choose an existing project folder, not a filesystem root")
+        manager = state.codex_shared_attachments
+        async with manager.lock:
+            adapter = state.adapters.get("codex")
+            if (
+                manager.closed or state.codex_shared_attachments is not manager
+                or manager.active is not None or not isinstance(adapter, CodexAdapter)
+                or adapter.transport is None
+            ):
+                raise HTTPException(409, "connect the isolated Codex App Server first")
+            try:
+                caps = await _bounded_adapter_probe(adapter)
+                if not caps.start or not caps.observe_session_status:
+                    raise HTTPException(409, "Codex connection is not ready to create a worker")
+                session = await asyncio.wait_for(
+                    adapter.start_isolated_thread(str(workspace), name="pex-worker"),
+                    timeout=30.0,
+                )
+                session.metadata.update({"source": "pex_ui", "created_by_pex": True})
+                session.capabilities = caps.model_dump(mode="json")
+                await state.store.upsert_session(session)
+            except HTTPException:
+                raise
+            except Exception as exc:
+                # No turn is requested here. A lost receipt can still leave an
+                # empty thread; do not retry creation automatically.
+                raise HTTPException(
+                    502, "worker creation was not confirmed; inspect Home before retrying",
+                ) from exc
+        return {
+            "ok": True, "model_turn_started": False,
+            "requested_workspace": body.workspace,
+            "session": session.model_dump(mode="json"),
         }
 
     @app.post("/v1/adapters/{name}/attach")
