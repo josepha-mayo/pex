@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import socket
 import struct
 import uuid
@@ -31,8 +32,16 @@ def _constant(value):
     raise ValueError("non-finite JSON value")
 
 
+def _float(value):
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError("non-finite JSON value")
+    return parsed
+
+
 def _decode(raw):
-    return json.loads(raw, object_pairs_hook=_object, parse_constant=_constant)
+    return json.loads(raw.decode("utf-8"), object_pairs_hook=_object,
+                      parse_constant=_constant, parse_float=_float)
 
 
 def _encode(value):
