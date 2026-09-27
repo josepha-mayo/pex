@@ -1245,6 +1245,7 @@ class Pipeline:
                 EventType.ERROR,
                 EventType.PERMISSION_REQUEST,
                 EventType.SESSION_END,
+                EventType.COMPACTION,
             }
             and event.approval_request is None
             and opencode_live is not None
@@ -1255,7 +1256,7 @@ class Pipeline:
             # every progress frame serializes capability probes and semantic
             # work ahead of the completion event that actually requires PEX.
             # Keep the observations durable and publish them to the UI; reserve
-            # the decision pipeline for terminal, failure, and permission
+            # the decision pipeline for terminal, failure, permission, compaction
             # boundaries and lifecycle/fence transitions. Repeated working
             # frames remain cheap, but must not hide busy, quota or abort state.
             event, _ = await self._prepare_event_acceptance(event, session)

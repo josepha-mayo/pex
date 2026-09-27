@@ -822,7 +822,7 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             )
         return _nudge(
             request,
-            "Worker context is about to compact; checkpoint the attached ledger.",
+            "Worker context compacted; restore the attached ledger.",
             evidence,
             correction,
         )

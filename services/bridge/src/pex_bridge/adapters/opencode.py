@@ -1040,6 +1040,11 @@ class OpenCodeAdapter(HarnessAdapter):
             kind == "message.updated"
             and role == "assistant"
             and not assistant_message_error
+            # OpenCode finishes its internal compaction summary with the same
+            # finish/time fields as a worker response. It is not task completion.
+            and (info.get("summary") is None or info.get("summary") is False)
+            and info.get("mode") != "compaction"
+            and info.get("agent") != "compaction"
             and assistant_finish == "stop"
             and type(created_time) in {int, float}
             and type(completed_time) in {int, float}
@@ -1130,6 +1135,7 @@ class OpenCodeAdapter(HarnessAdapter):
             "message.updated": EventType.AGENT_RESPONSE,
             "message.part.updated": EventType.AGENT_RESPONSE,
             "session.idle": EventType.STOP,
+            "session.compacted": EventType.COMPACTION,
             "session.deleted": EventType.SESSION_END,
             "permission.asked": EventType.PERMISSION_REQUEST,
             "permission.updated": EventType.PERMISSION_REQUEST,
@@ -1368,8 +1374,15 @@ class OpenCodeAdapter(HarnessAdapter):
             self._completed_terminal_parents[session.id] = parent_message_id
         elif kind == "session.deleted":
             self._completed_terminal_parents.pop(session.id, None)
+        identity_payload = payload
+        if kind == "session.compacted" and not payload.get("id"):
+            # The official frame has only sessionID, so content hashing would
+            # collapse every future compaction of this session into the first.
+            # Mint one observed occurrence; the pump retains this exact event
+            # across ingestion retries rather than normalizing the frame again.
+            identity_payload = {**payload, "_pex_compaction_occurrence": uuid4().hex}
         return HarnessEvent(
-            event_id=_event_id(session.id, payload),
+            event_id=_event_id(session.id, identity_payload),
             ts=datetime.now(UTC),
             harness_type=HarnessType.OPENCODE,
             session_id=session.id,

@@ -858,6 +858,61 @@ async def test_compaction_checkpoints_durable_ledger(client: AsyncClient, tmp_pa
 
 
 @pytest.mark.asyncio
+async def test_opencode_compacted_event_delivers_ledger_to_the_same_worker(client, tmp_path):
+    from pex_bridge.adapters.http_json import MemoryHttpTransport
+    from pex_protocol.enums import HarnessType
+    from pex_protocol.session import HarnessSession
+
+    worker = tmp_path / "opencode-compaction"
+    worker.mkdir()
+    transport = MemoryHttpTransport()
+    adapter = state.adapters.opencode
+    adapter.attach_transport(transport)
+    session = HarnessSession(
+        id="opencode:compact-worker", harness_type=HarnessType.OPENCODE,
+        vendor_session_id="compact-worker", cwd=str(worker), project_id=str(worker),
+    )
+    adapter.sessions[session.id] = session
+    await state.store.upsert_session(session)
+    created = await client.post("/v1/goals", json={
+        "idempotency_key": "opencode-compaction-goal-01", "project_id": str(worker),
+        "title": "Finish the parser", "objective": "Repair and verify the parser.",
+        "acceptance_criteria": ["parser tests pass"], "constraints": ["Preserve the public API"],
+        "forbidden_outcomes": ["Do not spend paid credits"],
+    })
+    assert created.status_code == 200
+    goal = created.json()
+    attached = await client.post(f"/v1/sessions/{session.id}/attach", json={
+        "idempotency_key": "opencode-compaction-attach-01", "goal_id": goal["id"],
+        "expected_goal_id": None, "expected_control_revision": 0,
+        "expected_goal_intent_revision": goal["intent_revision"],
+    })
+    assert attached.status_code == 200
+    session = await state.store.get_session(session.id)
+    adapter.sessions[session.id] = session
+    event = adapter.normalize_sse(session, {
+        "type": "session.compacted", "properties": {"sessionID": session.vendor_session_id},
+    })
+    intervention = await state.pipeline.ingest_event(event, session)
+    assert intervention is not None
+    assert intervention.action_taken == "SEND_NUDGE"
+    assert intervention.result == "sent"
+    assert intervention.metadata["used_llm"] is False
+    assert intervention.metadata["model_call_count"] == 0
+    assert len(transport.prompts) == 1
+    assert transport.prompts[0]["path"].split("?")[0] == "/session/compact-worker/prompt_async"
+    text = adapter.inbox[session.id][-1]
+    for value in [goal["objective"], *goal["acceptance_criteria"], *goal["constraints"],
+                  *goal["forbidden_outcomes"]]:
+        assert value in text
+    stored = await state.store.get_session(session.id)
+    assert stored.metadata["context_health_signals"]["compaction_count"] == 1
+    replayed = await state.pipeline.ingest_event(event, session)
+    assert replayed.id == intervention.id
+    assert len(transport.prompts) == 1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("edit_after_reads", [False, True])
 async def test_repeated_forgotten_facts_after_compaction_apply_context_overlay(
     client: AsyncClient, tmp_path, edit_after_reads: bool,
