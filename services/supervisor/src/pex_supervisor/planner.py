@@ -747,6 +747,7 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             or goal.objective
         )
         constraints = "; ".join(item for item in goal.constraints if item)
+        preferences = "; ".join(item for item in goal.preferences if item)
         forbidden = "; ".join(item for item in goal.forbidden_outcomes if item)
         non_goals = "; ".join(item for item in goal.non_goals if item)
         required_evidence = "; ".join(item for item in goal.evidence_requirements if item)
@@ -759,6 +760,10 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             lines.append(f"Acceptance: {acceptance}")
         if constraints:
             lines.append(f"Constraints: {constraints}")
+        if preferences:
+            lines.append(f"Preferences: {preferences}")
+        if goal.deadline is not None:
+            lines.append(f"Deadline: {goal.deadline.isoformat()}")
         if forbidden:
             lines.append(f"Forbidden outcomes: {forbidden}")
         if non_goals:

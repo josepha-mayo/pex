@@ -759,13 +759,14 @@ def test_pre_hook_compaction_annotates_instead_of_nudging():
     assert not text.startswith("PEX:")
 
 
-@pytest.mark.parametrize("phase", [EventPhase.BEFORE, EventPhase.TERMINAL])
+@pytest.mark.parametrize("phase", [EventPhase.BEFORE, EventPhase.AFTER, EventPhase.TERMINAL])
 def test_compaction_preserves_later_goal_requirements_and_full_objective(phase):
     goal = _goal()
     goal.objective = "Maintain this exact requirement. " * 12 + "Preserve the final condition."
+    goal.deadline = datetime(2026, 10, 30, 17, 0, tzinfo=UTC)
     for field in (
         "acceptance_criteria", "constraints", "forbidden_outcomes", "non_goals",
-        "evidence_requirements",
+        "evidence_requirements", "preferences",
     ):
         setattr(goal, field, [f"{field} rule {index}" for index in range(5)])
     request = SupervisorRequest(
@@ -777,10 +778,12 @@ def test_compaction_preserves_later_goal_requirements_and_full_objective(phase):
     assert goal.objective in text
     for field in (
         "acceptance_criteria", "constraints", "forbidden_outcomes", "non_goals",
-        "evidence_requirements",
+        "evidence_requirements", "preferences",
     ):
         assert getattr(goal, field)[-1] in text
     assert "Required evidence:" in text
+    assert "Preferences:" in text
+    assert "Deadline: 2026-10-30T17:00:00+00:00" in text
 
 
 def test_compaction_contract_redacts_credentials_before_worker_delivery():
