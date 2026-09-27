@@ -1,0 +1,64 @@
+{
+  "real_opencode": true,
+  "loopback_http": true,
+  "mounted_unix_relay": true,
+  "buffered_sse": true,
+  "buffered_sse_calls": 5,
+  "upstream_streaming": false,
+  "runtime_read_only": true,
+  "task_writable": true,
+  "tool_permission": "edit_allow_other_tools_deny",
+  "opencode_write_tool_completed": true,
+  "same_vendor_session": true,
+  "pex_followups": 1,
+  "public_tests_before": false,
+  "public_tests_after": true,
+  "worker_exit": 0,
+  "controller_calls": 5,
+  "scope": "Real OpenCode same-session repair with isolated deterministic PEX and public tests, controlled relay backend; no upstream provider call or comparative quality claim.",
+  "schema": "pex.opencode-isolated-linux-recovery.v1",
+  "source_commit_base": "f37903100c0f4ffc505b9237a2f673359eaa919d",
+  "driver_added_after_base": true,
+  "provider_calls": 0,
+  "used_supervisor_llm": false,
+  "actions": [
+    "SEND_NUDGE",
+    "NOOP"
+  ],
+  "test_executors": [
+    "linux-bwrap-public-pytest-v1",
+    "linux-bwrap-public-pytest-v1"
+  ],
+  "source_hashes": {
+    "benchmarks/linux_sandbox.py": "781db7f126cee25c573d44b72b55654e07f2ed455753f3a1e5dfac4e0120520f",
+    "benchmarks/worker_model_proxy.py": "f78d30b6f165d73a9431e5bc1ea417293c315d7f6150ec08ada03f8b9ad7ac84",
+    "benchmarks/pex_attach.py": "80aff9737f6a37050180e1658ac80ceeb52c16b2b95a0a4c3fc0fc41da1923b6",
+    "docs/evidence/opencode-supervision-linux-smoke-driver.txt": "3740a20fe4c79f17267d239da231aa5134255ca279c60e2209bbfb5f7b99ba44",
+    "build/isolated-supervisor-runtime/public-runtime-f379031/runtime-manifest.json": "1b74579bf2b21c45923e785d43625972a57f9f7007dfbe91766358d0c844c7d6",
+    "build/linux-opencode-runtime/opencode-linux-x64-1.18.32.tgz": "da0803c85eb86709c4f084adcbfb0b5329936670bfe43d2367f0ca034be0c1de",
+    "build/opencode-supervision-linux-stdout.jsonl": "981786f818b54ffca9d528f344e63806455f9da710cdc1930b7ddce47b5499e0",
+    "build/opencode-supervision-linux-decisions.json": "e0a5b8f702175b77ea2b7c93c254dbfbef08b42b0aedab9a68c67ac1eceff2e4"
+  },
+  "worker_turns": [
+    {
+      "tool": "write",
+      "status": "completed",
+      "path": "/workspace/solver.py",
+      "content_sha256": "5e7c6287257979441f2066c84b1875a918f8d7c6f66ac0499710c137bb698648"
+    },
+    {
+      "tool": "write",
+      "status": "completed",
+      "path": "/workspace/solver.py",
+      "content_sha256": "dd46cb2f80fe2d22e284d503f04d3f7c6a66956a171eaa0e8d128e7e2dee5a0e"
+    }
+  ],
+  "limitations": [
+    "Controlled scripted worker responses and induced defect, not natural model reasoning",
+    "Uses the isolated PEX decision function plus a diagnostic CLI resume wrapper, not the production OpenCode bridge delivery pipeline",
+    "No baseline pair, hidden evaluator, full benchmark budget measurement, or comparative performance claim",
+    "Only write tools were exercised; other tools and shell execution remain unverified",
+    "Raw CLI log, decisions, runtime bundle and manifest are ignored build files",
+    "The failed stale-runtime attempt is retained separately in build/opencode-supervision-linux-diagnostic-stale-runtime-failure.json"
+  ]
+}
