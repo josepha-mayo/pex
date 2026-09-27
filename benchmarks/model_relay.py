@@ -24,6 +24,8 @@ from urllib.parse import urlsplit
 import httpx
 from pex_bridge.adapters.strict_json import strict_json_dumps, strict_json_loads
 
+from benchmarks.async_budget import await_with_budget
+
 SCHEMA = "pex.model-relay.v1"
 MAX_REQUEST_BYTES = 262_144
 MAX_RESPONSE_BYTES = 1_048_576
@@ -214,9 +216,11 @@ class PinnedModelRelay:
         correlation_id = uuid.uuid4().hex
         context_token = _RELAY_CORRELATION.set((correlation_id, request_id))
         try:
-            response = await asyncio.wait_for(
-                self.backend(body), timeout=max(0, self.deadline - time.perf_counter()),
+            response = await await_with_budget(
+                lambda: self.backend(body), budget=max(0, self.deadline - time.perf_counter()),
             )
+            if time.perf_counter() >= self.deadline:
+                raise TimeoutError("backend returned after shared task deadline")
             if not isinstance(response, dict):
                 raise ValueError("invalid backend response")
             result = {"schema": SCHEMA, "request_id": request_id, "ok": True, "body": response}

@@ -44,6 +44,7 @@ _CONTROLLER_FILES = (
     "pex_supervisor_process.py",
     "linux_sandbox.py",
     "model_relay.py",
+    "async_budget.py",
     "worker_model_proxy.py",
     "opencode_cli.py",
     "opencode_completion.py",

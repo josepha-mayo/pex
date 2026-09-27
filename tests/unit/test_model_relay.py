@@ -6,6 +6,7 @@ import sys
 import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -79,6 +80,83 @@ def request(request_id="call_1", **body):
         "model": "pinned", "messages": [{"role": "user", "content": "public task"}],
         "max_tokens": 128, **body,
     }}).encode()
+
+
+async def test_expired_model_timeout_cannot_complete_after_suppressed_cancel(monkeypatch):
+    import benchmarks.model_relay as module
+
+    calls = []
+
+    async def backend(body):
+        calls.append(body)
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            return {"model": "pinned", "choices": []}
+
+    relay = PinnedModelRelay(model="pinned", max_calls=1, deadline=100.01, backend=backend)
+    monkeypatch.setattr(module, "time", SimpleNamespace(perf_counter=lambda: 100.0))
+    result = await asyncio.wait_for(relay.dispatch(request()), 1)
+    assert result["error"] == "backend_failed_uncertain"
+    assert relay.audit[0]["status"] == "failed_uncertain"
+    assert "response_sha256" not in relay.audit[0]
+    assert (await relay.dispatch(request("call_2")))["error"] == "call_budget_exhausted"
+    assert len(calls) == 1
+
+
+async def test_model_deadline_expiring_at_admission_never_starts_backend(monkeypatch):
+    import benchmarks.model_relay as module
+
+    calls = []
+
+    async def backend(body):
+        calls.append(body)
+        return {}
+
+    relay = PinnedModelRelay(model="pinned", max_calls=1, deadline=101, backend=backend)
+    ticks = iter([100.0, 102.0])
+    monkeypatch.setattr(module, "time", SimpleNamespace(perf_counter=lambda: next(ticks)))
+    result = await relay.dispatch(request())
+    assert result["error"] == "backend_failed_uncertain"
+    assert relay.audit[0]["status"] == "failed_uncertain"
+    assert calls == []
+
+
+async def test_model_caller_cancellation_cannot_be_suppressed_into_success():
+    entered = asyncio.Event()
+
+    async def backend(body):
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            return {}
+
+    relay = PinnedModelRelay(model="pinned", max_calls=1,
+                            deadline=time.perf_counter() + 5, backend=backend)
+    task = asyncio.create_task(relay.dispatch(request()))
+    await asyncio.wait_for(entered.wait(), 1)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(task, 1)
+    assert relay.audit[0]["status"] == "cancelled_uncertain"
+    assert (await relay.dispatch(request("call_2")))["error"] == "call_budget_exhausted"
+
+
+async def test_backend_result_after_shared_clock_deadline_is_not_completed(monkeypatch):
+    import benchmarks.model_relay as module
+
+    clock = [100.0]
+
+    async def backend(body):
+        clock[0] = 102.0
+        return {}
+
+    relay = PinnedModelRelay(model="pinned", max_calls=1, deadline=101, backend=backend)
+    monkeypatch.setattr(module, "time", SimpleNamespace(perf_counter=lambda: clock[0]))
+    result = await relay.dispatch(request())
+    assert result["error"] == "backend_failed_uncertain"
+    assert relay.audit[0]["status"] == "failed_uncertain"
 
 
 @pytest.mark.asyncio

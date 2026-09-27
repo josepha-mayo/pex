@@ -4,13 +4,13 @@ This is an execution component, not a benchmark evaluator or isolation boundary.
 Both baseline and supervised sessions use one absolute task deadline.
 """
 
-import asyncio
 import math
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
 from time import monotonic
 
+from benchmarks.async_budget import await_with_budget
 from benchmarks.opencode_cli import CliTurn, run_turn
 
 REPAIR_ACTIONS = frozenset({"SEND_NUDGE", "CONTINUE_SESSION", "REQUEST_VERIFICATION"})
@@ -22,23 +22,6 @@ class SessionRun:
     actions: tuple[str, ...]
     outgoing_messages: tuple[str, ...]
     followup_limit_reached: bool
-
-
-async def await_review(review: Callable[[], Awaitable[dict]], *, budget: float) -> dict:
-    """Reject expired reviews even when a callback suppresses cancellation."""
-    if budget <= 0:
-        raise TimeoutError("review exhausted the shared task deadline")
-    task = asyncio.current_task()
-    initial_cancellations = task.cancelling() if task else 0
-    try:
-        async with asyncio.timeout(budget) as window:
-            decision = await review()
-        if window.expired():
-            raise TimeoutError("review exhausted the shared task deadline")
-        return decision
-    finally:
-        if task and task.cancelling() > initial_cancellations:
-            raise asyncio.CancelledError
 
 
 async def run_session(
@@ -86,7 +69,7 @@ async def run_session(
         if review is None:
             break
         review_budget = remaining()
-        decision = await await_review(lambda: review(tuple(turns)), budget=review_budget)
+        decision = await await_with_budget(lambda: review(tuple(turns)), budget=review_budget)
         remaining()
         if not isinstance(decision, dict) or not isinstance(decision.get("type"), str):
             raise ValueError("OpenCode session review lacks an action type")
