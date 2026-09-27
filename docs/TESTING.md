@@ -1049,3 +1049,14 @@ optional AgentCore endpoint proposes an action.
   This did not perform Windows GUI click-through, attach a worker, or establish
   live semantic supervision. The Windows source suite was still running when
   these receipts were retained; native-job success does not replace that suite.
+- A Linux real-OpenCode replay now uses the reusable `relay.listen()` async
+  listener on one controller event loop, rather than the diagnostic driver's
+  per-request loops. The isolated worker completed two writes and natural
+  stops in one vendor session. Isolated deterministic PEX observed the failing
+  public test, issued one follow-up, then returned `NOOP` after the test passed.
+  Five controlled model requests and two reviews completed, and listener
+  shutdown settled all relay handlers. No upstream provider was called. This
+  proves listener integration and recovery plumbing, not natural-task quality
+  lift, production bridge delivery, or provider streaming latency. See the
+  [receipt](evidence/opencode-async-relay-linux.json) and exact
+  [driver](evidence/opencode-async-relay-linux-driver.txt).
