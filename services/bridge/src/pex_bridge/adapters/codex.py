@@ -555,34 +555,56 @@ class CodexStdioTransport(_CodexRawCapture):
         self._reader_task = None
         self._stderr_task = None
         exit_unconfirmed = False
-        if self._proc:
+        pipe_cleanup_error: Exception | None = None
+        try:
+            if self._proc:
+                try:
+                    if self._proc.stdin:
+                        self._proc.stdin.close()
+                except Exception:
+                    pass
+                try:
+                    self._proc.kill()
+                except ProcessLookupError:
+                    pass
+                try:
+                    await asyncio.wait_for(self._proc.wait(), timeout=5)
+                except (TimeoutError, ProcessLookupError):
+                    pass
+                exit_unconfirmed = self._proc.returncode is None
+                if not exit_unconfirmed:
+                    # Process.wait() can finish (or time out after exit) while a
+                    # descendant still holds stdout/stderr open. asyncio.Process
+                    # has no public pipe-close API; close its owned subprocess
+                    # transport while this loop is alive, rather than leaving GC
+                    # to close Windows Proactor handles after the loop has ended.
+                    process_transport = getattr(self._proc, "_transport", None)
+                    try:
+                        if process_transport is not None:
+                            process_transport.close()
+                            await asyncio.sleep(0)
+                    except Exception as exc:
+                        pipe_cleanup_error = exc
+                    else:
+                        self._proc = None
+        finally:
             try:
-                if self._proc.stdin:
-                    self._proc.stdin.close()
-            except Exception:
-                pass
-            try:
-                self._proc.kill()
-            except ProcessLookupError:
-                pass
-            try:
-                await asyncio.wait_for(self._proc.wait(), timeout=5)
-            except (TimeoutError, ProcessLookupError):
-                pass
-            exit_unconfirmed = self._proc.returncode is None
-            if not exit_unconfirmed:
-                self._proc = None
-        for task in tasks:
-            try:
-                await task
-            except (asyncio.CancelledError, Exception):
-                pass
-        self._fail_pending(RuntimeError("codex app-server transport closed"))
-        self._activity_ready.set()
-        self.initialized = False
-        self.init_result = None
+                for task in tasks:
+                    try:
+                        await task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+            finally:
+                self._fail_pending(RuntimeError("codex app-server transport closed"))
+                self._activity_ready.set()
+                self.initialized = False
+                self.init_result = None
         if exit_unconfirmed:
             raise RuntimeError("Codex App Server process exit was not confirmed; retry cleanup")
+        if pipe_cleanup_error is not None:
+            raise RuntimeError(
+                "Codex App Server pipe cleanup failed; retry cleanup",
+            ) from pipe_cleanup_error
 
     def _fail_pending(self, exc: BaseException) -> None:
         pending = list(self._pending.values())
