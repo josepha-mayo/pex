@@ -11,7 +11,7 @@ export type FirstRunGuidance = {
 };
 
 export type SupervisorAvailability = {
-  state: "unavailable" | "deterministic_only" | "configured_unverified";
+  state: "unavailable" | "paused" | "deterministic_only" | "configured_unverified";
   copy: string;
 };
 
@@ -158,6 +158,12 @@ export function supervisorAvailability({
     return {
       state: "unavailable",
       copy: "Supervisor availability is missing from current canonical settings. Refresh settings before relying on semantic supervision.",
+    };
+  }
+  if (supervisor.max_dispatches_per_session === 0) {
+    return {
+      state: "paused",
+      copy: "Automatic model reviews are paused. PEX can still use deterministic checks. Open Supervisor settings to change the review limit.",
     };
   }
   if (!supervisor.model_loaded) {

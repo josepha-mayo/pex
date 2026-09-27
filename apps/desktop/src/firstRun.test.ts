@@ -128,6 +128,25 @@ test("supervisor startup guidance distinguishes loading, timeout, failure and di
   }
 });
 
+test("Home explains a fresh zero review limit even when the model is configured", () => {
+  for (const model_loaded of [true, false]) {
+    const supervisor: SupervisorInfo = { model_loaded, max_dispatches_per_session: 0 };
+    const availability = supervisorAvailability({ supervisor, supervisorFresh: true });
+    assert.equal(availability.state, "paused");
+    assert.match(availability.copy, /reviews are paused.*deterministic checks.*settings.*review limit/i);
+    assert.doesNotMatch(availability.copy, /supervisor is configured/i);
+    const stale = supervisorAvailability({ supervisor, supervisorFresh: false });
+    assert.equal(stale.state, "unavailable");
+    assert.doesNotMatch(stale.copy, /reviews are paused/i);
+  }
+  for (const max_dispatches_per_session of [undefined, null, 3]) {
+    const availability = supervisorAvailability({
+      supervisor: { model_loaded: true, max_dispatches_per_session }, supervisorFresh: true,
+    });
+    assert.equal(availability.state, "configured_unverified");
+  }
+});
+
 test("successful configuration clears stale startup recovery copy without claiming inference", () => {
   const supervisor: SupervisorInfo = { model_loaded: true, activation_status: "timed_out" };
   const availability = supervisorAvailability({ supervisor, supervisorFresh: true });
