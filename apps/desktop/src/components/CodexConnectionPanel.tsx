@@ -51,11 +51,13 @@ export function CodexConnectionPanel({ request, onChanged, onReturnHome, availab
       sessions in that isolated connection; it does not take control of your open Codex desktop task
       or start a model turn. The desktop-thread observer is below.
     </p>
-    <button type="button" className="solid" disabled={busy || !available} onClick={() => void connect()}>
+    <button type="button" className={confirmed ? "ghost" : "solid"}
+      disabled={busy || !available} onClick={() => void connect()}>
       {busy ? "Connecting…" : "Connect isolated Codex"}
     </button>
     {!available ? <p className="settings-note" role="status">PEX must confirm its local bridge before connecting Codex.</p> : null}
     {notice ? <p role="status" aria-live="polite">{notice}</p> : null}
-    {confirmed && available && onReturnHome ? <button type="button" onClick={onReturnHome}>Return Home</button> : null}
+    {confirmed && available && onReturnHome ? <button type="button" className="solid"
+      onClick={onReturnHome}>Return Home</button> : null}
   </section>;
 }

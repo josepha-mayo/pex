@@ -80,11 +80,13 @@ export function OpenCodeConnectionPanel({ request, onChanged, onReturnHome, avai
           onChange={(event) => setPassword(event.target.value)} />
       </label>
     </details>
-    <button type="button" className="solid" disabled={busy || !available || !openCodeOrigin(url)}
+    <button type="button" className={confirmed ? "ghost" : "solid"}
+      disabled={busy || !available || !openCodeOrigin(url)}
       onClick={() => void connect()}>{busy ? "Connecting…" : "Connect OpenCode"}</button>
     {!available ? <p className="settings-note" role="status">PEX has not confirmed the local bridge. Open the PEX desktop app or retry its bridge before connecting a worker.</p> : null}
     {notice ? <p role="status" aria-live="polite">{notice}</p> : null}
-    {confirmed && available && onReturnHome ? <button type="button" onClick={onReturnHome}>Return Home</button> : null}
+    {confirmed && available && onReturnHome ? <button type="button" className="solid"
+      onClick={onReturnHome}>Return Home</button> : null}
     <details className="settings-advanced" open={setupHelpOpen}
       onToggle={(event) => setSetupHelpOpen(event.currentTarget.open)}>
       <summary>How to start and attach OpenCode</summary>
