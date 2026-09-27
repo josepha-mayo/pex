@@ -921,6 +921,14 @@ function deadlineWithZone(value: string): string {
   return /(?:Z|[+-]\d{2}:\d{2})$/i.test(value) ? value : `${value}Z`;
 }
 
+export function goalDeadlineCopy(value?: string | null): string | null {
+  const deadline = value?.trim();
+  if (!deadline) return null;
+  const parsed = new Date(deadlineWithZone(deadline));
+  if (!Number.isFinite(parsed.getTime())) return "Deadline unavailable";
+  return parsed.toISOString().replace("T", " ").replace("Z", " UTC");
+}
+
 function goalDeadlinePayload(value: string, source?: string | null): string | null {
   const deadline = value.trim();
   if (!deadline) return null;

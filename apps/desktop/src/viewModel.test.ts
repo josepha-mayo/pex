@@ -3,6 +3,23 @@ import test from "node:test";
 import { goalCompletionCopy } from "./completionPresentation.ts";
 import type { GoalCompletion } from "./types";
 
+test("goal deadline display uses UTC for offset and legacy timestamps", async () => {
+  const { goalDeadlineCopy } = await import("./viewModel.ts");
+  const previousTimezone = process.env.TZ;
+  try {
+    process.env.TZ = "America/Los_Angeles";
+    assert.equal(goalDeadlineCopy("2026-10-30T10:00:00-07:00"), "2026-10-30 17:00:00.000 UTC");
+    assert.equal(goalDeadlineCopy("2026-10-30T17:00:00"), "2026-10-30 17:00:00.000 UTC");
+    assert.equal(goalDeadlineCopy("2026-10-30T17:00:00.125Z"), "2026-10-30 17:00:00.125 UTC");
+    assert.equal(goalDeadlineCopy("invalid"), "Deadline unavailable");
+    assert.equal(goalDeadlineCopy(null), null);
+    assert.equal(goalDeadlineCopy(""), null);
+  } finally {
+    if (previousTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTimezone;
+  }
+});
+
 test("completion copy separates current file acceptance from overall completion", () => {
   const goal = { id: "goal-a", title: "Report", objective: "Finish", intent_revision: 2, intent_hash: "hash-a" };
   const receipt: GoalCompletion = {

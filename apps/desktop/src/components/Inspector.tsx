@@ -20,6 +20,7 @@ import {
   canAttachPersistentGoal,
   canOpenSession,
   humanize,
+  goalDeadlineCopy,
   isSafelyUndoable,
   askPexQuestions,
   meaningfulEvidence,
@@ -115,6 +116,7 @@ export function Inspector({
   const canOpen = canOpenSession(current);
   const canAttach = canAttachPersistentGoal(current);
   const ledger = partitionLedgerDecisions(ledgerDecisions);
+  const deadline = goalDeadlineCopy(goal?.deadline);
   const actionName = recordedActionLabel(action);
   const actionWhy = actionExplanation(action);
   const handoffCopy = action?.action === "FRESH_HANDOFF"
@@ -319,7 +321,9 @@ export function Inspector({
             <summary>Checks and details</summary>
             <div className="goal-boundaries">
               <Boundary label="Acceptance" values={goal.acceptance_criteria} />
+              {deadline ? <Boundary label="Deadline" values={[deadline]} /> : null}
               <Boundary label="Constraints" values={goal.constraints} />
+              <Boundary label="Forbidden outcomes" values={goal.forbidden_outcomes} />
               <Boundary label="Non-goals" values={goal.non_goals} />
               <Boundary label="Preferences" values={goal.preferences} />
               <Boundary label="Required evidence" values={goal.evidence_requirements} />

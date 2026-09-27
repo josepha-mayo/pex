@@ -35,6 +35,7 @@ import {
   fingerprintSuggestedConfig,
   fingerprintTokenBehavior,
   humanize,
+  goalDeadlineCopy,
   isPendingHumanDecision,
   isPendingLifecycleDecision,
   isPendingPermissionDecision,
@@ -1020,13 +1021,15 @@ function ContextView({
               <summary>Objective</summary>
               <p>{goal.objective}</p>
             </details>
+            {goal.deadline ? <ContextBoundary label="Deadline"
+              values={[goalDeadlineCopy(goal.deadline) || "Deadline unavailable"]} /> : null}
             <ContextBoundary label="Constraints" values={goal?.constraints} />
             <ContextBoundary label="Forbidden outcomes" values={goal?.forbidden_outcomes} />
             <ContextBoundary label="Non-goals" values={goal?.non_goals} />
             <ContextBoundary label="Preferences" values={goal?.preferences} />
             <ContextBoundary label="Acceptance" values={goal?.acceptance_criteria} />
             <ContextBoundary label="Required evidence" values={goal?.evidence_requirements} />
-            {![goal.constraints, goal.forbidden_outcomes, goal.non_goals, goal.preferences,
+            {!goal.deadline && ![goal.constraints, goal.forbidden_outcomes, goal.non_goals, goal.preferences,
               goal.acceptance_criteria, goal.evidence_requirements].some((values) => values?.length)
               ? <p>No additional boundaries recorded.</p> : null}
             </> : <p>{selectedWorkerUnavailable
