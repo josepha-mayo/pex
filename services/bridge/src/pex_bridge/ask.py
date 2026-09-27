@@ -322,6 +322,11 @@ def _what_doing(
         parts.append(f"on persistent goal '{title or goal.title}'")
     if session.supervision_paused:
         parts.append("supervision is paused")
+    if session.status == SessionStatus.DISCOVERED:
+        parts.append(
+            "This discovery status does not confirm a current live turn. "
+            "Discovery does not establish what it is currently doing"
+        )
     return ". ".join(parts) + "."
 
 

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+import pytest
 from pex_bridge.ask import answer_question
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
 from pex_protocol.context import ContextItem
@@ -31,6 +32,19 @@ def _working() -> list[HarnessSession]:
 
 def test_ask_pex_does_not_need_worker_without_model():
     assert "Nothing needs you" in answer_question("what needs me?", _working(), [])
+
+
+@pytest.mark.parametrize("last_activity", [None, datetime(2026, 1, 1, tzinfo=UTC)])
+def test_discovered_session_does_not_imply_current_live_work(last_activity):
+    sessions = [HarnessSession(
+        id="codex:found", harness_type=HarnessType.CODEX, vendor_session_id="found",
+        status=SessionStatus.DISCOVERED, last_activity=last_activity,
+    )]
+    answer = answer_question("what is Codex doing?", sessions, [], model=object())
+    assert "codex is discovered" in answer
+    assert "does not confirm a current live turn" in answer
+    assert "has not observed" not in answer
+    assert "does not establish what it is currently doing" in answer
 
 
 def test_ask_uses_supervisor_review_when_model_present(monkeypatch):
