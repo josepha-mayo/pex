@@ -837,6 +837,16 @@ async def _decide_out_of_process(
     offline_runtime: Path | None = None,
     model_relay: Any | None = None,
 ) -> dict[str, Any]:
+    if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("supervisor timeout must be finite and positive")
+    deadline = time.perf_counter() + timeout
+
+    def remaining_budget() -> float:
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            raise TimeoutError("supervisor decision budget expired during preparation")
+        return remaining
+
     if model_relay is not None:
         from benchmarks.model_relay import PinnedModelRelay
 
@@ -929,7 +939,7 @@ async def _decide_out_of_process(
             workspace=workspace,
             runtime=offline_runtime,
             control=Path(tmp),
-            timeout=timeout,
+            timeout=remaining_budget(),
             model_relay=model_relay,
         )
         if exit_code != 0 or _is_link_like(response_path) or not response_path.is_file():
@@ -971,6 +981,7 @@ async def _decide_out_of_process(
                     else {}
                 ),
             }
+        remaining_budget()
         return decision
 
 
@@ -988,6 +999,16 @@ async def _run_supervisor_command(
 
     if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("supervisor timeout must be finite and positive")
+    deadline = time.perf_counter() + timeout
+    if model_relay is not None:
+        deadline = min(deadline, model_relay.deadline)
+
+    def remaining_budget() -> float:
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            raise TimeoutError("supervisor execution budget expired during preparation")
+        return remaining
+
     server = None
     proc = None
     start = len(model_relay.audit) if model_relay is not None else 0
@@ -1001,7 +1022,6 @@ async def _run_supervisor_command(
                 remaining = model_relay.deadline - time.perf_counter()
                 if remaining <= 0:
                     raise TimeoutError("supervisor relay deadline expired")
-                timeout = min(timeout, remaining)
                 root = Path(cleanup.enter_context(TemporaryDirectory(prefix="pex-relay-")))
                 root.chmod(0o700)
                 path = root / "relay.sock"
@@ -1014,7 +1034,7 @@ async def _run_supervisor_command(
                     raise TimeoutError(
                         "supervisor relay deadline expired during boundary validation"
                     )
-                timeout = min(timeout, remaining)
+            remaining_budget()
             proc = await asyncio.create_subprocess_exec(
                 *command,
                 cwd=workspace,
@@ -1023,10 +1043,12 @@ async def _run_supervisor_command(
                 env={} if runtime is not None else _supervisor_environment(),
             )
             try:
-                await asyncio.wait_for(proc.wait(), timeout=timeout)
+                wait_budget = remaining_budget()
+                await asyncio.wait_for(proc.wait(), timeout=wait_budget)
             except TimeoutError:
                 raise RuntimeError("PEX supervisor process timed out") from None
             exit_code = proc.returncode
+            remaining_budget()
         finally:
             if proc is not None and proc.returncode is None:
                 proc.kill()

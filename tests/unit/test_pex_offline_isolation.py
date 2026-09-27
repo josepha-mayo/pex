@@ -2,12 +2,129 @@ import asyncio
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pex_protocol.enums import HarnessType
 from pex_protocol.session import HarnessSession
 
 from benchmarks import linux_sandbox, pex_attach
+
+
+async def test_boundary_preparation_cannot_launch_after_decision_budget(tmp_path, monkeypatch):
+    arguments = _arguments(tmp_path)
+    clock = [100.0]
+    monkeypatch.setattr(pex_attach.time, "perf_counter", lambda: clock[0])
+
+    def slow_boundary(*args):
+        clock[0] += 11
+        return ["/usr/bin/bwrap", "offline"]
+
+    async def forbidden_launch(*args, **kwargs):
+        pytest.fail("expired boundary preparation must not launch the supervisor")
+
+    monkeypatch.setattr(linux_sandbox, "supervisor_command", slow_boundary)
+    monkeypatch.setattr(pex_attach.asyncio, "create_subprocess_exec", forbidden_launch)
+    with pytest.raises(TimeoutError, match="decision budget"):
+        await pex_attach._decide_out_of_process(**arguments)
+
+
+async def test_process_launch_time_is_charged_to_supervisor_wait(tmp_path, monkeypatch):
+    clock = [100.0]
+    observed = []
+    monkeypatch.setattr(pex_attach.time, "perf_counter", lambda: clock[0])
+    original_wait_for = asyncio.wait_for
+
+    class Process:
+        returncode = None
+
+        async def wait(self):
+            self.returncode = 0
+            return 0
+
+    async def launch(*args, **kwargs):
+        clock[0] += 3
+        return Process()
+
+    async def capture_wait(awaitable, *, timeout):
+        observed.append(timeout)
+        return await original_wait_for(awaitable, timeout=timeout)
+
+    monkeypatch.setattr(pex_attach.asyncio, "create_subprocess_exec", launch)
+    monkeypatch.setattr(pex_attach.asyncio, "wait_for", capture_wait)
+    code, _ = await pex_attach._run_supervisor_command(
+        command=["controlled"], workspace=tmp_path, runtime=tmp_path,
+        control=tmp_path, timeout=10, model_relay=None,
+    )
+    assert code == 0
+    assert observed == [7]
+
+
+async def test_expiry_during_process_launch_kills_owned_child(tmp_path, monkeypatch):
+    clock = [100.0]
+    cleanup = []
+    monkeypatch.setattr(pex_attach.time, "perf_counter", lambda: clock[0])
+
+    class Process:
+        returncode = None
+
+        def kill(self):
+            cleanup.append("kill")
+            self.returncode = -9
+
+        async def wait(self):
+            cleanup.append("wait")
+            return self.returncode
+
+    async def launch(*args, **kwargs):
+        clock[0] += 11
+        return Process()
+
+    monkeypatch.setattr(pex_attach.asyncio, "create_subprocess_exec", launch)
+    with pytest.raises(RuntimeError, match="timed out"):
+        await pex_attach._run_supervisor_command(
+            command=["controlled"], workspace=tmp_path, runtime=tmp_path,
+            control=tmp_path, timeout=10, model_relay=None,
+        )
+    assert cleanup == ["kill", "wait"]
+
+
+async def test_local_decision_cap_expires_before_longer_relay_deadline(tmp_path, monkeypatch):
+    clock = [100.0]
+    cleanup = []
+    monkeypatch.setattr(pex_attach.time, "perf_counter", lambda: clock[0])
+
+    class Server:
+        def close(self):
+            cleanup.append("close")
+
+        async def wait_closed(self):
+            cleanup.append("wait_closed")
+
+    async def listen(path):
+        clock[0] += 5
+        return Server()
+
+    async def close_active():
+        cleanup.append("close_active")
+
+    def slow_boundary(*args):
+        clock[0] += 6
+        return ["controlled"]
+
+    async def forbidden_launch(*args, **kwargs):
+        pytest.fail("expired local cap must not launch even when relay has time left")
+
+    relay = SimpleNamespace(audit=[], deadline=1000, model="pinned", listen=listen,
+                            close_active=close_active)
+    monkeypatch.setattr(linux_sandbox, "supervisor_relay_command", slow_boundary)
+    monkeypatch.setattr(pex_attach.asyncio, "create_subprocess_exec", forbidden_launch)
+    with pytest.raises(TimeoutError, match="execution budget"):
+        await pex_attach._run_supervisor_command(
+            command=[], workspace=tmp_path, runtime=tmp_path, control=tmp_path,
+            timeout=10, model_relay=relay,
+        )
+    assert cleanup == ["close", "wait_closed", "close_active"]
 
 
 def _arguments(tmp_path):
