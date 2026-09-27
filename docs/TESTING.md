@@ -4,6 +4,18 @@ PEX is a Windows and Linux x64 desktop companion that supervises coding workers 
 supported local interfaces. The primary paths use OpenCode HTTP and an
 isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
+## Controlled OpenCode worker verification
+
+The reusable `benchmarks/opencode_worker.py` entry was exercised with the real
+OpenCode 1.18.32 binary inside the Linux worker boundary. It completed two turns
+in one vendor session, with five locally controlled model calls and two isolated
+deterministic PEX reviews. The public test changed from failing to passing after
+one follow-up, and relay handlers settled. The [receipt](evidence/opencode-worker-linux.json)
+pins the worker sources and [executed driver](evidence/opencode-worker-linux-driver.txt).
+This verifies reusable worker plumbing, not upstream inference, comparative
+quality, the full paired executor, or presentation eligibility. No paid provider
+was called.
+
 ## Main-branch verification checkpoints
 
 Exact source `ea049d2` also reported a green workflow in

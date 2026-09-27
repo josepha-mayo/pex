@@ -1,0 +1,40 @@
+{
+  "schema": "pex.opencode-worker-smoke.v1",
+  "checked_at": "2026-09-27T05:18:07.423544+00:00",
+  "scope": "Real OpenCode same-session repair with isolated deterministic PEX and public tests, controlled relay backend; no upstream provider call or comparative quality claim.",
+  "observed": {
+    "shared_session_deadline": true,
+    "real_opencode": true,
+    "loopback_http": true,
+    "mounted_unix_relay": true,
+    "reusable_worker_entry": true,
+    "upstream_streaming": false,
+    "task_writable": true,
+    "same_vendor_session": true,
+    "pex_followups": 1,
+    "public_tests_before": false,
+    "public_tests_after": true,
+    "worker_exit": 0,
+    "controller_calls": 5,
+    "reusable_async_listener": true,
+    "relay_handlers_settled": true,
+    "scope": "Real OpenCode same-session repair with isolated deterministic PEX and public tests, controlled relay backend; no upstream provider call or comparative quality claim."
+  },
+  "review_attempts": 2,
+  "upstream_provider_calls": 0,
+  "comparative_quality_measured": false,
+  "presentation_eligible": false,
+  "source_sha256": {
+    "benchmarks/opencode_worker.py": "98e17855710c125f8b53920af5fe29e062afb8829e689c67565c0daef3f3a363",
+    "benchmarks/opencode_session.py": "293611f798c2a6c1e28becd450d67696ff23179ff28b4d0da6af9e484ac7b13a",
+    "benchmarks/opencode_control_relay.py": "4b4c38cdf171719fb6f2c54a530af40fee1858b856de145f534e7d601b6bde35",
+    "benchmarks/worker_model_proxy.py": "28b7832ef734e76cffc4c89a64645564b4b15a7e46a8e8b7b472a23d817e5439",
+    "docs/evidence/opencode-worker-linux-driver.txt": "7f4fcbfbdc5be64cfba1341bd12b7f62783b237340749832998e1c657b3001eb"
+  },
+  "retained_local_artifact_sha256": {
+    "build/opencode-worker-linux-smoke.json": "a99a295c2768c2c3dc353d614ed578eace98bc912fb170bb4da252c437e3ab1f",
+    "build/opencode-worker-linux-audit.json": "3f5a3d915659f7c16baf94a07afc9946f25e264e683734f718543a2433c16577",
+    "build/opencode-worker-linux-decisions.json": "9565239b73e3940f53aba336b485ec5bcacf8d67e482e1c05e61f2650a27edaf",
+    "build/opencode-worker-linux-stdout.jsonl": "f5ecea5f41b53658a5668b055cae38728e99c82714d1c16bfb30a0812ab56eb5"
+  }
+}
