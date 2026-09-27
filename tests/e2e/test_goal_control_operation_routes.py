@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -84,6 +85,43 @@ def _goal_request(
         "acceptance_criteria": ["the committed response replays exactly"],
         "constraints": ["do not reacquire mutable authority before replay"],
     }
+
+
+@pytest.mark.asyncio
+async def test_deadline_persists_through_authenticated_goal_edit_and_clear(operator_client):
+    client, store = operator_client
+    created = await client.post("/v1/goals", json={
+        **_goal_request("route-deadline-create-0001"),
+        "deadline": "2026-10-30T17:00:12.123Z",
+    })
+    assert created.status_code == 200
+    goal = created.json()
+    expected = datetime(2026, 10, 30, 17, 0, 12, 123000, tzinfo=UTC)
+    assert (await store.get_goal(goal["id"])).deadline == expected
+
+    edited = await client.patch(f"/v1/goals/{goal['id']}", json={
+        "idempotency_key": "route-deadline-edit-0001", "mode": "update",
+        "expected_intent_revision": goal["intent_revision"],
+        "objective": "Continue the work while preserving its deadline",
+    })
+    assert edited.status_code == 200
+    goal = edited.json()
+    assert (await store.get_goal(goal["id"])).deadline == expected
+
+    cleared = await client.patch(f"/v1/goals/{goal['id']}", json={
+        "idempotency_key": "route-deadline-clear-0001", "mode": "update",
+        "expected_intent_revision": goal["intent_revision"], "deadline": None,
+    })
+    assert cleared.status_code == 200
+    assert cleared.json()["deadline"] is None
+    assert (await store.get_goal(goal["id"])).deadline is None
+
+    reopened = Store(store.path)
+    await reopened.connect()
+    try:
+        assert (await reopened.get_goal(goal["id"])).deadline is None
+    finally:
+        await reopened.close()
 
 
 def _assert_operation_headers(response: Response, *, replayed: bool) -> str:
