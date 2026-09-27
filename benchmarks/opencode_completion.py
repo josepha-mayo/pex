@@ -19,13 +19,21 @@ import httpx
 
 async def poll_opencode_get(transport: Any, path: str, *, deadline: float) -> Any:
     """Retry only a timed-out, read-only OpenCode observation within the proof window."""
+    if type(deadline) not in (int, float) or not math.isfinite(deadline):
+        raise ValueError("OpenCode observation deadline must be finite")
     for attempt in range(3):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("OpenCode observation exhausted the proof window")
         try:
-            return await transport.request("GET", path)
+            result = await asyncio.wait_for(transport.request("GET", path), timeout=remaining)
+            if time.monotonic() >= deadline:
+                raise TimeoutError("OpenCode observation exhausted the proof window")
+            return result
         except httpx.ReadTimeout:
             if attempt == 2 or time.monotonic() >= deadline:
                 raise
-            await asyncio.sleep(0.25)
+            await asyncio.sleep(min(0.25, max(0.0, deadline - time.monotonic())))
     raise AssertionError("unreachable")
 
 

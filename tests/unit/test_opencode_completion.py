@@ -80,6 +80,94 @@ def test_read_only_worker_poll_stops_after_bounded_timeouts():
     assert transport.calls == 3
 
 
+def test_read_only_worker_poll_expired_deadline_does_not_contact_server():
+    class Transport:
+        async def request(self, method, path):
+            pytest.fail("expired observation must not contact OpenCode")
+
+    with pytest.raises(TimeoutError, match="proof window"):
+        asyncio.run(poll_opencode_get(Transport(), "/session/status", deadline=0))
+
+
+def test_read_only_worker_poll_cancels_a_hung_read_at_shared_deadline():
+    class Transport:
+        cancelled = False
+        calls = 0
+
+        async def request(self, method, path):
+            self.calls += 1
+            try:
+                await asyncio.Event().wait()
+            finally:
+                self.cancelled = True
+
+    transport = Transport()
+
+    async def check():
+        with pytest.raises(TimeoutError):
+            await poll_opencode_get(
+                transport, "/session/status", deadline=time.monotonic() + 0.03,
+            )
+        assert transport.cancelled
+        assert transport.calls == 1
+
+    async def guarded_check():
+        await asyncio.wait_for(check(), timeout=1)
+
+    asyncio.run(guarded_check())
+
+
+def test_read_only_worker_poll_retry_delay_cannot_admit_a_read_after_deadline():
+    class Transport:
+        calls = 0
+
+        async def request(self, method, path):
+            self.calls += 1
+            raise httpx.ReadTimeout("busy OpenCode server")
+
+    transport = Transport()
+    with pytest.raises(TimeoutError):
+        asyncio.run(
+            poll_opencode_get(transport, "/session/status", deadline=time.monotonic() + 0.03)
+        )
+    assert transport.calls == 1
+
+
+def test_read_only_worker_poll_rejects_a_late_result_after_cancel_suppression():
+    class Transport:
+        calls = 0
+        cancellation_suppressed = False
+
+        async def request(self, method, path):
+            self.calls += 1
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                self.cancellation_suppressed = True
+                return {"late": True}
+
+    transport = Transport()
+
+    async def check():
+        with pytest.raises(TimeoutError, match="proof window"):
+            await poll_opencode_get(
+                transport, "/session/status", deadline=time.monotonic() + 0.03,
+            )
+        assert transport.calls == 1
+        assert transport.cancellation_suppressed
+
+    async def guarded_check():
+        await asyncio.wait_for(check(), timeout=1)
+
+    asyncio.run(guarded_check())
+
+
+@pytest.mark.parametrize("deadline", [True, None, float("inf"), float("nan")])
+def test_read_only_worker_poll_rejects_invalid_deadline(deadline):
+    with pytest.raises(ValueError, match="finite"):
+        asyncio.run(poll_opencode_get(None, "/session/status", deadline=deadline))
+
+
 def test_no_model_recovery_accepts_a_correction_but_rejects_any_provider_call():
     result = {
         "used_llm": False,
