@@ -1061,7 +1061,7 @@ class CodexAdapter(HarnessAdapter):
             vendor_session_id=vendor_id,
             cwd=str(requested),
             project_id=str(requested),
-            status=SessionStatus.WORKING,
+            status=SessionStatus.IDLE,
             last_activity=datetime.now(UTC),
             metadata={
                 "isolated": True,
@@ -1160,6 +1160,8 @@ class CodexAdapter(HarnessAdapter):
         inbox = self.inbox.setdefault(session.id, [])
         if len(inbox) >= MAX_INBOX_MESSAGES:
             raise RuntimeError("Codex session inbox safety bound reached")
+        status_before_dispatch = session.status
+        activity_before_dispatch = session.last_activity
         result = await transport.request("turn/start", params)
         if (
             self.transport is not transport
@@ -1175,6 +1177,23 @@ class CodexAdapter(HarnessAdapter):
             raise DeliveryUncertainError(
                 "Codex turn/start did not return a verified turn id"
             ) from exc
+        # An empty thread is idle until a turn is acknowledged. Notifications
+        # can arrive before the RPC response; preserve their newer projection.
+        if (
+            session.status == status_before_dispatch
+            and session.last_activity == activity_before_dispatch
+            and status_before_dispatch in {
+                SessionStatus.IDLE, SessionStatus.STOPPED, SessionStatus.ERROR,
+            }
+        ):
+            completion = self._completed_turns.get((session.vendor_session_id, turn_id))
+            receipt_status = (completion or turn).get("status")
+            if receipt_status in ("completed", "interrupted"):
+                session.status = SessionStatus.STOPPED
+            elif receipt_status == "failed":
+                session.status = SessionStatus.ERROR
+            elif receipt_status == "inProgress":
+                session.status = SessionStatus.WORKING
         inbox.append(cleaned)
         recorded = getattr(transport, "turns", None)
         self.last_turn_params = recorded[-1] if recorded else params

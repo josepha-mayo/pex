@@ -44,7 +44,7 @@ from pex_bridge.adapters.qwen import QwenAdapter
 from pex_bridge.adapters.strict_json import strict_json_loads
 from pex_bridge.adapters.synthetic import SyntheticAdapter
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
-from pex_protocol.enums import Authority, EventType, HarnessType, PolicyVerdict
+from pex_protocol.enums import Authority, EventType, HarnessType, PolicyVerdict, SessionStatus
 from pex_protocol.intervention import Intervention
 from pex_protocol.overlay import Overlay, OverlayDiff
 from pex_protocol.session import HarnessEvent, HarnessSession
@@ -1156,17 +1156,120 @@ async def test_codex_new_isolated_thread_is_already_loaded(tmp_path):
 
         async def request(self, method, params=None):
             self.calls.append(method)
-            return await super().request(method, params)
+            result = await super().request(method, params)
+            if method == "turn/start":
+                result["turn"]["status"] = "inProgress"
+            return result
 
     transport = RecordingTransport()
     adapter = CodexAdapter(transport)
     session = await adapter.start_isolated_thread(str(tmp_path))
+    assert session.status == SessionStatus.IDLE
     transport.calls.clear()
     session.goal_id = "goal-attached-after-thread-start"
 
     await adapter.start_turn(session, "continue")
 
     assert transport.calls == ["turn/start"]
+    assert session.status == SessionStatus.WORKING
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("receipt_status,expected_status", [
+    ("completed", SessionStatus.STOPPED),
+    ("interrupted", SessionStatus.STOPPED),
+    ("failed", SessionStatus.ERROR),
+    (None, SessionStatus.IDLE),
+    ("unknown", SessionStatus.IDLE),
+    ({"status": "inProgress"}, SessionStatus.IDLE),
+])
+async def test_codex_first_turn_projects_receipt_status(tmp_path, receipt_status, expected_status):
+    class StatusReceiptTransport(CodexAppServerTransport):
+        async def request(self, method, params=None):
+            result = await super().request(method, params)
+            if method == "turn/start":
+                result["turn"]["status"] = receipt_status
+            return result
+
+    adapter = CodexAdapter(StatusReceiptTransport())
+    session = await adapter.start_isolated_thread(str(tmp_path))
+    await adapter.start_turn(session, "first task")
+    assert session.status == expected_status
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("observed_status", [SessionStatus.STOPPED, SessionStatus.ERROR,
+                                           SessionStatus.NEEDS_DECISION])
+async def test_codex_start_receipt_preserves_notification_status(tmp_path, observed_status):
+    class EarlyNotificationTransport(CodexAppServerTransport):
+        async def request(self, method, params=None):
+            result = await super().request(method, params)
+            if method == "turn/start":
+                session.status = observed_status
+            return result
+
+    adapter = CodexAdapter(EarlyNotificationTransport())
+    session = await adapter.start_isolated_thread(str(tmp_path))
+    await adapter.start_turn(session, "first task")
+    assert session.status == observed_status
+
+
+@pytest.mark.asyncio
+async def test_codex_unconfirmed_first_turn_does_not_claim_working(tmp_path):
+    class MissingReceiptTransport(CodexAppServerTransport):
+        async def request(self, method, params=None):
+            if method == "turn/start":
+                return {"turn": {}}
+            return await super().request(method, params)
+
+    adapter = CodexAdapter(MissingReceiptTransport())
+    session = await adapter.start_isolated_thread(str(tmp_path))
+    with pytest.raises(DeliveryUncertainError, match="verified turn id"):
+        await adapter.start_turn(session, "first task")
+    assert session.status == SessionStatus.IDLE
+    assert adapter.inbox[session.id] == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("previous_status", [SessionStatus.STOPPED, SessionStatus.ERROR])
+@pytest.mark.parametrize("completed_early", [False, True])
+async def test_codex_followup_activity_uses_current_turn_evidence(
+    tmp_path, previous_status, completed_early,
+):
+    class FollowupTransport(CodexAppServerTransport):
+        async def request(self, method, params=None):
+            result = await super().request(method, params)
+            if method == "turn/start":
+                result["turn"]["status"] = "inProgress"
+                if completed_early:
+                    adapter._remember_turn_completion(session, {
+                        "id": result["turn"]["id"], "status": "completed", "items": [],
+                    })
+            return result
+
+    adapter = CodexAdapter(FollowupTransport())
+    session = await adapter.start_isolated_thread(str(tmp_path))
+    session.status = previous_status
+    await adapter.start_turn(session, "follow up")
+    assert session.status == (SessionStatus.STOPPED if completed_early else SessionStatus.WORKING)
+
+
+@pytest.mark.asyncio
+async def test_codex_receipt_preserves_new_error_activity_when_status_is_unchanged(tmp_path):
+    class NewErrorTransport(CodexAppServerTransport):
+        async def request(self, method, params=None):
+            result = await super().request(method, params)
+            if method == "turn/start":
+                result["turn"]["status"] = "inProgress"
+                session.status = SessionStatus.ERROR
+                session.last_activity = datetime(2030, 1, 1, tzinfo=UTC)
+            return result
+
+    adapter = CodexAdapter(NewErrorTransport())
+    session = await adapter.start_isolated_thread(str(tmp_path))
+    session.status = SessionStatus.ERROR
+    await adapter.start_turn(session, "retry")
+    assert session.status == SessionStatus.ERROR
 
 
 @pytest.mark.asyncio
