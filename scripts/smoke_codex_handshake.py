@@ -14,18 +14,23 @@ async def smoke() -> None:
         raise RuntimeError("Codex executable is unavailable")
 
     transport = CodexStdioTransport(binary)
+    process = None
     try:
         async with asyncio.timeout(15):
             await transport.ensure_ready()
+            process = transport._proc
             listed = await transport.request(
                 "thread/list", {"limit": 1, "useStateDbOnly": True}
             )
         threads = listed.get("data", listed.get("threads")) if isinstance(listed, dict) else None
         if not transport.initialized or not isinstance(threads, list):
             raise RuntimeError("Codex App Server did not confirm thread listing")
-        print("Codex App Server handshake passed; no model turn started")
     finally:
+        process = process or transport._proc
         await transport.close()
+        if process is not None and process.returncode is None:
+            raise RuntimeError("Codex App Server process exit was not confirmed")
+    print("Codex App Server handshake and child exit passed; no model turn started")
 
 
 if __name__ == "__main__":

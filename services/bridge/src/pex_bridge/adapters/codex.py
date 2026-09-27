@@ -554,6 +554,7 @@ class CodexStdioTransport(_CodexRawCapture):
                 task.cancel()
         self._reader_task = None
         self._stderr_task = None
+        exit_unconfirmed = False
         if self._proc:
             try:
                 if self._proc.stdin:
@@ -568,7 +569,9 @@ class CodexStdioTransport(_CodexRawCapture):
                 await asyncio.wait_for(self._proc.wait(), timeout=5)
             except (TimeoutError, ProcessLookupError):
                 pass
-            self._proc = None
+            exit_unconfirmed = self._proc.returncode is None
+            if not exit_unconfirmed:
+                self._proc = None
         for task in tasks:
             try:
                 await task
@@ -578,6 +581,8 @@ class CodexStdioTransport(_CodexRawCapture):
         self._activity_ready.set()
         self.initialized = False
         self.init_result = None
+        if exit_unconfirmed:
+            raise RuntimeError("Codex App Server process exit was not confirmed; retry cleanup")
 
     def _fail_pending(self, exc: BaseException) -> None:
         pending = list(self._pending.values())

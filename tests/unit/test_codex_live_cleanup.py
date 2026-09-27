@@ -1,11 +1,46 @@
 """Offline cleanup tests: no real App Server process or inference is started."""
 
 import asyncio
-from unittest.mock import AsyncMock
+import sys
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
 
 import pytest
+from pex_bridge.adapters.codex import CodexStdioTransport
 
 from tests.contract.test_live_codex_pump import _close_codex_probe
+
+
+@pytest.mark.asyncio
+async def test_stdio_close_retains_unexited_child_and_allows_cleanup_retry():
+    transport = CodexStdioTransport(sys.executable)
+    process = SimpleNamespace(
+        stdin=Mock(), kill=Mock(), returncode=None,
+        wait=AsyncMock(side_effect=TimeoutError),
+    )
+    transport._proc = process
+    transport.initialized = True
+    pending = asyncio.get_running_loop().create_future()
+    transport._pending[1] = pending
+    reader = asyncio.create_task(asyncio.Event().wait())
+    transport._reader_task = reader
+
+    with pytest.raises(RuntimeError, match="exit was not confirmed"):
+        await transport.close()
+    assert transport._proc is process
+    assert reader.cancelled()
+    assert not transport.initialized
+    with pytest.raises(RuntimeError, match="transport closed"):
+        await pending
+
+    async def exit_child():
+        process.returncode = -9
+        return -9
+
+    process.wait.side_effect = exit_child
+    await transport.close()
+    assert transport._proc is None
+    assert process.kill.call_count == 2
 
 
 @pytest.mark.asyncio
