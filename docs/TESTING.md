@@ -6,6 +6,14 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Controlled OpenCode worker verification
 
+The controller-owned executor also launched one PEX and one baseline attempt
+through the measured runtime and once-only admission path in Linux isolation.
+Both reached a natural stop; four locally controlled model callbacks and one
+controlled NOOP review completed. The [launch receipt](evidence/opencode-controller-launch-linux.json)
+pins the source, retained logs and [exact driver](evidence/opencode-controller-launch-linux-driver.txt).
+These outcomes remain unscored and ineligible for presentation. This smoke did
+not execute Codex, upstream inference, hidden evaluation or a quality comparison.
+
 The reusable `benchmarks/opencode_worker.py` entry was exercised with the real
 OpenCode 1.18.32 binary inside the Linux worker boundary. It completed two turns
 in one vendor session, with five locally controlled model calls and two isolated

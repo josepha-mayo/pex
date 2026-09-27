@@ -1,0 +1,76 @@
+import asyncio
+import hashlib
+import json
+import shutil
+import sys
+import tarfile
+import tempfile
+from datetime import UTC, datetime
+from pathlib import Path
+
+repo = Path('/mnt/d/PEX-work')
+sys.path[:0] = [str(repo), str(repo/'build/isolated-supervisor-runtime/public-runtime-f379031/site-packages')]
+from benchmarks import paired_preparation, opencode_runtime, opencode_executor, runner
+from benchmarks.boundary import sha256_file
+
+stamp = datetime.now(UTC).strftime('%Y%m%dT%H%M%S%f')
+retained = repo/'build'/('opencode-controller-launch-'+stamp)
+retained.mkdir()
+with tempfile.TemporaryDirectory(prefix='pex-controller-launch-') as directory:
+    root = Path(directory)
+    binary = root/'opencode-source'
+    package = repo/'build/linux-opencode-runtime/opencode-linux-x64-1.18.32.tgz'
+    with tarfile.open(package) as archive:
+        member = archive.getmember('package/bin/opencode')
+        assert member.isfile() and member.size < 200_000_000
+        with archive.extractfile(member) as source, binary.open('wb') as target:
+            shutil.copyfileobj(source, target)
+    runtime = opencode_runtime.build_runtime(root/'runtime', binary=binary,
+                                             expected_binary_sha256=sha256_file(binary))
+    profile = opencode_runtime.measure_profile(runtime, model='pinned')
+    experiment = root/'experiment'
+    plan = paired_preparation.prepare_experiment(
+        experiment, run_id='controlled-launch-smoke', seed='controlled-launch-only',
+        models={'codex':'not-executed','opencode':'pinned'},
+        worker_fingerprints={'codex':{'runtime_sha256':'0'*64,'settings_sha256':'0'*64},
+                             'opencode':{k:v for k,v in profile.items() if k!='model'}},
+        task_wall_seconds=45, max_model_calls=10, max_followups=0, review_seconds=5,
+    )
+    digest = sha256_file(experiment/'controller/plan.json')
+    first = next(row for row in plan['schedule'] if row['harness']=='opencode')
+    indexes = [i for i,row in enumerate(plan['schedule'])
+               if row['harness']=='opencode' and row['task']==first['task']]
+    calls, reviews = [], []
+    async def backend(body):
+        calls.append(body)
+        return {'id':'controlled','created':1,'model':'pinned','choices':[
+            {'index':0,'message':{'role':'assistant','content':'Controlled transport check only.'},
+             'finish_reason':'stop'}],
+            'usage':{'prompt_tokens':10,'completion_tokens':2,'total_tokens':12}}
+    async def review(*args):
+        reviews.append(args)
+        return {'type':'NOOP'}
+    async def run():
+        rows = []
+        for index in indexes:
+            rows.append(await opencode_executor.execute_attempt(
+                experiment,index=index,expected_plan_sha256=digest,runtime=runtime,model='pinned',
+                backend=backend,review=review,
+            ))
+        return rows
+    try:
+        rows = asyncio.run(run())
+        assert len(rows)==2 and all(row['status']=='worker_completed_unscored' for row in rows)
+        assert all(not row['quality_measured'] and not row['presentation_eligible'] for row in rows)
+        assert len(reviews)==1 and all(len(row['worker_observation']['turns'])==1 for row in rows)
+        receipt = {'scope':'Controlled controller launch smoke only; no task quality or paired performance measured.',
+                   'real_opencode':True,'linux_boundary':True,'admitted_attempts':2,
+                   'worker_natural_stops':2,'review_callbacks':len(reviews),'model_callbacks':len(calls),
+                   'upstream_provider_calls':0,'codex_executed':False,'quality_measured':False,
+                   'presentation_eligible':False,'runtime_profile':profile,
+                   'source_fingerprint':runner.benchmark_sha256(),
+                   'plan_sha256':digest,'conditions':[row['reservation']['entry']['condition'] for row in rows]}
+        (retained/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+        print(json.dumps({'retained':str(retained),**receipt}))
+    finally:
+        shutil.copytree(experiment,retained/'experiment')

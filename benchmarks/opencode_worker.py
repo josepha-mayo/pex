@@ -4,7 +4,9 @@ Contains no evaluator, provider credentials or controller plan. The controller
 must mount this runtime read-only and enforce the shared deadline at its relay.
 """
 
+import argparse
 import asyncio
+import base64
 import json
 import math
 import sys
@@ -114,3 +116,48 @@ async def run_worker(
     if monotonic() >= deadline:
         raise TimeoutError("worker teardown exhausted the shared task deadline")
     return result
+
+
+def main() -> None:
+    """Public worker CLI; arguments contain no plan, secrets or hidden evaluator."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", required=True)
+    parser.add_argument("--deadline", type=float, required=True)
+    parser.add_argument("--supervised", action="store_true")
+    parser.add_argument("--max-followups", type=int, default=0)
+    args = parser.parse_args()
+    task = Path("/workspace/TASK.md")
+    with task.open("rb") as handle:
+        raw_prompt = handle.read(20_001)
+    if len(raw_prompt) > 20_000:
+        raise ValueError("public worker task exceeds the prompt bound")
+    logs = Path("/tmp/turn-logs")
+    result = asyncio.run(run_worker(
+        executable=Path("/worker-runtime/opencode"), workspace=Path("/workspace"),
+        socket_path="/model-relay.sock", model=args.model, prompt=raw_prompt.decode("utf-8"),
+        log_directory=logs, state_home=Path("/tmp/worker-state"), deadline=args.deadline,
+        supervised=args.supervised, max_followups=args.max_followups,
+    ))
+    total = 0
+    turns = []
+    for index, turn in enumerate(result.turns):
+        with (logs / f"turn-{index}.jsonl").open("rb") as handle:
+            raw = handle.read(64 * 1024 * 1024 + 1)
+        total += len(raw)
+        if total > 64 * 1024 * 1024:
+            raise ValueError("worker turn export exceeds its aggregate bound")
+        turns.append({"session_id": turn.session_id, "stdout_sha256": turn.stdout_sha256,
+                      "stdout_bytes": turn.stdout_bytes,
+                      "jsonl_base64": base64.b64encode(raw).decode("ascii")})
+    encoded = json.dumps({
+        "schema": "pex.opencode-worker-output.v1", "turns": turns,
+        "actions": result.actions, "followups": result.outgoing_messages,
+        "followup_limit_reached": result.followup_limit_reached,
+    }, separators=(",", ":"), allow_nan=False)
+    if monotonic() >= args.deadline:
+        raise TimeoutError("worker export exhausted the shared task deadline")
+    print(encoded, flush=True)
+
+
+if __name__ == "__main__":
+    main()

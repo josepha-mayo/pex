@@ -51,6 +51,8 @@ _CONTROLLER_FILES = (
     "opencode_completion.py",
     "opencode_session.py",
     "opencode_worker.py",
+    "opencode_runtime.py",
+    "opencode_executor.py",
     "opencode_control_relay.py",
     "opencode_review_client.py",
     "opencode_sse_journal.py",
