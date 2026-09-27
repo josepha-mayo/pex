@@ -1,0 +1,42 @@
+{
+  "shared_session_deadline": true,
+  "real_opencode": true,
+  "loopback_http": true,
+  "mounted_unix_relay": true,
+  "buffered_sse": true,
+  "buffered_sse_calls": 5,
+  "upstream_streaming": false,
+  "runtime_read_only": true,
+  "task_writable": true,
+  "tool_permission": "edit_allow_other_tools_deny",
+  "opencode_write_tool_completed": true,
+  "same_vendor_session": true,
+  "pex_followups": 1,
+  "public_tests_before": false,
+  "public_tests_after": true,
+  "worker_exit": 0,
+  "controller_calls": 5,
+  "scope": "Real OpenCode same-session repair with isolated deterministic PEX and public tests, controlled relay backend; no upstream provider call or comparative quality claim.",
+  "schema": "pex.opencode-control-relay-linux.v1",
+  "source_commit_base": "4c504ff483e9cd42db5b34ef79e4ddfe063d9059",
+  "provider_calls": 0,
+  "limitations": [
+    "Scripted local model responses and induced defect; no natural-model performance evidence.",
+    "Model requests and review requests use the reusable controller dispatch implementation; diagnostic socket accept loop remains local driver code.",
+    "Worker and supervisor use separate Linux boundaries; controller verifies public tests independently.",
+    "No baseline pair, hidden evaluator, or complete formal benchmark runner.",
+    "Raw logs, relay audits and runtime dependencies remain ignored local build artifacts."
+  ],
+  "source_hashes": {
+    "benchmarks/opencode_control_relay.py": "fd58a1b6a59491197d8818a5dbf749abbfca5b08b454076f6207d78139ceca49",
+    "benchmarks/opencode_session.py": "5e3ff940dcf5302454579445e25584ed6d8360638fc8f3320a9abb366c17fc96",
+    "benchmarks/opencode_cli.py": "13c03094ad7e54ba8eaa57819f4809bccb370bb8149e5ee651b22cf7f4ce1f1b",
+    "benchmarks/model_relay.py": "50bc8e96b7fd78243eca12e8e5f7f416b6650ffb129725f4b618dfda8f6f3d9a",
+    "docs/evidence/opencode-control-relay-linux-driver.txt": "d71e83e56f3adf44cec1176471f76073465471d4913998af572c080f76b4f562",
+    "benchmarks/pex_attach.py": "0a9ed8ae5e295e62e2fb6f0fda5db228b417fc9d5a6518970d7b44a1be54580b",
+    "build/opencode-control-relay-linux-audit.json": "c0e4d357d51aa5f166629ec47f459bf36cfac44cb8b329b0e78a8f8c15ce1b8b",
+    "build/opencode-control-relay-linux-stdout.jsonl": "4b707abb4aa2fc1bf42778ade368cd6a6ef9a8d089a76774b9eb0cb3753a59a6",
+    "build/opencode-control-relay-linux-decisions.json": "23342239a87d65bef1a79a3116443147c8912fb56b546f44c34ade6a626c6db9",
+    "build/isolated-supervisor-runtime/public-runtime-f379031/runtime-manifest.json": "1b74579bf2b21c45923e785d43625972a57f9f7007dfbe91766358d0c844c7d6"
+  }
+}

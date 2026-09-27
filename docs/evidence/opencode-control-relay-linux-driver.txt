@@ -1,0 +1,191 @@
+import asyncio
+import hashlib
+import json
+import time
+import os
+import socket
+import struct
+import subprocess
+import sys
+import tempfile
+import threading
+from pathlib import Path
+
+repo = Path('/mnt/d/PEX-work')
+sys.path[:0]=[str(repo),str(repo/'build/isolated-supervisor-runtime/public-runtime-f379031/site-packages')]
+from benchmarks.linux_sandbox import worker_runtime_relay_command
+from benchmarks.worker_model_proxy import _read
+from benchmarks.opencode_control_relay import OpenCodeControlRelay
+from benchmarks.pex_attach import _observe_controlled_workspace, _decide_out_of_process
+from pex_protocol.session import HarnessSession
+from pex_protocol.enums import HarnessType,SessionStatus
+
+with tempfile.TemporaryDirectory(prefix='pex-worker-proxy-') as temp:
+    root = Path(temp)
+    workspace = root/'worker'
+    workspace.mkdir()
+    task='Fix solver.py and verify test_public.py.'
+    (workspace/'solver.py').write_text('def answer():\n    return 0\n')
+    (workspace/'TASK.md').write_text(task)
+    public=workspace/'test_public.py'
+    public.write_text("import importlib\nsolver = importlib.import_module('solver')\ndef test_answer():\n    assert solver.answer() == 1\n")
+    fingerprint=hashlib.sha256(public.read_bytes()).hexdigest()
+    decisions=[]
+    phase=[0]
+    runtime=root/'runtime'
+    runtime.mkdir()
+    import tarfile
+    package=repo/'build/linux-opencode-runtime/opencode-linux-x64-1.18.32.tgz'
+    with tarfile.open(package) as archive:
+        member=archive.getmember('package/bin/opencode')
+        assert member.isfile() and member.size<200_000_000
+        with archive.extractfile(member) as source, (runtime/'opencode').open('wb') as target:
+            import shutil
+            shutil.copyfileobj(source,target)
+    (runtime/'opencode').chmod(0o755)
+    (runtime/'guard.txt').write_text('original')
+    (runtime/'benchmarks').mkdir()
+    (runtime/'benchmarks/__init__.py').write_text('')
+    for name in ('opencode_cli.py','opencode_session.py'):
+        (runtime/'benchmarks'/name).write_bytes((repo/'benchmarks'/name).read_bytes())
+    controller = root/'controller'
+    controller.mkdir(mode=0o700)
+    path = controller/'relay.sock'
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    listener.bind(str(path))
+    path.chmod(0o600)
+    listener.listen(1)
+    listener.settimeout(0.5)
+    calls=[]
+    tool_issued=[]
+    errors=[]
+    stop=threading.Event()
+    deadline=time.perf_counter()+45
+    async def review(vendor,messages):
+        session=HarnessSession(id='opencode:'+vendor,harness_type=HarnessType.OPENCODE,vendor_session_id=vendor,cwd=str(workspace),project_id=str(workspace),status=SessionStatus.STOPPED)
+        observation=_observe_controlled_workspace(workspace,fingerprint,deadline=deadline,isolated_tests=True)
+        decision=await _decide_out_of_process(task_md=task,workspace=workspace,session=session,observed=observation,agent_messages=list(messages),goal_id='public-'+session.id,control_dir=controller/'reviews',timeout=min(15,deadline-time.perf_counter()),offline_runtime=repo/'build/isolated-supervisor-runtime/public-runtime-f379031')
+        decisions.append({'decision':decision,'pytest_ok':observation['pytest']['ok'],'controller_verification':observation['controller_verification']})
+        if len(decisions)==1:
+            assert not observation['pytest']['ok'] and decision['action']['type']=='SEND_NUDGE'
+            phase[0]=1
+        else:
+            assert len(decisions)==2 and observation['pytest']['ok'] and decision['action']['type']=='NOOP'
+        return decision['action']
+    async def backend(body):
+        calls.append(body)
+        tools=body.get('tools') or []
+        write_tool=next((row.get('function') for row in tools if row.get('function',{}).get('name')=='write'),None)
+        message={'role':'assistant','content':'All done.'}
+        finish='stop'
+        if write_tool and len(tool_issued)<=phase[0]:
+            tool_issued.append(write_tool)
+            message={'role':'assistant','content':None,'tool_calls':[{'id':'controlled-write-'+str(len(tool_issued)),'type':'function','function':{'name':'write','arguments':json.dumps({'filePath':'/workspace/solver.py','content':'def answer():\n    return '+str(phase[0])+'\n'})}}]}
+            finish='tool_calls'
+        return {'id':'controlled','created':1,'model':'pinned','choices':[{'index':0,'message':message,'finish_reason':finish}],'usage':{'prompt_tokens':10,'completion_tokens':2,'total_tokens':12}}
+    relay=OpenCodeControlRelay(model='pinned',max_calls=8,deadline=deadline,backend=backend,review=review,max_reviews=3)
+    def serve():
+        while not stop.is_set():
+            try:
+                peer,_=listener.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+            try:
+                with peer:
+                    peer.settimeout(45)
+                    length=struct.unpack('!I',_read(peer,4))[0]
+                    assert 0<length<=262144
+                    raw_request=_read(peer,length)
+                    response=asyncio.run(relay.dispatch(raw_request))
+                    if response.get('ok') is not True:
+                        errors.append(response.get('error'))
+                        (repo/'build/opencode-control-relay-linux-refused-request.json').write_bytes(raw_request)
+                    raw=json.dumps(response).encode()
+                    peer.sendall(struct.pack('!I',len(raw))+raw)
+            except Exception as exc:
+                errors.append(type(exc).__name__)
+                return
+    thread=threading.Thread(target=serve,daemon=True)
+    thread.start()
+    source=(repo/'benchmarks/worker_model_proxy.py').read_text()
+    child="""
+import json,os,subprocess,threading
+namespace={'__name__':'proxy_module'}
+exec(SOURCE,namespace)
+sse_calls=[]
+original_buffered_sse=namespace['buffered_sse']
+def observed_buffered_sse(result):
+    sse_calls.append(True)
+    return original_buffered_sse(result)
+namespace['buffered_sse']=observed_buffered_sse
+server=namespace['make_server']('/model-relay.sock',model='pinned')
+thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+try:
+    from pathlib import Path
+    try:
+        Path('/worker-runtime/guard.txt').write_text('changed')
+    except OSError:
+        pass
+    else:
+        raise AssertionError('Worker runtime was writable')
+    config={'autoupdate':False,'model':'controlled/pinned','small_model':'controlled/pinned','enabled_providers':['controlled'],'permission':{'*':'deny','edit':'allow'},
+        'provider':{'controlled':{'npm':'@ai-sdk/openai-compatible','name':'Controlled relay','options':{'baseURL':f'http://127.0.0.1:{server.server_port}/v1','apiKey':'pex-relay-local'},
+            'models':{'pinned':{'name':'Pinned','limit':{'context':32000,'output':1200}}}}}}
+    env=dict(os.environ,OPENCODE_CONFIG_CONTENT=json.dumps(config),XDG_CONFIG_HOME='/tmp/config',XDG_DATA_HOME='/tmp/data',XDG_CACHE_HOME='/tmp/cache',XDG_STATE_HOME='/tmp/state')
+    import socket,struct
+    import asyncio,time,uuid,sys
+    from types import SimpleNamespace
+    sys.path.insert(0,'/worker-runtime')
+    from benchmarks.opencode_session import run_session
+    def review(vendor,messages):
+        request=json.dumps({'schema':'pex.opencode-review.v1','request_id':uuid.uuid4().hex,'vendor_session_id':vendor,'agent_messages':messages}).encode()
+        with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as peer:
+            peer.settimeout(30);peer.connect('/model-relay.sock')
+            peer.sendall(struct.pack('!I',len(request))+request)
+            length=struct.unpack('!I',namespace['_read'](peer,4))[0]
+            assert 0<length<=262144
+            return json.loads(namespace['_read'](peer,length))['action']
+    async def callback(turns):
+        turn=turns[-1]
+        return await asyncio.to_thread(review,turn.session_id,list(turn.messages))
+    logs=Path('/tmp/turn-logs')
+    logs.mkdir()
+    result=asyncio.run(run_session(executable=Path('/worker-runtime/opencode'),workspace=Path('/workspace'),model='controlled/pinned',prompt='Fix solver.py and verify test_public.py.',environment=env,log_directory=logs,deadline=time.monotonic()+45,review=callback,max_followups=2))
+    assert len(result.turns)==2 and result.actions==('SEND_NUDGE','NOOP')
+    assert result.turns[0].session_id==result.turns[1].session_id
+    assert not result.followup_limit_reached and len(result.outgoing_messages)==1
+    raw=b''.join((logs/f'turn-{index}.jsonl').read_bytes() for index in range(2))
+    events=[json.loads(line) for line in raw.splitlines()]
+    writes=[event for event in events if event.get('type')=='tool_use' and event.get('part',{}).get('tool')=='write']
+    assert len(writes)==2 and all(row['part']['state']['status']=='completed' for row in writes)
+    Path('/workspace/_proof-stdout.jsonl').write_bytes(raw)
+    completed=SimpleNamespace(returncode=0)
+    assert sse_calls, 'No buffered SSE response was observed'
+    print(json.dumps({'shared_session_deadline':True,'real_opencode':True,'loopback_http':True,'mounted_unix_relay':True,'buffered_sse':bool(sse_calls),'buffered_sse_calls':len(sse_calls),'upstream_streaming':False,'runtime_read_only':True,'task_writable':True,'tool_permission':'edit_allow_other_tools_deny','opencode_write_tool_completed':True,'same_vendor_session':True,'pex_followups':1,'public_tests_before':False,'public_tests_after':True,'worker_exit':completed.returncode}))
+finally:
+    server.shutdown();server.server_close();thread.join(timeout=5)
+""".replace('SOURCE',repr(source))
+    try:
+        result=subprocess.run(worker_runtime_relay_command(workspace,['/usr/bin/python3','-c',child],path,runtime),
+            capture_output=True,text=True,timeout=60)
+        stop.set()
+        thread.join(timeout=2)
+        (repo/'build/opencode-control-relay-linux-diagnostic.json').write_text(json.dumps({'returncode':result.returncode,'errors':errors,'calls':len(calls),'stderr':result.stderr},indent=2))
+        assert result.returncode==0, result.stderr
+        assert len(tool_issued)==2 and (workspace/'solver.py').read_bytes()==b'def answer():\n    return 1\n'
+        assert len(decisions)==2 and not errors
+        (repo/'build/opencode-control-relay-linux-audit.json').write_text(json.dumps({'model':relay.audit,'review':relay.review_audit},indent=2))
+        (repo/'build/opencode-control-relay-linux-decisions.json').write_text(json.dumps(decisions,indent=2))
+        assert 1<=len(calls)<=8 and not errors and not thread.is_alive(),errors
+        (repo/'build/opencode-control-relay-linux-stdout.jsonl').write_bytes((workspace/'_proof-stdout.jsonl').read_bytes())
+        receipt={**json.loads(result.stdout),'controller_calls':len(calls),
+            'scope':'Real OpenCode same-session repair with isolated deterministic PEX and public tests, controlled relay backend; no upstream provider call or comparative quality claim.'}
+        (repo/'build/opencode-control-relay-linux-smoke.json').write_text(json.dumps(receipt,indent=2)+'\n')
+        print(json.dumps(receipt))
+    finally:
+        stop.set()
+        listener.close()
+        thread.join(timeout=2)
+
