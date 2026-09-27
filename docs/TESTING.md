@@ -1131,3 +1131,14 @@ optional AgentCore endpoint proposes an action.
   and comparative quality remains unmeasured. See the
   [receipt](evidence/codex-responses-linux.json) and exact controlled
   [driver](evidence/codex-responses-linux-driver.txt).
+- The public Codex worker can now request bounded PEX reviews after natural
+  completion and deliver an allowed repair in the same vendor session. Its
+  separate review schema preserves the common model and review budget fences.
+  A real Linux replay used a fresh, separately isolated offline PEX runtime:
+  independent public verification failed, PEX issued `SEND_NUDGE`, Codex resumed
+  and changed the file, verification passed, and PEX returned `NOOP`. Completed
+  agent messages were observed and bound to the active session and turn. The
+  coding backend was scripted; PEX reasoning was deterministic. This proves
+  recovery plumbing, not live semantic reasoning, comparative performance, or
+  presentation eligibility. See the [receipt](evidence/codex-supervision-linux.json)
+  and exact controlled [driver](evidence/codex-supervision-linux-driver.txt).

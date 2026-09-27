@@ -12,6 +12,7 @@ import threading
 from pathlib import Path
 from time import monotonic
 
+from benchmarks.opencode_review_client import review_request
 from benchmarks.worker_model_proxy import _decode, _encode, make_server, relay_request
 
 MAX_PROTOCOL_BYTES = 1_048_576
@@ -36,16 +37,23 @@ def provider_settings(port: int, model: str) -> dict:
 
 
 async def run_worker(*, executable: Path, workspace: Path, state_home: Path,
-                     socket_path: str, model: str, prompts: list[str], deadline: float) -> dict:
-    """Complete supplied turns in one fresh session; no supervision claim."""
+                     socket_path: str, model: str, prompts: list[str], deadline: float,
+                     supervised: bool = False, max_followups: int = 0) -> dict:
+    """Complete turns and bounded controller-directed repairs in one session."""
     if sys.platform != "linux":
         raise RuntimeError("Codex worker requires Linux")
     if type(deadline) not in (int, float) or not math.isfinite(deadline):
         raise ValueError("worker deadline must be finite")
+    if (type(supervised) is not bool or type(max_followups) is not int
+            or not 0 <= max_followups <= 10):
+        raise ValueError("worker review condition and follow-up limit must be explicit")
     if (not isinstance(prompts, list) or not 1 <= len(prompts) <= 11
             or any(not isinstance(text, str) or not text.strip() or len(text) > 20_000
                    or "\x00" in text for text in prompts)):
         raise ValueError("worker prompts must be bounded")
+    if (not supervised and max_followups != 0) or (supervised and len(prompts) != 1):
+        raise ValueError("supervised workers require one initial prompt; baseline has no repairs")
+    prompts = list(prompts)
     for path in (executable, workspace, state_home, Path(socket_path)):
         if not path.is_absolute():
             raise ValueError("worker paths must be absolute")
@@ -68,6 +76,9 @@ async def run_worker(*, executable: Path, workspace: Path, state_home: Path,
     process = None
     pending = []
     turns = []
+    actions = []
+    outgoing = []
+    limit_reached = False
     serial = 0
     observed = 0
     observed_bytes = 0
@@ -133,6 +144,7 @@ async def run_worker(*, executable: Path, workspace: Path, state_home: Path,
         if not isinstance(session, str) or not 1 <= len(session) <= 256:
             raise ValueError("invalid Codex session receipt")
         for prompt in prompts:
+            messages = []
             result = await rpc("turn/start", {"threadId": session,
                                               "input": [{"type": "text", "text": prompt}]})
             identity = result["turn"]["id"]
@@ -142,6 +154,16 @@ async def run_worker(*, executable: Path, workspace: Path, state_home: Path,
                 raise ValueError("Codex reused a completed turn")
             while True:
                 value = pending.pop(0) if pending else await read()
+                if value.get("method") == "item/completed":
+                    params = value.get("params", {})
+                    item = params.get("item", {})
+                    if (params.get("threadId") == session and params.get("turnId") == identity
+                            and item.get("type") == "agentMessage"):
+                        text = item.get("text")
+                        if (not isinstance(text, str) or len(text) > 20_000 or "\x00" in text
+                                or len(messages) >= 100):
+                            raise ValueError("Codex agent messages exceed review observation bound")
+                        messages.append(text)
                 if value.get("method") != "turn/completed":
                     continue
                 params = value.get("params", {})
@@ -150,11 +172,28 @@ async def run_worker(*, executable: Path, workspace: Path, state_home: Path,
                     raise ValueError("Codex completion does not match the active turn")
                 if turn.get("status") != "completed":
                     raise ValueError("Codex turn did not complete")
-                turns.append({"turn_id": identity, "status": "completed"})
+                turns.append({"turn_id": identity, "status": "completed", "messages": messages})
                 break
+            if supervised:
+                remaining()
+                action = await asyncio.to_thread(
+                    review_request, socket_path, vendor_session_id=session,
+                    agent_messages=tuple(messages), deadline=deadline, schema="pex.codex-review.v1",
+                )
+                remaining()
+                actions.append(action["type"])
+                if action["type"] == "NOOP":
+                    break
+                if len(outgoing) >= max_followups:
+                    limit_reached = True
+                    break
+                text = action["payload"]["text"]
+                outgoing.append(text)
+                prompts.append(text)
         remaining()
         result = {"vendor_session_id": session, "turns": turns, "quality_measured": False,
-                  "presentation_eligible": False}
+                  "presentation_eligible": False, "actions": actions,
+                  "outgoing_messages": outgoing, "followup_limit_reached": limit_reached}
     finally:
         try:
             if process is not None and process.returncode is None:

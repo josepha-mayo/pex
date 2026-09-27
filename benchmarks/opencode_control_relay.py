@@ -22,6 +22,7 @@ REVIEW_SCHEMA = "pex.opencode-review.v1"
 
 
 class OpenCodeControlRelay(PinnedModelRelay):
+    review_schema = REVIEW_SCHEMA
     def __init__(
         self, *, review: Callable[[str, tuple[str, ...]], Awaitable[dict]] | None = None,
         max_reviews: int = 3, max_review_seconds: float = 180, **model_options,
@@ -48,9 +49,9 @@ class OpenCodeControlRelay(PinnedModelRelay):
             envelope = strict_json_loads(raw)
         except (ValueError, TypeError, UnicodeError, RecursionError):
             return await super().dispatch(raw)
-        if not isinstance(envelope, dict) or envelope.get("schema") != REVIEW_SCHEMA:
+        if not isinstance(envelope, dict) or envelope.get("schema") != self.review_schema:
             return await super().dispatch(raw)
-        invalid = {"schema": REVIEW_SCHEMA, "ok": False, "error": "invalid_request"}
+        invalid = {"schema": self.review_schema, "ok": False, "error": "invalid_request"}
         if set(envelope) != {"schema", "request_id", "vendor_session_id", "agent_messages"}:
             return invalid
         request_id = envelope["request_id"]
@@ -64,7 +65,7 @@ class OpenCodeControlRelay(PinnedModelRelay):
                    for text in messages)
         ):
             return invalid
-        result = {"schema": REVIEW_SCHEMA, "request_id": request_id, "ok": False}
+        result = {"schema": self.review_schema, "request_id": request_id, "ok": False}
         if self.review is None:
             error = "reviews_disabled"
         elif request_id in self._review_ids:

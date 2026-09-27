@@ -1,0 +1,571 @@
+{
+  "scope": "Real Linux Codex inside bwrap with separate fresh isolated deterministic PEX reviews and independently checked public tests. Controlled model backend performs fail-to-pass repair in same session; no upstream inference, semantic model review or comparative quality measurement.",
+  "runtime_version": "codex-cli 0.157.1",
+  "binary_sha256": "3e2584f3f3829a43a0495011a1cecb2facbe64a2403e2b682351fd9c2983f970",
+  "source_fingerprint": "26ce5878560d5d2829f1cad0d1903bc2922d5e7fc4cbe4c980eecc47c37b8fd2",
+  "worker": {
+    "vendor_session_id": "01a0e3a7-bb4e-75d3-94c3-3159c6529bc7",
+    "turns": [
+      {
+        "turn_id": "01a0e3a7-bb7f-7f82-a85e-7dd83d529522",
+        "status": "completed",
+        "messages": [
+          "All done."
+        ]
+      },
+      {
+        "turn_id": "01a0e3a7-caaa-7523-a5b3-747c272cfb00",
+        "status": "completed",
+        "messages": [
+          "All done."
+        ]
+      }
+    ],
+    "quality_measured": false,
+    "presentation_eligible": false,
+    "actions": [
+      "SEND_NUDGE",
+      "NOOP"
+    ],
+    "outgoing_messages": [
+      "The latest observed pytest run failed (exit 1). Failing test: test_public.py::test_answer. Continue from that failure."
+    ],
+    "followup_limit_reached": false
+  },
+  "model_calls": 4,
+  "relay_audit": [
+    {
+      "request_id": "d4a242ffc6c24c9680d9bbdc25f312dc",
+      "request_sha256": "682ee7829dcb50df11c2ecbfd2ac95cfa1fdd0ae7bc0b89ebebc1797931938ca",
+      "status": "completed",
+      "response_sha256": "f2744e4cf306fa417b11b2234da0999af71b1011bfe994ce58f47ca7839fe238"
+    },
+    {
+      "request_id": "6263c94e72e94e59aeefddd0d06a27e1",
+      "request_sha256": "bd60c1b2186415977cc8bb99d2938c440e5a31b078101357ee586f640eed93ee",
+      "status": "completed",
+      "response_sha256": "9fac6d287ffc355324ddce2d695d2c2af474b81ac40862d554257676d66d73af"
+    },
+    {
+      "request_id": "5fb70e58aff34eb59470aeb2cea1f876",
+      "request_sha256": "9decf244b75b001f89b6f01e062219fbba126c5a51f979be5783fbf6420430c3",
+      "status": "completed",
+      "response_sha256": "e1070bb3479dc455827e14014b6d526d4b5c8cf219d869462bb9cdc0b3285268"
+    },
+    {
+      "request_id": "1a9ac1e9fef9446fbcf62b7d136f3de3",
+      "request_sha256": "c96cbd2385ed820eb6038a28f787532c651a47a9fc630ee6a834982e73dc61f8",
+      "status": "completed",
+      "response_sha256": "4b2519e6d644be8def0b738129d47e34156bdb7b48bd35edd8d819ea4da68b80"
+    }
+  ],
+  "review_audit": [
+    {
+      "request_id": "9cbf43148a164a74b8a4c9b991281aaf",
+      "vendor_session_id": "01a0e3a7-bb4e-75d3-94c3-3159c6529bc7",
+      "request_sha256": "e1ada2df9cd3fdd530ebbb46d511829522a4f4565675ffd255688d3ea8449983",
+      "status": "completed",
+      "response_sha256": "400f025033e65a5a5d410ed0d5670669693f6d4670c8b413565925ecfd56bbfe",
+      "elapsed_seconds": 3.7582616500000015,
+      "charged_seconds": 3.7582616500000015
+    },
+    {
+      "request_id": "e02ea00eb939400bb7229c40f9038985",
+      "vendor_session_id": "01a0e3a7-bb4e-75d3-94c3-3159c6529bc7",
+      "request_sha256": "0b85e7e9369e12b4262b516e57017c57f3df81dbfb0cf94682790a42301a09b2",
+      "status": "completed",
+      "response_sha256": "b583a2ca8b074fda2bde4b47ca140d6e2964272852ff95c733e6b6438b382a55",
+      "elapsed_seconds": 2.0884647110000003,
+      "charged_seconds": 2.0884647110000003
+    }
+  ],
+  "reviews": [
+    {
+      "decision": {
+        "backend": {
+          "backend": null,
+          "has_api_key": false,
+          "disabled": true,
+          "catalog_size": 60,
+          "providers": [
+            "anthropic",
+            "azure_openai",
+            "bedrock",
+            "cohere",
+            "custom",
+            "dashscope",
+            "deepseek",
+            "fireworks",
+            "github_models",
+            "google",
+            "grok",
+            "groq",
+            "hermes",
+            "huggingface",
+            "litellm",
+            "llama_api",
+            "llamacpp",
+            "lmstudio",
+            "mistral",
+            "moonshot",
+            "nebius",
+            "nvidia",
+            "ollama",
+            "openai",
+            "opencode_go",
+            "openrouter",
+            "perplexity",
+            "sagemaker",
+            "together",
+            "vllm",
+            "writer",
+            "zen"
+          ],
+          "provider_auth_modes": {
+            "openai": [
+              "api_key"
+            ],
+            "azure_openai": [
+              "api_key"
+            ],
+            "anthropic": [
+              "api_key"
+            ],
+            "google": [
+              "api_key"
+            ],
+            "grok": [
+              "api_key"
+            ],
+            "openrouter": [
+              "api_key"
+            ],
+            "zen": [
+              "api_key"
+            ],
+            "opencode_go": [
+              "api_key"
+            ],
+            "hermes": [
+              "api_key"
+            ],
+            "bedrock": [
+              "aws_sigv4"
+            ],
+            "mistral": [
+              "api_key"
+            ],
+            "groq": [
+              "api_key"
+            ],
+            "together": [
+              "api_key"
+            ],
+            "fireworks": [
+              "api_key"
+            ],
+            "deepseek": [
+              "api_key"
+            ],
+            "moonshot": [
+              "api_key"
+            ],
+            "dashscope": [
+              "api_key"
+            ],
+            "nvidia": [
+              "api_key"
+            ],
+            "nebius": [
+              "api_key"
+            ],
+            "perplexity": [
+              "api_key"
+            ],
+            "cohere": [
+              "api_key"
+            ],
+            "huggingface": [
+              "api_key"
+            ],
+            "ollama": [
+              "local"
+            ],
+            "lmstudio": [
+              "local"
+            ],
+            "llamacpp": [
+              "local"
+            ],
+            "vllm": [
+              "local",
+              "custom"
+            ],
+            "custom": [
+              "custom",
+              "api_key"
+            ],
+            "litellm": [
+              "api_key",
+              "custom"
+            ],
+            "github_models": [
+              "api_key"
+            ],
+            "writer": [
+              "api_key"
+            ],
+            "sagemaker": [
+              "api_key"
+            ],
+            "llama_api": [
+              "api_key"
+            ]
+          }
+        },
+        "action": {
+          "type": "SEND_NUDGE",
+          "session_id": "codex:01a0e3a7-bb4e-75d3-94c3-3159c6529bc7",
+          "goal_id": "public-codex:01a0e3a7-bb4e-75d3-94c3-3159c6529bc7",
+          "payload": {
+            "text": "The latest observed pytest run failed (exit 1). Failing test: test_public.py::test_answer. Continue from that failure."
+          },
+          "rationale": "Observed workspace state does not satisfy an explicit acceptance criterion.",
+          "evidence": [
+            "pytest_event_id=evt_3bba89d3a7944474ab3dd970194e9631",
+            "pytest_scope=targeted",
+            "pytest_ok=False",
+            "pytest_exit_code=1",
+            "failed:test_public.py::test_answer"
+          ],
+          "confidence": 0.86,
+          "risk": "low",
+          "reversible": false,
+          "expected_benefit": "Redirect the worker toward evidenced progress without interrupting the human.",
+          "cooldown_seconds": 45,
+          "authority_required": "local_policy",
+          "requires_capability": "send_message"
+        },
+        "diagnosis": "observed_pytest_failure_fast_path",
+        "used_llm": false,
+        "model_name": null,
+        "inference_request_id": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "latency_ms": 0,
+        "execution_boundary": {
+          "mode": "offline-linux-bwrap",
+          "request_sha256": "c7027f0e9a81564924d41fc94f3b5c5ea3522e81970d1d187393c6d328947ea4",
+          "response_sha256": "35becdb0c66a8ce11cf1a7ac2a95c716b2008de8cdfed1836794930f5dda90a1",
+          "model_transport": "disabled"
+        }
+      },
+      "pytest_ok": false,
+      "controller_verification": {
+        "owner": "benchmark_controller",
+        "kind": "pytest",
+        "command": "/usr/bin/python3 -m pytest -q --tb=line -p no:cacheprovider --confcutdir=/workspace -o=testpaths= -o=addopts= test_public.py",
+        "invocation_scope": "targeted",
+        "relative_targets": [
+          "test_public.py"
+        ],
+        "result": {
+          "ok": false,
+          "exit_code": 1,
+          "output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n/workspace/test_public.py:3: assert 0 == 1\n=========================== short test summary info ============================\nFAILED test_public.py::test_answer - assert 0 == 1\n1 failed in 0.01s\n",
+          "timed_out": false
+        },
+        "provenance": {
+          "public_workspace_sha256": "aff85d7ffdb50cc7280be9ad3df0c26aa4129a1476236c5a266c8e09eeb6d46d",
+          "public_test_sha256": "4715db12482c7d7a5513d730860fbfaa1f21451970fe3eff2bc7567890759a17",
+          "workspace_stable_during_verification": true,
+          "executed_argv": [
+            "/usr/bin/python3",
+            "-I",
+            "-B",
+            "-X",
+            "pycache_prefix=/tmp/pycache",
+            "-m",
+            "pytest",
+            "-q",
+            "--tb=line",
+            "-p",
+            "no:cacheprovider",
+            "--rootdir",
+            "/workspace",
+            "--confcutdir",
+            "/workspace",
+            "-c",
+            "/dev/null",
+            "-o",
+            "testpaths=",
+            "-o",
+            "addopts=",
+            "test_public.py"
+          ]
+        },
+        "executor": "linux-bwrap-public-pytest-v1"
+      },
+      "agent_messages": [
+        "All done."
+      ]
+    },
+    {
+      "decision": {
+        "backend": {
+          "backend": null,
+          "has_api_key": false,
+          "disabled": true,
+          "catalog_size": 60,
+          "providers": [
+            "anthropic",
+            "azure_openai",
+            "bedrock",
+            "cohere",
+            "custom",
+            "dashscope",
+            "deepseek",
+            "fireworks",
+            "github_models",
+            "google",
+            "grok",
+            "groq",
+            "hermes",
+            "huggingface",
+            "litellm",
+            "llama_api",
+            "llamacpp",
+            "lmstudio",
+            "mistral",
+            "moonshot",
+            "nebius",
+            "nvidia",
+            "ollama",
+            "openai",
+            "opencode_go",
+            "openrouter",
+            "perplexity",
+            "sagemaker",
+            "together",
+            "vllm",
+            "writer",
+            "zen"
+          ],
+          "provider_auth_modes": {
+            "openai": [
+              "api_key"
+            ],
+            "azure_openai": [
+              "api_key"
+            ],
+            "anthropic": [
+              "api_key"
+            ],
+            "google": [
+              "api_key"
+            ],
+            "grok": [
+              "api_key"
+            ],
+            "openrouter": [
+              "api_key"
+            ],
+            "zen": [
+              "api_key"
+            ],
+            "opencode_go": [
+              "api_key"
+            ],
+            "hermes": [
+              "api_key"
+            ],
+            "bedrock": [
+              "aws_sigv4"
+            ],
+            "mistral": [
+              "api_key"
+            ],
+            "groq": [
+              "api_key"
+            ],
+            "together": [
+              "api_key"
+            ],
+            "fireworks": [
+              "api_key"
+            ],
+            "deepseek": [
+              "api_key"
+            ],
+            "moonshot": [
+              "api_key"
+            ],
+            "dashscope": [
+              "api_key"
+            ],
+            "nvidia": [
+              "api_key"
+            ],
+            "nebius": [
+              "api_key"
+            ],
+            "perplexity": [
+              "api_key"
+            ],
+            "cohere": [
+              "api_key"
+            ],
+            "huggingface": [
+              "api_key"
+            ],
+            "ollama": [
+              "local"
+            ],
+            "lmstudio": [
+              "local"
+            ],
+            "llamacpp": [
+              "local"
+            ],
+            "vllm": [
+              "local",
+              "custom"
+            ],
+            "custom": [
+              "custom",
+              "api_key"
+            ],
+            "litellm": [
+              "api_key",
+              "custom"
+            ],
+            "github_models": [
+              "api_key"
+            ],
+            "writer": [
+              "api_key"
+            ],
+            "sagemaker": [
+              "api_key"
+            ],
+            "llama_api": [
+              "api_key"
+            ]
+          }
+        },
+        "action": {
+          "type": "NOOP",
+          "session_id": "codex:01a0e3a7-bb4e-75d3-94c3-3159c6529bc7",
+          "goal_id": "public-codex:01a0e3a7-bb4e-75d3-94c3-3159c6529bc7",
+          "payload": {},
+          "rationale": "No deterministic fact requires interruption. Stop/completion needs supervisor inference or silence.",
+          "evidence": [
+            "stop"
+          ],
+          "confidence": 0.7,
+          "risk": "none",
+          "reversible": false,
+          "expected_benefit": "",
+          "cooldown_seconds": 5,
+          "authority_required": "local_policy",
+          "requires_capability": null
+        },
+        "diagnosis": "deterministic_triage_no_supervisor_model",
+        "used_llm": false,
+        "model_name": null,
+        "inference_request_id": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "latency_ms": 0,
+        "execution_boundary": {
+          "mode": "offline-linux-bwrap",
+          "request_sha256": "6595d7431ef7bfb43e8e96689c86849f8e38fb2fd695800b2476651d8c0939f9",
+          "response_sha256": "19c8a9594a04c76d627b6832de2febc52d0ce55d1b81c58baac84c884d26e67d",
+          "model_transport": "disabled"
+        }
+      },
+      "pytest_ok": true,
+      "controller_verification": {
+        "owner": "benchmark_controller",
+        "kind": "pytest",
+        "command": "/usr/bin/python3 -m pytest -q --tb=line -p no:cacheprovider --confcutdir=/workspace -o=testpaths= -o=addopts= test_public.py",
+        "invocation_scope": "targeted",
+        "relative_targets": [
+          "test_public.py"
+        ],
+        "result": {
+          "ok": true,
+          "exit_code": 0,
+          "output": ".                                                                        [100%]\n1 passed in 0.00s\n",
+          "timed_out": false
+        },
+        "provenance": {
+          "public_workspace_sha256": "e7a734c60bd46b7f7e121bed306c083f136f497f0ac40aca2dbb980f802bc635",
+          "public_test_sha256": "4715db12482c7d7a5513d730860fbfaa1f21451970fe3eff2bc7567890759a17",
+          "workspace_stable_during_verification": true,
+          "executed_argv": [
+            "/usr/bin/python3",
+            "-I",
+            "-B",
+            "-X",
+            "pycache_prefix=/tmp/pycache",
+            "-m",
+            "pytest",
+            "-q",
+            "--tb=line",
+            "-p",
+            "no:cacheprovider",
+            "--rootdir",
+            "/workspace",
+            "--confcutdir",
+            "/workspace",
+            "-c",
+            "/dev/null",
+            "-o",
+            "testpaths=",
+            "-o",
+            "addopts=",
+            "test_public.py"
+          ]
+        },
+        "executor": "linux-bwrap-public-pytest-v1"
+      },
+      "agent_messages": [
+        "All done."
+      ]
+    }
+  ],
+  "public_test_outcomes": [
+    false,
+    true
+  ],
+  "runtime_public_modules": [
+    "codex_worker.py",
+    "worker_model_proxy.py",
+    "opencode_review_client.py",
+    "opencode_session.py",
+    "opencode_cli.py",
+    "async_budget.py"
+  ],
+  "tool_write_verified": true,
+  "upstream_provider_calls": 0,
+  "quality_measured": false,
+  "presentation_eligible": false,
+  "driver_sha256": "757d7982b6fdbfcb4b7ebfdf686ba165fc27b01430d288ef973bcc9602de0bc6",
+  "source_changes_uncommitted_at_execution": true,
+  "runtime_module_sha256": {
+    "codex_worker.py": "dcdab5ee95cde48f2f47d75d66e0d161dfd37889355470f191055a3fd6882d22",
+    "worker_model_proxy.py": "6514400320530e0ab3d1ce9c1912d6b8876904f7845aa7fc1fa70df5021bdf8e",
+    "opencode_review_client.py": "dc5955d800963e9d042df0f0bc9d1dce8f7f1ee086baa0884c5427ed7db0d434",
+    "opencode_session.py": "293611f798c2a6c1e28becd450d67696ff23179ff28b4d0da6af9e484ac7b13a",
+    "opencode_cli.py": "13c03094ad7e54ba8eaa57819f4809bccb370bb8149e5ee651b22cf7f4ce1f1b",
+    "async_budget.py": "6b7805cc92c674718483ccbda1f87af425c29c85e91b9f70026cb1128141425e"
+  },
+  "supervisor_runtime_manifest_sha256": "e5518b69e2fe13164e4d0dc17d9e5f9a57b8133f0ed6b97936d2bef40087a8f4",
+  "supervisor_runtime_files": 452,
+  "stdout_txt_sha256": "bb01d9d1f7299b4bbac2139e830ae877bfbe3a28fc9cd53006638d33b28d3bd6",
+  "stderr_txt_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "calls_json_sha256": "99d7f2012863a82132b25b4832ea53cbe25bdf44b49c712a1ffbbb61fad51e77",
+  "public_test_sha256": "4715db12482c7d7a5513d730860fbfaa1f21451970fe3eff2bc7567890759a17",
+  "final_solver_sha256": "dd46cb2f80fe2d22e284d503f04d3f7c6a66956a171eaa0e8d128e7e2dee5a0e"
+}

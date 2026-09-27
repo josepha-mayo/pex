@@ -23,12 +23,32 @@ def stopped(*, session="session", identity="turn", status="completed"):
 @pytest.mark.parametrize("terminal", [stopped(), stopped(session="wrong"),
                                       stopped(identity="wrong"), stopped(status="failed"),
                                       {"id": 99, "method": "approve", "params": {}},
-                                      "deadline-after-thread"])
+                                      "deadline-after-thread", "repair-at-cap", "noop-at-cap",
+                                      "repair-then-noop", "review-failed"])
 async def test_worker_matches_terminal_receipts_and_reaps(tmp_path, monkeypatch, terminal):
     rows = [response(1, {}), response(2, {"thread": {"id": "session"}}),
             response(3, {"turn": {"id": "turn"}}), terminal]
     sent = []
     observed = {}
+    review_modes = {"repair-at-cap", "noop-at-cap", "repair-then-noop", "review-failed"}
+    supervised = isinstance(terminal, str) and terminal in review_modes
+    reviews = []
+    if supervised:
+        rows[-1:] = [{"method": "item/completed", "params": {
+            "threadId": "session", "turnId": "turn", "item": {
+                "type": "agentMessage", "text": "First completion",
+            },
+        }}, stopped()]
+        if terminal == "repair-then-noop":
+            rows.extend([response(4, {"turn": {"id": "turn2"}}), stopped(identity="turn2")])
+
+    def review(path, **kwargs):
+        reviews.append(kwargs)
+        if terminal == "review-failed":
+            raise ValueError("uncertain review")
+        if terminal == "noop-at-cap" or len(reviews) == 2:
+            return {"type": "NOOP"}
+        return {"type": "SEND_NUDGE", "payload": {"text": "Verify public tests"}}
     clock_reads_after_thread = []
 
     def clock():
@@ -70,6 +90,8 @@ async def test_worker_matches_terminal_receipts_and_reaps(tmp_path, monkeypatch,
 
     monkeypatch.setattr(codex_worker, "sys", SimpleNamespace(platform="linux"))
     monkeypatch.setattr(asyncio, "create_subprocess_exec", launch)
+    if supervised:
+        monkeypatch.setattr(codex_worker, "review_request", review)
     if terminal == "deadline-after-thread":
         monkeypatch.setattr(codex_worker, "monotonic", clock)
     workspace = tmp_path / "workspace"
@@ -78,12 +100,27 @@ async def test_worker_matches_terminal_receipts_and_reaps(tmp_path, monkeypatch,
                                   state_home=tmp_path / "state",
                                   socket_path=str(tmp_path / "relay"),
                                   model="pinned", prompts=["Public task"],
+                                  supervised=supervised,
+                                  max_followups=1 if terminal == "repair-then-noop" else 0,
                                   deadline=5 if terminal == "deadline-after-thread"
                                   else time.monotonic() + 5)
     if terminal == stopped():
         result = await run
-        assert result["turns"] == [{"turn_id": "turn", "status": "completed"}]
+        assert result["turns"] == [{"turn_id": "turn", "status": "completed", "messages": []}]
         assert result["quality_measured"] is False
+    elif supervised and terminal != "review-failed":
+        result = await run
+        assert result["turns"][0]["messages"] == ["First completion"]
+        assert reviews[0]["vendor_session_id"] == "session"
+        assert reviews[0]["agent_messages"] == ("First completion",)
+        assert reviews[0]["schema"] == "pex.codex-review.v1"
+        assert result["followup_limit_reached"] is (terminal == "repair-at-cap")
+        if terminal == "repair-then-noop":
+            assert result["actions"] == ["SEND_NUDGE", "NOOP"]
+            assert result["outgoing_messages"] == ["Verify public tests"]
+            assert len(result["turns"]) == 2
+        else:
+            assert result["outgoing_messages"] == [] and len(result["turns"]) == 1
     elif terminal == "deadline-after-thread":
         with pytest.raises(TimeoutError):
             await run
@@ -95,6 +132,8 @@ async def test_worker_matches_terminal_receipts_and_reaps(tmp_path, monkeypatch,
     assert observed["env"]["CODEX_HOME"] == str(tmp_path / "state")
     expected = ["initialize", "initialized", "thread/start"]
     if terminal != "deadline-after-thread":
+        expected.append("turn/start")
+    if terminal == "repair-then-noop":
         expected.append("turn/start")
     assert [row["method"] for row in sent] == expected
 

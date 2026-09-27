@@ -1,0 +1,97 @@
+import asyncio, hashlib, json, os, shutil, sys, tempfile, time
+from datetime import UTC, datetime
+from pathlib import Path
+
+repo=Path('/mnt/d/PEX-work')
+sys.path[:0]=[str(repo),str(repo/'packages/protocol/src'),str(repo/'services/bridge/src'),str(repo/'services/supervisor/src'),str(repo/'build/isolated-supervisor-runtime/public-runtime-f379031/site-packages')]
+from benchmarks.codex_control_relay import CodexControlRelay
+from benchmarks.linux_sandbox import worker_runtime_relay_command
+from benchmarks.runner import benchmark_sha256
+from benchmarks.linux_supervisor_runtime import build_runtime
+from benchmarks.pex_attach import _observe_controlled_workspace, _decide_out_of_process
+from pex_protocol.session import HarnessSession
+from pex_protocol.enums import HarnessType,SessionStatus
+
+retained=repo/'build'/('codex-linux-supervision-'+datetime.now(UTC).strftime('%Y%m%dT%H%M%S%f'))
+retained.mkdir()
+
+async def main():
+    source_fingerprint=benchmark_sha256()
+    with tempfile.TemporaryDirectory(prefix='pex-codex-controller-') as directory:
+        root=Path(directory);workspace=root/'workspace';workspace.mkdir()
+        task='Fix solver.py and verify test_public.py.'
+        (workspace/'solver.py').write_text('def answer():\n    return 0\n')
+        public=workspace/'test_public.py'
+        public.write_text("import solver\ndef test_answer():\n    assert solver.answer() == 1\n")
+        fingerprint=hashlib.sha256(public.read_bytes()).hexdigest()
+        supervisor_runtime=root/'supervisor-runtime'
+        supervisor_manifest=build_runtime(repo/'build/isolated-supervisor-runtime/wheels',supervisor_runtime)
+        (retained/'supervisor-runtime-manifest.json').write_text(json.dumps(supervisor_manifest,indent=2))
+        runtime=root/'runtime';runtime.mkdir();package=runtime/'benchmarks';package.mkdir()
+        (package/'__init__.py').write_bytes(b'')
+        modules=('codex_worker.py','worker_model_proxy.py','opencode_review_client.py','opencode_session.py','opencode_cli.py','async_budget.py')
+        for name in modules:
+            shutil.copyfile(repo/'benchmarks'/name,package/name)
+        binary=runtime/'codex';shutil.copyfile(repo/'build/codex-linux-0.157.1/codex',binary);binary.chmod(0o555)
+        assert hashlib.sha256(binary.read_bytes()).hexdigest()=='3e2584f3f3829a43a0495011a1cecb2facbe64a2403e2b682351fd9c2983f970'
+        version=await asyncio.create_subprocess_exec(str(binary),'--version',stdout=asyncio.subprocess.PIPE)
+        version_raw,_=await version.communicate();assert version.returncode==0
+        calls=[];reviews=[];phase=[0];issued=[]
+        deadline=time.perf_counter()+90
+        async def review(vendor,messages):
+            session=HarnessSession(id='codex:'+vendor,harness_type=HarnessType.CODEX,vendor_session_id=vendor,cwd=str(workspace),project_id=str(workspace),status=SessionStatus.STOPPED)
+            observation=await asyncio.to_thread(_observe_controlled_workspace,workspace,fingerprint,deadline=deadline,isolated_tests=True)
+            decision=await _decide_out_of_process(task_md=task,workspace=workspace,session=session,observed=observation,agent_messages=list(messages),goal_id='public-'+session.id,control_dir=root/'reviews',timeout=min(20,deadline-time.perf_counter()),offline_runtime=supervisor_runtime)
+            reviews.append({'decision':decision,'pytest_ok':observation['pytest']['ok'],'controller_verification':observation['controller_verification'],'agent_messages':messages})
+            if len(reviews)==1:
+                assert not observation['pytest']['ok'] and decision['action']['type']=='SEND_NUDGE'
+                phase[0]=1
+            else:
+                assert len(reviews)==2 and observation['pytest']['ok'] and decision['action']['type']=='NOOP'
+            return decision['action']
+        async def backend(body):
+            calls.append(body);number=len(calls)
+            if len(issued)<=phase[0]:
+                issued.append(phase[0])
+                item={'id':f'fc-controlled-{number}','type':'function_call','status':'completed','call_id':f'call-proof-{number}',
+                      'name':'exec_command','arguments':json.dumps({'cmd':"printf 'def answer():\\n    return "+str(phase[0])+"\\n' > solver.py",'shell':'/usr/bin/bash','workdir':'/workspace','max_output_tokens':100})}
+            else:
+                item={'id':f'msg-{number}','type':'message','role':'assistant','status':'completed',
+                      'phase':'final_answer','content':[{'type':'output_text','text':'All done.','annotations':[]}]}
+            return {'id':f'resp-{number}','object':'response','model':'pinned','status':'completed','created_at':1,
+                    'output':[item],'usage':{'input_tokens':10,'output_tokens':10,'total_tokens':20}}
+        relay=CodexControlRelay(model='pinned',max_calls=6,deadline=deadline,backend=backend,review=review,max_reviews=2,max_review_seconds=40)
+        sock=root/'relay.sock';server=await relay.listen(sock)
+        entry="import sys,asyncio,json,time;from pathlib import Path;sys.path.insert(0,'/worker-runtime');from benchmarks.codex_worker import run_worker;print(json.dumps(asyncio.run(run_worker(executable=Path('/worker-runtime/codex'),workspace=Path('/workspace'),state_home=Path('/tmp/codex-state'),socket_path='/model-relay.sock',model='pinned',prompts=['Fix solver.py and verify test_public.py.'],deadline=time.monotonic()+60,supervised=True,max_followups=1))))"
+        command=worker_runtime_relay_command(workspace,['/usr/bin/python3','-I','-B','-c',entry],sock,runtime)
+        process=None
+        try:
+            process=await asyncio.create_subprocess_exec(*command,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)
+            stdout,stderr=await asyncio.wait_for(process.communicate(),timeout=75)
+            (retained/'stdout.txt').write_bytes(stdout);(retained/'stderr.txt').write_bytes(stderr)
+            (retained/'calls.json').write_text(json.dumps(calls,indent=2))
+            assert process.returncode==0,stderr.decode()
+            result=json.loads(stdout);assert len(result['turns'])==2
+            assert len(calls)==4 and all(row['status']=='completed' for row in relay.audit)
+            assert len(relay.review_audit)==2 and all(row['status']=='completed' for row in relay.review_audit)
+            assert result['actions']==['SEND_NUDGE','NOOP'] and not result['followup_limit_reached']
+            assert (workspace/'solver.py').read_text()=='def answer():\n    return 1\n'
+            outputs=[item for item in calls[1]['input'] if item.get('type')=='function_call_output' and item.get('call_id')=='call-proof-1']
+            assert len(outputs)==1 and 'failed' not in outputs[0]['output']
+            assert benchmark_sha256()==source_fingerprint
+            for name in modules:
+                assert (package/name).read_bytes()==(repo/'benchmarks'/name).read_bytes()
+            receipt={'scope':'Real Linux Codex inside bwrap with separate fresh isolated deterministic PEX reviews and independently checked public tests. Controlled model backend performs fail-to-pass repair in same session; no upstream inference, semantic model review or comparative quality measurement.',
+                     'runtime_version':version_raw.decode().strip(),'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),
+                     'source_fingerprint':source_fingerprint,'worker':result,'model_calls':len(calls),'relay_audit':relay.audit,
+                     'review_audit':relay.review_audit,'reviews':reviews,'public_test_outcomes':[row['pytest_ok'] for row in reviews],
+                     'runtime_public_modules':list(modules),'tool_write_verified':True,'upstream_provider_calls':0,'quality_measured':False,'presentation_eligible':False}
+            (retained/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+            print(json.dumps({'retained':str(retained),'model_calls':len(calls),'tool_write_verified':True}))
+        finally:
+            if process is not None and process.returncode is None:
+                process.kill();await asyncio.wait_for(process.wait(),timeout=5)
+            server.close();await relay.close_active();await asyncio.wait_for(server.wait_closed(),timeout=3)
+            shutil.copytree(workspace,retained/'workspace')
+            (retained/'relay-audit.json').write_text(json.dumps(relay.audit,indent=2))
+asyncio.run(main())

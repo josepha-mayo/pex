@@ -14,12 +14,15 @@ REVIEW_SCHEMA = "pex.opencode-review.v1"
 
 def review_request(
     socket_path: str, *, vendor_session_id: str, agent_messages: tuple[str, ...], deadline: float,
+    schema: str = REVIEW_SCHEMA,
 ) -> dict:
     """Obtain one matching public action within the original task deadline.
 
     A failed or lost response is uncertain and must abort the caller's run.
     This function never retries a request that may already have been admitted.
     """
+    if schema not in {REVIEW_SCHEMA, "pex.codex-review.v1"}:
+        raise ValueError("unsupported review schema")
     if type(deadline) not in (float, int) or not math.isfinite(deadline):
         raise ValueError("review deadline must be finite")
     if (not isinstance(vendor_session_id, str) or not 1 <= len(vendor_session_id) <= 256
@@ -48,7 +51,7 @@ def review_request(
 
     remaining()
     envelope = {
-        "schema": REVIEW_SCHEMA, "request_id": uuid.uuid4().hex,
+        "schema": schema, "request_id": uuid.uuid4().hex,
         "vendor_session_id": vendor_session_id, "agent_messages": list(agent_messages),
     }
     encoded = _encode(envelope)
@@ -66,7 +69,7 @@ def review_request(
     remaining()
     if (not isinstance(response, dict)
             or set(response) != {"schema", "request_id", "ok", "action"}
-            or response["schema"] != REVIEW_SCHEMA
+            or response["schema"] != schema
             or response["request_id"] != envelope["request_id"] or response["ok"] is not True):
         raise ValueError("review response does not match a successful request")
     action = response["action"]
