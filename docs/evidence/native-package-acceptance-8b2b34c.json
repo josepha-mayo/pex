@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "source_commit": "8b2b34cf9f6a91c9705db000b835c42bcb6cbecc",
+  "ci_run": "https://github.com/josepha-mayo/pex/actions/runs/36287426087",
+  "ci_conclusion": "success",
+  "source_suites": {
+    "ubuntu": { "total": 5043, "passed": 5016, "skipped": 27, "failures": 0, "errors": 0 },
+    "windows": { "total": 5043, "passed": 5012, "skipped": 31, "failures": 0, "errors": 0 }
+  },
+  "packages": {
+    "windows_nsis": {
+      "filename": "PEX_0.1.0_x64-setup.exe",
+      "sha256": "570bb1c24c6e6f43dd550d3dd81728ee1dea53e0fbe9e3d35e79cd6b1ef759c0",
+      "extracted_bridge_sha256": "c11ac4bb60566eac461abc8f2c4fa682507e53a6d86163cf4f2b2096b552e558",
+      "local_extracted_bridge_identity_verified": true,
+      "local_authenticated_supervisor_read": true,
+      "local_byok_roundtrip": true,
+      "local_receipt": "build/local-packaged-byok-8b2b34c.json",
+      "matches_ci_bridge_hash": true
+    },
+    "linux_deb": {
+      "filename": "PEX_0.1.0_amd64.deb",
+      "sha256": "450943363588b0c4fdc3f111d09b08c4cd2543d96cf65aa311caca80c921150c",
+      "installed_window_visible": true,
+      "fresh_home_visible": true,
+      "settings_navigation_visible": true,
+      "anonymous_bridge_status": 401,
+      "ci_byok_roundtrip": true
+    }
+  },
+  "cloud_reasoning": false,
+  "provider_calls": 0,
+  "limitations": [
+    "Evidence applies to the exact source commit above, not subsequent revisions",
+    "Windows local acceptance covers the bridge extracted from NSIS, not installer execution or native renderer interaction",
+    "Linux visual acceptance used the installed package under CI Xvfb",
+    "BYOK storage used test credentials; no live inference was performed",
+    "No real worker attachment or comparative performance benchmark was performed",
+    "Downloaded artifacts and local receipts are ignored build files, not committed package binaries",
+    "These packages have not replaced the published release"
+  ]
+}
