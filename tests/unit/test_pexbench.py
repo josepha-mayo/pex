@@ -941,7 +941,8 @@ def test_benchmark_boundary_hashing_streams_files(tmp_path, monkeypatch):
                     "worker_model_proxy.py", "opencode_cli.py", "opencode_completion.py",
                     "opencode_session.py", "opencode_control_relay.py",
                     "opencode_review_client.py", "opencode_sse_journal.py",
-                    "opencode_proof_route.py", "strict_json.py", "async_budget.py"],
+                    "opencode_proof_route.py", "strict_json.py", "async_budget.py",
+                    "paired_preparation.py"],
 )
 def test_controller_fingerprint_binds_execution_sources(monkeypatch, source_name):
     runner = _runner()

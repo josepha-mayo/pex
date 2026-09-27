@@ -45,6 +45,7 @@ _CONTROLLER_FILES = (
     "linux_sandbox.py",
     "model_relay.py",
     "async_budget.py",
+    "paired_preparation.py",
     "worker_model_proxy.py",
     "opencode_cli.py",
     "opencode_completion.py",
