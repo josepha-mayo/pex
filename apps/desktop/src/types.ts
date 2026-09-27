@@ -157,6 +157,7 @@ export type Goal = {
   non_goals?: string[];
   evidence_requirements?: string[];
   preferences?: string[];
+  deadline?: string | null;
   supersedes?: string | null;
   intent_revision?: number;
   intent_hash?: string;

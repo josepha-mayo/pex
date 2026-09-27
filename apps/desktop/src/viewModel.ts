@@ -917,6 +917,17 @@ export function nextExpectedEvent(session?: SessionRow): string {
   }
 }
 
+function goalDeadlinePayload(value: string): string | null {
+  const deadline = value.trim();
+  if (!deadline) return null;
+  const parsed = new Date(`${deadline}Z`);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?$/.test(deadline)
+    || !Number.isFinite(parsed.getTime()) || !parsed.toISOString().startsWith(deadline)) {
+    throw new Error("Choose a valid deadline in UTC, or clear the deadline.");
+  }
+  return parsed.toISOString();
+}
+
 export function createGoalPayload(input: {
   projectId: string;
   title: string;
@@ -927,6 +938,7 @@ export function createGoalPayload(input: {
   nonGoals: string;
   evidence: string;
   preferences?: string;
+  deadline?: string;
   decisions?: string;
   rejectedApproaches?: string;
   unresolvedQuestions?: string;
@@ -947,6 +959,7 @@ export function createGoalPayload(input: {
     forbidden_outcomes: normalizeLines(input.forbiddenOutcomes || ""),
     non_goals: normalizeLines(input.nonGoals),
     preferences: normalizeLines(input.preferences || ""),
+    ...(input.deadline !== undefined ? { deadline: goalDeadlinePayload(input.deadline) } : {}),
     evidence_requirements: normalizeLines(input.evidence),
     decisions: normalizeLines(input.decisions || ""),
     rejected_approaches: normalizeLines(input.rejectedApproaches || ""),
@@ -963,6 +976,7 @@ export function updateGoalPayload(input: {
   nonGoals: string;
   evidence: string;
   preferences?: string;
+  deadline?: string;
   decisions?: string;
   rejectedApproaches?: string;
   unresolvedQuestions?: string;
@@ -977,6 +991,7 @@ export function updateGoalPayload(input: {
   forbidden_outcomes: string[];
   non_goals: string[];
   preferences: string[];
+  deadline?: string | null;
   evidence_requirements: string[];
   decisions: string[];
   rejected_approaches: string[];
@@ -997,6 +1012,7 @@ export function updateGoalPayload(input: {
     forbidden_outcomes: created.forbidden_outcomes || [],
     non_goals: created.non_goals || [],
     preferences: created.preferences || [],
+    ...(created.deadline !== undefined ? { deadline: created.deadline } : {}),
     evidence_requirements: created.evidence_requirements || [],
     decisions: created.decisions || [],
     rejected_approaches: created.rejected_approaches || [],
@@ -1044,6 +1060,7 @@ export function goalToDraft(goal: Goal, projectId = "", decisions: LedgerDecisio
   forbiddenOutcomes: string;
   nonGoals: string;
   preferences: string;
+  deadline: string;
   evidence: string;
   decisions: string;
   rejectedApproaches: string;
@@ -1059,6 +1076,7 @@ export function goalToDraft(goal: Goal, projectId = "", decisions: LedgerDecisio
     forbiddenOutcomes: (goal.forbidden_outcomes || []).join("\n"),
     nonGoals: (goal.non_goals || []).join("\n"),
     preferences: (goal.preferences || []).join("\n"),
+    deadline: goal.deadline ? new Date(goal.deadline).toISOString().slice(0, -1) : "",
     evidence: (goal.evidence_requirements || []).join("\n"),
     decisions: partitioned.decisions.map((item) => item.statement).join("\n"),
     rejectedApproaches: partitioned.rejected.map((item) => item.statement).join("\n"),

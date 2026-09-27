@@ -945,6 +945,24 @@ test("offline state immediately suppresses stale agent prompts", async () => {
   assert.match(deck, /sessionObservationCopy\(session, degraded \|\| !sourceFresh\)/);
 });
 
+test("goal deadlines round-trip as UTC and can be explicitly cleared", () => {
+  const draft = goalToDraft({
+    id: "deadline-goal", title: "Ship", objective: "Finish the work",
+    deadline: "2026-10-30T18:00:12.123+01:00",
+  }, "project");
+  assert.equal(draft.deadline, "2026-10-30T17:00:12.123");
+  assert.equal(createGoalPayload(draft).deadline, "2026-10-30T17:00:12.123Z");
+  assert.equal(updateGoalPayload(draft, 2).deadline, "2026-10-30T17:00:12.123Z");
+  assert.equal(updateGoalPayload({ ...draft, deadline: "" }, 2).deadline, null);
+  assert.equal(createGoalPayload({ ...draft, deadline: "2026-10-30T17:00" }).deadline,
+    "2026-10-30T17:00:00.000Z");
+  const { deadline: _deadline, ...omitted } = draft;
+  assert.equal(Object.hasOwn(updateGoalPayload(omitted, 2), "deadline"), false);
+  for (const invalid of ["2026-02-30T17:00", "2026-10-30T25:00", "soon", "2026-10-30T17:00Z"]) {
+    assert.throws(() => createGoalPayload({ ...draft, deadline: invalid }), /valid deadline in UTC/);
+  }
+});
+
 test("empty harness cards open the existing worker connection flow only with fresh bridge state", async () => {
   const { readFile } = await import("node:fs/promises");
   const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");

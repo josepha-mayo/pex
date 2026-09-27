@@ -9,6 +9,7 @@ export type GoalDraft = {
   forbiddenOutcomes?: string;
   nonGoals: string;
   preferences: string;
+  deadline?: string;
   evidence: string;
   decisions: string;
   rejectedApproaches: string;
@@ -73,6 +74,15 @@ export function GoalEditor({
           value={draft.title}
           onChange={(event) => onChange("title", event.target.value)}
           placeholder="Named automatically from your goal"
+        />
+      </label>
+      <label>
+        Deadline · optional, UTC
+        <input
+          type="datetime-local"
+          step="0.001"
+          value={draft.deadline || ""}
+          onChange={(event) => onChange("deadline", event.target.value)}
         />
       </label>
       <label>
