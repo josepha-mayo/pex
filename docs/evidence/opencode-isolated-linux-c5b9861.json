@@ -1,0 +1,23 @@
+{
+  "real_opencode": true,
+  "loopback_http": true,
+  "mounted_unix_relay": true,
+  "upstream_streaming": false,
+  "runtime_read_only": true,
+  "task_writable": true,
+  "tool_permission": "deny",
+  "worker_exit": 0,
+  "controller_calls": 2,
+  "scope": "Real OpenCode inside Linux bubblewrap with a controlled relay backend; no upstream provider call or comparative quality claim.",
+  "source_commit": "c5b986137e0292649c24bf1884de45fa27cdbc81",
+  "schema": "pex.opencode-isolated-linux-transport.v1",
+  "source_hashes": {
+    "benchmarks\\linux_sandbox.py": "781db7f126cee25c573d44b72b55654e07f2ed455753f3a1e5dfac4e0120520f",
+    "benchmarks\\worker_model_proxy.py": "f78d30b6f165d73a9431e5bc1ea417293c315d7f6150ec08ada03f8b9ad7ac84",
+    "docs\\evidence\\opencode-proxy-linux-smoke-driver.txt": "7a4d3511bfaa474efa2d2e92c0256b1a034ccc91eb6658208e168bd9c2911a96",
+    "build\\linux-opencode-runtime\\opencode-linux-x64-1.18.32.tgz": "da0803c85eb86709c4f084adcbfb0b5329936670bfe43d2367f0ca034be0c1de"
+  },
+  "provider_calls": 0,
+  "sse_response_path_verified": false,
+  "transport_evidence_limit": "Driver confirmed response content and exit but did not instrument which JSON or buffered SSE HTTP response branch was used."
+}
