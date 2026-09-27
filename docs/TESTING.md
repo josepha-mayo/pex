@@ -1119,3 +1119,15 @@ optional AgentCore endpoint proposes an action.
   Unix socket IPC, Linux isolation, provider streaming latency, or comparative
   quality. See the scoped [receipt](evidence/codex-responses-windows.json) and
   exact controlled [driver](evidence/codex-responses-windows-driver.txt).
+- A separate real Linux Codex check completed two turns in one session inside
+  the bubblewrap worker boundary. The public worker mounted only its curated
+  runtime, writable task and controller-owned Unix relay socket. Three bounded
+  controlled Responses requests completed; a real `exec_command` wrote the
+  expected file, and its tool result was replayed before completion. The final
+  replay pins source before and after execution and checks runtime module
+  copies against that source. The runtime uses the integrity-verified official
+  Codex 0.157.1 Linux binary; the Windows check used a different installed
+  version. No upstream provider or PEX review was invoked, no task was graded,
+  and comparative quality remains unmeasured. See the
+  [receipt](evidence/codex-responses-linux.json) and exact controlled
+  [driver](evidence/codex-responses-linux-driver.txt).

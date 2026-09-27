@@ -36,6 +36,7 @@ _FROZEN_METADATA = {
 _CONTROLLER_FILES = (
     "boundary.py",
     "codex_protocol_journal.py",
+    "codex_worker.py",
     "evaluator.py",
     "four_arm.py",
     "pex_attach.py",

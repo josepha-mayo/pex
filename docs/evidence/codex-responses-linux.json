@@ -1,0 +1,62 @@
+{
+  "scope": "Real Linux Codex inside bwrap, production Unix Responses relay, local tool write and same-session continuation with controlled backend; no PEX review or upstream provider or quality comparison.",
+  "runtime_version": "codex-cli 0.157.1",
+  "binary_sha256": "3e2584f3f3829a43a0495011a1cecb2facbe64a2403e2b682351fd9c2983f970",
+  "source_fingerprint": "51d4fdc9bf78f27e8ace85755b15c414b63531a8dc4e3419a3afc2fe749e8b46",
+  "worker": {
+    "vendor_session_id": "01a0e39f-9c8c-7440-88fd-7c62fbc0dc4b",
+    "turns": [
+      {
+        "turn_id": "01a0e39f-9cac-7e62-b46f-901a6376b090",
+        "status": "completed"
+      },
+      {
+        "turn_id": "01a0e39f-9d0f-7533-9428-a14b92a8f3c7",
+        "status": "completed"
+      }
+    ],
+    "quality_measured": false,
+    "presentation_eligible": false
+  },
+  "model_calls": 3,
+  "relay_audit": [
+    {
+      "request_id": "b2839cfacbb946599c5f5757e1f614a5",
+      "request_sha256": "8f7c05f4f9a8fab9526168d36b105d2a6bdf2a3cd2fb7f5c982c23f9bbc4b560",
+      "status": "completed",
+      "response_sha256": "838cd7812f861e176b5494bf5d18ec7a1f6dde2b019679c9c2e5c0ffb60b084c"
+    },
+    {
+      "request_id": "0f022248158b4c56ae45ce710bbc841c",
+      "request_sha256": "36c37fa6775efcf2b71707630dc06c798a995cb23ec53db36278744b8af6c7ba",
+      "status": "completed",
+      "response_sha256": "7c404ed0622ad1651e37cd8eeaa7cffc76bd492a505ee213602f2fff807367cd"
+    },
+    {
+      "request_id": "e4085f68cf664b55aaef743b86a4fd70",
+      "request_sha256": "a0de8bffecf0573c534bf9d9ddb9a9107c768405d9734c141a4d42a9fae97c31",
+      "status": "completed",
+      "response_sha256": "f3ed3d796ae5c62ab851747d3255faca474db3e2ebc50fc687c4ded25dfa27cf"
+    }
+  ],
+  "tool_write_verified": true,
+  "upstream_provider_calls": 0,
+  "quality_measured": false,
+  "presentation_eligible": false,
+  "driver_sha256": "aff579261b0e654061e237edc9df39f77f61eef11b4f965308eb3dbeb081dea5",
+  "linux_boundary": "bwrap worker_runtime_relay_command",
+  "runtime_public_modules": [
+    "codex_worker.py",
+    "worker_model_proxy.py"
+  ],
+  "runtime_module_sha256": {
+    "codex_worker.py": "b8f42a0afd6332339dd9988933de988785f2984e6837fbab170d7a42bd442df2",
+    "worker_model_proxy.py": "6514400320530e0ab3d1ce9c1912d6b8876904f7845aa7fc1fa70df5021bdf8e"
+  },
+  "package_url": "https://registry.npmjs.org/@openai/codex/-/codex-0.157.1-linux-x64.tgz",
+  "package_integrity": "sha512-Eac8XlC0nCXSeUjDU9l8yLJ6P9evv1mO+AnvILoNwlegBC7B3AVXqJ05QcMhQX7RcJ3Lk2618ykCb2X2ui8VAQ==",
+  "source_changes_uncommitted_at_execution": true,
+  "worker_stdout_sha256": "aa984988ccdb0e7475cb4e33114a9a9581b8f92fa9ffafdcd6f6ac4f4d00cf51",
+  "worker_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "verified_file_sha256": "1c34f88707b55e6104c4eb20e71ffa3d33e414b71ef689a15fad0640d0ac58cb"
+}
