@@ -2436,8 +2436,10 @@ export function App() {
         provisioningHook={provisioningHook}
         workerConnection={<>
           <OpenCodeConnectionPanel request={sharedConnectionRequest} available={sessionStateFresh}
+            onReturnHome={() => showSurface("compact")}
             onChanged={() => void loadBaseState()} />
           <CodexConnectionPanel request={sharedConnectionRequest} available={sessionStateFresh}
+            onReturnHome={() => showSurface("compact")}
             onChanged={() => { void loadBaseState(); void refreshPet(); }} />
           <details className="settings-disclosure settings-wide">
             <summary>

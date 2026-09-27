@@ -3,10 +3,12 @@ import {
   connectOpenCode, openCodeConnectionFailure, openCodeOrigin, OPENCODE_ADDRESS_GUIDANCE,
 } from "../openCodeConnection";
 import type { SharedRequest } from "../sharedConnection";
+import { BridgeRequestError } from "../decisionContract";
 
-export function OpenCodeConnectionPanel({ request, onChanged, available }: {
+export function OpenCodeConnectionPanel({ request, onChanged, onReturnHome, available }: {
   request: SharedRequest;
   onChanged?: () => void;
+  onReturnHome?: () => void;
   available: boolean;
 }) {
   const [url, setUrl] = useState("http://127.0.0.1:4096");
@@ -14,6 +16,8 @@ export function OpenCodeConnectionPanel({ request, onChanged, available }: {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [setupHelpOpen, setSetupHelpOpen] = useState(false);
   const pending = useRef<AbortController | null>(null);
   useEffect(() => () => {
     pending.current?.abort();
@@ -26,16 +30,19 @@ export function OpenCodeConnectionPanel({ request, onChanged, available }: {
     pending.current = controller;
     setBusy(true);
     setNotice("");
+    setConfirmed(false);
     const timer = setTimeout(() => controller.abort(), 12_000);
     try {
       await connectOpenCode(request, url, controller.signal, { username, password });
       if (pending.current === controller) {
+        setConfirmed(true);
         setNotice("OpenCode server connected. Return Home to select a worker and set its goal. If none appears, create or resume a session in the attached OpenCode terminal. PEX did not start a worker turn.");
         onChanged?.();
       }
     } catch (error) {
       if (pending.current === controller) {
         setNotice(openCodeConnectionFailure(error));
+        if (error instanceof BridgeRequestError && error.status === 502) setSetupHelpOpen(true);
       }
     } finally {
       clearTimeout(timer);
@@ -77,7 +84,9 @@ export function OpenCodeConnectionPanel({ request, onChanged, available }: {
       onClick={() => void connect()}>{busy ? "Connecting…" : "Connect OpenCode"}</button>
     {!available ? <p className="settings-note" role="status">PEX has not confirmed the local bridge. Open the PEX desktop app or retry its bridge before connecting a worker.</p> : null}
     {notice ? <p role="status" aria-live="polite">{notice}</p> : null}
-    <details className="settings-advanced">
+    {confirmed && available && onReturnHome ? <button type="button" onClick={onReturnHome}>Return Home</button> : null}
+    <details className="settings-advanced" open={setupHelpOpen}
+      onToggle={(event) => setSetupHelpOpen(event.currentTarget.open)}>
       <summary>How to start and attach OpenCode</summary>
       <ol className="settings-note">
         <li>In your project terminal, run <code>opencode serve --port 4096</code>.</li>

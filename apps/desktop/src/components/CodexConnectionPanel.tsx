@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { codexConnectionFailure, connectIsolatedCodex } from "../codexConnection";
 import type { SharedRequest } from "../sharedConnection";
 
-export function CodexConnectionPanel({ request, onChanged, available }: {
+export function CodexConnectionPanel({ request, onChanged, onReturnHome, available }: {
   request: SharedRequest;
   onChanged?: () => void;
+  onReturnHome?: () => void;
   available: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
   const pending = useRef<AbortController | null>(null);
   useEffect(() => () => {
     pending.current?.abort();
@@ -21,10 +23,12 @@ export function CodexConnectionPanel({ request, onChanged, available }: {
     pending.current = controller;
     setBusy(true);
     setNotice("");
+    setConfirmed(false);
     const timer = setTimeout(() => controller.abort(), 30_000);
     try {
       const support = await connectIsolatedCodex(request, controller.signal);
       if (pending.current === controller) {
+        setConfirmed(true);
         setNotice(`Codex App Server connected (${support}). Return Home to select an available CLI thread. No model turn was started.`);
         onChanged?.();
       }
@@ -52,5 +56,6 @@ export function CodexConnectionPanel({ request, onChanged, available }: {
     </button>
     {!available ? <p className="settings-note" role="status">PEX must confirm its local bridge before connecting Codex.</p> : null}
     {notice ? <p role="status" aria-live="polite">{notice}</p> : null}
+    {confirmed && available && onReturnHome ? <button type="button" onClick={onReturnHome}>Return Home</button> : null}
   </section>;
 }
