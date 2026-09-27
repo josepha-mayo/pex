@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -117,6 +118,7 @@ def prepare_experiment(
 
 def reserve_attempt(
     destination: Path, *, index: int, expected_plan_sha256: str, worker_profile: dict[str, str],
+    required_harness: str | None = None,
 ) -> dict:
     """Consume one prepared attempt before launch, without proving isolation.
 
@@ -144,6 +146,8 @@ def reserve_attempt(
     if type(index) is not int or not 0 <= index < len(schedule):
         raise ValueError("attempt index is outside the prepared schedule")
     row = schedule[index]
+    if required_harness is not None and row["harness"] != required_harness:
+        raise ValueError("attempt does not use the required harness")
     profile = plan["worker_profiles"][row["harness"]]
     if worker_profile != profile:
         raise ValueError("measured worker profile differs from the prepared profile")
@@ -176,3 +180,39 @@ def reserve_attempt(
         target.flush()
         os.fsync(target.fileno())
     return receipt
+
+
+def admit_opencode_relay(
+    destination: Path, *, index: int, expected_plan_sha256: str, worker_profile: dict[str, str],
+    backend, review,
+) -> tuple:
+    """Reserve and configure the controller relay from the prospective budget.
+
+    Requires callbacks up front for both conditions; baseline never receives the
+    review callback. Returned worker limits must be passed to run_session inside
+    its separate boundary. This does not launch or establish that boundary.
+    """
+    from benchmarks.opencode_control_relay import OpenCodeControlRelay
+
+    if not callable(backend) or not callable(review):
+        raise ValueError("model and review callbacks are required before admission")
+    started = time.perf_counter()
+    receipt = reserve_attempt(
+        destination, index=index, expected_plan_sha256=expected_plan_sha256,
+        worker_profile=worker_profile, required_harness="opencode",
+    )
+    budget = receipt["budget"]
+    deadline = started + budget["task_wall_seconds"]
+    if time.perf_counter() >= deadline:
+        raise TimeoutError("attempt admission exhausted the shared task budget")
+    supervised = receipt["entry"]["condition"] == "pex"
+    relay = OpenCodeControlRelay(
+        model=receipt["entry"]["model"], max_calls=budget["max_worker_model_calls"],
+        deadline=deadline, backend=backend, review=review if supervised else None,
+        max_reviews=budget["max_pex_followups"] + 1,
+        max_review_seconds=budget["max_review_seconds"],
+    )
+    worker_limits = {
+        "deadline": deadline, "max_followups": budget["max_pex_followups"] if supervised else 0,
+    }
+    return relay, receipt, worker_limits

@@ -209,3 +209,62 @@ def test_uncertain_reservation_write_is_not_reusable(tmp_path, monkeypatch):
         paired_preparation.reserve_attempt(root, **options)
     with pytest.raises(FileExistsError):
         paired_preparation.reserve_attempt(root, **options)
+
+
+async def test_admitted_relay_enforces_plan_limits_and_keeps_baseline_without_review(tmp_path):
+    root = tmp_path / "experiment"
+    plan = paired_preparation.prepare_experiment(
+        root, run_id="run", seed="seed", models={"codex": "pinned", "opencode": "pinned"},
+        worker_fingerprints=FINGERPRINTS, max_model_calls=1, max_followups=0, review_seconds=1,
+    )
+    digest = sha256_file(root / "controller/plan.json")
+    calls, reviews = [], []
+
+    async def backend(body):
+        calls.append(body)
+        return {"model": "pinned", "choices": []}
+
+    async def review(*args):
+        reviews.append(args)
+        return {"type": "NOOP"}
+
+    for index, row in enumerate(plan["schedule"]):
+        if row["harness"] != "opencode":
+            continue
+        relay, receipt, limits = paired_preparation.admit_opencode_relay(
+            root, index=index, expected_plan_sha256=digest,
+            worker_profile=plan["worker_profiles"]["opencode"], backend=backend, review=review,
+        )
+        assert relay.deadline == limits["deadline"] and limits["max_followups"] == 0
+        assert relay.max_review_seconds == 1 and relay.max_reviews == 1
+        assert receipt["budget"] == plan["budget"]
+        model_request = {"schema": "pex.model-relay.v1", "request_id": "call-1", "body": {
+            "model": "pinned", "messages": [{"role": "user", "content": "public"}],
+            "max_tokens": 10,
+        }}
+        assert (await relay.dispatch(json.dumps(model_request).encode()))["ok"]
+        model_request["request_id"] = "call-2"
+        assert (await relay.dispatch(json.dumps(model_request).encode()))["error"] == (
+            "call_budget_exhausted"
+        )
+        review_request = {"schema": "pex.opencode-review.v1", "request_id": "review-1",
+                          "vendor_session_id": "vendor", "agent_messages": []}
+        result = await relay.dispatch(json.dumps(review_request).encode())
+        if row["condition"] == "baseline":
+            assert result["error"] == "reviews_disabled"
+        else:
+            assert result["ok"]
+    assert len(calls) == 16 and len(reviews) == 8
+
+
+def test_wrong_harness_cannot_be_consumed_by_opencode_admission(tmp_path):
+    root = tmp_path / "experiment"
+    plan = prepare(root)
+    index = next(i for i, row in enumerate(plan["schedule"]) if row["harness"] == "codex")
+    with pytest.raises(ValueError, match="required harness"):
+        paired_preparation.admit_opencode_relay(
+            root, index=index, expected_plan_sha256=sha256_file(root / "controller/plan.json"),
+            worker_profile=plan["worker_profiles"]["codex"], backend=lambda _: None,
+            review=lambda *_: None,
+        )
+    assert not list((root / "controller").glob("attempt-*.json"))
