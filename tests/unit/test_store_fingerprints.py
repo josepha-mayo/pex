@@ -207,6 +207,7 @@ async def test_agent_fingerprint_counts_only_verified_premature_sessions(tmp_pat
         envelopes = [json.loads(row["json"]) for row in await cursor.fetchall()]
         assert {row["schema"] for row in envelopes} == {"pex.intervention-bound.v1"}
 
+        # Repeated inspected STOPs from one worker session count once in each rate denominator.
         assert await store.agent_fingerprint_stats() == [
             {
                 "harness": "cursor",
@@ -472,13 +473,28 @@ def test_decorate_fingerprint_preserves_one_gap_without_recommending_from_one_sa
             "inspected_stop_sessions": 3,
         }
     )
-    assert pretty["strengths"] == ["1 inspected STOP supported by the verifier"]
-    assert pretty["failure_modes"] == ["1 inspected STOP contradicted or left an acceptance gap"]
+    assert pretty["strengths"] == ["1 session had a STOP supported by the verifier"]
+    assert pretty["failure_modes"] == [
+        "1 session had a STOP that contradicted or left an acceptance gap"
+    ]
     assert pretty["recommended_overlays"] == []
     assert pretty["verified_success_rate"] == pytest.approx(1 / 3)
     assert pretty["premature_stop_rate"] == pytest.approx(1 / 3)
     assert pretty["token_efficiency"] is None
     assert pretty["repeated_tool_rate"] is None
+
+    sparse_inspections = decorate_agent_fingerprint(
+        {
+            "harness": "cursor",
+            "observed_sessions": 10,
+            "models": ["model-a"],
+            "premature_stop_sessions": 2,
+            "verified_stop_sessions": 1,
+            "overlay_sessions": 0,
+            "inspected_stop_sessions": 3,
+        }
+    )
+    assert sparse_inspections["premature_stop_rate"] == pytest.approx(2 / 3)
     from pex_bridge.fingerprints import fingerprint_score_features
 
     features = fingerprint_score_features(
@@ -533,7 +549,9 @@ def test_decorate_fingerprint_recommends_after_two_distinct_gap_sessions():
     }
 
     pretty = decorate_agent_fingerprint(bucket)
-    assert pretty["failure_modes"] == ["2 inspected STOPs contradicted or left an acceptance gap"]
+    assert pretty["failure_modes"] == [
+        "2 sessions had a STOP that contradicted or left an acceptance gap"
+    ]
     assert pretty["recommended_overlays"] == []
     assert pretty["token_efficiency"] is None
     assert pretty["repeated_tool_rate"] is None

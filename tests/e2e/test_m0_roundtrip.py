@@ -473,10 +473,13 @@ async def test_command_deck_fingerprints_use_stop_verification_counts(client: As
     assert response.status_code == 200
     fingerprints = response.json()["fingerprints"]
     cursor = next(item for item in fingerprints if item["harness"] == "cursor")
-    assert cursor["strengths"] == ["1 inspected STOP supported by the verifier"]
-    assert cursor["failure_modes"] == ["2 inspected STOPs contradicted or left an acceptance gap"]
+    assert cursor["strengths"] == ["1 session had a STOP supported by the verifier"]
+    assert cursor["failure_modes"] == [
+        "2 sessions had a STOP that contradicted or left an acceptance gap"
+    ]
     assert cursor["recommended_overlays"] == []
     assert cursor["cohort_scoped"] is False
+    assert cursor["premature_stop_rate"] == pytest.approx(2 / 3)
     assert cursor["verified_success_rate"] == pytest.approx(1 / 3)
     assert cursor["token_efficiency"] is None
     assert "good at" not in response.text.lower()

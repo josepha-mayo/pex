@@ -73,13 +73,15 @@ def decorate_agent_fingerprint(bucket: dict[str, Any]) -> dict[str, Any]:
 
     strengths: list[str] = []
     if verified:
-        noun = "STOP" if verified == 1 else "STOPs"
-        strengths.append(f"{verified} inspected {noun} supported by the verifier")
+        noun = "session" if verified == 1 else "sessions"
+        strengths.append(f"{verified} {noun} had a STOP supported by the verifier")
 
     failure_modes: list[str] = []
     if premature:
-        noun = "STOP" if premature == 1 else "STOPs"
-        failure_modes.append(f"{premature} inspected {noun} contradicted or left an acceptance gap")
+        noun = "session" if premature == 1 else "sessions"
+        failure_modes.append(
+            f"{premature} {noun} had a STOP that contradicted or left an acceptance gap"
+        )
 
     recommended = (
         [_EVIDENCE_BEFORE_DONE]
@@ -97,7 +99,7 @@ def decorate_agent_fingerprint(bucket: dict[str, Any]) -> dict[str, Any]:
         "verified_stop_sessions": verified,
         "overlay_sessions": overlays,
         "inspected_stop_sessions": inspected,
-        "premature_stop_rate": (premature / observed) if observed else 0.0,
+        "premature_stop_rate": (premature / inspected) if inspected else 0.0,
         "verified_success_rate": (verified / inspected) if inspected else 0.0,
         "strengths": strengths,
         "failure_modes": failure_modes,

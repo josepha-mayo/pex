@@ -1362,13 +1362,15 @@ export function fingerprintCompletionReliability(fingerprint?: Fingerprint): str
   const inspected = fingerprint?.inspected_stop_sessions ?? 0;
   if (!fingerprint || inspected <= 0) return "Not established by this endpoint";
   const rate = fingerprint.verified_success_rate ?? 0;
-  const noun = inspected === 1 ? "STOP" : "STOPs";
-  return `${rate.toFixed(2)} from ${inspected} inspected ${noun}`;
+    const noun = inspected === 1 ? "session" : "sessions";
+    return `${rate.toFixed(2)} from ${inspected} ${noun} with inspected STOPs`;
 }
 
 export function fingerprintPrematureRate(fingerprint?: Fingerprint): string {
-  if (!fingerprint) return "Insufficient data";
-  return fingerprint.premature_stop_rate.toFixed(2);
+  const inspected = fingerprint?.inspected_stop_sessions ?? 0;
+  if (!fingerprint || inspected <= 0) return "Not established from STOP inspections";
+  const noun = inspected === 1 ? "session" : "sessions";
+  return `${fingerprint.premature_stop_rate.toFixed(2)} from ${inspected} ${noun} with inspected STOPs`;
 }
 
 export function fingerprintTokenBehavior(fingerprint?: Fingerprint): string {

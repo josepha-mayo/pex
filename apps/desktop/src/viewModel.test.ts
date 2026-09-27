@@ -1877,7 +1877,13 @@ test("Agents fingerprints render counted STOP evidence instead of invented perso
   assert.equal(fingerprintFailureModes(empty), "Not established from STOP inspections");
   assert.equal(fingerprintSuggestedConfig(empty), "No measured overlay recommendation yet");
   assert.equal(fingerprintCompletionReliability(empty), "Not established by this endpoint");
-  assert.equal(fingerprintPrematureRate(empty), "Insufficient data");
+  assert.equal(fingerprintPrematureRate(empty), "Not established from STOP inspections");
+  assert.equal(fingerprintPrematureRate({
+    harness: "codex",
+    observed_sessions: 4,
+    premature_stop_rate: 0,
+    inspected_stop_sessions: 0,
+  }), "Not established from STOP inspections");
   assert.equal(fingerprintTokenBehavior(empty), "Not exposed by this endpoint");
 
   const counted = {
@@ -1886,19 +1892,19 @@ test("Agents fingerprints render counted STOP evidence instead of invented perso
     premature_stop_rate: 1 / 3,
     verified_success_rate: 1 / 3,
     inspected_stop_sessions: 3,
-    strengths: ["1 inspected STOP supported by the verifier"],
-    failure_modes: ["1 inspected STOP contradicted or left an acceptance gap"],
+    strengths: ["1 session had a STOP supported by the verifier"],
+    failure_modes: ["1 session had a STOP that contradicted or left an acceptance gap"],
     recommended_overlays: ["evidence-before-done"],
     token_efficiency: null,
   };
-  assert.equal(fingerprintStrengths(counted), "1 inspected STOP supported by the verifier");
+  assert.equal(fingerprintStrengths(counted), "1 session had a STOP supported by the verifier");
   assert.equal(
     fingerprintFailureModes(counted),
-    "1 inspected STOP contradicted or left an acceptance gap",
+    "1 session had a STOP that contradicted or left an acceptance gap",
   );
   assert.equal(fingerprintSuggestedConfig(counted), "evidence-before-done");
-  assert.equal(fingerprintCompletionReliability(counted), "0.33 from 3 inspected STOPs");
-  assert.equal(fingerprintPrematureRate(counted), "0.33");
+  assert.equal(fingerprintCompletionReliability(counted), "0.33 from 3 sessions with inspected STOPs");
+  assert.equal(fingerprintPrematureRate(counted), "0.33 from 3 sessions with inspected STOPs");
   assert.equal(fingerprintTokenBehavior(counted), "Not exposed by this endpoint");
 });
 
