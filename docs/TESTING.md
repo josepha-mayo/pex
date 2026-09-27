@@ -6,6 +6,15 @@ isolated Codex App Server, and ships exactly two companions: Pex and Von.
 
 ## Controlled OpenCode worker verification
 
+The evaluator's explicit `require_linux_sandbox=True` path was exercised in
+WSL with the optional sandbox environment switch unset. It rejected the starter
+and accepted a synthetic reference fixture. Candidate import probes confirmed
+that controller/private files were hidden, the workspace was read-only, and
+outbound network access failed. The [grader receipt](evidence/isolated-evaluator-linux.json)
+pins the source and [exact executed fixture driver](evidence/isolated-evaluator-linux-driver.txt).
+This is grading infrastructure evidence; no real worker or quality comparison
+was run, and no result became presentation-eligible.
+
 The controller-owned executor also launched one PEX and one baseline attempt
 through the measured runtime and once-only admission path in Linux isolation.
 Both reached a natural stop; four locally controlled model callbacks and one

@@ -1,0 +1,63 @@
+import json
+import os
+import sys
+import tempfile
+from datetime import UTC, datetime
+from pathlib import Path
+
+repo = Path('/mnt/d/PEX-work')
+sys.path[:0] = [str(repo), str(repo/'build/isolated-supervisor-runtime/public-runtime-f379031/site-packages')]
+from benchmarks import evaluator, runner
+
+os.environ.pop('PEX_BENCH_EVALUATOR_SANDBOX', None)
+task = 'pexbench_001_premature_stop'
+stamp = datetime.now(UTC).strftime('%Y%m%dT%H%M%S%f')
+retained = repo/'build'/('isolated-evaluator-'+stamp)
+retained.mkdir()
+with tempfile.TemporaryDirectory(prefix='pex-evaluator-boundary-') as directory:
+    root = Path(directory)
+    workspace = root/'workspace'
+    seed = evaluator.seed_workspace(task, workspace)
+    starter = evaluator.evaluate(task, workspace, seed, require_linux_sandbox=True)
+    assert not starter['success']
+    extra = {**seed, **evaluator.complete_synthetic(task, workspace)}
+    reference = evaluator.evaluate(task, workspace, extra, require_linux_sandbox=True)
+    assert reference['success'], reference
+    private = root/'controller-canary'
+    private.write_text('not mounted in candidate process')
+    probe = '''import pathlib, socket
+assert not pathlib.Path(PRIVATE).exists(), 'host controller file exposed'
+assert not pathlib.Path('/mnt/d/PEX-work/benchmarks/tasks').exists(), 'private metadata exposed'
+try:
+    pathlib.Path('/workspace/test_public.py').write_text('tampered')
+except OSError:
+    pass
+else:
+    raise AssertionError('candidate workspace writable during grading')
+with socket.socket() as connection:
+    connection.settimeout(0.1)
+    try:
+        connection.connect(('1.1.1.1', 443))
+    except OSError:
+        pass
+    else:
+        raise AssertionError('host network reachable')
+'''.replace('PRIVATE', repr(str(private)))
+    implementation = workspace/'slugify.py'
+    implementation.write_text(probe+implementation.read_text())
+    probe_result = evaluator.evaluate(task, workspace, extra, require_linux_sandbox=True)
+    assert probe_result['success'], probe_result
+    receipt = {
+        'schema':'pex.isolated-evaluator-smoke.v1',
+        'scope':'Grader infrastructure fixture only: synthetic reference and candidate import probes; no real worker quality or comparative performance.',
+        'optional_sandbox_environment_unset':True,
+        'starter_rejected':not starter['success'], 'synthetic_reference_passed':reference['success'],
+        'candidate_import_probes_passed':probe_result['success'],
+        'read_only_workspace':True, 'controller_file_hidden':True,
+        'private_metadata_hidden':True, 'outbound_network_denied':True,
+        'upstream_provider_calls':0, 'real_worker_executed':False,
+        'presentation_eligible':False, 'source_fingerprint':runner.benchmark_sha256(),
+    }
+    for name, value in [('starter', starter), ('reference', reference), ('probe', probe_result), ('receipt',receipt)]:
+        (retained/(name+'.json')).write_text(json.dumps(value,indent=2)+'\n')
+    print(json.dumps({'retained':str(retained), **receipt}))

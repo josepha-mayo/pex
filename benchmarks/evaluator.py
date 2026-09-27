@@ -534,8 +534,17 @@ def complete_synthetic(task_id: str, workspace: Path) -> dict[str, Any]:
     }
 
 
-def evaluate(task_id: str, workspace: Path, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+def evaluate(
+    task_id: str, workspace: Path, extra: dict[str, Any] | None = None, *,
+    require_linux_sandbox: bool = False,
+) -> dict[str, Any]:
     """Run public and private checks in separate processes and return binary success."""
+    if type(require_linux_sandbox) is not bool:
+        raise ValueError("evaluator isolation requirement must be boolean")
+    if require_linux_sandbox:
+        # Validate the enforced boundary before any candidate can execute. Never
+        # degrade an explicit requirement to the historical host evaluator.
+        linux_sandbox._prefix(workspace)
     spec = task_spec(task_id)
     extra = extra or {}
     reasons: list[str] = []
@@ -557,8 +566,12 @@ def evaluate(task_id: str, workspace: Path, extra: dict[str, Any] | None = None)
         public_ok, public_out = False, "public tests withheld because protected inputs changed"
         hidden_ok, hidden_out = False, "hidden tests withheld because protected inputs changed"
     else:
-        public_ok, public_out = _pytest(workspace)
-        hidden_ok, hidden_out = _hidden_check(workspace, spec)
+        if require_linux_sandbox:
+            public_ok, public_out = _pytest(workspace, require_linux_sandbox=True)
+            hidden_ok, hidden_out = _hidden_check(workspace, spec, require_linux_sandbox=True)
+        else:
+            public_ok, public_out = _pytest(workspace)
+            hidden_ok, hidden_out = _hidden_check(workspace, spec)
     if not public_ok:
         reasons.append("public tests did not pass")
     if not hidden_ok:
@@ -686,17 +699,21 @@ def _case_test_source(spec: dict[str, Any], key: str) -> str:
     )
 
 
-def _pytest(workspace: Path) -> tuple[bool, str]:
+def _pytest(workspace: Path, *, require_linux_sandbox: bool = False) -> tuple[bool, str]:
     public_test = workspace / "test_public.py"
     if _is_link_like(public_test) or not public_test.is_file():
         return False, "no public tests"
     conftest = workspace / "conftest.py"
     if conftest.exists() or _is_link_like(conftest):
         return False, "worker-added pytest bootstrap file is forbidden"
+    if require_linux_sandbox:
+        return _run_pytest(workspace, ["test_public.py"], require_linux_sandbox=True)
     return _run_pytest(workspace, ["test_public.py"])
 
 
-def _hidden_check(workspace: Path, spec: dict[str, Any]) -> tuple[bool, str]:
+def _hidden_check(
+    workspace: Path, spec: dict[str, Any], *, require_linux_sandbox: bool = False,
+) -> tuple[bool, str]:
     """Compare private expectations only in the controller, never in worker code."""
     failures: list[str] = []
     with TemporaryDirectory(prefix="pexbench_hidden_") as tmp:
@@ -726,7 +743,7 @@ def _hidden_check(workspace: Path, spec: dict[str, Any]) -> tuple[bool, str]:
                 linux_sandbox.hidden_command(
                     workspace, checker, str(spec["module"]), str(spec["function"])
                 )
-                if linux_sandbox.enabled()
+                if require_linux_sandbox or linux_sandbox.enabled()
                 else [
                     sys.executable,
                     "-I",
@@ -772,13 +789,15 @@ def _hidden_check(workspace: Path, spec: dict[str, Any]) -> tuple[bool, str]:
     return not failures, "\n".join(failures)
 
 
-def _run_pytest(workspace: Path, files: list[str]) -> tuple[bool, str]:
+def _run_pytest(
+    workspace: Path, files: list[str], *, require_linux_sandbox: bool = False,
+) -> tuple[bool, str]:
     # Isolated Python ignores PYTHONDONTWRITEBYTECODE. Never read worker-supplied
     # or timestamp-stale bytecode when grading the current source.
     with TemporaryDirectory(prefix="pexbench_bytecode_") as cache:
         command = (
             linux_sandbox.public_pytest_command(workspace, files)
-            if linux_sandbox.enabled()
+            if require_linux_sandbox or linux_sandbox.enabled()
             else [
                 sys.executable,
                 "-I",

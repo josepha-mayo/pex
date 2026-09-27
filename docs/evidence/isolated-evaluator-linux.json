@@ -1,0 +1,27 @@
+{
+  "schema": "pex.isolated-evaluator-smoke.v1",
+  "scope": "Grader infrastructure fixture only: synthetic reference and candidate import probes; no real worker quality or comparative performance.",
+  "optional_sandbox_environment_unset": true,
+  "starter_rejected": true,
+  "synthetic_reference_passed": true,
+  "candidate_import_probes_passed": true,
+  "read_only_workspace": true,
+  "controller_file_hidden": true,
+  "private_metadata_hidden": true,
+  "outbound_network_denied": true,
+  "upstream_provider_calls": 0,
+  "real_worker_executed": false,
+  "presentation_eligible": false,
+  "source_fingerprint": "de7c2347da29f40b2243826f47dab10ec94039b3e6a84bdd3b014e38cf799f6d",
+  "source_sha256": {
+    "benchmarks/evaluator.py": "e72e393d3ca7e80c35b273eebbbdb0f6bff04abb103652687758102d09e95896",
+    "benchmarks/linux_sandbox.py": "781db7f126cee25c573d44b72b55654e07f2ed455753f3a1e5dfac4e0120520f",
+    "docs/evidence/isolated-evaluator-linux-driver.txt": "d10a38e42a6d6efcd0629cca142cfa80c13718cc3228e7ec904583a9e05263f9"
+  },
+  "retained_local_artifact_sha256": {
+    "build/isolated-evaluator-20260927T054334403395/probe.json": "d1589f0de154d1e5af1c606f398a28b03596921e7e052aadfd91cc4a867a0549",
+    "build/isolated-evaluator-20260927T054334403395/receipt.json": "d5427e7904c39f92bd817b4fe7283c28e27e7f7ab4dc21c31cce62ca8a33e590",
+    "build/isolated-evaluator-20260927T054334403395/reference.json": "df021dcc8e22bfc78e0e548730f6ae21576ebaf6668f5c3241c9896151f3cca9",
+    "build/isolated-evaluator-20260927T054334403395/starter.json": "fae0a348653af82cf4c95a9d000cfee1d208b4d7bce01bdac8beb9a3a19eccdd"
+  }
+}
