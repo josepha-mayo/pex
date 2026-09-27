@@ -2344,6 +2344,9 @@ async def test_auto_handoff_promotes_only_supported_test_result(client: AsyncCli
                 "title": "Parser tests",
                 "objective": "Implement the parser with passing tests",
                 "acceptance_criteria": ["tests pass"],
+                "decisions": ["Keep the current parser"],
+                "rejected_approaches": ["Replace the parser with a new service"],
+                "unresolved_questions": ["Which parser inputs remain supported?"],
             },
         )
     ).json()
@@ -2377,6 +2380,8 @@ async def test_auto_handoff_promotes_only_supported_test_result(client: AsyncCli
     assert "Direct evidence:" in prompt
     assert "pytest_ok=true" in prompt
     assert "[result; test; confidence=0.95" in prompt
+    assert "- Rejected approach: Replace the parser with a new service" in prompt
+    assert "- Unresolved question: Which parser inputs remain supported?" in prompt
 
     context = await client.get("/v1/context", params={"project_id": "demo"})
     verified = [item for item in context.json() if item["kind"] == "result"]

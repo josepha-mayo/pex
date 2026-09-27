@@ -814,11 +814,13 @@ def test_worker_metadata_cannot_set_handoff_next_step_or_do_not_redo() -> None:
 
 
 def test_rejected_approach_and_unresolved_question_shape_the_handoff_bundle() -> None:
+    from pex_bridge.adapters.base import _bundle_as_prompt
+
     now = datetime.now(UTC)
     goal = _goal(now)
     rejected = _item(
         "rejected",
-        "Do not rewrite the evaluator as a new service",
+        "Rewrite the evaluator as a new service",
         now,
         kind=ContextKind.DECISION,
         provenance=SourceKind.HUMAN,
@@ -855,11 +857,41 @@ def test_rejected_approach_and_unresolved_question_shape_the_handoff_bundle() ->
     )
 
     assert rejected.content in bundle.do_not_redo
+    assert f"Rejected approach: {rejected.content}" in bundle.critical_decisions
+    assert f"Unresolved question: {unresolved.content}" in bundle.critical_decisions
+    assert rejected.content not in bundle.critical_decisions
+    assert unresolved.content not in bundle.critical_decisions
+    prompt = _bundle_as_prompt(bundle)
+    assert f"- Rejected approach: {rejected.content}" in prompt
+    assert f"- Unresolved question: {unresolved.content}" in prompt
     assert bundle.next_objective == unresolved.content
     assert "artifacts/parser.json" in bundle.deep_links
     assert "Continue the attached goal" not in bundle.next_objective
     serialized = bundle.model_dump_json()
     assert '"kind":"rejected_approach"' in serialized or "rejected_approach" in serialized
+
+
+@pytest.mark.parametrize("kind,status,label", [
+    ("rejected_approach", "active", "Rejected approach"),
+    ("unresolved_question", "uncertain", "Unresolved question"),
+    ("decision", "uncertain", "Uncertain decision"),
+])
+def test_previously_delivered_human_ledger_retains_its_state_label(kind, status, label):
+    from pex_bridge.adapters.base import _bundle_as_prompt
+
+    now = datetime.now(UTC)
+    item = _item(
+        "ledger-row", "Rewrite the parser as a new service", now,
+        kind=ContextKind.DECISION, provenance=SourceKind.HUMAN,
+        metadata={"kind": kind, "status": status},
+    )
+    bundle = build_bundle(
+        _goal(now), _target(), [item], [], [], exclude_item_ids={item.id},
+    )
+    assert bundle.items == []
+    assert f"{label} [{item.id}]: {item.content}" in bundle.critical_decisions
+    assert f"Human decision [{item.id}]: {item.content}" not in bundle.critical_decisions
+    assert f"- {label} [{item.id}]: {item.content}" in _bundle_as_prompt(bundle)
 
 
 def test_superseded_decision_context_is_excluded_even_without_stale_timestamp() -> None:

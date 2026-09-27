@@ -362,6 +362,17 @@ def build_bundle(
     def contract_text(value: object) -> str:
         return (redact_text(str(value))[0] or "").strip()
 
+    def decision_label(item: ContextItem, default: str) -> str:
+        kind = str(item.metadata.get("kind") or "").strip().casefold()
+        status = str(item.metadata.get("status") or "").strip().casefold()
+        if kind == "rejected_approach":
+            return "Rejected approach"
+        if kind == "unresolved_question":
+            return "Unresolved question"
+        if status == DecisionStatus.UNCERTAIN.value:
+            return "Uncertain decision"
+        return default
+
     goal_summary = contract_text(goal.objective)
     acceptance_criteria = [
         text for value in goal.acceptance_criteria if (text := contract_text(value))
@@ -396,7 +407,7 @@ def build_bundle(
             if is_shared_human_constraint(item)
             else "Goal constraint"
             if item.kind == ContextKind.CONSTRAINT
-            else "Human decision"
+            else decision_label(item, "Human decision")
         ]
     )
     delivered_evidence = [
@@ -472,8 +483,14 @@ def build_bundle(
         progress: list[str],
     ) -> ContextBundle:
         selected = [_safe_item(item) for item in chosen_raw]
+        def critical_text(item: ContextItem) -> str:
+            if item.kind == ContextKind.CONSTRAINT:
+                return f"Constraint: {item.content}"
+            label = decision_label(item, "")
+            return f"{label}: {item.content}" if label else item.content
+
         critical = [
-            (f"Constraint: {item.content}" if item.kind == ContextKind.CONSTRAINT else item.content)
+            critical_text(item)
             for item in selected
             if item.kind in {ContextKind.DECISION, ContextKind.CONSTRAINT}
         ][:8]
