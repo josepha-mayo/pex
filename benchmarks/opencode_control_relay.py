@@ -7,6 +7,7 @@ This transport does not establish task success or benchmark eligibility.
 
 import asyncio
 import hashlib
+import math
 import re
 import time
 from collections.abc import Awaitable, Callable
@@ -23,13 +24,18 @@ REVIEW_SCHEMA = "pex.opencode-review.v1"
 class OpenCodeControlRelay(PinnedModelRelay):
     def __init__(
         self, *, review: Callable[[str, tuple[str, ...]], Awaitable[dict]] | None = None,
-        max_reviews: int = 3, **model_options,
+        max_reviews: int = 3, max_review_seconds: float = 180, **model_options,
     ):
         super().__init__(**model_options)
         if type(max_reviews) is not int or not 1 <= max_reviews <= 11:
             raise ValueError("review budget must be between one and eleven")
+        if (type(max_review_seconds) not in (int, float)
+                or not math.isfinite(max_review_seconds) or not 0 < max_review_seconds <= 86_400):
+            raise ValueError("review time budget must be positive, finite and bounded")
         self.review = review
         self.max_reviews = max_reviews
+        self.max_review_seconds = max_review_seconds
+        self.review_seconds_used = 0.0
         self.review_audit = []
         self._review_ids = set()
         self._vendor_session = None
@@ -69,6 +75,8 @@ class OpenCodeControlRelay(PinnedModelRelay):
             error = "review_in_progress"
         elif len(self._review_ids) >= self.max_reviews:
             error = "review_budget_exhausted"
+        elif self.review_seconds_used >= self.max_review_seconds:
+            error = "review_time_budget_exhausted"
         elif time.perf_counter() >= self.deadline:
             error = "deadline_expired"
         else:
@@ -85,13 +93,18 @@ class OpenCodeControlRelay(PinnedModelRelay):
             "request_sha256": hashlib.sha256(raw).hexdigest(), "status": "reserved",
         }
         self.review_audit.append(receipt)
+        # Cumulative elapsed controller time includes failed and cancelled attempts.
+        started = time.monotonic()
+        review_budget = self.max_review_seconds - self.review_seconds_used
+        timed_out = False
         try:
             decision = await await_with_budget(
                 lambda: self.review(vendor, tuple(messages)),
-                budget=max(0, self.deadline - time.perf_counter()),
+                budget=max(0, min(review_budget, self.deadline - time.perf_counter())),
             )
-            if time.perf_counter() >= self.deadline:
-                raise TimeoutError("review returned after task deadline")
+            if (time.perf_counter() >= self.deadline
+                    or time.monotonic() - started >= review_budget):
+                raise TimeoutError("review returned after task or review deadline")
             if not isinstance(decision, dict) or decision.get("type") not in REPAIR_ACTIONS | {
                 "NOOP",
             }:
@@ -111,8 +124,17 @@ class OpenCodeControlRelay(PinnedModelRelay):
         except asyncio.CancelledError:
             receipt["status"] = "cancelled_uncertain"
             raise
+        except TimeoutError:
+            timed_out = True
+            receipt["status"] = "failed_uncertain"
+            return {**result, "error": "review_failed_uncertain"}
         except Exception:
             receipt["status"] = "failed_uncertain"
             return {**result, "error": "review_failed_uncertain"}
         finally:
+            elapsed = max(0.0, time.monotonic() - started)
+            charged = max(elapsed, review_budget) if timed_out else elapsed
+            self.review_seconds_used += charged
+            receipt["elapsed_seconds"] = elapsed
+            receipt["charged_seconds"] = charged
             self._review_inflight = False

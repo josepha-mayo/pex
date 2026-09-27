@@ -32,6 +32,60 @@ async def test_baseline_refuses_review_without_reserving_a_model_call():
     assert controller.audit == controller.review_audit == []
 
 
+@pytest.mark.parametrize("budget", [True, 0, -1, float("inf"), float("nan"), 86_401])
+def test_invalid_review_time_budget_is_rejected(budget):
+    with pytest.raises(ValueError, match="review time budget"):
+        relay(max_review_seconds=budget)
+
+
+async def test_cumulative_review_time_is_consumed_across_successes(monkeypatch):
+    import benchmarks.opencode_control_relay as control
+
+    clock = [100.0]
+    monkeypatch.setattr(control, "time", SimpleNamespace(
+        perf_counter=time.perf_counter, monotonic=lambda: clock[0],
+    ))
+
+    async def review(*args):
+        clock[0] += 2
+        return {"type": "NOOP"}
+
+    controller = relay(review, max_review_seconds=3)
+    assert (await controller.dispatch(request()))["ok"]
+    result = await controller.dispatch(request("review-2"))
+    assert result["error"] == "review_failed_uncertain"
+    assert "action" not in result
+    assert controller.review_seconds_used == 4
+    assert [row["status"] for row in controller.review_audit] == ["completed", "failed_uncertain"]
+    assert (await controller.dispatch(request("review-3")))["error"] == (
+        "review_time_budget_exhausted"
+    )
+
+
+async def test_review_time_timeout_cannot_be_suppressed_or_retried(monkeypatch):
+    import benchmarks.opencode_control_relay as control
+
+    # The event-loop timeout can fire before the accounting clock advances.
+    monkeypatch.setattr(control, "time", SimpleNamespace(
+        perf_counter=time.perf_counter, monotonic=lambda: 100.0,
+    ))
+    async def review(*args):
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            return {"type": "NOOP"}
+
+    controller = relay(review, max_review_seconds=0.01)
+    result = await asyncio.wait_for(controller.dispatch(request()), 1)
+    assert result["error"] == "review_failed_uncertain" and "action" not in result
+    assert controller.review_seconds_used >= 0.01
+    assert controller.review_audit[0]["elapsed_seconds"] == 0
+    assert controller.review_audit[0]["charged_seconds"] == 0.01
+    assert (await controller.dispatch(request("review-2")))["error"] == (
+        "review_time_budget_exhausted"
+    )
+
+
 async def test_review_returns_only_bounded_public_action_and_exact_hashes():
     calls = []
 
@@ -115,7 +169,9 @@ async def test_expired_review_cannot_complete_receipt_after_suppressed_cancel(mo
 
     controller = relay(review, max_reviews=1)
     controller.deadline = 100.01
-    monkeypatch.setattr(control, "time", SimpleNamespace(perf_counter=lambda: 100.0))
+    monkeypatch.setattr(control, "time", SimpleNamespace(
+        perf_counter=lambda: 100.0, monotonic=time.monotonic,
+    ))
     result = await asyncio.wait_for(controller.dispatch(request()), 1)
     assert result["error"] == "review_failed_uncertain"
     assert controller.review_audit[0]["status"] == "failed_uncertain"
@@ -134,7 +190,9 @@ async def test_deadline_expiring_at_admission_never_starts_review(monkeypatch):
     controller = relay(review)
     controller.deadline = 101.0
     ticks = iter([100.0, 102.0])
-    monkeypatch.setattr(control, "time", SimpleNamespace(perf_counter=lambda: next(ticks)))
+    monkeypatch.setattr(control, "time", SimpleNamespace(
+        perf_counter=lambda: next(ticks), monotonic=time.monotonic,
+    ))
     result = await controller.dispatch(request())
     assert calls == []
     assert result["error"] == "review_failed_uncertain"
