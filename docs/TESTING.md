@@ -1040,3 +1040,12 @@ optional AgentCore endpoint proposes an action.
   these Linux receipts were retained. See the exact [installed desktop receipt](evidence/linux-installed-smoke-490224a.json),
   [bridge receipt](evidence/linux-packaged-bridge-490224a.json), and
   [BYOK receipt](evidence/linux-packaged-byok-490224a.json).
+- The Windows native job in the same `490224a` checks run subsequently passed
+  NSIS construction, native bootstrap tests, Windows credential storage, and
+  packaged bridge/BYOK checks. The exact [bridge receipt](evidence/windows-packaged-bridge-490224a.json)
+  and [BYOK receipt](evidence/windows-packaged-byok-490224a.json) confirm
+  authenticated settings access, bridge identity, and a disposable credential
+  save/read/clear round trip, with cloud reasoning off and zero provider calls.
+  This did not perform Windows GUI click-through, attach a worker, or establish
+  live semantic supervision. The Windows source suite was still running when
+  these receipts were retained; native-job success does not replace that suite.
