@@ -1,8 +1,10 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
 from benchmarks import paired_preparation
+from benchmarks.boundary import sha256_file
 
 FINGERPRINTS = {harness: {"runtime_sha256": "a" * 64, "settings_sha256": "b" * 64}
                 for harness in ("codex", "opencode")}
@@ -140,3 +142,70 @@ def test_changed_worker_settings_change_the_bound_profile(tmp_path):
         assert (first["worker_profile_sha256"] != second["worker_profile_sha256"]) == (
             first["harness"] == "codex"
         )
+
+
+def test_attempt_reservation_is_exclusive_and_preserves_predeclared_budget(tmp_path):
+    root = tmp_path / "experiment"
+    plan = prepare(root)
+    digest = sha256_file(root / "controller/plan.json")
+    profile = plan["worker_profiles"][plan["schedule"][0]["harness"]]
+
+    def reserve():
+        try:
+            return paired_preparation.reserve_attempt(
+                root, index=0, expected_plan_sha256=digest, worker_profile=profile,
+            )
+        except FileExistsError:
+            return None
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        receipts = list(pool.map(lambda _: reserve(), range(2)))
+    assert sum(row is not None for row in receipts) == 1
+    receipt = next(row for row in receipts if row is not None)
+    assert receipt["budget"] == plan["budget"]
+    assert receipt["entry"] == plan["schedule"][0]
+    assert receipt["status"] == "reserved"
+    assert not receipt["execution_boundary_verified"] and not receipt["presentation_eligible"]
+    assert reserve() is None
+    saved = root / "controller" / f"attempt-{plan['schedule'][0]['workspace']}.json"
+    assert json.loads(saved.read_text()) == receipt
+
+
+@pytest.mark.parametrize("drift", ["plan", "profile", "workspace", "sources"])
+def test_admission_drift_cannot_consume_an_attempt(tmp_path, monkeypatch, drift):
+    root = tmp_path / "experiment"
+    plan = prepare(root)
+    path = root / "controller/plan.json"
+    digest = sha256_file(path)
+    profile = dict(plan["worker_profiles"][plan["schedule"][0]["harness"]])
+    if drift == "plan":
+        path.write_text(path.read_text() + " ")
+    elif drift == "profile":
+        profile["settings_sha256"] = "c" * 64
+    elif drift == "workspace":
+        (root / "workers" / plan["schedule"][0]["workspace"] / "TASK.md").write_text("drift")
+    else:
+        monkeypatch.setattr(paired_preparation.runner, "benchmark_sha256", lambda: "c" * 64)
+    with pytest.raises(ValueError):
+        paired_preparation.reserve_attempt(
+            root, index=0, expected_plan_sha256=digest, worker_profile=profile,
+        )
+    assert not list((root / "controller").glob("attempt-*.json"))
+
+
+def test_uncertain_reservation_write_is_not_reusable(tmp_path, monkeypatch):
+    root = tmp_path / "experiment"
+    plan = prepare(root)
+    options = {
+        "index": 0, "expected_plan_sha256": sha256_file(root / "controller/plan.json"),
+        "worker_profile": plan["worker_profiles"][plan["schedule"][0]["harness"]],
+    }
+
+    def fail(_descriptor):
+        raise OSError("uncertain persistence")
+
+    monkeypatch.setattr(paired_preparation.os, "fsync", fail)
+    with pytest.raises(OSError, match="uncertain persistence"):
+        paired_preparation.reserve_attempt(root, **options)
+    with pytest.raises(FileExistsError):
+        paired_preparation.reserve_attempt(root, **options)

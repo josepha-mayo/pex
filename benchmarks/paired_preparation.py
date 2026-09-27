@@ -8,7 +8,10 @@ import hashlib
 import json
 import os
 import re
+from datetime import UTC, datetime
 from pathlib import Path
+
+from pex_bridge.adapters.strict_json import strict_json_loads
 
 from benchmarks import boundary, evaluator, runner
 
@@ -110,3 +113,66 @@ def prepare_experiment(
         target.flush()
         os.fsync(target.fileno())
     return plan
+
+
+def reserve_attempt(
+    destination: Path, *, index: int, expected_plan_sha256: str, worker_profile: dict[str, str],
+) -> dict:
+    """Consume one prepared attempt before launch, without proving isolation.
+
+    The controller must independently pin the plan digest after preparation and
+    measure the actual worker profile. Supplying declared hashes as measurements
+    does not verify a runtime. A reservation is never reusable after launch failure.
+    """
+    root = destination.absolute()
+    if root.resolve(strict=True) != root:
+        raise ValueError("experiment path cannot contain links")
+    control = root / "controller"
+    path = control / "plan.json"
+    if control.resolve(strict=True) != control or runner._is_link_like(path):
+        raise ValueError("controller plan cannot be linked")
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_plan_sha256):
+        raise ValueError("independently pinned plan digest is required")
+    with path.open("rb") as handle:
+        raw = handle.read(1_000_001)
+    if len(raw) > 1_000_000 or hashlib.sha256(raw).hexdigest() != expected_plan_sha256:
+        raise ValueError("prepared plan differs from its pinned digest")
+    plan = strict_json_loads(raw)
+    if not isinstance(plan, dict) or plan.get("schema") != "pex.paired-preparation.v2":
+        raise ValueError("unsupported preparation plan")
+    schedule = plan["schedule"]
+    if type(index) is not int or not 0 <= index < len(schedule):
+        raise ValueError("attempt index is outside the prepared schedule")
+    row = schedule[index]
+    profile = plan["worker_profiles"][row["harness"]]
+    if worker_profile != profile:
+        raise ValueError("measured worker profile differs from the prepared profile")
+    fingerprint = runner.benchmark_sha256()
+    if fingerprint != plan["benchmark_sha256"]:
+        raise ValueError("benchmark sources differ from the prepared plan")
+    name = row["workspace"]
+    if not isinstance(name, str) or not re.fullmatch(r"[0-9a-f]{64}", name):
+        raise ValueError("invalid prepared workspace identity")
+    workspace = root / "workers" / name
+    if workspace.resolve(strict=True) != workspace:
+        raise ValueError("worker path cannot contain links")
+    if boundary.workspace_manifest_sha256(workspace) != row["seed_manifest_sha256"]:
+        raise ValueError("public workspace changed before attempt admission")
+    if runner.benchmark_sha256() != fingerprint:
+        raise ValueError("benchmark sources changed during attempt admission")
+    receipt = {
+        "schema": "pex.paired-attempt-reservation.v1", "status": "reserved",
+        "reserved_at": datetime.now(UTC).isoformat(), "run_id": plan["run_id"],
+        "plan_sha256": expected_plan_sha256, "schedule_index": index,
+        "entry": row, "budget": plan["budget"],
+        "worker_profile_sha256": row["worker_profile_sha256"],
+        "execution_boundary_verified": False, "presentation_eligible": False,
+    }
+    # Exclusive creation makes simultaneous admission and uncertain launch retries
+    # consume the same durable slot. Never delete this receipt to retry an arm.
+    encoded = json.dumps(receipt, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
+    with (control / f"attempt-{name}.json").open("x", encoding="utf-8", newline="\n") as target:
+        target.write(encoded)
+        target.flush()
+        os.fsync(target.fileno())
+    return receipt
