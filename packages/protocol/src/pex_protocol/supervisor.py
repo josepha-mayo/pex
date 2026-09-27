@@ -133,6 +133,9 @@ class SupervisorDecisionItem(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     id: _ContextId
+    kind: Literal["decision", "rejected_approach", "unresolved_question"] = Field(
+        default="decision", exclude_if=lambda value: value == "decision",
+    )
     goal_id: str = Field(min_length=1, max_length=512)
     statement: str = Field(min_length=1, max_length=2_000)
     statement_truncated: bool = Field(default=False, strict=True)
@@ -140,6 +143,9 @@ class SupervisorDecisionItem(BaseModel):
     rationale_truncated: bool = Field(default=False, strict=True)
     alternatives_rejected: tuple[Annotated[str, Field(min_length=1, max_length=1_000)], ...] = (
         Field(default_factory=tuple, max_length=12)
+    )
+    alternatives_rejected_truncated: bool = Field(
+        default=False, strict=True, exclude_if=lambda value: not value,
     )
     scope: str = Field(default="", max_length=500)
     scope_truncated: bool = Field(default=False, strict=True)

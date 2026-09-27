@@ -275,13 +275,13 @@ def build_supervisor_context(
         statement = cleaned_statement[:2_000]
         rationale = cleaned_rationale[:1_000]
         scope = cleaned_scope[:500]
-        alternatives = tuple(
-            value
-            for value in (
-                _clean_text(alternative, 1_000)
-                for alternative in decision.alternatives_rejected[:12]
-            )
-            if value
+        cleaned_alternatives = tuple(
+            _clean_text(alternative, len(alternative))
+            for alternative in decision.alternatives_rejected
+        )
+        alternatives = tuple(value[:1_000] for value in cleaned_alternatives[:12] if value)
+        alternatives_truncated = len(cleaned_alternatives) > 12 or any(
+            len(value) > 1_000 for value in cleaned_alternatives[:12]
         )
         cost = len(statement) + len(rationale) + len(scope) + sum(
             len(value) for value in alternatives
@@ -289,15 +289,22 @@ def build_supervisor_context(
         if not statement or decision_text + cost > _MAX_DECISION_TEXT:
             continue
         metadata = decision.metadata if isinstance(decision.metadata, dict) else {}
+        decision_kind = _clean_label(metadata.get("kind"), 80) or "decision"
         selected_decisions.append(
             SupervisorDecisionItem(
                 id=decision.id,
+                kind=(
+                    decision_kind if decision_kind in {
+                        "decision", "rejected_approach", "unresolved_question"
+                    } else "decision"
+                ),
                 goal_id=goal_id,
                 statement=statement,
                 statement_truncated=len(cleaned_statement) > len(statement),
                 rationale=rationale,
                 rationale_truncated=len(cleaned_rationale) > len(rationale),
                 alternatives_rejected=alternatives,
+                alternatives_rejected_truncated=alternatives_truncated,
                 scope=scope,
                 scope_truncated=len(cleaned_scope) > len(scope),
                 confidence=decision.confidence,

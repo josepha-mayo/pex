@@ -800,6 +800,79 @@ def test_compaction_contract_redacts_credentials_before_worker_delivery():
     assert "verify the connection" in text
 
 
+@pytest.mark.parametrize("phase", [EventPhase.BEFORE, EventPhase.AFTER, EventPhase.TERMINAL])
+def test_compaction_restores_bound_decisions_without_reviving_rejected_choices(phase):
+    from pex_bridge.supervisor_context import build_supervisor_context
+    from pex_protocol.enums import DecisionSource, DecisionStatus
+    from pex_protocol.goal import Decision
+
+    session, goal = _session(), _goal()
+    now = datetime.now(UTC)
+    secret = "sk-" + "b" * 24
+    rows = []
+    for index, (kind, statement, status, goal_id) in enumerate([
+        ("decision", "Keep the current database", DecisionStatus.ACTIVE, goal.id),
+        ("rejected_approach", "Replace the database", DecisionStatus.ACTIVE, goal.id),
+        ("unresolved_question", "Should storage be replicated?", DecisionStatus.UNCERTAIN, goal.id),
+        ("decision", "Retired storage choice", DecisionStatus.SUPERSEDED, goal.id),
+        ("decision", "Unrelated goal choice", DecisionStatus.ACTIVE, "other-goal"),
+        ("decision", f"Configure api_key={secret}", DecisionStatus.ACTIVE, goal.id),
+        ("decision", "Long decision " * 200, DecisionStatus.ACTIVE, goal.id),
+    ]):
+        rows.append(Decision(
+            id=f"decision-{index}", goal_id=goal_id, statement=statement,
+            alternatives_rejected=[statement] if kind == "rejected_approach" else [],
+            scope="storage", source=DecisionSource.HUMAN, status=status,
+            created_at=now, metadata={"kind": kind},
+        ))
+    context = build_supervisor_context(session, [], rows, now=now)
+    serialized = {item.id: item.model_dump(mode="json") for item in context.decisions}
+    assert "kind" not in serialized["decision-0"]
+    assert "alternatives_rejected_truncated" not in serialized["decision-0"]
+    assert serialized["decision-1"]["kind"] == "rejected_approach"
+    assert serialized["decision-2"]["kind"] == "unresolved_question"
+    action = plan_deterministic(SupervisorRequest(
+        session=session, goal=goal, event=_event(EventType.COMPACTION, phase=phase),
+        supervisor_context=context, scores=TrajectoryScores(),
+    ))
+    text = action.payload["text"]
+    assert "Current decision (scope: storage): Keep the current database" in text
+    assert "Rejected approach (scope: storage): Replace the database" in text
+    assert "Unresolved question (scope: storage): Should storage be replicated?" in text
+    assert "Current decision (scope: storage): Replace the database" not in text
+    assert "Retired storage choice" not in text
+    assert "Unrelated goal choice" not in text
+    assert secret not in text
+    assert "partial; retrieve the full record before acting" in text
+    assert "decision:decision-0" in action.evidence
+    assert "decision:decision-3" not in action.evidence
+
+
+@pytest.mark.parametrize("alternatives", [["x" * 1_001], ["choice"] * 13])
+def test_compaction_marks_clipped_rejected_alternatives_partial(alternatives):
+    from pex_bridge.supervisor_context import build_supervisor_context
+    from pex_protocol.enums import DecisionSource
+    from pex_protocol.goal import Decision
+
+    session, goal = _session(), _goal()
+    now = datetime.now(UTC)
+    decision = Decision(
+        id="partial-alternatives", goal_id=goal.id, statement="Keep the parser",
+        alternatives_rejected=alternatives, source=DecisionSource.HUMAN, created_at=now,
+    )
+    context = build_supervisor_context(session, [], [decision], now=now)
+    assert context.decisions[0].alternatives_rejected_truncated
+    action = plan_deterministic(SupervisorRequest(
+        session=session, goal=goal, event=_event(EventType.COMPACTION),
+        supervisor_context=context, scores=TrajectoryScores(),
+    ))
+    assert "Current decision: Keep the parser" in action.payload["text"]
+    assert (
+        "Rejected alternatives [partial; retrieve the full record before acting]: "
+        in action.payload["text"]
+    )
+
+
 def test_compaction_checkpoints_forgotten_facts_without_overlay_on_first_sample():
     request = SupervisorRequest(
         session=_session(),

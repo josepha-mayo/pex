@@ -879,6 +879,9 @@ async def test_opencode_compacted_event_delivers_ledger_to_the_same_worker(clien
         "title": "Finish the parser", "objective": "Repair and verify the parser.",
         "acceptance_criteria": ["parser tests pass"], "constraints": ["Preserve the public API"],
         "forbidden_outcomes": ["Do not spend paid credits"],
+        "decisions": ["Keep the existing parser library"],
+        "rejected_approaches": ["Replace the parser with a new library"],
+        "unresolved_questions": ["Should legacy input be supported?"],
     })
     assert created.status_code == 200
     goal = created.json()
@@ -902,6 +905,9 @@ async def test_opencode_compacted_event_delivers_ledger_to_the_same_worker(clien
     assert len(transport.prompts) == 1
     assert transport.prompts[0]["path"].split("?")[0] == "/session/compact-worker/prompt_async"
     text = adapter.inbox[session.id][-1]
+    assert "Current decision: Keep the existing parser library" in text
+    assert "Rejected approach: Replace the parser with a new library" in text
+    assert "Unresolved question: Should legacy input be supported?" in text
     for value in [goal["objective"], *goal["acceptance_criteria"], *goal["constraints"],
                   *goal["forbidden_outcomes"]]:
         assert value in text

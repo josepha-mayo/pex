@@ -5,7 +5,7 @@ from pathlib import PurePosixPath, PureWindowsPath
 from uuid import uuid4
 
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
-from pex_protocol.enums import Authority, EventPhase, EventType, HarnessType
+from pex_protocol.enums import Authority, DecisionStatus, EventPhase, EventType, HarnessType
 from pex_protocol.overlay import Overlay, OverlayDiff
 from pex_protocol.project_binding import project_binding_key
 from pex_protocol.redaction import redact_text
@@ -772,10 +772,34 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
             lines.append(f"Required evidence: {required_evidence}")
         if files:
             lines.append(f"Required files: {files}")
+        decision_evidence: list[str] = []
+        if request.supervisor_context is not None:
+            for decision in request.supervisor_context.decisions:
+                label = (
+                    "Rejected approach" if decision.kind == "rejected_approach"
+                    else "Unresolved question" if decision.kind == "unresolved_question"
+                    else "Uncertain decision" if decision.status == DecisionStatus.UNCERTAIN
+                    else "Current decision"
+                )
+                scope = f" (scope: {decision.scope})" if decision.scope else ""
+                partial = " [partial; retrieve the full record before acting]" if (
+                    decision.statement_truncated or decision.scope_truncated
+                ) else ""
+                lines.append(f"{label}{scope}{partial}: {decision.statement}")
+                if decision.alternatives_rejected:
+                    alternative_partial = (
+                        " [partial; retrieve the full record before acting]"
+                        if decision.alternatives_rejected_truncated else ""
+                    )
+                    lines.append(
+                        f"Rejected alternatives{alternative_partial}: "
+                        + "; ".join(decision.alternatives_rejected)
+                    )
+                decision_evidence.append(f"decision:{decision.id}")
         if forgotten:
             lines.append("Do not forget: " + "; ".join(forgotten[:4]))
         lines.append("Keep these facts in working context.")
-        evidence = [f"goal:{goal.id}", "event:compaction", *forgotten[:4]]
+        evidence = [f"goal:{goal.id}", "event:compaction", *decision_evidence, *forgotten[:4]]
         correction = redact_text(" ".join(lines))[0] or ""
         if _context_health_overlay_ready(request):
             overlay = Overlay(
