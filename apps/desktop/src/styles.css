@@ -591,6 +591,14 @@ p {
 .workspace-goal { border-top: 1px solid var(--line); padding-top: 22px; }
 .workspace-goal > p { margin: 14px 0 0; font-size: 15px; line-height: 1.65;
   white-space: pre-wrap; overflow-wrap: anywhere; }
+.workspace-task { border-top: 1px solid var(--line); padding: 16px 0; }
+.workspace-task summary { cursor: pointer; color: var(--paper); font-size: 14px; font-weight: 600; }
+.workspace-task > p { color: var(--muted); font-size: 12px; line-height: 1.6; margin: 12px 0; }
+.workspace-task label { display: block; color: var(--paper); font-size: 12px; margin: 14px 0 8px; }
+.workspace-task textarea { display: block; width: 100%; resize: vertical; min-height: 100px; margin-bottom: 12px; }
+.workspace-task button { margin-top: 4px; }
+.workspace-task-recovery { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.workspace-task-recovery small { display: block; flex-basis: 100%; color: var(--faint); font-size: 11px; }
 .workspace-activity { border: 1px solid var(--line); background: var(--night-2); border-radius: 12px; padding: 24px; }
 .workspace-activity h2 { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 580; margin: 24px 0 12px; }
 .workspace-activity > p { color: var(--muted); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }

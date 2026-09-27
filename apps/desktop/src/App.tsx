@@ -24,6 +24,7 @@ import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
 import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { OpenCodeConnectionPanel } from "./components/OpenCodeConnectionPanel";
 import { CodexConnectionPanel } from "./components/CodexConnectionPanel";
+import { OperatorTaskComposer } from "./components/OperatorTaskComposer";
 import { createOperatorRequest } from "./operatorRequest";
 import { canEditGoalLedger, goalLedgerKey, readGoalDecisions } from "./goalLedger";
 import { usePageVisibility } from "./pageVisibility";
@@ -2618,6 +2619,17 @@ export function App() {
               <p>{attachedGoal.objective}</p>
             </section>
           ) : null}
+          {current && attachedGoal && !setup
+            && (current.project_id || current.cwd)
+            && current.capabilities?.send_message === true
+            && (current.harness_type === "codex" || current.harness_type === "opencode") ? (
+              <OperatorTaskComposer key={`${current.id}:${attachedGoal.id}`}
+                request={sharedConnectionRequest}
+                binding={{ sessionId: current.id, goalId: attachedGoal.id, projectId: current.project_id || current.cwd || "" }}
+                available={sessionStateFresh && goalStateFresh && !bridgeError && !current.supervision_paused}
+                onDelivered={() => void refreshPet()}
+                onInspect={() => openInspector(current.id)} />
+            ) : null}
             {!setup ? (
               <section className={`workspace-activity tone-${homeStatus.tone}`} aria-label="Current supervision">
                 <div className="workspace-section-heading">
