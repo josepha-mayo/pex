@@ -1,0 +1,31 @@
+{
+  "schema": "pex.cross-platform-checks.v1",
+  "commit": "490224a2571341afa0f8a426af18237d391030d0",
+  "run_url": "https://github.com/josepha-mayo/pex/actions/runs/36293838736",
+  "conclusion": "success",
+  "source_suites": [
+    {
+      "os": "ubuntu-24.04",
+      "tests": 5150,
+      "passed": 5123,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 27,
+      "report_sha256": "cf6d44484d8dde292641db70b65b334b1c5247064f44242796ed2c8cee378764"
+    },
+    {
+      "os": "windows-latest",
+      "tests": 5150,
+      "passed": 5119,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 31,
+      "report_sha256": "cea78d741936f1d22daf108cc778a7fd5328b78c2b40e73d9d85dba4e21159aa"
+    }
+  ],
+  "native_jobs": {
+    "windows": "success",
+    "linux": "success"
+  },
+  "scope": "CI source suites and native package checks; live-provider tests excluded. Not Windows GUI or comparative performance acceptance."
+}

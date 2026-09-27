@@ -1060,3 +1060,11 @@ optional AgentCore endpoint proposes an action.
   lift, production bridge delivery, or provider streaming latency. See the
   [receipt](evidence/opencode-async-relay-linux.json) and exact
   [driver](evidence/opencode-async-relay-linux-driver.txt).
+- The complete `490224a` checks run subsequently finished with all four jobs
+  successful. Its retained JUnit reports show 5,123 passed / 27 skipped on Linux
+  and 5,119 passed / 31 skipped on Windows, with no failures or errors. Desktop
+  behavior and production builds also passed on both systems. The native jobs
+  passed on both systems as detailed above. Live-provider tests were excluded
+  from these source suites; Windows GUI click-through and comparative quality
+  remain separate requirements. See the [cross-platform summary](evidence/cross-platform-checks-490224a.json),
+  which binds the exact revision, run, and JUnit report hashes.
