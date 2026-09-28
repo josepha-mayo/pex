@@ -2563,7 +2563,7 @@ export function App() {
     <main className={`main-shell tone-${status.tone}`}>
       <header className="topbar">
         <BrandMark label />
-        <span className="topbar-state" role="status" aria-live="polite">
+        <span className={`topbar-state tone-${surface === "deck" ? status.tone : homeStatus.tone}`} role="status" aria-live="polite">
           <span className="status-dot" aria-hidden="true" />{surface === "deck" ? status.label : homeStatus.label}
         </span>
         <nav className="surface-switch" aria-label="Progressive PEX surfaces">
@@ -2615,7 +2615,7 @@ export function App() {
               </div>
             ) : null}
             <button type="button" className="ghost" onClick={() => openSettings("connections")}>Connect a worker</button>
-            <div className="workspace-rail-footer">
+            <div className={`workspace-rail-footer tone-${bridgeError ? "offline" : sessionStateFresh ? "work" : "quiet"}`}>
               <span className="status-dot" aria-hidden="true" />
               <span>{bridgeError ? "Local bridge unavailable" : sessionStateFresh ? "Local bridge connected" : "Waiting for local bridge"}</span>
             </div>
