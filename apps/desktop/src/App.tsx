@@ -394,6 +394,7 @@ export function App() {
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [settingsDestination, setSettingsDestination] = useState<SettingsSection | undefined>();
   const [goalFocusRequest, setGoalFocusRequest] = useState(0);
+  const handledGoalFocusRequest = useRef(0);
   const [ledgerDecisions, setLedgerDecisions] = useState<LedgerDecision[]>([]);
   const loadedGoalLedgerKey = useRef<string | null>(null);
   const editingGoalLedgerKey = useRef<string | null>(null);
@@ -871,11 +872,15 @@ export function App() {
   }, [shell, surface]);
 
   useEffect(() => {
-    if (!goalFocusRequest || shell !== "main" || surface !== "inspector") return;
+    if (!goalFocusRequest || handledGoalFocusRequest.current >= goalFocusRequest
+      || shell !== "main" || surface !== "inspector") return;
     const frame = window.requestAnimationFrame(() => {
       const target = document.querySelector<HTMLElement>('[data-goal-setup="true"]');
+      if (!target) return;
+      target?.querySelector<HTMLDetailsElement>(".goal-editor")?.setAttribute("open", "");
       target?.focus({ preventScroll: true });
       target?.scrollIntoView({ block: "start" });
+      handledGoalFocusRequest.current = goalFocusRequest;
     });
     return () => window.cancelAnimationFrame(frame);
   }, [goalFocusRequest, shell, surface]);
@@ -2347,14 +2352,23 @@ export function App() {
     }
   }
 
+  function selectSession(sessionId: string) {
+    if (sessionId !== current?.id) {
+      setEditingGoalId(null);
+      setGoalDraft(EMPTY_GOAL);
+      editingGoalLedgerKey.current = null;
+    }
+    setSelectedId(sessionId);
+  }
+
   function openInspector(sessionId: string | undefined = current?.id) {
-    if (sessionId) setSelectedId(sessionId);
+    if (sessionId) selectSession(sessionId);
     setSurface("inspector");
     window.location.hash = "inspector";
   }
 
   function showSurface(next: Surface) {
-    if (next !== "compact" && current) setSelectedId(current.id);
+    if (next !== "compact" && current) selectSession(current.id);
     setSurface(next);
     window.location.hash = next;
   }
@@ -2442,7 +2456,7 @@ export function App() {
             onChanged={() => void loadBaseState()} />
           <CodexConnectionPanel request={sharedConnectionRequest} available={sessionStateFresh}
             canCreateWorker={TAURI}
-            onReturnHome={(sessionId) => { if (sessionId) setSelectedId(sessionId); showSurface("compact"); }}
+            onReturnHome={(sessionId) => { if (sessionId) selectSession(sessionId); showSurface("compact"); }}
             onChanged={() => { void loadBaseState(); void refreshPet(); }} />
           <details className="settings-disclosure settings-wide">
             <summary>
@@ -2577,7 +2591,7 @@ export function App() {
               <button key={session.id} type="button" className="worker-choice"
                 aria-pressed={current?.id === session.id}
                 title={session.id}
-                onClick={() => setSelectedId(session.id)}>
+                onClick={() => selectSession(session.id)}>
                 <strong>{titleCase(session.harness_type)}</strong>
                 <small>{railLabels[index]}{(railLabelCounts.get(`${session.harness_type}:${railLabels[index]}`) || 0) > 1
                   ? ` · ${session.id.slice(-6)}` : ""}</small>
@@ -2774,7 +2788,7 @@ export function App() {
           onAsk={(event) => void askPex(event)}
           onAskPrompt={(prompt) => void askPex(null, prompt)}
           onOpenDeck={() => showSurface("deck")}
-          onSelectSession={(sessionId) => setSelectedId(sessionId)}
+          onSelectSession={selectSession}
         />
       ) : null}
 

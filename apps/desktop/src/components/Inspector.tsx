@@ -347,8 +347,8 @@ export function Inspector({
         )}
         <details
           className="goal-editor"
-          key={editingGoal ? "editing" : "create"}
-          {...(editingGoal || (!goal && canAttach) ? { open: true } : {})}
+          key={`${current?.id || "none"}-${editingGoal ? "editing" : "create"}`}
+          {...(editingGoal ? { open: true } : {})}
         >
           <summary>
             {editingGoal

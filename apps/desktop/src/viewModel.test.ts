@@ -1763,8 +1763,9 @@ test("compact home presents the supported MVP harnesses and a readable companion
   assert.doesNotMatch(app, /railSessions\.slice\(0, 8\)/u);
   assert.match(app, /selectedId \? explicitlySelected : selectPrimarySession\(pet \? homeSessions : sessions\)/u);
   assert.match(app, /function openInspector\(sessionId: string \| undefined = current\?\.id\)/u);
-  assert.match(app, /if \(sessionId\) setSelectedId\(sessionId\)/u);
-  assert.match(app, /if \(next !== "compact" && current\) setSelectedId\(current.id\)/u);
+  assert.match(app, /if \(sessionId\) selectSession\(sessionId\)/u);
+  assert.match(app, /if \(next !== "compact" && current\) selectSession\(current.id\)/u);
+  assert.match(app, /function selectSession\(sessionId: string\)[\s\S]*setEditingGoalId\(null\)/u);
   assert.doesNotMatch(app, /`\$\{sessions\.length\} live`/u);
   assert.match(app, /scale=\{1\.08\}/u);
   assert.match(styles, /\.harness-empty\s*\{/u);
