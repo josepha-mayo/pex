@@ -18,6 +18,7 @@ from typing import Any
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 _MAX_BYTES = 1_000_000
+_MAX_TASKS = 1_000_000
 _RUN_FIELDS = {
     "id",
     "name",
@@ -138,6 +139,7 @@ def _validate_summary(raw: Any) -> dict[str, Any]:
         raise ValueError("invalid run id")
     generated_at = _require_timestamp(raw.get("generated_at"), "generation timestamp")
     seen: set[str] = set()
+    task_counts: set[int] = set()
     runs: list[dict[str, Any]] = []
     for source in source_runs:
         if not isinstance(source, dict):
@@ -171,8 +173,13 @@ def _validate_summary(raw: Any) -> dict[str, Any]:
                 isinstance(value, bool) or not isinstance(value, (int, float))
             ):
                 raise ValueError("run metric is not numeric")
-            if value is not None and (not math.isfinite(float(value)) or value < 0):
-                raise ValueError("run metric is negative or non-finite")
+            if value is not None:
+                try:
+                    finite = math.isfinite(float(value))
+                except OverflowError as exc:
+                    raise ValueError("run metric is outside the numeric bound") from exc
+                if not finite or value < 0:
+                    raise ValueError("run metric is negative or non-finite")
             if key in {
                 "useful_interventions",
                 "harmful_interventions",
@@ -185,12 +192,18 @@ def _validate_summary(raw: Any) -> dict[str, Any]:
         success_rate = metrics["task_success_rate"]
         if success_rate is None or success_rate > 1:
             raise ValueError("task success rate is outside [0, 1]")
-        if not isinstance(metrics["tasks"], int) or metrics["tasks"] < 1:
+        if not isinstance(metrics["tasks"], int) or not 1 <= metrics["tasks"] <= _MAX_TASKS:
             raise ValueError("run task count is invalid")
+        task_counts.add(metrics["tasks"])
+        successes = round(success_rate * metrics["tasks"])
+        if success_rate != successes / metrics["tasks"]:
+            raise ValueError("success rate is inconsistent with the run task count")
         seen.add(str(arm))
         runs.append({key: source[key] for key in _RUN_FIELDS if key in source})
     if seen != expected_arms:
         raise ValueError("summary does not contain all presentation arms")
+    if len(task_counts) != 1:
+        raise ValueError("presentation arms do not have the same task count")
     return {
         "runs": runs,
         "status": "frozen",

@@ -92,6 +92,42 @@ def test_public_summary_rejects_unfrozen_or_duplicate_arms(tmp_path):
     assert load_public_summary(path)["status"] == "invalid"
 
 
+def test_public_summary_rejects_incomparable_or_impossible_arm_denominators(tmp_path):
+    path = tmp_path / "summary.json"
+    raw = _summary()
+    raw["runs"][0]["metrics"]["tasks"] = 4
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    assert load_public_summary(path)["status"] == "invalid"
+
+    raw = _summary()
+    raw["runs"][0]["metrics"]["task_success_rate"] = 0.3
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    assert load_public_summary(path)["status"] == "invalid"
+
+    raw = _summary()
+    raw["runs"][0]["metrics"]["task_success_rate"] = 0.5000000004
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    assert load_public_summary(path)["status"] == "invalid"
+
+    raw = _summary()
+    for run in raw["runs"]:
+        run["metrics"]["tasks"] = 3
+        run["metrics"]["task_success_rate"] = 1 / 3
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    assert load_public_summary(path)["status"] == "frozen"
+
+    raw = _summary()
+    for run in raw["runs"]:
+        run["metrics"]["tasks"] = 9_007_199_254_740_993
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    assert load_public_summary(path)["status"] == "invalid"
+
+    raw = _summary()
+    raw["runs"][0]["metrics"]["tasks"] = 10**400
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    assert load_public_summary(path)["status"] == "invalid"
+
+
 @pytest.mark.parametrize(
     "payload",
     [

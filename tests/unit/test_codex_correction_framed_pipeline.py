@@ -171,11 +171,10 @@ async def framed_pipeline(tmp_path, monkeypatch, request):
             "thr_exact",
             channel_factory=factory,
             endpoint_validator=lambda _executable, _endpoint: None,
-            connect_timeout_s=1,
+            connect_timeout_s=5,
             # The full Windows suite can delay the framed reader for more than
-            # one second while SQLite-heavy tests are cleaning up. Keep this
-            # fixture below the surrounding eight-second settlement bound while
-            # avoiding a scheduler-load failure that is unrelated to delivery.
+            # one second while SQLite-heavy tests are cleaning up. The eight-
+            # second correction settlement bound starts after fixture setup.
             request_timeout_s=5,
             receive_journal=journal,
         )
