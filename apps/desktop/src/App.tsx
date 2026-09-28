@@ -2440,6 +2440,7 @@ export function App() {
             onReturnHome={() => showSurface("compact")}
             onChanged={() => void loadBaseState()} />
           <CodexConnectionPanel request={sharedConnectionRequest} available={sessionStateFresh}
+            canCreateWorker={TAURI}
             onReturnHome={(sessionId) => { if (sessionId) setSelectedId(sessionId); showSurface("compact"); }}
             onChanged={() => { void loadBaseState(); void refreshPet(); }} />
           <details className="settings-disclosure settings-wide">

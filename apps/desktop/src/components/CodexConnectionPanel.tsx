@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { codexConnectionFailure, codexCreationFailure, connectIsolatedCodex, createCodexWorker } from "../codexConnection";
 import type { SharedRequest } from "../sharedConnection";
 
-export function CodexConnectionPanel({ request, onChanged, onReturnHome, available }: {
+export function CodexConnectionPanel({ request, onChanged, onReturnHome, available, canCreateWorker }: {
   request: SharedRequest;
   onChanged?: () => void;
   onReturnHome?: (sessionId?: string) => void;
   available: boolean;
+  canCreateWorker: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -33,7 +34,9 @@ export function CodexConnectionPanel({ request, onChanged, onReturnHome, availab
       const support = await connectIsolatedCodex(request, controller.signal);
       if (pending.current === controller) {
         setConfirmed(true);
-        setNotice(`Codex App Server connected (${support}). Choose a project folder below to create an idle worker. No model turn was started.`);
+        setNotice(canCreateWorker
+          ? `Codex App Server connected (${support}). Choose a project folder below to create an idle worker. No model turn was started.`
+          : `Codex App Server connected (${support}). Open PEX desktop to create a worker. No model turn was started.`);
         onChanged?.();
       }
     } catch (error) {
@@ -48,7 +51,7 @@ export function CodexConnectionPanel({ request, onChanged, onReturnHome, availab
   }
 
   async function createWorker() {
-    if (pending.current || !available || !workspace.trim() || creationUncertain || createdId) return;
+    if (pending.current || !available || !canCreateWorker || !workspace.trim() || creationUncertain || createdId) return;
     const controller = new AbortController();
     pending.current = controller;
     setCreating(true);
@@ -86,15 +89,18 @@ export function CodexConnectionPanel({ request, onChanged, onReturnHome, availab
       disabled={busy || creating || !available} onClick={() => void connect()}>
       {busy ? "Connecting…" : "Connect isolated Codex"}
     </button>
+    {!canCreateWorker ? <p className="settings-note" role="status">
+      Browser preview can verify the Codex connection. Creating a worker requires the authenticated PEX desktop app.
+    </p> : null}
     <label className="field">
       Project folder
       <input value={workspace} onChange={(event) => setWorkspace(event.target.value)}
         placeholder="Absolute path to your local project" autoComplete="off" spellCheck={false} maxLength={4096}
-        disabled={busy || creating || Boolean(createdId) || creationUncertain} />
+        disabled={!canCreateWorker || busy || creating || Boolean(createdId) || creationUncertain} />
     </label>
     <p className="settings-note">Create an empty worker in this folder, then attach a goal on Home. Creating it does not run a task or make a model call.</p>
     <button type="button" className={confirmed && !createdId ? "solid" : "ghost"}
-      disabled={!available || busy || creating || !workspace.trim() || Boolean(createdId) || creationUncertain}
+      disabled={!canCreateWorker || !available || busy || creating || !workspace.trim() || Boolean(createdId) || creationUncertain}
       onClick={() => void createWorker()}>{creating ? "Creating worker…" : "Create Codex worker"}</button>
     {!available ? <p className="settings-note" role="status">PEX must confirm its local bridge before connecting Codex.</p> : null}
     {notice ? <p role="status" aria-live="polite">{notice}</p> : null}
