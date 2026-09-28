@@ -184,6 +184,11 @@ export function supervisorReviewAllowanceCopy(
       ? "No review limit configured. This is not a spending safeguard."
       : unknown;
   }
+  if (allowance.limit === 0) {
+    return allowance.remaining === 0
+      ? `Automatic model reviews paused · ${allowance.reserved} review ${allowance.reserved === 1 ? "dispatch" : "dispatches"} previously reserved. This is not a token or dollar balance.`
+      : unknown;
+  }
   if (!Number.isSafeInteger(allowance.limit) || allowance.limit < 1 || allowance.limit > 100_000
     || allowance.remaining !== Math.max(0, allowance.limit - allowance.reserved)) return unknown;
   return `${allowance.remaining} of ${allowance.limit} review dispatches remaining at last refresh · ${allowance.reserved} reserved. Failed or uncertain attempts count. This is not a token or dollar balance.`;
@@ -479,6 +484,7 @@ export function projectIdentityResolutionMessage(
 }
 
 export function titleCase(value: string): string {
+  if (value.trim().toLowerCase() === "opencode") return "OpenCode";
   return humanize(value).replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
@@ -972,10 +978,27 @@ export function createGoalPayload(input: {
   rejected_approaches: string[];
   unresolved_questions: string[];
 } {
+  const firstLine = input.objective.trim().split(/\r?\n/)[0];
+  const titleGraphemes = Array.from(
+    new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(firstLine),
+    (part) => part.segment,
+  );
+  let defaultTitle = firstLine;
+  if (titleGraphemes.length > 64) {
+    const prefix = titleGraphemes.slice(0, 63);
+    let boundary = -1;
+    for (let index = prefix.length - 1; index > 0; index -= 1) {
+      if (/\s/u.test(prefix[index])) {
+        boundary = index;
+        break;
+      }
+    }
+    defaultTitle = `${(boundary > 0 ? prefix.slice(0, boundary) : prefix).join("").trimEnd()}…`;
+  }
   return {
     ...(input.idempotencyKey ? { idempotency_key: input.idempotencyKey } : {}),
     project_id: input.projectId,
-    title: input.title.trim() || input.objective.trim().split(/\r?\n/)[0].slice(0, 80),
+    title: input.title.trim() || defaultTitle,
     objective: input.objective.trim(),
     acceptance_criteria: normalizeLines(input.acceptance),
     constraints: normalizeLines(input.constraints),

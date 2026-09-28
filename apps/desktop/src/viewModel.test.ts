@@ -350,6 +350,9 @@ test("review allowance is a fresh reservation snapshot, not model usage or spend
   assert.match(supervisorReviewAllowanceCopy({ ...session, supervisor_review_allowance: {
     ...session.supervisor_review_allowance, limit: null, remaining: null,
   } }, true, now), /No review limit configured/);
+  assert.match(supervisorReviewAllowanceCopy({ ...session, supervisor_review_allowance: {
+    ...session.supervisor_review_allowance, limit: 0, remaining: 0,
+  } }, true, now), /Automatic model reviews paused · 2 review dispatches previously reserved/);
 });
 
 test("delayed pet snapshots cannot replace a newer allowance or another session's count", () => {
@@ -513,7 +516,16 @@ test("goal names are optional for creation and editing", () => {
   assert.equal(createGoalPayload(draft).title, "Finish the demo");
   assert.equal(updateGoalPayload(draft, 1).title, "Finish the demo");
   assert.equal(createGoalPayload({ ...draft, title: " My title " }).title, "My title");
-  assert.equal(createGoalPayload({ ...draft, objective: "x".repeat(200) }).title.length, 80);
+  assert.equal(createGoalPayload({ ...draft, objective: "x".repeat(200) }).title.length, 64);
+  assert.equal(createGoalPayload({ ...draft,
+    objective: "Verify PEX supervision of this disposable OpenCode session without starting a model turn.",
+  }).title, "Verify PEX supervision of this disposable OpenCode session…");
+  assert.equal(createGoalPayload({ ...draft,
+    objective: `${"x".repeat(62)}😀 later`,
+  }).title, `${"x".repeat(62)}😀…`);
+  assert.equal(createGoalPayload({ ...draft,
+    objective: `Fix ${"a".repeat(100)}`,
+  }).title, "Fix…");
 });
 
 test("goal payload keeps constraints and non-goals separate", () => {
@@ -1175,8 +1187,8 @@ test("Inspector questions prioritize the selected worker over historical row ord
   const cursor = { id: "cursor:1", harness_type: "cursor", status: "working" };
   const selected = { id: "opencode:1", harness_type: "opencode", status: "stopped" };
   const questions = askPexQuestions([cursor, selected], null, selected);
-  assert.equal(questions[0], "what is Opencode doing?");
-  assert.match(questions.join("\n"), /what does Cursor know that Opencode doesn't/);
+  assert.equal(questions[0], "what is OpenCode doing?");
+  assert.match(questions.join("\n"), /what does Cursor know that OpenCode doesn't/);
 });
 
 test("recent handoff and approval moods animate without hiding higher-priority states", () => {
