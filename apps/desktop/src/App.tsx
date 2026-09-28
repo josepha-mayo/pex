@@ -2634,26 +2634,6 @@ export function App() {
               <span><strong>{sessionStateFresh ? pet?.needs_you || 0 : "—"}</strong> need you</span>
               <span><strong>{sessionStateFresh ? pet?.drifting || 0 : "—"}</strong> drifting</span>
             </div>
-          {attachedGoal ? (
-            <section className="workspace-goal" aria-label="Persistent goal">
-              <div className="workspace-section-heading">
-                <p className="eyebrow">{goalStateFresh ? "The objective" : "Cached objective"}</p>
-                <button type="button" className="text-button" onClick={() => openInspector()}>Goal details ↗</button>
-              </div>
-              <p>{attachedGoal.objective}</p>
-            </section>
-          ) : null}
-          {current && attachedGoal && !setup
-            && (current.project_id || current.cwd)
-            && current.capabilities?.send_message === true
-            && (current.harness_type === "codex" || current.harness_type === "opencode") ? (
-              <OperatorTaskComposer key={`${current.id}:${attachedGoal.id}:${current.project_id || current.cwd}`}
-                request={sharedConnectionRequest}
-                binding={{ sessionId: current.id, goalId: attachedGoal.id, projectId: current.project_id || current.cwd || "" }}
-                available={sessionStateFresh && goalStateFresh && !bridgeError && !current.supervision_paused}
-                onDelivered={() => void refreshPet()}
-                onInspect={() => openInspector(current.id)} />
-            ) : null}
             {!setup ? (
               <section className={`workspace-activity tone-${homeStatus.tone}`} aria-label="Current supervision">
                 <div className="workspace-section-heading">
@@ -2677,6 +2657,26 @@ export function App() {
                   </button> : null}
                 </div>
               </section>
+            ) : null}
+          {attachedGoal ? (
+            <section className="workspace-goal" aria-label="Persistent goal">
+              <div className="workspace-section-heading">
+                <p className="eyebrow">{goalStateFresh ? "The objective" : "Cached objective"}</p>
+                <button type="button" className="text-button" onClick={() => openInspector()}>Goal details ↗</button>
+              </div>
+              <p>{attachedGoal.objective}</p>
+            </section>
+          ) : null}
+          {current && attachedGoal && !setup
+            && (current.project_id || current.cwd)
+            && current.capabilities?.send_message === true
+            && (current.harness_type === "codex" || current.harness_type === "opencode") ? (
+              <OperatorTaskComposer key={`${current.id}:${attachedGoal.id}:${current.project_id || current.cwd}`}
+                request={sharedConnectionRequest}
+                binding={{ sessionId: current.id, goalId: attachedGoal.id, projectId: current.project_id || current.cwd || "" }}
+                available={sessionStateFresh && goalStateFresh && !bridgeError && !current.supervision_paused}
+                onDelivered={() => void refreshPet()}
+                onInspect={() => openInspector(current.id)} />
             ) : null}
             {setup ? (
               <div className="compact-setup">
