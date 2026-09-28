@@ -89,8 +89,115 @@ test("first-run guidance distinguishes no usable worker from an attachable unbou
     goalFresh: true,
   });
   assert.equal(detachedOpenCode?.detail.includes("OpenCode session record"), true);
+  assert.equal(detachedOpenCode?.detail.includes("an OpenCode session record"), true);
   assert.equal(detachedOpenCode?.detail.includes("running OpenCode server session"), true);
   assert.equal(detachedOpenCode?.detail.includes("Codex Desktop"), false);
+
+  const listedOpenCode = firstRunGuidance({
+    current: {
+      ...worker,
+      id: "opencode:listed",
+      harness_type: "opencode",
+      status: "discovered",
+      capabilities: {},
+      metadata: { discovery_observation_only: true },
+    },
+    sessionFresh: true,
+    currentInPetSnapshot: true,
+    goalFresh: true,
+  });
+  assert.equal(listedOpenCode?.state, "set_goal");
+  assert.equal(listedOpenCode?.cta?.intent, "goal");
+  assert.match(listedOpenCode?.detail || "", /connected OpenCode server.*observation is not confirmed/i);
+
+  const listedWithGoal = firstRunGuidance({
+    current: {
+      ...worker,
+      id: "opencode:listed",
+      harness_type: "opencode",
+      status: "discovered",
+      goal_id: goal.id,
+      capabilities: {},
+      metadata: { discovery_observation_only: true },
+    },
+    attachedGoal: goal,
+    sessionFresh: true,
+    currentInPetSnapshot: true,
+    goalFresh: true,
+  });
+  assert.equal(listedWithGoal?.state, "waiting_event");
+  assert.equal(listedWithGoal?.cta, null);
+  assert.match(listedWithGoal?.detail || "", /has not observed a live event/i);
+
+  const listedWithMissingGoal = firstRunGuidance({
+    current: {
+      ...worker,
+      id: "opencode:listed",
+      harness_type: "opencode",
+      status: "discovered",
+      goal_id: goal.id,
+      capabilities: {},
+      metadata: { discovery_observation_only: true },
+    },
+    attachedGoal: null,
+    sessionFresh: true,
+    currentInPetSnapshot: true,
+    goalFresh: true,
+  });
+  assert.equal(listedWithMissingGoal?.state, "unavailable");
+  assert.equal(listedWithMissingGoal?.title, "Checking the attached goal");
+
+  const archivedOpenCode = firstRunGuidance({
+    current: {
+      ...worker,
+      id: "opencode:archived",
+      harness_type: "opencode",
+      status: "discovered",
+      capabilities: {},
+      metadata: { discovery_observation_only: true },
+    },
+    sessionFresh: true,
+    currentInPetSnapshot: false,
+    goalFresh: true,
+  });
+  assert.equal(archivedOpenCode?.state, "connect_worker");
+  assert.doesNotMatch(archivedOpenCode?.detail || "", /found this session on the connected OpenCode server/i);
+
+  const archivedPausedOpenCode = firstRunGuidance({
+    current: {
+      ...worker,
+      id: "opencode:archived-paused",
+      harness_type: "opencode",
+      status: "discovered",
+      supervision_paused: true,
+      capabilities: {},
+      metadata: { discovery_observation_only: true },
+    },
+    sessionFresh: true,
+    currentInPetSnapshot: false,
+    goalFresh: true,
+  });
+  assert.equal(archivedPausedOpenCode?.state, "connect_worker");
+
+  for (const goal_id of [undefined, goal.id]) {
+    const pausedOpenCode = firstRunGuidance({
+      current: {
+        ...worker,
+        id: "opencode:paused",
+        harness_type: "opencode",
+        status: "discovered",
+        goal_id,
+        supervision_paused: true,
+        capabilities: {},
+        metadata: { discovery_observation_only: true },
+      },
+      attachedGoal: goal_id ? goal : null,
+      sessionFresh: true,
+      currentInPetSnapshot: true,
+      goalFresh: true,
+    });
+    assert.equal(pausedOpenCode, null);
+  }
 
   for (const current of [
     { ...worker, status: "detached" },

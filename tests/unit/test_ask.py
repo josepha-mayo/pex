@@ -34,6 +34,76 @@ def test_ask_pex_does_not_need_worker_without_model():
     assert "Nothing needs you" in answer_question("what needs me?", _working(), [])
 
 
+def test_ask_pex_does_not_claim_observation_without_a_visible_worker():
+    answer = answer_question("what needs me?", [], [])
+    assert "No authorized worker session is visible" in answer
+    assert "cannot tell whether a worker needs you" in answer
+
+
+def test_ask_pex_does_not_claim_active_supervision_from_discovery():
+    discovered = HarnessSession(
+        id="opencode:found",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="found",
+        status=SessionStatus.DISCOVERED,
+    )
+    answer = answer_question("what needs me?", [discovered], [])
+    assert "No decision request is recorded" in answer
+    assert "does not confirm a live turn or active supervision" in answer
+
+
+def test_ask_pex_counts_multiple_discovered_sessions():
+    first = HarnessSession(
+        id="opencode:found-1",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="found-1",
+        status=SessionStatus.DISCOVERED,
+    )
+    second = first.model_copy(update={"id": "opencode:found-2", "vendor_session_id": "found-2"})
+    answer = answer_question("what needs me?", [first, second], [])
+    assert "2 visible discovered sessions" in answer
+
+
+def test_ask_pex_preserves_uncertainty_with_working_and_discovered_sessions():
+    discovered = HarnessSession(
+        id="opencode:found",
+        harness_type=HarnessType.OPENCODE,
+        vendor_session_id="found",
+        status=SessionStatus.DISCOVERED,
+    )
+    answer = answer_question("what needs me?", [*_working(), discovered], [])
+    assert "1 working/verifying worker" in answer
+    assert "1 discovered session" in answer
+    assert "Discovery does not confirm a live turn" in answer
+    assert "Nothing needs you" not in answer
+
+
+@pytest.mark.parametrize(
+    "status, marker",
+    [
+        (SessionStatus.DRIFTING, "marked drifting"),
+        (SessionStatus.BLOCKED, "marked blocked or errored"),
+        (SessionStatus.ERROR, "marked blocked or errored"),
+    ],
+)
+def test_ask_pex_surfaces_visible_worker_trouble(status, marker):
+    session = _working()[0].model_copy(update={"status": status})
+    answer = answer_question("what needs me?", [session], [])
+    assert marker in answer
+    assert "Inspect" in answer
+    assert "no human decision request is recorded" in answer
+    assert "no current worker activity" not in answer
+
+
+def test_ask_pex_does_not_treat_historical_intervention_as_current_visibility():
+    intervention = _nudge("cursor:1", "Earlier intervention")
+    intervention.policy_verdict = PolicyVerdict.ASK_HUMAN
+    answer = answer_question("what needs me?", [], [intervention])
+    assert "No authorized worker session is visible" in answer
+    assert "Latest recorded intervention" in answer
+    assert "Nothing else needs you" not in answer
+
+
 @pytest.mark.parametrize("last_activity", [None, datetime(2026, 1, 1, tzinfo=UTC)])
 def test_discovered_session_does_not_imply_current_live_work(last_activity):
     sessions = [HarnessSession(

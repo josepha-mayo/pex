@@ -4,7 +4,7 @@ import { canAttachPersistentGoal, supervisorActivationCopy, titleCase } from "./
 export type FirstRunCtaIntent = "connect" | "goal";
 
 export type FirstRunGuidance = {
-  state: "connect_worker" | "set_goal" | "unavailable";
+  state: "connect_worker" | "set_goal" | "waiting_event" | "unavailable";
   title: string;
   detail: string;
   cta: { intent: FirstRunCtaIntent; label: string } | null;
@@ -74,12 +74,14 @@ export function firstRunGuidance({
   current,
   attachedGoal,
   sessionFresh,
+  currentInPetSnapshot = false,
   goalFresh,
   bridgeError,
 }: {
   current?: SessionRow;
   attachedGoal?: Goal | null;
   sessionFresh: boolean;
+  currentInPetSnapshot?: boolean;
   goalFresh: boolean;
   bridgeError?: string | null;
 }): FirstRunGuidance | null {
@@ -99,9 +101,51 @@ export function firstRunGuidance({
       cta: null,
     };
   }
+  // A paused worker needs an explicit resume path on Home, not setup guidance.
+  if (current?.supervision_paused && currentInPetSnapshot) return null;
+  if (
+    current?.harness_type === "opencode"
+    && currentInPetSnapshot
+    && current.status === "discovered"
+    && current.metadata?.discovery_observation_only === true
+    && canAttachPersistentGoal(current)
+    && !isCurrentlyObservableWorker(current)
+  ) {
+    if (!goalFresh) {
+      return {
+        state: "unavailable",
+        title: "Checking the OpenCode goal",
+        detail: "PEX is refreshing this session’s goal before offering the next step.",
+        cta: null,
+      };
+    }
+    if (!current.goal_id) {
+      return {
+        state: "set_goal",
+        title: "Set a goal for OpenCode",
+        detail: "PEX found this session on the connected OpenCode server. Add a goal, then resume work in that same session. Live event observation is not confirmed yet.",
+        cta: { intent: "goal", label: "Set a goal for OpenCode" },
+      };
+    }
+    if (attachedGoal?.id !== current.goal_id) {
+      return {
+        state: "unavailable",
+        title: "Checking the attached goal",
+        detail: "PEX will not treat this session as ready until its persistent goal is current.",
+        cta: null,
+      };
+    }
+    return {
+      state: "waiting_event",
+      title: "Waiting for OpenCode activity",
+      detail: "The goal is attached, but PEX has not observed a live event from this session yet. Resume work in that same OpenCode session; reconnect if activity does not appear.",
+      cta: null,
+    };
+  }
   if (current && !isCurrentlyObservableWorker(current)) {
     const harness = current.harness_type;
     const harnessLabel = harness === "opencode" ? "OpenCode" : titleCase(harness || "worker");
+    const article = harness === "opencode" ? "an" : "a";
     const nextStep = harness === "codex"
       ? "In Connections, connect the isolated Codex App Server and create a worker in your project folder, or observe an existing Codex CLI thread. PEX does not control Codex Desktop tasks."
       : harness === "opencode"
@@ -110,7 +154,8 @@ export function firstRunGuidance({
     return {
       state: "connect_worker",
       title: "Connect a supported session",
-      detail: `PEX has a ${harnessLabel} session record, but it isn't currently available for supervision. ${nextStep}`,
+      detail: `PEX has ${article} ${harnessLabel} session record, `
+        + `but it isn't currently available for supervision. ${nextStep}`,
       cta: { intent: "connect", label: "Open Connections" },
     };
   }

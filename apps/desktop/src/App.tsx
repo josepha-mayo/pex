@@ -1548,6 +1548,7 @@ export function App() {
     current,
     attachedGoal,
     sessionFresh: sessionStateFresh,
+    currentInPetSnapshot: Boolean(current && homeSessions.some((session) => session.id === current.id)),
     goalFresh: goalStateFresh,
     bridgeError,
   });

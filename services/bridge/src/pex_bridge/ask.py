@@ -162,6 +162,9 @@ def _keyword_answer(
     q = question.lower().strip()
     needs = [s for s in sessions if s.status == SessionStatus.NEEDS_DECISION]
     working = [s for s in sessions if s.status.value in {"working", "verifying"}]
+    discovered = [s for s in sessions if s.status == SessionStatus.DISCOVERED]
+    drifting = [s for s in sessions if s.status == SessionStatus.DRIFTING]
+    blocked = [s for s in sessions if s.status in {SessionStatus.BLOCKED, SessionStatus.ERROR}]
     last = interventions[0] if interventions else None
     paused = [s for s in sessions if s.supervision_paused]
     mentioned = _mentioned_harnesses(q)
@@ -174,17 +177,58 @@ def _keyword_answer(
                 "PEX did not auto-approve because the action is consequential.",
                 True,
             )
-        if last and last.policy_verdict.value != "allow" and last.action_taken != "NOOP":
+        history = (
+            f" Latest recorded intervention: {last.action_taken} ({last.result})."
+            if last and last.policy_verdict.value != "allow" and last.action_taken != "NOOP"
+            else ""
+        )
+        if not sessions:
             return _AskAnswer(
-                f"Last intervention: {last.action_taken} ({last.result}). Nothing else needs you.",
+                "No authorized worker session is visible to PEX right now. "
+                f"PEX cannot tell whether a worker needs you.{history}",
+                True,
+            )
+        if blocked:
+            return _AskAnswer(
+                f"{len(blocked)} visible worker(s) marked blocked or errored. "
+                f"Inspect their current state; no human decision request is recorded.{history}",
+                True,
+            )
+        if drifting:
+            return _AskAnswer(
+                f"{len(drifting)} visible worker(s) marked drifting. "
+                "Inspect the goal and current evidence; "
+                f"no human decision request is recorded.{history}",
+                True,
+            )
+        if working and discovered:
+            return _AskAnswer(
+                f"No decision request is recorded for the visible sessions. "
+                f"{len(working)} working/verifying worker"
+                f"{'s' if len(working) != 1 else ''}; "
+                f"{len(discovered)} discovered session"
+                f"{'s' if len(discovered) != 1 else ''}. "
+                f"Discovery does not confirm a live turn or active supervision.{history}",
                 True,
             )
         if working:
             return _AskAnswer(
-                f"{len(working)} agent(s) working. Nothing needs you.",
+                f"{len(working)} agent(s) working. Nothing needs you in the visible sessions."
+                f"{history}",
                 True,
             )
-        return _AskAnswer("Nothing needs you. PEX is observing.", True)
+        if len(discovered) == len(sessions):
+            return _AskAnswer(
+                f"No decision request is recorded for {len(sessions)} visible discovered "
+                f"session{'s' if len(sessions) != 1 else ''}. "
+                f"Discovery does not confirm a live turn or active supervision.{history}",
+                True,
+            )
+        return _AskAnswer(
+            "No decision request is recorded for the visible sessions. "
+            f"PEX has no current worker activity to report.{history}",
+            True,
+        )
 
     if _KNOW_THAT.search(q) and len(mentioned) >= 2:
         return _AskAnswer(
