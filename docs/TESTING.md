@@ -230,6 +230,18 @@ pair validator. PEX took 129.12 seconds versus 43.23 seconds without it. See
 [`docs/evidence/opencode-deterministic-recovery-pair-a957c2d.json`](evidence/opencode-deterministic-recovery-pair-a957c2d.json).
 This one controlled diagnostic does not establish a general reliability rate,
 speedup, Nebius semantic-model performance, or native desktop acceptance.
+On exact source `bf13f5e`, a credential-isolated native OpenCode free-model pair
+used `opencode/nemotron-3-ultra-free` and the same executable hash in both arms.
+The baseline stopped with independent pytest failing (exit 1). The PEX arm
+also failed its initial independent pytest, then requested verification and
+sent a same-session correction; final pytest passed (exit 0). The pair
+validator found no provenance blockers, and PEX made zero supervisor model
+calls. PEX took 146.95 seconds versus 38.98 seconds for baseline. Neither arm
+produced the optional stage/final artifact bytes in this false-test-claim
+scenario, so this result establishes only recovery of the failing test. See
+[`docs/evidence/opencode-native-free-recovery-pair-bf13f5e.json`](evidence/opencode-native-free-recovery-pair-bf13f5e.json).
+This single controlled pair is not a representative performance estimate or
+native desktop acceptance.
 On exact source `8c059c0`, a second no-spend pair tested context recovery across
 two stages. Both free OpenCode workers created the exact first-stage artifact and
 stopped with the final artifact absent. The baseline stayed incomplete (43.61
