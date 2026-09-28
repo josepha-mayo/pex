@@ -38,7 +38,9 @@ from benchmarks.opencode_completion import (  # noqa: E402
 )
 from benchmarks.opencode_proof_route import (  # noqa: E402
     FREE_OPENCODE_MODELS,
-    proof_worker_base_url,
+    executable_sha256,
+    native_free_worker_environment,
+    proof_worker_config,
     resolve_opencode_executable,
 )
 from benchmarks.opencode_sse_journal import OpenCodeSseJournal  # noqa: E402
@@ -71,7 +73,8 @@ def source_is_clean() -> bool:
 
 
 async def run_case(
-    root: Path, server: subprocess.Popen[bytes], worker_model: str, scenario: str
+    root: Path, server: subprocess.Popen[bytes], worker_model: str, scenario: str,
+    worker_credential_source: str,
 ) -> dict:
     workspace = root / "workspace"
     workspace.mkdir(parents=True, exist_ok=False)
@@ -194,6 +197,7 @@ async def run_case(
             "pex_attached": False,
             "worker_model": worker_model,
             "worker_provider": "opencode",
+            "worker_credential_source": worker_credential_source,
             "first_stop_observation": first_stop,
             "independent_final_pytest": final_test,
             "stage_one_exact": stage_exact,
@@ -247,8 +251,12 @@ async def main() -> int:
         parser.error("--run-name must contain lowercase letters, digits and hyphens only")
     if not source_is_clean():
         parser.error("Commit or otherwise resolve source changes before a live evidence run")
-    if not os.environ.get("PEX_PROOF_WORKER_KEY"):
-        parser.error("PEX_PROOF_WORKER_KEY is required for the isolated free worker")
+    has_worker_credential = "PEX_PROOF_WORKER_KEY" in os.environ
+    if has_worker_credential and not os.environ["PEX_PROOF_WORKER_KEY"].strip():
+        parser.error("PEX_PROOF_WORKER_KEY was supplied but is empty")
+    worker_credential_source = (
+        "separate_environment" if has_worker_credential else "native_free"
+    )
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 4098))
     root = REPO / "build" / args.run_name
@@ -259,34 +267,21 @@ async def main() -> int:
     if shim is None:
         raise RuntimeError("OpenCode executable is unavailable")
     executable = resolve_opencode_executable(shim)
-    environment = os.environ.copy()
-    environment["PEX_PROOF_PROVIDER_KEY"] = environment.pop("PEX_PROOF_WORKER_KEY")
-    for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
-        environment[f"XDG_{kind}_HOME"] = str(root / kind.lower())
+    worker_executable_sha256 = executable_sha256(executable)
+    if has_worker_credential:
+        environment = os.environ.copy()
+        environment.pop("PEX_PROOF_WORKER_KEY", None)
+        environment["PEX_PROOF_PROVIDER_KEY"] = os.environ["PEX_PROOF_WORKER_KEY"]
+        for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
+            environment[f"XDG_{kind}_HOME"] = str(root / kind.lower())
+    else:
+        environment = native_free_worker_environment(os.environ, root)
     write_json(
         root / "opencode.json",
-        {
-            "$schema": "https://opencode.ai/config.json",
-            "model": f"opencode/{args.worker_model}",
-            "small_model": f"opencode/{args.worker_model}",
-            "provider": {
-                "opencode": {
-                    "npm": "@ai-sdk/openai-compatible",
-                    "name": "OpenCode Zen",
-                    "options": {
-                        "baseURL": proof_worker_base_url("opencode"),
-                        "apiKey": "{env:PEX_PROOF_PROVIDER_KEY}",
-                    },
-                    "models": {
-                        args.worker_model: {
-                            "name": "PEX OpenCode worker model",
-                            "reasoning": True,
-                            "interleaved": {"field": "reasoning_content"},
-                        }
-                    },
-                }
-            },
-        },
+        proof_worker_config(
+            "opencode", args.worker_model, "OpenCode Zen",
+            native_free=not has_worker_credential,
+        ),
     )
     server: subprocess.Popen[bytes] | None = None
     receipt: dict = {}
@@ -321,7 +316,9 @@ async def main() -> int:
                             break
                         except httpx.HTTPError:
                             await asyncio.sleep(0.5)
-            receipt = await run_case(root, server, args.worker_model, args.scenario)
+            receipt = await run_case(
+                root, server, args.worker_model, args.scenario, worker_credential_source,
+            )
     except Exception as exc:
         error_type = type(exc).__name__
         write_json(
@@ -344,6 +341,8 @@ async def main() -> int:
         "source_unchanged": source_commit() == start_commit and source_is_clean(),
         "receipt": receipt,
         "error_type": error_type,
+        "worker_credential_source": worker_credential_source,
+        "worker_executable_sha256": worker_executable_sha256,
         "measurement_valid": bool(
             receipt.get("worker_completed")
             and receipt.get("raw_sse_capture")

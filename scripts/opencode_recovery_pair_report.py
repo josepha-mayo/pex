@@ -5,7 +5,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
+
+from benchmarks.opencode_proof_route import FREE_OPENCODE_MODELS  # noqa: E402
 
 
 def _load(path: Path) -> dict:
@@ -50,6 +56,14 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
         blockers.append("treatment supervisor mode is unsupported")
     if baseline.get("source_commit") != treatment.get("source_commit"):
         blockers.append("source commits differ")
+    executable_hash = baseline.get("worker_executable_sha256")
+    if (
+        not isinstance(executable_hash, str)
+        or len(executable_hash) != 64
+        or any(char not in "0123456789abcdef" for char in executable_hash)
+        or treatment.get("worker_executable_sha256") != executable_hash
+    ):
+        blockers.append("OpenCode executable fingerprints differ or are missing")
     for name, summary in (("baseline", baseline), ("treatment", treatment)):
         if summary.get("source_unchanged") is not True:
             blockers.append(f"{name} source changed during measurement")
@@ -76,8 +90,17 @@ def build_report(baseline_root: Path, treatment_root: Path) -> dict:
         "infrastructure_abort_reason"
     ):
         blockers.append("provider infrastructure aborted")
-    if treatment.get("worker_credential_source") != "separate_environment":
-        blockers.append("treatment worker route is not the separate free credential")
+    worker_route = treatment.get("worker_credential_source")
+    if (
+        worker_route not in {"separate_environment", "native_free"}
+        or base_receipt.get("worker_credential_source") != worker_route
+    ):
+        blockers.append("baseline and treatment free-worker routes differ or are unverified")
+    if (
+        worker_route == "native_free"
+        and base_receipt.get("worker_model") not in FREE_OPENCODE_MODELS
+    ):
+        blockers.append("native free route requires a free worker model")
 
     matched_hashes = {}
     matched_files = ["public-task.json"]

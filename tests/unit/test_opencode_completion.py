@@ -296,10 +296,55 @@ def test_free_worker_route_accepts_an_explicit_separate_worker_credential():
     assert proof_worker_base_url("opencode") == "https://opencode.ai/zen/v1"
 
 
+def test_native_free_worker_route_needs_no_saved_provider_credential():
+    assert proof_worker_route(
+        "nebius", "nemotron-3-ultra-free", native_free=True,
+    ) == ("opencode", "OpenCode Zen")
+    from benchmarks.opencode_proof_route import proof_worker_config
+
+    config = proof_worker_config(
+        "opencode", "nemotron-3-ultra-free", "OpenCode Zen", native_free=True,
+    )
+    assert config["model"] == "opencode/nemotron-3-ultra-free"
+    assert "provider" not in config
+    with pytest.raises(RuntimeError, match="listed free OpenCode model"):
+        proof_worker_config(
+            "nebius", "nvidia/Nemotron-3_5-Lightning", "Nebius Token Factory",
+            native_free=True,
+        )
+
+
+def test_native_free_worker_environment_excludes_host_credentials(tmp_path):
+    from benchmarks.opencode_proof_route import native_free_worker_environment
+
+    environment = native_free_worker_environment(
+        {
+            "PATH": "C:/tools", "SystemRoot": "C:/Windows",
+            "OPENAI_API_KEY": "secret", "OPENCODE_API_KEY": "secret",
+            "PEX_ZEN_API_KEY": "secret", "NEBIUS_API_KEY": "secret",
+            "OPENCODE_CONFIG_CONTENT": "host config",
+            "HOME": "host-home", "APPDATA": "host-appdata",
+        },
+        tmp_path,
+    )
+    assert environment["PATH"] == "C:/tools"
+    assert environment["SystemRoot"] == "C:/Windows"
+    assert all("secret" not in value for value in environment.values())
+    assert "OPENCODE_CONFIG_CONTENT" not in environment
+    assert environment["HOME"] == str(tmp_path / "home")
+    assert environment["APPDATA"] == str(tmp_path / "appdata")
+
+
 def test_paid_worker_route_cannot_borrow_a_separate_unbound_credential():
     with pytest.raises(RuntimeError, match="saved Nebius route"):
         proof_worker_route(
             "zen",
+            "nvidia/nemotron-3-super-120b-a12b",
+            separate_worker_credential=True,
+        )
+    with pytest.raises(RuntimeError, match="cannot use a separate worker credential"):
+        proof_worker_route(
+            "nebius",
             "nvidia/nemotron-3-super-120b-a12b",
             separate_worker_credential=True,
         )

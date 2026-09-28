@@ -32,7 +32,9 @@ from benchmarks.opencode_proof_route import (  # noqa: E402
     FREE_OPENCODE_MODELS,
     PROOF_WORKER_MODELS,
     ProofRouteError,
-    proof_worker_base_url,
+    executable_sha256,
+    native_free_worker_environment,
+    proof_worker_config,
     proof_worker_route,
     resolve_opencode_executable,
 )
@@ -674,14 +676,16 @@ async def main() -> int:
         SUPERVISOR_MODEL = choice.model_id
     else:
         SUPERVISOR_MODEL = "disabled"
-        if not os.environ.get("PEX_PROOF_WORKER_KEY"):
-            raise RuntimeError("deterministic mode requires a separate free worker credential")
     has_separate_worker_credential = "PEX_PROOF_WORKER_KEY" in os.environ
+    native_free = (
+        not has_separate_worker_credential and args.worker_model in FREE_OPENCODE_MODELS
+    )
     try:
         worker_provider, provider_name = proof_worker_route(
             choice.provider if choice is not None else "zen",
             args.worker_model,
             separate_worker_credential=has_separate_worker_credential,
+            native_free=native_free,
         )
     except ProofRouteError as exc:
         result = {
@@ -712,22 +716,31 @@ async def main() -> int:
         if not supervisor_secret:
             raise RuntimeError("saved supervisor vault credential is unavailable")
     worker_secret = (
+        None if native_free else
         validate_supervisor_secret(os.environ["PEX_PROOF_WORKER_KEY"])
-        if has_separate_worker_credential
-        else supervisor_secret
+        if has_separate_worker_credential else supervisor_secret
     )
-    assert worker_secret is not None
+    if not native_free and worker_secret is None:
+        raise RuntimeError("worker credential is unavailable")
     worker_credential_source = (
+        "native_free" if native_free else
         "separate_environment" if has_separate_worker_credential else "saved_supervisor"
     )
     shim = shutil.which("opencode.cmd") or shutil.which("opencode")
     if shim is None:
         raise RuntimeError("OpenCode executable is unavailable")
     executable = resolve_opencode_executable(shim)
-    environment = os.environ.copy()
-    environment["PEX_PROOF_PROVIDER_KEY"] = worker_secret
-    for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
-        environment[f"XDG_{kind}_HOME"] = str(root / kind.lower())
+    worker_executable_sha256 = executable_sha256(executable)
+    if native_free:
+        environment = native_free_worker_environment(os.environ, root)
+    else:
+        environment = os.environ.copy()
+        environment.pop("PEX_PROOF_WORKER_KEY", None)
+        environment.pop("PEX_PROOF_PROVIDER_KEY", None)
+        if worker_secret is not None:
+            environment["PEX_PROOF_PROVIDER_KEY"] = worker_secret
+        for kind in ("CONFIG", "CACHE", "DATA", "STATE"):
+            environment[f"XDG_{kind}_HOME"] = str(root / kind.lower())
     pins = (
         {
             "PEX_SUPERVISOR_PROVIDER": choice.provider,
@@ -740,28 +753,9 @@ async def main() -> int:
     )
     write_json(
         root / "opencode.json",
-        {
-            "$schema": "https://opencode.ai/config.json",
-            "model": f"{worker_provider}/{args.worker_model}",
-            "small_model": f"{worker_provider}/{args.worker_model}",
-            "provider": {
-                worker_provider: {
-                    "npm": "@ai-sdk/openai-compatible",
-                    "name": provider_name,
-                    "options": {
-                        "baseURL": proof_worker_base_url(worker_provider),
-                        "apiKey": "{env:PEX_PROOF_PROVIDER_KEY}",
-                    },
-                    "models": {
-                        args.worker_model: {
-                            "name": "PEX OpenCode worker model",
-                            "reasoning": True,
-                            "interleaved": {"field": "reasoning_content"},
-                        },
-                    },
-                }
-            },
-        },
+        proof_worker_config(
+            worker_provider, args.worker_model, provider_name, native_free=native_free,
+        ),
     )
     before_env = {key: os.environ.get(key) for key in pins}
     os.environ.update(pins)
@@ -837,6 +831,7 @@ async def main() -> int:
         "error_type": error_type,
         "worker_provider": worker_provider,
         "worker_credential_source": worker_credential_source,
+        "worker_executable_sha256": worker_executable_sha256,
         "supervisor_provider": choice.provider if choice is not None else None,
         "pex_mode": args.pex_mode,
         "passed": receipt.get("passed") is True

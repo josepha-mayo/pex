@@ -41,6 +41,7 @@ def _pair(
     base_receipt = {
         "arm": "baseline", "pex_attached": False, "scenario": scenario,
         "worker_model": "free-model", "worker_provider": "opencode",
+        "worker_credential_source": "separate_environment",
         "worker_completed": True, "followup_count": 0, "event_count": 1,
         "first_stop_observation": {
             "independent_initial_pytest": {"exit_code": 1},
@@ -69,12 +70,14 @@ def _pair(
         "source_commit": "same-commit", "source_unchanged": True,
         "owned_server_exited": True, "error_type": None,
         "measurement_valid": True, "receipt": base_receipt,
+        "worker_executable_sha256": "a" * 64,
     })
     _write_json(treatment / "summary.json", {
         "source_commit": "same-commit", "source_unchanged": True,
         "owned_server_exited": True, "error_type": None,
         "worker_provider": "opencode",
         "worker_credential_source": "separate_environment",
+        "worker_executable_sha256": "a" * 64,
         "receipt": treatment_receipt,
     })
     _write_json(treatment / "events.json", [{}])
@@ -94,6 +97,37 @@ def test_recovery_pair_rejects_missing_treatment_raw_stream(tmp_path: Path) -> N
     report = build_report(baseline, treatment)
     assert report["valid_pair"] is False
     assert "treatment raw OpenCode SSE is missing or invalid" in report["blockers"]
+
+
+def test_recovery_pair_rejects_different_worker_executables(tmp_path: Path) -> None:
+    baseline, treatment = _pair(tmp_path)
+    summary_path = treatment / "summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["worker_executable_sha256"] = "b" * 64
+    _write_json(summary_path, summary)
+    report = build_report(baseline, treatment)
+    assert report["valid_pair"] is False
+    assert "OpenCode executable fingerprints differ or are missing" in report["blockers"]
+
+
+def test_recovery_pair_accepts_matching_native_free_routes_only(tmp_path: Path) -> None:
+    baseline, treatment = _pair(tmp_path)
+    base_path = baseline / "summary.json"
+    treatment_path = treatment / "summary.json"
+    base = json.loads(base_path.read_text(encoding="utf-8"))
+    pex = json.loads(treatment_path.read_text(encoding="utf-8"))
+    base["receipt"]["worker_model"] = "nemotron-3-ultra-free"
+    pex["receipt"]["worker_model"] = "nemotron-3-ultra-free"
+    base["receipt"]["worker_credential_source"] = "native_free"
+    pex["worker_credential_source"] = "native_free"
+    pex["pex_mode"] = "deterministic"
+    pex["receipt"]["all_no_model_reviews_completed"] = True
+    _write_json(base_path, base)
+    _write_json(treatment_path, pex)
+    assert build_report(baseline, treatment)["valid_pair"] is True
+    base["receipt"]["worker_credential_source"] = "separate_environment"
+    _write_json(base_path, base)
+    assert build_report(baseline, treatment)["valid_pair"] is False
 
 
 def test_recovery_pair_rejects_tampered_treatment_raw_stream(tmp_path: Path) -> None:

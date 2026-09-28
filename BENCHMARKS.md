@@ -214,17 +214,18 @@ case order, public task bytes, or run success differs. A valid result is still a
 bounded paired diagnostic over small public tasks, not a general productivity
 benchmark or a PexBench freeze.
 
-OpenCode's free-tier models can run as OpenCode workers, but its API rejects
-calls from PEX's separate supervisor process. The runner rejects a free-model
-semantic supervisor choice before starting work. A real semantic comparison
-requires an API-accessible supervisor route; deterministic attachment alone
-does not establish a quality gain.
+OpenCode's listed free-tier models can run through an isolated native OpenCode
+server without a separate worker API credential. This route is recorded as
+`native_free` in both arms and the pair reporter requires the same route and
+model in each. Direct anonymous calls to the Zen API still return 403, so the
+runner does not present that API as a supervisor route. A real semantic
+comparison requires an API-accessible supervisor model; deterministic
+attachment alone does not establish a quality gain.
 
-For the normal product topology where the OpenCode worker and PEX supervisor
-use different providers, set `PEX_PROOF_WORKER_KEY` for the worker. The runner
-binds that separate credential only to the reviewed free Zen worker
-endpoint and keeps the saved PEX supervisor credential in its original vault
-audience. A separate credential can never select a paid Nebius worker.
+An explicit `PEX_PROOF_WORKER_KEY` still selects the separately credentialed
+worker route. The runner binds that credential only to the reviewed free Zen
+worker endpoint and keeps the saved PEX supervisor credential in its original
+vault audience. A separate credential can never select a paid Nebius worker.
 
 The 23 September free-provider audit is retained in
 `docs/evidence/opencode-free-provider-audit-10afa99.json`. It records one free
