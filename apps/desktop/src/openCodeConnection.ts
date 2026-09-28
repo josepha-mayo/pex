@@ -18,7 +18,7 @@ export function openCodeConnectionFailure(error: unknown): string {
       return "PEX could not authorize this connection request. Restart PEX to refresh its local bridge connection; do not paste your Zen key into the server address.";
     }
     if (error.status === 409) {
-      return "The bridge rejected the connection because an active connection conflicts with this request. Inspect the worker list before changing connections. No new worker was started.";
+      return "An active connection to OpenCode blocks this request. PEX did not confirm the address entered here. Return Home to inspect the current worker list.";
     }
     if (error.status === 502) {
       return "PEX could not verify OpenCode session access. Check the local server, address and server password, then retry. PEX discarded this connection attempt; it did not start a worker.";

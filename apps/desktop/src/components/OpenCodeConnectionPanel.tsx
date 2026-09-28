@@ -17,6 +17,7 @@ export function OpenCodeConnectionPanel({ request, onChanged, onReturnHome, avai
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [conflict, setConflict] = useState(false);
   const [setupHelpOpen, setSetupHelpOpen] = useState(false);
   const pending = useRef<AbortController | null>(null);
   useEffect(() => () => {
@@ -31,6 +32,7 @@ export function OpenCodeConnectionPanel({ request, onChanged, onReturnHome, avai
     setBusy(true);
     setNotice("");
     setConfirmed(false);
+    setConflict(false);
     const timer = setTimeout(() => controller.abort(), 12_000);
     try {
       await connectOpenCode(request, url, controller.signal, { username, password });
@@ -42,6 +44,10 @@ export function OpenCodeConnectionPanel({ request, onChanged, onReturnHome, avai
     } catch (error) {
       if (pending.current === controller) {
         setNotice(openCodeConnectionFailure(error));
+        if (error instanceof BridgeRequestError && error.status === 409) {
+          setConflict(true);
+          onChanged?.();
+        }
         if (error instanceof BridgeRequestError && error.status === 502) setSetupHelpOpen(true);
       }
     } finally {
@@ -80,12 +86,12 @@ export function OpenCodeConnectionPanel({ request, onChanged, onReturnHome, avai
           onChange={(event) => setPassword(event.target.value)} />
       </label>
     </details>
-    <button type="button" className={confirmed ? "ghost" : "solid"}
+    <button type="button" className={confirmed || conflict ? "ghost" : "solid"}
       disabled={busy || !available || !openCodeOrigin(url)}
       onClick={() => void connect()}>{busy ? "Connecting…" : "Connect OpenCode"}</button>
     {!available ? <p className="settings-note" role="status">PEX has not confirmed the local bridge. Open the PEX desktop app or retry its bridge before connecting a worker.</p> : null}
     {notice ? <p role="status" aria-live="polite">{notice}</p> : null}
-    {confirmed && available && onReturnHome ? <button type="button" className="solid"
+    {(confirmed || conflict) && available && onReturnHome ? <button type="button" className="solid"
       onClick={onReturnHome}>Return Home</button> : null}
     <details className="settings-advanced" open={setupHelpOpen}
       onToggle={(event) => setSetupHelpOpen(event.currentTarget.open)}>
