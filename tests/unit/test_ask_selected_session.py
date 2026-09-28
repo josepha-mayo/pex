@@ -13,8 +13,8 @@ from pex_bridge.config import Settings
 from pex_bridge.pipeline import Pipeline
 from pex_bridge.store import ProjectIdentityBlockedError, Store
 from pex_protocol.context import ContextItem
-from pex_protocol.enums import ContextKind, HarnessType, SessionStatus, SourceKind
-from pex_protocol.session import HarnessSession
+from pex_protocol.enums import ContextKind, EventType, HarnessType, SessionStatus, SourceKind
+from pex_protocol.session import HarnessEvent, HarnessSession
 from test_workspace_continuity_pipeline import bound_pipeline as bound_pipeline
 
 
@@ -68,6 +68,8 @@ async def _harness_session(
     harness_type: HarnessType,
     vendor: str,
     status: SessionStatus,
+    metadata: dict | None = None,
+    cwd: str | None = None,
 ) -> HarnessSession:
     session = HarnessSession(
         id=f"{harness_type.value}:{vendor}",
@@ -75,9 +77,10 @@ async def _harness_session(
         vendor_session_id=vendor,
         project_id="ask-selected-demo",
         goal_id=goal["id"],
-        cwd=None,
+        cwd=cwd,
         status=status,
         last_activity=datetime.now(UTC),
+        metadata=metadata or {},
     )
     await state.store.upsert_session(session)
     return session
@@ -97,10 +100,115 @@ async def test_ask_selected_opencode_does_not_fall_back_to_older_session(ask_cli
 
     assert response.status_code == 200
     answer = response.json()["answer"].lower()
-    assert "opencode is working" in answer
+    assert "opencode was last recorded as working" in answer
     assert "stopped" not in answer
     assert "fresh selected goal" in answer
     assert "older stopped goal" not in answer
+
+
+@pytest.mark.asyncio
+async def test_ask_worker_activity_requires_latest_bound_worker_event(ask_client):
+    goal = await _goal(ask_client, "Observed work")
+    session = await _opencode_session(goal, "observed", SessionStatus.WORKING)
+
+    async def ask() -> str:
+        response = await ask_client.post(
+            "/v1/ask", json={"question": "what needs me?", "session_id": session.id},
+        )
+        assert response.status_code == 200
+        return response.json()["answer"]
+
+    # A recent session.last_activity alone can come from control resolution.
+    assert "no latest bound event" in await ask()
+
+    def event(event_id: str, event_type: EventType, ts: datetime) -> HarnessEvent:
+        return HarnessEvent(
+            event_id=event_id,
+            ts=ts,
+            harness_type=HarnessType.OPENCODE,
+            session_id=session.id,
+            project_id=session.project_id,
+            goal_id=goal["id"],
+            event_type=event_type,
+        )
+
+    await state.store.add_event(
+        event("ask-old-work", EventType.TOOL_CALL, datetime(2026, 1, 1, tzinfo=UTC)),
+        bind_observation=True,
+    )
+    assert "no latest bound event" in await ask()
+
+    await state.store.add_event(
+        event("ask-current-work", EventType.TOOL_CALL, datetime.now(UTC)),
+        bind_observation=True,
+    )
+    assert "recent observed activity" in await ask()
+
+    # A newer historical insert cannot borrow authority from an earlier event.
+    await state.store.add_event(
+        event("ask-unbound-work", EventType.TOOL_CALL, datetime.now(UTC)),
+    )
+    assert "no latest bound event" in await ask()
+
+    await state.store.add_event(
+        event("ask-terminal", EventType.STOP, datetime.now(UTC)),
+        bind_observation=True,
+    )
+    assert "no latest bound event" in await ask()
+
+
+@pytest.mark.asyncio
+async def test_ask_codex_turn_started_is_bound_activity_evidence(ask_client, tmp_path):
+    goal = await _goal(ask_client, "Codex turn")
+    session = await _harness_session(
+        goal, HarnessType.CODEX, "turn", SessionStatus.WORKING,
+        metadata={"subscription_receipt": {"authorization_id": "first-subscription"}},
+        cwd=str(tmp_path),
+    )
+    control = await state.store.get_session_control_state(session.id)
+    await state.store.publish_observer_session(
+        session,
+        expected_control_revision=control["control_revision"],
+        expected_project_binding=control["project_binding"],
+    )
+    await state.store.add_event(
+        HarnessEvent(
+            event_id="ask-codex-turn-started",
+            ts=datetime.now(UTC),
+            harness_type=HarnessType.CODEX,
+            session_id=session.id,
+            project_id=session.project_id,
+            goal_id=goal["id"],
+            event_type=EventType.STATUS,
+            metadata={
+                "source": "codex_shared_live_notification",
+                "raw_method": "turn/started",
+                "subscription_id": "first-subscription",
+            },
+        ),
+        bind_observation=True,
+    )
+    assert await state.store.latest_observed_event(session.id) is not None
+    response = await ask_client.post(
+        "/v1/ask", json={"question": "what is Codex doing?", "session_id": session.id},
+    )
+    assert response.status_code == 200
+    answer = response.json()["answer"]
+    assert "recent observed worker event" in answer
+    assert "turn state may have changed" in answer
+
+    session.metadata["subscription_receipt"] = {"authorization_id": "new-subscription"}
+    control = await state.store.get_session_control_state(session.id)
+    await state.store.publish_observer_session(
+        session,
+        expected_control_revision=control["control_revision"],
+        expected_project_binding=control["project_binding"],
+    )
+    response = await ask_client.post(
+        "/v1/ask", json={"question": "what is Codex doing?", "session_id": session.id},
+    )
+    assert response.status_code == 200
+    assert "no latest bound event establishing recent worker activity" in response.json()["answer"]
 
 
 @pytest.mark.asyncio
@@ -158,7 +266,7 @@ async def test_ask_selected_keeps_only_different_harness_same_goal_context(ask_c
     assert knowledge.status_code == doing.status_code == 200
     assert "Codex peer observed the selected goal receipt." in knowledge.json()["answer"]
     assert "Other goal context" not in knowledge.json()["answer"]
-    assert "opencode is working" in doing.json()["answer"].lower()
+    assert "opencode was last recorded as working" in doing.json()["answer"].lower()
     assert "stopped" not in doing.json()["answer"].lower()
 
 

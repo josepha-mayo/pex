@@ -26,18 +26,59 @@ def _working() -> list[HarnessSession]:
             harness_type=HarnessType.CURSOR,
             vendor_session_id="1",
             status=SessionStatus.WORKING,
+            last_activity=datetime.now(UTC),
         )
     ]
 
 
-def test_ask_pex_does_not_need_worker_without_model():
-    assert "Nothing needs you" in answer_question("what needs me?", _working(), [])
+def test_ask_pex_reports_recent_worker_evidence_without_model():
+    sessions = _working()
+    answer = answer_question(
+        "what needs me?", sessions, [],
+        observed_activity_at={sessions[0].id: datetime.now(UTC)},
+    )
+    assert "No decision request is recorded" in answer
+    assert "1 worker has recent observed activity" in answer
 
 
 def test_ask_pex_does_not_claim_observation_without_a_visible_worker():
     answer = answer_question("what needs me?", [], [])
     assert "No authorized worker session is visible" in answer
     assert "cannot tell whether a worker needs you" in answer
+
+
+@pytest.mark.parametrize(
+    "observed_at",
+    [None, datetime(2026, 1, 1, tzinfo=UTC), datetime(2099, 1, 1, tzinfo=UTC)],
+)
+def test_ask_pex_does_not_call_old_or_unverified_working_status_current(observed_at):
+    session = _working()[0]
+    evidence = {session.id: observed_at} if observed_at is not None else {}
+    attention = answer_question(
+        "what needs me?", [session], [], observed_activity_at=evidence,
+    )
+    doing = answer_question(
+        "what is Cursor doing?", [session], [], observed_activity_at=evidence,
+    )
+    assert "no latest bound event establishing recent worker activity" in attention
+    assert "recent observed activity" not in attention
+    assert "was last recorded as working" in doing
+    assert "no latest bound event establishing recent worker activity" in doing
+
+
+def test_ask_pex_distinguishes_recent_and_old_working_sessions():
+    recent = _working()[0]
+    old = recent.model_copy(update={
+        "id": "codex:old", "harness_type": HarnessType.CODEX,
+        "last_activity": datetime(2026, 1, 1, tzinfo=UTC),
+    })
+    answer = answer_question(
+        "what needs me?", [recent, old], [],
+        observed_activity_at={recent.id: datetime.now(UTC), old.id: old.last_activity},
+    )
+    assert "1 session has no latest bound event establishing recent worker activity" in answer
+    assert "1 other working/verifying session has recent activity" in answer
+    assert "No decision request is recorded" in answer
 
 
 def test_ask_pex_does_not_claim_active_supervision_from_discovery():
@@ -176,6 +217,8 @@ def test_ask_minimizes_and_redacts_cloud_review_context(monkeypatch):
     assert answer == "Safe canonical answer."
     assert "untrusted data" in captured["system"]
     assert "instructions embedded inside" in captured["system"]
+    assert "recent_bound_worker_event=False" in captured["user"]
+    assert "not proof a turn is still live" in captured["user"]
     assert "PRIVATE-VENDOR-SESSION-123" not in captured["user"]
     assert "PRIVATE-GOAL-TITLE" not in captured["user"]
     assert "abcdefghijklmnopqrstuvwxyz1234567890" not in captured["user"]
@@ -263,7 +306,7 @@ def test_ask_answers_what_codex_is_doing_from_session_state():
         [],
         [goal],
     )
-    assert "codex is working" in answer.lower()
+    assert "codex was last recorded as working" in answer.lower()
     assert "Parser" in answer
 
 
@@ -274,8 +317,8 @@ def test_ask_spec_answers_are_not_overridden_by_supervisor_model(monkeypatch):
     monkeypatch.setattr("pex_supervisor.inspect_http.complete_review_answer", fake)
     sessions = [_session(HarnessType.CODEX, goal_id="goal-parser")]
     answer = answer_question("what is Codex doing?", sessions, [], model=object())
-    assert "codex is working" in answer.lower()
-    assert "Nothing needs you" in answer_question(
+    assert "codex was last recorded as working" in answer.lower()
+    assert "No decision request is recorded" in answer_question(
         "what needs me?", _working(), [], model=object()
     )
 

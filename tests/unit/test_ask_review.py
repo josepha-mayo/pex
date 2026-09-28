@@ -134,6 +134,8 @@ async def test_ask_review_agent_calls_inspect_tools_and_does_not_decide(tmp_path
     assert answer is not None
     assert "3 rows" in answer
     assert len(model.captured_messages) == 2
+    assert "Recent bound worker event: False" in model.captured_messages[0]
+    assert "Do not infer a turn is currently live" in model.captured_messages[0]
     assert "row_count" in model.captured_messages[1]
     assert "SupervisorDecision" not in "".join(model.captured_messages)
     assert "SEND_NUDGE" not in "".join(model.captured_messages)

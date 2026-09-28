@@ -9,6 +9,7 @@ artifacts, process, and public web when canonical keyword state is not enough.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from contextlib import suppress
 from datetime import UTC, datetime
 
@@ -88,15 +89,29 @@ def _review_request(
     )
 
 
-def _user_prompt(question: str, request: SupervisorRequest) -> str:
+def _user_prompt(
+    question: str,
+    request: SupervisorRequest,
+    observed_activity_at: Mapping[str, datetime],
+) -> str:
     from pex_supervisor.loop import _clip, _redact_request_text
 
     goal = request.goal
+    observed = observed_activity_at.get(request.session.id)
+    if observed is not None and observed.tzinfo is None:
+        observed = observed.replace(tzinfo=UTC)
+    recent = (
+        observed is not None
+        and 0 <= (datetime.now(UTC) - observed).total_seconds() <= 600
+    )
     rendered = (
         "Read-only human review. Do not intervene.\n"
         f"Human asked: {_clip(question.strip(), 400)}\n"
         f"Harness: {request.session.harness_type.value}\n"
         f"Status: {request.session.status.value}\n"
+        f"Recent bound worker event: {recent}\n"
+        "Status is last recorded state. Do not infer a turn is currently live "
+        "from status or event recency alone.\n"
         f"Goal: {_clip(goal.objective, 4_000) if goal else 'unattached'}\n"
         "Query inspect tools for repo, artifacts, and process state. "
         "Return exactly one validated review answer."
@@ -112,6 +127,7 @@ async def complete_inspect_review_async(
     model: object,
     *,
     wall_timeout: float = 20.0,
+    observed_activity_at: Mapping[str, datetime] | None = None,
 ) -> str | None:
     request = _review_request(sessions, goals, interventions)
     if request is None:
@@ -128,7 +144,7 @@ async def complete_inspect_review_async(
     async def invoke():
         require_review_authority()
         return await agent.invoke_async(
-            _user_prompt(question, request),
+            _user_prompt(question, request, observed_activity_at or {}),
             structured_output_model=ReviewAnswer,
             limits={"turns": 3, "output_tokens": 800, "total_tokens": 8_000},
         )
@@ -163,13 +179,16 @@ def complete_inspect_review(
     interventions: list[Intervention],
     goals: list[Goal],
     model: object,
+    *,
+    observed_activity_at: Mapping[str, datetime] | None = None,
 ) -> str | None:
     try:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(
             complete_inspect_review_async(
-                question, sessions, interventions, goals, model
+                question, sessions, interventions, goals, model,
+                observed_activity_at=observed_activity_at,
             )
         )
     return None

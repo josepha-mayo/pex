@@ -107,7 +107,7 @@ async def test_ask_answers_spec_questions_from_canonical_state_without_interrupt
 
     doing = await client.post("/v1/ask", json={"question": "what is Codex doing?"})
     assert doing.status_code == 200
-    assert "codex is working" in doing.json()["answer"].lower()
+    assert "codex was last recorded as working" in doing.json()["answer"].lower()
 
     gap = await client.post(
         "/v1/ask",
@@ -212,7 +212,7 @@ async def test_ask_never_falls_back_to_forensic_intervention_scan(
     )
 
     assert response.status_code == 200
-    assert "codex is working" in response.json()["answer"].lower()
+    assert "codex was last recorded as working" in response.json()["answer"].lower()
     assert raw_calls == 0
     assert authority_calls == 1
     assert state.adapters.for_session(session.id) is not None

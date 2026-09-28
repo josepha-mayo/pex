@@ -23970,6 +23970,27 @@ class Store:
         events.reverse()
         return events
 
+    async def latest_observed_event(self, session_id: str) -> HarnessEvent | None:
+        """Return the latest event only when it has live observation authority.
+
+        Historical/record-only inserts can appear after genuine worker events;
+        they must suppress a current-activity claim, not be skipped over.
+        """
+        _validate_store_id(session_id, label="event session id")
+        cursor = await self.db.execute(
+            "SELECT e.json, p.mode, p.accepted_project_binding "
+            "FROM event_processing AS p JOIN events AS e ON e.event_id = p.event_id "
+            "WHERE p.session_id = ? ORDER BY p.accept_seq DESC LIMIT 1",
+            (session_id,),
+        )
+        row = await cursor.fetchone()
+        if row is None or not (
+            row["mode"] == "pipeline"
+            or (row["mode"] == "record_only" and row["accepted_project_binding"])
+        ):
+            return None
+        return HarnessEvent.model_validate_json(row["json"])
+
     async def recent_events_through(
         self,
         *,

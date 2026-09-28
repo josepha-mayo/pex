@@ -1,4 +1,5 @@
 import os
+from datetime import UTC, datetime
 
 from pex_bridge.adapters.acp_client import FakeAcpTransport
 from pex_bridge.adapters.cursor import CursorAdapter
@@ -51,6 +52,7 @@ def test_ask_pex_does_not_need_worker():
             harness_type=HarnessType.CURSOR,
             vendor_session_id="1",
             status=SessionStatus.WORKING,
+            last_activity=datetime.now(UTC),
         )
     ]
-    assert "Nothing needs you" in answer_question("what needs me?", sessions, [])
+    assert "cannot confirm current work" in answer_question("what needs me?", sessions, [])

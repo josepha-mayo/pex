@@ -53,7 +53,10 @@ async def ask_client(bound_pipeline, monkeypatch):
         outputs.append(output)
         return output
 
-    def answer(question, sessions, interventions, goals, model, *, context=None):
+    def answer(
+        question, sessions, interventions, goals, model,
+        *, context=None, observed_activity_at=None,
+    ):
         calls.append(model)
         return inspect(sessions, interventions, goals)
 
@@ -106,7 +109,10 @@ async def test_ask_revocation_during_answer_blocks_tool_and_stale_response(
     ask_client, monkeypatch, change,
 ):
     case = ask_client
-    def revoked_answer(question, sessions, interventions, goals, model, *, context=None):
+    def revoked_answer(
+        question, sessions, interventions, goals, model,
+        *, context=None, observed_activity_at=None,
+    ):
         case.calls.append(model)
         _revoke(case, change)
         case.inspect(sessions, interventions, goals)
@@ -139,7 +145,10 @@ async def test_ask_ended_scope_denies_surviving_answer_thread_reads(
     case = ask_client
     started, release, finished = threading.Event(), threading.Event(), threading.Event()
 
-    def held_answer(question, sessions, interventions, goals, model, *, context=None):
+    def held_answer(
+        question, sessions, interventions, goals, model,
+        *, context=None, observed_activity_at=None,
+    ):
         if model is None:
             return "Canonical fallback without model or inspection"
         case.calls.append(model)

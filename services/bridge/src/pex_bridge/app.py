@@ -129,6 +129,19 @@ TRANSPORT_CLOSE_TIMEOUT_SECONDS = 3.0
 SOCKET_SEND_TIMEOUT_SECONDS = 2.0
 DESKTOP_REFRESH_TIMEOUT_SECONDS = 5.0
 ASK_MODEL_TIMEOUT_SECONDS = 25.0
+_ASK_WORKER_ACTIVITY_TYPES = frozenset({
+    EventType.MESSAGE_DELTA,
+    EventType.AGENT_THOUGHT,
+    EventType.AGENT_RESPONSE,
+    EventType.TOOL_CALL,
+    EventType.TOOL_RESULT,
+    EventType.TOOL_FAILURE,
+    EventType.FILE_EDIT,
+    EventType.FILE_READ,
+    EventType.SHELL,
+    EventType.COMPACTION,
+    EventType.TOKEN_USAGE,
+})
 MAX_WEBSOCKET_MESSAGE_CHARS = 4096
 WEBSOCKET_TOKEN_PROTOCOL_PREFIX = "pex-token."
 MAX_EVENT_SOCKETS = 16
@@ -6104,6 +6117,40 @@ def create_app() -> FastAPI:
                     "completion verdict for the current goal."
                 )
             return {"answer": answer, "completion": completion}
+        # A control resolution can refresh session.last_activity without any
+        # worker event. Ground activity claims only in the latest accepted,
+        # same-binding worker event; a terminal/control event does not count.
+        observed_activity_at = {}
+        for candidate in sessions:
+            if candidate.status not in {SessionStatus.WORKING, SessionStatus.VERIFYING}:
+                continue
+            event = await state.store.latest_observed_event(candidate.id)
+            if event is None:
+                continue
+            if (
+                (
+                    event.event_type in _ASK_WORKER_ACTIVITY_TYPES
+                    or (
+                        event.event_type == EventType.STATUS
+                        and event.harness_type == HarnessType.CODEX
+                        and event.metadata.get("source") == "codex_shared_live_notification"
+                        and event.metadata.get("raw_method") == "turn/started"
+                    )
+                )
+                and event.session_id == candidate.id
+                and event.harness_type == candidate.harness_type
+                and event.goal_id == candidate.goal_id
+                and event.project_id == candidate.project_id
+                and (
+                    event.metadata.get("source") != "codex_shared_live_notification"
+                    or (
+                        isinstance(candidate.metadata.get("subscription_receipt"), dict)
+                        and event.metadata.get("subscription_id")
+                        == candidate.metadata["subscription_receipt"].get("authorization_id")
+                    )
+                )
+            ):
+                observed_activity_at[candidate.id] = event.ts
         # Match Ask's one selected review workspace. A model may inspect this
         # target only under server-owned publication authority, never metadata
         # alone. The scope is revoked even if a timed-out thread keeps running.
@@ -6144,6 +6191,7 @@ def create_app() -> FastAPI:
                 return answer_question(
                     body.question, sessions, interventions, goals,
                     review_model, context=items,
+                    observed_activity_at=observed_activity_at,
                 )
 
             try:
@@ -6169,6 +6217,7 @@ def create_app() -> FastAPI:
                 goals,
                 None,
                 context=items,
+                observed_activity_at=observed_activity_at,
             )
         return {"answer": answer}
 

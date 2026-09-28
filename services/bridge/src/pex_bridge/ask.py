@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from pex_protocol.context import ContextItem
 from pex_protocol.enums import HarnessType, Sensitivity, SessionStatus
@@ -23,6 +25,24 @@ _REVIEW_SYSTEM = (
     "If the minimized state is insufficient, say so and do not guess. "
     "Never prefix with PEX:."
 )
+
+_CURRENT_ACTIVITY_WINDOW = timedelta(minutes=10)
+
+
+def _recent_activity(
+    session: HarnessSession,
+    now: datetime,
+    observed_activity_at: Mapping[str, datetime],
+) -> bool:
+    # last_activity is also stamped by human/control resolution. Only a
+    # canonical worker event can establish recent worker activity for Ask.
+    observed = observed_activity_at.get(session.id)
+    if observed is None:
+        return False
+    if observed.tzinfo is None:
+        observed = observed.replace(tzinfo=UTC)
+    age = now - observed
+    return timedelta(0) <= age <= _CURRENT_ACTIVITY_WINDOW
 
 _HARNESS_ALIASES: tuple[tuple[HarnessType, tuple[str, ...]], ...] = (
     (HarnessType.CLAUDE_CODE, ("claude code", "claude_code", "claude")),
@@ -75,6 +95,7 @@ def answer_question(
     model=None,
     *,
     context: list[ContextItem] | None = None,
+    observed_activity_at: Mapping[str, datetime] | None = None,
 ) -> str:
     """Answer from canonical PEX state. Never interrupts a worker to fetch an answer."""
     grounded = _keyword_answer(
@@ -83,6 +104,7 @@ def answer_question(
         interventions,
         goals or [],
         context or [],
+        observed_activity_at or {},
     )
     if grounded.canonical or model is None:
         return grounded.text
@@ -97,6 +119,7 @@ def answer_question(
                 interventions,
                 goals or [],
                 model,
+                observed_activity_at=observed_activity_at or {},
             )
             if inspected:
                 return inspected
@@ -108,7 +131,10 @@ def answer_question(
         require_review_authority()
         answer, _, _ = complete_review_answer(
             _REVIEW_SYSTEM,
-            _review_user(question, sessions, interventions, goals or []),
+            _review_user(
+                question, sessions, interventions, goals or [],
+                observed_activity_at or {},
+            ),
         )
         if answer:
             return answer
@@ -122,6 +148,7 @@ def _review_user(
     sessions: list[HarnessSession],
     interventions: list[Intervention],
     goals: list[Goal],
+    observed_activity_at: Mapping[str, datetime] | None = None,
 ) -> str:
     def safe_text(value: str) -> str:
         cleaned, _ = redact_text(value)
@@ -129,18 +156,28 @@ def _review_user(
 
     needs = [s for s in sessions if s.status == SessionStatus.NEEDS_DECISION]
     working = [s for s in sessions if s.status.value in {"working", "verifying"}]
+    observed_activity_at = observed_activity_at or {}
+    now = datetime.now(UTC)
+    recent = sum(_recent_activity(s, now, observed_activity_at) for s in working)
     lines = [
         f"Human asked: {safe_text(question.strip()[:400])}",
         (
             f"Counts: total={len(sessions)} working={len(working)} "
             f"needs_you={len(needs)} stored_goals={len(goals)}"
         ),
+        (
+            f"Activity evidence: {recent} working/verifying sessions have a recent "
+            "bound worker event. Working/verifying is the last recorded status, "
+            "not proof a turn is still live. Missing recent bound worker evidence cannot confirm "
+            "current work; a recent event can be followed by a state change."
+        ),
         "Sessions:",
     ]
     for session in sessions[:12]:
         lines.append(
             f"- harness={session.harness_type.value} status={session.status.value} "
-            f"goal_attached={bool(session.goal_id)} paused={session.supervision_paused}"
+            f"goal_attached={bool(session.goal_id)} paused={session.supervision_paused} "
+            f"recent_bound_worker_event={_recent_activity(session, now, observed_activity_at)}"
         )
     if interventions:
         last = interventions[0]
@@ -158,10 +195,16 @@ def _keyword_answer(
     interventions: list[Intervention],
     goals: list[Goal],
     context: list[ContextItem],
+    observed_activity_at: Mapping[str, datetime],
 ) -> _AskAnswer:
     q = question.lower().strip()
     needs = [s for s in sessions if s.status == SessionStatus.NEEDS_DECISION]
     working = [s for s in sessions if s.status.value in {"working", "verifying"}]
+    now = datetime.now(UTC)
+    recent_working = [
+        s for s in working if _recent_activity(s, now, observed_activity_at)
+    ]
+    unconfirmed_working = len(working) - len(recent_working)
     discovered = [s for s in sessions if s.status == SessionStatus.DISCOVERED]
     drifting = [s for s in sessions if s.status == SessionStatus.DRIFTING]
     blocked = [s for s in sessions if s.status in {SessionStatus.BLOCKED, SessionStatus.ERROR}]
@@ -202,18 +245,41 @@ def _keyword_answer(
                 True,
             )
         if working and discovered:
+            freshness = (
+                f" No latest bound event establishes recent activity for "
+                f"{unconfirmed_working} working/verifying "
+                f"session{'s' if unconfirmed_working != 1 else ''}."
+                if unconfirmed_working else ""
+            )
             return _AskAnswer(
                 f"No decision request is recorded for the visible sessions. "
                 f"{len(working)} working/verifying worker"
                 f"{'s' if len(working) != 1 else ''}; "
                 f"{len(discovered)} discovered session"
                 f"{'s' if len(discovered) != 1 else ''}. "
-                f"Discovery does not confirm a live turn or active supervision.{history}",
+                f"Discovery does not confirm a live turn or active supervision."
+                f"{freshness}{history}",
+                True,
+            )
+        if unconfirmed_working:
+            other = (
+                f" {len(recent_working)} other working/verifying session"
+                f"{'s have' if len(recent_working) != 1 else ' has'} recent activity."
+                if recent_working else ""
+            )
+            return _AskAnswer(
+                "No decision request is recorded for the visible sessions. "
+                f"The last working/verifying status for {unconfirmed_working} session"
+                f"{'s' if unconfirmed_working != 1 else ''} has no latest bound event "
+                "establishing recent worker activity. "
+                f"PEX cannot confirm current work from that status.{other}{history}",
                 True,
             )
         if working:
             return _AskAnswer(
-                f"{len(working)} agent(s) working. Nothing needs you in the visible sessions."
+                f"No decision request is recorded for the visible sessions. "
+                f"{len(working)} worker"
+                f"{'s have' if len(working) != 1 else ' has'} recent observed activity."
                 f"{history}",
                 True,
             )
@@ -237,7 +303,9 @@ def _keyword_answer(
         )
 
     if _DOING.search(q) and mentioned:
-        return _AskAnswer(_what_doing(mentioned[0], sessions, goals), True)
+        return _AskAnswer(
+            _what_doing(mentioned[0], sessions, goals, observed_activity_at), True
+        )
 
     if _EVAL_FINISH.search(q):
         return _AskAnswer(_eval_finished(interventions, sessions, goals), True)
@@ -353,6 +421,7 @@ def _what_doing(
     harness: HarnessType,
     sessions: list[HarnessSession],
     goals: list[Goal],
+    observed_activity_at: Mapping[str, datetime],
 ) -> str:
     rows = _sessions_for(harness, sessions)
     name = _label(harness)
@@ -360,7 +429,14 @@ def _what_doing(
         return f"No {name} session is attached."
     session = rows[0]
     goal = next((item for item in goals if item.id == session.goal_id), None)
-    parts = [f"{name} is {session.status.value.replace('_', ' ')}"]
+    recorded_working = session.status in {SessionStatus.WORKING, SessionStatus.VERIFYING}
+    recent_worker_event = _recent_activity(
+        session, datetime.now(UTC), observed_activity_at
+    )
+    parts = [
+        f"{name} was last recorded as {session.status.value.replace('_', ' ')}"
+        if recorded_working else f"{name} is {session.status.value.replace('_', ' ')}"
+    ]
     if goal:
         title, _ = redact_text(goal.title)
         parts.append(f"on persistent goal '{title or goal.title}'")
@@ -370,6 +446,12 @@ def _what_doing(
         parts.append(
             "This discovery status does not confirm a current live turn. "
             "Discovery does not establish what it is currently doing"
+        )
+    if recorded_working:
+        parts.append(
+            "PEX has a recent observed worker event; the turn state may have changed"
+            if recent_worker_event else
+            "PEX has no latest bound event establishing recent worker activity"
         )
     return ". ".join(parts) + "."
 
