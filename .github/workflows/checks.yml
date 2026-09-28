@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      retain_artifacts:
+        description: Retain test reports and native packages in Actions storage
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -58,7 +63,7 @@ jobs:
         working-directory: apps/desktop
         run: npm run build
       - name: Retain test report
-        if: always()
+        if: always() && inputs.retain_artifacts
         uses: actions/upload-artifact@v7
         with:
           name: tests-${{ matrix.os }}
@@ -132,7 +137,7 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: bash scripts/smoke_linux_desktop.sh apps/desktop/src-tauri/target/release/bundle/deb/PEX_0.1.0_amd64.deb
       - name: Retain packages and startup receipt
-        if: always()
+        if: always() && inputs.retain_artifacts
         uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.os }}-${{ github.sha }}
