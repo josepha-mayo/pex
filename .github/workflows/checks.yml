@@ -136,6 +136,16 @@ jobs:
           WEBKIT_DISABLE_COMPOSITING_MODE: '1'
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: bash scripts/smoke_linux_desktop.sh apps/desktop/src-tauri/target/release/bundle/deb/PEX_0.1.0_amd64.deb
+      - name: Retain Linux startup diagnostics on failure
+        if: failure() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-startup-failure-${{ github.sha }}
+          if-no-files-found: warn
+          path: |
+            build/linux-desktop-*.png
+            build/linux-desktop-*.txt
+            build/linux-desktop-*.log
       - name: Retain packages and startup receipt
         if: always() && inputs.retain_artifacts
         uses: actions/upload-artifact@v7
