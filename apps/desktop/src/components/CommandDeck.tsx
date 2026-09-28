@@ -104,6 +104,7 @@ export function CommandDeck({
   loading,
   error,
   mutationsAvailable = true,
+  operatorControlsAvailable = true,
   decisionsFresh = true,
   sessionsFresh = true,
   goalsFresh = true,
@@ -157,6 +158,7 @@ export function CommandDeck({
   loading: boolean;
   error?: string | null;
   mutationsAvailable?: boolean;
+  operatorControlsAvailable?: boolean;
   decisionsFresh?: boolean;
   sessionsFresh?: boolean;
   goalsFresh?: boolean;
@@ -265,7 +267,7 @@ export function CommandDeck({
               sourceFresh={sessionsFresh}
               goalsFresh={goalsFresh}
               actionsFresh={interventionsFresh && !error}
-              mutationsAvailable={mutationsAvailable}
+              mutationsAvailable={mutationsAvailable && operatorControlsAvailable}
               onSelect={onSelectSession}
               onOpen={onOpenSession}
               onPause={onPauseSession}

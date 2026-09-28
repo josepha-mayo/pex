@@ -206,7 +206,8 @@ export function Inspector({
               <button type="button" className="solid" onClick={onOpen} disabled={!canOpen}>
                 {canOpen ? "Open agent" : "Open unavailable"}
               </button>
-              <button type="button" className="ghost" onClick={onPause} disabled={!sessionActionsAvailable}>
+              <button type="button" className="ghost" onClick={onPause} disabled={!sessionActionsAvailable}
+                title={!sessionActionsAvailable ? "Available in the authenticated PEX desktop app when session state is current" : undefined}>
                 {current.supervision_paused ? "Resume supervision" : "Pause supervision"}
               </button>
             </div>

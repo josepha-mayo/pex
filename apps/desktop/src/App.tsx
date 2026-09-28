@@ -1632,6 +1632,10 @@ export function App() {
   async function pauseOrResume(session?: SessionRow) {
     const row = session || current;
     if (!row) return;
+    if (!TAURI) {
+      setNote("Pausing supervision requires the authenticated PEX desktop app.");
+      return;
+    }
     const sourceFresh = session
       ? canonicalResourcesAreFresh(canonicalResources, ["deck"])
       : sessionStateFresh;
@@ -2666,7 +2670,8 @@ export function App() {
                 ) : null}
                 <div className="button-row">
                   <button type="button" className="solid" onClick={() => openInspector()}>Review evidence</button>
-                  {current ? <button type="button" className="ghost" disabled={!sessionStateFresh}
+                  {current ? <button type="button" className="ghost" disabled={!sessionStateFresh || !TAURI}
+                    title={!TAURI ? "Available in the authenticated PEX desktop app" : undefined}
                     onClick={() => void pauseOrResume()}>
                     {current.supervision_paused ? "Resume supervision" : "Pause supervision"}
                   </button> : null}
@@ -2757,7 +2762,7 @@ export function App() {
           note={note}
           canonicalStateAvailable={inspectorCanonicalStateAvailable}
           canonicalStateIssue={inspectorIssue}
-          sessionActionsAvailable={sessionStateFresh}
+          sessionActionsAvailable={sessionStateFresh && TAURI}
           goalActionsAvailable={goalMutationAvailable}
           onEvidence={() => setEvidenceOpen((open) => !open)}
           onOpen={() => void openSession()}
@@ -2819,6 +2824,7 @@ export function App() {
           loading={detailsLoading}
           error={deckIssue}
           mutationsAvailable={deckMutationsAvailable}
+          operatorControlsAvailable={TAURI}
           decisionsFresh={decisionsFresh}
           sessionsFresh={sessionStateFresh}
           goalsFresh={goalStateFresh && !bridgeError}
