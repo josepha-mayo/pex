@@ -256,6 +256,41 @@ def test_deterministic_preplan_does_not_replace_completed_semantic_wording():
     assert "deterministic_truth_preserved" not in result.diagnosis
 
 
+def test_read_only_stop_cannot_dispatch_semantic_nudge():
+    from pex_protocol.supervisor import SupervisorResult
+    from pex_supervisor.loop import needs_semantic_inference
+    from pex_supervisor.planner import plan_deterministic
+
+    request = _request(0.9)
+    request.goal.objective = "Run one read-only check and report its result."
+    request.goal.observation_only = True
+    request.scores.features["verification"] = {
+        "status": "acceptance_gap",
+        "correction": "Fix the test and rerun it.",
+        "evidence": ["pytest_exit_code=1"],
+    }
+    deterministic = plan_deterministic(request)
+    semantic = SupervisorResult(
+        action=_action_from_proposal(
+            request,
+            {
+                "type": "SEND_NUDGE",
+                "rationale": "failed test",
+                "evidence": ["pytest_exit_code=1"],
+                "payload": {"text": "Fix the test and rerun it."},
+            },
+        ),
+        used_llm=True,
+        diagnosis="semantic",
+        inference_status="completed",
+    )
+
+    assert not needs_semantic_inference(request, force_llm=True)
+    result = _preserve_deterministic_truth(request, deterministic, semantic)
+    assert result.action.type == InterventionType.NOOP
+    assert "observation_only_goal" in result.traces
+
+
 def test_model_noop_cannot_infer_missing_files_from_runtime_cwd(tmp_path):
     request = _request(0.9)
     request.session.cwd = str(tmp_path)

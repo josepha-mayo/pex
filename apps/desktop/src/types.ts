@@ -151,6 +151,7 @@ export type Goal = {
   project_id?: string;
   title: string;
   objective: string;
+  observation_only?: boolean;
   acceptance_criteria?: string[];
   constraints?: string[];
   forbidden_outcomes?: string[];

@@ -102,7 +102,7 @@ export function Inspector({
   onPause: () => void;
   onUndo: () => void;
   onAttachGoal: (goalId: string) => void;
-  onGoalChange: (field: keyof GoalDraft, value: string) => void;
+  onGoalChange: (field: keyof GoalDraft, value: string | boolean) => void;
   onCreateGoal: (event: FormEvent) => void;
   onEditGoal?: () => void;
   onCancelEdit?: () => void;

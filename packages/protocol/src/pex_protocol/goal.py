@@ -23,6 +23,7 @@ class Goal(BaseModel):
     updated_at: datetime
     supersedes: str | None = None
     paused: bool = False
+    observation_only: bool = False
 
 
 class Decision(BaseModel):

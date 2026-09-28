@@ -32,7 +32,7 @@ from pex_supervisor.evidence_tools import (
     goal_boundary_page_count,
     select_evidence_tool_names,
 )
-from pex_supervisor.planner import plan_deterministic
+from pex_supervisor.planner import _observation_only_goal, plan_deterministic
 from pex_supervisor.providers import describe_backend, load_supervisor_model
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "supervisor.md"
@@ -1245,6 +1245,8 @@ def needs_semantic_inference(request: SupervisorRequest, force_llm: bool = False
 
     if _supervision_paused(request):
         return False
+    if request.event.event_type == EventType.STOP and _observation_only_goal(request):
+        return False
     if force_llm or os.environ.get("PEX_FORCE_LLM") == "1":
         return True
     if request.event.event_type != EventType.STOP:
@@ -1263,6 +1265,11 @@ def _preserve_deterministic_truth(
     evidence.  It may guard a fully verified completion, but it must not turn a
     failed inference or an intentional semantic NOOP into an intervention.
     """
+    if request.event.event_type == EventType.STOP and _observation_only_goal(request):
+        semantic.action = deterministic
+        semantic.diagnosis = f"{semantic.diagnosis}:observation_only_goal"
+        semantic.traces.append("observation_only_goal")
+        return semantic
 
     if semantic.inference_status != "completed":
         if semantic.action.type != InterventionType.NOOP:

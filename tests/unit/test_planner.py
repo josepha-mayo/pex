@@ -348,6 +348,97 @@ def test_contradicted_stop_sends_specific_evidence():
     assert not action.payload["text"].startswith("PEX:")
 
 
+def test_read_only_goal_reports_failed_test_without_restarting_worker():
+    goal = _goal().model_copy(
+        update={
+            "objective": "Run one read-only check and report its result.",
+            "acceptance_criteria": ["No source files are edited"],
+            "observation_only": True,
+        }
+    )
+    request = SupervisorRequest(
+        session=_session(),
+        goal=goal,
+        event=_event(EventType.STOP, message_delta="The targeted test failed during collection."),
+        scores=TrajectoryScores(
+            features={
+                "verification": {
+                    "status": "acceptance_gap",
+                    "correction": "Fix the failed test and run it again.",
+                    "evidence": ["pytest_ok=False", "pytest_exit_code=1"],
+                }
+            }
+        ),
+    )
+    action = plan_deterministic(request)
+    assert action.type == InterventionType.NOOP
+    assert "pytest_exit_code=1" in action.evidence
+
+
+def test_scoped_no_edit_constraint_does_not_disable_editable_goal():
+    goal = _goal().model_copy(update={"constraints": ["Do not edit files outside src"]})
+    request = SupervisorRequest(
+        session=_session(),
+        goal=goal,
+        event=_event(EventType.STOP, message_delta="All tests passed"),
+        scores=TrajectoryScores(
+            features={
+                "verification": {
+                    "status": "acceptance_gap",
+                    "correction": "Fix the failed test.",
+                    "evidence": ["pytest_ok=False"],
+                }
+            }
+        ),
+    )
+    assert plan_deterministic(request).type == InterventionType.SEND_NUDGE
+
+
+def test_editable_read_only_endpoint_and_forbidden_outcome_keep_correction():
+    goal = _goal().model_copy(
+        update={
+            "objective": "Implement a read-only check endpoint and test it.",
+            "forbidden_outcomes": ["No source files are edited"],
+        }
+    )
+    request = SupervisorRequest(
+        session=_session(),
+        goal=goal,
+        event=_event(EventType.STOP, message_delta="Done"),
+        scores=TrajectoryScores(
+            features={
+                "verification": {
+                    "status": "acceptance_gap",
+                    "correction": "Finish the endpoint.",
+                    "evidence": ["endpoint_missing"],
+                }
+            }
+        ),
+    )
+    assert plan_deterministic(request).type == InterventionType.SEND_NUDGE
+
+
+def test_explicit_observation_only_boundary_keeps_worker_stopped():
+    goal = _goal().model_copy(
+        update={"constraints": ["Do not modify any files"], "observation_only": True}
+    )
+    request = SupervisorRequest(
+        session=_session(),
+        goal=goal,
+        event=_event(EventType.STOP, message_delta="The check failed."),
+        scores=TrajectoryScores(
+            features={
+                "verification": {
+                    "status": "acceptance_gap",
+                    "correction": "Modify the implementation.",
+                    "evidence": ["pytest_exit_code=1"],
+                }
+            }
+        ),
+    )
+    assert plan_deterministic(request).type == InterventionType.NOOP
+
+
 def test_repeated_premature_fingerprint_applies_evidence_overlay_on_stop():
     verification = {
         "status": "acceptance_gap",

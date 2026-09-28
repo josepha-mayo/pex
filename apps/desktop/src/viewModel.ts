@@ -960,6 +960,7 @@ export function createGoalPayload(input: {
   projectId: string;
   title: string;
   objective: string;
+  observationOnly?: boolean;
   acceptance: string;
   constraints: string;
   forbiddenOutcomes?: string;
@@ -1000,6 +1001,7 @@ export function createGoalPayload(input: {
     project_id: input.projectId,
     title: input.title.trim() || defaultTitle,
     objective: input.objective.trim(),
+    observation_only: input.observationOnly === true,
     acceptance_criteria: normalizeLines(input.acceptance),
     constraints: normalizeLines(input.constraints),
     forbidden_outcomes: normalizeLines(input.forbiddenOutcomes || ""),
@@ -1017,6 +1019,7 @@ export function createGoalPayload(input: {
 export function updateGoalPayload(input: {
   title: string;
   objective: string;
+  observationOnly?: boolean;
   acceptance: string;
   constraints: string;
   forbiddenOutcomes?: string;
@@ -1034,6 +1037,7 @@ export function updateGoalPayload(input: {
   expected_intent_revision: number;
   title: string;
   objective: string;
+  observation_only: boolean;
   acceptance_criteria: string[];
   constraints: string[];
   forbidden_outcomes: string[];
@@ -1055,6 +1059,7 @@ export function updateGoalPayload(input: {
     expected_intent_revision: expectedIntentRevision,
     title: created.title,
     objective: created.objective,
+    observation_only: created.observation_only === true,
     acceptance_criteria: created.acceptance_criteria || [],
     constraints: created.constraints || [],
     forbidden_outcomes: created.forbidden_outcomes || [],
@@ -1103,6 +1108,7 @@ export function goalToDraft(goal: Goal, projectId = "", decisions: LedgerDecisio
   projectId: string;
   title: string;
   objective: string;
+  observationOnly: boolean;
   acceptance: string;
   constraints: string;
   forbiddenOutcomes: string;
@@ -1120,6 +1126,7 @@ export function goalToDraft(goal: Goal, projectId = "", decisions: LedgerDecisio
     projectId: projectId || goal.project_id || "",
     title: goal.title,
     objective: goal.objective,
+    observationOnly: goal.observation_only === true,
     acceptance: (goal.acceptance_criteria || []).join("\n"),
     constraints: (goal.constraints || []).join("\n"),
     forbiddenOutcomes: (goal.forbidden_outcomes || []).join("\n"),

@@ -4,6 +4,7 @@ export type GoalDraft = {
   projectId: string;
   title: string;
   objective: string;
+  observationOnly: boolean;
   acceptance: string;
   constraints: string;
   forbiddenOutcomes?: string;
@@ -34,7 +35,7 @@ export function GoalEditor({
   willAttach: boolean;
   editing?: boolean;
   projectIdentity?: string;
-  onChange: (field: keyof GoalDraft, value: string) => void;
+  onChange: (field: keyof GoalDraft, value: string | boolean) => void;
   onSubmit: (event: FormEvent) => void;
   onCancel?: () => void;
 }) {
@@ -66,6 +67,14 @@ export function GoalEditor({
         />
       </label>
       <p className="goal-help">PEX checks this goal as your agent works. Include an “Acceptance criteria:” list for specific checks.</p>
+      <label className="checkbox-label goal-observation-only">
+        <input
+          type="checkbox"
+          checked={draft.observationOnly}
+          onChange={(event) => onChange("observationOnly", event.target.checked)}
+        />
+        Observe only · report evidence without sending follow-up work when the agent stops
+      </label>
       <details className="goal-options">
       <summary>Optional details</summary>
       <div className="goal-option-fields">

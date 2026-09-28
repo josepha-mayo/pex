@@ -77,6 +77,9 @@ _SENSITIVE_READ_PATH = re.compile(
     re.IGNORECASE,
 )
 
+def _observation_only_goal(request: SupervisorRequest) -> bool:
+    return bool(request.goal and request.goal.observation_only)
+
 
 def _safe_workspace_read_permission(request: SupervisorRequest) -> bool:
     """Recognize only a concrete, workspace-local OpenCode read request."""
@@ -417,6 +420,17 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
     if request.session.supervision_paused or (goal is not None and goal.paused):
         return _noop(
             request, "Supervision is paused for this session or goal.", ["supervision_paused"]
+        )
+    if event.event_type == EventType.STOP and _observation_only_goal(request):
+        verification = (request.scores.features or {}).get("verification") or {}
+        return _noop(
+            request,
+            "Read-only goal: report the observed outcome without starting another worker turn.",
+            [
+                "observation_only_goal",
+                f"verification:{verification.get('status') or 'unknown'}",
+                *[str(item) for item in (verification.get("evidence") or []) if item][:16],
+            ],
         )
     if event.event_type == EventType.USER_PROMPT and request.notes.startswith(
         "possible_contradiction"

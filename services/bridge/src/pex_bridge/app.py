@@ -2324,6 +2324,7 @@ class GoalIn(_StrictRequestModel):
     project_id: str = Field(min_length=1, max_length=MAX_PATH_CHARS)
     title: str = Field(min_length=1, max_length=512)
     objective: str = Field(min_length=1, max_length=MAX_CONTROL_TEXT_CHARS)
+    observation_only: bool = False
     acceptance_criteria: list[GoalListItem] = Field(
         default_factory=list, max_length=MAX_GOAL_LIST_ITEMS
     )
@@ -2360,6 +2361,7 @@ class GoalPatch(_StrictRequestModel):
     objective: str | None = Field(
         default=None, min_length=1, max_length=MAX_CONTROL_TEXT_CHARS
     )
+    observation_only: bool | None = None
     acceptance_criteria: list[GoalListItem] | None = Field(
         default=None, max_length=MAX_GOAL_LIST_ITEMS
     )

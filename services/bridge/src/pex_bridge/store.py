@@ -4002,6 +4002,9 @@ def canonical_goal_intent_payload(
         "deadline": _utc_iso(goal.deadline) if goal.deadline is not None else None,
         "evidence_requirements": list(goal.evidence_requirements),
         "paused": goal.paused,
+        # Keep legacy false-goal hashes stable; the new true boundary is
+        # execution-relevant and must change the revision and semantic hash.
+        **({"observation_only": True} if goal.observation_only else {}),
         "ledger": _canonical_active_goal_ledger(goal, decisions, context_items),
     }
 

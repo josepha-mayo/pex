@@ -145,6 +145,7 @@ def test_goal_intent_hash_excludes_identity_and_history() -> None:
         ("deadline", datetime(2026, 9, 16, tzinfo=UTC)),
         ("evidence_requirements", ["different evidence"]),
         ("paused", True),
+        ("observation_only", True),
     ],
 )
 def test_goal_intent_hash_includes_every_semantic_goal_field(

@@ -974,6 +974,19 @@ test("offline state immediately suppresses stale agent prompts", async () => {
   assert.match(deck, /sessionObservationCopy\(session, degraded \|\| !sourceFresh\)/);
 });
 
+test("observe-only goal boundary survives create and edit payloads", () => {
+  const draft = {
+    projectId: "demo", title: "Audit", objective: "Inspect and report only",
+    acceptance: "", constraints: "", nonGoals: "", evidence: "",
+    observationOnly: true,
+  };
+  assert.equal(createGoalPayload(draft).observation_only, true);
+  assert.equal(updateGoalPayload(draft, 1).observation_only, true);
+  assert.equal(goalToDraft({
+    id: "audit", title: "Audit", objective: "Inspect", observation_only: true,
+  }).observationOnly, true);
+});
+
 test("goal deadlines round-trip as UTC and can be explicitly cleared", () => {
   const draft = goalToDraft({
     id: "deadline-goal", title: "Ship", objective: "Finish the work",

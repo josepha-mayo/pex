@@ -608,6 +608,33 @@ async def test_goal_patch_keeps_explicit_empty_lists_instead_of_reextracting(
 
 
 @pytest.mark.asyncio
+async def test_observation_only_checkbox_patch_changes_canonical_goal_intent(client: AsyncClient):
+    created = await client.post(
+        "/v1/goals",
+        json={"project_id": "demo", "title": "Audit", "objective": "Report a check"},
+    )
+    assert created.status_code == 200
+    original = created.json()
+    assert original["observation_only"] is False
+
+    changed = await client.patch(
+        f"/v1/goals/{original['id']}",
+        json={
+            "mode": "update",
+            "observation_only": True,
+            "expected_intent_revision": original["intent_revision"],
+        },
+    )
+    assert changed.status_code == 200
+    updated = changed.json()
+    assert updated["observation_only"] is True
+    assert updated["intent_revision"] == original["intent_revision"] + 1
+    assert updated["intent_hash"] != original["intent_hash"]
+    fetched = await client.get(f"/v1/goals/{original['id']}")
+    assert fetched.json()["observation_only"] is True
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("followup", [
     {"title": "Renamed receipt"},
     {"mode": "override", "title": "Replacement receipt"},
