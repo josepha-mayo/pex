@@ -50,6 +50,10 @@ const repoReal = realpathSync.native(repo);
 const desktop = resolve(scriptDir, "..");
 const tauriDir = join(desktop, "src-tauri");
 const binaries = join(tauriDir, "binaries");
+const venvRoot = resolve(repo, process.env.UV_PROJECT_ENVIRONMENT || ".venv");
+const venvPython = process.platform === "win32"
+  ? join(venvRoot, "Scripts", "python.exe")
+  : join(venvRoot, "bin", "python");
 let triple;
 let rustToolchainError = null;
 try {
@@ -59,18 +63,28 @@ try {
   }).trim();
   if (!triple) throw new Error("rustc did not report a host target triple");
 } catch (error) {
-  if (process.argv.includes("--preflight-release")) {
-    // A preflight must remain a complete machine-readable audit even when a
-    // toolchain is unavailable. Derive only the artifact naming tuple here;
-    // the missing compiler remains an explicit blocker below.
+  if (!buildPolicy.releaseBuild) {
+    // Development sidecars are Python binaries; Rust only supplies the target
+    // filename. A release preflight still reports the missing compiler as a
+    // blocker, and a release build still requires the pinned toolchain.
     rustToolchainError = error;
-    const architecture = process.arch === "x64" ? "x86_64" : process.arch;
+    const architecture = {
+      x64: "x86_64",
+      arm64: "aarch64",
+      ia32: "i686",
+    }[process.arch];
+    const linuxGlibc = process.platform === "linux"
+      ? process.report?.getReport()?.header?.glibcVersionRuntime
+      : null;
     const platformSuffix = {
       win32: "pc-windows-msvc",
-      linux: "unknown-linux-gnu",
+      linux: linuxGlibc ? "unknown-linux-gnu" : null,
       darwin: "apple-darwin",
-    }[process.platform] ?? `unknown-${process.platform}`;
-    triple = `${architecture}-${platformSuffix}`;
+    }[process.platform];
+    if ((!architecture || !platformSuffix) && !buildPolicy.preflightRelease) {
+      throw new Error("Rust-free development sidecars require a verified host target");
+    }
+    triple = `${architecture ?? process.arch}-${platformSuffix ?? `unknown-${process.platform}`}`;
   } else {
     throw error;
   }
@@ -88,10 +102,31 @@ const builtInPets = RELEASE_BUILT_IN_PET_IDS;
 const archivedReviewedPets = ["pex", "ledger", "mesh", "nudge", "drift", "quiet", "ember", "von"];
 const petsRoot = join(repo, "apps", "desktop", "src", "pets");
 const petReleaseManifest = join(petsRoot, "release-manifest.json");
-const venvRoot = resolve(repo, process.env.UV_PROJECT_ENVIRONMENT || ".venv");
-const venvPython = process.platform === "win32"
-  ? join(venvRoot, "Scripts", "python.exe")
-  : join(venvRoot, "bin", "python");
+let pythonTargetError = null;
+if (!buildPolicy.validatePetsOnly) {
+  try {
+    const python = JSON.parse(execFileSync(venvPython, ["-c",
+      "import json, struct, sysconfig; print(json.dumps({'bits': struct.calcsize('P') * 8, 'platform': sysconfig.get_platform().lower()}))",
+    ], { cwd: repo, encoding: "utf8" }));
+    const targetArchitecture = triple.split("-")[0];
+    const target = {
+      x86_64: { bits: 64, suffixes: ["amd64", "x86_64"] },
+      aarch64: { bits: 64, suffixes: ["arm64", "aarch64"] },
+      i686: { bits: 32, suffixes: ["win32", "x86", "i386", "i686"] },
+    }[targetArchitecture];
+    const pythonPlatform = String(python.platform ?? "");
+    if (!target || python.bits !== target.bits || !target.suffixes.some(
+      (suffix) => pythonPlatform === suffix || pythonPlatform.endsWith(`-${suffix}`),
+    )) {
+      pythonTargetError = `Packaged Python architecture must match sidecar target ${triple}`;
+    }
+  } catch (error) {
+    pythonTargetError = `Unable to verify packaged Python architecture: ${error.message}`;
+  }
+  if (pythonTargetError !== null && !buildPolicy.preflightRelease) {
+    throw new Error(pythonTargetError);
+  }
+}
 const sourceRoots = [
   join(repo, "packages", "protocol", "src"),
   join(repo, "services", "bridge", "src"),
@@ -820,6 +855,9 @@ function runReleasePreflight(petSources) {
   const addBlocker = (code, detail) => blockers.push({ code, detail });
   if (rustToolchainError !== null) {
     addBlocker("rust_toolchain_unavailable", rustToolchainError.message);
+  }
+  if (pythonTargetError !== null) {
+    addBlocker("python_target_mismatch", pythonTargetError);
   }
   const inputs = sourceInputFiles();
   inputs.push(...[...validatedReleaseEvidence.values()].map((entry) => entry.file));
