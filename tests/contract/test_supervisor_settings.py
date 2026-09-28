@@ -16,6 +16,13 @@ from pex_bridge.supervisor_config import (
     SupervisorSecretStoreError,
     load_supervisor_choice,
 )
+from pex_protocol.capabilities import AdapterCapabilities
+
+
+async def _instant_adapter_probes(adapters):
+    """Keep supervisor responsiveness independent of desktop inventory latency."""
+
+    return [AdapterCapabilities() for _ in adapters]
 
 
 class FakeSecretStore:
@@ -374,6 +381,7 @@ async def test_saved_supervisor_activation_cannot_block_bridge_health(
 ):
     from pex_bridge.app import _activate_saved_supervisor_choice
 
+    monkeypatch.setattr("pex_bridge.app._bounded_adapter_probes", _instant_adapter_probes)
     client, secret_store, _home = supervisor_client
     choice = SupervisorChoice(
         provider="custom",
@@ -421,6 +429,7 @@ async def test_saved_supervisor_activation_cannot_block_bridge_health(
         health = await asyncio.wait_for(client.get("/health"), timeout=0.2)
         settings = await asyncio.wait_for(client.get("/v1/supervisor"), timeout=0.2)
         assert health.status_code == settings.status_code == 200
+        assert health.json()["supervisor"] == "degraded"
         assert settings.json()["has_api_key"] is False
         assert settings.json()["credential_configured"] is (
             failure_phase == "hung_vault"
@@ -451,6 +460,7 @@ async def test_cold_start_has_separate_budget_without_blocking_health(
 
     from pex_bridge.app import _activate_saved_supervisor_choice
 
+    monkeypatch.setattr("pex_bridge.app._bounded_adapter_probes", _instant_adapter_probes)
     client, _secret_store, _home = supervisor_client
     entered = threading.Event()
     release = threading.Event()
@@ -472,7 +482,9 @@ async def test_cold_start_has_separate_budget_without_blocking_health(
         assert await asyncio.to_thread(entered.wait, 0.5)
         await asyncio.sleep(0.04)
         assert not activation.done()
-        assert (await asyncio.wait_for(client.get("/health"), timeout=0.2)).status_code == 200
+        health = await asyncio.wait_for(client.get("/health"), timeout=0.2)
+        assert health.status_code == 200
+        assert health.json()["supervisor"] == "degraded"
         release.set()
         await asyncio.wait_for(activation, timeout=0.5)
         assert state.pipeline.model is model
