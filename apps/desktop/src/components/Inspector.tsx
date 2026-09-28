@@ -48,6 +48,7 @@ export function Inspector({
   asking,
   askInput,
   goalDraft,
+  goalEditorRevision,
   savingGoal,
   attachingGoal,
   editingGoal,
@@ -87,6 +88,7 @@ export function Inspector({
   asking: boolean;
   askInput: RefObject<HTMLInputElement | null>;
   goalDraft: GoalDraft;
+  goalEditorRevision: number;
   savingGoal: boolean;
   attachingGoal: boolean;
   editingGoal?: boolean;
@@ -347,7 +349,7 @@ export function Inspector({
         )}
         <details
           className="goal-editor"
-          key={`${current?.id || "none"}-${editingGoal ? "editing" : "create"}`}
+          key={`${current?.id || "none"}-${goalEditorRevision}-${editingGoal ? "editing" : "create"}`}
           {...(editingGoal ? { open: true } : {})}
         >
           <summary>

@@ -391,6 +391,7 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalDraft, setGoalDraft] = useState<GoalDraft>(EMPTY_GOAL);
+  const [goalEditorRevision, setGoalEditorRevision] = useState(0);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [settingsDestination, setSettingsDestination] = useState<SettingsSection | undefined>();
   const [goalFocusRequest, setGoalFocusRequest] = useState(0);
@@ -1817,6 +1818,7 @@ export function App() {
       setGoals((rows) => [created, ...rows.filter((row) => row.id !== created.id)]);
       markCanonical("goals", "fresh");
       setGoalDraft(EMPTY_GOAL);
+      setGoalEditorRevision((revision) => revision + 1);
       if (current && canAttachPersistentGoal(current)) {
         setAttachingGoal(true);
         try {
@@ -2746,6 +2748,7 @@ export function App() {
           asking={asking}
           askInput={askInput}
           goalDraft={goalDraft}
+          goalEditorRevision={goalEditorRevision}
           savingGoal={savingGoal}
           attachingGoal={attachingGoal}
           editingGoal={Boolean(editingGoalId)}
