@@ -2679,7 +2679,9 @@ class Pipeline:
         verification: dict = {}
         notes = ""
         stored_decisions = (
-            await self.store.list_decisions_for_authority(goal.id) if goal is not None else []
+            await self.store.list_decisions_for_authority(
+                goal.id, prioritize_active_human=True,
+            ) if goal is not None else []
         )
         plan_decisions: list[Decision] = []
 

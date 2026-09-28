@@ -579,6 +579,48 @@ async def test_supervisor_context_page_retains_shared_human_commitments_before_g
 
 
 @pytest.mark.asyncio
+async def test_supervisor_decision_page_retains_active_human_decision(tmp_path):
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        goal = _goal("busy-decision-goal", "shared-project")
+        await store.upsert_goal(goal)
+        now = goal.created_at
+        decisions = [
+            Decision(
+                id="human-commitment", goal_id=goal.id,
+                statement="Keep the user's acceptance criterion.",
+                source=DecisionSource.HUMAN, status=DecisionStatus.ACTIVE,
+                created_at=now - timedelta(days=1),
+            ),
+            Decision(
+                id="superseded-human", goal_id=goal.id,
+                statement="An obsolete human decision.",
+                source=DecisionSource.HUMAN, status=DecisionStatus.SUPERSEDED,
+                created_at=now + timedelta(minutes=4),
+            ),
+            *[
+                Decision(
+                    id=f"agent-{index}", goal_id=goal.id,
+                    statement=f"Agent observation {index}",
+                    source=DecisionSource.AGENT, status=DecisionStatus.ACTIVE,
+                    created_at=now + timedelta(minutes=index + 1),
+                ) for index in range(3)
+            ],
+        ]
+        for decision in decisions:
+            await store.add_decision(decision)
+        ordinary = await store.list_decisions_for_authority(goal.id, limit=2)
+        assert [item.id for item in ordinary] == ["superseded-human", "agent-2"]
+        prioritized = await store.list_decisions_for_authority(
+            goal.id, prioritize_active_human=True, limit=2,
+        )
+        assert [item.id for item in prioritized] == ["human-commitment", "agent-2"]
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_different_identity_forensic_successor_cannot_deny_live_goal_authority(tmp_path):
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()

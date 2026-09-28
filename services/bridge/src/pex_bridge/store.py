@@ -28633,6 +28633,7 @@ class Store:
         self,
         goal_id: str,
         *,
+        prioritize_active_human: bool = False,
         limit: int = MAX_LIST_QUERY_LIMIT,
         offset: int = 0,
     ) -> list[Decision]:
@@ -28645,11 +28646,20 @@ class Store:
             await transaction.execute("BEGIN")
             try:
                 _, binding = await _load_bound_goal(transaction, goal_id)
+                query = (
+                    "SELECT json FROM decisions WHERE goal_id = ? "
+                    "AND project_binding = ? ORDER BY "
+                )
+                if prioritize_active_human:
+                    query += (
+                        "CASE WHEN json_extract(json, '$.status') IN ('active', 'uncertain') "
+                        "AND json_extract(json, '$.source') = 'human' THEN 0 "
+                        "WHEN json_extract(json, '$.status') IN ('active', 'uncertain') "
+                        "THEN 1 ELSE 2 END, "
+                    )
+                query += "json_extract(json, '$.created_at') DESC, id DESC LIMIT ? OFFSET ?"
                 cursor = await transaction.execute(
-                    "SELECT json FROM decisions WHERE goal_id = ? AND project_binding = ? "
-                    "ORDER BY json_extract(json, '$.created_at') DESC, id DESC "
-                    "LIMIT ? OFFSET ?",
-                    (goal_id, binding.project_binding, limit, offset),
+                    query, (goal_id, binding.project_binding, limit, offset),
                 )
                 rows = await cursor.fetchall()
                 await transaction.commit()
