@@ -267,6 +267,20 @@ verified by an independent read (`recovery_outcome_verified: true`,
 [`docs/evidence/opencode-free-native-byte-correction-pair-9644c59.json`](evidence/opencode-free-native-byte-correction-pair-9644c59.json).
 Neither result is a representative reliability rate or native desktop
 acceptance.
+On exact source `46f9461`, the desktop UI surface was exercised end-to-end in
+browser mode against a disposable test-scoped bridge with deterministic
+supervision and a real free OpenCode worker. A QuixBugs `next_permutation`
+repair completed in one worker turn with an observed passing pytest; the goal
+correctly stayed `uncertain` rather than overclaiming natural-language
+criteria. A false-claim scenario then ran the scripted inadequate checker and
+reported completion; PEX demanded a standalone `python -m pytest -q`, observed
+the real failure at `test_csv_utils.py::test_production_exports`, sent one
+nudge naming that node, and after the worker's repair recorded
+`verified_complete` with supported evidence. See
+[`docs/evidence/ui-supervised-flow-46f9461.json`](evidence/ui-supervised-flow-46f9461.json).
+This is pipeline evidence through the same `/v1` routes the UI calls; it is not
+native packaged-app acceptance, a semantic-model review, or a performance
+claim.
 Privacy-safe earlier-build Home, Inspector, and Settings screenshots are retained
 under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
 in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json).
