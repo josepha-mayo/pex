@@ -56,3 +56,63 @@ def test_missing_exact_artifact_routes_its_content_into_the_worker_correction(tm
     assert result["acceptance_status"] == "unsatisfied"
     assert "exact content 'pex-supervised-ok\\n'" in result["correction"]
     assert "current workspace" in result["correction"]
+
+
+@pytest.mark.parametrize(
+    "content,observed",
+    [(b"ready", "observed none"), (b"ready\r\n", "observed 0D 0A"),
+     (b"ready\n\n", "observed 0A 0A")],
+)
+def test_exact_lf_correction_requires_byte_level_verification(tmp_path, content, observed):
+    (tmp_path / "status.txt").write_bytes(content)
+    result = verify_claims(
+        [], [],
+        _goal(acceptance_criteria=["status.txt contains exactly ready followed by one LF newline"],
+              evidence_requirements=[]),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert result["acceptance_status"] == "unsatisfied"
+    assert "expected 0A" in result["correction"]
+    assert observed in result["correction"]
+    assert "line-oriented read view cannot verify" in result["correction"]
+
+
+def test_exact_lf_correction_bounds_long_trailing_byte_dumps(tmp_path):
+    (tmp_path / "status.txt").write_bytes(b"ready" + b"\n" * 64)
+    result = verify_claims(
+        [], [],
+        _goal(acceptance_criteria=["status.txt contains exactly ready followed by one LF newline"],
+              evidence_requirements=[]),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert result["acceptance_status"] == "unsatisfied"
+    correction = result["correction"]
+    assert "observed 0A" in correction
+    assert "+48 more bytes" in correction
+    assert len(correction) < 1_000
+
+
+def test_exact_lf_correction_falls_back_for_mid_content_diffs(tmp_path):
+    (tmp_path / "status.txt").write_bytes(b"readx\n")
+    result = verify_claims(
+        [], [],
+        _goal(acceptance_criteria=["status.txt contains exactly ready followed by one LF newline"],
+              evidence_requirements=[]),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert result["acceptance_status"] == "unsatisfied"
+    assert "trailing bytes" not in result["correction"]
+    assert "Correct the file and verify it before stopping." in result["correction"]
+
+
+def test_exact_correction_names_expected_absence_when_file_has_extra_lf(tmp_path):
+    (tmp_path / "status.txt").write_bytes(b"ready\n")
+    result = verify_claims(
+        [], [],
+        _goal(acceptance_criteria=["status.txt contains exactly ready"],
+              evidence_requirements=[]),
+        snapshot(tmp_path, run_pytest=False),
+    )
+    assert result["acceptance_status"] == "unsatisfied"
+    assert "expected none" in result["correction"]
+    assert "observed 0A" in result["correction"]

@@ -1081,6 +1081,14 @@ def _read_goal_file(
         return None
 
 
+def _trailing_byte_hex(text: str, limit: int = 16) -> str:
+    suffix = text[len(text.rstrip("\r\n")):].encode("utf-8")
+    hexed = suffix[:limit].hex(" ").upper()
+    if len(suffix) > limit:
+        hexed = f"{hexed} …+{len(suffix) - limit} more bytes"
+    return hexed or "none"
+
+
 def _goal_file_verdict(
     claim: dict[str, Any] | None,
     goal: Goal | None,
@@ -1169,6 +1177,17 @@ def _goal_file_verdict(
                         "targeted check before deciding completion."
                     ),
                 }
+            line_ending_guidance = "Correct the file and verify it before stopping."
+            if exact and content.rstrip("\r\n") == expected.rstrip("\r\n"):
+                expected_hex = _trailing_byte_hex(expected)
+                observed_hex = _trailing_byte_hex(content)
+                line_ending_guidance = (
+                    "The visible lines match, but the trailing bytes differ: "
+                    f"expected {expected_hex}; observed {observed_hex}. "
+                    "A line-oriented read view cannot verify those bytes. Write the exact "
+                    "content, then confirm the file's trailing bytes with a shell byte-level "
+                    "check such as a hex dump before stopping."
+                )
             return {
                 "claim": claim,
                 "status": "unsatisfied" if claim is None else "contradicted",
@@ -1178,7 +1197,7 @@ def _goal_file_verdict(
                 ],
                 "correction": (
                     f"{path} exists but does not {'equal' if exact else 'contain'} {expected!r}. "
-                    "Correct the file and verify it before stopping."
+                    f"{line_ending_guidance}"
                 ),
             }
         evidence.append(f"{'equals' if exact else 'contains'}:{path}:{expected}")
