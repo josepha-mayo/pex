@@ -7,7 +7,11 @@ optionally enable model-backed supervisor review through a BYOK provider.
 Everything here runs on loopback against a deliberately test-scoped bridge
 (`scripts/demo_bridge.py`). The packaged desktop app uses the authenticated
 bridge instead; this flow exists so the supervision loop is demonstrable in a
-browser without reading the desktop bearer.
+browser without reading the desktop bearer. Operator mutations (sending work
+through `/v1/sessions/{id}/message`, resolving decisions) require the bearer
+and are denied on the test bridge by design — send worker input through
+`opencode attach` or the OpenCode server's `prompt_async` route below, which
+is the product's documented OpenCode path either way.
 
 ## Prerequisites
 
