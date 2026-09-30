@@ -280,7 +280,15 @@ nudge naming that node, and after the worker's repair recorded
 [`docs/evidence/ui-supervised-flow-46f9461.json`](evidence/ui-supervised-flow-46f9461.json).
 This is pipeline evidence through the same `/v1` routes the UI calls; it is not
 native packaged-app acceptance, a semantic-model review, or a performance
-claim.
+claim. A bounded Codex worker (codex-cli 0.159.0 app-server, `gpt-6-luna`) then
+ran QuixBugs `wrap` over the authenticated bridge on a separate profile: PEX
+nudged once when the worker claimed green while the attributable standalone
+pytest had exit 1, demanded verification again when subsequent passes were only
+env-prefixed/chained runs, and recorded NOOP only after an attributable
+standalone `python -m pytest -q` passed. The workspace was independently
+verified byte-level (concat-preserving, bounded line lengths, upstream
+provenance hash unchanged). See
+[`docs/evidence/ui-codex-flow-9cba107.json`](evidence/ui-codex-flow-9cba107.json).
 Privacy-safe earlier-build Home, Inspector, and Settings screenshots are retained
 under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
 in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json).
