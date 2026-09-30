@@ -796,6 +796,47 @@ async def test_exact_turn_human_decision_contract_is_immutable_and_read_validate
 
 
 @pytest.mark.asyncio
+async def test_delivered_human_decision_survives_post_delivery_outcome_observation(
+    tmp_path,
+):
+    store, pipeline, session, _goal, principal = await _bound_pipeline(
+        tmp_path, suffix="-delivered-outcome"
+    )
+    try:
+        opened = await pipeline.request_human_decision(
+            session,
+            principal=principal,
+            request=_request(idempotency_key="decision-delivered-outcome-0001"),
+        )
+        intervention_id = opened["intervention"]["id"]
+        resolved = await resolve_requested_human_decision(
+            store,
+            _delivery_registry(_DecisionDeliveryAdapter()),
+            intervention_id=intervention_id,
+            choice="iterate",
+        )
+        assert resolved.response()["delivery_status"] == "delivered"
+        intervention = await store.get_intervention(intervention_id)
+        assert intervention is not None
+        observed = intervention.model_copy(
+            update={
+                "outcome": "worker_stopped_outcome_uncertain",
+                "metadata": {**intervention.metadata, "outcome_final": False},
+            }
+        )
+        await store.update_intervention(observed)
+        record = await store.get_current_human_decision_resolution(intervention_id)
+        assert record is not None
+        assert record["status"] == "delivered"
+        metrics = await store.attention_metrics()
+        assert metrics["human_interventions"] is not None
+        replay = await store.get_human_decision_resolution(intervention_id)
+        assert replay is not None and replay["status"] == "delivered"
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_terminal_human_decision_json_cannot_reactivate_delivery(tmp_path):
     store, pipeline, session, _goal, principal = await _bound_pipeline(
         tmp_path, suffix="-terminal-reactivation"

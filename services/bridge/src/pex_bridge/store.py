@@ -1542,6 +1542,16 @@ def _normalize_human_decision_delivery_receipt(
     )
 
 
+_HUMAN_DECISION_LIFECYCLE_AUDIT_TYPES = (
+    "human_decision_delivery_reserved",
+    "human_decision_dispatch_started",
+    "human_decision_delivered",
+    "human_decision_delivery_unsupported",
+    "human_decision_delivery_rejected",
+    "human_decision_delivery_failed",
+    "human_decision_delivery_uncertain",
+)
+
 _HUMAN_DECISION_PROJECTION_BY_STATUS = {
     "delivery_reserved": (
         "human_decision_delivery_reserved",
@@ -1577,6 +1587,7 @@ def _validate_human_decision_intervention_projection(
     *,
     audit_record_type: object,
     audit_record: object,
+    latest_audit_record: object,
 ) -> None:
     """Require the mutable resolution state to agree with independent ledgers."""
 
@@ -1624,9 +1635,16 @@ def _validate_human_decision_intervention_projection(
         or resolution.get("intervention_binding")
         != _decision_intervention_binding(intervention)
         or intervention.result != expected_result
-        or intervention.outcome != expected_result
         or metadata.get("human_decision_resolution") != public_resolution
         or metadata.get("worker_delivery_receipt") != receipt
+    ):
+        raise RuntimeError("stored human decision intervention projection is corrupt")
+    # outcome is a live field: post-delivery monitoring legitimately rewrites
+    # it. Require the newest audit snapshot (any record type) to mirror it
+    # rather than pinning it to the delivery-time constant.
+    if (
+        not isinstance(latest_audit_record, dict)
+        or latest_audit_record.get("outcome") != intervention.outcome
     ):
         raise RuntimeError("stored human decision intervention projection is corrupt")
     if audit_record_type != expected_audit_type or not isinstance(audit_record, dict):
@@ -1698,20 +1716,36 @@ async def _load_validated_human_decision_resolution(
     ):
         raise RuntimeError("stored human decision intervention authority is corrupt")
     if row["delivery_contract_version"] == HUMAN_DECISION_DELIVERY_CONTRACT_EXACT_TURN:
+        placeholders = ",".join(
+            "?" for _ in _HUMAN_DECISION_LIFECYCLE_AUDIT_TYPES
+        )
         audit_cursor = await transaction.execute(
             "SELECT record_type, json FROM intervention_audit "
-            "WHERE intervention_id = ? ORDER BY rowid DESC LIMIT 1",
-            (intervention_id,),
+            f"WHERE intervention_id = ? AND record_type IN ({placeholders}) "
+            "ORDER BY rowid DESC LIMIT 1",
+            (intervention_id, *_HUMAN_DECISION_LIFECYCLE_AUDIT_TYPES),
         )
         audit_row = await audit_cursor.fetchone()
         audit_record = (
             _strict_json_loads(str(audit_row["json"])) if audit_row is not None else None
+        )
+        latest_cursor = await transaction.execute(
+            "SELECT json FROM intervention_audit "
+            "WHERE intervention_id = ? ORDER BY rowid DESC LIMIT 1",
+            (intervention_id,),
+        )
+        latest_row = await latest_cursor.fetchone()
+        latest_audit_record = (
+            _strict_json_loads(str(latest_row["json"]))
+            if latest_row is not None
+            else None
         )
         _validate_human_decision_intervention_projection(
             resolution,
             intervention,
             audit_record_type=(audit_row["record_type"] if audit_row is not None else None),
             audit_record=audit_record,
+            latest_audit_record=latest_audit_record,
         )
     return resolution, intervention
 
@@ -4615,6 +4649,7 @@ def _validate_event_observation_update(
         "action_taken",
         "policy_verdict",
         "created_at",
+        "result",
     )
     for field in immutable_fields:
         if getattr(existing, field) != getattr(observed, field):
@@ -19269,9 +19304,24 @@ class Store:
             else None
         )
         audit = _strict_json_loads(str(audit_row["json"]))
+        latest_audit_cursor = await connection.execute(
+            "SELECT json FROM intervention_audit WHERE intervention_id = ? "
+            "ORDER BY rowid DESC LIMIT 1",
+            (intervention_id,),
+        )
+        latest_audit_row = await latest_audit_cursor.fetchone()
+        latest_audit = (
+            _strict_json_loads(str(latest_audit_row["json"]))
+            if latest_audit_row is not None
+            else None
+        )
+        # outcome is a live field: post-delivery monitoring legitimately
+        # rewrites it (worker_responded, verification_passed_after_intervention,
+        # worker_stopped_outcome_uncertain, ...). Every intervention write
+        # co-commits an audit snapshot, so require the newest audit row to
+        # mirror it rather than pinning it to the delivery-time constant.
         if (
             intervention.result != expected_result
-            or intervention.outcome != expected_result
             or intervention.action_taken != expected_action
             or intervention.metadata.get("handoff_delivery_status")
             != state
@@ -19282,6 +19332,8 @@ class Store:
             or audit.get("delivery_result") != expected_result
             or audit.get("outcome") != expected_result
             or audit.get("worker_delivery_receipt") != receipt
+            or not isinstance(latest_audit, dict)
+            or latest_audit.get("outcome") != intervention.outcome
         ):
             raise RuntimeError("stored handoff terminal projection is corrupt")
         if state not in {"reserved", "skipped"}:

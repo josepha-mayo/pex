@@ -314,6 +314,74 @@ async def test_handoff_reservation_is_atomic_replayable_and_finalizes_one_receip
 
 
 @pytest.mark.asyncio
+async def test_delivered_handoff_survives_post_delivery_outcome_observation(tmp_path):
+    store = Store(tmp_path / "pex.sqlite", process_boot_id="boot_handoff_outcome")
+    await store.connect()
+    try:
+        goal, source, target = await _seed(store)
+        item, bundle, event, intervention = _artifacts(goal, source, target)
+        intervention.metadata["human_requested"] = True
+        await store.add_context(item)
+        reserved = await store.reserve_operator_handoff(
+            principal_id=PRINCIPAL,
+            idempotency_key=KEY,
+            source_session_id=source.id,
+            target_session_id=target.id,
+            token_budget=2_000,
+            bundle=bundle,
+            event=event,
+            intervention=intervention,
+            actor_assurance="bridge_bearer",
+        )
+        dispatch = await store.start_operator_handoff_dispatch(
+            reserved["effect"]["effect_id"]
+        )
+        assert dispatch["granted"] is True
+        final = await store.finalize_operator_handoff(
+            effect_id=reserved["effect"]["effect_id"],
+            state="delivered",
+            result=_synthetic_delivery_result(target),
+        )
+        assert final["intervention"].outcome == "handoff_injected"
+        observed = final["intervention"].model_copy(
+            update={
+                "outcome": "worker_stopped_outcome_uncertain",
+                "metadata": {
+                    **final["intervention"].metadata,
+                    "outcome_final": False,
+                },
+            }
+        )
+        await store.update_intervention(observed)
+        assimilation = await store.handoff_assimilation_status(
+            reserved["effect"]["effect_id"]
+        )
+        assert assimilation["status"] == "awaiting_target_evidence"
+        replay = await store.find_operator_handoff(
+            principal_id=PRINCIPAL,
+            idempotency_key=KEY,
+            source_session_id=source.id,
+            target_session_id=target.id,
+            token_budget=2_000,
+        )
+        assert replay is not None
+        assert replay["effect"]["state"] == "delivered"
+        assert replay["intervention"].outcome == "worker_stopped_outcome_uncertain"
+        refinalize = await store.finalize_operator_handoff(
+            effect_id=reserved["effect"]["effect_id"],
+            state="delivered",
+            result=_synthetic_delivery_result(target),
+        )
+        assert refinalize["effect"]["state"] == "delivered"
+        assert (
+            refinalize["effect"]["result"]["worker_delivery_receipt"]
+            == final["effect"]["result"]["worker_delivery_receipt"]
+        )
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_find_handoff_uses_one_snapshot_during_concurrent_finalization(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
