@@ -28,7 +28,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-RUN_ROOT = Path(os.environ.get("PEX_DEMO_HOME", Path(__file__).resolve().parent.parent / "build" / "demo"))
+RUN_ROOT = Path(
+    os.environ.get("PEX_DEMO_HOME", Path(__file__).resolve().parent.parent / "build" / "demo")
+)
 PEX_HOME = RUN_ROOT / "pex-home" if RUN_ROOT.name != "pex-home" else RUN_ROOT
 PEX_HOME.mkdir(parents=True, exist_ok=True)
 
@@ -41,7 +43,6 @@ _MAX_DISPATCHES = int(os.environ.get("PEX_SUPERVISOR_MAX_DISPATCHES_PER_SESSION"
 _OPENCODE_URL = os.environ.get("PEX_OPENCODE_URL", "http://127.0.0.1:4096")
 
 import uvicorn  # noqa: E402
-
 from pex_bridge.app import create_app, state  # noqa: E402
 from pex_bridge.config import Settings  # noqa: E402
 
