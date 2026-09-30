@@ -957,45 +957,6 @@ def _evaluation_verdict(
     }
 
 
-def _missing_file_verdict(
-    claim: dict[str, Any] | None,
-    goal: Goal | None,
-    workspace: dict[str, Any],
-) -> dict[str, Any] | None:
-    missing = _missing_required_files(goal, workspace)
-    if missing is None:
-        return None
-    if not missing:
-        return None
-    name = missing[0]
-    correction = (
-        f"{name} is missing from the current workspace. Complete the attached "
-        "objective and verify this required artifact before stopping."
-    )
-    if goal is not None:
-        for raw in goal.acceptance_criteria:
-            expected = _expected_content(str(raw or ""))
-            if (
-                expected is not None
-                and expected[0].replace("\\", "/") == name.replace("\\", "/")
-                and expected[2]
-                and len(expected[1]) <= 160
-            ):
-                correction = (
-                    f"{name} is missing from the current workspace. The attached "
-                    f"acceptance criterion requires exact content {expected[1]!r}. "
-                    "Create and verify that file here before stopping."
-                )
-                break
-    return {
-        "claim": claim,
-        "status": "unsatisfied" if claim is None else "contradicted",
-        "basis": "acceptance_criterion" if claim is None else "worker_claim",
-        "evidence": [f"missing:{item}" for item in missing],
-        "correction": correction,
-    }
-
-
 def _expected_content(raw: str) -> tuple[str, str, bool] | None:
     # Markdown code spans around the path are formatting, not part of the
     # filename. Normalize only a complete leading path span; preserve literal
@@ -1089,6 +1050,50 @@ def _trailing_byte_hex(text: str, limit: int = 16) -> str:
     return hexed or "none"
 
 
+def _required_content_note(goal: Goal | None, name: str) -> tuple[str, bool] | None:
+    """Exact-content requirement text for one required file, if the goal pins it.
+
+    The flag marks content ending in invisible trailing bytes that a
+    line-oriented read view cannot confirm.
+    """
+    if goal is None:
+        return None
+    objective = re.sub(r"^(?:create|write|update)\s+", "", goal.objective.strip(), flags=re.I)
+    for raw in [objective, *goal.acceptance_criteria]:
+        expected = _expected_content(str(raw or ""))
+        if (
+            expected is not None
+            and expected[0].replace("\\", "/") == name.replace("\\", "/")
+            and expected[2]
+            and len(expected[1]) <= 160
+        ):
+            has_trailing = bool(expected[1][len(expected[1].rstrip("\r\n")):])
+            note = (
+                f"The attached acceptance criterion requires exact content "
+                f"{expected[1]!r}"
+            )
+            if has_trailing:
+                note += f", which ends with byte {_trailing_byte_hex(expected[1])}"
+            return f"{note}.", has_trailing
+    return None
+
+
+def _gap_correction(fragments: list[str], byte_guidance: bool) -> str:
+    """One worker-facing correction covering every file gap at this stop."""
+    listed = " ".join(fragments[:4])
+    if len(fragments) > 4:
+        listed += f" {len(fragments) - 4} more files also fail."
+    if byte_guidance:
+        return (
+            f"{listed} A line-oriented read view cannot verify those bytes. Write "
+            "the exact content, then confirm each file's trailing bytes with a "
+            "shell byte-level check such as a hex dump before stopping."
+        )
+    if len(fragments) == 1:
+        return f"{listed} Create or correct the file and verify it before stopping."
+    return f"{listed} Create or correct the listed files and verify them before stopping."
+
+
 def _goal_file_verdict(
     claim: dict[str, Any] | None,
     goal: Goal | None,
@@ -1101,9 +1106,6 @@ def _goal_file_verdict(
             "evidence": ["goal_unattached"],
             "correction": None,
         }
-    missing_verdict = _missing_file_verdict(claim, goal, workspace)
-    if missing_verdict is not None:
-        return missing_verdict
     required = _required_files(goal)
     if not required:
         return {
@@ -1113,7 +1115,27 @@ def _goal_file_verdict(
             "correction": None,
         }
 
-    evidence = [f"exists:{name}" for name in required]
+    # Collect every file gap before answering. One correction that names all of
+    # them lets the worker fix them in a single turn instead of spending a
+    # follow-up round trip per file.
+    missing = _missing_required_files(goal, workspace)
+    missing_set = {_workspace_path_key(name, workspace) for name in (missing or [])}
+    evidence = [
+        f"exists:{name}"
+        for name in required
+        if _workspace_path_key(name, workspace) not in missing_set
+    ]
+    evidence.extend(f"missing:{name}" for name in missing or [])
+    fragments: list[str] = []
+    byte_guidance = False
+    for name in missing or []:
+        note = _required_content_note(goal, name)
+        byte_guidance = byte_guidance or (note is not None and note[1])
+        fragments.append(
+            f"{name} is missing from the current workspace."
+            + (f" {note[0]}" if note is not None else "")
+        )
+
     unresolved: list[str] = []
     checks: list[tuple[str, str, bool]] = []
     row_checks: list[tuple[str, int]] = []
@@ -1153,76 +1175,95 @@ def _goal_file_verdict(
         ):
             unresolved.append(requirement)
 
+    deferred_uncertain: dict[str, Any] | None = None
+    seen_checks: set[tuple[str, str, bool]] = set()
     for path, expected, exact in checks:
+        key = (_workspace_path_key(path, workspace), expected, exact)
+        if key[0] in missing_set or key in seen_checks:
+            continue
+        seen_checks.add(key)
         observed_content = _read_goal_file(workspace, path)
         if observed_content is None:
-            return {
-                "claim": claim,
-                "status": "uncertain",
-                "evidence": [f"temporarily_unreadable:{path}"],
-                "correction": None,
-                "probe": f"Retry a bounded read of {path} before deciding completion.",
-            }
+            evidence.append(f"temporarily_unreadable:{path}")
+            if deferred_uncertain is None:
+                deferred_uncertain = {
+                    "claim": claim,
+                    "status": "uncertain",
+                    "evidence": [f"temporarily_unreadable:{path}"],
+                    "correction": None,
+                    "probe": f"Retry a bounded read of {path} before deciding completion.",
+                }
+            continue
         content, complete = observed_content
         matches = (complete and content == expected) if exact else expected in content
         if not matches:
             if not complete:
-                return {
-                    "claim": claim,
-                    "status": "uncertain",
-                    "evidence": [f"content_check_incomplete:{path}"],
-                    "correction": None,
-                    "probe": (
-                        f"{path} exceeds the bounded content verifier. Observe an exact "
-                        "targeted check before deciding completion."
-                    ),
-                }
-            line_ending_guidance = "Correct the file and verify it before stopping."
+                evidence.append(f"content_check_incomplete:{path}")
+                if deferred_uncertain is None:
+                    deferred_uncertain = {
+                        "claim": claim,
+                        "status": "uncertain",
+                        "evidence": [f"content_check_incomplete:{path}"],
+                        "correction": None,
+                        "probe": (
+                            f"{path} exceeds the bounded content verifier. Observe an exact "
+                            "targeted check before deciding completion."
+                        ),
+                    }
+                continue
+            fragments.append(
+                f"{path} exists but does not {'equal' if exact else 'contain'} "
+                f"{expected[:160]!r}."
+            )
             if exact and content.rstrip("\r\n") == expected.rstrip("\r\n"):
-                expected_hex = _trailing_byte_hex(expected)
-                observed_hex = _trailing_byte_hex(content)
-                line_ending_guidance = (
-                    "The visible lines match, but the trailing bytes differ: "
-                    f"expected {expected_hex}; observed {observed_hex}. "
-                    "A line-oriented read view cannot verify those bytes. Write the exact "
-                    "content, then confirm the file's trailing bytes with a shell byte-level "
-                    "check such as a hex dump before stopping."
+                fragments[-1] += (
+                    " The visible lines match, but the trailing bytes differ: "
+                    f"expected {_trailing_byte_hex(expected)}; "
+                    f"observed {_trailing_byte_hex(content)}."
                 )
-            return {
-                "claim": claim,
-                "status": "unsatisfied" if claim is None else "contradicted",
-                "basis": "acceptance_criterion" if claim is None else "worker_claim",
-                "evidence": [
-                    f"{'content_mismatch' if exact else 'content_missing'}:{path}:{expected}"
-                ],
-                "correction": (
-                    f"{path} exists but does not {'equal' if exact else 'contain'} {expected!r}. "
-                    f"{line_ending_guidance}"
-                ),
-            }
+                byte_guidance = True
+            evidence.append(
+                f"{'content_mismatch' if exact else 'content_missing'}:{path}:{expected}"
+            )
+            continue
         evidence.append(f"{'equals' if exact else 'contains'}:{path}:{expected}")
+    seen_rows: set[tuple[str, int]] = set()
     for path, expected_rows in row_checks:
+        row_key = (_workspace_path_key(path, workspace), expected_rows)
+        if row_key[0] in missing_set or row_key in seen_rows:
+            continue
+        seen_rows.add(row_key)
         _, count = _artifact_rows(goal, workspace, path)
         if count is None:
-            return {
-                "claim": claim,
-                "status": "uncertain",
-                "evidence": [f"row_count_unavailable:{path}"],
-                "correction": None,
-                "probe": f"Observe a complete row count for {path} before deciding completion.",
-            }
+            evidence.append(f"row_count_unavailable:{path}")
+            if deferred_uncertain is None:
+                deferred_uncertain = {
+                    "claim": claim,
+                    "status": "uncertain",
+                    "evidence": [f"row_count_unavailable:{path}"],
+                    "correction": None,
+                    "probe": (
+                        f"Observe a complete row count for {path} before deciding completion."
+                    ),
+                }
+            continue
         if count < expected_rows:
-            return {
-                "claim": claim,
-                "status": "unsatisfied" if claim is None else "contradicted",
-                "basis": "acceptance_criterion" if claim is None else "worker_claim",
-                "evidence": [f"expected_rows={expected_rows}", f"{path}_rows={count}"],
-                "correction": (
-                    f"{path} contains {count} rows; acceptance requires {expected_rows}. "
-                    "Complete the artifact and verify its final row count before stopping."
-                ),
-            }
+            fragments.append(
+                f"{path} contains {count} rows; acceptance requires {expected_rows}."
+            )
+            evidence.extend([f"expected_rows={expected_rows}", f"{path}_rows={count}"])
+            continue
         evidence.append(f"{path}_rows={count}")
+    if fragments:
+        return {
+            "claim": claim,
+            "status": "unsatisfied" if claim is None else "contradicted",
+            "basis": "acceptance_criterion" if claim is None else "worker_claim",
+            "evidence": evidence,
+            "correction": _gap_correction(fragments, byte_guidance),
+        }
+    if deferred_uncertain is not None:
+        return deferred_uncertain
     if unresolved:
         return {
             "claim": claim,
@@ -1480,16 +1521,15 @@ def verify_claims(
                 else eval_verdict
             )
         elif kind in _COMPLETION_KINDS:
-            file_verdict = _missing_file_verdict(claim, goal, workspace)
-            verdicts.append(
-                file_verdict
-                or {
+            file_verdict = _goal_file_verdict(claim, goal, workspace)
+            if file_verdict["status"] == "uncertain":
+                file_verdict = {
                     "claim": claim,
                     "status": "uncertain",
                     "evidence": ["no_external_check"],
                     "correction": None,
                 }
-            )
+            verdicts.append(file_verdict)
     acceptance_gap = _goal_file_verdict(None, goal, workspace)
     goal_requires_pytest = _PYTEST_REQUIREMENT.search(_goal_requirement_text(goal)) is not None
     latest_pytest = _latest_pytest(events)
@@ -1529,15 +1569,13 @@ def verify_claims(
     acceptance_evidence = list(acceptance_gap.get("evidence") or [])
     if acceptance_gap.get("status") == "supported":
         acceptance_gap = None
-    if (
-        acceptance_gap
-        and acceptance_gap.get("status") != "uncertain"
-        and not any(
-            set(item.get("evidence") or []) & set(acceptance_gap.get("evidence") or [])
-            for item in verdicts
+    if acceptance_gap and acceptance_gap.get("status") != "uncertain":
+        gap_evidence = set(acceptance_gap.get("evidence") or [])
+        covered = bool(gap_evidence) and any(
+            gap_evidence <= set(item.get("evidence") or []) for item in verdicts
         )
-    ):
-        verdicts.append(acceptance_gap)
+        if not covered:
+            verdicts.append(acceptance_gap)
     pytest_gap = _unfinished_pytest_verdict(events, goal)
     if pytest_gap and not any(
         str(item).startswith("pytest_ok=")
