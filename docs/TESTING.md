@@ -296,6 +296,12 @@ production PATCH route, persisted across a bridge restart). The completed
 review returned NOOP with grounded rationale citing the observed pytest pass;
 the workspace was verified independently. See
 [`docs/evidence/semantic-nebius-e1d2565.json`](evidence/semantic-nebius-e1d2565.json).
+The same semantic configuration then supervised the scripted false-completion
+scenario: deterministic fast paths demanded typed evidence and nudged on the
+contradicted claim without spending model calls, the bounded Nebius review
+(7759 in / 596 out tokens) confirmed the repaired state, and a fourth stop
+honestly reported `supervisor_dispatch_budget_exhausted`. See
+[`docs/evidence/semantic-false-claim-e1d2565.json`](evidence/semantic-false-claim-e1d2565.json).
 Privacy-safe earlier-build Home, Inspector, and Settings screenshots are retained
 under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
 in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json).
