@@ -1141,6 +1141,42 @@ async def test_model_constructor_timeout_quarantines_until_worker_finishes(
 
 
 @pytest.mark.asyncio
+async def test_slow_first_save_commits_within_default_config_budget(
+    supervisor_client, monkeypatch
+):
+    client, secret_store, home = supervisor_client
+    entered = __import__("threading").Event()
+    proceed = __import__("threading").Event()
+
+    def slow_model(_config):
+        entered.set()
+        proceed.wait()
+        return object()
+
+    monkeypatch.setattr("pex_supervisor.providers.load_supervisor_model", slow_model)
+    request = asyncio.create_task(client.patch(
+        "/v1/supervisor",
+        json=_custom_payload(),
+    ))
+    try:
+        assert await asyncio.to_thread(entered.wait, 1)
+        # Cold first saves pay for model-construction imports inside the
+        # request. The historical 10s budget abandoned this exact operation
+        # with a 504; the request must still be pending past that point.
+        await asyncio.sleep(11)
+        assert not request.done()
+        proceed.set()
+        saved = await asyncio.wait_for(request, timeout=30)
+        assert saved.status_code == 200
+        body = saved.json()
+        assert body["revision"] == 1
+        assert load_supervisor_choice(home / "supervisor.json") is not None
+        assert state.supervisor_config_task is None
+    finally:
+        proceed.set()
+
+
+@pytest.mark.asyncio
 async def test_cancelled_model_construction_never_commits_or_stages_secret(
     supervisor_client, monkeypatch
 ):

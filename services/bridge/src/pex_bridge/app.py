@@ -100,7 +100,7 @@ from pex_bridge.supervisor_config import (
 )
 
 logger = logging.getLogger(__name__)
-_SUPERVISOR_CONFIG_TIMEOUT_SECONDS = 10.0
+_SUPERVISOR_CONFIG_TIMEOUT_SECONDS = 60.0
 # Frozen SDK imports and the first OS-vault lookup can exceed a warm Save's
 # deadline. Startup runs off the event loop and must not delay bridge health.
 _SUPERVISOR_STARTUP_TIMEOUT_SECONDS = 60.0

@@ -2284,7 +2284,7 @@ export function App() {
         signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }));
+      }), 70_000);
       if (!isSupervisorRevision(data.revision) || data.revision !== Number(payload.expected_revision) + 1) {
         throw new Error("The save response did not confirm the next configuration revision. Reload settings.");
       }
