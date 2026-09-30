@@ -289,6 +289,13 @@ standalone `python -m pytest -q` passed. The workspace was independently
 verified byte-level (concat-preserving, bounded line lengths, upstream
 provenance hash unchanged). See
 [`docs/evidence/ui-codex-flow-9cba107.json`](evidence/ui-codex-flow-9cba107.json).
+The semantic supervisor path was then exercised end to end over the live
+bridge: a worker STOP on an attached goal triggered a real Nebius Token Factory
+inference call with `nvidia/nemotron-3-super-120b-a12b` (BYOK saved through the
+production PATCH route, persisted across a bridge restart). The completed
+review returned NOOP with grounded rationale citing the observed pytest pass;
+the workspace was verified independently. See
+[`docs/evidence/semantic-nebius-e1d2565.json`](evidence/semantic-nebius-e1d2565.json).
 Privacy-safe earlier-build Home, Inspector, and Settings screenshots are retained
 under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
 in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json).
