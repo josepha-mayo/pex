@@ -253,6 +253,20 @@ pair validator passed with raw SSE from both arms. See
 Earlier attempts on `e08e1c2` retained failed local OpenCode GET observations;
 they were excluded from this pair. This single result demonstrates a specific
 context handoff, not a general performance or native desktop claim.
+On exact source `9644c59`, a `mimo-v2.6-flash-free` two-stage pair repeated
+that result: the baseline stopped with the final artifact absent (52.59
+seconds), and the treatment recovered after one same-session correction that
+named the required trailing byte (142.76 seconds, zero supervisor model
+calls, matched pair validator clean). See
+[`docs/evidence/opencode-deterministic-two-stage-recovery-pair-9644c59.json`](evidence/opencode-deterministic-two-stage-recovery-pair-9644c59.json).
+A same-commit `nemotron-3-ultra-free` diagnostic does not pair because the
+worker missed the required LF byte during the unaided first stage; after one
+combined PEX correction it still produced byte-exact files for both stages,
+verified by an independent read (`recovery_outcome_verified: true`,
+`termination_reason: "initial_conditions_failed"`). See
+[`docs/evidence/opencode-free-native-byte-correction-pair-9644c59.json`](evidence/opencode-free-native-byte-correction-pair-9644c59.json).
+Neither result is a representative reliability rate or native desktop
+acceptance.
 Privacy-safe earlier-build Home, Inspector, and Settings screenshots are retained
 under [`docs/demo/assets`](demo/assets), with hashes and browser-mode boundaries
 in [`docs/evidence/ui-browser-rc13.json`](evidence/ui-browser-rc13.json).
