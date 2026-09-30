@@ -141,7 +141,6 @@ import {
   updateGoalPayload,
 } from "./viewModel";
 
-const BRIDGE = "http://127.0.0.1:7420";
 const EVENT_CURSOR_STORAGE_KEY = "pex.event_cursor.v1";
 const PET_RECONCILIATION_INTERVAL_MS = 30_000;
 const BASE_STATE_RECONCILIATION_INTERVAL_MS = 30_000;
@@ -159,6 +158,12 @@ function defaultSupervisorAuth(provider: string): SupervisorAuthMode {
   return "api_key";
 }
 const TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+// Browser mode has no desktop bearer and may sit behind a dev proxy or
+// tunnel, so same-origin /v1 requests are forwarded by the vite dev server.
+const BRIDGE =
+  typeof window !== "undefined" && !TAURI
+    ? window.location.origin
+    : "http://127.0.0.1:7420";
 const EMPTY_GOAL: GoalDraft = {
   projectId: "",
   title: "",

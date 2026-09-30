@@ -2345,3 +2345,14 @@ test("worker context shares same-goal evidence without borrowing another goal", 
   assert.deepEqual(contextForWorker(items, sessions, "missing"), []);
   assert.equal(contextForWorker(items, sessions), items);
 });
+
+test("browser mode calls the bridge same-origin through the dev proxy", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const app = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
+  const vite = await readFile(new URL("../vite.config.ts", import.meta.url), "utf8");
+  // A non-Tauri page may sit behind a tunnel or preview port, so pinning
+  // 127.0.0.1:7420 would send every call cross-origin and render it dead.
+  assert.match(app, /const BRIDGE =[\s\S]*?!TAURI[\s\S]*?window\.location\.origin[\s\S]*?"http:\/\/127\.0\.0\.1:7420"/u);
+  assert.match(vite, /proxy:\s*\{[\s\S]*?"\/v1"[\s\S]*?target:\s*"http:\/\/127\.0\.0\.1:7420"[\s\S]*?changeOrigin:\s*true[\s\S]*?ws:\s*true[\s\S]*?\}/u);
+  assert.match(vite, /origin:\s*"http:\/\/127\.0\.0\.1:1420"/u);
+});
