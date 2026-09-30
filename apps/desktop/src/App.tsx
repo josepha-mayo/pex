@@ -161,7 +161,7 @@ const TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 // Browser mode has no desktop bearer and may sit behind a dev proxy or
 // tunnel, so same-origin /v1 requests are forwarded by the vite dev server.
 const BRIDGE =
-  typeof window !== "undefined" && !TAURI
+  typeof window !== "undefined" && !TAURI && window.location.origin !== "null"
     ? window.location.origin
     : "http://127.0.0.1:7420";
 const EMPTY_GOAL: GoalDraft = {
