@@ -4604,6 +4604,110 @@ def create_app() -> FastAPI:
                 {"code": exc.code, "message": str(exc)},
             ) from exc
 
+    @app.get("/v1/goals/{goal_id}/verification-report")
+    async def get_goal_verification_report(
+        goal_id: str, _: None = Depends(_require_token)
+    ):
+        """Self-contained receipt: every claim, its verdict, and the baseline.
+
+        Judges and operators can diff the worker's narration against what PEX
+        independently verified — the claim ledger, the sealed acceptance
+        baselines that anchored it, and the final completion projection.
+        """
+
+        goal = await state.store.get_goal(goal_id)
+        if goal is None:
+            raise HTTPException(404, "goal not found")
+        try:
+            completion = await state.store.goal_completion_projection(goal_id)
+        except LookupError as exc:
+            raise HTTPException(404, "goal not found") from exc
+        except ProjectIdentityBlockedError as exc:
+            raise HTTPException(
+                409,
+                {"code": exc.code, "message": str(exc)},
+            ) from exc
+
+        scan_limit = 200
+        interventions = await state.store.list_interventions_for_goal(
+            goal_id, limit=scan_limit, offset=0
+        )
+        claims: list[dict[str, Any]] = []
+        session_ids: set[str] = set()
+        for item in interventions:
+            verification = (
+                item.metadata.get("verification")
+                if isinstance(item.metadata, dict)
+                else None
+            )
+            if not isinstance(verification, dict):
+                continue
+            session_ids.add(item.session_id)
+            surface = verification.get("acceptance_surface")
+            claims.append(
+                {
+                    "intervention_id": item.id,
+                    "session_id": item.session_id,
+                    "at": item.created_at.isoformat(),
+                    "action_taken": item.action_taken,
+                    "verification_status": verification.get("status"),
+                    "acceptance_surface": surface if isinstance(surface, dict) else None,
+                    "evidence": [
+                        entry
+                        for entry in (verification.get("evidence") or [])
+                        if isinstance(entry, str)
+                    ][:32],
+                }
+            )
+        baselines = []
+        for session_id in sorted(session_ids):
+            baseline = await state.store.recall_acceptance_baseline(
+                session_id, goal_id
+            )
+            if isinstance(baseline, dict):
+                baselines.append(
+                    {
+                        "session_id": session_id,
+                        "sealed_at": baseline.get("captured_at"),
+                        "sealed_context": baseline.get("sealed_context"),
+                        "files": len(baseline.get("files") or {}),
+                        "files_complete": bool(baseline.get("files_complete")),
+                    }
+                )
+        verdict_counts: dict[str, int] = {}
+        for claim in claims:
+            key = str(claim["verification_status"] or "unknown")
+            verdict_counts[key] = verdict_counts.get(key, 0) + 1
+        integrity_flags = ("modified", "deleted", "added_config", "unhashed")
+        return {
+            "schema": "pex.verification-report.v1",
+            "generated_at": utcnow().isoformat(),
+            "goal": goal.model_dump(mode="json"),
+            "completion": completion,
+            "claims": claims,
+            "claims_scanned": len(interventions),
+            "claims_truncated": len(interventions) >= scan_limit,
+            "acceptance_baselines": baselines,
+            "summary": {
+                "claims": len(claims),
+                "verdicts": verdict_counts,
+                "integrity_incidents": sum(
+                    1
+                    for claim in claims
+                    if isinstance(claim["acceptance_surface"], dict)
+                    and any(
+                        claim["acceptance_surface"].get(key)
+                        for key in integrity_flags
+                    )
+                ),
+                "corrective_nudges": sum(
+                    1
+                    for claim in claims
+                    if claim["action_taken"] == "SEND_NUDGE"
+                ),
+            },
+        }
+
     @app.get("/v1/goals/{goal_id}/decisions")
     async def list_goal_decisions(goal_id: str, _: None = Depends(_require_token)):
         goal = await state.store.get_goal(goal_id)

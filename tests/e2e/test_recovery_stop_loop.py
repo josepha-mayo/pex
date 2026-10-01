@@ -253,6 +253,23 @@ async def test_tampered_acceptance_test_cannot_back_a_green_claim(
         path == "tests/test_core.py" for path, _count in surface_metrics["top_flagged"]
     )
 
+    # The per-goal receipt packages the same arc for export.
+    report = (
+        await client.get(f"/v1/goals/{goal['id']}/verification-report")
+    ).json()
+    assert report["schema"] == "pex.verification-report.v1"
+    assert report["completion"]["status"] == "verified_complete"
+    assert [claim["verification_status"] for claim in report["claims"]] == [
+        "supported",
+        "uncertain",
+    ]
+    assert report["acceptance_baselines"][0]["files_complete"] is True
+    assert report["summary"]["integrity_incidents"] == 1
+    assert report["summary"]["corrective_nudges"] == 1
+    assert "acceptance_surface_modified:tests/test_core.py" in report["claims"][1][
+        "evidence"
+    ]
+
 
 @pytest.mark.asyncio
 async def test_genuine_pytest_completion_is_noop(client: AsyncClient, tmp_path):
