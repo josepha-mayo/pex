@@ -2832,6 +2832,11 @@ class SupervisorCatalogIn(_StrictRequestModel):
     provider: str | None = Field(default=None, max_length=256)
 
 
+class SyntheticSessionIn(_StrictRequestModel):
+    vendor_id: BoundedId | None = None
+    cwd: BoundedPath | None = None
+
+
 class SyntheticEventIn(_StrictRequestModel):
     session_id: BoundedId
     event_type: EventType
@@ -6332,8 +6337,14 @@ def create_app() -> FastAPI:
             raise HTTPException(503, "adapter health probe failed") from exc
 
     @app.post("/v1/synthetic/sessions")
-    async def synthetic_session(_: None = Depends(_require_token)):
-        session = state.adapters.synthetic.seed_session()
+    async def synthetic_session(
+        body: SyntheticSessionIn | None = None,
+        _: None = Depends(_require_token),
+    ):
+        session = state.adapters.synthetic.seed_session(
+            vendor_id=(body.vendor_id if body and body.vendor_id else "synth-1"),
+            cwd=(body.cwd if body else None),
+        )
         await state.store.upsert_session(session)
         return session.model_dump(mode="json")
 
