@@ -2673,6 +2673,7 @@ export function App() {
             </section>
           ) : null}
           {current && attachedGoal && !setup
+            && TAURI
             && (current.project_id || current.cwd)
             && current.capabilities?.send_message === true
             && (current.harness_type === "codex" || current.harness_type === "opencode") ? (
