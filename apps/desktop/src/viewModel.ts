@@ -123,6 +123,20 @@ export function actionForSession(
     verification && typeof verification === "object" && "status" in verification
       ? String(verification.status || "") || undefined
       : matching?.verification_status;
+  // Verification evidence (claim-vs-verdict reasons, e.g. acceptance-surface
+  // flags) lives inside metadata.verification, while item.evidence carries the
+  // action-level anchors — show the union so a downgraded claim explains itself.
+  const verification_evidence =
+    verification &&
+    typeof verification === "object" &&
+    Array.isArray((verification as { evidence?: unknown }).evidence)
+      ? ((verification as { evidence: unknown[] }).evidence
+          .filter((row): row is string => typeof row === "string")
+          .slice(0, 24) as string[])
+      : [];
+  const evidence = Array.from(
+    new Set([...(item.evidence || []), ...verification_evidence]),
+  ).slice(0, 32);
   return {
     id: item.id,
     session_id: item.session_id,
@@ -136,7 +150,7 @@ export function actionForSession(
     model_call_count: safeUsageCount(metadata.model_call_count) ?? matching?.model_call_count,
     input_tokens: safeUsageCount(metadata.input_tokens) ?? matching?.input_tokens,
     output_tokens: safeUsageCount(metadata.output_tokens) ?? matching?.output_tokens,
-    evidence: item.evidence,
+    evidence,
     result: item.action_taken === "CLEANUP" ? item.result : item.outcome || item.result,
     reversible: item.reversible,
     confidence: item.confidence,

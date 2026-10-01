@@ -276,6 +276,32 @@ test("Inspector session projection preserves native Strands usage receipts", () 
   assert.equal(actionForSession(session, [{...intervention, metadata: {...intervention.metadata, used_llm: false, model_call_count: 0}}])?.model_call_count, 0);
 });
 
+test("verification evidence joins action evidence so flagged claims explain themselves", () => {
+  const session = { id: "opencode:test", harness_type: "opencode", status: "stopped" };
+  const projected = actionForSession(session, [{
+    id: "flagged", session_id: session.id, action_taken: "NOOP",
+    evidence: ["stop-event"],
+    metadata: {
+      verification: {
+        status: "uncertain",
+        evidence: ["acceptance_surface_modified:tests/test_core.py", "stop-event"],
+      },
+    },
+  }]);
+  assert.deepEqual(projected?.evidence, [
+    "stop-event",
+    "acceptance_surface_modified:tests/test_core.py",
+  ]);
+  assert.equal(projected?.verification_status, "uncertain");
+  // Malformed verification evidence must not leak into the list.
+  const malformed = actionForSession(session, [{
+    id: "bad", session_id: session.id, action_taken: "NOOP",
+    evidence: ["anchor"],
+    metadata: { verification: { status: "uncertain", evidence: [1, "ok", null] } },
+  }]);
+  assert.deepEqual(malformed?.evidence, ["anchor", "ok"]);
+});
+
 test("Inspector never borrows another action's model or verification evidence", () => {
   const session = { id: "opencode:test", harness_type: "opencode", status: "stopped" };
   const item = { id: "new", session_id: session.id, action_taken: "NOOP" };
