@@ -202,8 +202,43 @@ async def test_tampered_acceptance_test_cannot_back_a_green_claim(
         for item in (verdict.get("evidence") or [])
     ]
     assert "acceptance_surface_modified:tests/test_core.py" in evidence
+    # The detection is corrective, not silent: the worker is told which file
+    # changed and what to do about it.
+    assert intervention["action_taken"] == "SEND_NUDGE"
+    assert "tests/test_core.py" in intervention["proposed_action"]["payload"]["text"]
     completion = (await client.get(f"/v1/goals/{goal['id']}/completion")).json()
     assert completion["status"] != "verified_complete"
+
+    # Restore the baseline content and re-run — the same green claim verifies.
+    test_file.write_text(
+        "def test_core():\n    assert add(1, 1) == 2\n", encoding="utf-8"
+    )
+    await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.SHELL.value,
+            "command": "pytest -q",
+            "process_state": {"pytest": {"ok": True, "exit_code": 0, "passed": 1}},
+        },
+    )
+    restopped = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.STOP.value,
+            "message": "Restored the test; suite is green for real.",
+        },
+    )
+    assert restopped.status_code == 200
+    restored = restopped.json()["intervention"]
+    restored_verification = restored["metadata"]["verification"]
+    assert restored_verification["status"] == "supported"
+    assert restored_verification["acceptance_surface"]["modified"] == []
+    restored_completion = (
+        await client.get(f"/v1/goals/{goal['id']}/completion")
+    ).json()
+    assert restored_completion["status"] == "verified_complete"
 
 
 @pytest.mark.asyncio

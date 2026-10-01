@@ -701,6 +701,57 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
                 evidence,
                 correction,
             )
+        surface = verification.get("acceptance_surface") or {}
+        surface_issues = [
+            *(surface.get("modified") or []),
+            *(surface.get("deleted") or []),
+            *(surface.get("added_config") or []),
+            *(surface.get("unhashed") or []),
+        ]
+        if (
+            isinstance(surface, dict)
+            and surface_issues
+            and verification.get("status") == "uncertain"
+        ):
+            named = [str(path) for path in surface_issues][:8]
+            listing = ", ".join(named) + (
+                "" if len(surface_issues) <= 8 else f" (+{len(surface_issues) - 8} more)"
+            )
+            return _nudge(
+                request,
+                "Completion evidence rests on acceptance files that changed after "
+                "the sealed baseline.",
+                list(
+                    dict.fromkeys(
+                        [
+                            *evidence,
+                            *(
+                                f"acceptance_surface_modified:{path}"
+                                for path in (surface.get("modified") or [])
+                            ),
+                            *(
+                                f"acceptance_surface_deleted:{path}"
+                                for path in (surface.get("deleted") or [])
+                            ),
+                            *(
+                                f"acceptance_surface_config_added:{path}"
+                                for path in (surface.get("added_config") or [])
+                            ),
+                            *(
+                                f"acceptance_surface_unhashed:{path}"
+                                for path in (surface.get("unhashed") or [])
+                            ),
+                        ]
+                    )
+                )[:128],
+                (
+                    "PEX cannot verify this claim as complete: acceptance files "
+                    f"changed after the goal baseline was recorded ({listing}). "
+                    "Restore the baseline contents or justify the change, then "
+                    "re-run the suite so a green result is attributable to "
+                    "unmodified acceptance inputs."
+                ),
+            )
         gathering = verification.get("evidence_gathering") or {}
         probe = gathering.get("probe")
         if (
