@@ -143,7 +143,16 @@ PEX's answer: the claim verifies as `uncertain`, not `verified_complete`,
 and the evidence names the file — `acceptance_surface_modified:tests/…`
 (or `acceptance_surface_config_added:pytest.ini`). The delta is against
 the baseline sealed before the worker touched the surface, so a green exit
-code cannot launder a changed test.
+code cannot launder a changed test. PEX also acts: the intervention is a
+`SEND_NUDGE` that names the changed files and asks the worker to restore or
+justify them, not a silent flag.
+
+4. Restore the file and re-claim — the same green report now verifies
+   `supported` and the goal reaches `verified_complete`.
+
+For the quantified receipt, `GET /v1/claims/metrics` reports the durable
+ledger — verdict counts, baselines sealed, integrity incidents, corrective
+nudges issued, and the most-flagged files.
 
 ## Fallback — no OpenCode install
 

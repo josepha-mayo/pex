@@ -5590,6 +5590,12 @@ def create_app() -> FastAPI:
 
         return await state.store.attention_metrics()
 
+    @app.get("/v1/claims/metrics")
+    async def claim_integrity_metrics(_: None = Depends(_require_token)):
+        """Quantified supervision ledger: verdict counts + integrity incidents."""
+
+        return await state.store.claim_integrity_metrics()
+
     @app.get("/v1/bench/runs")
     async def benchmark_runs(_: None = Depends(_require_token)):
         from pex_bridge.benchmark_public import load_public_summary

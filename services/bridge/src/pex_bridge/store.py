@@ -26490,6 +26490,89 @@ class Store:
             "benchmark_evidence": False,
         }
 
+    async def claim_integrity_metrics(self) -> dict[str, Any]:
+        """Exact claim-verification and acceptance-integrity ledger.
+
+        Counts every durable verification verdict and every acceptance-surface
+        incident so a demo can show quantified supervision — not just one
+        caught claim. Bounded scan; ``truncated`` reports coverage honestly.
+        """
+
+        scan_limit = 20_000
+        verdicts: dict[str, int] = {}
+        claims_seen = 0
+        surface_incidents = 0
+        integrity_nudges = 0
+        flagged_paths: dict[str, int] = {}
+        async with aiosqlite.connect(self.path, timeout=5.0) as connection:
+            await _configure_connection(connection)
+            cursor = await connection.execute(
+                "SELECT json FROM interventions WHERE "
+                "json_extract(json, '$.payload.metadata.verification') IS NOT NULL "
+                "ORDER BY rowid LIMIT ?",
+                (scan_limit + 1,),
+            )
+            rows = [str(row["json"]) for row in await cursor.fetchall()]
+            truncated = len(rows) > scan_limit
+            rows = rows[:scan_limit]
+            for raw in rows:
+                try:
+                    envelope = _strict_json_loads(raw)
+                except (TypeError, ValueError) as exc:
+                    raise RuntimeError("intervention row is corrupt") from exc
+                intervention = envelope.get("payload")
+                if not isinstance(intervention, dict):
+                    continue
+                verification = (
+                    intervention.get("metadata", {}).get("verification")
+                    if isinstance(intervention.get("metadata"), dict)
+                    else None
+                )
+                if not isinstance(verification, dict):
+                    continue
+                status = str(verification.get("status") or "unknown")
+                verdicts[status] = verdicts.get(status, 0) + 1
+                claims_seen += len(
+                    [v for v in (verification.get("verdicts") or []) if isinstance(v, dict)]
+                )
+                surface = verification.get("acceptance_surface")
+                if not isinstance(surface, dict):
+                    continue
+                named = [
+                    str(path)
+                    for key in ("modified", "deleted", "added_config", "unhashed")
+                    for path in (surface.get(key) or [])
+                    if isinstance(path, str)
+                ]
+                if not named:
+                    continue
+                surface_incidents += 1
+                for path in named:
+                    flagged_paths[path] = flagged_paths.get(path, 0) + 1
+                if str(intervention.get("action_taken") or "") == "SEND_NUDGE":
+                    integrity_nudges += 1
+            baseline_cursor = await connection.execute(
+                "SELECT COUNT(*) FROM fingerprints WHERE key LIKE 'acceptance-baseline:%'"
+            )
+            baselines_sealed = int((await baseline_cursor.fetchone())[0])
+        return {
+            "schema": "pex.claim-integrity-metrics.v1",
+            "captured_at": utcnow().isoformat(),
+            "scanned_interventions": len(rows),
+            "truncated": truncated,
+            "claims_adjudicated": claims_seen,
+            "verdicts": verdicts,
+            "acceptance_surface": {
+                "baselines_sealed": baselines_sealed,
+                "incidents": surface_incidents,
+                "integrity_nudges": integrity_nudges,
+                "flagged_files": len(flagged_paths),
+                "top_flagged": sorted(
+                    flagged_paths.items(), key=lambda item: (-item[1], item[0])
+                )[:16],
+            },
+        }
+
     async def list_interventions_for_goal(
         self,
         goal_id: str,

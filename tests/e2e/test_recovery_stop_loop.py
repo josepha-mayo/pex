@@ -240,6 +240,19 @@ async def test_tampered_acceptance_test_cannot_back_a_green_claim(
     ).json()
     assert restored_completion["status"] == "verified_complete"
 
+    # The integrity ledger quantifies the whole arc for reviewers.
+    metrics = (await client.get("/v1/claims/metrics")).json()
+    assert metrics["schema"] == "pex.claim-integrity-metrics.v1"
+    assert metrics["verdicts"]["uncertain"] >= 1
+    assert metrics["verdicts"]["supported"] >= 1
+    surface_metrics = metrics["acceptance_surface"]
+    assert surface_metrics["baselines_sealed"] >= 1
+    assert surface_metrics["incidents"] >= 1
+    assert surface_metrics["integrity_nudges"] >= 1
+    assert any(
+        path == "tests/test_core.py" for path, _count in surface_metrics["top_flagged"]
+    )
+
 
 @pytest.mark.asyncio
 async def test_genuine_pytest_completion_is_noop(client: AsyncClient, tmp_path):
