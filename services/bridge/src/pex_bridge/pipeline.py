@@ -4879,6 +4879,15 @@ class Pipeline:
         # Compatibility callers cannot mint operator provenance with a Boolean.
         # Only the operator-only REST dependency can provide actor assurance.
         principal_id = "system_internal_handoff"
+        # Probes are adapter I/O; run outside the mutation lock so a slow
+        # harness cannot queue every other handoff. The locked reload below
+        # reads the persisted capability snapshot.
+        probe_target = await self.store.get_session_for_authority(
+            target.id,
+            require_goal_binding=True,
+        )
+        if probe_target is not None and await self._negotiate_capabilities(probe_target):
+            await self.store.upsert_session(probe_target)
         async with self._handoff_mutation_lock:
             live_source = await self.store.get_session_for_authority(
                 source.id,
@@ -4893,8 +4902,6 @@ class Pipeline:
             goal = await self.store.get_goal_for_authority(live_source.goal_id)
             if goal is None:
                 raise ValueError("handoff goal not found")
-            if await self._negotiate_capabilities(live_target):
-                await self.store.upsert_session(live_target)
             record = await self._reserve_context_handoff_locked(
                 source=live_source,
                 target=live_target,
@@ -5441,14 +5448,13 @@ class Pipeline:
         if actor_assurance is not None and actor_assurance != "bridge_bearer":
             raise ValueError("operator actor assurance is invalid")
         actor_requested = actor_assurance == "bridge_bearer"
-        async with self._handoff_mutation_lock:
-            record = await self._request_context_handoff_locked(
-                source,
-                principal_id=principal_id,
-                request=request,
-                human_requested=actor_requested,
-                actor_assurance=actor_assurance,
-            )
+        record = await self._request_context_handoff_locked(
+            source,
+            principal_id=principal_id,
+            request=request,
+            human_requested=actor_requested,
+            actor_assurance=actor_assurance,
+        )
         return await self._dispatch_operator_handoff(
             record,
             replayed=not bool(record.get("created")),
@@ -5463,7 +5469,15 @@ class Pipeline:
         human_requested: bool,
         actor_assurance: str | None,
     ) -> dict:
-        """Reserve one caller-idempotent handoff without holding lock over I/O."""
+        """Reserve one caller-idempotent handoff.
+
+        Probes, bundle assembly, and session reads run outside the mutation
+        lock: the lock exists to serialize find->mint ordering, and
+        reserve_operator_handoff re-checks idempotency inside its own
+        BEGIN IMMEDIATE transaction. Holding it across adapter probes let
+        event-driven auto-handoff scans queue operator requests for tens of
+        seconds.
+        """
 
         prior = await self.store.find_operator_handoff(
             principal_id=principal_id,
@@ -5534,21 +5548,28 @@ class Pipeline:
         )
         if not bundle.items:
             raise ValueError("no relevant provenance-backed context to hand off")
-        return await self._reserve_context_handoff_locked(
-            source=source,
-            target=target,
-            goal=goal,
-            bundle=bundle,
-            principal_id=principal_id,
-            request=request,
-            human_requested=human_requested,
-            actor_assurance=actor_assurance,
-            diagnosis=(
-                "human_requested_context_handoff"
-                if human_requested
-                else "mcp_requested_context_handoff"
-            ),
-        )
+        lock_wait_started = time.monotonic()
+        async with self._handoff_mutation_lock:
+            queue_wait = time.monotonic() - lock_wait_started
+            if queue_wait > 5.0:
+                logger.warning(
+                    "operator handoff waited %.1fs for the mutation lock", queue_wait
+                )
+            return await self._reserve_context_handoff_locked(
+                source=source,
+                target=target,
+                goal=goal,
+                bundle=bundle,
+                principal_id=principal_id,
+                request=request,
+                human_requested=human_requested,
+                actor_assurance=actor_assurance,
+                diagnosis=(
+                    "human_requested_context_handoff"
+                    if human_requested
+                    else "mcp_requested_context_handoff"
+                ),
+            )
 
     async def _reserve_context_handoff_locked(
         self,
@@ -6299,46 +6320,51 @@ class Pipeline:
         )
         for candidate in siblings:
             record: dict | None = None
-            async with self._handoff_mutation_lock:
-                target = await self.store.get_session_for_authority(
-                    candidate.id,
-                    require_goal_binding=True,
-                )
-                if (
-                    target is None
-                    or target.goal_id != session.goal_id
-                    or target.status not in active_targets
-                    or target.supervision_paused
-                    or is_desktop_observe_session(target)
-                ):
-                    continue
-                if await self._negotiate_capabilities(target):
-                    await self.store.upsert_session(target)
-                delivered = await self._delivered_context_item_ids(target, goal)
-                bundle = build_bundle(
-                    goal,
-                    target,
-                    items,
-                    recent,
-                    [session.id],
-                    token_budget=12_000,
-                    exclude_item_ids=delivered,
-                )
-                if not bundle.items:
-                    continue
-                item_ids = sorted(item.id for item in bundle.items)
-                request = ContextHandoffRequest(
-                    idempotency_key=_auto_handoff_idempotency_key(
-                        event_id=event.event_id,
-                        source_session_id=session.id,
-                        target_session_id=target.id,
-                        goal_id=goal.id,
-                        token_budget=12_000,
-                        item_ids=item_ids,
-                    ),
+            # Reads, adapter probes, and bundle assembly run outside the
+            # mutation lock: reserve_operator_handoff revalidates every
+            # binding inside its own transaction, and holding the lock over
+            # adapter I/O let background scans queue operator handoffs for
+            # tens of seconds while a worker streamed events.
+            target = await self.store.get_session_for_authority(
+                candidate.id,
+                require_goal_binding=True,
+            )
+            if (
+                target is None
+                or target.goal_id != session.goal_id
+                or target.status not in active_targets
+                or target.supervision_paused
+                or is_desktop_observe_session(target)
+            ):
+                continue
+            if await self._negotiate_capabilities(target):
+                await self.store.upsert_session(target)
+            delivered = await self._delivered_context_item_ids(target, goal)
+            bundle = build_bundle(
+                goal,
+                target,
+                items,
+                recent,
+                [session.id],
+                token_budget=12_000,
+                exclude_item_ids=delivered,
+            )
+            if not bundle.items:
+                continue
+            item_ids = sorted(item.id for item in bundle.items)
+            request = ContextHandoffRequest(
+                idempotency_key=_auto_handoff_idempotency_key(
+                    event_id=event.event_id,
+                    source_session_id=session.id,
                     target_session_id=target.id,
+                    goal_id=goal.id,
                     token_budget=12_000,
-                )
+                    item_ids=item_ids,
+                ),
+                target_session_id=target.id,
+                token_budget=12_000,
+            )
+            async with self._handoff_mutation_lock:
                 try:
                     record = await self._reserve_context_handoff_locked(
                         source=session,
@@ -6354,6 +6380,12 @@ class Pipeline:
                     )
                 except PermissionError as exc:
                     if str(exc) == "handoff policy or capability denied delivery":
+                        continue
+                    raise
+                except ValueError as exc:
+                    if str(exc) == (
+                        "handoff bundle is not the canonical stored projection"
+                    ):
                         continue
                     raise
             if record is None:

@@ -2518,6 +2518,101 @@ async def test_auto_handoff_never_crosses_goal_boundary(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_operator_handoff_not_queued_behind_stalled_scan_probe(
+    client: AsyncClient, monkeypatch
+):
+    """A stalled capability probe during an auto-handoff scan must not hold
+    the mutation lock. reserve_operator_handoff already revalidates
+    idempotency inside its own transaction, so the lock only covers
+    find->mint. Regression guard for observed ~40-77s operator handoff
+    stalls while a worker streamed handoff-signal events."""
+    adapter = state.adapters.synthetic
+    scan_source = adapter.seed_session(vendor_id="scan-source")
+    scan_sibling = adapter.seed_session(vendor_id="scan-sibling")
+    op_source = adapter.seed_session(vendor_id="op-source")
+    op_target = adapter.seed_session(vendor_id="op-target")
+    for session in (scan_source, scan_sibling, op_source, op_target):
+        await state.store.upsert_session(session)
+
+    async def bind_goal(title: str, objective: str, *sessions) -> str:
+        goal = (
+            await client.post(
+                "/v1/goals",
+                json={
+                    "project_id": "demo",
+                    "title": title,
+                    "objective": objective,
+                },
+            )
+        ).json()
+        for session in sessions:
+            attached = await client.post(
+                f"/v1/sessions/{session.id}/attach", json={"goal_id": goal["id"]}
+            )
+            assert attached.status_code == 200, attached.text
+        return goal["id"]
+
+    await bind_goal("scan goal", "Share the discovered dataset path", scan_source, scan_sibling)
+    await bind_goal(
+        "operator goal", "Share the parser implementation path", op_source, op_target
+    )
+    seeded = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": op_source.id,
+            "event_type": EventType.FILE_READ.value,
+            "message": "The parser implementation is at src/parser.py. Preserve it.",
+            "file_paths": ["src/parser.py"],
+        },
+    )
+    assert seeded.status_code == 200, seeded.text
+
+    probe_started = asyncio.Event()
+    release_probe = asyncio.Event()
+    original_negotiate = state.pipeline._negotiate_capabilities
+
+    async def stalled_probe(session):
+        if session.id == scan_sibling.id:
+            probe_started.set()
+            await release_probe.wait()
+        return await original_negotiate(session)
+
+    monkeypatch.setattr(state.pipeline, "_negotiate_capabilities", stalled_probe)
+
+    scan_task = asyncio.create_task(
+        client.post(
+            "/v1/synthetic/events",
+            json={
+                "session_id": scan_source.id,
+                "event_type": EventType.AGENT_RESPONSE.value,
+                "message": (
+                    "Verified artifact path: artifacts/scan_dataset.parquet. "
+                    "Do not regenerate it."
+                ),
+            },
+        )
+    )
+    try:
+        await asyncio.wait_for(probe_started.wait(), timeout=10)
+        response = await asyncio.wait_for(
+            client.post(
+                f"/v1/sessions/{op_source.id}/handoff",
+                json={
+                    "idempotency_key": "operator-scan-isolation-0001",
+                    "target_session_id": op_target.id,
+                },
+            ),
+            timeout=15,
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["status"] == "delivered"
+        assert adapter.inbox[op_target.id]
+    finally:
+        release_probe.set()
+        await asyncio.wait_for(scan_task, timeout=30)
+
+
+@pytest.mark.asyncio
 async def test_goal_persists_non_goals(client: AsyncClient):
     goal = (
         await client.post(
