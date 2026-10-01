@@ -159,7 +159,10 @@ nudges issued, and the most-flagged files.
 If a judge's environment cannot run `opencode serve`, `POST /v1/demo/replay`
 on the demo bridge replays a recorded supervised trajectory through the real
 pipeline with no worker install at all. `GET /v1/demo/trajectories` lists the
-available recordings.
+available recordings — `tampered_acceptance_eval` replays the full Scenario D
+arc (baseline seal → test weakened → green claim → `uncertain` + corrective
+nudge naming the file → restore → `verified_complete`) against a materialized
+workspace, no agent required.
 
 ## What this does not prove
 

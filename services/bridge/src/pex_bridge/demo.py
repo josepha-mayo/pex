@@ -5,12 +5,17 @@ from __future__ import annotations
 import json
 import math
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 MAX_DEMO_FIXTURE_BYTES = 1_048_576
 MAX_DEMO_EVENTS = 1000
+MAX_DEMO_WORKSPACE_FILES = 64
+MAX_DEMO_WORKSPACE_FILE_BYTES = 65_536
+MAX_DEMO_WORKSPACE_BYTES = 262_144
+MAX_DEMO_MUTATIONS = 32
 _FIXTURE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
+_WORKSPACE_RELPATH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$")
 
 
 def _reject_json_constant(value: str) -> None:
@@ -31,6 +36,76 @@ def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             raise ValueError(f"duplicate JSON key {key!r}")
         result[key] = value
     return result
+
+
+def _validated_relpath(value: Any) -> str:
+    if (
+        not isinstance(value, str)
+        or not _WORKSPACE_RELPATH.fullmatch(value)
+        or "\\" in value
+        or ":" in value
+        or "//" in value
+    ):
+        raise ValueError("demo workspace paths must be relative POSIX paths")
+    parts = PurePosixPath(value).parts
+    if not parts or any(part in {"", ".", ".."} for part in parts):
+        raise ValueError("demo workspace paths must be relative POSIX paths")
+    return "/".join(parts)
+
+
+def _validated_workspace_files(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict) or len(value) > MAX_DEMO_WORKSPACE_FILES:
+        raise ValueError("demo workspace files must be a bounded object")
+    files: dict[str, str] = {}
+    total = 0
+    for raw_path, content in value.items():
+        relpath = _validated_relpath(raw_path)
+        if not isinstance(content, str):
+            raise ValueError("demo workspace file content must be text")
+        size = len(content.encode("utf-8"))
+        if size > MAX_DEMO_WORKSPACE_FILE_BYTES:
+            raise ValueError("demo workspace file exceeds the 64 KiB bound")
+        total += size
+        if total > MAX_DEMO_WORKSPACE_BYTES:
+            raise ValueError("demo workspace exceeds the 256 KiB bound")
+        files[relpath] = content
+    return files
+
+
+def _validated_workspace(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError("demo workspace must be an object")
+    if not set(value).issubset({"files", "mutations"}):
+        raise ValueError("demo workspace keys must be files and mutations")
+    files = _validated_workspace_files(value.get("files") or {})
+    mutations_value = value.get("mutations") or []
+    if not isinstance(mutations_value, list) or len(mutations_value) > MAX_DEMO_MUTATIONS:
+        raise ValueError("demo workspace mutations must be a bounded list")
+    mutations = []
+    for item in mutations_value:
+        if not isinstance(item, dict) or not set(item).issubset({"after", "files"}):
+            raise ValueError("demo workspace mutation must be {after, files}")
+        after = item.get("after")
+        if (
+            not isinstance(after, int)
+            or isinstance(after, bool)
+            or not 0 <= after < MAX_DEMO_EVENTS
+        ):
+            raise ValueError("demo workspace mutation index must be an event index")
+        mutations.append(
+            {"after": after, "files": _validated_workspace_files(item.get("files") or {})}
+        )
+    return {"files": files, "mutations": mutations}
+
+
+def materialize_workspace(root: Path, files: dict[str, str]) -> None:
+    """Write validated fixture files under a replay workspace root."""
+
+    base = root.resolve()
+    for relpath, content in files.items():
+        target = base.joinpath(*relpath.split("/"))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
 
 
 def fixture_dir() -> Path:
@@ -100,6 +175,8 @@ def load_fixture(fixture_id: str) -> dict:
         raise ValueError("demo fixture must contain at most 1000 event objects")
     if data.get("goal") is not None and not isinstance(data["goal"], dict):
         raise ValueError("demo fixture goal must be an object")
+    if data.get("workspace") is not None:
+        data["workspace"] = _validated_workspace(data["workspace"])
     data["replay"] = True
     data["not_live_control"] = True
     return data

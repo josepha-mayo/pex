@@ -71,3 +71,65 @@ def test_demo_fixture_rejects_non_strict_json(tmp_path, monkeypatch, payload: st
 
     with pytest.raises(ValueError, match="valid UTF-8 JSON"):
         load_fixture("invalid")
+
+
+@pytest.mark.parametrize(
+    "relpath",
+    ["../escape.py", "/abs/path.py", "a\\b.py", "C:/x.py", ".", "a//b.py"],
+)
+def test_demo_workspace_rejects_unsafe_paths(tmp_path, monkeypatch, relpath) -> None:
+    monkeypatch.setattr("pex_bridge.demo.fixture_dir", lambda: tmp_path)
+    (tmp_path / "ws.json").write_text(
+        json.dumps({"events": [], "workspace": {"files": {relpath: "x"}}}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="relative POSIX"):
+        load_fixture("ws")
+
+
+def test_demo_workspace_is_bounded(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("pex_bridge.demo.fixture_dir", lambda: tmp_path)
+    (tmp_path / "bigfile.json").write_text(
+        json.dumps(
+            {"events": [], "workspace": {"files": {"big.py": "x" * 65_537}}}
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="64 KiB"):
+        load_fixture("bigfile")
+
+    (tmp_path / "manyfiles.json").write_text(
+        json.dumps(
+            {
+                "events": [],
+                "workspace": {"files": {f"f{i}.py": "x" for i in range(65)}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="bounded object"):
+        load_fixture("manyfiles")
+
+    (tmp_path / "badmutation.json").write_text(
+        json.dumps(
+            {
+                "events": [],
+                "workspace": {
+                    "files": {},
+                    "mutations": [{"after": "0", "files": {"a.py": "x"}}],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="event index"):
+        load_fixture("badmutation")
+
+
+def test_demo_materialize_stays_under_root(tmp_path) -> None:
+    from pex_bridge.demo import materialize_workspace
+
+    materialize_workspace(tmp_path, {"tests/a.py": "pass\n", "b/c.txt": "hi"})
+    assert (tmp_path / "tests" / "a.py").read_text() == "pass\n"
+    assert (tmp_path / "b" / "c.txt").read_text() == "hi"

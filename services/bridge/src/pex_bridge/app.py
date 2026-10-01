@@ -12,6 +12,7 @@ import math
 import os
 import secrets
 import stat
+import tempfile
 import threading
 from contextlib import AsyncExitStack, asynccontextmanager, nullcontext
 from dataclasses import dataclass, field, replace
@@ -2735,6 +2736,7 @@ class DemoEventIn(_StrictRequestModel):
     event_type: EventType
     message: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
     command: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
+    process_state: dict | None = None
 
 
 class PluginHeartbeatIn(_StrictRequestModel):
@@ -6244,7 +6246,7 @@ def create_app() -> FastAPI:
     async def demo_replay(body: DemoReplayIn, _: None = Depends(_require_token)):
         from pex_protocol.enums import EventPhase, EventType
 
-        from pex_bridge.demo import load_fixture
+        from pex_bridge.demo import load_fixture, materialize_workspace
 
         fixture_id = body.fixture
         try:
@@ -6272,7 +6274,23 @@ def create_app() -> FastAPI:
         except (TypeError, ValueError) as exc:
             raise HTTPException(400, "demo fixture violates the replay schema") from exc
 
-        session = state.adapters.synthetic.seed_session(vendor_id=f"replay-{fixture_id}")
+        workspace_holder: tempfile.TemporaryDirectory[str] | None = None
+        workspace_root: Path | None = None
+        mutations: dict[int, list[dict[str, str]]] = {}
+        workspace_spec = data.get("workspace")
+        if workspace_spec:
+            workspace_holder = tempfile.TemporaryDirectory(
+                prefix="pex-replay-", ignore_cleanup_errors=True
+            )
+            workspace_root = Path(workspace_holder.name)
+            materialize_workspace(workspace_root, workspace_spec["files"])
+            for mutation in workspace_spec["mutations"]:
+                mutations.setdefault(int(mutation["after"]), []).append(mutation["files"])
+
+        session = state.adapters.synthetic.seed_session(
+            vendor_id=f"replay-{fixture_id}",
+            cwd=str(workspace_root) if workspace_root is not None else None,
+        )
         session.metadata["replay"] = True
         session.metadata["not_live_control"] = True
         session.project_id = validated_goal.project_id if validated_goal else "demo"
@@ -6296,21 +6314,29 @@ def create_app() -> FastAPI:
         )
         replay_pipeline.supervisor = _RecordedReplaySupervisor()
         interventions = []
-        for raw in replay_events:
-            event_type = raw.event_type
-            phase = EventPhase.BEFORE if event_type == EventType.SHELL else EventPhase.DURING
-            if event_type == EventType.STOP:
-                phase = EventPhase.TERMINAL
-            event = state.adapters.synthetic.emit(
-                session,
-                event_type,
-                phase=phase,
-                message_delta=raw.message,
-                command=raw.command,
-            )
-            intervention = await replay_pipeline.ingest_event(event, session)
-            if intervention:
-                interventions.append(intervention.model_dump(mode="json"))
+        try:
+            for index, raw in enumerate(replay_events):
+                event_type = raw.event_type
+                phase = EventPhase.BEFORE if event_type == EventType.SHELL else EventPhase.DURING
+                if event_type == EventType.STOP:
+                    phase = EventPhase.TERMINAL
+                event = state.adapters.synthetic.emit(
+                    session,
+                    event_type,
+                    phase=phase,
+                    message_delta=raw.message,
+                    command=raw.command,
+                    process_state=raw.process_state,
+                )
+                intervention = await replay_pipeline.ingest_event(event, session)
+                if intervention:
+                    interventions.append(intervention.model_dump(mode="json"))
+                if workspace_root is not None:
+                    for mutation_files in mutations.get(index, ()):
+                        materialize_workspace(workspace_root, mutation_files)
+        finally:
+            if workspace_holder is not None:
+                workspace_holder.cleanup()
         return {
             "replay": True,
             "not_live_control": True,

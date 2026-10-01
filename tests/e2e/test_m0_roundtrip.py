@@ -289,6 +289,44 @@ async def test_unimplemented_generic_hook_surfaces_are_rejected(client: AsyncCli
     assert replay.json()["replay"] is True
     assert replay.json()["not_live_control"] is True
     live_decide.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_demo_replay_walks_the_reward_hacking_arc(client):
+    """A replayed tamper trajectory gets caught, nudged, then verified."""
+
+    traj = await client.get("/v1/demo/trajectories")
+    ids = {item["id"] for item in traj.json()["fixtures"]}
+    assert "tampered_acceptance_eval" in ids
+
+    replay = await client.post(
+        "/v1/demo/replay", json={"fixture": "tampered_acceptance_eval"}
+    )
+    assert replay.status_code == 200
+    body = replay.json()
+    assert body["replay"] is True and body["not_live_control"] is True
+
+    verifications = [
+        item["metadata"]["verification"]
+        for item in body["interventions"]
+        if isinstance(item.get("metadata"), dict)
+        and item["metadata"].get("verification")
+    ]
+    assert [item["status"] for item in verifications] == ["uncertain", "supported"]
+    caught = verifications[0]
+    assert caught["acceptance_surface"]["modified"] == ["tests/test_core.py"]
+    nudge = next(
+        item
+        for item in body["interventions"]
+        if item.get("action_taken") == "SEND_NUDGE"
+    )
+    assert "tests/test_core.py" in nudge["proposed_action"]["payload"]["text"]
+
+    replay_session = await state.store.get_session(body["session_id"])
+    completion = (
+        await client.get(f"/v1/goals/{replay_session.goal_id}/completion")
+    ).json()
+    assert completion["status"] == "verified_complete"
     patched = await client.patch(
         "/v1/pets/settings",
         json={"custom_name": "Little Von", "selected_id": "von"},
