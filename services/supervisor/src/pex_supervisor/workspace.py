@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 import shutil
 import signal
 import stat
@@ -59,7 +61,156 @@ def _terminate_process_tree(process: subprocess.Popen[bytes]) -> None:
 MAX_INVENTORY_FILES = 400
 MAX_INVENTORY_ENTRIES = 4_000
 MAX_INVENTORY_SECONDS = 2.0
+MAX_FINGERPRINT_BYTES = 1_000_000
 MAX_VISIBLE_READ_BYTES = 1_000_000
+_ACCEPTANCE_DIR_NAMES = {
+    "__mocks__",
+    "__tests__",
+    "fixture",
+    "fixtures",
+    "spec",
+    "test",
+    "tests",
+}
+# Runner/injection config: adding one of these after the baseline can
+# deselect tests, autoload code, or swap test dependencies — flagged on add.
+_ACCEPTANCE_CONFIG_NAMES = {
+    ".coveragerc",
+    ".mocharc",
+    ".mocharc.json",
+    ".mocharc.yml",
+    "conftest.py",
+    "jest.config.cjs",
+    "jest.config.js",
+    "jest.config.mjs",
+    "jest.config.ts",
+    "karma.conf.cjs",
+    "karma.conf.js",
+    "makefile",
+    "noxfile.py",
+    "package.json",
+    "playwright.config.js",
+    "playwright.config.ts",
+    "pyproject.toml",
+    "pytest.ini",
+    "setup.cfg",
+    "setup.py",
+    "sitecustomize.py",
+    "tox.ini",
+    "usercustomize.py",
+    "vitest.config.js",
+    "vitest.config.mts",
+    "vitest.config.ts",
+}
+# Surface-only test files: fingerprinted, but adding them is not a flag.
+_ACCEPTANCE_FILE_NAMES = _ACCEPTANCE_CONFIG_NAMES | {
+    "test.py",
+    "tests.py",
+}
+_ACCEPTANCE_NAME_RE = re.compile(
+    r"(?:test_[^/]*\.[^./]+|.*_test\.[^./]+|.*\.(?:test|spec)\.[^./]+)$",
+    re.I,
+)
+_ACCEPTANCE_CONFIG_RE = re.compile(
+    r"(?:babel\.config\.[^./]+|cypress\.config\.[^./]+"
+    r"|requirements[^./]*\.txt|pipfile(?:\.lock)?|poetry\.lock|uv\.lock"
+    r"|package-lock\.json)$",
+    re.I,
+)
+
+
+def is_acceptance_config(relpath: str) -> bool:
+    """Whether a path configures the test runner rather than adding cases.
+
+    New test files after the baseline are weak signal; new runner
+    configuration is not — ``conftest.py``/``pytest.ini``-style additions can
+    deselect the very tests a claim relies on.
+    """
+
+    name = str(relpath).replace("\\", "/").rsplit("/", 1)[-1].casefold()
+    return (
+        name in _ACCEPTANCE_CONFIG_NAMES
+        or _ACCEPTANCE_CONFIG_RE.fullmatch(name) is not None
+    )
+_SHA256_RE = re.compile(r"[0-9a-f]{64}")
+
+
+def is_acceptance_surface(relpath: str) -> bool:
+    """Whether one workspace-relative path shapes the declared acceptance surface.
+
+    Test sources, fixtures directories, and test-runner configuration all
+    decide what a reported green run actually proves, so a supervisor that
+    verifies completion claims must treat changes to any of them as material.
+    """
+
+    parts = [part for part in str(relpath).replace("\\", "/").split("/") if part]
+    if not parts:
+        return False
+    name = parts[-1].casefold()
+    if name in _ACCEPTANCE_FILE_NAMES:
+        return True
+    if any(part.casefold() in _ACCEPTANCE_DIR_NAMES for part in parts[:-1]):
+        return True
+    return (
+        _ACCEPTANCE_NAME_RE.fullmatch(name) is not None
+        or _ACCEPTANCE_CONFIG_RE.fullmatch(name) is not None
+    )
+
+
+def _fingerprint_observed_file(
+    path: Path, expected: os.stat_result
+) -> tuple[str | None, str | None]:
+    """Hash one file only while it provably stays the observed directory entry."""
+
+    try:
+        with path.open("rb") as handle:
+            opened = os.fstat(handle.fileno())
+            if (
+                not stat.S_ISREG(opened.st_mode)
+                or opened.st_nlink != 1
+                or not os.path.samestat(expected, opened)
+            ):
+                return None, "changed"
+            if opened.st_size > MAX_FINGERPRINT_BYTES:
+                return None, "size_cap"
+            data = handle.read(MAX_FINGERPRINT_BYTES + 1)
+            after = os.fstat(handle.fileno())
+            if (
+                len(data) > MAX_FINGERPRINT_BYTES
+                or after.st_size != opened.st_size
+                or after.st_mtime_ns != opened.st_mtime_ns
+                or not os.path.samestat(opened, after)
+            ):
+                return None, "changed"
+            return hashlib.sha256(data).hexdigest(), None
+    except OSError:
+        return None, "unreadable"
+
+
+def acceptance_fingerprints(
+    workspace: dict[str, Any],
+) -> dict[str, str | None] | None:
+    """Return the observed acceptance-surface hashes from one snapshot dict."""
+
+    if not isinstance(workspace, dict) or workspace.get("error"):
+        return None
+    file_meta = workspace.get("file_meta")
+    if not isinstance(file_meta, list):
+        return None
+    out: dict[str, str | None] = {}
+    for entry in file_meta:
+        if not isinstance(entry, dict) or "sha256" not in entry:
+            continue
+        path = str(entry.get("path") or "").replace("\\", "/")
+        if not path:
+            continue
+        digest = entry.get("sha256")
+        out[path] = (
+            digest
+            if isinstance(digest, str) and _SHA256_RE.fullmatch(digest) is not None
+            else None
+        )
+    return out
 MAX_ARTIFACT_TAIL_BYTES = 64_000
 MAX_ARTIFACT_COUNT_BYTES = 4_000_000
 MAX_GIT_OUTPUT_BYTES = 8000
@@ -138,10 +289,16 @@ def _workspace_inventory(
     entries_seen = 0
     deadline = time.monotonic() + MAX_INVENTORY_SECONDS
     incomplete_reason: str | None = None
+    files_capped = False
+    # Surface completeness is tracked separately from the inventory cap: the
+    # walk continues past MAX_INVENTORY_FILES, but only far enough to
+    # fingerprint acceptance-surface files. A truncated general listing must
+    # not silently truncate the integrity baseline as well.
+    surface_complete = True
 
-    while pending and len(files) < MAX_INVENTORY_FILES:
+    while pending:
         if time.monotonic() >= deadline:
-            return files, file_meta, True, "time_bound"
+            return files, file_meta, True, "time_bound", False
         directory = pending.pop()
         try:
             before = directory.stat(follow_symlinks=False)
@@ -150,16 +307,16 @@ def _workspace_inventory(
                 or directory.resolve(strict=True) != directory
                 or not directory.is_relative_to(root)
             ):
-                return files, file_meta, True, "directory_identity_changed"
+                return files, file_meta, True, "directory_identity_changed", False
             directories: list[Path] = []
             filenames: list[tuple[str, os.stat_result]] = []
             with os.scandir(directory) as entries:
                 for entry in entries:
                     if time.monotonic() >= deadline:
-                        return files, file_meta, True, "time_bound"
+                        return files, file_meta, True, "time_bound", False
                     entries_seen += 1
                     if entries_seen > MAX_INVENTORY_ENTRIES:
-                        return files, file_meta, True, "entry_bound"
+                        return files, file_meta, True, "entry_bound", False
                     path = directory / entry.name
                     is_junction = getattr(entry, "is_junction", lambda: False)()
                     if entry.is_symlink() or is_junction:
@@ -182,6 +339,19 @@ def _workspace_inventory(
                         expected_file = path.stat(follow_symlinks=False)
                         if not stat.S_ISREG(expected_file.st_mode) or expected_file.st_nlink != 1:
                             incomplete_reason = incomplete_reason or "file_identity_unavailable"
+                            # Hardlinked/identity-light acceptance files are
+                            # still surface: record them unhashed so the
+                            # verifier flags them instead of skipping silently.
+                            rel_probe = str(path.relative_to(root)).replace("\\", "/")
+                            if is_acceptance_surface(rel_probe):
+                                file_meta.append(
+                                    {
+                                        "path": rel_probe,
+                                        "bytes": expected_file.st_size,
+                                        "mtime": int(expected_file.st_mtime),
+                                        "sha256": None,
+                                    }
+                                )
                             continue
                         filenames.append((entry.name, expected_file))
             after = directory.stat(follow_symlinks=False)
@@ -190,18 +360,21 @@ def _workspace_inventory(
                 or before.st_mtime_ns != after.st_mtime_ns
                 or directory.resolve(strict=True) != directory
             ):
-                return files, file_meta, True, "directory_changed_during_scan"
+                return files, file_meta, True, "directory_changed_during_scan", False
         except OSError:
-            return files, file_meta, True, "directory_unavailable"
+            return files, file_meta, True, "directory_unavailable", False
 
         pending.extend(sorted(directories, key=lambda item: item.name.casefold(), reverse=True))
         for filename, expected_file in sorted(filenames, key=lambda item: item[0].casefold()):
             if time.monotonic() >= deadline:
-                return files, file_meta, True, "time_bound"
+                return files, file_meta, True, "time_bound", False
             path = directory / filename
-            if len(files) >= MAX_INVENTORY_FILES:
-                return files, file_meta, True, "file_bound"
             rel = str(path.relative_to(root)).replace("\\", "/")
+            surface = is_acceptance_surface(rel)
+            if len(files) >= MAX_INVENTORY_FILES:
+                files_capped = True
+                if not surface:
+                    continue
             try:
                 observed = path.stat(follow_symlinks=False)
                 if (
@@ -212,30 +385,50 @@ def _workspace_inventory(
                     or expected_file.st_mtime_ns != observed.st_mtime_ns
                     or path.resolve(strict=True) != path
                 ):
-                    return files, file_meta, True, "file_changed_during_scan"
+                    return files, file_meta, True, "file_changed_during_scan", False
             except OSError:
-                return files, file_meta, True, "file_metadata_unavailable"
-            files.append(rel)
-            file_meta.append(
-                {"path": rel, "bytes": observed.st_size, "mtime": int(observed.st_mtime)}
-            )
+                return files, file_meta, True, "file_metadata_unavailable", False
+            meta: dict[str, Any] = {
+                "path": rel,
+                "bytes": observed.st_size,
+                "mtime": int(observed.st_mtime),
+            }
+            if surface:
+                digest, problem = _fingerprint_observed_file(path, expected_file)
+                if problem == "changed":
+                    return files, file_meta, True, "file_changed_during_scan", False
+                if problem == "unreadable":
+                    return files, file_meta, True, "fingerprint_unreadable", False
+                meta["sha256"] = digest
+                if problem == "size_cap":
+                    incomplete_reason = incomplete_reason or "fingerprint_size_cap"
+            if not files_capped:
+                files.append(rel)
+            file_meta.append(meta)
 
-    if pending:
-        return files, file_meta, True, "file_bound"
-    return files, file_meta, incomplete_reason is not None, incomplete_reason
+    return (
+        files,
+        file_meta,
+        files_capped or incomplete_reason is not None,
+        "file_bound" if files_capped else incomplete_reason,
+        surface_complete,
+    )
 
 
 def snapshot(workspace: str | Path, *, run_pytest: bool = False) -> dict[str, Any]:
     root = Path(workspace).resolve()
     if not root.is_dir():
         return {"workspace": str(root), "files": [], "pytest": None, "error": "cwd missing"}
-    files, file_meta, files_truncated, inventory_reason = _workspace_inventory(root)
+    files, file_meta, files_truncated, inventory_reason, surface_complete = (
+        _workspace_inventory(root)
+    )
     result: dict[str, Any] = {
         "workspace": str(root),
         "files": files,
         "file_meta": file_meta,
         "files_truncated": files_truncated,
         "inventory_reason": inventory_reason,
+        "surface_complete": surface_complete,
         "pytest": None,
         "git": git_snapshot(root),
         "artifacts": artifact_tails(root),

@@ -73,7 +73,7 @@ from pex_supervisor.verify import (
     verification_probe_targets,
     verify_claims,
 )
-from pex_supervisor.workspace import snapshot
+from pex_supervisor.workspace import acceptance_fingerprints, snapshot
 
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.base import (
@@ -860,6 +860,7 @@ class Pipeline:
         self._advisory_workspace_scan_lock = asyncio.Lock()
         self._advisory_workspace_scan_reservations: deque[tuple[float, str]] = deque()
         self._advisory_workspace_scan_last_by_session: dict[str, float] = {}
+        self._acceptance_baseline_attempts: dict[str, float] = {}
         self._monotonic = time.monotonic
         self._event_worker_id = f"{self.store.process_boot_id}:pipeline:{uuid4().hex}"
         self._presentation_tasks: set[asyncio.Task] = set()
@@ -2487,6 +2488,115 @@ class Pipeline:
         async with self._advisory_workspace_scan_lock:
             return await self._snapshot_for_session(session), None
 
+    async def _acceptance_baseline_for(
+        self,
+        session: HarnessSession,
+        goal: Goal | None,
+        workspace: dict,
+        *,
+        sealed_context: str = "verify",
+    ) -> dict | None:
+        """Return the sealed baseline, sealing this scan when none exists yet.
+
+        Best-effort like the seal itself: a corrupt stored row or a failed
+        write must degrade claim verification to unverifiable-integrity, not
+        wedge event processing. ``{"unsealed": True}`` marks that outcome so
+        the verifier can flag it instead of silently passing.
+        """
+
+        if goal is None or session.goal_id != goal.id:
+            return None
+        files = acceptance_fingerprints(workspace)
+        try:
+            if files is None:
+                return await self.store.recall_acceptance_baseline(
+                    session.id, goal.id
+                )
+            sealed = await self.store.recall_or_seal_acceptance_baseline(
+                session.id,
+                goal.id,
+                workspace=str(workspace.get("workspace") or session.cwd or ""),
+                captured_at=utcnow().isoformat(),
+                files=files,
+                # Surface completeness, not general-inventory completeness:
+                # the walk fingerprints acceptance files even past the file
+                # cap, so a capped files list can still be a full baseline.
+                files_complete=bool(
+                    workspace.get(
+                        "surface_complete",
+                        not workspace.get("files_truncated"),
+                    )
+                ),
+                sealed_context=sealed_context,
+            )
+        except Exception:
+            return {"unsealed": True}
+        baseline = dict(sealed["baseline"])
+        # A baseline first sealed from the scan being verified cannot prove
+        # the surface was clean before the worker's claim.
+        baseline["sealed_now"] = bool(sealed.get("sealed"))
+        return baseline
+
+    async def _maybe_seal_acceptance_baseline(
+        self,
+        session: HarnessSession,
+        goal: Goal | None,
+        event: HarnessEvent,
+    ) -> bool:
+        """Snapshot the acceptance surface at the first goal-bound observation.
+
+        The baseline is only evidence when it precedes worker edits, so it is
+        captured as early as event flow allows. Failures only delay the seal;
+        event processing never depends on it. Returns True when this call
+        performed the seal.
+        """
+
+        if goal is None or session.goal_id != goal.id or not session.cwd:
+            return False
+        attempt_key = f"{session.id}:{goal.id}"
+        now = self._monotonic()
+        if (
+            now - self._acceptance_baseline_attempts.get(attempt_key, float("-inf"))
+            < ADVISORY_WORKSPACE_SCAN_SESSION_MIN_INTERVAL_SECONDS
+        ):
+            return False
+        try:
+            if (
+                await self.store.recall_acceptance_baseline(session.id, goal.id)
+                is not None
+            ):
+                self._acceptance_baseline_attempts.pop(attempt_key, None)
+                return False
+            if len(self._acceptance_baseline_attempts) > 4096:
+                self._acceptance_baseline_attempts.clear()
+            self._acceptance_baseline_attempts[attempt_key] = now
+            # The seal must not consume the advisory scan budget; it uses the
+            # same authoritative bounded read as STOP-time claim verification.
+            observed = await self._snapshot_for_session(session)
+            files = acceptance_fingerprints(observed)
+            if files is None:
+                return False
+            sealed = await self.store.recall_or_seal_acceptance_baseline(
+                session.id,
+                goal.id,
+                workspace=str(observed.get("workspace") or session.cwd),
+                captured_at=utcnow().isoformat(),
+                files=files,
+                files_complete=bool(
+                    observed.get(
+                        "surface_complete",
+                        not observed.get("files_truncated"),
+                    )
+                ),
+                sealed_context=f"event:{event.event_type.value}",
+            )
+            self._acceptance_baseline_attempts.pop(attempt_key, None)
+            return bool(sealed.get("sealed"))
+        except WorkspaceAuthorityError:
+            raise
+        except Exception:
+            return False
+
     async def _build_and_commit_event_plan(
         self,
         processing: dict,
@@ -2501,6 +2611,12 @@ class Pipeline:
         _update_context_routing_state(session, event)
         await self._negotiate_capabilities(session)
         session.last_activity = event.ts
+        if event.event_type != EventType.STOP:
+            # STOP takes its own authoritative scan at claim verification; a
+            # second pre-seal read would double the observation count. For all
+            # other goal-bound events this is the earliest chance to baseline
+            # the acceptance surface before worker edits.
+            await self._maybe_seal_acceptance_baseline(session, goal, event)
         live_session = await self.store.get_session_for_authority(
             session.id,
             require_goal_binding=goal is not None,
@@ -2705,6 +2821,19 @@ class Pipeline:
                 raise
             except Exception:
                 workspace = {}
+            if workspace:
+                try:
+                    # An advisory scan is already the first goal-bound
+                    # observation; seal the acceptance baseline from it
+                    # instead of paying for a second filesystem pass.
+                    await self._acceptance_baseline_for(
+                        session,
+                        goal,
+                        workspace,
+                        sealed_context=f"event:{event.event_type.value}",
+                    )
+                except Exception:
+                    pass
             missing = missing_required_files(goal, workspace)
             if missing:
                 scores.features["missing_prerequisites"] = missing
@@ -2739,7 +2868,14 @@ class Pipeline:
                 except Exception as exc:
                     workspace = {}
                     workspace_snapshot_reason = f"workspace_snapshot_failed:{type(exc).__name__}"
-            verification = verify_claims(claims, recent, goal, workspace)
+            baseline = await self._acceptance_baseline_for(session, goal, workspace)
+            verification = verify_claims(
+                claims,
+                recent,
+                goal,
+                workspace,
+                acceptance_baseline=baseline,
+            )
             probe_kind = required_verification_probe_kind(
                 claims,
                 recent,
@@ -5929,7 +6065,14 @@ class Pipeline:
                 raise
             except Exception:
                 workspace = {"error": "workspace_snapshot_failed"}
-        verification = verify_claims(extracted_claims, recent, goal, workspace)
+        baseline = await self._acceptance_baseline_for(session, goal, workspace)
+        verification = verify_claims(
+            extracted_claims,
+            recent,
+            goal,
+            workspace,
+            acceptance_baseline=baseline,
+        )
         raw_status = str(verification.get("status") or "uncertain")[:64]
         outcome = raw_status if raw_status in {"supported", "contradicted"} else "uncertain"
         evidence = [

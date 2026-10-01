@@ -5,11 +5,12 @@ from pex_protocol.enums import EventType, HarnessType
 from pex_protocol.goal import Goal
 from pex_protocol.session import HarnessEvent
 from pex_supervisor.verify import (
+    acceptance_surface_delta,
     required_verification_probe_kind,
     verification_probe_targets,
     verify_claims,
 )
-from pex_supervisor.workspace import snapshot
+from pex_supervisor.workspace import acceptance_fingerprints, snapshot
 
 
 def _event(**kwargs) -> HarnessEvent:
@@ -1729,3 +1730,334 @@ def test_uncertain_script_requirement_selects_command_exit_probe():
 
     assert required_verification_probe_kind([], [], goal, verification) == "command_exit"
     assert verification_probe_targets("command_exit", goal) == ("scripts/check.sh",)
+
+
+def _green_pytest_events() -> list[HarnessEvent]:
+    return [
+        _event(
+            event_id="pytest",
+            event_type=EventType.SHELL,
+            command="pytest -q",
+            process_state={"pytest": {"ok": True, "exit_code": 0, "passed": 4}},
+        ),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+
+
+def _tests_pass_claims() -> list[dict]:
+    return [
+        {
+            "statement": "All tests passed",
+            "kind": "tests_pass",
+            "polarity": "asserted",
+            "confidence": 0.9,
+            "source_event_id": "stop",
+        }
+    ]
+
+
+def test_acceptance_surface_fingerprinted_in_snapshot(tmp_path):
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "test_core.py").write_text("def test_core():\n    assert True\n")
+    (tmp_path / "app.py").write_text("print('hi')\n")
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\n")
+
+    workspace = snapshot(tmp_path)
+    fingerprints = acceptance_fingerprints(workspace)
+
+    assert set(fingerprints) == {"tests/test_core.py", "pyproject.toml"}
+    assert all(len(digest) == 64 for digest in fingerprints.values())
+    assert "app.py" not in fingerprints
+
+
+def test_modified_acceptance_file_downgrades_supported_claim(tmp_path):
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    test_file = tests_dir / "test_core.py"
+    test_file.write_text("def test_core():\n    assert add(1, 1) == 2\n")
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": True,
+    }
+    test_file.write_text("def test_core():\n    pass\n")
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+        acceptance_baseline=baseline,
+    )
+
+    assert result["status"] == "uncertain"
+    assert result["acceptance_status"] == "uncertain"
+    assert result["acceptance_surface"]["modified"] == ["tests/test_core.py"]
+    verdict_evidence = [
+        item for verdict in result["verdicts"] for item in verdict["evidence"]
+    ]
+    assert "acceptance_surface_modified:tests/test_core.py" in verdict_evidence
+    assert all(item["status"] != "supported" for item in result["verdicts"])
+
+
+def test_deleted_acceptance_file_downgrades_supported_claim(tmp_path):
+    test_file = tmp_path / "test_core.py"
+    test_file.write_text("def test_core():\n    assert True\n")
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": True,
+    }
+    test_file.unlink()
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+        acceptance_baseline=baseline,
+    )
+
+    assert result["status"] == "uncertain"
+    assert result["acceptance_surface"]["deleted"] == ["test_core.py"]
+    assert "acceptance_surface_deleted:test_core.py" in result["acceptance_evidence"]
+
+
+def test_added_test_file_does_not_downgrade_supported_claim(tmp_path):
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": True,
+    }
+    (tmp_path / "test_new.py").write_text("def test_new():\n    assert True\n")
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+        acceptance_baseline=baseline,
+    )
+
+    assert result["status"] == "supported"
+    assert result["acceptance_surface"]["added"] == ["test_new.py"]
+
+
+def test_added_runner_config_downgrades_supported_claim(tmp_path):
+    """Dropping a pytest.ini/conftest.py post-baseline can deselect the suite."""
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "test_core.py").write_text("def test_core():\n    assert True\n")
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": True,
+    }
+    (tmp_path / "pytest.ini").write_text(
+        "[pytest]\naddopts = --deselect tests/test_core.py\n"
+    )
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+        acceptance_baseline=baseline,
+    )
+
+    assert result["status"] == "uncertain"
+    surface = result["acceptance_surface"]
+    assert surface["added_config"] == ["pytest.ini"]
+    assert "acceptance_surface_config_added:pytest.ini" in result["acceptance_evidence"]
+
+
+def test_incomplete_baseline_cannot_support_claim(tmp_path):
+    """A truncated first scan may have missed surface files — fail closed."""
+    (tmp_path / "test_core.py").write_text("def test_core():\n    assert True\n")
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": False,
+    }
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+        acceptance_baseline=baseline,
+    )
+
+    assert result["status"] == "uncertain"
+    assert result["acceptance_surface"]["baseline_complete"] is False
+    assert "acceptance_surface_baseline_incomplete" in result["acceptance_evidence"]
+
+
+def test_verify_context_baseline_stays_flagged_forever(tmp_path):
+    """A baseline sealed by a verify_claim call is claim-adjacent forever."""
+    (tmp_path / "test_core.py").write_text("def test_core():\n    assert True\n")
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": True,
+        "sealed_context": "verify",
+    }
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+        acceptance_baseline=baseline,
+    )
+
+    assert result["status"] == "uncertain"
+    assert result["acceptance_surface"]["sealed_at_claim"] is True
+    assert "acceptance_surface_baseline_at_claim" in result["acceptance_evidence"]
+
+
+def test_unsealed_marker_flags_supported_claim(tmp_path):
+    """Seal attempted but impossible → unbaselined, not silently supported."""
+    (tmp_path / "test_core.py").write_text("def test_core():\n    assert True\n")
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+        acceptance_baseline={"unsealed": True},
+    )
+
+    assert result["status"] == "uncertain"
+    assert result["acceptance_surface"]["reason"] == "unsealed"
+    assert "acceptance_surface_unbaselined" in result["acceptance_evidence"]
+
+
+def test_unbaselined_claim_verification_is_unchanged(tmp_path):
+    (tmp_path / "test_core.py").write_text("def test_core():\n    assert True\n")
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+    )
+
+    assert result["status"] == "supported"
+    assert result["acceptance_surface"]["baselined"] is False
+
+
+def test_unobserved_workspace_with_baseline_cannot_support_claim(tmp_path):
+    test_file = tmp_path / "test_core.py"
+    test_file.write_text("def test_core():\n    assert True\n")
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": True,
+    }
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        {"error": "cwd missing"},
+        acceptance_baseline=baseline,
+    )
+
+    assert result["status"] == "uncertain"
+    surface = result["acceptance_surface"]
+    assert surface["baselined"] is True and surface["checked"] is False
+    verdict_evidence = [
+        item for verdict in result["verdicts"] for item in verdict["evidence"]
+    ]
+    assert "acceptance_surface_check_incomplete" in verdict_evidence
+
+
+def test_oversized_acceptance_file_is_flagged_unhashed(tmp_path, monkeypatch):
+    from pex_supervisor import workspace as workspace_module
+
+    monkeypatch.setattr(workspace_module, "MAX_FINGERPRINT_BYTES", 8)
+    (tmp_path / "test_big.py").write_text("def test_big():\n    assert True\n")
+    snapshot_result = snapshot(tmp_path)
+    assert snapshot_result["files_truncated"] is True
+    fingerprints = acceptance_fingerprints(snapshot_result)
+    assert fingerprints == {"test_big.py": None}
+    baseline = {"files": {"test_big.py": None}, "files_complete": True}
+    delta = acceptance_surface_delta(baseline, snapshot_result)
+    assert delta["unhashed"] == ["test_big.py"]
+    assert delta["modified"] == []
+
+
+def test_acceptance_surface_delta_without_baseline_is_honest():
+    assert acceptance_surface_delta(None, {})["baselined"] is False
+    assert acceptance_surface_delta({"files": "nope"}, {})["baselined"] is False
+
+
+def test_baseline_sealed_at_claim_cannot_support_claim(tmp_path):
+    """A baseline first captured at claim time proves no prior integrity."""
+    test_file = tmp_path / "test_core.py"
+    test_file.write_text("def test_core():\n    assert True\n")
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": True,
+        "sealed_now": True,
+    }
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+        acceptance_baseline=baseline,
+    )
+
+    assert result["status"] == "uncertain"
+    surface = result["acceptance_surface"]
+    assert surface["sealed_at_claim"] is True
+    assert surface["modified"] == []
+    assert "acceptance_surface_baseline_at_claim" in result["acceptance_evidence"]
+
+
+def test_empty_surface_sealed_at_claim_stays_supported(tmp_path):
+    """With no acceptance files to protect, a late baseline is not a flag."""
+    (tmp_path / "app.py").write_text("print('hi')\n")
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": True,
+        "sealed_now": True,
+    }
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        _green_pytest_events(),
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+        acceptance_baseline=baseline,
+    )
+
+    assert result["status"] == "supported"
+    assert result["acceptance_surface"]["sealed_at_claim"] is False
+
+
+def test_tampered_surface_does_not_hide_contradicted_verdict(tmp_path):
+    test_file = tmp_path / "test_core.py"
+    test_file.write_text("def test_core():\n    assert True\n")
+    baseline = {
+        "files": acceptance_fingerprints(snapshot(tmp_path)),
+        "files_complete": True,
+    }
+    test_file.write_text("def test_core():\n    pass\n")
+    events = [
+        _event(
+            event_id="pytest",
+            event_type=EventType.SHELL,
+            command="pytest -q",
+            process_state={"pytest": {"ok": False, "exit_code": 1}},
+        ),
+        _event(event_id="stop", event_type=EventType.STOP, message_delta="done"),
+    ]
+
+    result = verify_claims(
+        _tests_pass_claims(),
+        events,
+        _goal(acceptance_criteria=["tests pass"]),
+        snapshot(tmp_path),
+        acceptance_baseline=baseline,
+    )
+
+    assert result["status"] == "contradicted"
+    assert result["acceptance_surface"]["modified"] == ["test_core.py"]

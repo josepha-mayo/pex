@@ -823,7 +823,15 @@ async def test_advisory_workspace_scans_have_per_session_and_aggregate_budgets(
         "workspace_snapshot_aggregate_budget"
     )
     assert "missing_prerequisites" not in features
-    assert len(bound.snapshots) == 4
+    # The event also performed the one-time acceptance-baseline seal, which is
+    # an authoritative, separately bounded observation — it does not consume
+    # the advisory budget, and it does not run again once sealed. The spy's
+    # minimal snapshot carries no file_meta, so nothing was fingerprinted.
+    assert len(bound.snapshots) == 5
+    baseline = await bound.store.recall_acceptance_baseline(
+        bound.adapter.session.id, goal.id
+    )
+    assert baseline is None
 
     now = datetime.now(UTC)
     principal_record = await bound.store.issue_mcp_principal(
@@ -848,11 +856,11 @@ async def test_advisory_workspace_scans_have_per_session_and_aggregate_budgets(
         ),
     )
     assert claim_result["status"] in {"uncertain", "verified"}
-    assert len(bound.snapshots) == 5
+    assert len(bound.snapshots) == 6
 
     _, stop_processing = await _terminal_observation(bound)
     assert stop_processing["state"] == "complete"
-    assert len(bound.snapshots) == 6
+    assert len(bound.snapshots) == 7
 
     clock[0] = 110.0
     snapshot, reason = await bound.pipeline._advisory_snapshot_for_session(
@@ -860,7 +868,7 @@ async def test_advisory_workspace_scans_have_per_session_and_aggregate_budgets(
     )
     assert snapshot == {"files": [], "git_diff": ""}
     assert reason is None
-    assert len(bound.snapshots) == 7
+    assert len(bound.snapshots) == 8
 
 
 @pytest.mark.asyncio

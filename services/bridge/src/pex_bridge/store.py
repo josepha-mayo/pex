@@ -1338,6 +1338,66 @@ MAX_FINGERPRINT_COHORT_EVENTS = 500
 MCP_VERIFY_CLAIM_TOOL = "pex.verify_claim"
 MCP_CLAIM_VERIFY_FINGERPRINT_SCHEMA = "pex.mcp.verify_claim.v1"
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+_ACCEPTANCE_BASELINE_SCHEMA = "pex.acceptance-baseline.v1"
+MAX_ACCEPTANCE_BASELINE_FILES = 1024
+
+
+def _acceptance_baseline_key(session_id: str, goal_id: str) -> str:
+    _validate_store_id(session_id, label="acceptance baseline session id")
+    _validate_store_id(goal_id, label="acceptance baseline goal id")
+    # JSON-pair encoding keeps the composite key unambiguous: session ids
+    # legitimately contain ':' (harness:vendor), so plain ':'-joining would
+    # collide ("a:b","c") with ("a","b:c").
+    return "acceptance-baseline:" + json.dumps(
+        [session_id, goal_id],
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    )
+
+
+def _validated_acceptance_baseline(
+    raw: str,
+    *,
+    session_id: str,
+    goal_id: str,
+) -> dict[str, Any]:
+    payload = _strict_json_loads(raw)
+    files = payload.get("files") if isinstance(payload, dict) else None
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema") != _ACCEPTANCE_BASELINE_SCHEMA
+        or payload.get("session_id") != session_id
+        or payload.get("goal_id") != goal_id
+        or not isinstance(payload.get("workspace"), str)
+        or not isinstance(payload.get("captured_at"), str)
+        or not isinstance(payload.get("files_complete"), bool)
+        or not isinstance(files, dict)
+        or len(files) > MAX_ACCEPTANCE_BASELINE_FILES
+        or (
+            payload.get("sealed_context") is not None
+            and not (
+                isinstance(payload.get("sealed_context"), str)
+                and len(payload["sealed_context"]) <= 64
+            )
+        )
+    ):
+        raise RuntimeError("stored acceptance baseline is corrupt")
+    for path, digest in files.items():
+        if (
+            not isinstance(path, str)
+            or not path
+            or len(path) > 512
+            or not (
+                digest is None
+                or (
+                    isinstance(digest, str)
+                    and _SHA256_PATTERN.fullmatch(digest) is not None
+                )
+            )
+        ):
+            raise RuntimeError("stored acceptance baseline is corrupt")
+    return payload
 _MCP_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$")
 _MCP_SCOPE_PATTERN = re.compile(r"^pex\.[a-z][a-z0-9_.-]{0,123}$")
 logger = logging.getLogger(__name__)
@@ -12432,6 +12492,102 @@ class Store:
         cur = await self.db.execute("SELECT json FROM sessions WHERE id = ?", (session_id,))
         row = await cur.fetchone()
         return HarnessSession.model_validate_json(row["json"]) if row else None
+
+    async def recall_acceptance_baseline(
+        self,
+        session_id: str,
+        goal_id: str,
+    ) -> dict[str, Any] | None:
+        """Return the sealed acceptance-surface baseline for one binding."""
+
+        key = _acceptance_baseline_key(session_id, goal_id)
+        async with aiosqlite.connect(self.path, timeout=5.0) as connection:
+            await _configure_connection(connection)
+            cursor = await connection.execute(
+                "SELECT json FROM fingerprints WHERE key = ?",
+                (key,),
+            )
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        return _validated_acceptance_baseline(
+            str(row["json"]),
+            session_id=session_id,
+            goal_id=goal_id,
+        )
+
+    async def recall_or_seal_acceptance_baseline(
+        self,
+        session_id: str,
+        goal_id: str,
+        *,
+        workspace: str,
+        captured_at: str,
+        files: dict[str, str | None],
+        files_complete: bool,
+        sealed_context: str = "event",
+    ) -> dict[str, Any]:
+        """Seal the first goal-bound acceptance-surface map; later calls replay it.
+
+        The baseline is only trustworthy if it predates worker edits, so the
+        first complete observation wins and subsequent callers receive the
+        stored row unchanged rather than silently re-baselining.
+        """
+
+        key = _acceptance_baseline_key(session_id, goal_id)
+        normalized: dict[str, str | None] = {}
+        for path, digest in files.items():
+            if not isinstance(path, str) or not path or len(path) > 512:
+                raise ValueError("acceptance baseline file path is invalid")
+            if digest is not None and (
+                not isinstance(digest, str)
+                or _SHA256_PATTERN.fullmatch(digest) is None
+            ):
+                raise ValueError("acceptance baseline digest is invalid")
+            normalized[path] = digest
+        complete = bool(files_complete)
+        if len(normalized) > MAX_ACCEPTANCE_BASELINE_FILES:
+            normalized = {
+                path: normalized[path]
+                for path in sorted(normalized)[:MAX_ACCEPTANCE_BASELINE_FILES]
+            }
+            complete = False
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN IMMEDIATE")
+            try:
+                cursor = await transaction.execute(
+                    "SELECT json FROM fingerprints WHERE key = ?",
+                    (key,),
+                )
+                row = await cursor.fetchone()
+                if row is not None:
+                    payload = _validated_acceptance_baseline(
+                        str(row["json"]),
+                        session_id=session_id,
+                        goal_id=goal_id,
+                    )
+                    await transaction.commit()
+                    return {"baseline": payload, "sealed": False}
+                payload = {
+                    "schema": _ACCEPTANCE_BASELINE_SCHEMA,
+                    "session_id": session_id,
+                    "goal_id": goal_id,
+                    "workspace": str(workspace)[:1024],
+                    "captured_at": str(captured_at)[:64],
+                    "files": normalized,
+                    "files_complete": complete,
+                    "sealed_context": str(sealed_context)[:64],
+                }
+                await transaction.execute(
+                    "INSERT INTO fingerprints (key, json) VALUES (?, ?)",
+                    (key, _canonical_json(payload)),
+                )
+                await transaction.commit()
+                return {"baseline": payload, "sealed": True}
+            except Exception:
+                await transaction.rollback()
+                raise
 
     async def get_session_for_authority(
         self,

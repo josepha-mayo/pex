@@ -27,7 +27,12 @@ from pex_protocol.verification import (
     classify_unittest_invocation,
 )
 
-from pex_supervisor.workspace import HIDDEN, artifact_row_count
+from pex_supervisor.workspace import (
+    HIDDEN,
+    acceptance_fingerprints,
+    artifact_row_count,
+    is_acceptance_config,
+)
 
 FILE_TOKEN = re.compile(
     r"^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\.\.(?:/|$))[A-Za-z0-9._/-]{1,240}\.[A-Za-z0-9]{1,12}$"
@@ -579,6 +584,89 @@ def _observed_files(workspace: dict[str, Any]) -> set[str] | None:
     if not isinstance(files, list):
         return None
     return {_workspace_path_key(str(name), workspace) for name in files}
+
+
+def acceptance_surface_delta(
+    baseline: dict[str, Any] | None,
+    workspace: dict[str, Any],
+) -> dict[str, Any]:
+    """Compare the recorded acceptance-surface baseline to the current scan.
+
+    The baseline is the fingerprint map sealed at the first goal-bound
+    observation; a worker that weakens the tests before claiming a green run
+    shows up as ``modified`` or ``deleted`` here regardless of what the event
+    stream reported.
+    """
+
+    current = acceptance_fingerprints(workspace)
+    surface_files = sorted(current) if current is not None else []
+    empty: dict[str, Any] = {
+        "baselined": False,
+        "baseline_complete": False,
+        "checked": False,
+        "reason": "no_baseline",
+        "sealed_at_claim": False,
+        "surface_files": surface_files,
+        "modified": [],
+        "deleted": [],
+        "unhashed": [],
+        "added": [],
+        "added_config": [],
+    }
+    if isinstance(baseline, dict) and baseline.get("unsealed") is True:
+        # The caller observed the surface but could not establish a baseline
+        # at all — distinct from "no baseline existed".
+        empty["reason"] = "unsealed"
+        return empty
+    baseline_files = baseline.get("files") if isinstance(baseline, dict) else None
+    if not isinstance(baseline_files, dict):
+        return empty
+    empty["baselined"] = True
+    empty["baseline_complete"] = baseline.get("files_complete") is True
+    # A baseline first sealed from the claim-time scan proves nothing when a
+    # surface exists; one sealed by a verify_claim tool call is claim-adjacent
+    # forever, even empty — a worker could bootstrap it then add test files.
+    sealed_at_claim = (
+        baseline.get("sealed_now") is True and bool(baseline_files)
+    ) or baseline.get("sealed_context") == "verify"
+    empty["sealed_at_claim"] = sealed_at_claim
+    if current is None:
+        empty["reason"] = "workspace_unobserved"
+        return empty
+    empty["checked"] = True
+    empty["reason"] = None
+    current_by_key = {
+        _workspace_path_key(path, workspace): (path, digest)
+        for path, digest in current.items()
+    }
+    modified: list[str] = []
+    deleted: list[str] = []
+    unhashed: list[str] = []
+    for path, digest in baseline_files.items():
+        observed = current_by_key.pop(
+            _workspace_path_key(str(path), workspace),
+            None,
+        )
+        if observed is None:
+            deleted.append(str(path))
+        elif not isinstance(digest, str) or observed[1] is None:
+            unhashed.append(str(path))
+        elif observed[1] != digest:
+            modified.append(str(path))
+    added = sorted(path for path, _digest in current_by_key.values())
+    return {
+        "baselined": True,
+        "baseline_complete": baseline.get("files_complete") is True,
+        "sealed_at_claim": sealed_at_claim,
+        "checked": True,
+        "reason": None,
+        "surface_files": surface_files,
+        "modified": sorted(modified),
+        "deleted": sorted(deleted),
+        "unhashed": sorted(unhashed),
+        "added": added,
+        "added_config": sorted(path for path in added if is_acceptance_config(path)),
+    }
 
 
 def _required_files(goal: Goal | None) -> list[str]:
@@ -1505,8 +1593,10 @@ def verify_claims(
     events: list[HarnessEvent],
     goal: Goal | None,
     workspace: dict[str, Any] | None = None,
+    acceptance_baseline: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     workspace = workspace or {}
+    surface = acceptance_surface_delta(acceptance_baseline, workspace)
     asserted = [item for item in claims if item.get("polarity") != "denied"]
     verdicts: list[dict[str, Any]] = []
     for claim in asserted:
@@ -1583,6 +1673,65 @@ def verify_claims(
         for item in (verdict.get("evidence") or [])
     ):
         verdicts.append(pytest_gap)
+    # A pass observed over acceptance-surface files that changed since the
+    # sealed baseline is not independent evidence: the worker may have
+    # weakened the tests it then ran. Keep such claims honest-uncertain and
+    # name the files instead of trusting or accusing.
+    surface_flags = [
+        *(f"acceptance_surface_modified:{path}" for path in surface["modified"]),
+        *(f"acceptance_surface_deleted:{path}" for path in surface["deleted"]),
+        *(f"acceptance_surface_unhashed:{path}" for path in surface["unhashed"]),
+        *(f"acceptance_surface_config_added:{path}" for path in surface["added_config"]),
+    ]
+    if surface.get("sealed_at_claim") and surface["surface_files"]:
+        # The flag needs an observed surface to protect — a claim-time or
+        # verify-context seal over zero acceptance files is noise, but the
+        # persisted provenance still fires once surface files appear.
+        surface_flags.append("acceptance_surface_baseline_at_claim")
+    if surface["baselined"] and not surface["baseline_complete"]:
+        surface_flags.append("acceptance_surface_baseline_incomplete")
+    if surface["baselined"] and not surface["checked"]:
+        surface_flags.append("acceptance_surface_check_incomplete")
+    if (
+        surface["reason"] == "unsealed"
+        or (
+            acceptance_baseline is not None
+            and not surface["baselined"]
+            and surface["surface_files"]
+        )
+    ):
+        # The caller engaged integrity checking but no baseline could be
+        # established — unsealed (corrupt/failed) rows flag unconditionally;
+        # absent baselines flag when an observable surface exists.
+        surface_flags.append("acceptance_surface_unbaselined")
+    if surface_flags:
+        downgraded: list[dict[str, Any]] = []
+        for verdict in verdicts:
+            if verdict.get("status") != "supported":
+                downgraded.append(verdict)
+                continue
+            downgraded.append(
+                {
+                    **verdict,
+                    "status": "uncertain",
+                    "correction": None,
+                    "evidence": [
+                        *(verdict.get("evidence") or []),
+                        *surface_flags,
+                    ],
+                    "probe": (
+                        "Acceptance-surface files changed after the recorded "
+                        "baseline. Re-verify the suite from pristine acceptance "
+                        "inputs before trusting a reported pass."
+                    ),
+                }
+            )
+        verdicts = downgraded
+        acceptance_evidence = list(
+            dict.fromkeys([*acceptance_evidence, *surface_flags])
+        )
+        if acceptance_status == "supported":
+            acceptance_status = "uncertain"
     contradicted = [item for item in verdicts if item["status"] == "contradicted"]
     unsatisfied = [item for item in verdicts if item["status"] == "unsatisfied"]
     effective = _effective_verdicts(verdicts)
@@ -1651,9 +1800,17 @@ def verify_claims(
         "status": status,
         "acceptance_status": acceptance_status,
         "acceptance_evidence": acceptance_evidence,
+        "acceptance_surface": surface,
         "verdicts": verdicts,
         "correction": None if chosen is None else chosen.get("correction"),
-        "evidence": [] if chosen is None else list(chosen.get("evidence") or []),
+        "evidence": list(
+            dict.fromkeys(
+                [
+                    *([] if chosen is None else list(chosen.get("evidence") or [])),
+                    *surface_flags,
+                ]
+            )
+        ),
         "pytest_event_id": None if latest_pytest is None else latest_pytest[0].event_id,
         "pytest_scope": None if latest_pytest is None else latest_pytest[3].scope.value,
         "latest_pytest": pytest_provenance,

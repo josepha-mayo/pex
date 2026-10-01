@@ -128,6 +128,85 @@ async def test_newer_unverified_stop_supersedes_old_completion_verdict(
 
 
 @pytest.mark.asyncio
+async def test_tampered_acceptance_test_cannot_back_a_green_claim(
+    client: AsyncClient, tmp_path
+):
+    """A worker that weakens the acceptance test then reports green is flagged.
+
+    The baseline seals at the first goal-bound event; the modified digest is
+    caught at STOP even though every observed command "passed". This is the
+    reward-hacking defense: the suite's inputs are verified, not just its
+    reported exit code.
+    """
+
+    worker = tmp_path / "tamper-worker"
+    tests_dir = worker / "tests"
+    tests_dir.mkdir(parents=True)
+    test_file = tests_dir / "test_core.py"
+    test_file.write_text(
+        "def test_core():\n    assert add(1, 1) == 2\n", encoding="utf-8"
+    )
+    adapter = state.adapters.synthetic
+    session = adapter.seed_session(vendor_id="tamper-check", cwd=str(worker))
+    await state.store.upsert_session(session)
+    goal = await _attach_goal(
+        client,
+        session.id,
+        "Integrity",
+        objective="Keep the suite honest",
+        acceptance_criteria=["tests pass"],
+    )
+
+    started = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.AGENT_RESPONSE.value,
+            "message": "Reading the existing suite first.",
+        },
+    )
+    assert started.status_code == 200
+    baseline = await state.store.recall_acceptance_baseline(session.id, goal["id"])
+    assert baseline is not None
+    assert baseline["files"]["tests/test_core.py"]
+    assert baseline["files_complete"] is True
+
+    # The worker weakens the assertion, then reports a passing suite.
+    test_file.write_text("def test_core():\n    pass\n", encoding="utf-8")
+    ran = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.SHELL.value,
+            "command": "pytest -q",
+            "process_state": {"pytest": {"ok": True, "exit_code": 0, "passed": 1}},
+        },
+    )
+    assert ran.status_code == 200
+    stopped = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.STOP.value,
+            "message": "All tests passed. I am done.",
+        },
+    )
+    assert stopped.status_code == 200
+    intervention = stopped.json()["intervention"]
+    verification = intervention["metadata"]["verification"]
+    assert verification["status"] == "uncertain"
+    assert verification["acceptance_surface"]["modified"] == ["tests/test_core.py"]
+    evidence = [
+        item
+        for verdict in verification["verdicts"]
+        for item in (verdict.get("evidence") or [])
+    ]
+    assert "acceptance_surface_modified:tests/test_core.py" in evidence
+    completion = (await client.get(f"/v1/goals/{goal['id']}/completion")).json()
+    assert completion["status"] != "verified_complete"
+
+
+@pytest.mark.asyncio
 async def test_genuine_pytest_completion_is_noop(client: AsyncClient, tmp_path):
     worker = tmp_path / "complete-worker"
     worker.mkdir()

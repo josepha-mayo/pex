@@ -604,3 +604,164 @@ async def test_session_listing_paginates_after_activity_ordering(tmp_path: Path)
             await store.list_sessions(offset=-1)
     finally:
         await store.close()
+
+
+@pytest.mark.asyncio
+async def test_acceptance_baseline_seals_once_and_replays(tmp_path: Path):
+    store = Store(tmp_path / "baseline.sqlite")
+    await store.connect()
+    digest_a = hashlib.sha256(b"original test").hexdigest()
+    digest_b = hashlib.sha256(b"tampered test").hexdigest()
+    try:
+        first = await store.recall_or_seal_acceptance_baseline(
+            "codex:s1",
+            "goal-1",
+            workspace="D:/work/case",
+            captured_at="2026-09-30T12:00:00+00:00",
+            files={"tests/test_a.py": digest_a},
+            files_complete=True,
+        )
+        assert first["sealed"] is True
+        assert first["baseline"]["files"] == {"tests/test_a.py": digest_a}
+
+        replay = await store.recall_or_seal_acceptance_baseline(
+            "codex:s1",
+            "goal-1",
+            workspace="D:/work/case",
+            captured_at="2026-09-30T12:05:00+00:00",
+            files={"tests/test_a.py": digest_b, "test_new.py": digest_b},
+            files_complete=True,
+        )
+        assert replay["sealed"] is False
+        # The seal is append-only: a later map never overwrites the baseline.
+        assert replay["baseline"]["files"] == {"tests/test_a.py": digest_a}
+        assert replay["baseline"]["captured_at"] == "2026-09-30T12:00:00+00:00"
+        assert replay["baseline"]["sealed_context"] == "event"
+
+        recalled = await store.recall_acceptance_baseline("codex:s1", "goal-1")
+        assert recalled == replay["baseline"]
+        assert await store.recall_acceptance_baseline("codex:s1", "goal-2") is None
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_acceptance_baseline_is_scoped_per_session_and_goal(tmp_path: Path):
+    store = Store(tmp_path / "baseline-scope.sqlite")
+    await store.connect()
+    digest = hashlib.sha256(b"shared file").hexdigest()
+    try:
+        sealed = await store.recall_or_seal_acceptance_baseline(
+            "codex:s1",
+            "goal-1",
+            workspace="/w",
+            captured_at="t",
+            files={"test_a.py": digest},
+            files_complete=True,
+        )
+        assert sealed["sealed"] is True
+        other = await store.recall_or_seal_acceptance_baseline(
+            "codex:s1",
+            "goal-2",
+            workspace="/w",
+            captured_at="t",
+            files={},
+            files_complete=True,
+        )
+        assert other["sealed"] is True
+        assert other["baseline"]["files"] == {}
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_acceptance_baseline_rejects_malformed_digests(tmp_path: Path):
+    store = Store(tmp_path / "baseline-invalid.sqlite")
+    await store.connect()
+    try:
+        with pytest.raises(ValueError, match="digest"):
+            await store.recall_or_seal_acceptance_baseline(
+                "codex:s1",
+                "goal-1",
+                workspace="/w",
+                captured_at="t",
+                files={"test_a.py": "not-a-digest"},
+                files_complete=True,
+            )
+        with pytest.raises(ValueError, match="path"):
+            await store.recall_or_seal_acceptance_baseline(
+                "codex:s1",
+                "goal-1",
+                workspace="/w",
+                captured_at="t",
+                files={"": None},
+                files_complete=True,
+            )
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_acceptance_baseline_keys_cannot_collide_on_colons(tmp_path: Path):
+    """Session ids contain ':' (harness:vendor) — the key must not be ambiguous."""
+    store = Store(tmp_path / "baseline-collision.sqlite")
+    await store.connect()
+    digest = hashlib.sha256(b"x").hexdigest()
+    try:
+        first = await store.recall_or_seal_acceptance_baseline(
+            "a:b",
+            "c",
+            workspace="/w",
+            captured_at="t",
+            files={"test_a.py": digest},
+            files_complete=True,
+        )
+        second = await store.recall_or_seal_acceptance_baseline(
+            "a",
+            "b:c",
+            workspace="/w",
+            captured_at="t",
+            files={},
+            files_complete=True,
+        )
+        assert first["sealed"] is True and second["sealed"] is True
+        assert second["baseline"]["files"] == {}
+        assert (
+            await store.recall_acceptance_baseline("a:b", "c")
+        )["files"] == {"test_a.py": digest}
+        assert (await store.recall_acceptance_baseline("a", "b:c"))["files"] == {}
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_acceptance_baseline_records_seal_provenance(tmp_path: Path):
+    """A verify-context seal stays marked — it cannot launder into a clean one."""
+    store = Store(tmp_path / "baseline-context.sqlite")
+    await store.connect()
+    digest = hashlib.sha256(b"x").hexdigest()
+    try:
+        sealed = await store.recall_or_seal_acceptance_baseline(
+            "codex:s1",
+            "goal-1",
+            workspace="/w",
+            captured_at="t",
+            files={"test_a.py": digest},
+            files_complete=True,
+            sealed_context="verify",
+        )
+        assert sealed["baseline"]["sealed_context"] == "verify"
+        # A later event-context seal does not overwrite the verify provenance.
+        replay = await store.recall_or_seal_acceptance_baseline(
+            "codex:s1",
+            "goal-1",
+            workspace="/w",
+            captured_at="t2",
+            files={"test_a.py": digest},
+            files_complete=True,
+            sealed_context="event:agent_response",
+        )
+        assert replay["sealed"] is False
+        assert replay["baseline"]["sealed_context"] == "verify"
+    finally:
+        await store.close()
