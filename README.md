@@ -85,6 +85,28 @@ PEX attaches to those sessions and does that mechanical work. You keep intent, p
 
 PEX does not require work to start inside PEX. Existing tools stay usable. Context belongs to the project/goal, not a chat transcript. Interventions are typed, policy-gated, reversible when possible, and audited.
 
+## Independent claim verification
+
+A worker's "all tests passed" is a claim, not a verdict. PEX independently
+inspects the workspace and event history before letting a goal complete — and
+it verifies the *acceptance surface*, not just the reported exit code:
+
+- At goal attach, PEX seals a first-write-wins SHA-256 baseline of every
+  acceptance-relevant file (tests, runner configs, fixtures, dependency
+  manifests) per (session, goal), with TOCTOU-fenced reads.
+- When a completion claim arrives, the workspace is diffed against that sealed
+  baseline. A test weakened or deleted mid-task — or a `pytest.ini`/`conftest.py`
+  injected to deselect checks — downgrades the claim to `uncertain`, names the
+  changed files, and sends the worker a corrective nudge to restore or justify
+  them. A green exit code cannot launder a changed test.
+- `GET /v1/claims/metrics` reports the durable ledger: verdict counts, sealed
+  baselines, integrity incidents, and corrective nudges issued.
+
+Try it with no agent install: `POST /v1/demo/replay` with fixture
+`tampered_acceptance_eval` walks seal → tamper → catch → nudge → restore →
+`verified_complete` through the real pipeline (see the
+[demo runbook](docs/demo/RUNBOOK.md), Scenario D).
+
 ## Supported harnesses
 
 | Harness | Current label | Surface |
