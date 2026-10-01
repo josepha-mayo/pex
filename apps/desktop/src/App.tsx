@@ -67,6 +67,7 @@ import type {
   BenchRun,
   BenchState,
   AttentionMetrics,
+  ClaimIntegrityMetrics,
   BridgeBootstrapStatus,
   CatalogPet,
   CanonicalResourceKey,
@@ -422,6 +423,7 @@ export function App() {
   const [handoffAssimilation, setHandoffAssimilation] =
     useState<Record<string, HandoffAssimilationStatus | "unreachable">>({});
   const [attentionMetrics, setAttentionMetrics] = useState<AttentionMetrics | null>(null);
+  const [claimMetrics, setClaimMetrics] = useState<ClaimIntegrityMetrics | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [decisionFeedback, setDecisionFeedback] = useState<DecisionFeedback | null>(null);
@@ -1187,11 +1189,12 @@ export function App() {
       "/v1/interventions?include_handoff_bundle=true",
       { signal },
     );
-    const [deckResult, contextResult, interventionResult, attentionResult, benchResult, discoverResult] = await Promise.allSettled([
+    const [deckResult, contextResult, interventionResult, attentionResult, claimMetricsResult, benchResult, discoverResult] = await Promise.allSettled([
       includeDeck ? bridgeJson<DeckData>("/v1/deck", { signal }) : Promise.resolve<DeckData | null>(null),
       bridgeJson<ContextItem[]>(contextPath, { signal }),
       interventionRequest,
       bridgeJson<AttentionMetrics>("/v1/attention/metrics", { signal }),
+      bridgeJson<ClaimIntegrityMetrics>("/v1/claims/metrics", { signal }),
       includeDeck
         ? bridgeJson<{ runs?: BenchRun[]; message?: string }>("/v1/bench/runs", { signal })
         : Promise.resolve<{ runs?: BenchRun[]; message?: string } | null>(null),
@@ -1234,6 +1237,7 @@ export function App() {
       markCanonical("interventions", "failed", "Intervention history could not be refreshed.");
     }
     setAttentionMetrics(attentionResult.status === "fulfilled" ? attentionResult.value : null);
+    setClaimMetrics(claimMetricsResult.status === "fulfilled" ? claimMetricsResult.value : null);
     const coreFailed = [contextResult, interventionResult, attentionResult].some((item) => item.status === "rejected") ||
       (includeDeck && deckResult.status === "rejected");
     setDetailsError(coreFailed ? "Some live bridge data is unavailable." : null);
@@ -2638,6 +2642,13 @@ export function App() {
               <span><strong>{sessionStateFresh ? pet?.working || 0 : "—"}</strong> working</span>
               <span><strong>{sessionStateFresh ? pet?.needs_you || 0 : "—"}</strong> need you</span>
               <span><strong>{sessionStateFresh ? pet?.drifting || 0 : "—"}</strong> drifting</span>
+              {claimMetrics ? (
+                <span
+                  title={`${claimMetrics.claims_adjudicated} claims adjudicated · ${claimMetrics.acceptance_surface.baselines_sealed} baselines sealed`}
+                >
+                  <strong>{claimMetrics.acceptance_surface.incidents}</strong> integrity flags
+                </span>
+              ) : null}
             </div>
             {!setup ? (
               <section className={`workspace-activity tone-${homeStatus.tone}`} aria-label="Current supervision">

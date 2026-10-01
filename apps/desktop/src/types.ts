@@ -498,6 +498,22 @@ export type AttentionMetrics = {
   benchmark_evidence: false;
 };
 
+export type ClaimIntegrityMetrics = {
+  schema: "pex.claim-integrity-metrics.v1";
+  captured_at: string;
+  scanned_interventions: number;
+  truncated: boolean;
+  claims_adjudicated: number;
+  verdicts: Record<string, number>;
+  acceptance_surface: {
+    baselines_sealed: number;
+    incidents: number;
+    integrity_nudges: number;
+    flagged_files: number;
+    top_flagged: Array<[string, number]>;
+  };
+};
+
 export type PermissionDecision = "allow" | "deny";
 
 export type HumanDecisionChoice = string;
