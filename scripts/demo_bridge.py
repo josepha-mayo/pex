@@ -14,7 +14,9 @@ Safety posture, matching ``Settings.for_test`` semantics:
   ``Settings.for_test`` gate, so no ambient environment can widen this.
 
 Environment:
-    PEX_DEMO_HOME          override the demo PEX_HOME directory
+    PEX_DEMO_HOME          override the demo run root (``pex-home`` is
+                           appended beneath it unless the basename already
+                           is ``pex-home``)
     PEX_DEMO_PORT          bridge port (default 7420)
     PEX_OPENCODE_URL       OpenCode server the adapter should observe
     PEX_CLOUD_REASONING    "true" enables bounded semantic supervisor
