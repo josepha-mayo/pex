@@ -327,6 +327,22 @@ async def test_demo_replay_walks_the_reward_hacking_arc(client):
         await client.get(f"/v1/goals/{replay_session.goal_id}/completion")
     ).json()
     assert completion["status"] == "verified_complete"
+
+    # Replaying the same fixture gets a fresh session — the second run must
+    # still detect the tamper and still deliver its corrective nudge.
+    replay2 = await client.post(
+        "/v1/demo/replay", json={"fixture": "tampered_acceptance_eval"}
+    )
+    assert replay2.status_code == 200
+    body2 = replay2.json()
+    assert body2["session_id"] != body["session_id"]
+    nudge2 = next(
+        item
+        for item in body2["interventions"]
+        if item.get("action_taken") == "SEND_NUDGE"
+    )
+    assert "tests/test_core.py" in nudge2["proposed_action"]["payload"]["text"]
+    assert any("tests/test_core.py" in msg for msg in body2["inbox"])
     patched = await client.patch(
         "/v1/pets/settings",
         json={"custom_name": "Little Von", "selected_id": "von"},

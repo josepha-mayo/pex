@@ -14,7 +14,7 @@ import secrets
 import stat
 import tempfile
 import threading
-from contextlib import AsyncExitStack, asynccontextmanager, nullcontext
+from contextlib import AsyncExitStack, asynccontextmanager, nullcontext, suppress
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -105,6 +105,9 @@ _SUPERVISOR_CONFIG_TIMEOUT_SECONDS = 60.0
 # Frozen SDK imports and the first OS-vault lookup can exceed a warm Save's
 # deadline. Startup runs off the event loop and must not delay bridge health.
 _SUPERVISOR_STARTUP_TIMEOUT_SECONDS = 60.0
+# Demo replays share the synthetic adapter registry; serialize them so
+# parallel replays can never interleave sessions, workspaces, or inbox state.
+_DEMO_REPLAY_LOCK = asyncio.Lock()
 _PRE_PERMISSION_HOOKS = {
     "preToolUse",
     "beforeShellExecution",
@@ -6375,24 +6378,33 @@ def create_app() -> FastAPI:
             replay_events = [
                 DemoEventIn.model_validate(raw) for raw in data.get("events") or []
             ]
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, RecursionError) as exc:
             raise HTTPException(400, "demo fixture violates the replay schema") from exc
 
         workspace_holder: tempfile.TemporaryDirectory[str] | None = None
         workspace_root: Path | None = None
         mutations: dict[int, list[dict[str, str]]] = {}
         workspace_spec = data.get("workspace")
-        if workspace_spec:
-            workspace_holder = tempfile.TemporaryDirectory(
-                prefix="pex-replay-", ignore_cleanup_errors=True
-            )
-            workspace_root = Path(workspace_holder.name)
-            materialize_workspace(workspace_root, workspace_spec["files"])
-            for mutation in workspace_spec["mutations"]:
-                mutations.setdefault(int(mutation["after"]), []).append(mutation["files"])
+        try:
+            if workspace_spec:
+                workspace_holder = tempfile.TemporaryDirectory(
+                    prefix="pex-replay-", ignore_cleanup_errors=True
+                )
+                workspace_root = Path(workspace_holder.name)
+                materialize_workspace(workspace_root, workspace_spec["files"])
+                for mutation in workspace_spec["mutations"]:
+                    mutations.setdefault(int(mutation["after"]), []).append(
+                        mutation["files"]
+                    )
+        except (ValueError, OSError) as exc:
+            if workspace_holder is not None:
+                workspace_holder.cleanup()
+            raise HTTPException(
+                400, "demo fixture workspace could not be materialized"
+            ) from exc
 
         session = state.adapters.synthetic.seed_session(
-            vendor_id=f"replay-{fixture_id}",
+            vendor_id=f"replay-{fixture_id[:48]}-{secrets.token_hex(4)}",
             cwd=str(workspace_root) if workspace_root is not None else None,
         )
         session.metadata["replay"] = True
@@ -6419,33 +6431,48 @@ def create_app() -> FastAPI:
         replay_pipeline.supervisor = _RecordedReplaySupervisor()
         interventions = []
         try:
-            for index, raw in enumerate(replay_events):
-                event_type = raw.event_type
-                phase = EventPhase.BEFORE if event_type == EventType.SHELL else EventPhase.DURING
-                if event_type == EventType.STOP:
-                    phase = EventPhase.TERMINAL
-                event = state.adapters.synthetic.emit(
-                    session,
-                    event_type,
-                    phase=phase,
-                    message_delta=raw.message,
-                    command=raw.command,
-                    process_state=raw.process_state,
-                )
-                intervention = await replay_pipeline.ingest_event(event, session)
-                if intervention:
-                    interventions.append(intervention.model_dump(mode="json"))
-                if workspace_root is not None:
-                    for mutation_files in mutations.get(index, ()):
-                        materialize_workspace(workspace_root, mutation_files)
+            # Replays serialize: one ingest loop at a time keeps the shared
+            # synthetic adapter and per-fixture workspaces race-free.
+            async with _DEMO_REPLAY_LOCK:
+                for index, raw in enumerate(replay_events):
+                    event_type = raw.event_type
+                    phase = (
+                        EventPhase.BEFORE
+                        if event_type == EventType.SHELL
+                        else EventPhase.DURING
+                    )
+                    if event_type == EventType.STOP:
+                        phase = EventPhase.TERMINAL
+                    event = state.adapters.synthetic.emit(
+                        session,
+                        event_type,
+                        phase=phase,
+                        message_delta=raw.message,
+                        command=raw.command,
+                        process_state=raw.process_state,
+                    )
+                    intervention = await replay_pipeline.ingest_event(event, session)
+                    if intervention:
+                        interventions.append(intervention.model_dump(mode="json"))
+                    if workspace_root is not None:
+                        for mutation_files in mutations.get(index, ()):
+                            materialize_workspace(workspace_root, mutation_files)
+        except Exception:
+            session.status = SessionStatus.STOPPED
+            with suppress(Exception):
+                await state.store.upsert_session(session)
+            raise
         finally:
+            inbox = list(state.adapters.synthetic.inbox.get(session.id, []))
+            state.adapters.synthetic.sessions.pop(session.id, None)
+            state.adapters.synthetic.inbox.pop(session.id, None)
             if workspace_holder is not None:
                 workspace_holder.cleanup()
         return {
             "replay": True,
             "not_live_control": True,
             "session_id": session.id,
-            "inbox": state.adapters.synthetic.inbox.get(session.id, []),
+            "inbox": inbox,
             "interventions": interventions,
         }
 

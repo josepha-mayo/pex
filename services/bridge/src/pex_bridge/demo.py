@@ -16,6 +16,11 @@ MAX_DEMO_WORKSPACE_BYTES = 262_144
 MAX_DEMO_MUTATIONS = 32
 _FIXTURE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 _WORKSPACE_RELPATH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$")
+_WINDOWS_DEVICE_NAMES = {
+    "con", "nul", "aux", "prn",
+    *(f"com{i}" for i in range(1, 10)),
+    *(f"lpt{i}" for i in range(1, 10)),
+}
 
 
 def _reject_json_constant(value: str) -> None:
@@ -50,6 +55,8 @@ def _validated_relpath(value: Any) -> str:
     parts = PurePosixPath(value).parts
     if not parts or any(part in {"", ".", ".."} for part in parts):
         raise ValueError("demo workspace paths must be relative POSIX paths")
+    if any(part.split(".")[0].lower() in _WINDOWS_DEVICE_NAMES for part in parts):
+        raise ValueError("demo workspace paths must not use reserved device names")
     return "/".join(parts)
 
 
@@ -68,11 +75,13 @@ def _validated_workspace_files(value: Any) -> dict[str, str]:
         total += size
         if total > MAX_DEMO_WORKSPACE_BYTES:
             raise ValueError("demo workspace exceeds the 256 KiB bound")
+        if relpath in files:
+            raise ValueError("demo workspace paths must be unique after normalization")
         files[relpath] = content
     return files
 
 
-def _validated_workspace(value: Any) -> dict[str, Any]:
+def _validated_workspace(value: Any, *, event_count: int) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError("demo workspace must be an object")
     if not set(value).issubset({"files", "mutations"}):
@@ -89,7 +98,7 @@ def _validated_workspace(value: Any) -> dict[str, Any]:
         if (
             not isinstance(after, int)
             or isinstance(after, bool)
-            or not 0 <= after < MAX_DEMO_EVENTS
+            or not 0 <= after < event_count
         ):
             raise ValueError("demo workspace mutation index must be an event index")
         mutations.append(
@@ -104,6 +113,8 @@ def materialize_workspace(root: Path, files: dict[str, str]) -> None:
     base = root.resolve()
     for relpath, content in files.items():
         target = base.joinpath(*relpath.split("/"))
+        if len(str(target)) > 240:
+            raise ValueError("demo workspace path exceeds the filesystem bound")
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
 
@@ -162,7 +173,7 @@ def load_fixture(fixture_id: str) -> dict:
             parse_float=_finite_json_float,
             object_pairs_hook=_unique_json_object,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError) as exc:
         raise ValueError("demo fixture must be valid UTF-8 JSON") from exc
     if not isinstance(data, dict):
         raise ValueError("demo fixture must contain an object")
@@ -176,7 +187,9 @@ def load_fixture(fixture_id: str) -> dict:
     if data.get("goal") is not None and not isinstance(data["goal"], dict):
         raise ValueError("demo fixture goal must be an object")
     if data.get("workspace") is not None:
-        data["workspace"] = _validated_workspace(data["workspace"])
+        data["workspace"] = _validated_workspace(
+            data["workspace"], event_count=len(events)
+        )
     data["replay"] = True
     data["not_live_control"] = True
     return data

@@ -152,7 +152,9 @@ justify them, not a silent flag.
 
 For the quantified receipt, `GET /v1/claims/metrics` reports the durable
 ledger — verdict counts, baselines sealed, integrity incidents, corrective
-nudges issued, and the most-flagged files.
+nudges issued, and the most-flagged files. `GET /v1/goals/{id}/verification-report`
+packages the per-goal version: every claim with its verdict, the sealed
+baselines that anchored it, and the final completion projection.
 
 ## Fallback — no OpenCode install
 
