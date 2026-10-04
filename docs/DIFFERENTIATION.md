@@ -27,10 +27,12 @@ stays quiet when the work is actually complete.
 
 - Exactly two Codex-v2 companions, Pex and Von, are packaged in both verified installers.
 - Clean source `c3cc44c` produced verified MSI and NSIS inventories with zero package blockers.
-- Current focused gates pass 289 frontend tests (one platform skip), 92 supervision/recovery
-  tests, and 243 expanded Strands/provider/AgentCore/evidence tests (four skips). The latest
-  complete Python regression is retained as 4,440 passed and 32 skipped at `570964b`; later
-  affected slices are separately source-bound rather than mislabeled as another full-suite pass.
+- Current focused gates pass 345 frontend tests (five platform-gated skips), 92
+  supervision/recovery tests, and 243 expanded Strands/provider/AgentCore/evidence
+  tests (four skips). The latest
+  complete Python regression is 5,377 passed and 41 skipped on the `7dc44d5` tree,
+  with the ConTree slice re-verified focused at that revision; the earlier
+  4,440-pass run at `570964b` is retained as a historical data point.
 - A real Codex Spark worker and free Muse/Strands supervisor demonstrated restraint and
   specific same-thread recovery on clean `e864389`.
 - A real OpenCode 1.18.30 worker and free Muse/Strands supervisor demonstrated one

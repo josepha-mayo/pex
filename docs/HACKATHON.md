@@ -37,7 +37,8 @@ Nemotron inference follows the same runbook's main path.
 
 - **Runs today offline:** the full supervision pipeline, deterministic triage,
   acceptance-surface sealing and tamper detection, the replay demo, local
-  subprocess public-test verification, 4,900+ backend tests.
+  subprocess public-test verification, 5,377 backend tests (latest full run on
+  the `7dc44d5` tree, 0 failures).
 - **Needs your key:** Nemotron semantic reviews and independent-verifier calls
   (BYOK; deterministic triage never pretends a model ran when it did not).
 - **Needs Nebius Sandboxes beta access:** live ConTree execution. The backend
