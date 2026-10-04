@@ -335,6 +335,39 @@ def test_contree_missing_credentials_fail_closed(tmp_path):
     assert transport.calls == []
 
 
+def test_contree_rejects_image_references_the_api_cannot_parse(tmp_path):
+    # The API accepts only an image uuid or a "tag:" reference; a bare
+    # "python:3.12" style string would otherwise surface as an opaque 400.
+    manifest = _workspace(tmp_path, {"test_a.py": "def test_a():\n    pass\n"})
+    config = contree_config(
+        {
+            "PEX_CONTREE_API_KEY": "k",
+            "PEX_CONTREE_PROJECT": "p",
+            "PEX_CONTREE_IMAGE": "python:3.12-slim",
+        }
+    )
+    transport = FakeTransport()
+    result = run_public_pytest_contree(
+        tmp_path,
+        manifest,
+        ["test_a.py"],
+        transport=transport,
+        config=config,
+        sleeper=lambda s: None,
+    )
+    assert result["ok"] is False
+    assert result["error_type"] == "unconfigured"
+    assert "PEX_CONTREE_IMAGE" in result["error"]
+    assert transport.calls == []
+    assert not contree_config(
+        {
+            "PEX_CONTREE_API_KEY": "k",
+            "PEX_CONTREE_PROJECT": "p",
+            "PEX_CONTREE_IMAGE": "dddddddd-0000-0000-0000-0000000000dd",
+        }
+    ).missing_reasons()
+
+
 def test_contree_upload_bound_refuses_oversized_workspaces(tmp_path):
     manifest = _workspace(tmp_path, {"test_a.py": "x" * 64 + "\ndef test_a():\n    pass\n"})
     config = contree_config(

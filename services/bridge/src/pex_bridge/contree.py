@@ -35,6 +35,7 @@ import base64
 import binascii
 import hashlib
 import os
+import re
 import time
 import uuid as uuidlib
 from collections.abc import Callable
@@ -97,6 +98,8 @@ class ContreeConfig:
             reasons.append("PEX_CONTREE_API_KEY/NEBIUS_API_KEY unset")
         if not self.project:
             reasons.append("PEX_CONTREE_PROJECT/NEBIUS_PROJECT_ID unset")
+        if not _valid_image_source(self.image):
+            reasons.append("PEX_CONTREE_IMAGE must be an image uuid or a 'tag:' reference")
         return reasons
 
 
@@ -122,6 +125,19 @@ def contree_config(env: dict[str, str] | None = None) -> ContreeConfig:
             source.get("PEX_CONTREE_MAX_FILES"), _DEFAULT_MAX_FILES, _ABSOLUTE_MAX_FILES
         ),
     )
+
+
+_IMAGE_TAG_PATTERN = re.compile(r"^tag:[A-Za-z0-9][A-Za-z0-9_-]*(?:[:/.][A-Za-z0-9_-]+)*$")
+
+
+def _valid_image_source(image: str) -> bool:
+    """The API accepts only an image uuid or a ``tag:``-prefixed reference."""
+    try:
+        uuidlib.UUID(image)
+        return True
+    except ValueError:
+        pass
+    return bool(_IMAGE_TAG_PATTERN.match(image))
 
 
 def _bounded_int(raw: str | None, default: int, ceiling: int) -> int:
