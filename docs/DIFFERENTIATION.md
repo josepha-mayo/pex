@@ -21,6 +21,7 @@ stays quiet when the work is actually complete.
 | Cloud control owns local side effects | AgentCore can host reasoning, but the local bridge retains credentials, policy, and execution authority | Exact-package local AgentCore protocol smoke; AWS deployment honestly remains open |
 | Another transcript or kanban | A quiet desktop companion communicates working, drifting, and needs-human state | Exactly two shipping companions, Pex and Von, with transparent/dismissible native behavior retained on the prior candidate |
 | Productivity claim from a convenient fixture | PexBench requires equivalent prompts/environments, private-evaluator separation, raw evidence, failed-run retention, and a coherent freeze | Integrity contracts pass; manifest remains honestly `frozen: false` and has no score claim |
+| Verification trusts the worker's own host | `PEX_PUBLIC_PYTEST_BACKEND=contree` runs bounded public pytest inside a disposable, network-isolated Nebius ConTree VM, uploaded files bound to the fingerprinted manifest sha256s | Scripted-transport unit coverage; live sandbox execution requires Nebius Sandboxes beta access and reports its own honest `error_type` instead of masquerading as a test result |
 
 ## What is real today
 
@@ -45,6 +46,8 @@ stays quiet when the work is actually complete.
 - It does not publish a PexBench lift while the four-arm manifest is unfrozen.
 - It does not treat browser screenshots as native overlay or resource-stability proof.
 - It does not turn a timed-out independent verifier into permission to intervene.
+- It does not report a sandbox infrastructure failure as a test outcome, or fall back to
+  local execution of untrusted code when the operator selected the remote sandbox.
 - It does not use hidden evaluator facts, task-specific nudges, or treatment-only prompts.
 
 ## The five-minute thesis

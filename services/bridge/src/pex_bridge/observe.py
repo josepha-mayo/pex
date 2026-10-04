@@ -45,6 +45,7 @@ def _terminate_process_tree(proc: subprocess.Popen[bytes]) -> None:
         except OSError:
             pass
 
+
 HIDDEN_NAME_MARKERS = (
     "evaluator.py",
     "metadata.yaml",
@@ -234,9 +235,7 @@ def _public_file_manifest(root: Path) -> list[dict[str, Any]]:
             if not stat.S_ISREG(declared.st_mode) or declared.st_nlink != 1:
                 raise ValueError("linked or non-regular workspace file rejected")
             if declared_size > _MAX_MANIFEST_FILE_BYTES:
-                raise ValueError(
-                    f"workspace file exceeds the 64 MiB observation bound: {filename}"
-                )
+                raise ValueError(f"workspace file exceeds the 64 MiB observation bound: {filename}")
             if len(rows) >= _MAX_MANIFEST_FILES:
                 raise ValueError("workspace exceeds the 10000-file observation bound")
             if total_bytes + declared_size > _MAX_MANIFEST_TOTAL_BYTES:
@@ -263,9 +262,12 @@ def _manifest_sha256(rows: list[dict[str, Any]]) -> str:
 
 
 def _public_pytest(
-    root: Path, files: list[str], *, deadline: float | None = None,
+    root: Path,
+    files: list[str],
+    *,
+    deadline: float | None = None,
 ) -> dict[str, Any] | None:
-    tests = [name for name in files if Path(name).name.startswith("test_") and name.endswith(".py")]
+    tests = _public_test_names(files)
     if not tests:
         return None
     if len(tests) > _MAX_PUBLIC_TEST_FILES:
@@ -275,8 +277,47 @@ def _public_pytest(
         return _run_public_pytest(root, tests, cache, **options)
 
 
+def _public_test_names(files: list[str]) -> list[str]:
+    return [name for name in files if Path(name).name.startswith("test_") and name.endswith(".py")]
+
+
+def _public_pytest_backend_run(
+    root: Path,
+    manifest: list[dict[str, Any]],
+    *,
+    deadline: float | None = None,
+) -> dict[str, Any] | None:
+    """Dispatch public tests to the configured backend, local by default.
+
+    ``PEX_PUBLIC_PYTEST_BACKEND=contree`` runs the same bounded test set inside
+    a disposable Nebius sandbox. A configured-but-unavailable sandbox reports
+    its own honest error; it never silently falls back to local execution.
+    """
+
+    if _selected_public_pytest_backend() != "contree":
+        options = {"deadline": deadline} if deadline is not None else {}
+        return _public_pytest(root, [row["path"] for row in manifest], **options)
+    tests = _public_test_names([row["path"] for row in manifest])
+    if not tests:
+        return None
+    if len(tests) > _MAX_PUBLIC_TEST_FILES:
+        raise ValueError("workspace exceeds the 256-test-file observation bound")
+    from pex_bridge.contree import run_public_pytest_contree
+
+    options = {"deadline": deadline} if deadline is not None else {}
+    return run_public_pytest_contree(root, manifest, tests, **options)
+
+
+def _selected_public_pytest_backend() -> str:
+    return (os.environ.get("PEX_PUBLIC_PYTEST_BACKEND") or "").strip().lower()
+
+
 def _run_public_pytest(
-    root: Path, tests: list[str], cache: str, *, isolated_command: list[str] | None = None,
+    root: Path,
+    tests: list[str],
+    cache: str,
+    *,
+    isolated_command: list[str] | None = None,
     deadline: float | None = None,
 ) -> dict[str, Any]:
     if deadline is not None:
@@ -297,7 +338,9 @@ def _run_public_pytest(
     if os.name == "nt":
         creation_flags |= CREATE_SUSPENDED
     proc = subprocess.Popen(
-        isolated_command if isolated_command is not None else [
+        isolated_command
+        if isolated_command is not None
+        else [
             sys.executable,
             "-m",
             "pytest",
@@ -341,8 +384,13 @@ def _run_public_pytest(
     timed_out = False
     try:
         try:
-            wait_timeout = _PYTEST_TIMEOUT_SECONDS if deadline is None else min(
-                _PYTEST_TIMEOUT_SECONDS, max(0.0, deadline - time.perf_counter()),
+            wait_timeout = (
+                _PYTEST_TIMEOUT_SECONDS
+                if deadline is None
+                else min(
+                    _PYTEST_TIMEOUT_SECONDS,
+                    max(0.0, deadline - time.perf_counter()),
+                )
             )
             exit_code = proc.wait(timeout=wait_timeout)
         except subprocess.TimeoutExpired:
@@ -381,17 +429,19 @@ def _run_public_pytest(
 
 
 def snapshot(
-    workspace: Path, *, run_pytest: bool = False, pytest_deadline: float | None = None,
+    workspace: Path,
+    *,
+    run_pytest: bool = False,
+    pytest_deadline: float | None = None,
 ) -> dict[str, Any]:
     """Observe public state; execute workspace tests only after explicit authorization."""
     root = workspace.resolve()
     if not root.is_dir():
         raise ValueError(f"workspace is not a directory: {root}")
     before = _public_file_manifest(root)
-    pytest_options = {"deadline": pytest_deadline} if pytest_deadline is not None else {}
-    pytest_result = _public_pytest(
-        root, [row["path"] for row in before], **pytest_options,
-    ) if run_pytest else None
+    pytest_result = (
+        _public_pytest_backend_run(root, before, deadline=pytest_deadline) if run_pytest else None
+    )
     # Public tests can legitimately write artifacts. Re-scan afterward so the
     # fingerprint describes the state actually presented to the supervisor.
     manifest = _public_file_manifest(root) if run_pytest else before

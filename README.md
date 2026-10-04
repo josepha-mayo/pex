@@ -389,6 +389,37 @@ for that endpoint in Settings or through `PEX_SUPERVISOR_API_KEY`. PEX does not
 forward another provider's key to it. See the
 [official Nebius Nemotron example](https://github.com/nebius/token-factory-cookbook/blob/main/models/nemotron/nemotron3-super-120B.md).
 
+### Nebius ConTree sandboxed verification
+
+PEX never executes untrusted workspace code inside the bridge process; by
+default bounded public pytest evidence runs as a scrubbed local subprocess with
+no inherited secrets. Setting `PEX_PUBLIC_PYTEST_BACKEND=contree` dispatches
+the same bounded test set to a disposable, network-isolated Nebius ConTree VM
+instead. Only files already admitted by the public manifest are uploaded, each
+re-verified against its fingerprinted sha256, so the sandbox sees exactly the
+bytes the observation receipt describes — drift between fingerprint and
+dispatch is refused rather than executed. The run keeps the isolated public
+pytest argv (`python -I -B ... --rootdir /workspace --confcutdir /workspace -c
+/dev/null`), the same output redaction and hidden-evaluator withholding, and
+adds executor provenance (instance, operation, image, resource counters) to the
+receipt.
+
+```text
+PEX_PUBLIC_PYTEST_BACKEND=contree
+PEX_CONTREE_API_KEY or NEBIUS_API_KEY
+PEX_CONTREE_PROJECT or NEBIUS_PROJECT_ID
+```
+
+Optional overrides: `PEX_CONTREE_BASE_URL`, `PEX_CONTREE_IMAGE` (the image must
+ship pytest), `PEX_CONTREE_PYTHON`, `PEX_CONTREE_TIMEOUT_SECONDS`,
+`PEX_CONTREE_MAX_UPLOAD_BYTES`, `PEX_CONTREE_MAX_FILES`. A missing key, auth
+rejection, malformed response, expired dispatch budget, or an image without
+pytest reports an honest `error_type` on the result — infrastructure trouble is
+never presented as a test outcome, and a configured-but-unavailable sandbox
+never silently downgrades to local execution. This path is implemented and
+covered by scripted-transport unit tests; live ConTree execution additionally
+requires Nebius Sandboxes beta access and is labeled accordingly, not claimed.
+
 Push and pull-request checks run the offline backend suite, desktop contracts,
 lint and frontend production build on Windows and Ubuntu. Live provider calls,
 native visual acceptance and installer testing remain separate checks.
