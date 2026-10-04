@@ -33,11 +33,7 @@ try {
 } catch {}
 await page.waitForTimeout(1000);
 
-// Expand the verification report details if present.
-const verification = page.locator('summary:has-text("Independent claim verification")').first();
-try {
-  await verification.click({ timeout: 2000 });
-} catch {}
+// The claim-verification report is open by default — no expansion needed.
 await page.waitForTimeout(600);
 
 await page.screenshot({ path: out, fullPage: true });

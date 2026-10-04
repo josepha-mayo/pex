@@ -339,7 +339,7 @@ export function Inspector({
             </p>
             <p className="goal-help">{goal.objective}</p>
             {verificationReport ? (
-              <details className="goal-options verification-report">
+              <details className="goal-options verification-report" open>
               <summary>Independent claim verification</summary>
               <p className="verification-summary">{verificationSummaryLine(verificationReport)}</p>
               {verificationReport.claims.length ? (
