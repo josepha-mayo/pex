@@ -1,4 +1,5 @@
 import { handoffAssimilationPresentation } from "../handoffPresentation";
+import { isReplaySession } from "../demoReplay";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AskPex } from "./AskPex";
@@ -403,7 +404,12 @@ function NowView({
                 <small>{titleCase(session.harness_type)} {session.model ? `· ${session.model}` : ""}</small>
                 <strong>{session.label || titleCase(session.harness_type)}</strong>
               </span>
-              <span className={`state-pill state-${session.status}`}>{humanize(session.status)}</span>
+              <span className="card-state">
+                {isReplaySession(session) ? (
+                  <span className="replay-badge">Recorded replay</span>
+                ) : null}
+                <span className={`state-pill state-${session.status}`}>{humanize(session.status)}</span>
+              </span>
             </div>
             <p className="goal-line">{!goalsFresh
               ? "Goal state unavailable · reconnect the local bridge to refresh."

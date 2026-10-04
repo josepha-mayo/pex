@@ -897,6 +897,12 @@ p {
   text-transform: uppercase;
 }
 
+.card-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .replay-badge {
   display: inline-block;
   padding: 1px 8px;
