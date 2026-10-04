@@ -2683,7 +2683,9 @@ export function App() {
                 <strong>{titleCase(session.harness_type)}</strong>
                 <small>{railLabels[index]}{(railLabelCounts.get(`${session.harness_type}:${railLabels[index]}`) || 0) > 1
                   ? ` · ${session.id.slice(-6)}` : ""}</small>
-                <small>{isReplaySession(session) ? "Recorded replay" : titleCase(session.status)}</small>
+                {isReplaySession(session)
+                  ? <small><span className="replay-badge">Recorded replay</span></small>
+                  : <small>{titleCase(session.status)}</small>}
               </button>
             ))}
             </div>

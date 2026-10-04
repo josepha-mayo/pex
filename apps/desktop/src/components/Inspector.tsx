@@ -211,7 +211,7 @@ export function Inspector({
             {isReplaySession(current) ? (
               <div>
                 <dt>Session origin</dt>
-                <dd>Recorded replay · not live worker control</dd>
+                <dd><span className="replay-badge">Recorded replay</span> · not live worker control</dd>
               </div>
             ) : null}
           </dl>

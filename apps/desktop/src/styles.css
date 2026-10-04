@@ -889,6 +889,24 @@ p {
   min-width: 74px;
   font-weight: 700;
   letter-spacing: 0.02em;
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.replay-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .verdict-supported { color: var(--mint); }
