@@ -154,7 +154,9 @@ For the quantified receipt, `GET /v1/claims/metrics` reports the durable
 ledger — verdict counts, baselines sealed, integrity incidents, corrective
 nudges issued, and the most-flagged files. `GET /v1/goals/{id}/verification-report`
 packages the per-goal version: every claim with its verdict, the sealed
-baselines that anchored it, and the final completion projection.
+baselines that anchored it, and the final completion projection. The desktop
+Inspector renders the same ledger inline and can export it as a standalone
+HTML page (raw JSON embedded) — the artifact a reviewer keeps after the demo.
 
 ## Fallback — no OpenCode install
 
@@ -192,6 +194,15 @@ verification receipt carries the sandbox provenance (`executor`,
 operation/instance UUIDs, resolved image). Without them, or if the sandbox is
 unavailable, the same honest `error_type` contract applies — the run never
 silently downgrades to local execution once `contree` is selected.
+
+## Refreshing the screenshots
+
+The committed captures under `docs/demo/assets/` regenerate with
+`node scripts/capture-demo.mjs <session-id> <out.png>` from
+`apps/desktop` (vite dev server on :1420, demo bridge on :7420, a replayed
+session present). It drives the installed Microsoft Edge via Playwright; set
+`PEX_BROWSER_EXE` for a different Chromium-family binary. The script exists to
+keep README imagery honest — it only photographs the real UI, never mocks it.
 
 ## What this does not prove
 
