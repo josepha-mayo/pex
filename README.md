@@ -419,6 +419,9 @@ never presented as a test outcome, and a configured-but-unavailable sandbox
 never silently downgrades to local execution. This path is implemented and
 covered by scripted-transport unit tests; live ConTree execution additionally
 requires Nebius Sandboxes beta access and is labeled accordingly, not claimed.
+With credentials and beta access, `PEX_LIVE_CONTREE=1 pytest
+tests/contract/test_live_contree.py` runs two real disposable-VM executions as
+the live contract check.
 
 Push and pull-request checks run the offline backend suite, desktop contracts,
 lint and frontend production build on Windows and Ubuntu. Live provider calls,

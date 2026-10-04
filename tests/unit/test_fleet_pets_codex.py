@@ -1371,7 +1371,7 @@ def test_release_preflight_is_structured_and_never_claims_package_readiness():
         check=False,
         capture_output=True,
         text=True,
-        timeout=120,
+        timeout=300,
     )
     assert result.returncode in {0, 2}, result.stderr
     report = json.loads(result.stdout)

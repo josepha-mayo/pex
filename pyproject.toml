@@ -48,6 +48,7 @@ markers = [
   "live_codex: hits a real Codex App Server; requires PEX_LIVE_CODEX=1",
   "live_opencode: hits an existing OpenCode server; requires PEX_LIVE_OPENCODE=1",
   "live_agentcore: invokes a deployed AgentCore Runtime; requires PEX_AGENTCORE_LIVE=1",
+  "live_contree: executes public pytest in a real Nebius ConTree sandbox; requires PEX_LIVE_CONTREE=1 and credentials",
 ]
 
 [tool.ruff]
