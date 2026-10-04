@@ -124,7 +124,10 @@ Try it with no agent install: `POST /v1/demo/replay` with fixture
 
 See [`INTEGRATIONS.md`](INTEGRATIONS.md) for the live matrix.
 
-Evaluators can follow the focused [testing guide](docs/TESTING.md)
+Evaluators for the Nebius x NVIDIA hackathon can start from
+[docs/HACKATHON.md](docs/HACKATHON.md) — it maps track requirements to the
+code, gives a five-minute no-install judge path, and states what is real
+versus credential-gated. Otherwise follow the focused [testing guide](docs/TESTING.md)
 for the OpenCode/Nebius path and its exact claim boundaries. To walk the
 supervised-worker loop end to end in a browser — connect a real OpenCode
 worker, attach a persistent goal, watch PEX verify a false completion claim —
