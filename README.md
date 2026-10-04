@@ -107,6 +107,14 @@ Try it with no agent install: `POST /v1/demo/replay` with fixture
 `verified_complete` through the real pipeline (see the
 [demo runbook](docs/demo/RUNBOOK.md), Scenario D).
 
+![PEX Inspector on the replayed tamper catch](docs/demo/assets/pex-claim-verification-93bd09c.png)
+
+*Browser capture of the deterministic `tampered_acceptance_eval` replay at
+`c46c01b`: the claim ledger shows the `uncertain` verdict, the corrective nudge,
+and the flagged `tests/test_core.py`, ending in `verified`. The session is
+labeled "Recorded replay · not live worker control" — a deterministic fixture,
+not a live worker receipt.*
+
 ## Supported harnesses
 
 | Harness | Current label | Surface |
