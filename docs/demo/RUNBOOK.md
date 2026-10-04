@@ -164,10 +164,15 @@ pipeline with no worker install at all. `GET /v1/demo/trajectories` lists the
 available recordings — `tampered_acceptance_eval` replays the full Scenario D
 arc (baseline seal → test weakened → green claim → `uncertain` + corrective
 nudge naming the file → restore → `verified_complete`) against a materialized
-workspace, no agent required. The desktop setup card offers the same fixtures
-as a "Recorded replay" button whenever the bridge advertises an honestly
-labeled list, so no curl is needed — replay sessions are visibly tagged and
-can never be mistaken for live worker control.
+workspace, no agent required. `config_injection_eval` shows the sibling vector:
+a `pytest.ini` added after the baseline deselects the suite, the green claim
+is downgraded to `uncertain` with `acceptance_surface_config_added:pytest.ini`
+as evidence, and removing the file restores `verified`. `premature_stop_eval`
+and `dataset_before_eval` cover unsupported "done" claims and permission
+brokerage on an impossible command. The desktop setup card offers the same
+fixtures as a "Recorded replay" button whenever the bridge advertises an
+honestly labeled list, so no curl is needed — replay sessions are visibly
+tagged and can never be mistaken for live worker control.
 
 ## Optional — verify inside a Nebius sandbox
 

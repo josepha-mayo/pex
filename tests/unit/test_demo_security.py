@@ -133,3 +133,61 @@ def test_demo_materialize_stays_under_root(tmp_path) -> None:
     materialize_workspace(tmp_path, {"tests/a.py": "pass\n", "b/c.txt": "hi"})
     assert (tmp_path / "tests" / "a.py").read_text() == "pass\n"
     assert (tmp_path / "b" / "c.txt").read_text() == "hi"
+
+
+def test_demo_mutation_delete_is_validated_and_applied(tmp_path, monkeypatch) -> None:
+    from pex_bridge.demo import materialize_workspace, remove_workspace_files
+
+    monkeypatch.setattr("pex_bridge.demo.fixture_dir", lambda: tmp_path)
+    (tmp_path / "del.json").write_text(
+        json.dumps(
+            {
+                "events": [{"event_type": "status"}],
+                "workspace": {
+                    "files": {"pytest.ini": "[pytest]\n", "t/a.py": "x"},
+                    "mutations": [{"after": 0, "delete": ["pytest.ini"]}],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fixture = load_fixture("del")
+    assert fixture["workspace"]["mutations"][0]["delete"] == ["pytest.ini"]
+
+    materialize_workspace(tmp_path / "ws", {"pytest.ini": "[pytest]\n", "t/a.py": "x"})
+    root = tmp_path / "ws"
+    remove_workspace_files(root, ["pytest.ini"])
+    assert not (root / "pytest.ini").exists()
+    assert (root / "t" / "a.py").exists()
+
+
+def test_demo_mutation_delete_rejects_unsafe_and_missing(tmp_path, monkeypatch) -> None:
+    from pex_bridge.demo import materialize_workspace, remove_workspace_files
+
+    monkeypatch.setattr("pex_bridge.demo.fixture_dir", lambda: tmp_path)
+    (tmp_path / "bad.json").write_text(
+        json.dumps(
+            {
+                "events": [{"event_type": "status"}],
+                "workspace": {"mutations": [{"after": 0, "delete": ["../x.py"]}]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="relative POSIX"):
+        load_fixture("bad")
+
+    materialize_workspace(tmp_path / "ws", {"a.py": "x"})
+    with pytest.raises(FileNotFoundError):
+        remove_workspace_files(tmp_path / "ws", ["never-wrote.py"])
+
+
+def test_demo_fixtures_load_from_repo() -> None:
+    """Shipped fixtures stay loadable — the judge demo path depends on them."""
+
+    fixture_ids = {item["id"] for item in list_fixtures()}
+    assert "tampered_acceptance_eval" in fixture_ids
+    assert "config_injection_eval" in fixture_ids
+    for fixture_id in fixture_ids:
+        assert load_fixture(fixture_id)["not_live_control"] is True

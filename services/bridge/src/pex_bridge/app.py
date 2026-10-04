@@ -6353,7 +6353,11 @@ def create_app() -> FastAPI:
     async def demo_replay(body: DemoReplayIn, _: None = Depends(_require_token)):
         from pex_protocol.enums import EventPhase, EventType
 
-        from pex_bridge.demo import load_fixture, materialize_workspace
+        from pex_bridge.demo import (
+            load_fixture,
+            materialize_workspace,
+            remove_workspace_files,
+        )
 
         fixture_id = body.fixture
         try:
@@ -6383,7 +6387,7 @@ def create_app() -> FastAPI:
 
         workspace_holder: tempfile.TemporaryDirectory[str] | None = None
         workspace_root: Path | None = None
-        mutations: dict[int, list[dict[str, str]]] = {}
+        mutations: dict[int, list[dict[str, Any]]] = {}
         workspace_spec = data.get("workspace")
         try:
             if workspace_spec:
@@ -6393,9 +6397,7 @@ def create_app() -> FastAPI:
                 workspace_root = Path(workspace_holder.name)
                 materialize_workspace(workspace_root, workspace_spec["files"])
                 for mutation in workspace_spec["mutations"]:
-                    mutations.setdefault(int(mutation["after"]), []).append(
-                        mutation["files"]
-                    )
+                    mutations.setdefault(int(mutation["after"]), []).append(mutation)
         except (ValueError, OSError) as exc:
             if workspace_holder is not None:
                 workspace_holder.cleanup()
@@ -6455,8 +6457,15 @@ def create_app() -> FastAPI:
                     if intervention:
                         interventions.append(intervention.model_dump(mode="json"))
                     if workspace_root is not None:
-                        for mutation_files in mutations.get(index, ()):
-                            materialize_workspace(workspace_root, mutation_files)
+                        for mutation in mutations.get(index, ()):
+                            if mutation["delete"]:
+                                remove_workspace_files(
+                                    workspace_root, mutation["delete"]
+                                )
+                            if mutation["files"]:
+                                materialize_workspace(
+                                    workspace_root, mutation["files"]
+                                )
         except Exception:
             session.status = SessionStatus.STOPPED
             with suppress(Exception):

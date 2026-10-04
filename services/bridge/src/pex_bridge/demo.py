@@ -92,8 +92,10 @@ def _validated_workspace(value: Any, *, event_count: int) -> dict[str, Any]:
         raise ValueError("demo workspace mutations must be a bounded list")
     mutations = []
     for item in mutations_value:
-        if not isinstance(item, dict) or not set(item).issubset({"after", "files"}):
-            raise ValueError("demo workspace mutation must be {after, files}")
+        if not isinstance(item, dict) or not set(item).issubset(
+            {"after", "files", "delete"}
+        ):
+            raise ValueError("demo workspace mutation must be {after, files, delete}")
         after = item.get("after")
         if (
             not isinstance(after, int)
@@ -101,10 +103,24 @@ def _validated_workspace(value: Any, *, event_count: int) -> dict[str, Any]:
             or not 0 <= after < event_count
         ):
             raise ValueError("demo workspace mutation index must be an event index")
+        deletes = item.get("delete") or []
+        if not isinstance(deletes, list) or len(deletes) > MAX_DEMO_WORKSPACE_FILES:
+            raise ValueError("demo workspace mutation deletes must be a bounded list")
         mutations.append(
-            {"after": after, "files": _validated_workspace_files(item.get("files") or {})}
+            {
+                "after": after,
+                "files": _validated_workspace_files(item.get("files") or {}),
+                "delete": [_validated_relpath(path) for path in deletes],
+            }
         )
     return {"files": files, "mutations": mutations}
+
+
+def _workspace_target(base: Path, relpath: str) -> Path:
+    target = base.joinpath(*relpath.split("/"))
+    if len(str(target)) > 240:
+        raise ValueError("demo workspace path exceeds the filesystem bound")
+    return target
 
 
 def materialize_workspace(root: Path, files: dict[str, str]) -> None:
@@ -112,11 +128,32 @@ def materialize_workspace(root: Path, files: dict[str, str]) -> None:
 
     base = root.resolve()
     for relpath, content in files.items():
-        target = base.joinpath(*relpath.split("/"))
-        if len(str(target)) > 240:
-            raise ValueError("demo workspace path exceeds the filesystem bound")
+        target = _workspace_target(base, relpath)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
+
+
+def remove_workspace_files(root: Path, relpaths: list[str]) -> None:
+    """Delete validated fixture paths under a replay workspace root.
+
+    Deleting a path that was never materialized is a fixture bug, not a
+    no-op — it fails loudly so a recorded trajectory cannot pretend a
+    tampered file was removed when it never existed.
+    """
+
+    base = root.resolve()
+    for relpath in relpaths:
+        target = _workspace_target(base, relpath)
+        if not target.resolve().is_relative_to(base):
+            raise ValueError("demo workspace delete must stay under the root")
+        target.unlink()
+        for parent in target.parents:
+            if parent == base or not parent.is_relative_to(base):
+                break
+            try:
+                parent.rmdir()
+            except OSError:
+                break
 
 
 def fixture_dir() -> Path:
