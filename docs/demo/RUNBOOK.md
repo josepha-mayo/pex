@@ -225,6 +225,9 @@ session present). It drives the installed Microsoft Edge via Playwright; set
 `PEX_BROWSER_EXE` for a different Chromium-family binary. The script exists to
 keep README imagery honest — it only photographs the real UI, never mocks it.
 
+For the submission video, [DEMO_SCRIPT.md](DEMO_SCRIPT.md) is a ~3-minute
+narration keyed to the same on-screen flow.
+
 ## What this does not prove
 
 - The demo bridge is unauthenticated and loopback-only; it exercises the real
