@@ -50,6 +50,9 @@ test("a well-formed report parses into a bounded judge-facing view", () => {
   assert.equal(parsed.claims.length, 2);
   assert.equal(parsed.claims[0]?.status, "supported");
   assert.deepEqual(parsed.claims[1]?.flaggedFiles, ["tests/test_core.py"]);
+  assert.deepEqual(parsed.claims[1]?.evidence, [
+    "acceptance file changed after baseline",
+  ]);
   assert.equal(parsed.baselinesSealed, 1);
   assert.equal(parsed.baselineFiles, 3);
   assert.equal(parsed.integrityIncidents, 1);
@@ -95,6 +98,32 @@ test("claims are bounded and hostile file paths are dropped", () => {
   const parsed = parseVerificationReport(hostile);
   assert.ok(parsed);
   assert.deepEqual(parsed.claims[0]?.flaggedFiles, ["tests/ok.py"]);
+});
+
+test("claim evidence is bounded and non-string entries are dropped", () => {
+  const noisy = {
+    ...report,
+    claims: [
+      {
+        at: report.claims[0].at,
+        action_taken: "NOOP",
+        verification_status: "supported",
+        evidence: [
+          "pytest_ok=true",
+          42,
+          null,
+          { nested: true },
+          "x".repeat(241),
+          ...Array.from({ length: 10 }, (_, i) => `evidence_${i}`),
+        ],
+      },
+    ],
+  };
+  const parsed = parseVerificationReport(noisy);
+  assert.ok(parsed);
+  const evidence = parsed.claims[0]?.evidence ?? [];
+  // Only the first 8 raw entries are considered; non-strings/oversize drop out.
+  assert.deepEqual(evidence, ["pytest_ok=true", "evidence_0", "evidence_1", "evidence_2"]);
 });
 
 test("verdict labels stay human-readable without inventing outcomes", () => {

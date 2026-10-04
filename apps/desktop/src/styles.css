@@ -929,6 +929,24 @@ p {
   overflow-wrap: anywhere;
 }
 
+.verification-evidence {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.verification-evidence code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(127, 156, 255, 0.08);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
 .compact-last-action {
   margin: 0;
   text-align: right;

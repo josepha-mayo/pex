@@ -8,6 +8,7 @@ export type VerificationClaim = {
   action: string;
   status: string | null;
   flaggedFiles: string[];
+  evidence: string[];
 };
 
 export type VerificationReportView = {
@@ -25,6 +26,8 @@ export type VerificationReportView = {
 const MAX_CLAIMS = 64;
 const MAX_FLAGGED = 8;
 const MAX_PATH = 240;
+const MAX_EVIDENCE = 8;
+const MAX_EVIDENCE_LEN = 240;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -44,6 +47,16 @@ function parseFileList(value: unknown): string[] {
     files.push(raw);
   }
   return files;
+}
+
+function parseEvidenceList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const evidence: string[] = [];
+  for (const raw of value.slice(0, MAX_EVIDENCE)) {
+    if (typeof raw !== "string" || !raw || raw.length > MAX_EVIDENCE_LEN) continue;
+    evidence.push(raw);
+  }
+  return evidence;
 }
 
 function parseClaim(raw: unknown): VerificationClaim | null {
@@ -66,6 +79,7 @@ function parseClaim(raw: unknown): VerificationClaim | null {
     action,
     status: typeof status === "string" && status.length <= 64 ? status : null,
     flaggedFiles: [...new Set(flagged)].slice(0, MAX_FLAGGED),
+    evidence: parseEvidenceList(raw.evidence),
   };
 }
 

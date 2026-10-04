@@ -353,6 +353,13 @@ export function Inspector({
                           {claim.flaggedFiles.join(", ")}
                         </span>
                       ) : null}
+                      {claim.evidence.length ? (
+                        <span className="verification-evidence">
+                          {claim.evidence.map((item) => (
+                            <code key={item}>{item}</code>
+                          ))}
+                        </span>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
