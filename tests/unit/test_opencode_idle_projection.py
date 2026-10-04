@@ -72,8 +72,10 @@ def _completed_parent(
     *,
     parent_id: str = "userX",
     assistant_id: str = "assistant-complete",
+    completed: int = 11,
+    payload_id: str | None = None,
 ) -> dict:
-    return _payload(
+    payload = _payload(
         cwd,
         "message.updated",
         properties={
@@ -83,10 +85,13 @@ def _completed_parent(
                 "role": "assistant",
                 "parentID": parent_id,
                 "finish": "stop",
-                "time": {"created": 10, "completed": 11},
+                "time": {"created": completed - 1, "completed": completed},
             }
         },
     )
+    if payload_id is not None:
+        payload["id"] = payload_id
+    return payload
 
 
 async def _ingest(pipeline, adapter, session, payload):
@@ -193,9 +198,13 @@ async def test_known_user_metadata_after_stream_gap_does_not_restart_finished_wo
     store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
     adapter._event_gap_detected = True
     try:
-        user = _payload(str(tmp_path), "message.updated", properties={
-            "info": {"sessionID": "ses_idle", "id": "userX", "role": "user"},
-        })
+        user = _payload(
+            str(tmp_path),
+            "message.updated",
+            properties={
+                "info": {"sessionID": "ses_idle", "id": "userX", "role": "user"},
+            },
+        )
         first = await _ingest(pipeline, adapter, session, user)
         assert first.event_type == EventType.USER_PROMPT
         await _ingest(pipeline, adapter, session, _completed_parent(str(tmp_path)))
@@ -212,8 +221,16 @@ async def test_known_user_metadata_after_stream_gap_does_not_restart_finished_wo
         assert after.status == SessionStatus.STOPPED
         assert after.last_activity == before.last_activity
         # Actual user content edits remain prompts; only repeated metadata is inert.
-        edited = adapter.normalize_sse(session, _payload(str(tmp_path), "message.part.updated",
-            properties={"part": {"messageID": "userX", "type": "text", "text": "New instruction"}}))
+        edited = adapter.normalize_sse(
+            session,
+            _payload(
+                str(tmp_path),
+                "message.part.updated",
+                properties={
+                    "part": {"messageID": "userX", "type": "text", "text": "New instruction"}
+                },
+            ),
+        )
         assert edited.event_type == EventType.USER_PROMPT
     finally:
         await store.close()
@@ -225,7 +242,9 @@ async def test_opencode_discovered_becomes_working_without_planning_every_progre
     await store.upsert_session(session)
     control = await store.get_session_control_state(session.id)
     await store.set_session_supervision_paused(
-        session.id, paused=True, expected_control_revision=control["control_revision"],
+        session.id,
+        paused=True,
+        expected_control_revision=control["control_revision"],
     )
     assert (await store.get_session(session.id)).supervision_paused is True
     original = pipeline._accept_and_resume_event
@@ -238,7 +257,9 @@ async def test_opencode_discovered_becomes_working_without_planning_every_progre
     pipeline._accept_and_resume_event = counted
     try:
         busy = await _ingest(
-            pipeline, adapter, session,
+            pipeline,
+            adapter,
+            session,
             _payload(str(tmp_path), "session.status", properties={"status": {"type": "busy"}}),
         )
         working = await store.get_session(session.id)
@@ -350,8 +371,7 @@ async def test_opencode_free_tier_retry_blocks_without_planning_or_recovery(tmp_
         assert persisted.metadata["opencode_provider_block"]["label"] == "subscribe"
         assert processing is not None and processing["state"] == "complete"
         assert (
-            processing["receipt"]["terminal_reason"]
-            == "opencode_free_tier_limit_without_followup"
+            processing["receipt"]["terminal_reason"] == "opencode_free_tier_limit_without_followup"
         )
         assert supervisor.calls == executor.calls == 0
         assert await pipeline.recover_unfinished_events() == []
@@ -371,16 +391,12 @@ async def test_opencode_free_tier_retry_blocks_without_planning_or_recovery(tmp_
             _payload(
                 str(tmp_path),
                 "message.updated",
-                properties={
-                    "info": {"sessionID": "ses_idle", "id": "userX", "role": "user"}
-                },
+                properties={"info": {"sessionID": "ses_idle", "id": "userX", "role": "user"}},
             ),
             _payload(
                 str(tmp_path),
                 "message.updated",
-                properties={
-                    "info": {"sessionID": "ses_idle", "id": "userX", "role": "user"}
-                },
+                properties={"info": {"sessionID": "ses_idle", "id": "userX", "role": "user"}},
             ),
         ):
             payload["id"] = f"{payload['id']}-{len(await store.recent_events(session.id))}"
@@ -468,16 +484,13 @@ async def test_opencode_exact_message_abort_stays_stopped_until_concrete_work(tm
         assert persisted.metadata["opencode_turn_aborted"] is True
         assert processing is not None
         assert (
-            processing["receipt"]["terminal_reason"]
-            == "opencode_message_aborted_without_followup"
+            processing["receipt"]["terminal_reason"] == "opencode_message_aborted_without_followup"
         )
         for payload in (
             _payload(
                 str(tmp_path),
                 "message.updated",
-                properties={
-                    "info": {"sessionID": "ses_idle", "id": "userX", "role": "user"}
-                },
+                properties={"info": {"sessionID": "ses_idle", "id": "userX", "role": "user"}},
             ),
             _payload(str(tmp_path), "session.status", properties={"status": {"type": "idle"}}),
             _payload(str(tmp_path), "session.idle"),
@@ -535,8 +548,7 @@ async def test_opencode_exact_message_abort_stays_stopped_until_concrete_work(tm
         assert persisted.metadata["opencode_turn_aborted"] is True
         assert processing is not None
         assert (
-            processing["receipt"]["terminal_reason"]
-            == "opencode_message_aborted_without_followup"
+            processing["receipt"]["terminal_reason"] == "opencode_message_aborted_without_followup"
         )
         assert recovered_supervisor.calls == 0
 
@@ -583,8 +595,7 @@ async def test_opencode_provider_limit_keeps_priority_over_exact_message_abort(t
         assert persisted.metadata["opencode_turn_aborted"] is True
         assert processing is not None
         assert (
-            processing["receipt"]["terminal_reason"]
-            == "opencode_free_tier_limit_without_followup"
+            processing["receipt"]["terminal_reason"] == "opencode_free_tier_limit_without_followup"
         )
     finally:
         await store.close()
@@ -639,15 +650,17 @@ async def test_opencode_discovery_cannot_erase_or_mint_provider_fence(tmp_path):
         assert not_minted is not None
         assert "opencode_free_tier_limited" not in not_minted.metadata
         assert "opencode_provider_block" not in not_minted.metadata
-        first_discovery = unfenced.model_copy(update={
-            "id": "opencode:first-discovery",
-            "vendor_session_id": "first-discovery",
-            "metadata": {
-                "discovery_observation_only": True,
-                "opencode_free_tier_limited": True,
-                "opencode_provider_block": {"reason": "free_tier_limit"},
-            },
-        })
+        first_discovery = unfenced.model_copy(
+            update={
+                "id": "opencode:first-discovery",
+                "vendor_session_id": "first-discovery",
+                "metadata": {
+                    "discovery_observation_only": True,
+                    "opencode_free_tier_limited": True,
+                    "opencode_provider_block": {"reason": "free_tier_limit"},
+                },
+            }
+        )
         await store.upsert_session(first_discovery)
         created = await store.get_session(first_discovery.id)
         assert created is not None
@@ -665,9 +678,7 @@ async def test_opencode_discovery_cannot_erase_or_mint_provider_fence(tmp_path):
         )
         await store.upsert_session(aborted)
         await store.upsert_session(
-            aborted.model_copy(
-                update={"metadata": {"discovery_observation_only": True}}
-            )
+            aborted.model_copy(update={"metadata": {"discovery_observation_only": True}})
         )
         preserved_abort = await store.get_session(aborted.id)
         assert preserved_abort is not None
@@ -734,9 +745,114 @@ async def test_opencode_free_tier_fence_survives_restart_before_idle(tmp_path):
         assert persisted.metadata["opencode_free_tier_limited"] is True
         assert processing is not None
         assert (
-            processing["receipt"]["terminal_reason"]
-            == "opencode_free_tier_limit_without_followup"
+            processing["receipt"]["terminal_reason"] == "opencode_free_tier_limit_without_followup"
         )
         assert supervisor.calls == 0
     finally:
         await recovery.close()
+
+
+async def test_opencode_later_terminal_sibling_under_same_parent_is_not_suppressed(
+    tmp_path,
+):
+    """OpenCode emits multiple completed assistant messages per user parent
+    (observed live: an interim 'edit applied' completion, then tool calls,
+    then the real final 'I am done'). A later completed frame with a new
+    message id and a later completed time is a genuine terminal — suppressing
+    it loses the turn's final claim from adjudication."""
+    store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    try:
+        first = await _ingest(
+            pipeline,
+            adapter,
+            session,
+            _completed_parent(
+                str(tmp_path),
+                assistant_id="assistant-step-one",
+                completed=11,
+                payload_id="terminal-one",
+            ),
+        )
+        assert first.event_type == EventType.STOP
+        assert adapter._completed_terminal_parents[session.id] == "userX"
+
+        # The worker keeps producing parts under the same parent after the
+        # interim completion — real turn continuation, not a re-delivery.
+        mid = await _ingest(
+            pipeline,
+            adapter,
+            session,
+            _payload(
+                str(tmp_path),
+                "message.part.updated",
+                properties={
+                    "part": {
+                        "messageID": "assistant-step-two",
+                        "type": "text",
+                        "text": "All tests passed. I am done.",
+                    }
+                },
+            ),
+        )
+        assert mid.event_type == EventType.AGENT_RESPONSE
+
+        second = await _ingest(
+            pipeline,
+            adapter,
+            session,
+            _completed_parent(
+                str(tmp_path),
+                assistant_id="assistant-step-two",
+                completed=42,
+                payload_id="terminal-two",
+            ),
+        )
+        assert second.event_type == EventType.STOP
+        assert adapter._completed_terminal_frames[session.id] == ("assistant-step-two", 42)
+        events = await store.recent_events(session.id, limit=20)
+        assert sum(event.event_type == EventType.STOP for event in events) == 2
+    finally:
+        await store.close()
+
+
+async def test_opencode_repersisted_terminal_frame_is_still_suppressed(tmp_path):
+    """The original guard's real target: a literal re-persist of the same
+    completed assistant message (same id or same completion instant) must not
+    double-dispatch the supervisor."""
+    store, adapter, session, pipeline = await _bound_opencode_pipeline(tmp_path)
+    try:
+        first = await _ingest(
+            pipeline,
+            adapter,
+            session,
+            _completed_parent(str(tmp_path), assistant_id="assistant-done", payload_id="t-one"),
+        )
+        assert first.event_type == EventType.STOP
+
+        # Same message id re-delivered with a fresh transport frame id.
+        redelivery = await _ingest(
+            pipeline,
+            adapter,
+            session,
+            _completed_parent(str(tmp_path), assistant_id="assistant-done", payload_id="t-two"),
+        )
+        assert redelivery.event_type == EventType.STATUS
+
+        # A copied sibling row: different message id, identical completion
+        # instant — a re-persist, not new work.
+        copied = await _ingest(
+            pipeline,
+            adapter,
+            session,
+            _completed_parent(
+                str(tmp_path),
+                assistant_id="assistant-done-copy",
+                completed=11,
+                payload_id="t-three",
+            ),
+        )
+        assert copied.event_type == EventType.STATUS
+        events = await store.recent_events(session.id, limit=20)
+        assert sum(event.event_type == EventType.STOP for event in events) == 1
+    finally:
+        await store.close()

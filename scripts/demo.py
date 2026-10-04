@@ -96,6 +96,12 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
         help="also run a real OpenCode worker on a free model under live supervision",
     )
     parser.add_argument("--worker-model", default=None, help="free OpenCode Zen model id")
+    parser.add_argument(
+        "--scenario",
+        choices=("false-claim", "tamper"),
+        default="false-claim",
+        help="live scenario: a false test claim, or a controlled acceptance-test tamper",
+    )
     return parser.parse_args(argv)
 
 
@@ -120,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
         run_root = ROOT / "build" / "demo" / f"live-{stamp}"
         model = args.worker_model or demo_live.DEFAULT_WORKER_MODEL
         try:
-            workspace, worker_env = demo_live.prepare_run(run_root, model)
+            workspace, worker_env = demo_live.prepare_run(run_root, model, args.scenario)
         except (ValueError, OSError, subprocess.CalledProcessError) as exc:
             sys.exit(f"could not prepare the live workspace: {exc}")
         live = (workspace, model)
@@ -191,6 +197,7 @@ def main(argv: list[str] | None = None) -> int:
                     workspace,
                     bridge=f"http://127.0.0.1:{BRIDGE_PORT}",
                     opencode=f"http://127.0.0.1:{OPENCODE_PORT}",
+                    scenario=args.scenario,
                 )
             except Exception as exc:  # noqa: BLE001 - reported, then torn down
                 print(f"  live session setup failed: {exc}", flush=True)
@@ -198,7 +205,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  live worker:     opencode/{model} in {workspace}", flush=True)
             print(f"  session:         {ids['session_id']} (goal {ids['goal_id']})", flush=True)
             print("  Select the OpenCode worker and open the Inspector to watch PEX", flush=True)
-            print("  contradict the false 'All tests passed' claim with real pytest.", flush=True)
+            print(
+                "  catch the edited acceptance test behind a green claim."
+                if args.scenario == "tamper"
+                else "  contradict the false 'All tests passed' claim with real pytest.",
+                flush=True,
+            )
         else:
             print(
                 "  Open the demo URL - Recorded replay fixtures need no agent install.",

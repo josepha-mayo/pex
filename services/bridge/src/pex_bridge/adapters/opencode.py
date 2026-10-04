@@ -105,6 +105,12 @@ class OpenCodeAdapter(HarnessAdapter):
         self._message_parents: dict[tuple[str, str], str] = {}
         self._removed_messages: set[tuple[str, str]] = set()
         self._completed_terminal_parents: dict[str, str] = {}
+        # session.id -> (assistant message_id, time.completed) of the admitted
+        # terminal frame. OpenCode emits more than one completed assistant
+        # message under one user parent; only a literal re-delivery (same id
+        # or same completion instant) is a duplicate — a later sibling
+        # terminal is real output whose claims still need adjudication.
+        self._completed_terminal_frames: dict[str, tuple[str, object]] = {}
         self._message_send_locks: dict[str, asyncio.Lock] = {}
         self._prompt_event_boundaries: dict[str, tuple[HttpJsonTransport, int]] = {}
         self._last_pump_error: str | None = None
@@ -129,6 +135,7 @@ class OpenCodeAdapter(HarnessAdapter):
             self._message_parents.clear()
             self._removed_messages.clear()
             self._completed_terminal_parents.clear()
+            self._completed_terminal_frames.clear()
             self._prompt_event_boundaries.clear()
         discard = getattr(transport, "discard_sse_event_types", None)
         if callable(discard):
@@ -454,6 +461,7 @@ class OpenCodeAdapter(HarnessAdapter):
             # The vendor may have admitted a new turn. Retaining the old marker
             # could suppress the only later idle observation for that turn.
             self._completed_terminal_parents.pop(session.id, None)
+            self._completed_terminal_frames.pop(session.id, None)
             if boundary is not None:
                 self._prompt_event_boundaries[session.id] = boundary
             raise
@@ -463,6 +471,7 @@ class OpenCodeAdapter(HarnessAdapter):
         # user-message frame arrives. Do not let the prior turn's final-message
         # marker suppress this turn's idle fallback if later frames are lost.
         self._completed_terminal_parents.pop(session.id, None)
+        self._completed_terminal_frames.pop(session.id, None)
         if boundary is not None:
             self._prompt_event_boundaries[session.id] = boundary
         inbox.append(cleaned)
@@ -1089,6 +1098,7 @@ class OpenCodeAdapter(HarnessAdapter):
                 self._removed_messages.discard(message_key)
                 if not known_user_metadata_update:
                     self._completed_terminal_parents.pop(session.id, None)
+                    self._completed_terminal_frames.pop(session.id, None)
             elif role == "assistant" and parent_message_id:
                 if len(self._message_parents) < MAX_MESSAGE_ROLES:
                     self._message_parents[message_key] = parent_message_id
@@ -1122,14 +1132,18 @@ class OpenCodeAdapter(HarnessAdapter):
                     self._message_parents.clear()
                     self._removed_messages.clear()
                     self._completed_terminal_parents.clear()
+                    self._completed_terminal_frames.clear()
         idle_after_exact_terminal = bool(
             kind == "session.idle" and session.id in self._completed_terminal_parents
         )
+        terminal_frame = self._completed_terminal_frames.get(session.id)
         duplicate_terminal_for_parent = bool(
             kind == "message.updated"
             and assistant_message_completed
             and parent_message_id
             and self._completed_terminal_parents.get(session.id) == parent_message_id
+            and terminal_frame is not None
+            and (terminal_frame[0] == message_id or terminal_frame[1] == completed_time)
         )
         mapping = {
             "message.updated": EventType.AGENT_RESPONSE,
@@ -1169,9 +1183,12 @@ class OpenCodeAdapter(HarnessAdapter):
             # a second STOP would dispatch the supervisor twice for one turn.
             event_type = EventType.STATUS
         elif duplicate_terminal_for_parent:
-            # A turn has one terminal assistant response. Some OpenCode builds
-            # can persist duplicate final siblings for the same user parent;
-            # a second semantic STOP would double-dispatch the supervisor.
+            # Re-deliveries of the SAME completed assistant message (same id or
+            # same completion instant under the same parent) are suppressed so
+            # a second semantic STOP does not double-dispatch the supervisor.
+            # A later completed sibling under the same parent is real new
+            # turn output — observed live, it can carry the final claim — and
+            # must not be suppressed.
             event_type = EventType.STATUS
         elif kind == "message.updated" and assistant_message_error:
             event_type = EventType.ERROR
@@ -1372,8 +1389,10 @@ class OpenCodeAdapter(HarnessAdapter):
             and lineage["parent_removed_observed"] is False
         ):
             self._completed_terminal_parents[session.id] = parent_message_id
+            self._completed_terminal_frames[session.id] = (message_id, completed_time)
         elif kind == "session.deleted":
             self._completed_terminal_parents.pop(session.id, None)
+            self._completed_terminal_frames.pop(session.id, None)
         identity_payload = payload
         if kind == "session.compacted" and not payload.get("id"):
             # The official frame has only sessionID, so content hashing would
@@ -1512,6 +1531,7 @@ class OpenCodeAdapter(HarnessAdapter):
                         self._message_parents.clear()
                         self._removed_messages.clear()
                         self._completed_terminal_parents.clear()
+                        self._completed_terminal_frames.clear()
                     active_transport = transport
                     seen = 0
                     stream_was_connected = False
@@ -1528,6 +1548,7 @@ class OpenCodeAdapter(HarnessAdapter):
                     self._message_parents.clear()
                     self._removed_messages.clear()
                     self._completed_terminal_parents.clear()
+                    self._completed_terminal_frames.clear()
                 stream_was_connected = stream_connected
                 if pending is not None:
                     event, session = pending
@@ -1549,6 +1570,7 @@ class OpenCodeAdapter(HarnessAdapter):
                         self._message_parents.clear()
                         self._removed_messages.clear()
                         self._completed_terminal_parents.clear()
+                        self._completed_terminal_frames.clear()
                 # Retain the bounded batch and its successful prefix. The
                 # transport may have filtered invalid entries, so individual
                 # raw cursor positions cannot be inferred from list length.
@@ -1619,6 +1641,7 @@ class OpenCodeAdapter(HarnessAdapter):
                     self._message_parents.clear()
                     self._removed_messages.clear()
                     self._completed_terminal_parents.clear()
+                    self._completed_terminal_frames.clear()
                 await asyncio.sleep(0.5)
 
     def start_pipeline_pump(self, ingest) -> asyncio.Task:
