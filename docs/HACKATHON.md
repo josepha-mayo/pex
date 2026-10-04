@@ -17,9 +17,9 @@ intervenes only inside bounded policy.
 
 ## The five-minute judge path
 
-1. `python scripts/demo_bridge.py` then `cd apps/desktop && npm run dev` (or the
-   packaged app) — the setup card offers **Recorded replay** fixtures with no
-   agent install.
+1. `python scripts/demo.py` (after `npm install` under `apps/desktop`) boots the
+   demo bridge and dev UI in one step — the setup card offers **Recorded
+   replay** fixtures with no agent install.
 2. Replay `tampered_acceptance_eval`. It walks a reward-hacking worker through
    the real pipeline: sealed acceptance baseline → test weakened → green "all
    tests passed" claim → `uncertain` verdict → corrective nudge naming the

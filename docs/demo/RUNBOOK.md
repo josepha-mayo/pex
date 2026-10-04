@@ -30,6 +30,18 @@ Run every command below **from the repository root**.
 - Optional, for model-backed reviews: a key for a supported supervisor
   provider (see `docs/PEX_SUPERVISOR_PROVIDERS.md`).
 
+## 0. One-command start (replay-only path)
+
+```powershell
+uv run python scripts/demo.py
+```
+
+Boots the demo bridge on `127.0.0.1:7420` and the vite dev UI on
+`127.0.0.1:1420` together, prints the URL, and stops both on Ctrl+C. With no
+agent installed this is enough for every **Recorded replay** fixture in the
+setup card. Requires `npm install` under `apps/desktop` once. The manual
+steps below remain the path for a live OpenCode worker.
+
 ## 1. Start the demo bridge
 
 ```powershell
