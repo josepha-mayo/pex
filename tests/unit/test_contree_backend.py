@@ -33,7 +33,9 @@ def _operation(status: str, result=None, error=None):
         "result_image_uuid": "cccccccc-0000-0000-0000-0000000000cc",
     }
     if result is not None:
-        body["result"] = result
+        # InstanceResult rides under metadata.result (OperationInstanceMetadata);
+        # the top-level result key is the image-import shape.
+        body["metadata"] = {"image": body["image_uuid"], "result": result}
     if error is not None:
         body["error"] = error
     return body
@@ -225,6 +227,20 @@ def test_contree_failed_operation_is_not_misreported_as_a_test_run(tmp_path):
     assert result["exit_code"] is None
     assert result["error_type"] == "operation_failed"
     assert "image pull failed" in result["error"]
+
+
+def test_contree_top_level_result_is_not_the_instance_result(tmp_path):
+    # OperationResponse.result carries the image-import shape ({image, tag});
+    # a SUCCESS operation whose metadata lacks result must not read it as an
+    # InstanceResult and invent an exit code.
+    manifest = _workspace(tmp_path, {"test_a.py": "def test_a():\n    pass\n"})
+    body = _operation("SUCCESS")
+    body["result"] = {"image": "cccccccc-0000-0000-0000-0000000000cc", "tag": "t"}
+    transport = FakeTransport(statuses=[body])
+    result = _run(tmp_path, manifest, ["test_a.py"], transport)
+    assert result["ok"] is False
+    assert result["exit_code"] is None
+    assert result["error_type"] == "malformed"
 
 
 def test_contree_deadline_cancels_the_operation_and_reports_timeout(tmp_path):

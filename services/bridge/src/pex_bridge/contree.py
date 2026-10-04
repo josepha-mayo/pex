@@ -554,8 +554,17 @@ def run_public_pytest_contree(
         "consumed_memory": operation.get("consumed_memory"),
     }
     status = operation.get("status")
-    result = operation.get("result")
-    if status != "SUCCESS" or not isinstance(result, dict):
+    # OperationResponse.result is the image-import shape ({image, tag}); an
+    # instance's InstanceResult hangs off metadata.result instead.
+    metadata = operation.get("metadata")
+    result = metadata.get("result") if isinstance(metadata, dict) else None
+    if status == "SUCCESS" and not isinstance(result, dict):
+        return fail(
+            "malformed",
+            "operation reported SUCCESS but carried no instance result",
+            sandbox=provenance,
+        )
+    if status != "SUCCESS":
         return fail(
             "operation_failed",
             str(operation.get("error") or f"operation ended as {status}"),
