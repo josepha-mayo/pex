@@ -56,11 +56,13 @@ score. Final recording remains. See the
 
 </details>
 
-![PEX Home showing the worker rail and the next step](docs/demo/assets/pex-home-browser-6ce9330.png)
+![PEX Home showing replayed sessions and the no-install demo fixtures](docs/demo/assets/pex-home-replay-5d0bf81.png)
 
-*Browser capture at `6ce9330`: the worker rail, goal, and next step remain primary.
-This capture shows an unavailable bridge, with worker state explicitly unavailable.
-It is layout evidence, not a live-supervision receipt.*
+*Browser capture at `5d0bf81`: the worker rail lists recorded replays (each
+visibly tagged, never live worker control), the selected replay's last
+observed state ("Removed the stray pytest.ini; the real suite is green"),
+and the no-install "See the loop without a worker" fixtures — the same buttons
+a judge gets from `python scripts/demo.py`.*
 
 <details>
 <summary>Goal boundaries and optional details</summary>
