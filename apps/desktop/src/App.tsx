@@ -44,6 +44,7 @@ import {
   parseVerificationReport,
   type VerificationReportView,
 } from "./verificationReport";
+import { renderVerificationReportHtml } from "./verificationExport";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
 import { bundledPetSheet, defaultBundledPetSheet } from "./pets/bundled";
@@ -2051,21 +2052,22 @@ export function App() {
         setNote("The bridge did not return a verification report to export.");
         return;
       }
-      const blob = new Blob([`${JSON.stringify(raw, null, 2)}\n`], {
-        type: "application/json",
-      });
+      const html = renderVerificationReportHtml(raw);
+      const blob = new Blob([html], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       try {
         const anchor = document.createElement("a");
         anchor.href = url;
-        anchor.download = `pex-verification-report-${attachedGoal.id}.json`;
+        anchor.download = `pex-verification-report-${attachedGoal.id}.html`;
         anchor.rel = "noopener";
         anchor.click();
       } finally {
         // Revoking immediately can cancel the download in some browsers.
         window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
       }
-      setNote(`Verification report for "${attachedGoal.title}" exported as JSON.`);
+      setNote(
+        `Verification report for "${attachedGoal.title}" exported — a standalone page with the raw JSON embedded.`,
+      );
     } catch (error) {
       setNote(operationError(error, "Could not export the verification report."));
     } finally {

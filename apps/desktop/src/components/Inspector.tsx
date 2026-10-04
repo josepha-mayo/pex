@@ -376,7 +376,7 @@ export function Inspector({
                     onClick={onExportReport}
                     disabled={exportingReport}
                   >
-                    {exportingReport ? "Exporting…" : "Export report JSON"}
+                    {exportingReport ? "Exporting…" : "Export report"}
                   </button>
                 </div>
               ) : null}
