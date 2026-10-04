@@ -164,7 +164,10 @@ pipeline with no worker install at all. `GET /v1/demo/trajectories` lists the
 available recordings — `tampered_acceptance_eval` replays the full Scenario D
 arc (baseline seal → test weakened → green claim → `uncertain` + corrective
 nudge naming the file → restore → `verified_complete`) against a materialized
-workspace, no agent required.
+workspace, no agent required. The desktop setup card offers the same fixtures
+as a "Recorded replay" button whenever the bridge advertises an honestly
+labeled list, so no curl is needed — replay sessions are visibly tagged and
+can never be mistaken for live worker control.
 
 ## What this does not prove
 

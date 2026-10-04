@@ -863,6 +863,54 @@ p {
   font-size: 12px;
 }
 
+.verification-summary {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.verification-timeline {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.verification-timeline li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.verification-verdict {
+  min-width: 74px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.verdict-supported { color: var(--mint); }
+.verdict-contradicted,
+.verdict-unsatisfied { color: var(--coral); }
+.verdict-uncertain { color: var(--amber); }
+.verdict-observed { color: var(--muted); }
+
+.verification-claim {
+  color: var(--muted);
+  flex: 1;
+  min-width: 140px;
+}
+
+.verification-flagged {
+  width: 100%;
+  color: var(--amber);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
 .compact-last-action {
   margin: 0;
   text-align: right;

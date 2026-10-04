@@ -40,6 +40,10 @@ import {
   parseTrajectoriesResponse,
   type DemoFixture,
 } from "./demoReplay";
+import {
+  parseVerificationReport,
+  type VerificationReportView,
+} from "./verificationReport";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
 import { bundledPetSheet, defaultBundledPetSheet } from "./pets/bundled";
@@ -413,6 +417,7 @@ export function App() {
   const loadedGoalLedgerKey = useRef<string | null>(null);
   const editingGoalLedgerKey = useRef<string | null>(null);
   const [goalCompletion, setGoalCompletion] = useState<GoalCompletion | null>(null);
+  const [verificationReport, setVerificationReport] = useState<VerificationReportView | null>(null);
   const [savingGoal, setSavingGoal] = useState(false);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -1135,6 +1140,7 @@ export function App() {
       goalEvidenceRefresh.current = null;
       setLedgerDecisions([]);
       setGoalCompletion(null);
+      setVerificationReport(null);
       markCanonical("decisions", "fresh");
       markCanonical("completion", "fresh");
       return;
@@ -1145,6 +1151,7 @@ export function App() {
       loadedGoalLedgerKey.current = null;
       setLedgerDecisions([]);
       setGoalCompletion(null);
+      setVerificationReport(null);
       markCanonical("decisions", "reset");
       markCanonical("completion", "reset");
     }
@@ -1153,10 +1160,12 @@ export function App() {
     const goalId = encodeURIComponent(attachedGoal.id);
     const refreshGoalEvidence = coalesceBackgroundRead(async () => {
       const signal = controller.signal;
-      const [decisionsResult, completionResult] = await Promise.allSettled([
+      const [decisionsResult, completionResult, reportResult] = await Promise.allSettled([
         bridgeJson<unknown>(`/v1/goals/${goalId}/decisions`, { signal })
           .then((value) => readGoalDecisions(value, attachedGoal.id)),
         bridgeJson<GoalCompletion>(`/v1/goals/${goalId}/completion`, { signal }),
+        bridgeJson<unknown>(`/v1/goals/${goalId}/verification-report`, { signal })
+          .then((value) => parseVerificationReport(value)),
       ]);
       if (cancelled) return;
       if (decisionsResult.status === "fulfilled") {
@@ -1173,6 +1182,11 @@ export function App() {
         "completion",
         completionResult.status === "fulfilled" ? "fresh" : "failed",
         "Goal completion could not be refreshed.",
+      );
+      // A missing route or malformed payload removes the block; stale reports
+      // from a previous goal are never shown under a new goal's identity.
+      setVerificationReport(
+        reportResult.status === "fulfilled" ? reportResult.value : null,
       );
     });
     goalEvidenceRefresh.current = refreshGoalEvidence;
@@ -2836,6 +2850,7 @@ export function App() {
           goal={attachedGoal}
           ledgerDecisions={ledgerDecisions}
           completion={goalCompletion}
+          verificationReport={verificationReport}
           goals={availableGoals}
           action={action}
           handoffStatus={action?.id ? handoffAssimilation[action.id] : undefined}

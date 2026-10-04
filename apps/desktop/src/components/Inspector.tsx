@@ -6,6 +6,11 @@ import { isReplaySession } from "../demoReplay";
 import { AskPex } from "./AskPex";
 import { goalCompletionCopy } from "../completionPresentation";
 import { handoffAssimilationPresentation } from "../handoffPresentation";
+import {
+  verificationSummaryLine,
+  verificationVerdictLabel,
+  type VerificationReportView,
+} from "../verificationReport";
 import type {
   Goal,
   GoalCompletion,
@@ -38,6 +43,7 @@ export function Inspector({
   goal,
   ledgerDecisions = [],
   completion,
+  verificationReport,
   goals,
   action,
   handoffStatus,
@@ -78,6 +84,7 @@ export function Inspector({
   goal?: Goal;
   ledgerDecisions?: LedgerDecision[];
   completion?: GoalCompletion | null;
+  verificationReport?: VerificationReportView | null;
   goals: Goal[];
   action?: LastAction | null;
   handoffStatus?: HandoffAssimilationStatus | "unreachable";
@@ -327,6 +334,31 @@ export function Inspector({
               {goalCompletionCopy(goal, completion, canonicalStateAvailable)}
             </p>
             <p className="goal-help">{goal.objective}</p>
+            {verificationReport ? (
+              <details className="goal-options verification-report">
+              <summary>Independent claim verification</summary>
+              <p className="verification-summary">{verificationSummaryLine(verificationReport)}</p>
+              {verificationReport.claims.length ? (
+                <ul className="verification-timeline">
+                  {verificationReport.claims.map((claim) => (
+                    <li key={`${claim.at}-${claim.action}`}>
+                      <span className={`verification-verdict verdict-${claim.status || "observed"}`}>
+                        {verificationVerdictLabel(claim.status)}
+                      </span>
+                      <span className="verification-claim">
+                        {humanize(claim.action)} · {new Date(claim.at).toLocaleTimeString()}
+                      </span>
+                      {claim.flaggedFiles.length ? (
+                        <span className="verification-flagged">
+                          {claim.flaggedFiles.join(", ")}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              </details>
+            ) : null}
             <details className="goal-options">
             <summary>Checks and details</summary>
             <div className="goal-boundaries">
