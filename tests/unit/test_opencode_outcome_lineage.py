@@ -382,10 +382,14 @@ def test_duplicate_final_sibling_for_same_parent_is_not_a_second_stop() -> None:
     first_payload = _assistant_payload(session, message_id="assistant-first")
     first_payload["properties"]["info"]["time"] = {"created": 10, "completed": 20}
     first_payload["properties"]["info"]["finish"] = "stop"
-    duplicate_payload = _assistant_payload(session, message_id="assistant-duplicate")
+    # A re-persisted delivery of the *same* completed frame (identical
+    # message id and completed time) must not adjudicate twice — but a
+    # genuinely distinct sibling completion under the same user parent is a
+    # separate terminal claim and stays a STOP (OpenCode emits several).
+    duplicate_payload = _assistant_payload(session, message_id="assistant-first")
     duplicate_payload["properties"]["info"]["time"] = {
-        "created": 21,
-        "completed": 22,
+        "created": 10,
+        "completed": 20,
     }
     duplicate_payload["properties"]["info"]["finish"] = "stop"
 

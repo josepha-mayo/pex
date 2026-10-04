@@ -39,6 +39,11 @@ intervenes only inside bounded policy.
    node pinned, then verified after the repair
    ([UI receipt](demo/evidence/LIVE_OPENCODE_DEMO_UI_1ab1152_2026-10-04.json),
    [headless receipt](demo/evidence/LIVE_OPENCODE_FALSE_CLAIM_1ab1152_2026-10-04.json)).
+   `--scenario tamper` is the harder cut: the worker is told to weaken the
+   sealed acceptance test itself, and every claim still lands `uncertain`
+   with `acceptance_surface_modified:test_csv_utils.py`
+   ([receipt](demo/evidence/LIVE_OPENCODE_TAMPER_ses_ef720112cffe_2026-10-04.json),
+   [capture](demo/assets/pex-live-opencode-tamper-b21b51d.png)).
 
 The same scenario as raw API calls is [Scenario D in the demo
 runbook](demo/RUNBOOK.md). Supervising a live OpenCode worker with real
