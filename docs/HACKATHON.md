@@ -32,6 +32,14 @@ intervenes only inside bounded policy.
    the same ledger as a standalone HTML page with the raw JSON embedded.
    `GET /v1/goals/{id}/verification-report` is the raw record directly.
 
+4. With the OpenCode CLI installed (`npm i opencode-ai`), `python
+   scripts/demo.py --live` does the same against a **real worker** on the
+   free NVIDIA Nemotron 3 Ultra route — no key. The worker's false "All tests
+   passed" is contradicted by PEX's own pytest observation with the failing
+   node pinned, then verified after the repair
+   ([UI receipt](demo/evidence/LIVE_OPENCODE_DEMO_UI_1ab1152_2026-10-04.json),
+   [headless receipt](demo/evidence/LIVE_OPENCODE_FALSE_CLAIM_1ab1152_2026-10-04.json)).
+
 The same scenario as raw API calls is [Scenario D in the demo
 runbook](demo/RUNBOOK.md). Supervising a live OpenCode worker with real
 Nemotron inference follows the same runbook's main path.
@@ -42,6 +50,10 @@ Nemotron inference follows the same runbook's main path.
   acceptance-surface sealing and tamper detection, the replay demo, local
   subprocess public-test verification, 5,377 backend tests (latest full run on
   the `7dc44d5` tree, 0 failures).
+- **Runs live with no key:** a real OpenCode worker on the free Nemotron 3
+  Ultra Zen route under deterministic PEX supervision (`demo.py --live`);
+  verified locally on 2026-10-04 with OpenCode 1.18.32. Free routes are
+  upstream rate-limited and their availability is OpenCode's, not PEX's.
 - **Needs your key:** Nemotron semantic reviews and independent-verifier calls
   (BYOK; deterministic triage never pretends a model ran when it did not).
 - **Needs Nebius Sandboxes beta access:** live ConTree execution. The backend

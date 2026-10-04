@@ -3,19 +3,27 @@
 Run from the repository root:
 
     uv run python scripts/demo.py          # or: python scripts/demo.py
+    uv run python scripts/demo.py --live   # plus a real OpenCode worker
 
 Starts the test-scoped demo bridge on http://127.0.0.1:7420 and the vite dev
 server on http://127.0.0.1:1420 (which proxies /v1 to the bridge), then prints
-the URL to open. Ctrl+C stops both. No agent install is required — the setup
-card offers recorded-replay fixtures immediately.
+the URL to open. Ctrl+C stops everything. No agent install is required — the
+setup card offers recorded-replay fixtures immediately.
 
-This launches the same two processes the demo runbook lists separately; it
-adds no behavior of its own. Environment variables documented in
+``--live`` additionally starts ``opencode serve`` on a free OpenCode Zen model
+(no API key, fresh credential-free homes), seeds a throwaway false-test-claim
+workspace, attaches a persistent goal, and sends the task: a live worker under
+live supervision. Needs the ``opencode`` CLI on PATH (``npm i opencode-ai``)
+or ``PEX_OPENCODE_BIN``.
+
+This launches the same processes the demo runbook lists separately; it adds
+no supervision behavior of its own. Environment variables documented in
 ``demo_bridge.py`` pass straight through.
 """
 
 from __future__ import annotations
 
+import argparse
 import os
 import shutil
 import signal
@@ -23,11 +31,15 @@ import subprocess
 import sys
 import time
 import urllib.request
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 BRIDGE_PORT = int(os.environ.get("PEX_DEMO_PORT", "7420"))
 VITE_PORT = int(os.environ.get("PEX_VITE_PORT", "1420"))
+OPENCODE_PORT = int(os.environ.get("PEX_OPENCODE_PORT", "4096"))
 
 
 def _npm() -> str:
@@ -76,14 +88,59 @@ def _terminate_tree(child: subprocess.Popen) -> None:
         child.terminate()
 
 
-def main() -> int:
+def _parse(argv: list[str] | None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="PEX one-command demo")
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="also run a real OpenCode worker on a free model under live supervision",
+    )
+    parser.add_argument("--worker-model", default=None, help="free OpenCode Zen model id")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse(argv)
     if not (ROOT / "apps" / "desktop" / "node_modules").is_dir():
         sys.exit("apps/desktop dependencies are missing — run `npm install` there first.")
 
-    children = [
+    live = None
+    bridge_env = os.environ.copy()
+    children: list[subprocess.Popen] = []
+    if args.live:
+        from scripts import demo_live
+
+        executable = demo_live.resolve_opencode()
+        if executable is None:
+            sys.exit(
+                "--live needs the OpenCode CLI: `npm i opencode-ai` (any directory on PATH) "
+                "or set PEX_OPENCODE_BIN to the opencode executable."
+            )
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        run_root = ROOT / "build" / "demo" / f"live-{stamp}"
+        model = args.worker_model or demo_live.DEFAULT_WORKER_MODEL
+        try:
+            workspace, worker_env = demo_live.prepare_run(run_root, model)
+        except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+            sys.exit(f"could not prepare the live workspace: {exc}")
+        live = (workspace, model)
+        bridge_env["PEX_OPENCODE_URL"] = f"http://127.0.0.1:{OPENCODE_PORT}"
+        children.append(
+            subprocess.Popen(
+                demo_live.opencode_command(executable, OPENCODE_PORT),
+                cwd=run_root,
+                env=worker_env,
+                stdout=(run_root / "opencode.log").open("w", encoding="utf-8"),
+                stderr=subprocess.STDOUT,
+                start_new_session=(os.name != "nt"),
+            )
+        )
+
+    children += [
         subprocess.Popen(
             [sys.executable, str(ROOT / "scripts" / "demo_bridge.py")],
             cwd=ROOT,
+            env=bridge_env,
             start_new_session=(os.name != "nt"),
         ),
         subprocess.Popen(
@@ -102,14 +159,21 @@ def main() -> int:
             start_new_session=(os.name != "nt"),
         ),
     ]
+    bridge, vite = children[-2], children[-1]
     try:
-        bridge_ok = _wait_http(f"http://127.0.0.1:{BRIDGE_PORT}/health", child=children[0])
-        vite_ok = _wait_http(f"http://127.0.0.1:{VITE_PORT}", child=children[1])
-        if not bridge_ok:
-            print(f"demo bridge never answered :{BRIDGE_PORT}/health", flush=True)
-        if not vite_ok:
-            print(f"vite dev server never answered :{VITE_PORT}", flush=True)
-        if not (bridge_ok and vite_ok):
+        checks = [
+            (f"http://127.0.0.1:{BRIDGE_PORT}/health", bridge, "demo bridge"),
+            (f"http://127.0.0.1:{VITE_PORT}", vite, "vite dev server"),
+        ]
+        if live:
+            checks.insert(
+                0,
+                (f"http://127.0.0.1:{OPENCODE_PORT}/global/health", children[0], "opencode serve"),
+            )
+        failed = [name for url, child, name in checks if not _wait_http(url, child=child)]
+        for name in failed:
+            print(f"{name} never became ready", flush=True)
+        if failed:
             for child in children:
                 if child.poll() is not None:
                     print(f"child {child.pid} exited with {child.returncode}", flush=True)
@@ -118,7 +182,28 @@ def main() -> int:
         print()
         print(f"  PEX demo ready:  http://127.0.0.1:{VITE_PORT}", flush=True)
         print(f"  bridge API:      http://127.0.0.1:{BRIDGE_PORT}/v1", flush=True)
-        print("  Open the demo URL - Recorded replay fixtures need no agent install.", flush=True)
+        if live:
+            from scripts import demo_live
+
+            workspace, model = live
+            try:
+                ids = demo_live.start_supervised_session(
+                    workspace,
+                    bridge=f"http://127.0.0.1:{BRIDGE_PORT}",
+                    opencode=f"http://127.0.0.1:{OPENCODE_PORT}",
+                )
+            except Exception as exc:  # noqa: BLE001 - reported, then torn down
+                print(f"  live session setup failed: {exc}", flush=True)
+                return 1
+            print(f"  live worker:     opencode/{model} in {workspace}", flush=True)
+            print(f"  session:         {ids['session_id']} (goal {ids['goal_id']})", flush=True)
+            print("  Select the OpenCode worker and open the Inspector to watch PEX", flush=True)
+            print("  contradict the false 'All tests passed' claim with real pytest.", flush=True)
+        else:
+            print(
+                "  Open the demo URL - Recorded replay fixtures need no agent install.",
+                flush=True,
+            )
         print("  Ctrl+C to stop.", flush=True)
         while True:
             time.sleep(1)

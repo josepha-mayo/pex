@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  isLiveWorkerSession,
   isReplaySession,
   parseReplaySessionId,
   parseTrajectoriesResponse,
@@ -89,4 +90,25 @@ test("replay sessions stay honestly labeled and only when both markers hold", ()
   }
   assert.equal(isReplaySession(null), false);
   assert.equal(isReplaySession(undefined), false);
+});
+
+test("live worker label requires a real harness with a Deep or Strong transport", () => {
+  const live = {
+    id: "opencode:ses_1",
+    harness_type: "opencode",
+    status: "running",
+    capabilities: { support_label: "deep" },
+  } as SessionRow;
+  assert.equal(isLiveWorkerSession(live), true);
+  assert.equal(isLiveWorkerSession({ ...live, capabilities: { support_label: "strong" } } as SessionRow), true);
+  for (const support_label of ["basic", "observe_only", "unavailable", undefined]) {
+    assert.equal(isLiveWorkerSession({ ...live, capabilities: { support_label } } as SessionRow), false);
+  }
+  assert.equal(isLiveWorkerSession({ ...live, capabilities: undefined } as SessionRow), false);
+  assert.equal(isLiveWorkerSession({ ...live, harness_type: "synthetic" } as SessionRow), false);
+  assert.equal(
+    isLiveWorkerSession({ ...live, metadata: { replay: true, not_live_control: true } } as SessionRow),
+    false,
+  );
+  assert.equal(isLiveWorkerSession(null), false);
 });

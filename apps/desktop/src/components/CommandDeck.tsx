@@ -1,5 +1,5 @@
 import { handoffAssimilationPresentation } from "../handoffPresentation";
-import { isReplaySession } from "../demoReplay";
+import { isLiveWorkerSession, isReplaySession } from "../demoReplay";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AskPex } from "./AskPex";
@@ -407,6 +407,8 @@ function NowView({
               <span className="card-state">
                 {isReplaySession(session) ? (
                   <span className="replay-badge">Recorded replay</span>
+                ) : isLiveWorkerSession(session) ? (
+                  <span className="replay-badge live-badge">Live worker</span>
                 ) : null}
                 <span className={`state-pill state-${session.status}`}>{humanize(session.status)}</span>
               </span>

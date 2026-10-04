@@ -56,7 +56,13 @@ preflight test, which now has a 300 s budget).
 - `python scripts/demo.py` is the one-command path: it starts the demo bridge
   (`scripts/demo_bridge.py`, `http://127.0.0.1:7420`, unauthenticated and
   loopback-only) plus the vite dev UI on `:1420` with a `/v1` proxy, waits for
-  real readiness, and kills whole process trees on exit. The packaged Tauri
+  real readiness, and kills whole process trees on exit. `--live` adds a real
+  `opencode serve` on :4096 (free Zen model, credential-free homes) plus a
+  seeded git workspace under `build/demo/live-<utc>/` and attaches the goal
+  via the bridge API (`scripts/demo_live.py`). Live workspaces MUST be their
+  own git root — nested inside this repo, OpenCode adopts PEX's AGENTS.md and
+  runs PEX's own test suite. On this machine OpenCode 1.18.32 lives at
+  `D:\tools\opencode` (add `node_modules\.bin` to PATH). The packaged Tauri
   app uses the same bridge port with a bearer token owned by the Rust
   launcher.
 - ConTree API details verified against the published OpenAPI

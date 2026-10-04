@@ -2,7 +2,7 @@ import type { FormEvent, ReactNode, RefObject } from "react";
 
 import type { GoalDraft } from "./GoalEditor";
 import { GoalEditor } from "./GoalEditor";
-import { isReplaySession } from "../demoReplay";
+import { isLiveWorkerSession, isReplaySession } from "../demoReplay";
 import { AskPex } from "./AskPex";
 import { goalCompletionCopy } from "../completionPresentation";
 import { handoffAssimilationPresentation } from "../handoffPresentation";
@@ -216,6 +216,11 @@ export function Inspector({
               <div>
                 <dt>Session origin</dt>
                 <dd><span className="replay-badge">Recorded replay</span> · not live worker control</dd>
+              </div>
+            ) : current && isLiveWorkerSession(current) ? (
+              <div>
+                <dt>Session origin</dt>
+                <dd><span className="replay-badge live-badge">Live worker</span> · observed through the {titleCase(current.harness_type)} transport</dd>
               </div>
             ) : null}
           </dl>

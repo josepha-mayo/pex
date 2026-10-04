@@ -35,6 +35,7 @@ import {
 } from "./readBudget";
 import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun";
 import {
+  isLiveWorkerSession,
   isReplaySession,
   parseReplaySessionId,
   parseTrajectoriesResponse,
@@ -2721,7 +2722,9 @@ export function App() {
                   ? ` · ${session.id.slice(-6)}` : ""}</small>
                 {isReplaySession(session)
                   ? <small><span className="replay-badge">Recorded replay</span></small>
-                  : <small>{titleCase(session.status)}</small>}
+                  : isLiveWorkerSession(session)
+                    ? <small><span className="replay-badge live-badge">Live</span> {titleCase(session.status)}</small>
+                    : <small>{titleCase(session.status)}</small>}
               </button>
             ))}
             </div>

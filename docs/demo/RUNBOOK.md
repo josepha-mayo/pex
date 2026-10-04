@@ -39,8 +39,25 @@ uv run python scripts/demo.py
 Boots the demo bridge on `127.0.0.1:7420` and the vite dev UI on
 `127.0.0.1:1420` together, prints the URL, and stops both on Ctrl+C. With no
 agent installed this is enough for every **Recorded replay** fixture in the
-setup card. Requires `npm install` under `apps/desktop` once. The manual
-steps below remain the path for a live OpenCode worker.
+setup card. Requires `npm install` under `apps/desktop` once.
+
+### Live worker in one command
+
+```powershell
+uv run python scripts/demo.py --live
+```
+
+Adds a real `opencode serve` (loopback `:4096`, `--pure`) pinned to a listed
+free OpenCode Zen model — `nemotron-3-ultra-free` by default, override with
+`--worker-model` — under fresh credential-free homes, so no API key is read or
+needed. It seeds a throwaway git workspace under `build/demo/live-<utc>/`
+(its own git root, so OpenCode never adopts this repository's `AGENTS.md`),
+attaches the Scenario B goal through the bridge's public API, and sends the
+decoy-checker task. Select the OpenCode worker (badged **Live**) and watch the
+claim ledger go `Uncertain → Contradicted → Verified`. The OpenCode CLI must
+be on `PATH` (`npm i opencode-ai`) or named by `PEX_OPENCODE_BIN`. Free-tier
+models are rate-limited upstream; a slow first turn is the provider, not PEX.
+The manual steps below remain for any other workspace or model.
 
 ## 1. Start the demo bridge
 

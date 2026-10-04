@@ -52,3 +52,15 @@ export function parseReplaySessionId(payload: unknown): string | null {
 export function isReplaySession(session: SessionRow | null | undefined): boolean {
   return session?.metadata?.replay === true && session?.metadata?.not_live_control === true;
 }
+
+// A live worker is the honest counterpart to a replay: a real harness (not the
+// in-process synthetic adapter) whose transport was probed as Deep or Strong.
+// Basic/observe-only/unprobed sessions get no live label — PEX can see them
+// but does not claim live control.
+const LIVE_SUPPORT = new Set(["deep", "strong"]);
+
+export function isLiveWorkerSession(session: SessionRow | null | undefined): boolean {
+  if (!session || isReplaySession(session) || session.harness_type === "synthetic") return false;
+  const label = session.capabilities?.support_label;
+  return typeof label === "string" && LIVE_SUPPORT.has(label.toLowerCase());
+}

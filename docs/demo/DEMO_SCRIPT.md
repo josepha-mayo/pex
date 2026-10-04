@@ -63,6 +63,18 @@ Click **Export report**.
 
 *Optionally open the downloaded HTML to show the embedded JSON block.*
 
+## Optional live cut — a real worker (replaces Beats 2–3 if recorded live)
+
+Run `python scripts/demo.py --live` instead. Select the OpenCode worker
+(badged **Live**), open the Inspector.
+
+> "This one isn't a replay. That's a real OpenCode agent on NVIDIA's free
+> Nemotron 3 Ultra route. It ran a checker that always prints success and
+> told me it was done. PEX marked that uncertain, asked for real pytest — which
+> failed — and contradicted the claim with the exact failing test. The agent
+> fixed it, and even corrected its own earlier claim. Zero supervisor model
+> calls: the evidence did the work."
+
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 
 > "Three more fixtures cover the other failure modes — a false completion with

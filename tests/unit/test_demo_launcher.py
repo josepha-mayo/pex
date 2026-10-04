@@ -113,3 +113,55 @@ def test_terminate_tree_kills_grandchildren() -> None:
         if child.poll() is None:
             child.kill()
             child.wait(timeout=10)
+
+
+def test_live_prepare_run_seeds_an_isolated_free_worker(tmp_path, monkeypatch) -> None:
+    import json
+
+    from scripts import demo_live
+
+    monkeypatch.setenv("PEX_SUPERVISOR_API_KEY", "must-not-leak")
+    workspace, env = demo_live.prepare_run(tmp_path / "run", "nemotron-3-ultra-free")
+    # Its own git root, so OpenCode never adopts an enclosing repo/AGENTS.md.
+    assert (workspace / ".git").is_dir()
+    assert {"csv_utils.py", "test_csv_utils.py", "verify.py"} <= {
+        p.name for p in workspace.iterdir()
+    }
+    config = json.loads((tmp_path / "run" / "opencode.json").read_text(encoding="utf-8"))
+    assert config["model"] == "opencode/nemotron-3-ultra-free"
+    assert "provider" not in config  # native free route: no fabricated credential
+    assert "PEX_SUPERVISOR_API_KEY" not in env
+    assert env["HOME"].startswith(str(tmp_path))
+
+
+def test_live_prepare_run_rejects_paid_models(tmp_path) -> None:
+    import pytest
+
+    from scripts import demo_live
+
+    with pytest.raises(ValueError, match="free OpenCode model"):
+        demo_live.prepare_run(tmp_path / "run", "nvidia/nemotron-3-super-120b-a12b")
+    assert not (tmp_path / "run").exists()
+
+
+def test_live_goal_requires_real_pytest(tmp_path) -> None:
+    from scripts import demo_live
+
+    goal = demo_live.goal_payload(tmp_path)
+    assert goal["project_id"] == str(tmp_path)
+    assert goal["acceptance_criteria"] == ["python -m pytest -q exits successfully"]
+
+
+def test_live_opencode_binding_is_loopback_only(tmp_path, monkeypatch) -> None:
+    from pathlib import Path
+
+    from scripts import demo_live
+
+    command = demo_live.opencode_command(Path("opencode"), 4096)
+    assert command[command.index("--hostname") + 1] == "127.0.0.1"
+    assert "--pure" in command
+    missing = tmp_path / "nope.exe"
+    monkeypatch.setenv("PEX_OPENCODE_BIN", str(missing))
+    assert demo_live.resolve_opencode() is None
+    missing.write_bytes(b"")
+    assert demo_live.resolve_opencode() == missing
