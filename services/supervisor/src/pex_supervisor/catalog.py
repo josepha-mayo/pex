@@ -24,6 +24,11 @@ CATALOG: list[dict[str, str]] = [
         "model_id": "nvidia/Nemotron-3-Ultra-550b-a55b",
         "label": "Nemotron 3 Ultra · Nebius",
     },
+    {
+        "provider": "nebius",
+        "model_id": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+        "label": "Nemotron 3 Nano · Nebius",
+    },
     # OpenAI
     {"provider": "openai", "model_id": "gpt-5.6-sol", "label": "GPT 5.6 Sol"},
     {"provider": "openai", "model_id": "gpt-5.6-terra", "label": "GPT 5.6 Terra"},
