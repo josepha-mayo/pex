@@ -23,11 +23,14 @@ intervenes only inside bounded policy.
 2. Replay `tampered_acceptance_eval`. It walks a reward-hacking worker through
    the real pipeline: sealed acceptance baseline → test weakened → green "all
    tests passed" claim → `uncertain` verdict → corrective nudge naming the
-   file → restore → `verified_complete`.
+   file → restore → `verified_complete`. Its sibling `config_injection_eval`
+   shows the runner-config vector: a `pytest.ini` injected after the baseline
+   deselects the suite and earns the same `uncertain` downgrade.
 3. Open the Inspector on the replay session: the **Independent claim
-   verification** block shows the adjudicated-claim timeline, verdicts, and
-   the flagged file. `GET /v1/goals/{id}/verification-report` is the same
-   ledger as JSON.
+   verification** block shows the adjudicated-claim timeline, verdicts,
+   flagged files, and adjudication evidence — and **Export report** downloads
+   the same ledger as a standalone HTML page with the raw JSON embedded.
+   `GET /v1/goals/{id}/verification-report` is the raw record directly.
 
 The same scenario as raw API calls is [Scenario D in the demo
 runbook](demo/RUNBOOK.md). Supervising a live OpenCode worker with real
