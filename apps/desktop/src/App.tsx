@@ -1632,16 +1632,22 @@ export function App() {
     setup, Boolean(pet?.paused),
   );
 
+  const demoReplayAvailable = Boolean(
+    setup?.state === "connect_worker" || isReplaySession(current),
+  );
   const demoFixtureTried = useRef(false);
   useEffect(() => {
-    if (setup?.state !== "connect_worker" || demoFixtureTried.current || bridgeError) return;
+    if (!demoReplayAvailable || demoFixtureTried.current || bridgeError) return;
     demoFixtureTried.current = true;
     const controller = new AbortController();
     bridgeJson<unknown>("/v1/demo/trajectories", { signal: controller.signal })
       .then((payload) => setDemoFixtures(parseTrajectoriesResponse(payload)))
-      .catch(() => setDemoFixtures(null));
+      .catch(() => {
+        setDemoFixtures(null);
+        demoFixtureTried.current = false;
+      });
     return () => controller.abort();
-  }, [setup, bridgeError]);
+  }, [demoReplayAvailable, bridgeError]);
 
   async function runDemoReplay(fixtureId: string) {
     if (demoReplay.running) return;
@@ -2794,29 +2800,29 @@ export function App() {
                   ) : null}
                   <button type="button" className="ghost" onClick={() => openInspector()}>Inspect current state</button>
                 </div>
-                {setup.state === "connect_worker" && demoFixtures?.length ? (
-                  <div className="demo-replay">
-                    <p className="eyebrow">See the loop without a worker</p>
-                    <p>Replay a recorded supervision trajectory through the real pipeline — labeled as a replay, never live worker control.</p>
-                    <div className="button-row">
-                      {demoFixtures.map((fixture) => (
-                        <button
-                          key={fixture.id}
-                          type="button"
-                          className="ghost"
-                          disabled={demoReplay.running}
-                          onClick={() => void runDemoReplay(fixture.id)}
-                        >
-                          {demoReplay.running && demoReplay.fixture === fixture.id
-                            ? "Replaying…"
-                            : fixture.title}
-                        </button>
-                      ))}
-                    </div>
-                    {demoReplay.error ? (
-                      <p className="demo-replay-error" role="status">{demoReplay.error}</p>
-                    ) : null}
-                  </div>
+              </div>
+            ) : null}
+            {demoReplayAvailable && demoFixtures?.length ? (
+              <div className="demo-replay">
+                <p className="eyebrow">See the loop without a worker</p>
+                <p>Replay a recorded supervision trajectory through the real pipeline — labeled as a replay, never live worker control.</p>
+                <div className="button-row">
+                  {demoFixtures.map((fixture) => (
+                    <button
+                      key={fixture.id}
+                      type="button"
+                      className="ghost"
+                      disabled={demoReplay.running}
+                      onClick={() => void runDemoReplay(fixture.id)}
+                    >
+                      {demoReplay.running && demoReplay.fixture === fixture.id
+                        ? "Replaying…"
+                        : fixture.title}
+                    </button>
+                  ))}
+                </div>
+                {demoReplay.error ? (
+                  <p className="demo-replay-error" role="status">{demoReplay.error}</p>
                 ) : null}
               </div>
             ) : null}
