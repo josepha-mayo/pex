@@ -71,9 +71,7 @@ async def test_overlay_revert_requires_operator_auth_and_strict_body_before_exec
         denied = await client.post("/v1/overlays/ovl_auth/revert")
 
         assert denied.status_code == 403
-        assert denied.json()["detail"] == (
-            "operator mutations require bridge authentication"
-        )
+        assert denied.json()["detail"] == ("operator mutations require bridge authentication")
         assert calls == []
 
         monkeypatch.setattr(
@@ -212,3 +210,52 @@ async def test_overlay_revert_maps_canonical_receipt_state(
     assert response.json()["code"] == result["code"]
     assert set(response.json()) == {"ok", "code", "state", "replayed", "receipt"}
     revert.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_overlay_revert_succeeds_without_bearer_on_demo_scoped_bridge(tmp_path, monkeypatch):
+    """The demo bridge opts into unauthenticated operator mutations so judges
+    can resolve decisions; the recorded actor remains the local operator."""
+    calls: list[tuple[str | None, dict]] = []
+
+    async def revert_overlay_receipt(overlay_id: str | None = None, **kwargs) -> dict:
+        calls.append((overlay_id, kwargs))
+        return _receipt()
+
+    monkeypatch.setattr(
+        state,
+        "pipeline",
+        SimpleNamespace(
+            executor=SimpleNamespace(revert_overlay_receipt=revert_overlay_receipt),
+        ),
+    )
+    monkeypatch.setattr(
+        state,
+        "settings",
+        Settings.for_test(
+            require_auth=False,
+            allow_unauthenticated_operator=True,
+            home=tmp_path,
+            codex_attach=False,
+        ),
+    )
+    monkeypatch.setattr(state, "token", None)
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://127.0.0.1") as client:
+        response = await client.post(
+            "/v1/overlays/ovl_auth/revert",
+            json={"idempotency_key": _IDEMPOTENCY_KEY},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["code"] == "overlay_reverted"
+    assert calls == [
+        (
+            "ovl_auth",
+            {
+                "authorized_by": "local_bridge_operator",
+                "idempotency_key": _IDEMPOTENCY_KEY,
+                "reason": "user_requested",
+            },
+        )
+    ]

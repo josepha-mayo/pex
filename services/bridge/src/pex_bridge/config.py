@@ -76,12 +76,17 @@ class Settings(BaseSettings):
     max_recent_events: int = Field(default=80, ge=1, le=500)
     suppress_routine_success: bool = True
     notify_file: bool = True
+    # Test/demo-scoped only: permits operator-level mutations on an
+    # unauthenticated loopback bridge (the recorded actor is still the local
+    # bridge operator). Never valid on an authenticated deployment.
+    allow_unauthenticated_operator: bool = False
 
     @classmethod
     def for_test(
         cls,
         *,
         require_auth: Literal[False],
+        allow_unauthenticated_operator: bool = False,
         **values: Any,
     ) -> "Settings":
         """Construct an explicitly test-scoped unauthenticated bridge config.
@@ -96,7 +101,11 @@ class Settings(BaseSettings):
             raise ValueError("test settings require require_auth=False")
         gate = _ALLOW_TEST_NO_AUTH.set(True)
         try:
-            return cls(require_auth=False, **values)
+            return cls(
+                require_auth=False,
+                allow_unauthenticated_operator=allow_unauthenticated_operator,
+                **values,
+            )
         finally:
             _ALLOW_TEST_NO_AUTH.reset(gate)
 
@@ -107,6 +116,11 @@ class Settings(BaseSettings):
             raise ValueError(
                 "unauthenticated bridge settings are available only through "
                 "Settings.for_test(require_auth=False, ...)"
+            )
+        if self.allow_unauthenticated_operator and self.require_auth:
+            raise ValueError(
+                "allow_unauthenticated_operator is meaningless on an "
+                "authenticated bridge"
             )
         if self.token is not None:
             configured_token = self.token.strip()

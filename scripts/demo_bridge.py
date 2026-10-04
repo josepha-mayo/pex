@@ -50,6 +50,10 @@ from pex_bridge.config import Settings  # noqa: E402
 
 state.settings = Settings.for_test(
     require_auth=False,
+    # Demo judges must be able to resolve decisions and answer permission
+    # prompts from the desktop UI; the loopback demo bridge treats the local
+    # caller as the operator.
+    allow_unauthenticated_operator=True,
     home=PEX_HOME,
     autonomy="manage",
     cloud_reasoning=_CLOUD,

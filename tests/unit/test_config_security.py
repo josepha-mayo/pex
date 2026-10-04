@@ -126,9 +126,9 @@ def test_asgi_import_rejects_no_auth_environment() -> None:
 
 
 def test_opencode_plugin_has_no_machine_specific_debug_sink() -> None:
-    source = (
-        _REPO_ROOT / "integrations" / "opencode-plugin" / "pex-plugin.js"
-    ).read_text(encoding="utf-8")
+    source = (_REPO_ROOT / "integrations" / "opencode-plugin" / "pex-plugin.js").read_text(
+        encoding="utf-8"
+    )
 
     assert "JosephMayo" not in source
     assert "benchmarks\\\\results\\\\_scratch" not in source
@@ -136,3 +136,21 @@ def test_opencode_plugin_has_no_machine_specific_debug_sink() -> None:
     assert "appendFile" not in source
     assert "writeFile" not in source
     assert "createWriteStream" not in source
+
+
+def test_unauthenticated_operator_flag_is_test_scoped_only(monkeypatch) -> None:
+    assert Settings().allow_unauthenticated_operator is False
+
+    with pytest.raises(ValidationError, match="authenticated bridge"):
+        Settings(require_auth=True, allow_unauthenticated_operator=True)
+
+    plain = Settings.for_test(require_auth=False)
+    assert plain.allow_unauthenticated_operator is False
+
+    demo = Settings.for_test(require_auth=False, allow_unauthenticated_operator=True)
+    assert demo.allow_unauthenticated_operator is True
+
+    # An ambient environment value cannot enable the flag: the explicit
+    # constructor argument wins over the environment source.
+    monkeypatch.setenv("PEX_ALLOW_UNAUTHENTICATED_OPERATOR", "true")
+    assert Settings.for_test(require_auth=False).allow_unauthenticated_operator is False

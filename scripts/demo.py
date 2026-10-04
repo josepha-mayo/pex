@@ -113,6 +113,13 @@ def main(argv: list[str] | None = None) -> int:
     live = None
     bridge_env = os.environ.copy()
     children: list[subprocess.Popen] = []
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    if "PEX_DEMO_HOME" not in os.environ:
+        # Every launch gets a pristine stage: replays and live workers re-create
+        # their sessions, so sharing build/demo/pex-home across launches would
+        # pile up stale (and zombie "working") workers from older runs.
+        # Set PEX_DEMO_HOME yourself to keep a stable home between runs.
+        bridge_env["PEX_DEMO_HOME"] = str(ROOT / "build" / "demo" / f"home-{stamp}")
     if args.live:
         from scripts import demo_live
 
@@ -122,7 +129,6 @@ def main(argv: list[str] | None = None) -> int:
                 "--live needs the OpenCode CLI: `npm i opencode-ai` (any directory on PATH) "
                 "or set PEX_OPENCODE_BIN to the opencode executable."
             )
-        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         run_root = ROOT / "build" / "demo" / f"live-{stamp}"
         model = args.worker_model or demo_live.DEFAULT_WORKER_MODEL
         try:
@@ -188,6 +194,8 @@ def main(argv: list[str] | None = None) -> int:
         print()
         print(f"  PEX demo ready:  http://127.0.0.1:{VITE_PORT}", flush=True)
         print(f"  bridge API:      http://127.0.0.1:{BRIDGE_PORT}/v1", flush=True)
+        if "PEX_DEMO_HOME" in bridge_env:
+            print(f"  demo home:       {bridge_env['PEX_DEMO_HOME']}", flush=True)
         if live:
             from scripts import demo_live
 

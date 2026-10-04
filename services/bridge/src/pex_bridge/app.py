@@ -2067,9 +2067,15 @@ async def _require_operator_token(
     """Require the bridge operator bearer even when ordinary test auth is disabled."""
 
     if not state.settings.require_auth:
-        raise HTTPException(
-            status_code=403,
-            detail="operator mutations require bridge authentication",
+        if not state.settings.allow_unauthenticated_operator:
+            raise HTTPException(
+                status_code=403,
+                detail="operator mutations require bridge authentication",
+            )
+        # Demo/test bridge on loopback: the local caller is the operator.
+        return OperatorActorEvidence(
+            principal_id=_LOCAL_OPERATOR_PRINCIPAL,
+            actor_assurance="bridge_bearer",
         )
     await _require_token(authorization)
     return OperatorActorEvidence(
