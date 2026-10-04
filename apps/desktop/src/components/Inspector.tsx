@@ -44,6 +44,8 @@ export function Inspector({
   ledgerDecisions = [],
   completion,
   verificationReport,
+  exportingReport,
+  onExportReport,
   goals,
   action,
   handoffStatus,
@@ -85,6 +87,8 @@ export function Inspector({
   ledgerDecisions?: LedgerDecision[];
   completion?: GoalCompletion | null;
   verificationReport?: VerificationReportView | null;
+  exportingReport?: boolean;
+  onExportReport?: () => void;
   goals: Goal[];
   action?: LastAction | null;
   handoffStatus?: HandoffAssimilationStatus | "unreachable";
@@ -363,6 +367,18 @@ export function Inspector({
                     </li>
                   ))}
                 </ul>
+              ) : null}
+              {onExportReport ? (
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={onExportReport}
+                    disabled={exportingReport}
+                  >
+                    {exportingReport ? "Exporting…" : "Export report JSON"}
+                  </button>
+                </div>
               ) : null}
               </details>
             ) : null}

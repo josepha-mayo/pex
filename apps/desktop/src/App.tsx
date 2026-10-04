@@ -418,6 +418,7 @@ export function App() {
   const editingGoalLedgerKey = useRef<string | null>(null);
   const [goalCompletion, setGoalCompletion] = useState<GoalCompletion | null>(null);
   const [verificationReport, setVerificationReport] = useState<VerificationReportView | null>(null);
+  const [exportingReport, setExportingReport] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -2039,6 +2040,39 @@ export function App() {
     }
   }
 
+  async function exportVerificationReport() {
+    if (!attachedGoal || exportingReport) return;
+    setExportingReport(true);
+    try {
+      const raw = await bridgeJson<unknown>(
+        `/v1/goals/${encodeURIComponent(attachedGoal.id)}/verification-report`,
+      );
+      if (!isRecord(raw)) {
+        setNote("The bridge did not return a verification report to export.");
+        return;
+      }
+      const blob = new Blob([`${JSON.stringify(raw, null, 2)}\n`], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      try {
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `pex-verification-report-${attachedGoal.id}.json`;
+        anchor.rel = "noopener";
+        anchor.click();
+      } finally {
+        // Revoking immediately can cancel the download in some browsers.
+        window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      }
+      setNote(`Verification report for "${attachedGoal.title}" exported as JSON.`);
+    } catch (error) {
+      setNote(operationError(error, "Could not export the verification report."));
+    } finally {
+      setExportingReport(false);
+    }
+  }
+
   async function resolveHumanDecision(
     intervention: Intervention,
     decision: HumanDecisionChoice,
@@ -2859,6 +2893,8 @@ export function App() {
           ledgerDecisions={ledgerDecisions}
           completion={goalCompletion}
           verificationReport={verificationReport}
+          exportingReport={exportingReport}
+          onExportReport={() => void exportVerificationReport()}
           goals={availableGoals}
           action={action}
           handoffStatus={action?.id ? handoffAssimilation[action.id] : undefined}
