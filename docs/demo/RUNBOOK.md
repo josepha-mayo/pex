@@ -169,6 +169,25 @@ as a "Recorded replay" button whenever the bridge advertises an honestly
 labeled list, so no curl is needed — replay sessions are visibly tagged and
 can never be mistaken for live worker control.
 
+## Optional — verify inside a Nebius sandbox
+
+Judges with Token Factory Sandboxes beta access can push the replay's
+independent verification step off the demo machine entirely:
+
+```bash
+PEX_PUBLIC_PYTEST_BACKEND=contree \
+PEX_CONTREE_API_KEY=... PEX_CONTREE_PROJECT=... \
+PEX_CONTREE_IMAGE=<uuid-or-tag-with-pytest> \
+python scripts/demo_bridge.py
+```
+
+With those set, the materialized workspace's public pytest runs inside a
+disposable, network-isolated ConTree VM instead of a local subprocess, and the
+verification receipt carries the sandbox provenance (`executor`,
+operation/instance UUIDs, resolved image). Without them, or if the sandbox is
+unavailable, the same honest `error_type` contract applies — the run never
+silently downgrades to local execution once `contree` is selected.
+
 ## What this does not prove
 
 - The demo bridge is unauthenticated and loopback-only; it exercises the real
