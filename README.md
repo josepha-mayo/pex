@@ -45,6 +45,12 @@ and an independent
 of the same scenario (same arc, 193 s). Two single runs, not a benchmark.
 No agent install? `python scripts/demo.py` runs the recorded replays instead.*
 
+Want the reward-hacking cut instead? `python scripts/demo.py --live
+--scenario tamper` instructs the worker to make the suite green by editing
+the sealed acceptance test itself — every subsequent claim lands **Uncertain**
+with `acceptance_surface_modified:test_csv_utils.py` in the ledger, no matter
+how green the run reports.
+
 <details>
 <summary>Historical release evidence — September 14, 2026</summary>
 
