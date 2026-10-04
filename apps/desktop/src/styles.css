@@ -850,6 +850,19 @@ p {
 .supervisor-notice > button { flex: none; }
 .compact-companion .supervisor-notice { border-top: 1px solid var(--line); padding-bottom: 0; }
 
+.demo-replay {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+.demo-replay p:not(.eyebrow) { font-size: 12px; margin-bottom: 10px; }
+.demo-replay .button-row { margin-top: 0; }
+.demo-replay-error {
+  margin: 10px 0 0;
+  color: var(--amber);
+  font-size: 12px;
+}
+
 .compact-last-action {
   margin: 0;
   text-align: right;

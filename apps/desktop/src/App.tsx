@@ -34,6 +34,12 @@ import {
   startSerialPolling,
 } from "./readBudget";
 import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } from "./firstRun";
+import {
+  isReplaySession,
+  parseReplaySessionId,
+  parseTrajectoriesResponse,
+  type DemoFixture,
+} from "./demoReplay";
 import { StartupRecovery } from "./components/StartupRecovery";
 import { CodexSprite } from "./pets/atlas";
 import { bundledPetSheet, defaultBundledPetSheet } from "./pets/bundled";
@@ -438,6 +444,12 @@ export function App() {
   const [identityResolving, setIdentityResolving] = useState(false);
   const [identityFeedback, setIdentityFeedback] = useState<ProjectIdentityFeedback | null>(null);
   const [bench, setBench] = useState<BenchState>({ loading: false, runs: [] });
+  const [demoFixtures, setDemoFixtures] = useState<DemoFixture[] | null>(null);
+  const [demoReplay, setDemoReplay] = useState<{
+    running: boolean;
+    fixture: string | null;
+    error: string | null;
+  }>({ running: false, fixture: null, error: null });
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
@@ -1606,6 +1618,45 @@ export function App() {
     setup, Boolean(pet?.paused),
   );
 
+  const demoFixtureTried = useRef(false);
+  useEffect(() => {
+    if (setup?.state !== "connect_worker" || demoFixtureTried.current || bridgeError) return;
+    demoFixtureTried.current = true;
+    const controller = new AbortController();
+    bridgeJson<unknown>("/v1/demo/trajectories", { signal: controller.signal })
+      .then((payload) => setDemoFixtures(parseTrajectoriesResponse(payload)))
+      .catch(() => setDemoFixtures(null));
+    return () => controller.abort();
+  }, [setup, bridgeError]);
+
+  async function runDemoReplay(fixtureId: string) {
+    if (demoReplay.running) return;
+    setDemoReplay({ running: true, fixture: fixtureId, error: null });
+    try {
+      const payload = await bridgeJson<unknown>("/v1/demo/replay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fixture: fixtureId }),
+      });
+      const sessionId = parseReplaySessionId(payload);
+      if (!sessionId) {
+        setDemoReplay({
+          running: false, fixture: fixtureId,
+          error: "Replay did not return a labeled session.",
+        });
+        return;
+      }
+      setDemoReplay({ running: false, fixture: fixtureId, error: null });
+      await refreshPet();
+      openInspector(sessionId);
+    } catch (error) {
+      setDemoReplay({
+        running: false, fixture: fixtureId,
+        error: `Replay could not run: ${operationError(error, "bridge rejected the request")}`,
+      });
+    }
+  }
+
   async function openSession(session?: SessionRow) {
     const row = session || current;
     if (!row) return;
@@ -2612,7 +2663,7 @@ export function App() {
                 <strong>{titleCase(session.harness_type)}</strong>
                 <small>{railLabels[index]}{(railLabelCounts.get(`${session.harness_type}:${railLabels[index]}`) || 0) > 1
                   ? ` · ${session.id.slice(-6)}` : ""}</small>
-                <small>{titleCase(session.status)}</small>
+                <small>{isReplaySession(session) ? "Recorded replay" : titleCase(session.status)}</small>
               </button>
             ))}
             </div>
@@ -2729,6 +2780,30 @@ export function App() {
                   ) : null}
                   <button type="button" className="ghost" onClick={() => openInspector()}>Inspect current state</button>
                 </div>
+                {setup.state === "connect_worker" && demoFixtures?.length ? (
+                  <div className="demo-replay">
+                    <p className="eyebrow">See the loop without a worker</p>
+                    <p>Replay a recorded supervision trajectory through the real pipeline — labeled as a replay, never live worker control.</p>
+                    <div className="button-row">
+                      {demoFixtures.map((fixture) => (
+                        <button
+                          key={fixture.id}
+                          type="button"
+                          className="ghost"
+                          disabled={demoReplay.running}
+                          onClick={() => void runDemoReplay(fixture.id)}
+                        >
+                          {demoReplay.running && demoReplay.fixture === fixture.id
+                            ? "Replaying…"
+                            : fixture.title}
+                        </button>
+                      ))}
+                    </div>
+                    {demoReplay.error ? (
+                      <p className="demo-replay-error" role="status">{demoReplay.error}</p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {setup?.state !== "unavailable" ? supervisorNotice : null}
