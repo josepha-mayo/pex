@@ -39,9 +39,11 @@ def _npm() -> str:
     sys.exit("npm is required for the UI dev server (install Node.js first).")
 
 
-def _wait_http(url: str, timeout: float = 45.0) -> bool:
+def _wait_http(url: str, timeout: float = 45.0, child=None) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
+        if child is not None and child.poll() is not None:
+            return False
         try:
             # /health runs the bounded adapter probes (tasklist + loopback
             # checks), which takes a few seconds on Windows — not instant.
@@ -101,8 +103,8 @@ def main() -> int:
         ),
     ]
     try:
-        bridge_ok = _wait_http(f"http://127.0.0.1:{BRIDGE_PORT}/health")
-        vite_ok = _wait_http(f"http://127.0.0.1:{VITE_PORT}")
+        bridge_ok = _wait_http(f"http://127.0.0.1:{BRIDGE_PORT}/health", child=children[0])
+        vite_ok = _wait_http(f"http://127.0.0.1:{VITE_PORT}", child=children[1])
         if not bridge_ok:
             print(f"demo bridge never answered :{BRIDGE_PORT}/health", flush=True)
         if not vite_ok:

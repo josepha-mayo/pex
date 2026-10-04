@@ -60,6 +60,19 @@ def test_wait_http_false_when_nothing_listens() -> None:
     assert demo._wait_http(f"http://127.0.0.1:{port}", timeout=0.5) is False
 
 
+def test_wait_http_stops_early_when_child_exits() -> None:
+    port = _free_port()
+    child = subprocess.Popen([sys.executable, "-c", "pass"])
+    try:
+        assert _wait_for(lambda: child.poll() is not None, timeout=10.0)
+        started = time.monotonic()
+        assert demo._wait_http(f"http://127.0.0.1:{port}", timeout=45.0, child=child) is False
+        assert time.monotonic() - started < 5.0
+    finally:
+        if child.poll() is None:
+            child.kill()
+
+
 def test_terminate_tree_kills_grandchildren() -> None:
     """A wrapper child's own children must die with it.
 
