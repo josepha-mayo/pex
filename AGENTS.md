@@ -53,10 +53,12 @@ preflight test, which now has a 300 s budget).
 
 ## Notes
 
-- The demo bridge (`python scripts/demo_bridge.py`) serves `http://127.0.0.1:7420`
-  unauthenticated and loopback-only; `vite dev` serves the UI on `:1420` with a
-  `/v1` proxy. The packaged Tauri app uses the same port with a bearer token
-  owned by the Rust launcher.
+- `python scripts/demo.py` is the one-command path: it starts the demo bridge
+  (`scripts/demo_bridge.py`, `http://127.0.0.1:7420`, unauthenticated and
+  loopback-only) plus the vite dev UI on `:1420` with a `/v1` proxy, waits for
+  real readiness, and kills whole process trees on exit. The packaged Tauri
+  app uses the same bridge port with a bearer token owned by the Rust
+  launcher.
 - ConTree API details verified against the published OpenAPI
   (`docs.tokenfactory.nebius.com`): the instance `InstanceResult`
   (state/stdout/stderr) hangs off `metadata.result` on the operation, not the
@@ -64,5 +66,6 @@ preflight test, which now has a 300 s budget).
   uuid or a `tag:`-prefixed reference; auth is `Authorization: Bearer` +
   `Project` header.
 - Judge-facing entry points: `docs/HACKATHON.md` (track mapping + five-minute
-  path), `docs/demo/RUNBOOK.md` (live and replay demos), the setup card's
-  "Recorded replay" fixtures (no worker install needed).
+  path), `docs/demo/RUNBOOK.md` (live and replay demos),
+  `docs/demo/DEMO_SCRIPT.md` (video narration), and the app's Recorded-replay
+  fixture buttons (no worker install needed).
