@@ -40,7 +40,6 @@ def _manifest(root: Path, files: dict[str, str]) -> list[dict]:
 
 @pytest.fixture
 def _live_contree():
-    require_live_authorization("PEX_LIVE_CONTREE")
     config = contree_config()
     missing = config.missing_reasons()
     if missing:
@@ -49,6 +48,7 @@ def _live_contree():
 
 
 def test_live_contree_runs_public_pytest_in_a_disposable_vm(tmp_path: Path, _live_contree):
+    require_live_authorization("PEX_LIVE_CONTREE")
     manifest = _manifest(
         tmp_path,
         {
@@ -79,6 +79,7 @@ def test_live_contree_runs_public_pytest_in_a_disposable_vm(tmp_path: Path, _liv
 def test_live_contree_reports_a_real_test_failure_not_infra_error(
     tmp_path: Path, _live_contree
 ):
+    require_live_authorization("PEX_LIVE_CONTREE")
     manifest = _manifest(
         tmp_path,
         {"test_fail.py": "def test_fails():\n    assert False\n"},

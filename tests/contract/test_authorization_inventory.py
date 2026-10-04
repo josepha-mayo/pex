@@ -22,6 +22,12 @@ EXPECTED_GATES = {
         "PEX_LIVE_CODEX",
         "PEX_LIVE_SUPERVISOR",
     ),
+    "test_live_contree.py::test_live_contree_runs_public_pytest_in_a_disposable_vm": (
+        "PEX_LIVE_CONTREE",
+    ),
+    "test_live_contree.py::test_live_contree_reports_a_real_test_failure_not_infra_error": (
+        "PEX_LIVE_CONTREE",
+    ),
     "test_live_cursor_stop.py::test_live_cursor_incomplete_stop_sends_specific_followup": (
         "PEX_LIVE_SUPERVISOR",
     ),
