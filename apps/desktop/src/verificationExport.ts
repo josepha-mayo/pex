@@ -86,9 +86,7 @@ export function renderVerificationReportHtml(payload: Record<string, unknown>): 
     .filter(([, count]) => typeof count === "number")
     .map(([verdict, count]) => `${escapeHtml(verdict)} ${String(count)}`)
     .join(" · ");
-  const rawJson = JSON.stringify(payload, null, 2)
-    .replace(/</g, "\\u003c")
-    .slice(0, 2_000_000);
+  const rawJson = JSON.stringify(payload, null, 2).replace(/</g, "\\u003c");
   const replayNote = "Recorded replay sessions are labeled not live worker control in PEX.";
 
   return `<!doctype html>
