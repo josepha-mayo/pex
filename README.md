@@ -413,9 +413,19 @@ PEX_CONTREE_API_KEY or NEBIUS_API_KEY
 PEX_CONTREE_PROJECT or NEBIUS_PROJECT_ID
 ```
 
-Optional overrides: `PEX_CONTREE_BASE_URL`, `PEX_CONTREE_IMAGE` (the image must
-ship pytest), `PEX_CONTREE_PYTHON`, `PEX_CONTREE_TIMEOUT_SECONDS`,
-`PEX_CONTREE_MAX_UPLOAD_BYTES`, `PEX_CONTREE_MAX_FILES`. A missing key, auth
+Optional overrides: `PEX_CONTREE_BASE_URL`, `PEX_CONTREE_IMAGE`,
+`PEX_CONTREE_PYTHON`, `PEX_CONTREE_TIMEOUT_SECONDS`,
+`PEX_CONTREE_MAX_UPLOAD_BYTES`, `PEX_CONTREE_MAX_FILES`.
+
+`PEX_CONTREE_IMAGE` accepts an image UUID or a `tag:` reference resolved by the
+sandbox (default `tag:python:3.12-slim`). The image must ship pytest because
+networking is disabled for the run — the stock `python` images do not, so a
+default configuration reports `sandbox_image_missing_pytest` rather than
+faking a result. Import an OCI image once (for example
+`FROM python:3.12-slim` + `pip install pytest`) and point
+`PEX_CONTREE_IMAGE` at its UUID or tag.
+
+A missing key, auth
 rejection, malformed response, expired dispatch budget, or an image without
 pytest reports an honest `error_type` on the result — infrastructure trouble is
 never presented as a test outcome, and a configured-but-unavailable sandbox
