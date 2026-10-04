@@ -188,6 +188,15 @@ fixtures as a "Recorded replay" button whenever the bridge advertises an
 honestly labeled list, so no curl is needed — replay sessions are visibly
 tagged and can never be mistaken for live worker control.
 
+![PEX Inspector on the replayed config-injection catch](assets/pex-config-injection-capture-3418bc3.png)
+
+*The `config_injection_eval` replay in the Inspector: the claim ledger shows
+the `uncertain` verdict and corrective nudge naming `pytest.ini` with its
+adjudication evidence (`acceptance_surface_config_added:pytest.ini`), then the
+restored `verified` row — 4 claims, 1 sealed baseline, 1 integrity incident,
+1 nudge. The Export report button downloads this ledger as a standalone HTML
+page with the raw report JSON embedded.*
+
 ## Optional — verify inside a Nebius sandbox
 
 Judges with Token Factory Sandboxes beta access can push the replay's
