@@ -102,9 +102,10 @@ it verifies the *acceptance surface*, not just the reported exit code:
 - `GET /v1/claims/metrics` reports the durable ledger: verdict counts, sealed
   baselines, integrity incidents, and corrective nudges issued.
 
-Try it with no agent install: `POST /v1/demo/replay` with fixture
-`tampered_acceptance_eval` walks seal → tamper → catch → nudge → restore →
-`verified_complete` through the real pipeline (see the
+Try it with no agent install: `python scripts/demo.py` starts the bridge and
+the desktop together, then the Recorded-replay card in the app walks
+`tampered_acceptance_eval` through seal → tamper → catch → nudge → restore →
+`verified_complete` in the real pipeline (see the
 [demo runbook](docs/demo/RUNBOOK.md), Scenario D).
 
 ![PEX Inspector on the replayed tamper catch](docs/demo/assets/pex-claim-verification-f3347dd.png)
@@ -113,7 +114,8 @@ Try it with no agent install: `POST /v1/demo/replay` with fixture
 `f3347dd`: the claim ledger shows the `uncertain` verdict, the corrective nudge,
 and the flagged `tests/test_core.py` with its adjudication evidence
 (`acceptance_surface_modified:tests/test_core.py`), ending in `verified`. The
-full report exports as JSON from the Inspector. The session is labeled
+full report exports from the Inspector as a self-contained HTML adjudication
+record (human-readable timeline plus the embedded raw JSON). The session is labeled
 "Recorded replay · not live worker control" — a deterministic fixture, not a
 live worker receipt.*
 

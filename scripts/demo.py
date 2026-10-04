@@ -126,7 +126,7 @@ def main() -> int:
                         f"demo process exited ({child.returncode}); shutting down",
                         flush=True,
                     )
-                    return child.returncode or 0
+                    return child.returncode if child.returncode and child.returncode > 0 else 1
     except KeyboardInterrupt:
         return 0
     finally:
