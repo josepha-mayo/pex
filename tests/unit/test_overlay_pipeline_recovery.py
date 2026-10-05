@@ -35,6 +35,7 @@ async def _seed_planned_overlay(
     store: Store,
     *,
     suffix: str,
+    claim_main_effect: bool = True,
 ) -> tuple[Goal, HarnessSession, HarnessEvent, Intervention, Overlay, dict]:
     project_id = f"overlay-pipeline-{suffix}"
     registration = await store.register_project_locator(
@@ -168,9 +169,13 @@ async def _seed_planned_overlay(
             "request_hash": hashlib.sha256(effect_json.encode()).hexdigest(),
         },
     )
-    parent = await store.claim_main_event_effect(event_id=event.event_id, owner=owner)
-    assert parent["granted"] is True
-    return goal, session, event, intervention, overlay, parent["effect"]
+    if claim_main_effect:
+        parent = await store.claim_main_event_effect(event_id=event.event_id, owner=owner)
+        assert parent["granted"] is True
+        return goal, session, event, intervention, overlay, parent["effect"]
+    effect = await store.get_event_effect(event.event_id, "main")
+    assert effect is not None
+    return goal, session, event, intervention, overlay, effect
 
 
 async def _pause_and_rebind(
@@ -413,6 +418,39 @@ async def test_current_boot_parent_without_child_is_never_stolen_or_redispatched
         assert effect is not None and effect["state"] == "dispatching"
         assert effect["downstream_operation_id"] is None
         executor.assert_not_awaited()
+    finally:
+        if pipeline is not None:
+            await pipeline.close_presentations()
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_own_pre_reservation_refusal_seals_dispatching_parent(tmp_path):
+    store = Store(tmp_path / "refused-dispatch.sqlite", process_boot_id="refused-dispatch-boot")
+    await store.connect()
+    pipeline = None
+    try:
+        _, _, event, _, _, _ = await _seed_planned_overlay(
+            store,
+            suffix="refused-dispatch",
+            claim_main_effect=False,
+        )
+        pipeline, executor = _pipeline(tmp_path, store)
+        executor.return_value = "overlay_dispatch_refused"
+
+        processing = await store.get_event_processing(event.event_id)
+        assert processing is not None
+        await pipeline._resume_planned_event(processing, owner="owner-refused-dispatch")
+
+        final = await store.get_event_processing(event.event_id)
+        effect = await store.get_event_effect(event.event_id, "main")
+        assert final is not None and final["state"] == "complete"
+        assert effect is not None and effect["state"] == "failed"
+        assert effect["downstream_operation_id"] is None
+        assert final["receipt"]["effect_state"] == "failed"
+        assert final["receipt"]["effect_result"]["code"] == "overlay_dispatch_refused"
+        assert final["receipt"]["intervention"]["result"] == "overlay_dispatch_refused"
+        executor.assert_awaited_once()
     finally:
         if pipeline is not None:
             await pipeline.close_presentations()
