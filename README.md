@@ -211,7 +211,9 @@ uv run python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_captured_l
 
 or just open [`docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html`](docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html)
 — the receipt renders itself: every check, every digest, the tamper diff, and
-the hash-chained ledger in one self-contained page.
+the hash-chained ledger in one self-contained page. It *verifies* itself too:
+the raw pack JSON rides embedded, so `verify_pack.py <that-file.html>`
+re-runs all checks on the artifact you're looking at.
 
 ![Sealed-baseline diff of the weakened test](docs/demo/assets/pex-tamper-diff-c281f0f.png)
 

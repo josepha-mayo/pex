@@ -29,7 +29,7 @@ from pex_protocol.goal import Goal
 from pex_protocol.intervention import Intervention
 from pex_protocol.session import HarnessEvent, HarnessSession
 
-from scripts.verify_pack import render_html, verify
+from scripts.verify_pack import load_pack, render_html, verify
 
 
 @pytest.fixture
@@ -261,8 +261,19 @@ async def test_render_html_is_self_contained_and_escapes(client) -> None:
     # The flagged bytes appear in the diff, HTML-escaped (the fixture's
     # ' quotes must not break out of the markup).
     assert "assert result == &#x27;" in page or "assert result == result" in page
-    assert "<script" not in page
     assert 'src="http' not in page and 'href="http' not in page
+
+
+async def test_rendered_html_verifies_itself(client, tmp_path) -> None:
+    http, store, _ = client
+    goal, _ = await _seed(store, tmp_path)
+    pack = (await http.get(f"/v1/goals/{goal.id}/evidence-pack")).json()
+
+    page_path = tmp_path / "report.html"
+    page_path.write_text(render_html(pack, verify(pack)), encoding="utf-8")
+    reloaded = load_pack(page_path)
+    assert reloaded["manifest_sha256"] == pack["manifest_sha256"]
+    assert not any(line.startswith("FAIL") for line in verify(reloaded))
 
 
 async def test_pack_for_unknown_goal_is_404(client) -> None:

@@ -315,14 +315,46 @@ def render_html(pack: dict, checks: list[str]) -> str:
                 )
             parts.append("</table></div>")
 
+    # The raw pack rides inside the page so the report *is* the evidence —
+    # verify_pack.py accepts this HTML file as input and re-checks the
+    # embedded JSON. '<' is escaped so the JSON cannot close the tag early.
+    raw_json = json.dumps(pack, ensure_ascii=False, indent=2).replace("<", "\\u003c")
     parts.append(
-        "<footer>Verify this pack yourself: "
-        "<code class=cmd>uv run python scripts/verify_pack.py &lt;pack.json&gt;</code><br>"
+        "<h2>Raw pack</h2><details><summary class=sub>embedded "
+        "pex.evidence-pack.v1 JSON</summary>"
+        f'<pre class=diff id="raw"></pre></details>'
+        f'<script type="application/json" id="pex-pack">{raw_json}</script>'
+        "<script>document.getElementById('raw').textContent=JSON.stringify("
+        "JSON.parse(document.getElementById('pex-pack').textContent),null,2)</script>"
+    )
+    parts.append(
+        "<footer>This page verifies itself: "
+        "<code class=cmd>uv run python scripts/verify_pack.py &lt;this-file.html&gt;</code><br>"
         "Digests prove these verdicts rest on these exact bytes and events. "
         "They do not prove a live worker ran &mdash; recorded replays are labeled "
         "replay:true + not_live_control:true.</footer></main></body></html>"
     )
     return "".join(parts)
+
+
+def load_pack(path: Path) -> dict:
+    """Read a pack from raw JSON or from a rendered forensic HTML file."""
+    text = path.read_text(encoding="utf-8")
+    doc = None
+    if text.lstrip().startswith("<"):
+        start = text.find('<script type="application/json" id="pex-pack">')
+        if start != -1:
+            start = text.find(">", start) + 1
+            end = text.find("</script>", start)
+            if end != -1:
+                doc = text[start:end]
+        if doc is None:
+            raise ValueError("no embedded pex-pack JSON found in HTML")
+    doc = doc or text
+    pack = json.loads(doc)
+    if not isinstance(pack, dict):
+        raise ValueError("pack is not a JSON object")
+    return pack
 
 
 def main() -> int:
@@ -336,14 +368,10 @@ def main() -> int:
         help="also write a self-contained forensic HTML report to OUT",
     )
     ns = parser.parse_args()
-    path = Path(ns.pack)
     try:
-        pack = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        pack = load_pack(Path(ns.pack))
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(f"cannot read pack: {exc}", file=sys.stderr)
-        return 2
-    if not isinstance(pack, dict):
-        print("pack is not a JSON object", file=sys.stderr)
         return 2
 
     checks = verify(pack)

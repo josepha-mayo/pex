@@ -134,7 +134,9 @@ The verifier recomputes every digest — baseline contents ↔ sealed digests,
 flagged bytes ↔ incident digests, per-event hashes → chain head, manifest —
 with no bridge running. `--html` also writes a self-contained forensic page:
 the checks, the sealed→flagged diffs, and the ledger — one file a judge can
-open and share. A captured-run pack and its rendered report ship in the repo:
+open and share. The page embeds the raw pack JSON, so it verifies itself:
+`verify_pack.py report.html` re-runs every check on the same artifact the
+reviewer just read. A captured-run pack and its rendered report ship in the repo:
 `docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.{json,html}` —
 open the HTML directly or re-verify the JSON with one command. A PASS proves
 the bundle is internally consistent (these verdicts rest on exactly these
