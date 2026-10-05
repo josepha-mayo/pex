@@ -123,8 +123,12 @@ The Inspector's **Evidence pack** button (or
 `GET /v1/goals/{id}/evidence-pack`) downloads a self-contained bundle: the
 verification report, the sealed baseline digests *and* their captured bytes,
 the flagged bytes behind every integrity flag, and a hash-chained copy of the
-stored event ledger — all under a manifest digest. `demo.py --live` saves one
-as `pex-evidence-pack.json` next to the receipt on exit.
+stored event ledger — all under a manifest digest. As it downloads, the app
+recomputes the full check in the browser (a TypeScript port of the verifier —
+a second implementation, independent of the bridge) and shows the PASS lines
+inline; the CLI below remains the authoritative check for edge cases.
+`demo.py --live` saves one as `pex-evidence-pack.json` next to the receipt on
+exit.
 
 ```powershell
 uv run python scripts/verify_pack.py pex-evidence-pack.json --html build/pack-report.html

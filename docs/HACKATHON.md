@@ -30,12 +30,17 @@ intervenes only inside bounded policy.
    tamper run by `scripts/capture_replay.py`, so a judge watches the exact
    events the live pipeline saw. `captured_handoff_eval` is the handoff
    *target's* captured trajectory — it opens with the injected PEX context
-   bundle itself.
-3. Click **Evidence pack** in the Inspector, then
-   `python scripts/verify_pack.py pex-evidence-pack-*.json` — the offline
-   verifier recomputes every digest (sealed bytes ↔ digests, flagged bytes ↔
-   incident digests, the hash-chained event ledger, the manifest). The demo
-   does not ask you to trust it.
+   bundle itself. Two more arcs worth a look: `drift_loop_eval` (repeated
+   identical failures → bounded overlay proposal, honestly refused on a
+   recorded session) and `constraint_violation_eval` (the worker narrates
+   intent to violate a recorded `forbidden_outcome` → the ledger catches the
+   statement and nudges before damage).
+3. Click **Evidence pack** in the Inspector — the app recomputes every digest
+   *in your browser* while it downloads (a TypeScript port of the verifier,
+   independent of the bridge). Then `python scripts/verify_pack.py
+   pex-evidence-pack-*.json` runs the authoritative offline check (sealed
+   bytes ↔ digests, flagged bytes ↔ incident digests, the hash-chained event
+   ledger, the manifest). The demo does not ask you to trust it.
 4. Open the Inspector on the replay session: the **Independent claim
    verification** block shows the adjudicated-claim timeline, verdicts,
    flagged files, and adjudication evidence — click a flagged file to expand
