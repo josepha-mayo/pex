@@ -111,7 +111,7 @@ Replays every fixture through the real pipeline and scores each verification
 report against the arc it exists to demonstrate — nonzero exit if a tamper
 scenario ends verified without its integrity incident, or a no-evidence
 scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`
-(7/7 arcs). `--repeat N` replays every fixture N times and fails on any
+(8/8 arcs). `--repeat N` replays every fixture N times and fails on any
 verdict, completion, or normalized-evidence drift — adjudication is
 deterministic on a recorded trajectory. This is the curated fixture suite,
 not a benchmark. Fixtures are authorable — `fixtures/demo/README.md`
@@ -144,6 +144,11 @@ uv run python scripts/capture_replay.py `
   --workspace build/demo/live-<utc>/workspace `
   --tamper --out fixtures/demo/captured_live_eval.json
 ```
+
+Two captures ship in the suite: `captured_live_eval` (the tamper run) and
+`captured_handoff_eval` (the handoff *target* session — it opens with the
+real injected context bundle and preserves PEX's `REQUEST_VERIFICATION`
+demand for an attributable run).
 
 Reads the demo home's stored event ledger (no running bridge needed), dedups
 OpenCode's SSE re-deliveries, reconstructs workspace mutations from the

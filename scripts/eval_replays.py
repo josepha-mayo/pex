@@ -80,6 +80,13 @@ EXPECTED: dict[str, FixtureExpectation] = {
         min_claims=2,
         min_integrity_incidents=1,
     ),
+    # Captured from the handoff *target* session — it ends honestly uncertain
+    # (the capture precedes any attributable terminal claim), and its value is
+    # the visible PEX context bundle + the REQUEST_VERIFICATION correction.
+    "captured_handoff_eval": FixtureExpectation(
+        completion_in={"uncertain", "in_progress"},
+        max_verified_or_supported=0,
+    ),
 }
 
 
@@ -95,7 +102,9 @@ def _post(base: str, path: str, payload: dict) -> dict:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=120) as response:
+    # The replay POST blocks until the trajectory is adjudicated; on a loaded
+    # machine the bigger fixtures (captured live runs) can take minutes.
+    with urllib.request.urlopen(request, timeout=300) as response:
         return json.loads(response.read())
 
 

@@ -6,10 +6,15 @@ sealed-baseline checks → verdicts → policy → interventions), always labele
 `replay: true` + `not_live_control: true`. No worker install needed — the
 setup card in `python scripts/demo.py` lists them as buttons.
 
-`captured_live_eval` is different in provenance, not privilege: it was
-exported from a recorded live OpenCode run by `scripts/capture_replay.py` and
-is tagged **from live** in the UI. Every fixture is scored on every push by
-`scripts/eval_replays.py` against a declared arc
+`captured_live_eval` and `captured_handoff_eval` are different in
+provenance, not privilege: both were exported from recorded live OpenCode
+runs by `scripts/capture_replay.py` and are tagged **from live** in the UI.
+`captured_handoff_eval` is the *handoff target's* trajectory — it opens with
+the actual injected PEX context bundle and preserves the supervisor's
+`REQUEST_VERIFICATION` demand for an attributable pytest run (the worker had
+piped output through `Select-Object`, which doesn't count). It ends honestly
+`uncertain` because the capture precedes any terminal claim. Every fixture is
+scored on every push by `scripts/eval_replays.py` against a declared arc
 (`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`).
 
 ## Write your own — challenge the supervisor

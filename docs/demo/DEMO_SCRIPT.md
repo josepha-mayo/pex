@@ -116,7 +116,17 @@ Then point at the recorded-replay fixtures:
 > "And note what doesn't appear here: the replay sessions are sealed
 > evidence. You can't re-attach them or hand a bundle to a recording — the
 > control only exists for live workers, because PEX refuses to pretend a
-> replay is steerable."
+> replay is steerable. Two of these fixtures aren't scripted at all — they're
+> tagged FROM LIVE because they were exported from recorded OpenCode runs,
+> and this one" — open `captured_handoff_eval` — "is the sibling's own
+> trajectory: it starts with the injected bundle, and PEX still demanded an
+> attributable test run."
+
+Then click **Evidence pack** on the session:
+
+> "Every verdict ships with a receipt you can check without trusting us —
+> sealed digests, flagged bytes, a hash-chained event ledger, a manifest.
+> `verify_pack.py` recomputes all of it offline."
 
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 

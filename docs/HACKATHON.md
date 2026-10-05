@@ -28,7 +28,9 @@ intervenes only inside bounded policy.
    deselects the suite and earns the same `uncertain` downgrade. Or replay
    `captured_live_eval` — a fixture exported from a *real* recorded OpenCode
    tamper run by `scripts/capture_replay.py`, so a judge watches the exact
-   events the live pipeline saw.
+   events the live pipeline saw. `captured_handoff_eval` is the handoff
+   *target's* captured trajectory — it opens with the injected PEX context
+   bundle itself.
 3. Click **Evidence pack** in the Inspector, then
    `python scripts/verify_pack.py pex-evidence-pack-*.json` — the offline
    verifier recomputes every digest (sealed bytes ↔ digests, flagged bytes ↔
@@ -72,7 +74,7 @@ Nemotron inference follows the same runbook's main path.
   acceptance-surface sealing and tamper detection, the replay demo, local
   subprocess public-test verification, 5,377 backend tests (latest full run on
   the `7dc44d5` tree, 0 failures). `python scripts/eval_replays.py` scores the
-  shipped fixture suite against its declared supervision arcs — 7/7 on
+  shipped fixture suite against its declared supervision arcs — 8/8 on
   2026-10-05
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json)).
 - **Runs live with no key:** a real OpenCode worker on the free Nemotron 3
