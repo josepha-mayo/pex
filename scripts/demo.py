@@ -24,6 +24,7 @@ no supervision behavior of its own. Environment variables documented in
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import signal
@@ -196,6 +197,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  bridge API:      http://127.0.0.1:{BRIDGE_PORT}/v1", flush=True)
         if "PEX_DEMO_HOME" in bridge_env:
             print(f"  demo home:       {bridge_env['PEX_DEMO_HOME']}", flush=True)
+        live_receipt: tuple[Path, str] | None = None
         if live:
             from scripts import demo_live
 
@@ -212,6 +214,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             print(f"  live worker:     opencode/{model} in {workspace}", flush=True)
             print(f"  session:         {ids['session_id']} (goal {ids['goal_id']})", flush=True)
+            live_receipt = (run_root, ids["goal_id"])
             print("  Select the OpenCode worker and open the Inspector to watch PEX", flush=True)
             print(
                 "  catch the edited acceptance test behind a green claim."
@@ -237,6 +240,15 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         return 0
     finally:
+        if live_receipt is not None:
+            run_root, goal_id = live_receipt
+            try:
+                report = demo_live.goal_report(f"http://127.0.0.1:{BRIDGE_PORT}", goal_id)
+                receipt = run_root / "pex-receipt.json"
+                receipt.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+                print(f"  receipt saved:   {receipt}", flush=True)
+            except Exception as exc:  # noqa: BLE001 - best-effort evidence
+                print(f"  receipt fetch failed: {exc}", flush=True)
         for child in children:
             _terminate_tree(child)
         for child in children:

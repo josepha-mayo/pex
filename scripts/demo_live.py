@@ -172,3 +172,10 @@ def start_supervised_session(
         {"parts": [{"type": "text", "text": task}]},
     )
     return {"session_id": session_id, "goal_id": goal_id}
+
+
+def goal_report(bridge: str, goal_id: str) -> dict[str, Any]:
+    """Fetch the goal's verification report for the live-run receipt."""
+
+    quoted = urllib.parse.quote(goal_id, safe="")
+    return _call("GET", f"{bridge}/v1/goals/{quoted}/verification-report", timeout=15)
