@@ -138,7 +138,10 @@ open and share. The page embeds the raw pack JSON, so it verifies itself:
 `verify_pack.py report.html` re-runs every check on the same artifact the
 reviewer just read. A captured-run pack and its rendered report ship in the repo:
 `docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.{json,html}` —
-open the HTML directly or re-verify the JSON with one command. A PASS proves
+open the HTML directly or re-verify the JSON with one command. A second
+committed pack records the drift arc (`apply overlay` proposed → honestly
+refused on a replay session → bounded cooldown suppressions):
+`docs/demo/evidence/EVIDENCE_PACK_drift_loop_2026-10-05.{json,html}`. A PASS proves
 the bundle is internally consistent (these verdicts rest on exactly these
 bytes); it does not claim a live worker ran — that evidence is the receipts
 and recordings.

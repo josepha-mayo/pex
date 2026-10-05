@@ -213,7 +213,10 @@ or just open [`docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html`](
 — the receipt renders itself: every check, every digest, the tamper diff, and
 the hash-chained ledger in one self-contained page. It *verifies* itself too:
 the raw pack JSON rides embedded, so `verify_pack.py <that-file.html>`
-re-runs all checks on the artifact you're looking at.
+re-runs all checks on the artifact you're looking at. A second pack covers a
+different arc — the drift-loop fixture's `apply overlay` proposal, its honest
+`overlay dispatch refused` outcome, and the cooldown suppressions:
+[`docs/demo/evidence/EVIDENCE_PACK_drift_loop_2026-10-05.html`](docs/demo/evidence/EVIDENCE_PACK_drift_loop_2026-10-05.html).
 
 ![Sealed-baseline diff of the weakened test](docs/demo/assets/pex-tamper-diff-c281f0f.png)
 
