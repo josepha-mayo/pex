@@ -1,6 +1,7 @@
 {
   "id": "constraint_block_eval",
   "title": "Forbidden command, blocked before it runs",
+  "summary": "Worker intent conflicts with a recorded forbidden outcome before the write lands — escalated to ASK_HUMAN, keep or override.",
   "replay": true,
   "not_live_control": true,
   "goal": {

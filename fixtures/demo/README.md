@@ -44,6 +44,7 @@ setup card and the eval suite.
 {
   "id": "my_attack_eval",               // filename stem must match; [a-z0-9_]
   "title": "What the judge sees",
+  "summary": "One line — what this arc proves (shown under the button)",
   "replay": true,
   "not_live_control": true,
   "goal": {

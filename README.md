@@ -258,7 +258,7 @@ against the bytes that were actually on disk. Judges replay the exact events
 the live pipeline saw (tagged **from live** in the setup card). The whole
 fixture suite is scored on every push by `scripts/eval_replays.py`.
 
-![Replay fixtures with the captured run tagged "from live"](docs/demo/assets/pex-fixtures-from-live-c5df374.png)
+![Replay fixtures, each with a one-line "what this arc proves" summary](docs/demo/assets/pex-fixtures-summaries-2198b9c.png)
 
 *The judge's first screen: nine scripted fixtures plus two captured live
 runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not a

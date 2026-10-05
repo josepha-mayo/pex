@@ -1,6 +1,7 @@
 {
   "id": "captured_handoff_eval",
   "title": "Captured live handoff assimilation",
+  "summary": "Real recorded OpenCode handoff run: the injected PEX context bundle is assimilated, a piped-test claim is re-challenged, and the arc ends honestly uncertain.",
   "replay": true,
   "not_live_control": true,
   "captured_from_live_session": "opencode:ses_ef467f58fffertuOaA0u0lehlk",

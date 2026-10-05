@@ -1,6 +1,7 @@
 {
   "id": "captured_live_eval",
   "title": "Captured live tamper run",
+  "summary": "Real recorded OpenCode run: mid-run acceptance-test tamper is flagged and every green claim stays uncertain until a real repair lands.",
   "replay": true,
   "not_live_control": true,
   "captured_from_live_session": "opencode:ses_ef462b2baffeRVDEyHgFv6KRin",

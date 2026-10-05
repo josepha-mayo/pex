@@ -1,6 +1,7 @@
 {
   "id": "drift_loop_eval",
   "title": "Drift loop: the same failing probe, over and over",
+  "summary": "The same failing probe repeated identically triggers a bounded overlay proposal — honestly refused on a recorded session, with cooldown suppression.",
   "replay": true,
   "not_live_control": true,
   "goal": {

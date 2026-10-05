@@ -56,6 +56,31 @@ def test_demo_listing_skips_malformed_files(tmp_path, monkeypatch) -> None:
     ]
 
 
+def test_demo_listing_surfaces_bounded_summary(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("pex_bridge.demo.fixture_dir", lambda: tmp_path)
+    (tmp_path / "arc.json").write_text(
+        json.dumps(
+            {
+                "id": "arc",
+                "title": "Arc",
+                "summary": "  " + "x" * 300,
+                "events": [{"event_type": "status"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "nonstr.json").write_text(
+        json.dumps(
+            {"id": "nonstr", "title": "Nonstr", "summary": 7, "events": []}
+        ),
+        encoding="utf-8",
+    )
+
+    items = {item["id"]: item for item in list_fixtures()}
+    assert items["arc"]["summary"] == "x" * 240
+    assert "summary" not in items["nonstr"]
+
+
 @pytest.mark.parametrize(
     "payload",
     [

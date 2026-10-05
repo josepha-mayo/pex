@@ -182,6 +182,9 @@ def list_fixtures() -> list[dict]:
             "not_live_control": True,
             "events": len(data.get("events") or []),
         }
+        summary = data.get("summary")
+        if isinstance(summary, str) and summary.strip():
+            item["summary"] = summary.strip()[:240]
         captured = data.get("captured_from_live_session")
         if isinstance(captured, str) and captured:
             item["captured_from_live_session"] = captured

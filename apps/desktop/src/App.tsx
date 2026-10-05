@@ -3020,6 +3020,9 @@ export function App() {
                       {demoReplay.running && demoReplay.fixture === fixture.id
                         ? "Replaying…"
                         : fixture.title}
+                      {fixture.summary ? (
+                        <small className="fixture-summary">{fixture.summary}</small>
+                      ) : null}
                       {fixture.capturedFromLive ? (
                         <small
                           className="fixture-captured-tag"

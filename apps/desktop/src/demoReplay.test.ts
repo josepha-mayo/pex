@@ -18,6 +18,7 @@ const listed = {
     {
       id: "captured_live_eval",
       title: "Captured live tamper run",
+      summary: "What this arc proves.",
       replay: true,
       events: 32,
       captured_from_live_session: "opencode:ses_x",
@@ -31,6 +32,8 @@ test("the replay control only appears for an honestly labeled fixture list", () 
   assert.equal(fixtures?.[1]?.id, "tampered_acceptance_eval");
   assert.equal(fixtures?.[2]?.capturedFromLive, "opencode:ses_x");
   assert.equal(fixtures?.[0]?.capturedFromLive, undefined);
+  assert.equal(fixtures?.[2]?.summary, "What this arc proves.");
+  assert.equal(fixtures?.[0]?.summary, undefined);
 
   for (const payload of [
     null, "[]", 42,
@@ -52,6 +55,7 @@ test("one malformed fixture removes the entire replay control", () => {
     { id: "../escape", title: "traversal" },
     { id: "ID With Spaces", title: "x" },
     { id: 42, title: "x" },
+    { id: "ok_id", title: "x", summary: 42 },
     "tampered_acceptance_eval",
   ]) {
     const payload = {

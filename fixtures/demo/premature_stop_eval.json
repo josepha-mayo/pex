@@ -1,6 +1,7 @@
 {
   "id": "premature_stop_eval",
   "title": "False completion without tests",
+  "summary": "A worker claims done with no test evidence — the claim is adjudicated unsupported and the session stays open until real verification.",
   "replay": true,
   "not_live_control": true,
   "goal": {

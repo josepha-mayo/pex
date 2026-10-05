@@ -1,6 +1,7 @@
 {
   "id": "dataset_before_eval",
   "title": "Eval started before the dataset existed",
+  "summary": "The eval ran before the dataset existed — missing input is surfaced as uncertainty, not read as failure or success.",
   "replay": true,
   "not_live_control": true,
   "goal": {
