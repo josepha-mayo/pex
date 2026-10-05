@@ -336,11 +336,12 @@ async def _evidence_pack_payload(goal_id: str) -> dict[str, Any]:
 
     The pack embeds the verification report plus everything needed to check it
     offline: sealed baseline digests AND their captured contents, the flagged
-    bytes behind each integrity flag, and a hash-chained copy of every stored
-    event for the bound sessions. ``scripts/verify_pack.py`` recomputes each
-    digest and the manifest — the pack proves internal consistency (these
-    verdicts rest on exactly these bytes and events), never that a live run
-    occurred.
+    bytes behind each integrity flag, the intervention records themselves
+    (proposals, verdicts, and honest outcomes), and a hash-chained copy of
+    every stored event for the bound sessions. ``scripts/verify_pack.py``
+    recomputes each digest and the manifest — the pack proves internal
+    consistency (these verdicts rest on exactly these bytes and events),
+    never that a live run occurred.
     """
 
     report = await _verification_report_payload(goal_id)
@@ -432,6 +433,9 @@ async def _evidence_pack_payload(goal_id: str) -> dict[str, Any]:
         "report": report,
         "acceptance_baselines": baselines,
         "flagged": flagged,
+        "interventions": [
+            item.model_dump(mode="json") for item in interventions
+        ],
         "event_ledger": event_ledger,
     }
     pack["manifest_sha256"] = _sha256_text(_canonical_json(pack))

@@ -25,6 +25,16 @@ async function makePack(): Promise<Record<string, unknown>> {
         contents: { "tests/test_core.py": sealed },
       },
     ],
+    interventions: [
+      {
+        id: "intervention_abcdef012345",
+        session_id: "synthetic:replay-test",
+        action_taken: "SEND_NUDGE",
+        policy_verdict: "allow",
+        result: "sent",
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ],
     flagged: [
       {
         session_id: "synthetic:replay-test",

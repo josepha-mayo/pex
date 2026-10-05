@@ -137,6 +137,23 @@ def verify(pack: dict) -> list[str]:
 
     claims = report.get("claims") or []
     check(len(claims) == (report.get("summary") or {}).get("claims"), "claim count consistent")
+
+    # Intervention records: the supervision arc rides in the bundle. Their ids
+    # must be unique; integrity-flagged paths must reference a flagged entry.
+    interventions = pack.get("interventions") or []
+    ids = [item.get("id") for item in interventions if isinstance(item, dict)]
+    check(
+        len(ids) == len(set(ids)),
+        f"intervention ids unique ({len(ids)} records)",
+    )
+    flagged_ids = {
+        str(entry.get("intervention_id"))
+        for entry in pack.get("flagged") or []
+    }
+    check(
+        flagged_ids.issubset(set(ids)),
+        "every flagged incident references a bundled intervention",
+    )
     return checks
 
 
@@ -294,6 +311,27 @@ def render_html(pack: dict, checks: list[str]) -> str:
                 )
                 parts.append(f"<pre class=diff>{_diff_html(old_text or '', new_text, path)}</pre>")
             parts.append("</div>")
+
+    interventions = pack.get("interventions") or []
+    if interventions:
+        parts.append("<h2>Supervision arc</h2>")
+        parts.append(
+            "<div class=panel><table><tr><th>at</th><th>action</th>"
+            "<th>policy</th><th>outcome</th><th>evidence</th></tr>"
+        )
+        for item in interventions:
+            if not isinstance(item, dict):
+                continue
+            evidence = item.get("evidence") or []
+            first_evidence = str(evidence[0])[:80] if evidence else ""
+            parts.append(
+                f"<tr><td>{_esc(str(item.get('created_at') or '')[:19])}</td>"
+                f"<td>{_esc(item.get('action_taken'))}</td>"
+                f"<td>{_esc(item.get('policy_verdict'))}</td>"
+                f"<td>{_esc(item.get('result'))}</td>"
+                f"<td class=mono>{_esc(first_evidence)}</td></tr>"
+            )
+        parts.append("</table></div>")
 
     ledgers = pack.get("event_ledger") or []
     if ledgers:

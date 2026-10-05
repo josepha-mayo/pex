@@ -173,6 +173,10 @@ async def test_pack_roundtrips_through_the_offline_verifier(client) -> None:
     assert ledger["count"] == 2
     assert len(ledger["chain_sha256"]) == 64
 
+    # The supervision arc rides in the bundle — every flagged incident must
+    # reference a bundled intervention record.
+    assert {item["id"] for item in pack["interventions"]} >= {"int-pack"}
+
     # The worker's own words ride each verdict so the timeline reads
     # claim -> independent verdict, not just action names.
     assert pack["report"]["claims"][0]["claim_statements"] == ["All tests passed"]
@@ -224,6 +228,16 @@ def _fixture_pack() -> dict:
                 "session_id": "s1",
                 "files": {"test_csv_utils.py": sha(SEALED)},
                 "contents": {"test_csv_utils.py": SEALED},
+            }
+        ],
+        "interventions": [
+            {
+                "id": "i1",
+                "session_id": "s1",
+                "action_taken": "SEND_NUDGE",
+                "policy_verdict": "allow",
+                "result": "sent",
+                "created_at": "2026-10-05T00:00:00+00:00",
             }
         ],
         "flagged": [

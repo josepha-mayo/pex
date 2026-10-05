@@ -180,5 +180,19 @@ export async function verifyEvidencePack(pack: Record<string, unknown>): Promise
     claims.length === record(report.summary).claims,
     "claim count consistent",
   );
+
+  const interventions = list(pack.interventions).map(record);
+  const ids = interventions.map((item) => item.id);
+  check(
+    ids.length === new Set(ids).size,
+    `intervention ids unique (${ids.length} records)`,
+  );
+  const flaggedIds = new Set(
+    list(pack.flagged).map((entry) => str(record(entry).intervention_id)),
+  );
+  check(
+    [...flaggedIds].every((id) => ids.includes(id)),
+    "every flagged incident references a bundled intervention",
+  );
   return checks;
 }
