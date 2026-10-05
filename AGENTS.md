@@ -61,10 +61,15 @@ preflight test, which now has a 300 s budget).
   seeded git workspace under `build/demo/live-<utc>/` and attaches the goal
   via the bridge API (`scripts/demo_live.py`). Live workspaces MUST be their
   own git root — nested inside this repo, OpenCode adopts PEX's AGENTS.md and
-  runs PEX's own test suite. On this machine OpenCode 1.18.32 lives at
-  `D:\tools\opencode` (add `node_modules\.bin` to PATH). The packaged Tauri
-  app uses the same bridge port with a bearer token owned by the Rust
-  launcher.
+  runs PEX's own test suite. `--live` also seeds an idle sibling session on
+  the same goal so the Inspector's **Hand off →** control has a real target,
+  and saves `pex-receipt.json` (the verification report) on exit. The demo
+  bridge advertises `unauthenticated_operator` on `/health` (test-scoped
+  `allow_unauthenticated_operator`), which unlocks the browser UI's operator
+  controls — decisions, pause/resume, the task composer, and handoffs. On
+  this machine OpenCode 1.18.32 lives at `D:\tools\opencode` (add
+  `node_modules\.bin` to PATH). The packaged Tauri app uses the same bridge
+  port with a bearer token owned by the Rust launcher.
 - ConTree API details verified against the published OpenAPI
   (`docs.tokenfactory.nebius.com`): the instance `InstanceResult`
   (state/stdout/stderr) hangs off `metadata.result` on the operation, not the

@@ -3705,6 +3705,11 @@ def create_app() -> FastAPI:
             "supervisor": "degraded" if state.supervisor_error else "ready",
             "supervisor_error": state.supervisor_error,
             "supervisor_backend": _public_supervisor_health(),
+            # Only true on a test-scoped unauthenticated bridge (the demo);
+            # production Settings refuse to combine it with require_auth.
+            "unauthenticated_operator": bool(
+                state.settings.allow_unauthenticated_operator
+            ),
         }
 
     @app.get("/v1/supervisor")

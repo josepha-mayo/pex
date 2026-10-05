@@ -165,13 +165,26 @@ def start_supervised_session(
     goal = _call("POST", f"{bridge}/v1/goals", goal_payload(workspace, scenario))
     goal_id = goal.get("id") or goal["goal"]["id"]
     _call("POST", f"{bridge}/v1/sessions/{quoted}/attach", {"goal_id": goal_id})
+    sibling_id: str | None = None
+    try:
+        sibling_vendor = _call("POST", f"{opencode}/session?directory={directory}", {})["id"]
+        sibling_id = f"opencode:{sibling_vendor}"
+        quoted_sibling = urllib.parse.quote(sibling_id, safe="")
+        _poll(
+            lambda: _call("GET", f"{bridge}/v1/sessions/{quoted_sibling}"),
+            60,
+            "bridge sibling session discovery",
+        )
+        _call("POST", f"{bridge}/v1/sessions/{quoted_sibling}/attach", {"goal_id": goal_id})
+    except Exception:  # noqa: BLE001 - handoff target is best-effort; the run still supervises
+        sibling_id = None
     task = task_text(scenario)
     _call(
         "POST",
         f"{opencode}/session/{vendor_id}/prompt_async?directory={directory}",
         {"parts": [{"type": "text", "text": task}]},
     )
-    return {"session_id": session_id, "goal_id": goal_id}
+    return {"session_id": session_id, "goal_id": goal_id, "sibling_id": sibling_id}
 
 
 def goal_report(bridge: str, goal_id: str) -> dict[str, Any]:

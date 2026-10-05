@@ -214,6 +214,11 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             print(f"  live worker:     opencode/{model} in {workspace}", flush=True)
             print(f"  session:         {ids['session_id']} (goal {ids['goal_id']})", flush=True)
+            if ids.get("sibling_id"):
+                print(
+                    f"  handoff target:  {ids['sibling_id']} (idle sibling, same goal)",
+                    flush=True,
+                )
             live_receipt = (run_root, ids["goal_id"])
             print("  Select the OpenCode worker and open the Inspector to watch PEX", flush=True)
             print(

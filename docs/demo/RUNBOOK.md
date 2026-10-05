@@ -77,12 +77,29 @@ claims adjudicated, 1 corrective nudge naming the sealed test file;
 `LIVE_OPENCODE_TAMPER_PREFIX_*.json` is the same scenario captured before the
 terminal-sibling adapter fix, kept as regression history).
 
-In demo mode the bridge lets the local judge resolve decisions without a
-token — when OpenCode's permission gate pauses the worker (`needs_decision`),
-answer it from the Decisions rail. Each launcher run also gets a fresh
-`build/demo/home-<utc>` profile, so re-running never piles up stale workers;
-set `PEX_DEMO_HOME` yourself to keep one home across runs. The manual steps
-below remain for any other workspace or model.
+In demo mode the bridge lets the local judge act as operator without a
+token — the browser UI unlocks decision resolution, pause/resume, the task
+composer, and goal handoffs when `/health` advertises
+`unauthenticated_operator` (only `Settings.for_test` can set it; a production
+bridge refuses the combination). When OpenCode's permission gate pauses the
+worker (`needs_decision`), answer it from the Decisions rail. Each launcher
+run also gets a fresh `build/demo/home-<utc>` profile, so re-running never
+piles up stale workers; set `PEX_DEMO_HOME` yourself to keep one home across
+runs. The manual steps below remain for any other workspace or model.
+
+### Hand the goal to a fresh worker — in the browser
+
+`--live` also seeds an idle sibling OpenCode session on the same durable
+goal. In the Inspector's session card, pick the sibling under **"Hand the
+durable goal context to"** and press **Hand off →**: PEX mints a
+content-addressed `ContextBundle`, injects it into the target over the real
+OpenCode transport (`handoff_injected`), and starts assimilation monitoring
+(`/v1/handoffs/{effect_id}/assimilation`). The durable goal outlives the
+worker — a stalled or drifting session can hand its provenance-bound context
+to a fresh one. Replay sessions are sealed evidence (`not_live_control`) and
+can never be re-attached or receive a handoff; the control is live-only on
+purpose. Ctrl+C saves `pex-receipt.json` (the goal's verification report)
+into the live workspace root before teardown.
 
 ### Score the shipped fixture suite
 
@@ -94,7 +111,7 @@ Replays every fixture through the real pipeline and scores each verification
 report against the arc it exists to demonstrate — nonzero exit if a tamper
 scenario ends verified without its integrity incident, or a no-evidence
 scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`
-(4/4 arcs). This is the curated fixture suite, not a benchmark.
+(5/5 arcs). This is the curated fixture suite, not a benchmark.
 
 ## 1. Start the demo bridge
 

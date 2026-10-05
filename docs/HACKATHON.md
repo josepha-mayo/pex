@@ -47,6 +47,12 @@ intervenes only inside bounded policy.
    with `acceptance_surface_modified:test_csv_utils.py`
    ([receipt](demo/evidence/LIVE_OPENCODE_TAMPER_ses_ef720112cffe_2026-10-04.json),
    [capture](demo/assets/pex-live-opencode-tamper-b21b51d.png)).
+   `--live` also seeds an idle sibling session on the same goal — the
+   Inspector's **Hand off →** control mints a content-addressed
+   `ContextBundle`, injects it into the sibling, and monitors assimilation:
+   the durable goal outlives the worker. The demo bridge advertises
+   `unauthenticated_operator` on `/health`, so decisions, pause/resume, and
+   handoffs all work from the judge's plain browser.
 
 The same scenario as raw API calls is [Scenario D in the demo
 runbook](demo/RUNBOOK.md). Supervising a live OpenCode worker with real

@@ -165,3 +165,64 @@ def test_live_opencode_binding_is_loopback_only(tmp_path, monkeypatch) -> None:
     assert demo_live.resolve_opencode() is None
     missing.write_bytes(b"")
     assert demo_live.resolve_opencode() == missing
+
+
+def test_live_session_seeds_an_idle_handoff_target(tmp_path, monkeypatch) -> None:
+    import urllib.parse
+
+    from scripts import demo_live
+
+    calls = []
+    vendor_ids = iter(["vendor-main", "vendor-sibling"])
+
+    def fake_call(method, url, body=None, timeout=30):
+        calls.append((method, url, body))
+        if url.startswith("http://x/session?") or "/session?" in url:
+            return {"id": next(vendor_ids)}
+        if url.endswith("/v1/goals"):
+            return {"goal": {"id": "goal-1"}}
+        if "/v1/sessions/" in url and method == "GET":
+            return {"id": urllib.parse.unquote(url.rsplit("/", 1)[-1])}
+        return {}
+
+    monkeypatch.setattr(demo_live, "_call", fake_call)
+    monkeypatch.setattr(demo_live, "_poll", lambda fn, timeout, what: fn())
+    monkeypatch.setattr(
+        demo_live, "goal_payload", lambda workspace, scenario="false-claim": {"x": 1}
+    )
+
+    ids = demo_live.start_supervised_session(tmp_path, bridge="http://b", opencode="http://x")
+    assert ids == {
+        "session_id": "opencode:vendor-main",
+        "goal_id": "goal-1",
+        "sibling_id": "opencode:vendor-sibling",
+    }
+    attaches = [
+        body["goal_id"]
+        for method, url, body in calls
+        if method == "POST" and url.endswith("/attach")
+    ]
+    assert attaches == ["goal-1", "goal-1"]
+
+
+def test_live_session_survives_a_missing_handoff_target(tmp_path, monkeypatch) -> None:
+    import urllib.parse
+
+    from scripts import demo_live
+
+    vendor_ids = iter(["vendor-main"])
+
+    def fake_call(method, url, body=None, timeout=30):
+        if "/session?" in url and method == "POST":
+            return {"id": next(vendor_ids)}
+        if url.endswith("/v1/goals"):
+            return {"goal": {"id": "goal-1"}}
+        if "/v1/sessions/" in url and method == "GET":
+            return {"id": urllib.parse.unquote(url.rsplit("/", 1)[-1])}
+        return {}
+
+    monkeypatch.setattr(demo_live, "_call", fake_call)
+    monkeypatch.setattr(demo_live, "_poll", lambda fn, timeout, what: fn())
+
+    ids = demo_live.start_supervised_session(tmp_path, bridge="http://b", opencode="http://x")
+    assert ids["sibling_id"] is None

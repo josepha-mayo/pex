@@ -70,6 +70,9 @@ export function Inspector({
   canonicalStateIssue,
   sessionActionsAvailable = true,
   goalActionsAvailable = true,
+  handoffTargets = [],
+  handoffBusy = false,
+  onHandoff,
   onEvidence,
   onOpen,
   onPause,
@@ -114,6 +117,9 @@ export function Inspector({
   canonicalStateIssue?: string | null;
   sessionActionsAvailable?: boolean;
   goalActionsAvailable?: boolean;
+  handoffTargets?: SessionRow[];
+  handoffBusy?: boolean;
+  onHandoff?: (targetId: string) => void;
   onEvidence: () => void;
   onOpen: () => void;
   onPause: () => void;
@@ -129,6 +135,10 @@ export function Inspector({
   onOpenDeck: () => void;
   onSelectSession?: (sessionId: string) => void;
 }) {
+  const [handoffTarget, setHandoffTarget] = useState("");
+  const activeHandoffTarget = handoffTargets.some((s) => s.id === handoffTarget)
+    ? handoffTarget
+    : (handoffTargets[0]?.id ?? "");
   const canUndo = Boolean(
     action?.id && isSafelyUndoable(action.action, action.reversible, action.result),
   );
@@ -245,13 +255,41 @@ export function Inspector({
                 {current.supervision_paused ? "Resume supervision" : "Pause supervision"}
               </button>
             </div>
-          ) : (
+          ) : null}
+          {current && handoffTargets.length > 0 ? (
+            <div className="handoff-row">
+              <label className="handoff-label">
+                Hand the durable goal context to
+                <select
+                  value={activeHandoffTarget}
+                  onChange={(event) => setHandoffTarget(event.target.value)}
+                  disabled={handoffBusy}
+                >
+                  {handoffTargets.map((target) => (
+                    <option key={target.id} value={target.id}>
+                      {titleCase(target.harness_type)} · {target.id.split(":").pop()}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="ghost"
+                disabled={!sessionActionsAvailable || handoffBusy || !activeHandoffTarget}
+                title={!sessionActionsAvailable ? "Available in the authenticated PEX desktop app or the demo operator bridge" : "PEX reserves a content-addressed context bundle, injects it into the target, and monitors assimilation"}
+                onClick={() => activeHandoffTarget && onHandoff?.(activeHandoffTarget)}
+              >
+                {handoffBusy ? "Handing off…" : "Hand off →"}
+              </button>
+            </div>
+          ) : null}
+          {!current ? (
             <p className="empty-copy">
               PEX lists already-open Cursor, Codex, OpenCode, Hermes, and Claude Code
               sessions without restarting them. A closed harness stays unavailable until
               its app or API is actually running.
             </p>
-          )}
+          ) : null}
         </section>
 
         <section className="story-card action-story">

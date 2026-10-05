@@ -467,6 +467,27 @@ export function App() {
   const pageVisible = usePageVisibility();
   const observationActive = pageVisible && (shell !== "pet" || petVisible);
 
+  // The packaged app proves operator authority with the launcher-held bearer
+  // token. The loopback demo bridge instead advertises a test-scoped
+  // unauthenticated-operator allowance on /health; honor it once so judges in
+  // a plain browser can resolve decisions and hand off goals.
+  const [demoOperatorActions, setDemoOperatorActions] = useState(false);
+  useEffect(() => {
+    if (TAURI) return;
+    let cancelled = false;
+    bridgeJson<{ unauthenticated_operator?: boolean }>("/health")
+      .then((health) => {
+        if (!cancelled && health?.unauthenticated_operator === true) {
+          setDemoOperatorActions(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const operatorActionsAvailable = TAURI || demoOperatorActions;
+
   useEffect(() => {
     const acceptVisibility = (visible: boolean) => {
       setPetVisible(visible);
@@ -1632,6 +1653,21 @@ export function App() {
     () => actionForSession(current, displayedInterventions, displayedLastAction),
     [current, displayedInterventions, displayedLastAction],
   );
+  // Same-goal siblings that can accept an injected context bundle. The bridge
+  // re-checks the capability server-side; this list is only a UI affordance.
+  const handoffTargets = useMemo(
+    () =>
+      current?.goal_id
+        ? sessions.filter(
+            (session) =>
+              session.id !== current.id &&
+              session.goal_id === current.goal_id &&
+              session.capabilities?.inject_context === true,
+          )
+        : [],
+    [sessions, current?.goal_id, current?.id],
+  );
+  const [handoffBusy, setHandoffBusy] = useState(false);
   const homeStatus = statusWithFirstRunGuidance(
     selectedWorkerStatus(status, current, action, sessionStateFresh, Boolean(pet?.paused)),
     setup, Boolean(pet?.paused),
@@ -1717,8 +1753,8 @@ export function App() {
   async function pauseOrResume(session?: SessionRow) {
     const row = session || current;
     if (!row) return;
-    if (!TAURI) {
-      setNote("Pausing supervision requires the authenticated PEX desktop app.");
+    if (!operatorActionsAvailable) {
+      setNote("Pausing supervision requires the authenticated PEX desktop app or the demo operator bridge.");
       return;
     }
     const sourceFresh = session
@@ -1734,6 +1770,41 @@ export function App() {
       await refreshPet();
     } catch (error) {
       setNote(operationError(error, "Could not update supervision for that session."));
+    }
+  }
+
+  async function handoffGoal(targetId: string) {
+    if (!current?.goal_id || !operatorActionsAvailable || handoffBusy) return;
+    setHandoffBusy(true);
+    try {
+      const result = await bridgeJson<{
+        status?: string;
+        bundle_receipt?: { bundle_digest?: string };
+        effect?: { result?: { reason?: string } };
+      }>(`/v1/sessions/${encodeURIComponent(current.id)}/handoff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idempotency_key: crypto.randomUUID(),
+          target_session_id: targetId,
+          token_budget: 2000,
+        }),
+      });
+      const statusName = result?.status || "submitted";
+      const digest = result?.bundle_receipt?.bundle_digest?.slice(0, 12);
+      const reason = result?.effect?.result?.reason;
+      setNote(
+        statusName === "delivered"
+          ? `Handoff delivered — context bundle ${digest ? `sha256:${digest}… ` : ""}injected; assimilation monitoring started.`
+          : statusName === "delivery_uncertain"
+            ? `Handoff delivery uncertain${reason ? ` (${reason})` : ""} — PEX will not report it as delivered.`
+            : `Handoff ${statusName}${reason ? `: ${reason}` : ""}${digest ? ` · bundle sha256:${digest}…` : ""}.`,
+      );
+      void handoffAssimilationRefresh.current?.();
+    } catch (error) {
+      setNote(operationError(error, "Could not hand off the goal context."));
+    } finally {
+      setHandoffBusy(false);
     }
   }
 
@@ -2789,8 +2860,8 @@ export function App() {
                 ) : null}
                 <div className="button-row">
                   <button type="button" className="solid" onClick={() => openInspector()}>Review evidence</button>
-                  {current ? <button type="button" className="ghost" disabled={!sessionStateFresh || !TAURI}
-                    title={!TAURI ? "Available in the authenticated PEX desktop app" : undefined}
+                  {current ? <button type="button" className="ghost" disabled={!sessionStateFresh || !operatorActionsAvailable}
+                    title={!operatorActionsAvailable ? "Available in the authenticated PEX desktop app or the demo operator bridge" : undefined}
                     onClick={() => void pauseOrResume()}>
                     {current.supervision_paused ? "Resume supervision" : "Pause supervision"}
                   </button> : null}
@@ -2807,7 +2878,7 @@ export function App() {
             </section>
           ) : null}
           {current && attachedGoal && !setup
-            && TAURI
+            && operatorActionsAvailable
             && (current.project_id || current.cwd)
             && current.capabilities?.send_message === true
             && (current.harness_type === "codex" || current.harness_type === "opencode") ? (
@@ -2930,8 +3001,11 @@ export function App() {
           note={note}
           canonicalStateAvailable={inspectorCanonicalStateAvailable}
           canonicalStateIssue={inspectorIssue}
-          sessionActionsAvailable={sessionStateFresh && TAURI}
+          sessionActionsAvailable={sessionStateFresh && operatorActionsAvailable}
           goalActionsAvailable={goalMutationAvailable}
+          handoffTargets={operatorActionsAvailable ? handoffTargets : []}
+          handoffBusy={handoffBusy}
+          onHandoff={(targetId) => void handoffGoal(targetId)}
           onEvidence={() => setEvidenceOpen((open) => !open)}
           onOpen={() => void openSession()}
           onPause={() => void pauseOrResume()}
@@ -2992,7 +3066,7 @@ export function App() {
           loading={detailsLoading}
           error={deckIssue}
           mutationsAvailable={deckMutationsAvailable}
-          operatorControlsAvailable={TAURI}
+          operatorControlsAvailable={operatorActionsAvailable}
           decisionsFresh={decisionsFresh}
           sessionsFresh={sessionStateFresh}
           goalsFresh={goalStateFresh && !bridgeError}
