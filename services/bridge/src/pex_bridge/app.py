@@ -3688,8 +3688,7 @@ def create_app() -> FastAPI:
             "proof": proof,
         }
 
-    @app.get("/health")
-    async def health(_: None = Depends(_require_token)):
+    async def _health_payload() -> dict:
         adapters = state.adapters.all()
         capabilities = await _bounded_adapter_probes(adapters)
         attached = [
@@ -3711,6 +3710,14 @@ def create_app() -> FastAPI:
                 state.settings.allow_unauthenticated_operator
             ),
         }
+
+    @app.get("/health")
+    async def health(_: None = Depends(_require_token)):
+        return await _health_payload()
+
+    @app.get("/v1/health")
+    async def v1_health(_: None = Depends(_require_token)):
+        return await _health_payload()
 
     @app.get("/v1/supervisor")
     async def get_supervisor(_: None = Depends(_require_token)):

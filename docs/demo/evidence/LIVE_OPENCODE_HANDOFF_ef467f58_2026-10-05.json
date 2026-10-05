@@ -1,0 +1,166 @@
+{
+  "schema": "pex.live-handoff-receipt.v1",
+  "captured_at": "2026-10-05T10:24:55.788398+00:00",
+  "source_session": "opencode:ses_ef46801aeffezBZOMXEdU43tI8",
+  "target_session": "opencode:ses_ef467f58fffertuOaA0u0lehlk",
+  "goal_id": "goal_fac7414eee9e4669b3683b8f744653a4",
+  "effect_id": "operator_effect_ec5072912bdc4761adeca29687a34dbd8ddf17e8",
+  "delivery_status": "delivered",
+  "assimilation": {
+    "schema": "pex.handoff-assimilation-status.v1",
+    "effect_id": "operator_effect_ec5072912bdc4761adeca29687a34dbd8ddf17e8",
+    "handoff_intervention_id": "int_handoff_5342e9044235703ea733f8b2a3d33e0cde6ccbcd",
+    "bundle_digest": "a051b5ece65ca8c099770fd1983de7d7e6154111c1633bd578f7ceb2c8b37287",
+    "delivery_status": "delivered",
+    "delivery_finished_at": "2026-10-05T10:24:55.788398+00:00",
+    "delivery_version": 2,
+    "status": "awaiting_target_evidence",
+    "assimilation_proven": false,
+    "watermark": {
+      "artifact_candidate_count": 0,
+      "candidate_index_digest": "31ff03fd412f29e712948c82fe2ad03229ab1e6dce1a02dcbd7e8aa1f55eb156",
+      "candidate_index_schema": "pex.handoff-candidate-manifest.v1",
+      "context_candidate_count": 1,
+      "dispatch_started_at": "2026-10-05T10:24:55.376586+00:00",
+      "effect_id": "operator_effect_ec5072912bdc4761adeca29687a34dbd8ddf17e8",
+      "effect_version": 1,
+      "schema": "pex.handoff-dispatch-watermark.v2",
+      "target_accept_seq_through": 2,
+      "target_session_id": "opencode:ses_ef467f58fffertuOaA0u0lehlk"
+    },
+    "typed_evidence_monitoring": {
+      "available": true,
+      "routing": "immutable_dispatch_candidate_index",
+      "capacity_limited": false
+    },
+    "monitoring_expires_at": "2026-10-06T10:24:55.376586+00:00",
+    "first_relevant_action": null,
+    "target_action_monitoring": {
+      "available": true,
+      "scope": "first_three_meaningful_accepted_target_events",
+      "observed_count": 0,
+      "actions_truncated": false,
+      "possible_failure_observed": false,
+      "handoff_failure_proven": false,
+      "actions": []
+    },
+    "evidence": []
+  },
+  "intervention": {
+    "id": "int_handoff_5342e9044235703ea733f8b2a3d33e0cde6ccbcd",
+    "session_id": "opencode:ses_ef467f58fffertuOaA0u0lehlk",
+    "goal_id": "goal_fac7414eee9e4669b3683b8f744653a4",
+    "trigger": "user_prompt",
+    "evidence": [
+      "opencode:ses_ef46801aeffezBZOMXEdU43tI8:sse:e07f3bf590a72af272528803"
+    ],
+    "diagnosis": "human_requested_context_handoff",
+    "proposed_action": {
+      "type": "FRESH_HANDOFF",
+      "session_id": "opencode:ses_ef467f58fffertuOaA0u0lehlk",
+      "goal_id": "goal_fac7414eee9e4669b3683b8f744653a4",
+      "payload": {
+        "bundle_receipt": {
+          "schema": "pex.handoff-bundle-receipt.v1",
+          "operator_effect_id": "operator_effect_ec5072912bdc4761adeca29687a34dbd8ddf17e8",
+          "bundle_digest": "a051b5ece65ca8c099770fd1983de7d7e6154111c1633bd578f7ceb2c8b37287",
+          "context_item_ids": [
+            "event_context_7273074ab2695eedc55e2ac9ff3064573553f751"
+          ],
+          "item_count": 1,
+          "token_estimate": 475,
+          "detail_authority": "operator_effects.payload_json.bundle"
+        }
+      },
+      "rationale": "Share the minimum relevant provenance-backed context.",
+      "evidence": [
+        "opencode:ses_ef46801aeffezBZOMXEdU43tI8:sse:e07f3bf590a72af272528803"
+      ],
+      "confidence": 0.75,
+      "risk": "low",
+      "reversible": false,
+      "expected_benefit": "Avoid duplicate investigation across sibling workers.",
+      "cooldown_seconds": 120,
+      "authority_required": "local_policy",
+      "requires_capability": "inject_context"
+    },
+    "confidence": 0.75,
+    "risk": "low",
+    "reversible": false,
+    "authority_required": "local_policy",
+    "action_taken": "FRESH_HANDOFF",
+    "policy_verdict": "allow",
+    "result": "handoff_injected",
+    "worker_response": "",
+    "outcome": "handoff_injected",
+    "helped": null,
+    "created_at": "2026-10-05T10:24:55.079784Z",
+    "metadata": {
+      "auth_mode": null,
+      "backend": null,
+      "base_url": null,
+      "claims": [],
+      "config_fingerprint": null,
+      "dispatcher_boot_id": "boot_9c1eb946693343de826330ef00a3ffcc",
+      "evidence_observations": [],
+      "evidence_refs": [],
+      "evidence_tools": [],
+      "execution_mode": null,
+      "handoff_delivery_result": {
+        "status": "delivered",
+        "worker_delivery_receipt": {
+          "schema": "pex.worker-delivery.v1",
+          "target_session_id": "opencode:ses_ef467f58fffertuOaA0u0lehlk",
+          "vendor_session_id": "ses_ef467f58fffertuOaA0u0lehlk",
+          "vendor_turn_id": "msg_10b98574c001VTBIL5Tk52vjFc"
+        }
+      },
+      "handoff_delivery_status": "delivered",
+      "handoff_dispatch_started_at": "2026-10-05T10:24:55.376586+00:00",
+      "handoff_finished_at": "2026-10-05T10:24:55.788398+00:00",
+      "handoff_item_ids": [
+        "event_context_7273074ab2695eedc55e2ac9ff3064573553f751"
+      ],
+      "handoff_request": {
+        "idempotency_key": "live-handoff-1",
+        "principal_id": "local_bridge_operator",
+        "schema": "pex.operator-request.context-handoff.v1",
+        "source_session_id": "opencode:ses_ef46801aeffezBZOMXEdU43tI8",
+        "target_session_id": "opencode:ses_ef467f58fffertuOaA0u0lehlk",
+        "token_budget": 2000
+      },
+      "handoff_source_session_id": "opencode:ses_ef46801aeffezBZOMXEdU43tI8",
+      "human_requested": true,
+      "independent_verifier": null,
+      "inference_request_id": null,
+      "inference_status": "not_attempted",
+      "input_tokens": 0,
+      "latency_ms": 0,
+      "local_invocation_id": null,
+      "model_call_count": 0,
+      "model_class": null,
+      "model_name": null,
+      "operator_effect_id": "operator_effect_ec5072912bdc4761adeca29687a34dbd8ddf17e8",
+      "output_tokens": 0,
+      "permission_request_id": null,
+      "provider": null,
+      "runtime": null,
+      "runtime_version": null,
+      "traces": [],
+      "transport": null,
+      "transport_invocation_id": null,
+      "transport_request_id": null,
+      "transport_status": "not_attempted",
+      "trigger_event_id": "handoff_request_79c946c5d56d9576dfc1eae11a4d838b2c90d688",
+      "used_llm": false,
+      "verification": {},
+      "worker_delivery_receipt": {
+        "schema": "pex.worker-delivery.v1",
+        "target_session_id": "opencode:ses_ef467f58fffertuOaA0u0lehlk",
+        "vendor_session_id": "ses_ef467f58fffertuOaA0u0lehlk",
+        "vendor_turn_id": "msg_10b98574c001VTBIL5Tk52vjFc"
+      }
+    }
+  },
+  "claim_count": 1
+}

@@ -58,6 +58,21 @@ and admits on camera "the true state is **failing**" instead of shipping the
 edit. Full session: [`pex-live-tamper-demo.mp4`](docs/demo/assets/pex-live-tamper-demo.mp4)
 (2.5 min, 2x).*
 
+**The durable goal outlives the worker.** `--live` seeds an idle sibling
+session on the same goal, so the Inspector's **Hand off →** control can move
+the goal's provenance-bound context bundle to a fresh worker mid-run —
+delivered over the real OpenCode transport (`handoff_injected`), with
+assimilation honestly tracked as `awaiting_target_evidence` until the target
+produces observable work. Recorded replay sessions are sealed evidence and
+can never receive a handoff — the control is live-only on purpose:
+
+![Hand off control on a live worker after a byte-identical repair](docs/demo/assets/pex-live-handoff-d02df03.png)
+
+*Live — the worker restored `test_csv_utils.py` byte-identically after the
+nudge, the goal reads `verified_complete`, and the sibling session waits as
+a handoff target.
+[Receipt](docs/demo/evidence/LIVE_OPENCODE_HANDOFF_ef467f58_2026-10-05.json).*
+
 <details>
 <summary>Historical release evidence — September 14, 2026</summary>
 

@@ -35,14 +35,16 @@ async def _client(tmp_path, **settings_kwargs):
 
 
 @pytest.mark.asyncio
-async def test_health_reports_no_operator_allowance_by_default(tmp_path) -> None:
+@pytest.mark.parametrize("path", ["/health", "/v1/health"])
+async def test_health_reports_no_operator_allowance_by_default(tmp_path, path) -> None:
     async for client in _client(tmp_path):
-        body = (await client.get("/health")).json()
+        body = (await client.get(path)).json()
         assert body["unauthenticated_operator"] is False
 
 
 @pytest.mark.asyncio
-async def test_health_advertises_the_demo_operator_allowance(tmp_path) -> None:
+@pytest.mark.parametrize("path", ["/health", "/v1/health"])
+async def test_health_advertises_the_demo_operator_allowance(tmp_path, path) -> None:
     async for client in _client(tmp_path, allow_unauthenticated_operator=True):
-        body = (await client.get("/health")).json()
+        body = (await client.get(path)).json()
         assert body["unauthenticated_operator"] is True

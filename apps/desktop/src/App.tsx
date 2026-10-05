@@ -432,6 +432,7 @@ export function App() {
   const [builtInRoster, setBuiltInRoster] = useState<CatalogPet[]>([]);
   const [petFleetIssues, setPetFleetIssues] = useState<string[]>([]);
   const [deck, setDeck] = useState<DeckData>({});
+  const [canonicalSessions, setCanonicalSessions] = useState<SessionRow[]>([]);
   const [contextItems, setContextItems] = useState<ContextItem[]>([]);
   const [contextProjectId, setContextProjectId] = useState<string | null>(null);
   const [contextGoalId, setContextGoalId] = useState<string | null>(null);
@@ -475,7 +476,7 @@ export function App() {
   useEffect(() => {
     if (TAURI) return;
     let cancelled = false;
-    bridgeJson<{ unauthenticated_operator?: boolean }>("/health")
+    bridgeJson<{ unauthenticated_operator?: boolean }>("/v1/health")
       .then((health) => {
         if (!cancelled && health?.unauthenticated_operator === true) {
           setDemoOperatorActions(true);
@@ -1104,11 +1105,14 @@ export function App() {
   const sessions = useMemo(() => {
     const merged = new Map<string, SessionRow>();
     for (const session of deck.sessions || []) merged.set(session.id, session);
+    for (const session of canonicalSessions) {
+      merged.set(session.id, mergeSessionObservation(merged.get(session.id), session));
+    }
     for (const session of pet?.sessions || []) {
       merged.set(session.id, mergeSessionObservation(merged.get(session.id), session));
     }
     return Array.from(merged.values());
-  }, [deck.sessions, pet?.sessions]);
+  }, [deck.sessions, canonicalSessions, pet?.sessions]);
   // The detail deck deliberately retains historical sessions. The compact
   // surface must not relabel that archive as live work: /v1/pet already applies
   // the bridge's freshness and promptability rules and collapses duplicate
@@ -1241,8 +1245,11 @@ export function App() {
       "/v1/interventions?include_handoff_bundle=true",
       { signal },
     );
-    const [deckResult, contextResult, interventionResult, attentionResult, claimMetricsResult, benchResult, discoverResult] = await Promise.allSettled([
+    const [deckResult, sessionsResult, contextResult, interventionResult, attentionResult, claimMetricsResult, benchResult, discoverResult] = await Promise.allSettled([
       includeDeck ? bridgeJson<DeckData>("/v1/deck", { signal }) : Promise.resolve<DeckData | null>(null),
+      // The canonical session list — /v1/pet collapses duplicate harness rows,
+      // so handoff targets and sibling sessions must come from here.
+      bridgeJson<SessionRow[]>("/v1/sessions", { signal }),
       bridgeJson<ContextItem[]>(contextPath, { signal }),
       interventionRequest,
       bridgeJson<AttentionMetrics>("/v1/attention/metrics", { signal }),
@@ -1262,6 +1269,9 @@ export function App() {
       } else {
         markCanonical("deck", "failed", "Command deck state could not be refreshed.");
       }
+    }
+    if (sessionsResult.status === "fulfilled" && Array.isArray(sessionsResult.value)) {
+      setCanonicalSessions(sessionsResult.value);
     }
     if (contextResult.status === "fulfilled" && Array.isArray(contextResult.value)) {
       setContextItems(contextResult.value);
