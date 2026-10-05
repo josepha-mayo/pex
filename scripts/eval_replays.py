@@ -51,6 +51,11 @@ EXPECTED: dict[str, FixtureExpectation] = {
         min_claims=1,
         min_integrity_incidents=1,
     ),
+    "stale_evidence_eval": FixtureExpectation(
+        completion_in={"verified_complete"},
+        claim_evidence_any={"later_edit"},
+        min_claims=2,
+    ),
     "premature_stop_eval": FixtureExpectation(
         completion_in={"verified_complete"},
         min_claims=2,

@@ -2772,6 +2772,9 @@ class DemoEventIn(_StrictRequestModel):
     event_type: EventType
     message: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
     command: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
+    file_paths: list[BoundedPath] = Field(
+        default_factory=list, max_length=MAX_EVENT_FILE_PATHS
+    )
     process_state: dict | None = None
 
 
@@ -4681,6 +4684,19 @@ def create_app() -> FastAPI:
                 continue
             session_ids.add(item.session_id)
             surface = verification.get("acceptance_surface")
+            # Claim evidence = the deciding verdict's evidence plus every
+            # verdict's own evidence: an uncertain row earns its ledger entry
+            # by *why* (later_edit:, pytest_ok=false), not just the flag.
+            evidence: list[str] = []
+            for entry in verification.get("evidence") or []:
+                if isinstance(entry, str):
+                    evidence.append(entry)
+            for verdict in verification.get("verdicts") or []:
+                if not isinstance(verdict, dict):
+                    continue
+                for entry in verdict.get("evidence") or []:
+                    if isinstance(entry, str) and entry not in evidence:
+                        evidence.append(entry)
             claims.append(
                 {
                     "intervention_id": item.id,
@@ -4689,11 +4705,7 @@ def create_app() -> FastAPI:
                     "action_taken": item.action_taken,
                     "verification_status": verification.get("status"),
                     "acceptance_surface": surface if isinstance(surface, dict) else None,
-                    "evidence": [
-                        entry
-                        for entry in (verification.get("evidence") or [])
-                        if isinstance(entry, str)
-                    ][:32],
+                    "evidence": evidence[:32],
                 }
             )
         baselines = []
@@ -6620,6 +6632,7 @@ def create_app() -> FastAPI:
                         phase=phase,
                         message_delta=raw.message,
                         command=raw.command,
+                        file_paths=list(raw.file_paths),
                         process_state=raw.process_state,
                     )
                     intervention = await replay_pipeline.ingest_event(event, session)

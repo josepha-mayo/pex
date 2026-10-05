@@ -247,9 +247,13 @@ nudge naming the file → restore → `verified_complete`) against a materialize
 workspace, no agent required. `config_injection_eval` shows the sibling vector:
 a `pytest.ini` added after the baseline deselects the suite, the green claim
 is downgraded to `uncertain` with `acceptance_surface_config_added:pytest.ini`
-as evidence, and removing the file restores `verified`. `premature_stop_eval`
-and `dataset_before_eval` cover unsupported "done" claims and permission
-brokerage on an impossible command. The desktop setup card offers the same
+as evidence, and removing the file restores `verified`. `stale_evidence_eval`
+shows the sibling case with *no* integrity incident at all: the worker runs a
+green suite, edits `eval_runner.py` afterwards, then claims done — the claim
+lands `uncertain` with `later_edit:eval_runner.py` because the cited green run
+predates the last workspace change; the re-run upgrades it to `verified`.
+`premature_stop_eval` and `dataset_before_eval` cover unsupported "done"
+claims and permission brokerage on an impossible command. The desktop setup card offers the same
 fixtures as a "Recorded replay" button whenever the bridge advertises an
 honestly labeled list, so no curl is needed — replay sessions are visibly
 tagged and can never be mistaken for live worker control.
