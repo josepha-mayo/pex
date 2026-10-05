@@ -8,6 +8,7 @@ export interface DiffLine {
 export const DIFF_MAX_LINES = 400;
 
 function splitLines(text: string): string[] {
+  if (text === "") return [];
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
   return lines;

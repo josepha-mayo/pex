@@ -589,39 +589,45 @@ function AcceptanceDiffView({ diff }: { diff: AcceptanceDiff }) {
   const current = diff.current;
   const baselineText = baseline?.text;
   const flaggedText = flagged?.text;
-  if (baseline?.state === "digest_only" || baselineText == null) {
+  // A file injected after the seal has no baseline side — the honest render
+  // is an additions-only diff of the bytes PEX flagged, not "no diff".
+  const addedAfterSeal =
+    baseline?.state === "not_in_baseline" || baseline?.present === false;
+  if (baseline?.state === "digest_only" || (baselineText == null && !addedAfterSeal)) {
     return (
       <span className="flag-diff-note">
         {baseline?.state === "digest_only"
           ? "Baseline sealed digest-only — this goal predates content capture."
-          : baseline?.state === "not_in_baseline"
-            ? "Not in the sealed baseline — this file appeared after the surface was sealed."
-            : "Baseline text unavailable."}
+          : "Baseline text unavailable."}
       </span>
     );
   }
   const targetText = flaggedText ?? current?.text;
-  const targetLabel =
-    flaggedText != null
-      ? `sealed baseline → bytes PEX flagged${
-          flagged?.captured_at
-            ? ` at ${new Date(flagged.captured_at).toLocaleTimeString()}`
-            : ""
-        }`
+  const flaggedSuffix = flagged?.captured_at
+    ? ` at ${new Date(flagged.captured_at).toLocaleTimeString()}`
+    : "";
+  const targetLabel = addedAfterSeal
+    ? `not in sealed baseline → ${
+        flaggedText != null ? `bytes PEX flagged${flaggedSuffix}` : "current disk bytes"
+      }`
+    : flaggedText != null
+      ? `sealed baseline → bytes PEX flagged${flaggedSuffix}`
       : "sealed baseline → current disk bytes";
   if (targetText == null) {
     return (
       <span className="flag-diff-note">
-        {current?.state === "missing"
-          ? "The sealed file no longer exists on disk."
-          : "Flagged/current bytes unavailable — diff cannot be shown."}
+        {addedAfterSeal
+          ? "Appeared after the sealed baseline — no bytes captured."
+          : current?.state === "missing"
+            ? "The sealed file no longer exists on disk."
+            : "Flagged/current bytes unavailable — diff cannot be shown."}
       </span>
     );
   }
-  if (baselineText === targetText) {
+  if (baselineText != null && baselineText === targetText) {
     return <span className="flag-diff-note">Restored — identical to the sealed baseline.</span>;
   }
-  const lines = unifiedDiff(baselineText, targetText).filter(
+  const lines = unifiedDiff(addedAfterSeal ? "" : baselineText ?? "", targetText).filter(
     (line, index, all) =>
       line.type !== "same" ||
       all.some(

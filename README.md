@@ -191,6 +191,12 @@ flagged below: the worker replaced `assert add(1, 1) == 2` with `pass`. The
 same record is served raw at `/v1/goals/{id}/acceptance-diff`, so the
 evidence doesn't depend on the UI.*
 
+![Additions-only diff of an injected pytest.ini](docs/demo/assets/pex-injection-diff.png)
+
+*Files smuggled in after the seal render as additions-only diffs — the
+`config_injection_eval` replay shows the exact `pytest.ini` the worker
+injected to deselect the suite, labeled "not in sealed baseline".*
+
 The strongest replay fixture isn't scripted at all: `captured_live_eval` was
 exported from a *recorded* live OpenCode tamper run by
 `scripts/capture_replay.py` — SSE re-deliveries collapsed, file mutations

@@ -21,6 +21,14 @@ test("unifiedDiff keeps identical files all-same", () => {
   assert.ok(lines.every((line) => line.type === "same"));
 });
 
+test("unifiedDiff renders an added file as additions only", () => {
+  const lines = unifiedDiff("", "[pytest]\ntestpaths = tests/missing\n");
+  assert.deepEqual(lines, [
+    { type: "add", text: "[pytest]" },
+    { type: "add", text: "testpaths = tests/missing" },
+  ]);
+});
+
 test("unifiedDiff bounds pathological inputs", () => {
   const huge = Array.from({ length: DIFF_MAX_LINES + 50 }, (_, i) => `l${i}`).join("\n");
   const lines = unifiedDiff(huge, "");
