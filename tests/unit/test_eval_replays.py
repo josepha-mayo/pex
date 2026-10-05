@@ -4,7 +4,12 @@ completion over a tampered surface."""
 
 from __future__ import annotations
 
-from scripts.eval_replays import EXPECTED, FixtureExpectation, _evaluate
+from scripts.eval_replays import (
+    EXPECTED,
+    FixtureExpectation,
+    _evaluate,
+    _normalized_evidence,
+)
 
 
 def _result(**overrides) -> dict:
@@ -52,6 +57,25 @@ def test_dataset_fixture_must_never_report_supported() -> None:
     green = dict(ok, verdicts=["uncertain", "supported"])
     failures = _evaluate(green, expectation)
     assert any("supported" in f for f in failures)
+
+
+def test_normalized_evidence_strips_per_run_event_ids() -> None:
+    first = _result(
+        evidence_strings=[
+            "acceptance_surface_modified:tests/test_core.py",
+            "pytest_event_id=54de1c8675f54f688ddac214d833ff7d",
+        ]
+    )
+    second = _result(
+        evidence_strings=[
+            "acceptance_surface_modified:tests/test_core.py",
+            "pytest_event_id=0fc22aafb2324393ae05c6cebc35d499",
+        ]
+    )
+    assert _normalized_evidence(first) == _normalized_evidence(second)
+    # Non-id evidence must still differ when it genuinely differs.
+    third = _result(evidence_strings=["acceptance_surface_deleted:tests/x.py"])
+    assert _normalized_evidence(third) != _normalized_evidence(first)
 
 
 def test_claim_floor_is_enforced() -> None:

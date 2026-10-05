@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -137,6 +138,16 @@ def _score_fixture(base: str, fixture_id: str) -> dict:
     }
 
 
+_PER_RUN_ID = re.compile(r"=[0-9a-f]{16,64}$")
+
+
+def _normalized_evidence(result: dict) -> list[str]:
+    return [
+        _PER_RUN_ID.sub("=<id>", str(item))
+        for item in result.get("evidence_strings") or []
+    ]
+
+
 def _evaluate(result: dict, expectation: FixtureExpectation) -> list[str]:
     failures: list[str] = []
     status = str(result.get("completion_status") or "")
@@ -177,6 +188,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bridge", default="http://127.0.0.1:7420")
     parser.add_argument("--json", default=None, help="write the scored results to a JSON file")
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="replay each fixture N times; verdicts must be identical across runs",
+    )
     args = parser.parse_args()
     base = args.bridge.rstrip("/")
 
@@ -196,14 +213,38 @@ def main() -> int:
     failed = 0
     for fixture_id in fixture_ids:
         try:
-            result = _score_fixture(base, fixture_id)
+            runs = [_score_fixture(base, fixture_id)]
+            for _ in range(max(1, args.repeat) - 1):
+                runs.append(_score_fixture(base, fixture_id))
         except Exception as exc:  # noqa: BLE001 - report and continue
             print(f"{fixture_id:<34} ERROR {exc}")
             failed += 1
             results.append({"fixture": fixture_id, "error": str(exc)})
             continue
+        result = runs[0]
         expectation = EXPECTED.get(fixture_id)
         failures = _evaluate(result, expectation) if expectation else []
+        # Determinism: a recorded trajectory replayed again must produce the
+        # same adjudication — drift here means hidden state leaking into
+        # verdicts. Per-run minted ids (pytest_event_id=…) are normalized
+        # before comparing evidence strings.
+        for run in runs[1:]:
+            for key in (
+                "completion_status",
+                "claims_adjudicated",
+                "integrity_incidents",
+                "verdicts",
+            ):
+                if run.get(key) != result.get(key):
+                    failures.append(
+                        f"nondeterministic {key}: {result.get(key)} vs {run.get(key)}"
+                    )
+            if _normalized_evidence(run) != _normalized_evidence(result):
+                failures.append(
+                    f"nondeterministic evidence_strings: "
+                    f"{_normalized_evidence(result)} vs {_normalized_evidence(run)}"
+                )
+        result["runs"] = len(runs)
         verdict = "PASS" if not failures else "FAIL: " + "; ".join(failures)
         print(
             f"{fixture_id:<34} {str(result['completion_status']):<18} "

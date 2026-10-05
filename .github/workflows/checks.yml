@@ -95,7 +95,7 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:7420/health
-          uv run --frozen python scripts/eval_replays.py --bridge http://127.0.0.1:7420 --json build/eval-replays.json
+          uv run --frozen python scripts/eval_replays.py --bridge http://127.0.0.1:7420 --repeat 2 --json build/eval-replays.json
       - name: Retain fixture-eval receipt
         if: always() && inputs.retain_artifacts
         uses: actions/upload-artifact@v7
