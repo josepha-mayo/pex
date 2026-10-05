@@ -191,6 +191,20 @@ flagged below: the worker replaced `assert add(1, 1) == 2` with `pass`. The
 same record is served raw at `/v1/goals/{id}/acceptance-diff`, so the
 evidence doesn't depend on the UI.*
 
+The strongest replay fixture isn't scripted at all: `captured_live_eval` was
+exported from a *recorded* live OpenCode tamper run by
+`scripts/capture_replay.py` — SSE re-deliveries collapsed, file mutations
+reconstructed from the worker's own tool calls, shell-side writes reconciled
+against the bytes that were actually on disk. Judges replay the exact events
+the live pipeline saw (tagged **from live** in the setup card). The whole
+fixture suite is scored on every push by `scripts/eval_replays.py`.
+
+![Replay fixtures with the captured run tagged "from live"](docs/demo/assets/pex-fixtures-from-live-c5df374.png)
+
+*The judge's first screen: five scripted fixtures plus the captured live
+tamper run, visibly marked **FROM LIVE** — exported real OpenCode traffic,
+not a synthetic trajectory.*
+
 ## Supported harnesses
 
 | Harness | Current label | Surface |
