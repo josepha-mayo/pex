@@ -30,11 +30,14 @@ intervenes only inside bounded policy.
    tamper run by `scripts/capture_replay.py`, so a judge watches the exact
    events the live pipeline saw. `captured_handoff_eval` is the handoff
    *target's* captured trajectory — it opens with the injected PEX context
-   bundle itself. Two more arcs worth a look: `drift_loop_eval` (repeated
+   bundle itself. Three more arcs worth a look: `drift_loop_eval` (repeated
    identical failures → bounded overlay proposal, honestly refused on a
-   recorded session) and `constraint_violation_eval` (the worker narrates
+   recorded session), `constraint_violation_eval` (the worker narrates
    intent to violate a recorded `forbidden_outcome` → the ledger catches the
-   statement and nudges before damage).
+   statement and nudges before damage), and `constraint_block_eval` (the
+   same conflict caught *before* the write lands → `ASK_HUMAN` — keep the
+   rule or confirm an override; ends honestly `uncertain` with no
+   completion evidence).
 3. Click **Evidence pack** in the Inspector — the app recomputes every digest
    *in your browser* while it downloads (a TypeScript port of the verifier,
    independent of the bridge). Then `python scripts/verify_pack.py
@@ -48,7 +51,15 @@ intervenes only inside bounded policy.
    flagged; `GET /v1/goals/{id}/acceptance-diff?path=<file>` is the raw
    version). **Export report** downloads the same ledger as a standalone
    HTML page with the raw JSON embedded. `GET
-   /v1/goals/{id}/verification-report` is the raw record directly.
+   /v1/goals/{id}/verification-report` is the raw record directly. The
+   **What PEX changed** card carries the chronological supervision log —
+   every intervention with its outcome (proposals, refusals, cooldown
+   suppressions, quiet NOOPs; hover for rationale and evidence anchors) —
+   so bounded intervention is legible in place, not just the last action.
+   To write your own goal, the composer's **Load a worked example** link
+   fills every supervision field (acceptance, forbidden outcomes,
+   non-goals, evidence) for editing — a one-click illustration of what a
+   verifiable goal looks like.
 
 5. With the OpenCode CLI installed (`npm i opencode-ai`), `python
    scripts/demo.py --live` does the same against a **real worker** on the
