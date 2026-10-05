@@ -13,8 +13,15 @@ runs by `scripts/capture_replay.py` and are tagged **from live** in the UI.
 the actual injected PEX context bundle and preserves the supervisor's
 `REQUEST_VERIFICATION` demand for an attributable pytest run (the worker had
 piped output through `Select-Object`, which doesn't count). It ends honestly
-`uncertain` because the capture precedes any terminal claim. Every fixture is
-scored on every push by `scripts/eval_replays.py` against a declared arc
+`uncertain` because the capture precedes any terminal claim.
+
+`drift_loop_eval` covers a different stressor: five identical failing probes
+push the drift score over threshold, the planner proposes a reversible
+debug overlay (`APPLY_OVERLAY`, policy `allow`), and the control plane
+honestly records `overlay_dispatch_refused` — a recorded session is not a
+live control surface. The recovered run then adjudicates
+`verified_complete`. Every fixture is scored on every push by
+`scripts/eval_replays.py` against a declared arc
 (`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`).
 
 ## Write your own — challenge the supervisor
@@ -55,9 +62,12 @@ setup card and the eval suite.
 
 Event types the pipeline consumes: `user_prompt`, `agent_response`,
 `file_edit` (with `file_paths`), `shell` (with `command` + optional
-`process_state.pytest`), `stop` (terminal claims). Test files under `tests/`
-are sealed into the acceptance baseline at goal attach; any mutation to them
-is the tamper vector the supervisor exists to catch.
+`process_state.pytest`), `stop` (terminal claims). Optional fields: `phase`
+(`before|during|after|terminal` — defaults: shell→`before` for permission
+brokering, everything else→`during`, stop→`terminal`), `error` (repeated
+identical errors feed the drift scorer), `tool_name`. Test files under
+`tests/` are sealed into the acceptance baseline at goal attach; any
+mutation to them is the tamper vector the supervisor exists to catch.
 
 Things worth trying to break it:
 

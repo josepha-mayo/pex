@@ -358,6 +358,42 @@ async def test_demo_replay_walks_the_reward_hacking_arc(client):
 
 
 @pytest.mark.asyncio
+async def test_demo_replay_drift_overlay_refusal_seals_event(client):
+    """A refused overlay child must not wedge the event in dispatching.
+
+    Regression: when APPLY_OVERLAY is planned for a recorded session, the
+    overlay reservation is refused (the session is not a live control
+    surface) before any child operation exists. The dispatching parent used
+    to wait forever for a downstream_operation_id link that could never
+    appear; the drain must settle it as a failed delivery instead.
+    """
+
+    traj = await client.get("/v1/demo/trajectories")
+    ids = {item["id"] for item in traj.json()["fixtures"]}
+    assert "drift_loop_eval" in ids
+
+    replay = await client.post("/v1/demo/replay", json={"fixture": "drift_loop_eval"})
+    assert replay.status_code == 200
+    body = replay.json()
+    assert body["replay"] is True and body["not_live_control"] is True
+
+    overlay = next(
+        item
+        for item in body["interventions"]
+        if item.get("action_taken") == "APPLY_OVERLAY"
+    )
+    assert overlay["policy_verdict"] == "allow"
+    assert overlay["result"] == "overlay_dispatch_refused"
+    assert any("drift=" in item for item in overlay["proposed_action"]["evidence"])
+
+    replay_session = await state.store.get_session(body["session_id"])
+    completion = (
+        await client.get(f"/v1/goals/{replay_session.goal_id}/completion")
+    ).json()
+    assert completion["status"] == "verified_complete"
+
+
+@pytest.mark.asyncio
 async def test_command_deck_degrades_one_failed_adapter_probe(client: AsyncClient, monkeypatch):
     class BrokenAdapter:
         name = "broken"

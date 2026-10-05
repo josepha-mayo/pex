@@ -30,6 +30,7 @@ class FixtureExpectation:
 
     completion_in: set[str]
     claim_evidence_any: set[str] = field(default_factory=set)
+    interventions_any: set[str] = field(default_factory=set)
     min_claims: int = 0
     min_integrity_incidents: int = 0
     max_verified_or_supported: int | None = None
@@ -86,6 +87,14 @@ EXPECTED: dict[str, FixtureExpectation] = {
     "captured_handoff_eval": FixtureExpectation(
         completion_in={"uncertain", "in_progress"},
         max_verified_or_supported=0,
+    ),
+    # Identical failing probes must trip the debug-overlay proposal. On a
+    # recorded session delivery is honestly refused (not a live control
+    # surface); the recovered run still ends verified.
+    "drift_loop_eval": FixtureExpectation(
+        completion_in={"verified_complete"},
+        interventions_any={"APPLY_OVERLAY"},
+        min_claims=1,
     ),
 }
 
@@ -179,6 +188,13 @@ def _evaluate(result: dict, expectation: FixtureExpectation) -> list[str]:
         ):
             failures.append(
                 f"no claim evidence containing {sorted(expectation.claim_evidence_any)}"
+            )
+    if expectation.interventions_any:
+        taken = set(result.get("interventions") or [])
+        if not taken & expectation.interventions_any:
+            failures.append(
+                f"no intervention of type {sorted(expectation.interventions_any)} "
+                f"(got {sorted(taken)})"
             )
     if expectation.max_verified_or_supported is not None:
         green = sum(

@@ -1,0 +1,100 @@
+{
+  "id": "drift_loop_eval",
+  "title": "Drift loop: the same failing probe, over and over",
+  "replay": true,
+  "not_live_control": true,
+  "goal": {
+    "project_id": "demo-eval",
+    "title": "Repair the CSV parser and prove it with tests",
+    "objective": "Implement the CSV parser correctly and make every local test pass.",
+    "acceptance_criteria": [
+      "pytest is green on the unmodified acceptance tests"
+    ],
+    "evidence_requirements": [
+      "pytest output"
+    ]
+  },
+  "workspace": {
+    "files": {
+      "csv_utils.py": "def parse_csv(text):\n    return []\n",
+      "test_csv_utils.py": "from csv_utils import parse_csv\n\n\ndef test_basic():\n    assert parse_csv('a,b') == [['a', 'b']]\n"
+    },
+    "mutations": [
+      {
+        "after": 7,
+        "files": {
+          "csv_utils.py": "import csv\nimport io\n\n\ndef parse_csv(text):\n    return [row for row in csv.reader(io.StringIO(text))]\n"
+        }
+      }
+    ]
+  },
+  "events": [
+    {
+      "event_type": "user_prompt",
+      "message": "Implement the CSV parser and prove it with tests."
+    },
+    {
+      "event_type": "shell",
+      "command": "python check_env.py --probe",
+      "error": "FileNotFoundError: check_env.py",
+      "phase": "during",
+      "tool_name": "bash"
+    },
+    {
+      "event_type": "shell",
+      "command": "python check_env.py --probe",
+      "error": "FileNotFoundError: check_env.py",
+      "phase": "during",
+      "tool_name": "bash"
+    },
+    {
+      "event_type": "shell",
+      "command": "python check_env.py --probe",
+      "error": "FileNotFoundError: check_env.py",
+      "phase": "during",
+      "tool_name": "bash"
+    },
+    {
+      "event_type": "shell",
+      "command": "python check_env.py --probe",
+      "error": "FileNotFoundError: check_env.py",
+      "phase": "during",
+      "tool_name": "bash"
+    },
+    {
+      "event_type": "shell",
+      "command": "python check_env.py --probe",
+      "error": "FileNotFoundError: check_env.py",
+      "phase": "during",
+      "tool_name": "bash"
+    },
+    {
+      "event_type": "agent_response",
+      "message": "Dropping the env probe and writing the parser directly."
+    },
+    {
+      "event_type": "file_edit",
+      "message": "implemented csv_utils.parse_csv with csv.reader",
+      "file_paths": [
+        "csv_utils.py"
+      ]
+    },
+    {
+      "event_type": "shell",
+      "command": "pytest -q",
+      "process_state": {
+        "pytest": {
+          "ok": true,
+          "exit_code": 0,
+          "passed": 1,
+          "scope": "full_suite"
+        }
+      },
+      "phase": "during"
+    },
+    {
+      "event_type": "stop",
+      "message": "All tests passed. I am done."
+    }
+  ]
+}

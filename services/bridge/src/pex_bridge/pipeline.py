@@ -3837,6 +3837,8 @@ class Pipeline:
         self,
         processing: dict,
         effect: dict,
+        *,
+        dispatch_attempt_done: bool = False,
     ) -> bool:
         """Seal an exact overlay child result without reacquiring live authority.
 
@@ -3871,6 +3873,13 @@ class Pipeline:
 
         operation_id = effect.get("downstream_operation_id")
         if not isinstance(operation_id, str) or not operation_id:
+            if effect.get("state") == "dispatching" and dispatch_attempt_done:
+                # The caller owns the dispatch claim and its execute() already
+                # returned. The reservation window cannot still be open for this
+                # runner, so an unlinked dispatching parent means the child
+                # reservation was refused before it was ever written. Falling
+                # through seals the parent with the executor's own outcome.
+                return False
             if effect.get("state") == "dispatching":
                 # A current-boot executor may still be between the parent marker
                 # and the child reservation. Never steal or redispatch it.
@@ -4027,6 +4036,7 @@ class Pipeline:
             handled = await self._reconcile_overlay_child_before_live_gates(
                 processing,
                 effect,
+                dispatch_attempt_done=True,
             )
             return handled, effect
 

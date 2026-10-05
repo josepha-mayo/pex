@@ -3001,6 +3001,13 @@ class DemoEventIn(_StrictRequestModel):
         default_factory=list, max_length=MAX_EVENT_FILE_PATHS
     )
     process_state: dict | None = None
+    tool_name: str | None = Field(default=None, max_length=128)
+    error: str | None = Field(default=None, max_length=MAX_CONTROL_TEXT_CHARS)
+    # Optional phase override: a completed command (error or process_state)
+    # is a DURING observation, not a BEFORE permission request — fixtures
+    # that replay executed work declare it so the pipeline sees the
+    # execution, not the ask.
+    phase: EventPhase | None = None
 
 
 class PluginHeartbeatIn(_StrictRequestModel):
@@ -6788,9 +6795,12 @@ def create_app() -> FastAPI:
                 for index, raw in enumerate(replay_events):
                     event_type = raw.event_type
                     phase = (
-                        EventPhase.BEFORE
-                        if event_type == EventType.SHELL
-                        else EventPhase.DURING
+                        raw.phase
+                        or (
+                            EventPhase.BEFORE
+                            if event_type == EventType.SHELL
+                            else EventPhase.DURING
+                        )
                     )
                     if event_type == EventType.STOP:
                         phase = EventPhase.TERMINAL
@@ -6802,6 +6812,8 @@ def create_app() -> FastAPI:
                         command=raw.command,
                         file_paths=list(raw.file_paths),
                         process_state=raw.process_state,
+                        tool_name=raw.tool_name,
+                        error=raw.error,
                     )
                     intervention = await replay_pipeline.ingest_event(event, session)
                     if intervention:
