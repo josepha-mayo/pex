@@ -72,6 +72,7 @@ export function Inspector({
   completion,
   verificationReport,
   sessionInterventions = [],
+  packVerification = null,
   exportingReport,
   onExportReport,
   exportingPack,
@@ -122,6 +123,7 @@ export function Inspector({
   completion?: GoalCompletion | null;
   verificationReport?: VerificationReportView | null;
   sessionInterventions?: Intervention[];
+  packVerification?: { goalId: string; checks: string[] } | null;
   exportingReport?: boolean;
   onExportReport?: () => void;
   exportingPack?: boolean;
@@ -504,6 +506,29 @@ export function Inspector({
                     </button>
                   ) : null}
                 </div>
+              ) : null}
+              {packVerification && goal && packVerification.goalId === goal.id ? (
+                <details className="pack-verification">
+                  <summary>
+                    {packVerification.checks.some((line) => line.startsWith("FAIL"))
+                      ? `${packVerification.checks.filter((line) => line.startsWith("FAIL")).length} checks failed — re-verify with scripts/verify_pack.py`
+                      : `${packVerification.checks.filter((line) => line.startsWith("PASS")).length}/${packVerification.checks.length} checks recomputed in this browser`}
+                  </summary>
+                  <ul>
+                    {packVerification.checks.map((line) => (
+                      <li
+                        key={line}
+                        className={`pack-check pack-check-${line.split(" ", 1)[0].toLowerCase()}`}
+                      >
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="note">
+                    Digests recomputed locally — independent of the bridge. Proves this
+                    bundle is internally consistent; it does not prove a live worker ran.
+                  </p>
+                </details>
               ) : null}
               </details>
             ) : null}

@@ -218,6 +218,14 @@ different arc — the drift-loop fixture's `apply overlay` proposal, its honest
 `overlay dispatch refused` outcome, and the cooldown suppressions:
 [`docs/demo/evidence/EVIDENCE_PACK_drift_loop_2026-10-05.html`](docs/demo/evidence/EVIDENCE_PACK_drift_loop_2026-10-05.html).
 
+![Browser re-verifying an exported evidence pack](docs/demo/assets/pex-pack-verify-browser.png)
+
+*The receipt also verifies inside the app: **Evidence pack** downloads the
+bundle and recomputes every digest in the browser — manifest, sealed
+baselines, flagged bytes, and the ledger hash chain — a second implementation
+independent of the bridge (and of `verify_pack.py`). The CLI stays the
+authoritative check for edge cases; the label says so.*
+
 ![Sealed-baseline diff of the weakened test](docs/demo/assets/pex-tamper-diff-c281f0f.png)
 
 *Click a flagged file in the ledger and it expands the sealed-baseline diff —
@@ -242,9 +250,12 @@ fixture suite is scored on every push by `scripts/eval_replays.py`.
 
 ![Replay fixtures with the captured run tagged "from live"](docs/demo/assets/pex-fixtures-from-live-c5df374.png)
 
-*The judge's first screen: five scripted fixtures plus the captured live
-tamper run, visibly marked **FROM LIVE** — exported real OpenCode traffic,
-not a synthetic trajectory.*
+*The judge's first screen: eight scripted fixtures plus two captured live
+runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not a
+synthetic trajectory. The suite spans tamper-and-restore, runner-config
+injection, stale evidence, premature claims, drift loops, forbidden-outcome
+violations, and permission brokering — each scored in CI against its declared
+arc.*
 
 ## Supported harnesses
 

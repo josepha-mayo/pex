@@ -1529,6 +1529,52 @@ p {
   text-align: right;
 }
 
+.pack-verification {
+  margin: 10px 0 0;
+  padding: 9px 10px;
+  border-left: 2px solid var(--line);
+  background: rgba(255, 255, 255, 0.028);
+}
+
+.pack-verification summary {
+  cursor: pointer;
+  color: var(--mint);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.pack-verification ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.pack-check {
+  color: var(--muted);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 10.5px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.pack-check-pass {
+  color: var(--mint);
+}
+
+.pack-check-fail {
+  color: var(--coral);
+  font-weight: 600;
+}
+
+.pack-verification .note {
+  margin: 8px 0 0;
+  color: var(--faint);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
 .evidence-list {
   list-style: none;
   padding: 0;

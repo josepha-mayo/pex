@@ -26,6 +26,7 @@ import { OpenCodeConnectionPanel } from "./components/OpenCodeConnectionPanel";
 import { CodexConnectionPanel } from "./components/CodexConnectionPanel";
 import { OperatorTaskComposer } from "./components/OperatorTaskComposer";
 import { createOperatorRequest } from "./operatorRequest";
+import { verifyEvidencePack } from "./evidencePack";
 import { canEditGoalLedger, goalLedgerKey, readGoalDecisions } from "./goalLedger";
 import { usePageVisibility } from "./pageVisibility";
 import {
@@ -2177,6 +2178,10 @@ export function App() {
   }
 
   const [exportingPack, setExportingPack] = useState(false);
+  const [packVerification, setPackVerification] = useState<{
+    goalId: string;
+    checks: string[];
+  } | null>(null);
 
   async function exportEvidencePack() {
     if (!attachedGoal || exportingPack) return;
@@ -2189,6 +2194,17 @@ export function App() {
         setNote("The bridge did not return an evidence pack to export.");
         return;
       }
+      let checks: string[] = [];
+      try {
+        checks = await verifyEvidencePack(raw);
+      } catch {
+        checks = [];
+      }
+      setPackVerification(
+        checks.length
+          ? { goalId: String(raw.goal_id || attachedGoal.id), checks }
+          : null,
+      );
       const blob = new Blob([JSON.stringify(raw, null, 2)], {
         type: "application/json",
       });
@@ -2202,8 +2218,11 @@ export function App() {
       } finally {
         window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
       }
+      const passed = checks.filter((line) => line.startsWith("PASS")).length;
       setNote(
-        "Evidence pack exported — verify it offline with `python scripts/verify_pack.py pex-evidence-pack-….json`.",
+        checks.length
+          ? `Evidence pack exported — ${passed}/${checks.length} consistency checks recomputed in this browser.`
+          : "Evidence pack exported — verify it offline with `python scripts/verify_pack.py pex-evidence-pack-….json`.",
       );
     } catch (error) {
       setNote(operationError(error, "Could not export the evidence pack."));
@@ -3045,6 +3064,7 @@ export function App() {
           completion={goalCompletion}
           verificationReport={verificationReport}
           sessionInterventions={sessionInterventions}
+          packVerification={packVerification}
           exportingReport={exportingReport}
           onExportReport={() => void exportVerificationReport()}
           exportingPack={exportingPack}
