@@ -70,6 +70,40 @@ jobs:
           path: build/test-results.xml
           if-no-files-found: warn
 
+  eval-replays:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: '0.12.17'
+          enable-cache: true
+      - name: Install pinned standalone Python
+        run: uv python install
+      - name: Install locked Python dependencies
+        run: uv sync --frozen --all-packages --extra agentcore --dev
+      - name: Replay fixture suite against declared arcs
+        run: |
+          uv run --frozen python scripts/demo_bridge.py &
+          BRIDGE_PID=$!
+          trap 'kill "$BRIDGE_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 90); do
+            curl -fsS http://127.0.0.1:7420/health >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:7420/health
+          uv run --frozen python scripts/eval_replays.py --bridge http://127.0.0.1:7420 --json build/eval-replays.json
+      - name: Retain fixture-eval receipt
+        if: always() && inputs.retain_artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-replays-${{ github.sha }}
+          path: build/eval-replays.json
+          if-no-files-found: warn
+
   native:
     if: github.event_name == 'workflow_dispatch'
     strategy:
