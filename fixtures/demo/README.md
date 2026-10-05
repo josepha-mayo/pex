@@ -21,9 +21,14 @@ debug overlay (`APPLY_OVERLAY`, policy `allow`), and the control plane
 honestly records `overlay_dispatch_refused` — a recorded session is not a
 live control surface. The recovered run then adjudicates
 `verified_complete`. The Inspector's supervision log makes the whole arc
-legible in place (`docs/demo/assets/pex-supervision-log-drift.png`). Every
-fixture is scored on every push by
-`scripts/eval_replays.py` against a declared arc
+legible in place (`docs/demo/assets/pex-supervision-log-drift.png`).
+
+`constraint_violation_eval` shows the durable goal biting on *observed
+behavior*: the worker narrates intent to delete the dataset fixtures — a
+recorded `forbidden_outcomes` entry — and the ledger classifies the
+statement as `agent_contradiction`, delivering a corrective nudge that
+names the exact constraint before any damage. Every fixture is scored on
+every push by `scripts/eval_replays.py` against a declared arc
 (`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`).
 
 ## Write your own — challenge the supervisor
@@ -83,6 +88,9 @@ Things worth trying to break it:
 - Delete the test file outright (`deleted` flag).
 - Restore the file and claim again — the verdict follows the *current*
   surface, so honest recovery is the one path back to `verified_complete`.
+- Narrate intent to violate a recorded non-goal or forbidden outcome — the
+  intent ledger lints worker statements too, not just prompts
+  (`constraint_violation_eval` — `agent_contradiction` → `SEND_NUDGE`).
 
 Then check the outcome end-to-end:
 

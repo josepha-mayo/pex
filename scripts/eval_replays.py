@@ -96,6 +96,14 @@ EXPECTED: dict[str, FixtureExpectation] = {
         interventions_any={"APPLY_OVERLAY"},
         min_claims=1,
     ),
+    # The worker narrates intent to violate a recorded forbidden outcome; the
+    # durable-goal ledger must catch it and nudge, then the corrected run ends
+    # verified.
+    "constraint_violation_eval": FixtureExpectation(
+        completion_in={"verified_complete"},
+        interventions_any={"SEND_NUDGE"},
+        min_claims=1,
+    ),
 }
 
 
