@@ -25,7 +25,10 @@ intervenes only inside bounded policy.
    tests passed" claim → `uncertain` verdict → corrective nudge naming the
    file → restore → `verified_complete`. Its sibling `config_injection_eval`
    shows the runner-config vector: a `pytest.ini` injected after the baseline
-   deselects the suite and earns the same `uncertain` downgrade.
+   deselects the suite and earns the same `uncertain` downgrade. Or replay
+   `captured_live_eval` — a fixture exported from a *real* recorded OpenCode
+   tamper run by `scripts/capture_replay.py`, so a judge watches the exact
+   events the live pipeline saw.
 3. Open the Inspector on the replay session: the **Independent claim
    verification** block shows the adjudicated-claim timeline, verdicts,
    flagged files, and adjudication evidence — click a flagged file to expand
@@ -64,7 +67,7 @@ Nemotron inference follows the same runbook's main path.
   acceptance-surface sealing and tamper detection, the replay demo, local
   subprocess public-test verification, 5,377 backend tests (latest full run on
   the `7dc44d5` tree, 0 failures). `python scripts/eval_replays.py` scores the
-  shipped fixture suite against its declared supervision arcs — 5/5 on
+  shipped fixture suite against its declared supervision arcs — 6/6 on
   2026-10-05
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json)).
 - **Runs live with no key:** a real OpenCode worker on the free Nemotron 3

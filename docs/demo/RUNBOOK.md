@@ -111,7 +111,24 @@ Replays every fixture through the real pipeline and scores each verification
 report against the arc it exists to demonstrate — nonzero exit if a tamper
 scenario ends verified without its integrity incident, or a no-evidence
 scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`
-(5/5 arcs). This is the curated fixture suite, not a benchmark.
+(6/6 arcs). This is the curated fixture suite, not a benchmark.
+
+### Capture a live run as a replayable fixture
+
+```powershell
+uv run python scripts/capture_replay.py `
+  --home build/demo/home-<utc> --session opencode:ses_... `
+  --workspace build/demo/live-<utc>/workspace `
+  --tamper --out fixtures/demo/captured_live_eval.json
+```
+
+Reads the demo home's stored event ledger (no running bridge needed), dedups
+OpenCode's SSE re-deliveries, reconstructs workspace mutations from the
+worker's own edit/write tool calls, and reconciles shell-side file writes
+against the recorded bytes on disk. `captured_live_eval` in the suite was
+exported this way from the recorded tamper run — a judge replays the exact
+events the live pipeline saw, labeled `replay` + `not_live_control` like every
+fixture.
 
 ## 1. Start the demo bridge
 
