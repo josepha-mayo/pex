@@ -1663,6 +1663,16 @@ export function App() {
     () => actionForSession(current, displayedInterventions, displayedLastAction),
     [current, displayedInterventions, displayedLastAction],
   );
+  // Chronological supervision digest for the selected worker; newest-first
+  // ledger order is reversed so the log reads as the arc unfolded.
+  const sessionInterventions = useMemo(
+    () =>
+      displayedInterventions
+        .filter((item) => item.session_id === current?.id)
+        .slice(0, 8)
+        .reverse(),
+    [current?.id, displayedInterventions],
+  );
   // Same-goal siblings that can accept an injected context bundle. The bridge
   // re-checks the capability server-side; this list is only a UI affordance.
   const handoffTargets = useMemo(
@@ -3034,6 +3044,7 @@ export function App() {
           ledgerDecisions={ledgerDecisions}
           completion={goalCompletion}
           verificationReport={verificationReport}
+          sessionInterventions={sessionInterventions}
           exportingReport={exportingReport}
           onExportReport={() => void exportVerificationReport()}
           exportingPack={exportingPack}

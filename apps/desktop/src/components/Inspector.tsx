@@ -17,6 +17,7 @@ import type {
   Goal,
   GoalCompletion,
   HandoffAssimilationStatus,
+  Intervention,
   LastAction,
   LedgerDecision,
   SessionRow,
@@ -40,6 +41,20 @@ import {
   titleCase,
 } from "../viewModel";
 
+function interventionLogLabel(item: Intervention): string {
+  if (item.action_taken === "NOOP") return "Stayed quiet";
+  if (item.action_taken === "SUPPRESSED_COOLDOWN") {
+    return "Repeat proposal suppressed (cooldown)";
+  }
+  return humanize(item.action_taken);
+}
+
+function interventionLogResult(item: Intervention): string | null {
+  const result = item.result || item.outcome || "";
+  if (!result || result === "noop" || result === item.action_taken) return null;
+  return humanize(result);
+}
+
 export function Inspector({
   current,
   sessions = [],
@@ -47,6 +62,7 @@ export function Inspector({
   ledgerDecisions = [],
   completion,
   verificationReport,
+  sessionInterventions = [],
   exportingReport,
   onExportReport,
   exportingPack,
@@ -96,6 +112,7 @@ export function Inspector({
   ledgerDecisions?: LedgerDecision[];
   completion?: GoalCompletion | null;
   verificationReport?: VerificationReportView | null;
+  sessionInterventions?: Intervention[];
   exportingReport?: boolean;
   onExportReport?: () => void;
   exportingPack?: boolean;
@@ -336,6 +353,21 @@ export function Inspector({
               <span>Supervisor inference</span>
               {supervisorInferenceReceipt(action)}
             </p>
+          ) : null}
+          {sessionInterventions.length > 1 ? (
+            <div className="supervision-log">
+              <small>Supervision log · {sessionInterventions.length} recorded</small>
+              <ul>
+                {sessionInterventions.map((item) => (
+                  <li key={item.id}>
+                    <span>{interventionLogLabel(item)}</span>
+                    {interventionLogResult(item) ? (
+                      <em>{interventionLogResult(item)}</em>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
           {evidenceOpen && action?.evidence?.length ? (
             <ul className="evidence-list">

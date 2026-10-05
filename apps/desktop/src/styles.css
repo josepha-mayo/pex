@@ -1489,6 +1489,46 @@ p {
   max-width: 220px;
 }
 
+.supervision-log {
+  margin: 13px 0 0;
+  padding: 9px 10px;
+  border-left: 2px solid var(--line);
+  background: rgba(255, 255, 255, 0.028);
+}
+
+.supervision-log small {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--faint);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.supervision-log ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.supervision-log li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.supervision-log li em {
+  color: var(--faint);
+  font-style: normal;
+  font-size: 10px;
+  text-align: right;
+}
+
 .evidence-list {
   list-style: none;
   padding: 0;
