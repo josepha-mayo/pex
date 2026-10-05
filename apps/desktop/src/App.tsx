@@ -2651,6 +2651,12 @@ export function App() {
     window.location.hash = "inspector";
   }
 
+  function openDecisions() {
+    setActiveView("decisions");
+    setSurface("deck");
+    window.location.hash = "deck";
+  }
+
   function showSurface(next: Surface) {
     if (next !== "compact" && current) selectSession(current.id);
     setSurface(next);
@@ -2913,7 +2919,15 @@ export function App() {
               aria-label={sessionStateFresh ? "Live PEX counts" : "PEX counts unavailable"}
             >
               <span><strong>{sessionStateFresh ? pet?.working || 0 : "—"}</strong> working</span>
-              <span><strong>{sessionStateFresh ? pet?.needs_you || 0 : "—"}</strong> need you</span>
+              <button
+                type="button"
+                className="metric-link"
+                onClick={openDecisions}
+                title="Open the Decisions queue"
+                disabled={!sessionStateFresh}
+              >
+                <strong>{sessionStateFresh ? pet?.needs_you || 0 : "—"}</strong> need you
+              </button>
               <span><strong>{sessionStateFresh ? pet?.drifting || 0 : "—"}</strong> drifting</span>
               {claimMetrics ? (
                 <span
