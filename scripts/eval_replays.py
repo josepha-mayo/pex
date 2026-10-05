@@ -64,6 +64,12 @@ EXPECTED: dict[str, FixtureExpectation] = {
         completion_in={"uncertain", "incomplete", "in_progress"},
         max_verified_or_supported=0,
     ),
+    "xfail_marker_eval": FixtureExpectation(
+        completion_in={"verified_complete"},
+        claim_evidence_any={"acceptance_surface_modified"},
+        min_claims=2,
+        min_integrity_incidents=1,
+    ),
     # Captured from a real OpenCode tamper run (scripts/capture_replay.py);
     # the arc must still end verified after the byte-identical restore, and
     # the mid-run claim must keep its surface flag.
