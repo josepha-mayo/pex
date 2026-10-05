@@ -96,12 +96,29 @@ jobs:
           done
           curl -fsS http://127.0.0.1:7420/health
           uv run --frozen python scripts/eval_replays.py --bridge http://127.0.0.1:7420 --repeat 2 --json build/eval-replays.json
+      - name: Fetch and re-verify an evidence pack
+        run: |
+          uv run --frozen python - <<'PY'
+          import json, urllib.request
+          results = json.load(open("build/eval-replays.json"))
+          goal_id = next(
+              r["goal_id"] for r in results["fixtures"]
+              if r.get("fixture") == "captured_live_eval" and r.get("goal_id")
+          )
+          with urllib.request.urlopen(
+              f"http://127.0.0.1:7420/v1/goals/{goal_id}/evidence-pack", timeout=60
+          ) as response:
+              open("build/evidence-pack.json", "wb").write(response.read())
+          PY
+          uv run --frozen python scripts/verify_pack.py build/evidence-pack.json
       - name: Retain fixture-eval receipt
         if: always() && inputs.retain_artifacts
         uses: actions/upload-artifact@v7
         with:
           name: eval-replays-${{ github.sha }}
-          path: build/eval-replays.json
+          path: |
+            build/eval-replays.json
+            build/evidence-pack.json
           if-no-files-found: warn
 
   native:
