@@ -263,6 +263,13 @@ restored `verified` row — 4 claims, 1 sealed baseline, 1 integrity incident,
 1 nudge. The Export report button downloads this ledger as a standalone HTML
 page with the raw report JSON embedded.*
 
+![Expanded sealed-baseline diff of the tampered test](assets/pex-tamper-diff-c281f0f.png)
+
+*Clicking the flagged `tests/test_core.py` chip in the `tampered_acceptance_eval`
+replay expands the sealed-baseline diff inline: `SEALED BASELINE → BYTES PEX
+FLAGGED`, `- assert add(1, 1) == 2` → `+ pass`. The raw pair is also served at
+`GET /v1/goals/{id}/acceptance-diff?path=<file>`.*
+
 ## Optional — verify inside a Nebius sandbox
 
 Judges with Token Factory Sandboxes beta access can push the replay's

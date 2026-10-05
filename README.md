@@ -142,6 +142,12 @@ it verifies the *acceptance surface*, not just the reported exit code:
   injected to deselect checks — downgrades the claim to `uncertain`, names the
   changed files, and sends the worker a corrective nudge to restore or justify
   them. A green exit code cannot launder a changed test.
+- The seal keeps **content, not just digests** — every file's sealed bytes are
+  verified to match the baseline hash before storing, and each integrity flag
+  captures the offending bytes at flag time. `GET
+  /v1/goals/{id}/acceptance-diff?path=<file>` returns the sealed text, the
+  flagged bytes, and what's on disk now — so a judge sees `- assert
+  add(1,1)==2` → `+ pass`, not just a filename.
 - `GET /v1/claims/metrics` reports the durable ledger: verdict counts, sealed
   baselines, integrity incidents, and corrective nudges issued.
 
@@ -161,6 +167,14 @@ full report exports from the Inspector as a self-contained HTML adjudication
 record (human-readable timeline plus the embedded raw JSON). The session is labeled
 "Recorded replay · not live worker control" — a deterministic fixture, not a
 live worker receipt.*
+
+![Sealed-baseline diff of the weakened test](docs/demo/assets/pex-tamper-diff-c281f0f.png)
+
+*Click a flagged file in the ledger and it expands the sealed-baseline diff —
+the sealed test the worker claimed green against on top, the exact bytes PEX
+flagged below: the worker replaced `assert add(1, 1) == 2` with `pass`. The
+same record is served raw at `/v1/goals/{id}/acceptance-diff`, so the
+evidence doesn't depend on the UI.*
 
 ## Supported harnesses
 
