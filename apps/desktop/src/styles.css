@@ -920,6 +920,10 @@ p {
   color: var(--mint);
 }
 
+.stall-warning {
+  color: var(--amber);
+}
+
 .verdict-supported { color: var(--mint); }
 .verdict-contradicted,
 .verdict-unsatisfied { color: var(--coral); }

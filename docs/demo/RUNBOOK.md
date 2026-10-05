@@ -57,6 +57,9 @@ decoy-checker task. Select the OpenCode worker (badged **Live**) and watch the
 claim ledger go `Uncertain → Contradicted → Verified`. The OpenCode CLI must
 be on `PATH` (`npm i opencode-ai`) or named by `PEX_OPENCODE_BIN`. Free-tier
 models are rate-limited upstream; a slow first turn is the provider, not PEX.
+When a live worker stops emitting events entirely, the session row and the
+Inspector call the observed silence out as `quiet Nm` / an observation gap —
+PEX reports the gap instead of reporting the worker as progressing forever.
 
 ```powershell
 uv run python scripts/demo.py --live --scenario tamper
@@ -80,6 +83,18 @@ answer it from the Decisions rail. Each launcher run also gets a fresh
 `build/demo/home-<utc>` profile, so re-running never piles up stale workers;
 set `PEX_DEMO_HOME` yourself to keep one home across runs. The manual steps
 below remain for any other workspace or model.
+
+### Score the shipped fixture suite
+
+```powershell
+uv run python scripts/eval_replays.py --json out.json   # needs the demo bridge
+```
+
+Replays every fixture through the real pipeline and scores each verification
+report against the arc it exists to demonstrate — nonzero exit if a tamper
+scenario ends verified without its integrity incident, or a no-evidence
+scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`
+(4/4 arcs). This is the curated fixture suite, not a benchmark.
 
 ## 1. Start the demo bridge
 

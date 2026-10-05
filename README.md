@@ -49,11 +49,14 @@ Want the reward-hacking cut instead? `python scripts/demo.py --live
 --scenario tamper` instructs the worker to make the suite green by editing
 the sealed acceptance test itself — every subsequent claim lands **Uncertain**
 with `acceptance_surface_modified:test_csv_utils.py` in the ledger, no matter
-how green the run reports. Recorded live:
-[`pex-live-tamper-demo.mp4`](docs/demo/assets/pex-live-tamper-demo.mp4) (2.5
-min, 2x) — the nudge lands, and the worker re-reads the restored test and
-admits on camera "the true state is **failing**" instead of shipping the
-edit.
+how green the run reports:
+
+![PEX supervising a live OpenCode worker in the tamper scenario](docs/demo/assets/pex-live-tamper-ledger.gif)
+
+*Recorded live — the nudge lands, and the worker re-reads the restored test
+and admits on camera "the true state is **failing**" instead of shipping the
+edit. Full session: [`pex-live-tamper-demo.mp4`](docs/demo/assets/pex-live-tamper-demo.mp4)
+(2.5 min, 2x).*
 
 <details>
 <summary>Historical release evidence — September 14, 2026</summary>

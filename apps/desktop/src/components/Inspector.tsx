@@ -31,6 +31,7 @@ import {
   askPexQuestions,
   meaningfulEvidence,
   nextExpectedEvent,
+  observationGapCopy,
   partitionLedgerDecisions,
   supervisorReviewAllowanceCopy,
   supervisorInferenceReceipt,
@@ -212,6 +213,12 @@ export function Inspector({
                 {canOpen ? "existing-window focus available" : "window focus unavailable"}
               </dd>
             </div>
+            {observationGapCopy(current) ? (
+              <div>
+                <dt>Observation gap</dt>
+                <dd className="stall-warning">{observationGapCopy(current)}</dd>
+              </div>
+            ) : null}
             {isReplaySession(current) ? (
               <div>
                 <dt>Session origin</dt>

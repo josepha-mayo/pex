@@ -28,6 +28,10 @@ export type SessionRow = {
   context_health?: number;
   context_health_signals?: ContextHealthSignals;
   last_activity?: string | null;
+  observation?: {
+    last_event_age_seconds?: number;
+    stalled?: boolean;
+  };
   capabilities?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   external_url?: string | null;

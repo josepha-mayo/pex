@@ -44,6 +44,7 @@ import {
   isSafelyUndoable,
   isStale,
   meaningfulEvidence,
+  observationAgeLabel,
   permissionRequestDetails,
   type ProjectIdentityResolutionAttempt,
   requestedHumanDecisionDetails,
@@ -66,7 +67,10 @@ function sessionObservationCopy(session: SessionRow, degraded: boolean): string 
   const observed = Number.isFinite(parsed)
     ? new Date(parsed).toLocaleString()
     : "observation time unavailable";
-  return degraded ? `Cached · last observed ${observed}` : `Last observed ${observed}`;
+  const stall = session.observation?.stalled
+    ? ` · quiet ${observationAgeLabel(session.observation.last_event_age_seconds ?? 0)}`
+    : "";
+  return degraded ? `Cached · last observed ${observed}${stall}` : `Last observed ${observed}${stall}`;
 }
 
 function isUnresolvedAskHuman(item: Intervention): boolean {

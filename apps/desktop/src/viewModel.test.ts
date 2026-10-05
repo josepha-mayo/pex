@@ -2382,3 +2382,19 @@ test("browser mode calls the bridge same-origin through the dev proxy", async ()
   assert.match(vite, /proxy:\s*\{[\s\S]*?"\/v1"[\s\S]*?target:\s*"http:\/\/127\.0\.0\.1:7420"[\s\S]*?changeOrigin:\s*true[\s\S]*?ws:\s*true[\s\S]*?\}/u);
   assert.match(vite, /origin:\s*"http:\/\/127\.0\.0\.1:1420"/u);
 });
+
+test("observation gap copy flags stalled live workers only", async () => {
+  const { observationAgeLabel, observationGapCopy, mergeSessionObservation } = await import("./viewModel.ts");
+  assert.equal(observationAgeLabel(12), "12s");
+  assert.equal(observationAgeLabel(200), "3m");
+  assert.equal(observationAgeLabel(4500), "1h 15m");
+  const stalled = { id: "w", harness_type: "opencode", status: "working",
+    observation: { last_event_age_seconds: 900, stalled: true } };
+  assert.match(observationGapCopy(stalled)!, /No worker events observed for 15m/);
+  const fresh = { id: "w", harness_type: "opencode", status: "working",
+    observation: { last_event_age_seconds: 12, stalled: false } };
+  assert.equal(observationGapCopy(fresh), null);
+  assert.equal(observationGapCopy({ id: "w", harness_type: "opencode", status: "working" }), null);
+  const merged = mergeSessionObservation(stalled, { ...stalled, observation: undefined });
+  assert.equal(merged.observation, undefined);
+});

@@ -185,6 +185,33 @@ BoundedId = Annotated[str, Field(min_length=1, max_length=MAX_ID_CHARS)]
 BoundedPath = Annotated[str, Field(min_length=1, max_length=MAX_PATH_CHARS)]
 GoalListItem = Annotated[str, Field(min_length=1, max_length=MAX_GOAL_ITEM_CHARS)]
 
+# A "working" worker that emits nothing for this long is reported as observed
+# silence, not working-forever. Streaming adapters emit deltas continuously
+# while generating, so silence beyond this bound means a stalled transport or
+# provider — the API reports the observed gap, never a claim the worker died.
+OBSERVATION_GAP_STALL_SECONDS = 180.0
+_OBSERVED_LIVE_STATUSES = {SessionStatus.WORKING, SessionStatus.VERIFYING}
+
+
+def _session_observation(session: HarnessSession, now: datetime) -> dict[str, Any] | None:
+    if session.status not in _OBSERVED_LIVE_STATUSES or session.supervision_paused:
+        return None
+    if session.last_activity is None:
+        return None
+    age = max(0.0, (now - session.last_activity).total_seconds())
+    return {
+        "last_event_age_seconds": int(age),
+        "stalled": age >= OBSERVATION_GAP_STALL_SECONDS,
+    }
+
+
+def _session_with_observation(session: HarnessSession, now: datetime) -> dict[str, Any]:
+    data = session.model_dump(mode="json")
+    observation = _session_observation(session, now)
+    if observation is not None:
+        data["observation"] = observation
+    return data
+
 
 def _named_hook_pipeline_timeout(
     harness: str,
@@ -4507,8 +4534,9 @@ def create_app() -> FastAPI:
             )
         except TimeoutError:
             logger.warning("Session refresh timed out; returning durable state")
+        now = utcnow()
         return [
-            s.model_dump(mode="json")
+            _session_with_observation(s, now)
             for s in await state.store.list_sessions(limit=limit, offset=offset)
         ]
 
@@ -4517,7 +4545,7 @@ def create_app() -> FastAPI:
         session = await state.store.get_session(session_id)
         if not session:
             raise HTTPException(404, "session not found")
-        return session.model_dump(mode="json")
+        return _session_with_observation(session, utcnow())
 
     @app.post("/v1/goals")
     async def create_goal(

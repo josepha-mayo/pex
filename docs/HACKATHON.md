@@ -54,7 +54,10 @@ Nemotron inference follows the same runbook's main path.
 - **Runs today offline:** the full supervision pipeline, deterministic triage,
   acceptance-surface sealing and tamper detection, the replay demo, local
   subprocess public-test verification, 5,377 backend tests (latest full run on
-  the `7dc44d5` tree, 0 failures).
+  the `7dc44d5` tree, 0 failures). `python scripts/eval_replays.py` scores the
+  shipped fixture suite against its declared supervision arcs — 4/4 on
+  2026-10-05
+  ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json)).
 - **Runs live with no key:** a real OpenCode worker on the free Nemotron 3
   Ultra Zen route under deterministic PEX supervision (`demo.py --live`);
   verified locally on 2026-10-04 with OpenCode 1.18.32. Free routes are

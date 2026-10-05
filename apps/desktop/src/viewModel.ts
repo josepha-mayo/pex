@@ -174,12 +174,30 @@ export function cursorRejectionReasonCopy(reason: string): string {
 export function mergeSessionObservation(previous: SessionRow | undefined, incoming: SessionRow): SessionRow {
   if (!previous || previous.id !== incoming.id) return incoming;
   const merged = { ...previous, ...incoming };
+  // The observation gap is a point-in-time server reading: a row that no
+  // longer carries it has left the live-observed state, so the stale block
+  // must not linger on the merged row.
+  merged.observation = incoming.observation;
   const oldTime = Date.parse(previous.supervisor_review_allowance?.observed_at || "");
   const newTime = Date.parse(incoming.supervisor_review_allowance?.observed_at || "");
   if (Number.isFinite(oldTime) && Number.isFinite(newTime) && oldTime > newTime) {
     merged.supervisor_review_allowance = previous.supervisor_review_allowance;
   }
   return merged;
+}
+
+export function observationAgeLabel(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "moments";
+  if (seconds < 60) return `${Math.floor(seconds)}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+}
+
+export function observationGapCopy(session: SessionRow | undefined): string | null {
+  const observation = session?.observation;
+  const seconds = observation?.last_event_age_seconds;
+  if (!observation?.stalled || typeof seconds !== "number" || !Number.isFinite(seconds)) return null;
+  return `No worker events observed for ${observationAgeLabel(seconds)} — silence from a live transport, not verified work`;
 }
 
 export function supervisorReviewAllowanceCopy(

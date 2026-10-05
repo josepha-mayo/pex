@@ -140,6 +140,7 @@ import {
   selectPrimarySession,
   selectedWorkerStatus,
   mergeSessionObservation,
+  observationAgeLabel,
   sessionGoalAttachmentPayload,
   splitPetCatalog,
   settleCanonicalResource,
@@ -2723,8 +2724,10 @@ export function App() {
                 {isReplaySession(session)
                   ? <small><span className="replay-badge">Recorded replay</span></small>
                   : isLiveWorkerSession(session)
-                    ? <small><span className="replay-badge live-badge">Live</span> {titleCase(session.status)}</small>
-                    : <small>{titleCase(session.status)}</small>}
+                    ? <small><span className="replay-badge live-badge">Live</span> {titleCase(session.status)}{session.observation?.stalled
+                        ? ` · quiet ${observationAgeLabel(session.observation.last_event_age_seconds ?? 0)}` : ""}</small>
+                    : <small>{titleCase(session.status)}{session.observation?.stalled
+                        ? ` · quiet ${observationAgeLabel(session.observation.last_event_age_seconds ?? 0)}` : ""}</small>}
               </button>
             ))}
             </div>
