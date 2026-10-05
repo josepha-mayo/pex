@@ -26,6 +26,7 @@ export function GoalEditor({
   editing,
   projectIdentity,
   onChange,
+  onFillExample,
   onSubmit,
   onCancel,
 }: {
@@ -36,6 +37,7 @@ export function GoalEditor({
   editing?: boolean;
   projectIdentity?: string;
   onChange: (field: keyof GoalDraft, value: string | boolean) => void;
+  onFillExample?: () => void;
   onSubmit: (event: FormEvent) => void;
   onCancel?: () => void;
 }) {
@@ -67,6 +69,14 @@ export function GoalEditor({
         />
       </label>
       <p className="goal-help">PEX checks this goal as your agent works. Include an “Acceptance criteria:” list for specific checks.</p>
+      {onFillExample && !editing ? (
+        <p className="goal-help goal-example">
+          <button type="button" className="linklike" onClick={onFillExample}>
+            Load a worked example
+          </button>
+          {" · fills every field — edit before saving"}
+        </p>
+      ) : null}
       <label className="checkbox-label goal-observation-only">
         <input
           type="checkbox"

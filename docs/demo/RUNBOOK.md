@@ -377,6 +377,8 @@ The committed captures under `docs/demo/assets/` regenerate with
 session present). It drives the installed Microsoft Edge via Playwright; set
 `PEX_BROWSER_EXE` for a different Chromium-family binary. The script exists to
 keep README imagery honest — it only photographs the real UI, never mocks it.
+`capture-example-goal.mjs` does the same for the goal composer's
+"Load a worked example" fill (no session replay needed).
 
 For the submission video, [DEMO_SCRIPT.md](DEMO_SCRIPT.md) is a ~3-minute
 narration keyed to the same on-screen flow.

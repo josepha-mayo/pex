@@ -134,6 +134,13 @@ accepted a draft value and retained a visible focus outline. No goal was submitt
 key saved, or worker attached. See the [testing guide](docs/TESTING.md) for native
 package and live-provider evidence.*
 
+![The "Load a worked example" fill populating every supervision field](docs/demo/assets/pex-goal-example-58bd237.png)
+
+*One click on "Load a worked example" fills the composer with a goal that
+exercises what PEX actually checks — acceptance criteria, forbidden outcomes,
+non-goals, required evidence — while preserving the bound workspace. Nothing is
+submitted; every field stays editable.*
+
 </details>
 
 ## The pain it removes

@@ -10,6 +10,7 @@ import {
 import { BrandMark } from "./components/BrandMark";
 import { CommandDeck } from "./components/CommandDeck";
 import type { GoalDraft } from "./components/GoalEditor";
+import { mergeExampleGoal } from "./exampleGoal";
 import {
   BridgeRequestError,
   bridgeRequestError,
@@ -196,6 +197,9 @@ const EMPTY_GOAL: GoalDraft = {
   rejectedApproaches: "",
   unresolvedQuestions: "",
 };
+
+// A judge can load this in one click to see what a well-specified goal looks
+// like — acceptance, forbidden outcomes, and non-goals all filled.
 
 type Shell = "main" | "settings" | "pet";
 type HookHarness = "cursor" | "claude_code" | "qwen" | "hermes" | "opencode";
@@ -3099,6 +3103,7 @@ export function App() {
           onUndo={() => void undoIntervention()}
           onAttachGoal={(goalId) => void attachSelectedGoal(goalId)}
           onGoalChange={(field, value) => setGoalDraft((draft) => ({ ...draft, [field]: value }))}
+          onFillExample={() => setGoalDraft((draft) => mergeExampleGoal(draft))}
           onCreateGoal={(event) => void savePersistentGoal(event)}
           onEditGoal={
             attachedGoal

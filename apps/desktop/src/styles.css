@@ -1690,6 +1690,22 @@ p {
   line-height: 1.6;
 }
 
+.linklike {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--mint);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.linklike:hover {
+  color: var(--paper);
+}
+
 .goal-options {
   padding: 14px 0;
   border-top: 1px solid var(--line);

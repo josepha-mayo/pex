@@ -107,6 +107,7 @@ export function Inspector({
   onUndo,
   onAttachGoal,
   onGoalChange,
+  onFillExample,
   onCreateGoal,
   onEditGoal,
   onCancelEdit,
@@ -158,6 +159,7 @@ export function Inspector({
   onUndo: () => void;
   onAttachGoal: (goalId: string) => void;
   onGoalChange: (field: keyof GoalDraft, value: string | boolean) => void;
+  onFillExample: () => void;
   onCreateGoal: (event: FormEvent) => void;
   onEditGoal?: () => void;
   onCancelEdit?: () => void;
@@ -579,6 +581,7 @@ export function Inspector({
             willAttach={canAttach && !editingGoal}
             editing={editingGoal}
             projectIdentity={current?.project_id || current?.cwd || undefined}
+            onFillExample={onFillExample}
             onChange={onGoalChange}
             onSubmit={onCreateGoal}
             onCancel={onCancelEdit}
