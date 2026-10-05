@@ -196,6 +196,16 @@ PASS ledger synthetic:replay-capture.. hash chain reaches recorded head
 43/44 checks passed; 0 failed -- internal-consistency proof only, not proof of a live run.
 ```
 
+A real pack ships in the repo — verify it right now, no bridge or UI needed:
+
+```powershell
+uv run python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.json --html build/pack.html
+```
+
+or just open [`docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html`](docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.html)
+— the receipt renders itself: every check, every digest, the tamper diff, and
+the hash-chained ledger in one self-contained page.
+
 ![Sealed-baseline diff of the weakened test](docs/demo/assets/pex-tamper-diff-c281f0f.png)
 
 *Click a flagged file in the ledger and it expands the sealed-baseline diff —

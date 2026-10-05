@@ -29,7 +29,7 @@ from pex_protocol.goal import Goal
 from pex_protocol.intervention import Intervention
 from pex_protocol.session import HarnessEvent, HarnessSession
 
-from scripts.verify_pack import verify
+from scripts.verify_pack import render_html, verify
 
 
 @pytest.fixture
@@ -234,6 +234,21 @@ def _fixture_pack() -> dict:
     }
     pack["manifest_sha256"] = sha(canonical(pack))
     return pack
+
+
+async def test_render_html_is_self_contained_and_escapes(client) -> None:
+    http, store, tmp_path = client
+    goal, _ = await _seed(store, tmp_path)
+    pack = (await http.get(f"/v1/goals/{goal.id}/evidence-pack")).json()
+
+    page = render_html(pack, verify(pack))
+    assert "CHECKS PASSED" in page
+    assert "sealed/test_csv_utils.py" in page
+    # The flagged bytes appear in the diff, HTML-escaped (the fixture's
+    # ' quotes must not break out of the markup).
+    assert "assert result == &#x27;" in page or "assert result == result" in page
+    assert "<script" not in page
+    assert 'src="http' not in page and 'href="http' not in page
 
 
 async def test_pack_for_unknown_goal_is_404(client) -> None:

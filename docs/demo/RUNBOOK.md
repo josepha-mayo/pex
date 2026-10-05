@@ -127,14 +127,19 @@ stored event ledger — all under a manifest digest. `demo.py --live` saves one
 as `pex-evidence-pack.json` next to the receipt on exit.
 
 ```powershell
-uv run python scripts/verify_pack.py pex-evidence-pack.json
+uv run python scripts/verify_pack.py pex-evidence-pack.json --html build/pack-report.html
 ```
 
 The verifier recomputes every digest — baseline contents ↔ sealed digests,
 flagged bytes ↔ incident digests, per-event hashes → chain head, manifest —
-with no bridge running. A PASS proves the bundle is internally consistent
-(these verdicts rest on exactly these bytes); it does not claim a live worker
-ran — that evidence is the receipts and recordings.
+with no bridge running. `--html` also writes a self-contained forensic page:
+the checks, the sealed→flagged diffs, and the ledger — one file a judge can
+open and share. A captured-run pack and its rendered report ship in the repo:
+`docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.{json,html}` —
+open the HTML directly or re-verify the JSON with one command. A PASS proves
+the bundle is internally consistent (these verdicts rest on exactly these
+bytes); it does not claim a live worker ran — that evidence is the receipts
+and recordings.
 
 ### Capture a live run as a replayable fixture
 

@@ -18,7 +18,9 @@ that claim still rests on the live-run receipts and recordings.
 
 from __future__ import annotations
 
+import difflib
 import hashlib
+import html
 import json
 import sys
 from pathlib import Path
@@ -138,12 +140,203 @@ def verify(pack: dict) -> list[str]:
     return checks
 
 
+_CSS = """
+:root{color-scheme:dark;--bg:#0c0f0e;--panel:#131716;--line:#243029;
+--ink:#d7e2dc;--dim:#7d8f87;--mint:#5adfa8;--red:#ff7a72;--amber:#e8c46a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 ui-monospace,
+Cascadia Mono,Consolas,monospace;padding:32px 20px 64px}
+main{max-width:960px;margin:0 auto}
+h1{font-size:20px;margin:0 0 4px;letter-spacing:.02em}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:var(--dim);
+margin:36px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sub{color:var(--dim);font-size:12px}
+.mono{word-break:break-all}
+.badge{display:inline-block;padding:2px 10px;border-radius:3px;font-weight:600;
+font-size:12px;letter-spacing:.08em;margin:12px 8px 0 0}
+.badge.ok{background:#123326;color:var(--mint);border:1px solid #1f5b3e}
+.badge.bad{background:#3a1512;color:var(--red);border:1px solid #66241f}
+.badge.info{background:#1a2a33;color:#8fc9e8;border:1px solid #274b5c}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+padding:14px 16px;margin:10px 0}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:4px 14px;font-size:13px}
+.kv dt{color:var(--dim)}.kv dd{margin:0;word-break:break-all}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+td,th{padding:4px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{color:var(--dim);font-weight:500;text-transform:uppercase;font-size:11px;letter-spacing:.1em}
+.c-pass{color:var(--mint)}.c-fail{color:var(--red);font-weight:600}
+.c-info,.c-note{color:var(--dim)}
+pre.diff{margin:8px 0 0;padding:10px 12px;background:#0a0d0c;border:1px solid var(--line);
+border-radius:5px;overflow-x:auto;font-size:12.5px;line-height:1.5}
+.d-add{color:var(--mint)}.d-del{color:var(--red)}.d-hdr{color:var(--amber)}.d-ctx{color:var(--dim)}
+footer{margin-top:44px;color:var(--dim);font-size:12px;border-top:1px solid var(--line);
+padding-top:14px}
+code.cmd{color:var(--mint);background:#0a0d0c;padding:1px 6px;border-radius:3px}
+"""
+
+
+def _esc(value) -> str:
+    return html.escape(str(value), quote=True)
+
+
+def _diff_html(old: str, new: str, path: str) -> str:
+    lines = difflib.unified_diff(
+        old.splitlines(),
+        new.splitlines(),
+        fromfile=f"sealed/{path}",
+        tofile=f"flagged/{path}",
+        lineterm="",
+    )
+    out = []
+    for line in lines:
+        if line.startswith("+++") or line.startswith("---") or line.startswith("@@"):
+            cls = "d-hdr"
+        elif line.startswith("+"):
+            cls = "d-add"
+        elif line.startswith("-"):
+            cls = "d-del"
+        else:
+            cls = "d-ctx"
+        out.append(f'<span class="{cls}">{_esc(line)}</span>')
+    return "\n".join(out)
+
+
+def render_html(pack: dict, checks: list[str]) -> str:
+    """Render a self-contained forensic page for a verified pack."""
+    report = pack.get("report") or {}
+    summary = report.get("summary") or {}
+    completion = report.get("completion") or {}
+    failures = sum(1 for c in checks if c.startswith("FAIL"))
+    passed = sum(1 for c in checks if c.startswith("PASS"))
+
+    parts = [
+        "<!doctype html><html><head><meta charset=utf-8>",
+        "<title>PEX evidence pack</title>",
+        f"<style>{_CSS}</style></head><body><main>",
+        "<h1>PEX evidence pack &mdash; forensic receipt</h1>",
+        f'<div class="sub">schema {_esc(pack.get("schema"))} &middot; generated '
+        f"{_esc(pack.get('generated_at'))} &middot; manifest "
+        f'<span class="mono">{_esc(str(pack.get("manifest_sha256") or "")[:24])}..</span></div>',
+    ]
+    badge_cls = "ok" if not failures else "bad"
+    badge_text = (
+        f"{passed}/{len(checks)} CHECKS PASSED" if not failures else f"{failures} CHECKS FAILED"
+    )
+    parts.append(f'<span class="badge {badge_cls}">{badge_text}</span>')
+    status = completion.get("status") or "unknown"
+    parts.append(f'<span class="badge info">completion: {_esc(status)}</span>')
+    note = pack.get("consistency_note")
+    if note:
+        parts.append(f'<div class="sub" style="margin-top:10px">{_esc(note)}</div>')
+
+    parts.append("<h2>Verdict summary</h2><div class=panel><dl class=kv>")
+    parts.append(f"<dt>goal</dt><dd class=mono>{_esc(pack.get('goal_id'))}</dd>")
+    goal = report.get("goal") or {}
+    if goal.get("statement"):
+        parts.append(f"<dt>statement</dt><dd>{_esc(goal['statement'])}</dd>")
+    verdicts = summary.get("verdicts") or {}
+    verdict_text = ", ".join(f"{k}: {v}" for k, v in sorted(verdicts.items()))
+    parts.append(
+        f"<dt>claims adjudicated</dt><dd>{_esc(summary.get('claims', 0))} "
+        f"({_esc(verdict_text)})</dd>"
+    )
+    parts.append(
+        f"<dt>integrity incidents</dt><dd>{_esc(summary.get('integrity_incidents', 0))}</dd>"
+    )
+    parts.append(
+        f"<dt>corrective nudges</dt><dd>{_esc(summary.get('corrective_nudges', 0))}</dd></dl></div>"
+    )
+
+    parts.append("<h2>Verification checks</h2><div class=panel><table>")
+    for line in checks:
+        tag, _, rest = line.partition(" ")
+        parts.append(f'<tr><td class="c-{tag.lower()}">{_esc(tag)}</td><td>{_esc(rest)}</td></tr>')
+    parts.append("</table></div>")
+
+    baseline_by_session = {
+        (b.get("session_id") or ""): b for b in pack.get("acceptance_baselines") or []
+    }
+    if baseline_by_session:
+        parts.append("<h2>Sealed acceptance baselines</h2>")
+        for sid, baseline in baseline_by_session.items():
+            sealed_at = _esc(baseline.get("sealed_at"))
+            sealed_via = _esc(baseline.get("sealed_context"))
+            parts.append(
+                f"<div class=panel><div class=sub>{_esc(sid)} &middot; sealed "
+                f"{sealed_at} via {sealed_via}</div>"
+                "<table><tr><th>path</th><th>sha-256</th></tr>"
+            )
+            for path, digest in sorted((baseline.get("files") or {}).items()):
+                parts.append(
+                    f"<tr><td>{_esc(path)}</td><td class=mono>{_esc(str(digest)[:24])}..</td></tr>"
+                )
+            parts.append("</table></div>")
+
+    flagged = pack.get("flagged") or []
+    if flagged:
+        parts.append("<h2>Flagged acceptance-surface bytes</h2>")
+        for entry in flagged:
+            sid = entry.get("session_id") or ""
+            baseline = baseline_by_session.get(sid) or {}
+            sealed_contents = baseline.get("contents") or {}
+            parts.append(
+                f"<div class=panel><div class=sub>{_esc(sid)} &middot; incident "
+                f"{_esc(str(entry.get('intervention_id') or '')[:24])}.. &middot; "
+                f"{_esc(entry.get('at'))}</div>"
+            )
+            for path in entry.get("flagged_paths") or []:
+                new_text = (entry.get("contents") or {}).get(path) or ""
+                old_text = sealed_contents.get(path)
+                digest = (entry.get("flagged_sha256") or {}).get(path)
+                parts.append(
+                    f"<div><b>{_esc(path)}</b> &middot; flagged sha-256 "
+                    f"<span class=mono>{_esc(str(digest)[:24])}..</span></div>"
+                )
+                parts.append(f"<pre class=diff>{_diff_html(old_text or '', new_text, path)}</pre>")
+            parts.append("</div>")
+
+    ledgers = pack.get("event_ledger") or []
+    if ledgers:
+        parts.append("<h2>Hash-chained event ledger</h2>")
+        for ledger in ledgers:
+            parts.append(
+                f"<div class=panel><div class=sub>{_esc(ledger.get('session_id'))} &middot; "
+                f"{_esc(ledger.get('count'))} events &middot; head "
+                f"<span class=mono>{_esc(str(ledger.get('chain_sha256') or '')[:24])}..</span>"
+                + (" &middot; TRUNCATED" if ledger.get("truncated") else "")
+                + "</div><table><tr><th>#</th><th>type</th><th>payload sha-256</th></tr>"
+            )
+            for i, entry in enumerate(ledger.get("events") or []):
+                event = entry.get("event") or {}
+                etype = event.get("event_type") or event.get("type") or "?"
+                parts.append(
+                    f"<tr><td>{i}</td><td>{_esc(etype)}</td>"
+                    f"<td class=mono>{_esc(str(entry.get('sha256') or '')[:24])}..</td></tr>"
+                )
+            parts.append("</table></div>")
+
+    parts.append(
+        "<footer>Verify this pack yourself: "
+        "<code class=cmd>uv run python scripts/verify_pack.py &lt;pack.json&gt;</code><br>"
+        "Digests prove these verdicts rest on these exact bytes and events. "
+        "They do not prove a live worker ran &mdash; recorded replays are labeled "
+        "replay:true + not_live_control:true.</footer></main></body></html>"
+    )
+    return "".join(parts)
+
+
 def main() -> int:
-    if len(sys.argv) != 2:
-        print(__doc__.splitlines()[0], file=sys.stderr)
-        print("usage: verify_pack.py <pack.json>", file=sys.stderr)
-        return 2
-    path = Path(sys.argv[1])
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("pack", help="evidence-pack JSON file")
+    parser.add_argument(
+        "--html",
+        metavar="OUT",
+        help="also write a self-contained forensic HTML report to OUT",
+    )
+    ns = parser.parse_args()
+    path = Path(ns.pack)
     try:
         pack = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -165,6 +358,9 @@ def main() -> int:
         f"{sum(1 for c in checks if c.startswith('PASS'))}/{len(checks)} checks passed; "
         f"{failures} failed -- internal-consistency proof only, not proof of a live run."
     )
+    if ns.html:
+        Path(ns.html).write_text(render_html(pack, checks), encoding="utf-8")
+        print(f"wrote forensic report: {ns.html}")
     return 1 if failures else 0
 
 
