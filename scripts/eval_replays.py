@@ -259,7 +259,7 @@ def main() -> int:
     print(
         f"{scored}/{len(fixture_ids)} fixtures adjudicated; "
         f"{len(fixture_ids) - failed} met the declared arc. "
-        f"Fixture-suite scope only — this is not a benchmark."
+        f"Fixture-suite scope only -- this is not a benchmark."
     )
     if args.json:
         with open(args.json, "w", encoding="utf-8") as handle:

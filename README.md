@@ -183,6 +183,19 @@ record (human-readable timeline plus the embedded raw JSON). The session is labe
 "Recorded replay · not live worker control" — a deterministic fixture, not a
 live worker receipt.*
 
+The **Evidence pack** button goes further: a hash-chained bundle of the
+report, sealed baseline bytes, flagged bytes, and the full event ledger —
+verified offline with `python scripts/verify_pack.py`:
+
+```text
+PASS manifest digest recomputes (3f6e75de21aa593d..)
+PASS baseline synthetic:replay-capture.. test_csv_utils.py: content matches sealed digest
+PASS flagged intervention_5ab.. test_csv_utils.py: digest differs from sealed baseline
+PASS ledger synthetic:replay-capture.. event 31: payload hash matches
+PASS ledger synthetic:replay-capture.. hash chain reaches recorded head
+43/44 checks passed; 0 failed -- internal-consistency proof only, not proof of a live run.
+```
+
 ![Sealed-baseline diff of the weakened test](docs/demo/assets/pex-tamper-diff-c281f0f.png)
 
 *Click a flagged file in the ledger and it expands the sealed-baseline diff —

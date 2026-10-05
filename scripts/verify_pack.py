@@ -1,4 +1,4 @@
-"""Verify a PEX evidence pack offline — no bridge, no trust required.
+"""Verify a PEX evidence pack offline -- no bridge, no trust required.
 
     uv run python scripts/verify_pack.py pex-evidence-pack.json
 
@@ -163,7 +163,7 @@ def main() -> int:
     print("-" * 72)
     print(
         f"{sum(1 for c in checks if c.startswith('PASS'))}/{len(checks)} checks passed; "
-        f"{failures} failed — internal-consistency proof only, not proof of a live run."
+        f"{failures} failed -- internal-consistency proof only, not proof of a live run."
     )
     return 1 if failures else 0
 
