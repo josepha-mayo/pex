@@ -113,6 +113,25 @@ scenario ends verified without its integrity incident, or a no-evidence
 scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`
 (6/6 arcs). This is the curated fixture suite, not a benchmark.
 
+### Verify the evidence pack offline
+
+The Inspector's **Evidence pack** button (or
+`GET /v1/goals/{id}/evidence-pack`) downloads a self-contained bundle: the
+verification report, the sealed baseline digests *and* their captured bytes,
+the flagged bytes behind every integrity flag, and a hash-chained copy of the
+stored event ledger — all under a manifest digest. `demo.py --live` saves one
+as `pex-evidence-pack.json` next to the receipt on exit.
+
+```powershell
+uv run python scripts/verify_pack.py pex-evidence-pack.json
+```
+
+The verifier recomputes every digest — baseline contents ↔ sealed digests,
+flagged bytes ↔ incident digests, per-event hashes → chain head, manifest —
+with no bridge running. A PASS proves the bundle is internally consistent
+(these verdicts rest on exactly these bytes); it does not claim a live worker
+ran — that evidence is the receipts and recordings.
+
 ### Capture a live run as a replayable fixture
 
 ```powershell

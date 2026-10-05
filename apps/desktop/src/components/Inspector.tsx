@@ -49,6 +49,8 @@ export function Inspector({
   verificationReport,
   exportingReport,
   onExportReport,
+  exportingPack,
+  onExportEvidencePack,
   onFetchAcceptanceDiff,
   goals,
   action,
@@ -96,6 +98,8 @@ export function Inspector({
   verificationReport?: VerificationReportView | null;
   exportingReport?: boolean;
   onExportReport?: () => void;
+  exportingPack?: boolean;
+  onExportEvidencePack?: () => void;
   onFetchAcceptanceDiff?: (path: string) => Promise<AcceptanceDiff>;
   goals: Goal[];
   action?: LastAction | null;
@@ -428,16 +432,29 @@ export function Inspector({
                   ))}
                 </ul>
               ) : null}
-              {onExportReport ? (
+              {onExportReport || onExportEvidencePack ? (
                 <div className="button-row">
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={onExportReport}
-                    disabled={exportingReport}
-                  >
-                    {exportingReport ? "Exporting…" : "Export report"}
-                  </button>
+                  {onExportReport ? (
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={onExportReport}
+                      disabled={exportingReport}
+                    >
+                      {exportingReport ? "Exporting…" : "Export report"}
+                    </button>
+                  ) : null}
+                  {onExportEvidencePack ? (
+                    <button
+                      type="button"
+                      className="ghost"
+                      title="Download the hash-chained evidence bundle — verify offline with scripts/verify_pack.py"
+                      onClick={onExportEvidencePack}
+                      disabled={exportingPack}
+                    >
+                      {exportingPack ? "Packing…" : "Evidence pack"}
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
               </details>

@@ -192,3 +192,10 @@ def goal_report(bridge: str, goal_id: str) -> dict[str, Any]:
 
     quoted = urllib.parse.quote(goal_id, safe="")
     return _call("GET", f"{bridge}/v1/goals/{quoted}/verification-report", timeout=15)
+
+
+def goal_evidence_pack(bridge: str, goal_id: str) -> dict[str, Any]:
+    """Fetch the goal's re-verifiable evidence pack (verify_pack.py input)."""
+
+    quoted = urllib.parse.quote(goal_id, safe="")
+    return _call("GET", f"{bridge}/v1/goals/{quoted}/evidence-pack", timeout=30)

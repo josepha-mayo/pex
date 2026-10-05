@@ -213,6 +213,222 @@ def _session_with_observation(session: HarnessSession, now: datetime) -> dict[st
     return data
 
 
+async def _verification_report_payload(goal_id: str) -> dict[str, Any]:
+    """Every claim, its verdict, and the sealed baseline summary for a goal."""
+
+    goal = await state.store.get_goal(goal_id)
+    if goal is None:
+        raise LookupError(goal_id)
+    completion = await state.store.goal_completion_projection(goal_id)
+
+    scan_limit = 200
+    interventions = await state.store.list_interventions_for_goal(
+        goal_id, limit=scan_limit, offset=0
+    )
+    claims: list[dict[str, Any]] = []
+    session_ids: set[str] = set()
+    for item in interventions:
+        verification = (
+            item.metadata.get("verification")
+            if isinstance(item.metadata, dict)
+            else None
+        )
+        if not isinstance(verification, dict):
+            continue
+        session_ids.add(item.session_id)
+        surface = verification.get("acceptance_surface")
+        # Claim evidence = the deciding verdict's evidence plus every
+        # verdict's own evidence: an uncertain row earns its ledger entry
+        # by *why* (later_edit:, pytest_ok=false), not just the flag.
+        evidence: list[str] = []
+        for entry in verification.get("evidence") or []:
+            if isinstance(entry, str):
+                evidence.append(entry)
+        for verdict in verification.get("verdicts") or []:
+            if not isinstance(verdict, dict):
+                continue
+            for entry in verdict.get("evidence") or []:
+                if isinstance(entry, str) and entry not in evidence:
+                    evidence.append(entry)
+        claims.append(
+            {
+                "intervention_id": item.id,
+                "session_id": item.session_id,
+                "at": item.created_at.isoformat(),
+                "action_taken": item.action_taken,
+                "verification_status": verification.get("status"),
+                "acceptance_surface": surface if isinstance(surface, dict) else None,
+                "evidence": evidence[:32],
+            }
+        )
+    baselines = []
+    for session_id in sorted(session_ids):
+        baseline = await state.store.recall_acceptance_baseline(
+            session_id, goal_id
+        )
+        if isinstance(baseline, dict):
+            baselines.append(
+                {
+                    "session_id": session_id,
+                    "sealed_at": baseline.get("captured_at"),
+                    "sealed_context": baseline.get("sealed_context"),
+                    "files": len(baseline.get("files") or {}),
+                    "files_complete": bool(baseline.get("files_complete")),
+                }
+            )
+    verdict_counts: dict[str, int] = {}
+    for claim in claims:
+        key = str(claim["verification_status"] or "unknown")
+        verdict_counts[key] = verdict_counts.get(key, 0) + 1
+    integrity_flags = ("modified", "deleted", "added_config", "unhashed")
+    return {
+        "schema": "pex.verification-report.v1",
+        "generated_at": utcnow().isoformat(),
+        "goal": goal.model_dump(mode="json"),
+        "completion": completion,
+        "claims": claims,
+        "claims_scanned": len(interventions),
+        "claims_truncated": len(interventions) >= scan_limit,
+        "acceptance_baselines": baselines,
+        "summary": {
+            "claims": len(claims),
+            "verdicts": verdict_counts,
+            "integrity_incidents": sum(
+                1
+                for claim in claims
+                if isinstance(claim["acceptance_surface"], dict)
+                and any(
+                    claim["acceptance_surface"].get(key)
+                    for key in integrity_flags
+                )
+            ),
+            "corrective_nudges": sum(
+                1 for claim in claims if claim["action_taken"] == "SEND_NUDGE"
+            ),
+        },
+    }
+
+
+_EVIDENCE_PACK_EVENT_LIMIT = 1000
+
+
+def _sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+    )
+
+
+async def _evidence_pack_payload(goal_id: str) -> dict[str, Any]:
+    """Self-contained, re-verifiable evidence bundle for one goal.
+
+    The pack embeds the verification report plus everything needed to check it
+    offline: sealed baseline digests AND their captured contents, the flagged
+    bytes behind each integrity flag, and a hash-chained copy of every stored
+    event for the bound sessions. ``scripts/verify_pack.py`` recomputes each
+    digest and the manifest — the pack proves internal consistency (these
+    verdicts rest on exactly these bytes and events), never that a live run
+    occurred.
+    """
+
+    report = await _verification_report_payload(goal_id)
+    interventions = await state.store.list_interventions_for_goal(
+        goal_id, limit=200, offset=0
+    )
+
+    session_ids: set[str] = set()
+    flagged: list[dict[str, Any]] = []
+    for item in interventions:
+        verification = (
+            item.metadata.get("verification")
+            if isinstance(item.metadata, dict)
+            else None
+        )
+        if not isinstance(verification, dict):
+            continue
+        session_ids.add(item.session_id)
+        flagged_content = verification.get("flagged_content")
+        surface = verification.get("acceptance_surface")
+        if isinstance(flagged_content, dict) and flagged_content:
+            flagged.append(
+                {
+                    "intervention_id": item.id,
+                    "session_id": item.session_id,
+                    "at": item.created_at.isoformat(),
+                    "flagged_paths": sorted(flagged_content),
+                    "flagged_sha256": {
+                        path: _sha256_text(text)
+                        for path, text in sorted(flagged_content.items())
+                        if isinstance(text, str)
+                    },
+                    "contents": {
+                        path: text
+                        for path, text in sorted(flagged_content.items())
+                        if isinstance(text, str)
+                    },
+                    "acceptance_surface": surface
+                    if isinstance(surface, dict)
+                    else None,
+                }
+            )
+
+    baselines: list[dict[str, Any]] = []
+    for session_id in sorted(session_ids):
+        baseline = await state.store.recall_acceptance_baseline(session_id, goal_id)
+        if isinstance(baseline, dict):
+            baselines.append(
+                {
+                    "session_id": session_id,
+                    "sealed_at": baseline.get("captured_at"),
+                    "sealed_context": baseline.get("sealed_context"),
+                    "files_complete": bool(baseline.get("files_complete")),
+                    "files": dict(baseline.get("files") or {}),
+                    "contents": dict(baseline.get("contents") or {}),
+                }
+            )
+
+    event_ledger: list[dict[str, Any]] = []
+    for session_id in sorted(session_ids):
+        events = await state.store.recent_events(
+            session_id, limit=_EVIDENCE_PACK_EVENT_LIMIT
+        )
+        chain = ""
+        entries: list[dict[str, Any]] = []
+        for event in events:
+            dumped = event.model_dump(mode="json")
+            event_sha = _sha256_text(_canonical_json(dumped))
+            chain = _sha256_text(f"{chain}|{event_sha}")
+            entries.append({"sha256": event_sha, "event": dumped})
+        event_ledger.append(
+            {
+                "session_id": session_id,
+                "count": len(entries),
+                "truncated": len(entries) >= _EVIDENCE_PACK_EVENT_LIMIT,
+                "chain_sha256": chain,
+                "events": entries,
+            }
+        )
+
+    pack = {
+        "schema": "pex.evidence-pack.v1",
+        "generated_at": utcnow().isoformat(),
+        "goal_id": goal_id,
+        "consistency_note": (
+            "Digests prove these verdicts rest on these exact bytes and "
+            "events; they do not prove a live worker ran."
+        ),
+        "report": report,
+        "acceptance_baselines": baselines,
+        "flagged": flagged,
+        "event_ledger": event_ledger,
+    }
+    pack["manifest_sha256"] = _sha256_text(_canonical_json(pack))
+    return pack
+
+
 def _named_hook_pipeline_timeout(
     harness: str,
     hook_name: str,
@@ -4667,11 +4883,8 @@ def create_app() -> FastAPI:
         baselines that anchored it, and the final completion projection.
         """
 
-        goal = await state.store.get_goal(goal_id)
-        if goal is None:
-            raise HTTPException(404, "goal not found")
         try:
-            completion = await state.store.goal_completion_projection(goal_id)
+            return await _verification_report_payload(goal_id)
         except LookupError as exc:
             raise HTTPException(404, "goal not found") from exc
         except ProjectIdentityBlockedError as exc:
@@ -4680,94 +4893,28 @@ def create_app() -> FastAPI:
                 {"code": exc.code, "message": str(exc)},
             ) from exc
 
-        scan_limit = 200
-        interventions = await state.store.list_interventions_for_goal(
-            goal_id, limit=scan_limit, offset=0
-        )
-        claims: list[dict[str, Any]] = []
-        session_ids: set[str] = set()
-        for item in interventions:
-            verification = (
-                item.metadata.get("verification")
-                if isinstance(item.metadata, dict)
-                else None
-            )
-            if not isinstance(verification, dict):
-                continue
-            session_ids.add(item.session_id)
-            surface = verification.get("acceptance_surface")
-            # Claim evidence = the deciding verdict's evidence plus every
-            # verdict's own evidence: an uncertain row earns its ledger entry
-            # by *why* (later_edit:, pytest_ok=false), not just the flag.
-            evidence: list[str] = []
-            for entry in verification.get("evidence") or []:
-                if isinstance(entry, str):
-                    evidence.append(entry)
-            for verdict in verification.get("verdicts") or []:
-                if not isinstance(verdict, dict):
-                    continue
-                for entry in verdict.get("evidence") or []:
-                    if isinstance(entry, str) and entry not in evidence:
-                        evidence.append(entry)
-            claims.append(
-                {
-                    "intervention_id": item.id,
-                    "session_id": item.session_id,
-                    "at": item.created_at.isoformat(),
-                    "action_taken": item.action_taken,
-                    "verification_status": verification.get("status"),
-                    "acceptance_surface": surface if isinstance(surface, dict) else None,
-                    "evidence": evidence[:32],
-                }
-            )
-        baselines = []
-        for session_id in sorted(session_ids):
-            baseline = await state.store.recall_acceptance_baseline(
-                session_id, goal_id
-            )
-            if isinstance(baseline, dict):
-                baselines.append(
-                    {
-                        "session_id": session_id,
-                        "sealed_at": baseline.get("captured_at"),
-                        "sealed_context": baseline.get("sealed_context"),
-                        "files": len(baseline.get("files") or {}),
-                        "files_complete": bool(baseline.get("files_complete")),
-                    }
-                )
-        verdict_counts: dict[str, int] = {}
-        for claim in claims:
-            key = str(claim["verification_status"] or "unknown")
-            verdict_counts[key] = verdict_counts.get(key, 0) + 1
-        integrity_flags = ("modified", "deleted", "added_config", "unhashed")
-        return {
-            "schema": "pex.verification-report.v1",
-            "generated_at": utcnow().isoformat(),
-            "goal": goal.model_dump(mode="json"),
-            "completion": completion,
-            "claims": claims,
-            "claims_scanned": len(interventions),
-            "claims_truncated": len(interventions) >= scan_limit,
-            "acceptance_baselines": baselines,
-            "summary": {
-                "claims": len(claims),
-                "verdicts": verdict_counts,
-                "integrity_incidents": sum(
-                    1
-                    for claim in claims
-                    if isinstance(claim["acceptance_surface"], dict)
-                    and any(
-                        claim["acceptance_surface"].get(key)
-                        for key in integrity_flags
-                    )
-                ),
-                "corrective_nudges": sum(
-                    1
-                    for claim in claims
-                    if claim["action_taken"] == "SEND_NUDGE"
-                ),
-            },
-        }
+    @app.get("/v1/goals/{goal_id}/evidence-pack")
+    async def get_goal_evidence_pack(
+        goal_id: str, _: None = Depends(_require_token)
+    ):
+        """Re-verifiable evidence bundle — digests a judge can check offline.
+
+        Embeds the verification report, the sealed baseline digests *and* their
+        captured contents, the flagged bytes behind every integrity flag, and a
+        hash-chained copy of the stored event ledger, all sealed under a
+        manifest digest. ``scripts/verify_pack.py`` recomputes each digest, so
+        the demo never asks a judge to trust the UI.
+        """
+
+        try:
+            return await _evidence_pack_payload(goal_id)
+        except LookupError as exc:
+            raise HTTPException(404, "goal not found") from exc
+        except ProjectIdentityBlockedError as exc:
+            raise HTTPException(
+                409,
+                {"code": exc.code, "message": str(exc)},
+            ) from exc
 
     @app.get("/v1/goals/{goal_id}/acceptance-diff")
     async def get_goal_acceptance_diff(

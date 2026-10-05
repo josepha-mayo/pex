@@ -2166,6 +2166,42 @@ export function App() {
     }
   }
 
+  const [exportingPack, setExportingPack] = useState(false);
+
+  async function exportEvidencePack() {
+    if (!attachedGoal || exportingPack) return;
+    setExportingPack(true);
+    try {
+      const raw = await bridgeJson<unknown>(
+        `/v1/goals/${encodeURIComponent(attachedGoal.id)}/evidence-pack`,
+      );
+      if (!isRecord(raw)) {
+        setNote("The bridge did not return an evidence pack to export.");
+        return;
+      }
+      const blob = new Blob([JSON.stringify(raw, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      try {
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `pex-evidence-pack-${attachedGoal.id}.json`;
+        anchor.rel = "noopener";
+        anchor.click();
+      } finally {
+        window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      }
+      setNote(
+        "Evidence pack exported — verify it offline with `python scripts/verify_pack.py pex-evidence-pack-….json`.",
+      );
+    } catch (error) {
+      setNote(operationError(error, "Could not export the evidence pack."));
+    } finally {
+      setExportingPack(false);
+    }
+  }
+
   async function resolveHumanDecision(
     intervention: Intervention,
     decision: HumanDecisionChoice,
@@ -3000,6 +3036,8 @@ export function App() {
           verificationReport={verificationReport}
           exportingReport={exportingReport}
           onExportReport={() => void exportVerificationReport()}
+          exportingPack={exportingPack}
+          onExportEvidencePack={() => void exportEvidencePack()}
           onFetchAcceptanceDiff={fetchAcceptanceDiff}
           goals={availableGoals}
           action={action}

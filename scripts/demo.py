@@ -254,6 +254,17 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  receipt saved:   {receipt}", flush=True)
             except Exception as exc:  # noqa: BLE001 - best-effort evidence
                 print(f"  receipt fetch failed: {exc}", flush=True)
+            try:
+                pack = demo_live.goal_evidence_pack(
+                    f"http://127.0.0.1:{BRIDGE_PORT}", goal_id
+                )
+                pack_path = run_root / "pex-evidence-pack.json"
+                pack_path.write_text(json.dumps(pack, indent=2) + "\n", encoding="utf-8")
+                print(f"  evidence pack:   {pack_path}", flush=True)
+                print("  verify offline:  uv run python scripts/verify_pack.py "
+                      f"{pack_path}", flush=True)
+            except Exception as exc:  # noqa: BLE001 - best-effort evidence
+                print(f"  evidence pack fetch failed: {exc}", flush=True)
         for child in children:
             _terminate_tree(child)
         for child in children:

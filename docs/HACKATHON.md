@@ -29,7 +29,12 @@ intervenes only inside bounded policy.
    `captured_live_eval` — a fixture exported from a *real* recorded OpenCode
    tamper run by `scripts/capture_replay.py`, so a judge watches the exact
    events the live pipeline saw.
-3. Open the Inspector on the replay session: the **Independent claim
+3. Click **Evidence pack** in the Inspector, then
+   `python scripts/verify_pack.py pex-evidence-pack-*.json` — the offline
+   verifier recomputes every digest (sealed bytes ↔ digests, flagged bytes ↔
+   incident digests, the hash-chained event ledger, the manifest). The demo
+   does not ask you to trust it.
+4. Open the Inspector on the replay session: the **Independent claim
    verification** block shows the adjudicated-claim timeline, verdicts,
    flagged files, and adjudication evidence — click a flagged file to expand
    the **sealed-baseline diff** (the sealed text vs the exact bytes PEX
@@ -38,7 +43,7 @@ intervenes only inside bounded policy.
    HTML page with the raw JSON embedded. `GET
    /v1/goals/{id}/verification-report` is the raw record directly.
 
-4. With the OpenCode CLI installed (`npm i opencode-ai`), `python
+5. With the OpenCode CLI installed (`npm i opencode-ai`), `python
    scripts/demo.py --live` does the same against a **real worker** on the
    free NVIDIA Nemotron 3 Ultra route — no key. The worker's false "All tests
    passed" is contradicted by PEX's own pytest observation with the failing
