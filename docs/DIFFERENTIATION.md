@@ -35,7 +35,7 @@ stays quiet when the work is actually complete.
 - Current focused gates pass 350 frontend tests (five platform-gated skips), 92
   supervision/recovery tests, and 243 expanded Strands/provider/AgentCore/evidence
   tests (four skips). The latest
-  complete Python regression is 5,377 passed and 41 skipped on the `7dc44d5` tree,
+  complete Python regression is 5,444 passed and 41 skipped on the `85af5ce` tree,
   with the ConTree slice re-verified focused at that revision; the earlier
   4,440-pass run at `570964b` is retained as a historical data point.
 - A real Codex Spark worker and free Muse/Strands supervisor demonstrated restraint and
