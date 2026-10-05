@@ -111,9 +111,12 @@ Replays every fixture through the real pipeline and scores each verification
 report against the arc it exists to demonstrate — nonzero exit if a tamper
 scenario ends verified without its integrity incident, or a no-evidence
 scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`
-(11/11 arcs). `--repeat N` replays every fixture N times and fails on any
+(11/11 arcs) — also as a self-contained readable page,
+`FIXTURE_SUITE_EVAL_2026-10-05.html`, with the same JSON embedded.
+`--repeat N` replays every fixture N times and fails on any
 verdict, completion, or normalized-evidence drift — adjudication is
-deterministic on a recorded trajectory. This is the curated fixture suite,
+deterministic on a recorded trajectory. `--html out.html` renders the
+receipt. This is the curated fixture suite,
 not a benchmark. Fixtures are authorable — `fixtures/demo/README.md`
 documents the schema and invites adversarial scenarios.
 
@@ -378,7 +381,10 @@ session present). It drives the installed Microsoft Edge via Playwright; set
 `PEX_BROWSER_EXE` for a different Chromium-family binary. The script exists to
 keep README imagery honest — it only photographs the real UI, never mocks it.
 `capture-example-goal.mjs` does the same for the goal composer's
-"Load a worked example" fill (no session replay needed).
+"Load a worked example" fill (no session replay needed), and
+`capture-walkthrough.mjs` records the whole judge path as a video
+(`pex-replay-walkthrough-*.mp4` — fixture click through in-browser pack
+verification, real UI only).
 
 For the submission video, [DEMO_SCRIPT.md](DEMO_SCRIPT.md) is a ~3-minute
 narration keyed to the same on-screen flow.

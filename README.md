@@ -267,6 +267,14 @@ injection, stale evidence, premature claims, drift loops, forbidden-outcome
 violations (nudge and pre-write escalation), and permission brokering — each
 scored in CI against its declared arc.*
 
+The whole judge path as a 45-second recorded capture of the real UI —
+fixture click → auto-opened Inspector → verdict timeline with the worker's
+own claims → the sealed-baseline diff of the weakened test → in-browser
+evidence-pack verification:
+[`pex-replay-walkthrough-b28d999.mp4`](docs/demo/assets/pex-replay-walkthrough-b28d999.mp4)
+(recorded via `apps/desktop/scripts/capture-walkthrough.mjs` against the
+real dev UI — no mocked frames).
+
 ## Supported harnesses
 
 | Harness | Current label | Surface |
