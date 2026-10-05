@@ -55,6 +55,15 @@ function interventionLogResult(item: Intervention): string | null {
   return humanize(result);
 }
 
+function interventionLogDetail(item: Intervention): string | undefined {
+  const parts = [
+    item.proposed_action?.rationale,
+    item.diagnosis && item.diagnosis !== item.action_taken ? `diagnosis: ${item.diagnosis}` : "",
+    ...(item.evidence || []).slice(0, 6),
+  ].filter(Boolean);
+  return parts.length ? parts.join("\n") : undefined;
+}
+
 export function Inspector({
   current,
   sessions = [],
@@ -359,7 +368,7 @@ export function Inspector({
               <small>Supervision log · {sessionInterventions.length} recorded</small>
               <ul>
                 {sessionInterventions.map((item) => (
-                  <li key={item.id}>
+                  <li key={item.id} title={interventionLogDetail(item)}>
                     <span>{interventionLogLabel(item)}</span>
                     {interventionLogResult(item) ? (
                       <em>{interventionLogResult(item)}</em>
