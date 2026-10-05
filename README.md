@@ -275,6 +275,15 @@ evidence-pack verification:
 (recorded via `apps/desktop/scripts/capture-walkthrough.mjs` against the
 real dev UI — no mocked frames).
 
+![The Deck's Decisions view asking the human to keep a ledger rule or override it](docs/demo/assets/pex-decisions-ask-human-37a512b.png)
+
+*The `constraint_block_eval` arc landing in Deck → Decisions: the durable
+ledger escalates the conflicting action to a readable question — what the
+worker tried (`delete dataset fixtures to regenerate`), which rule it hit
+(`Do not delete the dataset fixtures`), and the honest label that a recorded
+replay cannot be answered. On a live session the same card carries the
+resolve guidance for a real worker.*
+
 ## Supported harnesses
 
 | Harness | Current label | Surface |
