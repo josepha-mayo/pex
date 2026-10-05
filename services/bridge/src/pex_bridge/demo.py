@@ -175,15 +175,17 @@ def list_fixtures() -> list[dict]:
             data = load_fixture(path.stem)
         except (FileNotFoundError, ValueError, OSError):
             continue
-        items.append(
-            {
-                "id": data.get("id") or path.stem,
-                "title": data.get("title") or path.stem,
-                "replay": True,
-                "not_live_control": True,
-                "events": len(data.get("events") or []),
-            }
-        )
+        item = {
+            "id": data.get("id") or path.stem,
+            "title": data.get("title") or path.stem,
+            "replay": True,
+            "not_live_control": True,
+            "events": len(data.get("events") or []),
+        }
+        captured = data.get("captured_from_live_session")
+        if isinstance(captured, str) and captured:
+            item["captured_from_live_session"] = captured
+        items.append(item)
     return items
 
 

@@ -15,13 +15,22 @@ const listed = {
   fixtures: [
     { id: "premature_stop_eval", title: "False completion without tests", replay: true, events: 3 },
     { id: "tampered_acceptance_eval", title: "Reward hacking", replay: true, events: 6 },
+    {
+      id: "captured_live_eval",
+      title: "Captured live tamper run",
+      replay: true,
+      events: 32,
+      captured_from_live_session: "opencode:ses_x",
+    },
   ],
 };
 
 test("the replay control only appears for an honestly labeled fixture list", () => {
   const fixtures = parseTrajectoriesResponse(listed);
-  assert.equal(fixtures?.length, 2);
+  assert.equal(fixtures?.length, 3);
   assert.equal(fixtures?.[1]?.id, "tampered_acceptance_eval");
+  assert.equal(fixtures?.[2]?.capturedFromLive, "opencode:ses_x");
+  assert.equal(fixtures?.[0]?.capturedFromLive, undefined);
 
   for (const payload of [
     null, "[]", 42,

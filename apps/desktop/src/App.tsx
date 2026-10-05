@@ -2951,6 +2951,14 @@ export function App() {
                       {demoReplay.running && demoReplay.fixture === fixture.id
                         ? "Replaying…"
                         : fixture.title}
+                      {fixture.capturedFromLive ? (
+                        <small
+                          className="fixture-captured-tag"
+                          title={`Exported from recorded live session ${fixture.capturedFromLive}`}
+                        >
+                          from live
+                        </small>
+                      ) : null}
                     </button>
                   ))}
                 </div>

@@ -862,6 +862,15 @@ p {
   color: var(--amber);
   font-size: 12px;
 }
+.fixture-captured-tag {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mint);
+  opacity: 0.9;
+}
 
 .verification-summary {
   margin: 8px 0 0;

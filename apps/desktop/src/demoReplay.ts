@@ -8,6 +8,10 @@ import type { SessionRow } from "./types.ts";
 export type DemoFixture = {
   id: string;
   title: string;
+  // Set when the fixture was exported from a recorded live session
+  // (scripts/capture_replay.py) — the replay is real captured traffic,
+  // which is a stronger claim than a synthetic trajectory.
+  capturedFromLive?: string;
 };
 
 // A fixture id is bridge-minted and bounded; arbitrary strings are refused
@@ -20,10 +24,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function parseFixture(raw: unknown): DemoFixture | null {
   if (!isRecord(raw)) return null;
-  const { id, title } = raw;
+  const { id, title, captured_from_live_session: captured } = raw;
   if (typeof id !== "string" || !FIXTURE_ID.test(id)) return null;
   if (typeof title !== "string" || !title.trim()) return null;
-  return { id, title: title.trim() };
+  const fixture: DemoFixture = { id, title: title.trim() };
+  if (typeof captured === "string" && captured.trim()) {
+    fixture.capturedFromLive = captured.trim();
+  }
+  return fixture;
 }
 
 // The replay surface exists only while the bridge honestly advertises it: a
