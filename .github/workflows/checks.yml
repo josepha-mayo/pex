@@ -95,7 +95,7 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:7420/health
-          uv run --frozen python scripts/eval_replays.py --bridge http://127.0.0.1:7420 --repeat 2 --json build/eval-replays.json
+          uv run --frozen python scripts/eval_replays.py --bridge http://127.0.0.1:7420 --repeat 2 --json build/eval-replays.json --html build/eval-replays.html
           # The pack fetch must stay in this step: the EXIT trap kills the
           # bridge when the step's shell exits, so a later step would hit a
           # dead port.
@@ -121,6 +121,7 @@ jobs:
           name: eval-replays-${{ github.sha }}
           path: |
             build/eval-replays.json
+            build/eval-replays.html
             build/evidence-pack.json
           if-no-files-found: warn
 

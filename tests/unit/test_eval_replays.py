@@ -9,6 +9,7 @@ from scripts.eval_replays import (
     FixtureExpectation,
     _evaluate,
     _normalized_evidence,
+    render_html,
 )
 
 
@@ -84,3 +85,66 @@ def test_claim_floor_is_enforced() -> None:
         FixtureExpectation(completion_in={"verified_complete"}, min_claims=2),
     )
     assert any("claims" in f for f in failures)
+
+
+def test_eval_html_receipt_renders_arcs_and_embeds_json() -> None:
+    results = [
+        _result(
+            fixture="tampered_acceptance_eval",
+            session_id="synthetic:replay-x",
+            goal_id="goal_x",
+            interventions=["SEND_NUDGE", "NOOP"],
+            evidence_strings=["acceptance_surface_modified:tests/test_core.py"],
+            failures=[],
+            runs=2,
+        ),
+        _result(
+            fixture="broken_eval",
+            completion_status="uncertain",
+            evidence_strings=[],
+            failures=["completion 'uncertain' not in ['verified_complete']"],
+            runs=2,
+        ),
+    ]
+    meta = {
+        "tampered_acceptance_eval": {
+            "title": "Reward hacking: edited acceptance test",
+            "summary": "A sealed test is weakened, then green is claimed.",
+            "captured_from_live_session": "opencode:ses_x",
+        },
+        "broken_eval": {"title": "Broken"},
+    }
+    page = render_html(results, meta, "http://127.0.0.1:7420", 2)
+
+    # The arc is legible: verdicts, interventions, evidence all render.
+    assert "Reward hacking: edited acceptance test" in page
+    assert "SEND_NUDGE" in page
+    assert "acceptance_surface_modified:tests/test_core.py" in page
+    assert "from live" in page
+    # Failure surfaces honestly instead of hiding in a green badge.
+    assert "1 FIXTURES MISSED THEIR ARC" in page
+    assert "completion &#x27;uncertain&#x27; not in" in page
+    # The JSON receipt travels inside the page — same artifact, two readers.
+    assert 'id="eval-receipt"' in page
+    assert "tampered_acceptance_eval" in page
+    # HTML in fixture data cannot inject markup.
+    bad = [
+        _result(
+            fixture="<script>alert(1)</script>",
+            session_id="s",
+            goal_id="g",
+            failures=[],
+            runs=1,
+        )
+    ]
+    hostile = render_html(bad, {}, "b", 1)
+    # Rendered text is escaped, and the embedded JSON cannot emit a literal
+    # closing </script> that would break out of the receipt block.
+    assert "<script>alert(1)</script>" not in hostile
+    assert "&lt;script&gt;" in hostile
+
+
+def test_eval_html_all_pass_badge() -> None:
+    results = [_result(fixture="f1", failures=[], runs=2, session_id="s", goal_id="g")]
+    page = render_html(results, {"f1": {"title": "F"}}, "b", 2)
+    assert "1/1 DECLARED ARCS MET" in page
