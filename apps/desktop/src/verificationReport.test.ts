@@ -17,6 +17,7 @@ const report = {
       verification_status: "supported",
       acceptance_surface: { modified: [], deleted: [], added: [], added_config: [] },
       evidence: [],
+      claim_statements: ["All tests passed", "I am done"],
     },
     {
       at: "2026-10-04T06:36:34.245638+00:00",
@@ -49,6 +50,8 @@ test("a well-formed report parses into a bounded judge-facing view", () => {
   assert.ok(parsed);
   assert.equal(parsed.claims.length, 2);
   assert.equal(parsed.claims[0]?.status, "supported");
+  assert.deepEqual(parsed.claims[0]?.statements, ["All tests passed", "I am done"]);
+  assert.deepEqual(parsed.claims[1]?.statements, []);
   assert.deepEqual(parsed.claims[1]?.flaggedFiles, ["tests/test_core.py"]);
   assert.deepEqual(parsed.claims[1]?.evidence, [
     "acceptance file changed after baseline",

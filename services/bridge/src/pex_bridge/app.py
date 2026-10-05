@@ -244,9 +244,17 @@ async def _verification_report_payload(goal_id: str) -> dict[str, Any]:
         for entry in verification.get("evidence") or []:
             if isinstance(entry, str):
                 evidence.append(entry)
+        statements: list[str] = []
         for verdict in verification.get("verdicts") or []:
             if not isinstance(verdict, dict):
                 continue
+            claim = verdict.get("claim")
+            if isinstance(claim, dict):
+                statement = claim.get("statement")
+                if isinstance(statement, str) and statement.strip():
+                    statement = statement.strip()[:240]
+                    if statement not in statements:
+                        statements.append(statement)
             for entry in verdict.get("evidence") or []:
                 if isinstance(entry, str) and entry not in evidence:
                     evidence.append(entry)
@@ -259,6 +267,7 @@ async def _verification_report_payload(goal_id: str) -> dict[str, Any]:
                 "verification_status": verification.get("status"),
                 "acceptance_surface": surface if isinstance(surface, dict) else None,
                 "evidence": evidence[:32],
+                "claim_statements": statements[:6],
             }
         )
     baselines = []

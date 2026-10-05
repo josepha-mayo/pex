@@ -410,6 +410,13 @@ export function Inspector({
                       <span className="verification-claim">
                         {humanize(claim.action)} · {new Date(claim.at).toLocaleTimeString()}
                       </span>
+                      {claim.statements.length ? (
+                        <span className="verification-statements">
+                          {claim.statements.map((statement) => (
+                            <q key={statement}>{statement}</q>
+                          ))}
+                        </span>
+                      ) : null}
                       {claim.flaggedFiles.length ? (
                         <span className="verification-flagged">
                           {claim.flaggedFiles.map((file) => (

@@ -60,7 +60,20 @@ function claimRow(raw: unknown): string {
         .join(" · ")
     : "";
   const evidence = evidenceList(raw.evidence);
-  const detail = [flagged, surfaceNote ? `<span class="muted">${surfaceNote}</span>` : "", evidence]
+  const statements = Array.isArray(raw.claim_statements)
+    ? raw.claim_statements
+        .filter((item): item is string => typeof item === "string" && item.length > 0)
+        .slice(0, 6)
+        .map((item) => `<li class="claim-statement">&ldquo;${text(item, 240)}&rdquo;</li>`)
+        .join("")
+    : "";
+  const quoted = statements ? `<ul class="evidence claim-statements">${statements}</ul>` : "";
+  const detail = [
+    quoted,
+    flagged,
+    surfaceNote ? `<span class="muted">${surfaceNote}</span>` : "",
+    evidence,
+  ]
     .filter(Boolean)
     .join("");
   return `<tr><td class="status status-${status}">${status}</td><td>${action}</td><td>${at}</td><td>${detail}</td></tr>`;
@@ -104,6 +117,7 @@ code{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:11px;
 .status{font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.04em}
 .status-supported{color:#4ade80}.status-contradicted,.status-unsatisfied{color:#f87171}.status-uncertain{color:#fbbf24}.status-observed{color:#7f8ca0}
 .evidence{margin:4px 0 0;padding-left:16px}.evidence li{margin:2px 0}
+.claim-statement{font-style:italic;color:#dbe3ee}
 details{margin-top:24px}summary{cursor:pointer;color:#7f8ca0;font-size:12px}
 pre{white-space:pre-wrap;word-break:break-word;font-size:11px;background:#0a0f16;border:1px solid #232b38;border-radius:8px;padding:12px;max-height:480px;overflow:auto}
 .meta{font-size:12px;color:#7f8ca0}

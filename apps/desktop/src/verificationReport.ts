@@ -9,6 +9,7 @@ export type VerificationClaim = {
   status: string | null;
   flaggedFiles: string[];
   evidence: string[];
+  statements: string[];
 };
 
 export type VerificationReportView = {
@@ -80,6 +81,7 @@ function parseClaim(raw: unknown): VerificationClaim | null {
     status: typeof status === "string" && status.length <= 64 ? status : null,
     flaggedFiles: [...new Set(flagged)].slice(0, MAX_FLAGGED),
     evidence: parseEvidenceList(raw.evidence),
+    statements: parseEvidenceList(raw.claim_statements).slice(0, 6),
   };
 }
 

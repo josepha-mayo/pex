@@ -120,6 +120,16 @@ async def _seed(store: Store, tmp_path: Path) -> tuple[Goal, HarnessSession]:
                     "status": "uncertain",
                     "acceptance_surface": {"modified": ["test_csv_utils.py"]},
                     "flagged_content": {"test_csv_utils.py": FLAGGED},
+                    "verdicts": [
+                        {
+                            "claim": {
+                                "kind": "tests_pass",
+                                "statement": "All tests passed",
+                            },
+                            "status": "uncertain",
+                            "evidence": ["acceptance_surface_modified:test_csv_utils.py"],
+                        }
+                    ],
                 }
             },
         )
@@ -162,6 +172,10 @@ async def test_pack_roundtrips_through_the_offline_verifier(client) -> None:
     assert ledger["session_id"] == session.id
     assert ledger["count"] == 2
     assert len(ledger["chain_sha256"]) == 64
+
+    # The worker's own words ride each verdict so the timeline reads
+    # claim -> independent verdict, not just action names.
+    assert pack["report"]["claims"][0]["claim_statements"] == ["All tests passed"]
 
     # The acid test: the shipped verifier passes the endpoint's own output.
     checks = verify(pack)
