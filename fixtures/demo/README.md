@@ -20,7 +20,9 @@ push the drift score over threshold, the planner proposes a reversible
 debug overlay (`APPLY_OVERLAY`, policy `allow`), and the control plane
 honestly records `overlay_dispatch_refused` — a recorded session is not a
 live control surface. The recovered run then adjudicates
-`verified_complete`. Every fixture is scored on every push by
+`verified_complete`. The Inspector's supervision log makes the whole arc
+legible in place (`docs/demo/assets/pex-supervision-log-drift.png`). Every
+fixture is scored on every push by
 `scripts/eval_replays.py` against a declared arc
 (`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`).
 

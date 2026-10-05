@@ -128,6 +128,24 @@ Then click **Evidence pack** on the session:
 > sealed digests, flagged bytes, a hash-chained event ledger, a manifest.
 > `verify_pack.py` recomputes all of it offline."
 
+## Optional replay cut — drift and bounded intervention
+
+Click **Drift loop: the same failing probe, over and over**.
+
+> "Different failure mode: the worker runs the same broken probe five
+> identical times. PEX scores drift from the event shape — identical command,
+> identical error — and proposes a reversible debug overlay to pin the worker
+> on the failing reproduction."
+
+*Open the Inspector on the session; point at the Supervision log.*
+
+> "And watch what the log actually says: the proposal was allowed by policy,
+> then honestly refused — a recorded session is not a live control surface,
+> so PEX shows `overlay dispatch refused` instead of pretending it injected
+> anything. The two repeat proposals after it were suppressed by cooldown —
+> bounded intervention, not a nudge firehose. The worker recovers, and the
+> final claim still gets independently verified."
+
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 
 > "Three more fixtures cover the other failure modes — a false completion with
