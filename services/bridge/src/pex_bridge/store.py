@@ -1340,6 +1340,8 @@ MCP_CLAIM_VERIFY_FINGERPRINT_SCHEMA = "pex.mcp.verify_claim.v1"
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _ACCEPTANCE_BASELINE_SCHEMA = "pex.acceptance-baseline.v1"
 MAX_ACCEPTANCE_BASELINE_FILES = 1024
+MAX_ACCEPTANCE_CONTENT_FILE_CHARS = 128_000
+MAX_ACCEPTANCE_CONTENT_FILES = 64
 
 
 def _acceptance_baseline_key(session_id: str, goal_id: str) -> str:
@@ -1397,6 +1399,21 @@ def _validated_acceptance_baseline(
             )
         ):
             raise RuntimeError("stored acceptance baseline is corrupt")
+    contents = payload.get("contents")
+    if contents is not None:
+        if (
+            not isinstance(contents, dict)
+            or len(contents) > MAX_ACCEPTANCE_CONTENT_FILES
+            or not set(contents).issubset(files)
+        ):
+            raise RuntimeError("stored acceptance baseline is corrupt")
+        for content_path, text in contents.items():
+            if (
+                not isinstance(content_path, str)
+                or not isinstance(text, str)
+                or len(text) > MAX_ACCEPTANCE_CONTENT_FILE_CHARS
+            ):
+                raise RuntimeError("stored acceptance baseline is corrupt")
     return payload
 _MCP_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$")
 _MCP_SCOPE_PATTERN = re.compile(r"^pex\.[a-z][a-z0-9_.-]{0,123}$")
@@ -12526,6 +12543,7 @@ class Store:
         files: dict[str, str | None],
         files_complete: bool,
         sealed_context: str = "event",
+        file_contents: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Seal the first goal-bound acceptance-surface map; later calls replay it.
 
@@ -12578,6 +12596,13 @@ class Store:
                     "files": normalized,
                     "files_complete": complete,
                     "sealed_context": str(sealed_context)[:64],
+                    "contents": {
+                        path: text
+                        for path, text in (file_contents or {}).items()
+                        if path in normalized
+                        and isinstance(text, str)
+                        and len(text) <= MAX_ACCEPTANCE_CONTENT_FILE_CHARS
+                    },
                 }
                 await transaction.execute(
                     "INSERT INTO fingerprints (key, json) VALUES (?, ?)",

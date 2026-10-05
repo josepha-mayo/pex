@@ -765,3 +765,63 @@ async def test_acceptance_baseline_records_seal_provenance(tmp_path: Path):
         assert replay["baseline"]["sealed_context"] == "verify"
     finally:
         await store.close()
+
+
+@pytest.mark.asyncio
+async def test_acceptance_baseline_seals_digest_matched_contents(tmp_path: Path):
+    store = Store(tmp_path / "baseline-contents.sqlite")
+    await store.connect()
+    digest = hashlib.sha256(b"assert True\n").hexdigest()
+    try:
+        sealed = await store.recall_or_seal_acceptance_baseline(
+            "codex:s1",
+            "goal-1",
+            workspace="/w",
+            captured_at="t",
+            files={"test_a.py": digest},
+            files_complete=True,
+            file_contents={
+                "test_a.py": "assert True\n",
+                "unrelated.py": "not part of the surface",
+            },
+        )
+        assert sealed["sealed"] is True
+        assert sealed["baseline"]["contents"] == {"test_a.py": "assert True\n"}
+        recalled = await store.recall_acceptance_baseline("codex:s1", "goal-1")
+        assert recalled["contents"] == {"test_a.py": "assert True\n"}
+
+        replay = await store.recall_or_seal_acceptance_baseline(
+            "codex:s1",
+            "goal-1",
+            workspace="/w",
+            captured_at="later",
+            files={"test_a.py": digest},
+            files_complete=True,
+            file_contents={"test_a.py": "worker-weakened\n"},
+        )
+        assert replay["sealed"] is False
+        # The seal is append-only: re-baseline content never overwrites it.
+        assert replay["baseline"]["contents"] == {"test_a.py": "assert True\n"}
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_acceptance_baseline_tolerates_digest_only_seals(tmp_path: Path):
+    store = Store(tmp_path / "baseline-legacy.sqlite")
+    await store.connect()
+    digest = hashlib.sha256(b"x").hexdigest()
+    try:
+        sealed = await store.recall_or_seal_acceptance_baseline(
+            "codex:s1",
+            "goal-1",
+            workspace="/w",
+            captured_at="t",
+            files={"test_a.py": digest},
+            files_complete=True,
+        )
+        assert sealed["baseline"].get("contents") in (None, {})
+        recalled = await store.recall_acceptance_baseline("codex:s1", "goal-1")
+        assert recalled is not None
+    finally:
+        await store.close()

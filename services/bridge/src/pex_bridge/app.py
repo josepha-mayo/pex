@@ -4745,6 +4745,141 @@ def create_app() -> FastAPI:
             },
         }
 
+    @app.get("/v1/goals/{goal_id}/acceptance-diff")
+    async def get_goal_acceptance_diff(
+        goal_id: str,
+        path: str,
+        session_id: str | None = None,
+        _: None = Depends(_require_token),
+    ):
+        """Sealed acceptance content vs the current workspace bytes.
+
+        The tamper evidence a flag alone cannot show: the exact sealed text
+        the worker claimed green against, next to what is on disk now. Reads
+        stay bounded to the declared acceptance surface of sessions bound to
+        this goal.
+        """
+
+        from pex_supervisor.workspace import (
+            MAX_SEALED_ACCEPTANCE_FILE_BYTES,
+            is_acceptance_surface,
+            read_visible,
+        )
+
+        if not path or len(path) > 512:
+            raise HTTPException(422, "path is invalid")
+        normalized_path = path.replace("\\", "/").lstrip("/")
+        if (
+            not normalized_path
+            or normalized_path.startswith("..")
+            or "/../" in f"/{normalized_path}/"
+            or not is_acceptance_surface(normalized_path)
+        ):
+            raise HTTPException(
+                422, "path must stay inside the declared acceptance surface"
+            )
+        goal = await state.store.get_goal(goal_id)
+        if goal is None:
+            raise HTTPException(404, "goal not found")
+        sessions = await state.store.list_sessions_for_goal(goal_id, limit=50)
+        if session_id is not None:
+            sessions = [row for row in sessions if row.id == session_id]
+            if not sessions:
+                raise HTTPException(404, "session not bound to this goal")
+
+        baseline: dict[str, Any] | None = None
+        owner: HarnessSession | None = None
+        for candidate in sessions:
+            if candidate.id is None:
+                continue
+            sealed = await state.store.recall_acceptance_baseline(
+                candidate.id, goal_id
+            )
+            if sealed is None:
+                continue
+            if normalized_path in (sealed.get("files") or {}):
+                baseline, owner = sealed, candidate
+                break
+            if baseline is None:
+                baseline, owner = sealed, candidate
+        if baseline is None or owner is None:
+            raise HTTPException(404, "no sealed baseline for this goal")
+
+        files = baseline.get("files") or {}
+        contents = baseline.get("contents") or {}
+        baseline_block: dict[str, Any] = {
+            "sealed_at": baseline.get("captured_at"),
+            "sealed_context": baseline.get("sealed_context"),
+            "present": normalized_path in files,
+            "text": contents.get(normalized_path),
+        }
+        if baseline_block["text"] is None:
+            baseline_block["state"] = (
+                "not_in_baseline"
+                if not baseline_block["present"]
+                else "digest_only"
+            )
+
+        current: dict[str, Any] = {"state": "unavailable", "text": None}
+        if owner.cwd:
+            observed = await asyncio.to_thread(
+                read_visible,
+                Path(owner.cwd),
+                normalized_path,
+                MAX_SEALED_ACCEPTANCE_FILE_BYTES,
+            )
+            if "error" in observed:
+                current["state"] = (
+                    "missing" if observed["error"] == "missing" else "unreadable"
+                )
+            else:
+                current.update(
+                    {
+                        "state": "present",
+                        "text": observed.get("text"),
+                        "bytes": observed.get("bytes"),
+                    }
+                )
+        identical = (
+            baseline_block["text"] == current["text"]
+            if baseline_block["text"] is not None
+            and current["text"] is not None
+            else None
+        )
+        flagged: dict[str, Any] = {"text": None}
+        for item in await state.store.list_interventions_for_goal(
+            goal_id, limit=200
+        ):
+            verification = (
+                item.metadata.get("verification")
+                if isinstance(item.metadata, dict)
+                else None
+            )
+            captured = (
+                verification.get("flagged_content")
+                if isinstance(verification, dict)
+                else None
+            )
+            if isinstance(captured, dict) and isinstance(
+                captured.get(normalized_path), str
+            ):
+                flagged = {
+                    "text": captured[normalized_path],
+                    "captured_at": item.created_at.isoformat(),
+                    "intervention_id": item.id,
+                }
+                break
+        return {
+            "schema": "pex.acceptance-diff.v1",
+            "goal_id": goal_id,
+            "session_id": owner.id,
+            "path": normalized_path,
+            "baseline": baseline_block,
+            "flagged": flagged,
+            "current": current,
+            "identical": identical,
+        }
+
     @app.get("/v1/goals/{goal_id}/decisions")
     async def list_goal_decisions(goal_id: str, _: None = Depends(_require_token)):
         goal = await state.store.get_goal(goal_id)

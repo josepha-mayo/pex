@@ -28,9 +28,12 @@ intervenes only inside bounded policy.
    deselects the suite and earns the same `uncertain` downgrade.
 3. Open the Inspector on the replay session: the **Independent claim
    verification** block shows the adjudicated-claim timeline, verdicts,
-   flagged files, and adjudication evidence — and **Export report** downloads
-   the same ledger as a standalone HTML page with the raw JSON embedded.
-   `GET /v1/goals/{id}/verification-report` is the raw record directly.
+   flagged files, and adjudication evidence — click a flagged file to expand
+   the **sealed-baseline diff** (the sealed text vs the exact bytes PEX
+   flagged; `GET /v1/goals/{id}/acceptance-diff?path=<file>` is the raw
+   version). **Export report** downloads the same ledger as a standalone
+   HTML page with the raw JSON embedded. `GET
+   /v1/goals/{id}/verification-report` is the raw record directly.
 
 4. With the OpenCode CLI installed (`npm i opencode-ai`), `python
    scripts/demo.py --live` does the same against a **real worker** on the

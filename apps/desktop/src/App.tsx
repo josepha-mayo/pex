@@ -92,6 +92,7 @@ import type {
   Goal,
   GoalCompletion,
   GoalMutationResponse,
+  AcceptanceDiff,
   HandoffAssimilationStatus,
   HumanDecisionChoice,
   Intervention,
@@ -2043,6 +2044,13 @@ export function App() {
     }
   }
 
+  async function fetchAcceptanceDiff(path: string): Promise<AcceptanceDiff> {
+    if (!attachedGoal) throw new Error("No attached goal.");
+    return bridgeJson<AcceptanceDiff>(
+      `/v1/goals/${encodeURIComponent(attachedGoal.id)}/acceptance-diff?path=${encodeURIComponent(path)}`,
+    );
+  }
+
   async function exportVerificationReport() {
     if (!attachedGoal || exportingReport) return;
     setExportingReport(true);
@@ -2903,6 +2911,7 @@ export function App() {
           verificationReport={verificationReport}
           exportingReport={exportingReport}
           onExportReport={() => void exportVerificationReport()}
+          onFetchAcceptanceDiff={fetchAcceptanceDiff}
           goals={availableGoals}
           action={action}
           handoffStatus={action?.id ? handoffAssimilation[action.id] : undefined}

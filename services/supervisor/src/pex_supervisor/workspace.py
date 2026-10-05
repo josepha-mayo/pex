@@ -12,6 +12,7 @@ import stat
 import subprocess
 import threading
 import time
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from math import isfinite
@@ -63,6 +64,9 @@ MAX_INVENTORY_ENTRIES = 4_000
 MAX_INVENTORY_SECONDS = 2.0
 MAX_FINGERPRINT_BYTES = 1_000_000
 MAX_VISIBLE_READ_BYTES = 1_000_000
+MAX_SEALED_ACCEPTANCE_FILE_BYTES = 64_000
+MAX_SEALED_ACCEPTANCE_TOTAL_BYTES = 256_000
+MAX_SEALED_ACCEPTANCE_FILES = 64
 _ACCEPTANCE_DIR_NAMES = {
     "__mocks__",
     "__tests__",
@@ -211,6 +215,122 @@ def acceptance_fingerprints(
             else None
         )
     return out
+
+
+def _sealed_content_candidate(root: Path, relpath: str) -> Path | None:
+    parts = [
+        part for part in str(relpath).replace("\\", "/").split("/") if part
+    ]
+    if not parts or any(part == ".." for part in parts):
+        return None
+    try:
+        resolved = root.joinpath(*parts).resolve()
+    except OSError:
+        return None
+    if not resolved.is_relative_to(root):
+        return None
+    return resolved
+
+
+def captured_flagged_contents(
+    workspace: dict[str, Any],
+    paths: list[str],
+) -> dict[str, str]:
+    """Capture the exact bytes a flag was raised on, digest-bound to the scan.
+
+    The incident that names ``tests/test_core.py`` as modified is stronger
+    when it carries the observed text — the diff then shows what the worker
+    actually weakened, even after the workspace is gone. Bytes are kept only
+    when their sha256 equals the digest this snapshot recorded, so the
+    captured text provably is what the flag compared against the baseline.
+    """
+
+    if not isinstance(workspace, dict) or workspace.get("error"):
+        return {}
+    file_meta = workspace.get("file_meta")
+    if not isinstance(file_meta, list):
+        return {}
+    digests: dict[str, str] = {}
+    for entry in file_meta:
+        if not isinstance(entry, dict):
+            continue
+        path = str(entry.get("path") or "").replace("\\", "/")
+        digest = entry.get("sha256")
+        if path and isinstance(digest, str) and _SHA256_RE.fullmatch(digest):
+            digests[path] = digest
+    try:
+        root = Path(str(workspace.get("workspace") or "")).resolve()
+    except OSError:
+        return {}
+    captured: dict[str, str] = {}
+    for relpath in paths[:MAX_SEALED_ACCEPTANCE_FILES]:
+        digest = digests.get(str(relpath).replace("\\", "/"))
+        if digest is None:
+            continue
+        candidate = _sealed_content_candidate(root, relpath)
+        if candidate is None:
+            continue
+        try:
+            data = candidate.read_bytes()
+        except OSError:
+            continue
+        if (
+            len(data) > MAX_SEALED_ACCEPTANCE_FILE_BYTES
+            or hashlib.sha256(data).hexdigest() != digest
+        ):
+            continue
+        try:
+            captured[str(relpath).replace("\\", "/")] = data.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+    return captured
+
+
+def sealed_acceptance_contents(
+    workspace: str | Path,
+    files: Mapping[str, str | None],
+) -> dict[str, str]:
+    """Return acceptance-file text whose bytes provably equal the sealed digest.
+
+    Baseline digests come from a workspace snapshot; re-reading for the seal
+    could race a worker write, so content is kept only when its sha256 equals
+    the sealed digest for that path. Files that moved, changed, exceed the
+    cap, or are not UTF-8 text are omitted — the evidence either shows the
+    exact sealed bytes or stays digest-only.
+    """
+
+    try:
+        root = Path(workspace).resolve()
+    except OSError:
+        return {}
+    contents: dict[str, str] = {}
+    total = 0
+    for relpath, digest in files.items():
+        if len(contents) >= MAX_SEALED_ACCEPTANCE_FILES:
+            break
+        if total >= MAX_SEALED_ACCEPTANCE_TOTAL_BYTES:
+            break
+        if not isinstance(digest, str) or _SHA256_RE.fullmatch(digest) is None:
+            continue
+        candidate = _sealed_content_candidate(root, relpath)
+        if candidate is None:
+            continue
+        try:
+            data = candidate.read_bytes()
+        except OSError:
+            continue
+        if (
+            len(data) > MAX_SEALED_ACCEPTANCE_FILE_BYTES
+            or total + len(data) > MAX_SEALED_ACCEPTANCE_TOTAL_BYTES
+            or hashlib.sha256(data).hexdigest() != digest
+        ):
+            continue
+        try:
+            contents[relpath] = data.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+        total += len(data)
+    return contents
 MAX_ARTIFACT_TAIL_BYTES = 64_000
 MAX_ARTIFACT_COUNT_BYTES = 4_000_000
 MAX_GIT_OUTPUT_BYTES = 8000

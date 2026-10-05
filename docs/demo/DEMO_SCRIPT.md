@@ -87,6 +87,12 @@ PEX sealed when the goal attached.
 > green run is real; the acceptance surface under it was edited. That's the
 > reward hack a green exit code alone would have shipped."
 
+Click the flagged `test_csv_utils.py` chip in the ledger:
+
+> "And here is the tamper itself — the sealed baseline on the left, the exact
+> bytes PEX flagged on the right. The assertion became `pass`. PEX kept the
+> evidence, not just the flag."
+
 If the worker pauses on an OpenCode permission prompt (`needs_decision`),
 resolve it from the Decisions rail — the demo bridge lets the local judge
 answer it.

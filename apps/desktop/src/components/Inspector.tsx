@@ -1,7 +1,8 @@
-import type { FormEvent, ReactNode, RefObject } from "react";
+import { useState, type FormEvent, type ReactNode, type RefObject } from "react";
 
 import type { GoalDraft } from "./GoalEditor";
 import { GoalEditor } from "./GoalEditor";
+import { unifiedDiff } from "../diffText";
 import { isLiveWorkerSession, isReplaySession } from "../demoReplay";
 import { AskPex } from "./AskPex";
 import { goalCompletionCopy } from "../completionPresentation";
@@ -12,6 +13,7 @@ import {
   type VerificationReportView,
 } from "../verificationReport";
 import type {
+  AcceptanceDiff,
   Goal,
   GoalCompletion,
   HandoffAssimilationStatus,
@@ -47,6 +49,7 @@ export function Inspector({
   verificationReport,
   exportingReport,
   onExportReport,
+  onFetchAcceptanceDiff,
   goals,
   action,
   handoffStatus,
@@ -90,6 +93,7 @@ export function Inspector({
   verificationReport?: VerificationReportView | null;
   exportingReport?: boolean;
   onExportReport?: () => void;
+  onFetchAcceptanceDiff?: (path: string) => Promise<AcceptanceDiff>;
   goals: Goal[];
   action?: LastAction | null;
   handoffStatus?: HandoffAssimilationStatus | "unreachable";
@@ -366,7 +370,13 @@ export function Inspector({
                       </span>
                       {claim.flaggedFiles.length ? (
                         <span className="verification-flagged">
-                          {claim.flaggedFiles.join(", ")}
+                          {claim.flaggedFiles.map((file) => (
+                            <FlaggedFileDiff
+                              key={`${claim.at}-${claim.action}-${file}`}
+                              file={file}
+                              onFetchAcceptanceDiff={onFetchAcceptanceDiff}
+                            />
+                          ))}
                         </span>
                       ) : null}
                       {claim.evidence.length ? (
@@ -477,5 +487,122 @@ function Boundary({ label, values }: { label: string; values?: string[] }) {
         <p>None recorded</p>
       )}
     </div>
+  );
+}
+
+function FlaggedFileDiff({
+  file,
+  onFetchAcceptanceDiff,
+}: {
+  file: string;
+  onFetchAcceptanceDiff?: (path: string) => Promise<AcceptanceDiff>;
+}) {
+  const [state, setState] = useState<
+    | { kind: "closed" }
+    | { kind: "loading" }
+    | { kind: "open"; diff: AcceptanceDiff }
+    | { kind: "error"; message: string }
+  >({ kind: "closed" });
+
+  if (!onFetchAcceptanceDiff) {
+    return <span className="verification-flag">{file}</span>;
+  }
+
+  const open = () => {
+    setState({ kind: "loading" });
+    onFetchAcceptanceDiff(file)
+      .then((diff) => setState({ kind: "open", diff }))
+      .catch((error: unknown) =>
+        setState({
+          kind: "error",
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      );
+  };
+
+  return (
+    <span className="verification-flag">
+      <button
+        type="button"
+        className="flag-file"
+        title={
+          state.kind === "open"
+            ? "Hide the sealed-baseline diff"
+            : "Diff the sealed baseline against the bytes on disk now"
+        }
+        onClick={() => (state.kind === "open" ? setState({ kind: "closed" }) : open())}
+      >
+        {file}
+        <span className="flag-diff-hint">
+          {state.kind === "open" ? "hide diff" : state.kind === "loading" ? "loading…" : "diff"}
+        </span>
+      </button>
+      {state.kind === "error" ? (
+        <span className="flag-diff-note">No baseline diff: {state.message}</span>
+      ) : null}
+      {state.kind === "open" ? <AcceptanceDiffView diff={state.diff} /> : null}
+    </span>
+  );
+}
+
+function AcceptanceDiffView({ diff }: { diff: AcceptanceDiff }) {
+  const baseline = diff.baseline;
+  const flagged = diff.flagged;
+  const current = diff.current;
+  const baselineText = baseline?.text;
+  const flaggedText = flagged?.text;
+  if (baseline?.state === "digest_only" || baselineText == null) {
+    return (
+      <span className="flag-diff-note">
+        {baseline?.state === "digest_only"
+          ? "Baseline sealed digest-only — this goal predates content capture."
+          : baseline?.state === "not_in_baseline"
+            ? "Not in the sealed baseline — this file appeared after the surface was sealed."
+            : "Baseline text unavailable."}
+      </span>
+    );
+  }
+  const targetText = flaggedText ?? current?.text;
+  const targetLabel =
+    flaggedText != null
+      ? `sealed baseline → bytes PEX flagged${
+          flagged?.captured_at
+            ? ` at ${new Date(flagged.captured_at).toLocaleTimeString()}`
+            : ""
+        }`
+      : "sealed baseline → current disk bytes";
+  if (targetText == null) {
+    return (
+      <span className="flag-diff-note">
+        {current?.state === "missing"
+          ? "The sealed file no longer exists on disk."
+          : "Flagged/current bytes unavailable — diff cannot be shown."}
+      </span>
+    );
+  }
+  if (baselineText === targetText) {
+    return <span className="flag-diff-note">Restored — identical to the sealed baseline.</span>;
+  }
+  const lines = unifiedDiff(baselineText, targetText).filter(
+    (line, index, all) =>
+      line.type !== "same" ||
+      all.some(
+        (other, otherIndex) =>
+          other.type !== "same" && Math.abs(otherIndex - index) <= 3,
+      ),
+  );
+  return (
+    <span className="flag-diff">
+      <span className="flag-diff-label">{targetLabel}</span>
+      <pre className="flag-diff-pre">
+        {lines.map((line, index) => (
+          <code key={index} className={`diff-${line.type}`}>
+            {line.type === "add" ? "+ " : line.type === "del" ? "− " : "  "}
+            {line.text}
+            {"\n"}
+          </code>
+        ))}
+      </pre>
+    </span>
   );
 }

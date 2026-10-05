@@ -782,3 +782,26 @@ export type CanonicalResourceState = {
 };
 
 export type CanonicalResourceMap = Record<CanonicalResourceKey, CanonicalResourceState>;
+
+export type AcceptanceDiffSide = {
+  state?: string;
+  present?: boolean;
+  text: string | null;
+  bytes?: number | null;
+  sealed_at?: string | null;
+  sealed_context?: string | null;
+};
+
+export type AcceptanceDiff = {
+  schema?: string;
+  goal_id?: string;
+  session_id?: string;
+  path: string;
+  baseline?: AcceptanceDiffSide | null;
+  flagged?: (AcceptanceDiffSide & {
+    captured_at?: string;
+    intervention_id?: string;
+  }) | null;
+  current?: AcceptanceDiffSide | null;
+  identical?: boolean | null;
+};

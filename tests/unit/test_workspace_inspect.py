@@ -429,3 +429,76 @@ def test_git_snapshot_output_is_bounded_before_process_capture(tmp_path: Path):
 
     assert seen["available"] is True
     assert len(seen["diff"].encode("utf-8")) <= 8000
+
+
+def test_sealed_acceptance_contents_keeps_only_digest_matching_bytes(tmp_path: Path):
+    import hashlib
+
+    from pex_supervisor.workspace import sealed_acceptance_contents
+
+    target = tmp_path / "test_csv_utils.py"
+    target.write_text("assert True\n", encoding="utf-8")
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()
+    other = tmp_path / "tests"
+    other.mkdir()
+    (other / "test_b.py").write_text("assert 1\n", encoding="utf-8")
+    digest_b = hashlib.sha256((other / "test_b.py").read_bytes()).hexdigest()
+
+    sealed = sealed_acceptance_contents(
+        tmp_path,
+        {
+            "test_csv_utils.py": digest,
+            "tests/test_b.py": digest_b,
+            "tests/missing.py": "0" * 64,
+            "../escape.py": "0" * 64,
+            "test_csv_utils2.py": "bad-digest",
+        },
+    )
+    assert sealed["test_csv_utils.py"] == target.read_bytes().decode("utf-8")
+    assert sealed["tests/test_b.py"] == (other / "test_b.py").read_bytes().decode(
+        "utf-8"
+    )
+    assert len(sealed) == 2
+
+
+def test_sealed_acceptance_contents_drops_stale_bytes(tmp_path: Path):
+    import hashlib
+
+    from pex_supervisor.workspace import sealed_acceptance_contents
+
+    target = tmp_path / "test_a.py"
+    target.write_text("assert True\n", encoding="utf-8")
+    digest = hashlib.sha256(b"assert False\n").hexdigest()
+    assert sealed_acceptance_contents(tmp_path, {"test_a.py": digest}) == {}
+
+
+def test_sealed_acceptance_contents_caps_total_bytes(tmp_path: Path):
+    import hashlib
+
+    from pex_supervisor.workspace import sealed_acceptance_contents
+
+    files = {}
+    for index in range(8):
+        name = f"test_{index}.py"
+        payload = ("x" * 40_000 + f"{index}\n").encode()
+        (tmp_path / name).write_bytes(payload)
+        files[name] = hashlib.sha256(payload).hexdigest()
+    sealed = sealed_acceptance_contents(tmp_path, files)
+    # Total cap stops the walk before all eight 40KB files are retained.
+    assert len(sealed) < len(files)
+    for text in sealed.values():
+        assert text.startswith("x")
+
+
+def test_sealed_acceptance_contents_skips_binary_and_missing(tmp_path: Path):
+    import hashlib
+
+    from pex_supervisor.workspace import sealed_acceptance_contents
+
+    binary = tmp_path / "test_bin.py"
+    binary.write_bytes(b"\xff\xfe\x00\x01")
+    digest = hashlib.sha256(binary.read_bytes()).hexdigest()
+    sealed = sealed_acceptance_contents(
+        tmp_path, {"test_bin.py": digest, "test_gone.py": "0" * 64}
+    )
+    assert sealed == {}

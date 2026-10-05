@@ -73,7 +73,12 @@ from pex_supervisor.verify import (
     verification_probe_targets,
     verify_claims,
 )
-from pex_supervisor.workspace import acceptance_fingerprints, snapshot
+from pex_supervisor.workspace import (
+    acceptance_fingerprints,
+    captured_flagged_contents,
+    sealed_acceptance_contents,
+    snapshot,
+)
 
 from pex_bridge.adapters import AdapterRegistry
 from pex_bridge.adapters.base import (
@@ -2488,6 +2493,42 @@ class Pipeline:
         async with self._advisory_workspace_scan_lock:
             return await self._snapshot_for_session(session), None
 
+    async def _flagged_surface_contents(
+        self, verification: dict, workspace: dict
+    ) -> dict[str, str]:
+        """Capture the observed bytes behind acceptance-surface flags.
+
+        The captured text is digest-bound to the snapshot the flag compared
+        against the baseline, so the incident record carries provably the
+        content PEX saw — even after the workspace changes or disappears.
+        """
+
+        surface = verification.get("acceptance_surface")
+        if not isinstance(surface, dict):
+            return {}
+        paths = [
+            *list(surface.get("modified") or []),
+            *list(surface.get("added_config") or []),
+        ]
+        if not paths:
+            return {}
+        try:
+            captured = await asyncio.to_thread(
+                captured_flagged_contents, workspace, paths
+            )
+        except Exception:
+            return {}
+        # Intervention metadata travels with the record; bound the evidence so
+        # a flagged surface can never wedge the write path.
+        bounded: dict[str, str] = {}
+        total = 0
+        for path, text in captured.items():
+            if total + len(text) > 96_000:
+                break
+            bounded[path] = text
+            total += len(text)
+        return bounded
+
     async def _acceptance_baseline_for(
         self,
         session: HarnessSession,
@@ -2512,6 +2553,11 @@ class Pipeline:
                 return await self.store.recall_acceptance_baseline(
                     session.id, goal.id
                 )
+            contents = await asyncio.to_thread(
+                sealed_acceptance_contents,
+                str(workspace.get("workspace") or session.cwd or ""),
+                files,
+            )
             sealed = await self.store.recall_or_seal_acceptance_baseline(
                 session.id,
                 goal.id,
@@ -2528,6 +2574,7 @@ class Pipeline:
                     )
                 ),
                 sealed_context=sealed_context,
+                file_contents=contents,
             )
         except Exception:
             return {"unsealed": True}
@@ -2576,6 +2623,11 @@ class Pipeline:
             files = acceptance_fingerprints(observed)
             if files is None:
                 return False
+            contents = await asyncio.to_thread(
+                sealed_acceptance_contents,
+                str(observed.get("workspace") or session.cwd),
+                files,
+            )
             sealed = await self.store.recall_or_seal_acceptance_baseline(
                 session.id,
                 goal.id,
@@ -2589,6 +2641,7 @@ class Pipeline:
                     )
                 ),
                 sealed_context=f"event:{event.event_type.value}",
+                file_contents=contents,
             )
             self._acceptance_baseline_attempts.pop(attempt_key, None)
             return bool(sealed.get("sealed"))
@@ -2875,6 +2928,9 @@ class Pipeline:
                 goal,
                 workspace,
                 acceptance_baseline=baseline,
+            )
+            verification["flagged_content"] = await self._flagged_surface_contents(
+                verification, workspace
             )
             probe_kind = required_verification_probe_kind(
                 claims,
@@ -6072,6 +6128,9 @@ class Pipeline:
             goal,
             workspace,
             acceptance_baseline=baseline,
+        )
+        verification["flagged_content"] = await self._flagged_surface_contents(
+            verification, workspace
         )
         raw_status = str(verification.get("status") or "uncertain")[:64]
         outcome = raw_status if raw_status in {"supported", "contradicted"} else "uncertain"

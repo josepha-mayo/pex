@@ -224,6 +224,18 @@ baselines that anchored it, and the final completion projection. The desktop
 Inspector renders the same ledger inline and can export it as a standalone
 HTML page (raw JSON embedded) — the artifact a reviewer keeps after the demo.
 
+**See the tamper itself.** The baseline is sealed as digest **and content**,
+and each integrity flag also captures the offending bytes at flag time
+(digest-bound to the snapshot that compared them). In the Inspector, click a
+flagged file name in the claim ledger — it expands a unified diff of the
+sealed baseline against the exact bytes PEX flagged (e.g. `assert result ==
+'a,b'` → `pass`), or against the bytes on disk now if no capture exists.
+The same evidence is available at
+`GET /v1/goals/{id}/acceptance-diff?path=<file>` — `baseline.text`,
+`flagged.text` (bytes observed when the flag fired), `current.text`, and an
+`identical` verdict. Old goals whose baselines predate content capture show
+`digest_only` honestly instead of fabricating a diff.
+
 ## Fallback — no OpenCode install
 
 If a judge's environment cannot run `opencode serve`, `POST /v1/demo/replay`
