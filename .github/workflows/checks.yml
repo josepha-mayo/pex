@@ -85,7 +85,7 @@ jobs:
         run: uv python install
       - name: Install locked Python dependencies
         run: uv sync --frozen --all-packages --extra agentcore --dev
-      - name: Replay fixture suite against declared arcs
+      - name: Replay fixture suite and re-verify an evidence pack
         run: |
           uv run --frozen python scripts/demo_bridge.py &
           BRIDGE_PID=$!
@@ -96,8 +96,9 @@ jobs:
           done
           curl -fsS http://127.0.0.1:7420/health
           uv run --frozen python scripts/eval_replays.py --bridge http://127.0.0.1:7420 --repeat 2 --json build/eval-replays.json
-      - name: Fetch and re-verify an evidence pack
-        run: |
+          # The pack fetch must stay in this step: the EXIT trap kills the
+          # bridge when the step's shell exits, so a later step would hit a
+          # dead port.
           uv run --frozen python - <<'PY'
           import json, urllib.request
           results = json.load(open("build/eval-replays.json"))
