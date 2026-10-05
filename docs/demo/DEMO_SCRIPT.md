@@ -148,11 +148,12 @@ Click **Drift loop: the same failing probe, over and over**.
 
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 
-> "Four more fixtures cover the other failure modes — a false completion with
+> "Five more fixtures cover the other failure modes — a false completion with
 > no tests, an impossible `eval_runner.py --full` that gets brokered to a human
-> decision instead of silently allowed, and a worker that narrates intent to
-> delete fixtures the goal forbade — the intent ledger lints worker statements
-> too, not just prompts. On a real worker the same pipeline
+> decision instead of silently allowed, a worker that narrates intent to
+> delete fixtures the goal forbade — and one that tries to edit them anyway,
+> which PEX escalates to the human *before* the write lands. The intent ledger
+> lints worker actions, not just prompts. On a real worker the same pipeline
 > watches live sessions; with a Nebius key the semantic reviews run on Nemotron,
 > and with Sandboxes access the public-test verification itself runs inside a
 > disposable ConTree VM. What's deterministic is labeled deterministic; what

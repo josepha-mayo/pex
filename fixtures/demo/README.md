@@ -27,7 +27,11 @@ legible in place (`docs/demo/assets/pex-supervision-log-drift.png`).
 behavior*: the worker narrates intent to delete the dataset fixtures — a
 recorded `forbidden_outcomes` entry — and the ledger classifies the
 statement as `agent_contradiction`, delivering a corrective nudge that
-names the exact constraint before any damage. Every fixture is scored on
+names the exact constraint before any damage. `constraint_block_eval` is
+the sharper cut: a *before-phase* edit on the forbidden fixture escalates
+to `ASK_HUMAN` — the human is asked to keep the rule or override it
+before the write lands, and the trajectory honestly ends `uncertain`
+while the decision pends. Every fixture is scored on
 every push by `scripts/eval_replays.py` against a declared arc
 (`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`).
 

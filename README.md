@@ -4,6 +4,9 @@
 
 # PEX
 
+[![Windows and Linux checks](https://github.com/josepha-mayo/pex/actions/workflows/checks.yml/badge.svg)](https://github.com/josepha-mayo/pex/actions/workflows/checks.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 **PEX turns you from a full-time manager of AI agents into the owner of goals and decisions.**
 
 It is a goal-aware supervisor for coding agents you already use. Connect a
@@ -250,12 +253,12 @@ fixture suite is scored on every push by `scripts/eval_replays.py`.
 
 ![Replay fixtures with the captured run tagged "from live"](docs/demo/assets/pex-fixtures-from-live-c5df374.png)
 
-*The judge's first screen: eight scripted fixtures plus two captured live
+*The judge's first screen: nine scripted fixtures plus two captured live
 runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not a
 synthetic trajectory. The suite spans tamper-and-restore, runner-config
 injection, stale evidence, premature claims, drift loops, forbidden-outcome
-violations, and permission brokering — each scored in CI against its declared
-arc.*
+violations (nudge and pre-write escalation), and permission brokering — each
+scored in CI against its declared arc.*
 
 ## Supported harnesses
 
