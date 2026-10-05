@@ -183,6 +183,13 @@ record (human-readable timeline plus the embedded raw JSON). The session is labe
 "Recorded replay · not live worker control" — a deterministic fixture, not a
 live worker receipt.*
 
+![Claim timeline with worker statements](docs/demo/assets/pex-claim-timeline-fa8d76e.png)
+
+*The same ledger on the `captured_live_eval` replay: each verdict row carries
+the worker's own words — "All tests passed", "I am done" — so a mid-run claim
+reads claimed → `uncertain` → `acceptance_surface_modified:test_csv_utils.py`
+→ nudge, and the final one claimed → `verified` on restored bytes.*
+
 The **Evidence pack** button goes further: a hash-chained bundle of the
 report, sealed baseline bytes, flagged bytes, and the full event ledger —
 verified offline with `python scripts/verify_pack.py`:

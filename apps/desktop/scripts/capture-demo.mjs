@@ -36,6 +36,13 @@ await page.waitForTimeout(1000);
 // The claim-verification report is open by default — no expansion needed.
 await page.waitForTimeout(600);
 
+// Scroll the verdict timeline into view before shooting.
+const timeline = page.locator(".verification-timeline").first();
+try {
+  await timeline.scrollIntoViewIfNeeded({ timeout: 3000 });
+  await page.waitForTimeout(400);
+} catch {}
+
 await page.screenshot({ path: out, fullPage: true });
 console.log("wrote", out);
 await browser.close();
