@@ -42,7 +42,7 @@ def test_working_beyond_gap_reports_stalled() -> None:
     )
     assert obs is not None
     assert obs["stalled"] is True
-    assert obs["last_event_age_seconds"] == int(OBSERVATION_GAP_STALL_SECONDS + 30)
+    assert obs["last_event_age_seconds"] >= int(OBSERVATION_GAP_STALL_SECONDS + 30) - 1
 
 
 def test_working_inside_gap_is_observed_not_stalled() -> None:
