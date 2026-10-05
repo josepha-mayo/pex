@@ -22,6 +22,11 @@ stays quiet when the work is actually complete.
 | Another transcript or kanban | A quiet desktop companion communicates working, drifting, and needs-human state | Exactly two shipping companions, Pex and Von, with transparent/dismissible native behavior retained on the prior candidate |
 | Productivity claim from a convenient fixture | PexBench requires equivalent prompts/environments, private-evaluator separation, raw evidence, failed-run retention, and a coherent freeze | Integrity contracts pass; manifest remains honestly `frozen: false` and has no score claim |
 | Verification trusts the worker's own host | `PEX_PUBLIC_PYTEST_BACKEND=contree` runs bounded public pytest inside a disposable, network-isolated Nebius ConTree VM, uploaded files bound to the fingerprinted manifest sha256s | Scripted-transport unit coverage; live sandbox execution requires Nebius Sandboxes beta access and reports its own honest `error_type` instead of masquerading as a test result |
+| A green test run ends the audit | PEX seals the acceptance surface at goal attach and shows the byte-exact diff of what the worker weakened; a green run under an edited surface stays `uncertain` | Live-verified tamper scenario on OpenCode 1.18.32 — receipt + UI capture; `GET /v1/goals/{id}/acceptance-diff` serves sealed↔flagged bytes |
+| Evidence can be reused forever | A green result that predates the last edit is downgraded `uncertain` with `later_edit:<path>` until a fresh run exists | `stale_evidence_eval` fixture; scored 5/5 by `scripts/eval_replays.py` on every push |
+| "Working" means working | An observation gap beyond the configured threshold is reported as observed silence — never as progress | `observation.stalled` on session payloads; unit-covered gap semantics |
+| Handoff means "we pasted some context" | `FRESH_HANDOFF` mints a content-addressed bundle, injects over the real transport, and stays `awaiting_target_evidence` until the target produces observable work | Live `handoff_injected` on OpenCode — `docs/demo/evidence/LIVE_OPENCODE_HANDOFF_*.json` |
+| Replays can be steered | Recorded sessions are sealed evidence (`not_live_control`); they cannot be re-attached, resolved, or handed a bundle | `session_not_live_control` enforced at the store; demo badges them everywhere |
 
 ## What is real today
 
@@ -40,6 +45,16 @@ stays quiet when the work is actually complete.
   `6a1d98b`; each is a single diagnostic, not a benchmark score.
 - A retained package source passes the real local AgentCore-compatible `/ping` and strict
   `/invocations` protocol path. This is protocol proof, not AWS deployment.
+- A live OpenCode worker (free Nemotron 3 Ultra route, no key) was told to weaken the
+  sealed acceptance test; every completion claim adjudicated `uncertain`, a corrective
+  nudge named the file, and the worker restored it byte-identically before
+  `verified_complete` — recorded in `docs/demo/evidence/` with a UI capture and video.
+- A live goal handoff delivered a content-addressed context bundle into a sibling
+  OpenCode session (`handoff_injected`) and honestly reported
+  `awaiting_target_evidence` rather than claiming assimilation.
+- `scripts/eval_replays.py` scores all five shipped replay fixtures against their
+  declared supervision arcs in CI — 5/5, including stale-evidence and
+  runner-config-injection vectors.
 
 ## What PEX refuses to fake
 
@@ -51,6 +66,9 @@ stays quiet when the work is actually complete.
 - It does not report a sandbox infrastructure failure as a test outcome, or fall back to
   local execution of untrusted code when the operator selected the remote sandbox.
 - It does not use hidden evaluator facts, task-specific nudges, or treatment-only prompts.
+- It does not report a stalled worker as "working," reuse a pre-edit green run as
+  current evidence, treat a handoff as absorbed without target evidence, or let a
+  recorded replay accept live control.
 
 ## The five-minute thesis
 

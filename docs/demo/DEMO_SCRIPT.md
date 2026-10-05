@@ -97,6 +97,27 @@ If the worker pauses on an OpenCode permission prompt (`needs_decision`),
 resolve it from the Decisions rail — the demo bridge lets the local judge
 answer it.
 
+## Optional live cut C — the goal outlives the worker
+
+`--live` also seeds an idle sibling session on the same durable goal. In the
+Inspector's session card, pick the sibling under **"Hand the durable goal
+context to"** and press **Hand off →**.
+
+> "The worker stalled or drifted — the goal doesn't die with it. PEX mints a
+> content-addressed context bundle from the goal's provenance, injects it
+> into a fresh worker over the real transport, and starts assimilation
+> monitoring. Watch the status: `delivered`, then `awaiting_target_evidence`
+> — PEX doesn't call the handoff absorbed until the target produces
+> observable work. That's the difference between sending context and
+> supervising a handoff."
+
+Then point at the recorded-replay fixtures:
+
+> "And note what doesn't appear here: the replay sessions are sealed
+> evidence. You can't re-attach them or hand a bundle to a recording — the
+> control only exists for live workers, because PEX refuses to pretend a
+> replay is steerable."
+
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 
 > "Three more fixtures cover the other failure modes — a false completion with
