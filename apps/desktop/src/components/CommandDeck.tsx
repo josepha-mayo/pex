@@ -1292,6 +1292,16 @@ function InterventionsView({
           : handoffAssimilation[item.id];
         const assimilationCopy = handoffAssimilationPresentation(assimilation);
         const deliveredBundle = isHandoff ? handoffBundlePresentation(item) : null;
+        const humanResolution = item.metadata?.human_resolution;
+        const ruling =
+          humanResolution && typeof humanResolution === "object"
+            ? (humanResolution as Record<string, unknown>).answer
+            : null;
+        const rulingBy =
+          humanResolution && typeof humanResolution === "object"
+            ? (humanResolution as Record<string, unknown>).resolved_by
+            : null;
+        const showRuling = typeof ruling === "string" && ruling.trim();
         return (
           <article className="audit-row" key={item.id}>
             <div className="audit-time">
@@ -1319,6 +1329,12 @@ function InterventionsView({
               <small>Resulting state</small>
               <strong>{item.outcome || item.worker_response || item.result || "Awaiting observation"}</strong>
               <span>{helpedLabel(item.helped)}</span>
+              {showRuling ? (
+                <blockquote className="worker-reply audit-ruling">
+                  <small>Recorded ruling{typeof rulingBy === "string" && rulingBy ? ` by ${rulingBy}` : ""}</small>
+                  {ruling.trim()}
+                </blockquote>
+              ) : null}
               {isHandoff ? (
                 <div className="handoff-assimilation">
                   <small>Target-use evidence</small>

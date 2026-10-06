@@ -3496,3 +3496,18 @@ html.pet-shell #root {
   line-height: 1.45;
   border-radius: 0 4px 4px 0;
 }
+
+.audit-ruling {
+  border-left-color: var(--good, #3fb950);
+  background: color-mix(in srgb, var(--good, #3fb950) 8%, transparent);
+  font-style: normal;
+}
+
+.audit-ruling small {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 0.15rem;
+}
