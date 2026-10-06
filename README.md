@@ -260,12 +260,13 @@ fixture suite is scored on every push by `scripts/eval_replays.py`.
 
 ![Replay fixtures, each with a one-line "what this arc proves" summary](docs/demo/assets/pex-fixtures-summaries-2198b9c.png)
 
-*The judge's first screen: nine scripted fixtures plus two captured live
+*The judge's first screen: ten scripted fixtures plus two captured live
 runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not a
 synthetic trajectory. The suite spans tamper-and-restore, runner-config
 injection, stale evidence, premature claims, drift loops, forbidden-outcome
-violations (nudge and pre-write escalation), and permission brokering — each
-scored in CI against its declared arc.*
+violations (nudge and pre-write escalation), a worker dispute that
+escalates to the human instead of a re-nudge, and permission brokering —
+each scored in CI against its declared arc.*
 
 The whole judge path as a 45-second recorded capture of the real UI —
 fixture click → auto-opened Inspector → verdict timeline with the worker's
@@ -283,6 +284,15 @@ worker tried (`delete dataset fixtures to regenerate`), which rule it hit
 (`Do not delete the dataset fixtures`), and the honest label that a recorded
 replay cannot be answered. On a live session the same card carries the
 resolve guidance for a real worker.*
+
+![A dispute escalation quoting the worker's verbatim justification](docs/demo/assets/pex-nudge-dispute-card.png)
+
+*And the inverse case from `nudge_dispute_eval`: the worker answered PEX's
+corrective nudge with a justification, then stopped without resolving the
+flag. PEX doesn't re-nudge a delivered correction — the standoff escalates
+to the human once, with the worker's own words quoted in the card. The same
+arc ran live on 2026-10-05 (receipt:
+[`LIVE_OPENCODE_TAMPER_PUSHBACK`](docs/demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json)).*
 
 ## Supported harnesses
 
