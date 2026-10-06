@@ -2708,6 +2708,11 @@ textarea::placeholder {
   margin-top: 9px;
 }
 
+.decision-direct-worker {
+  margin-top: 8px;
+  align-self: flex-start;
+}
+
 .permission-unsupported {
   color: var(--faint);
 }

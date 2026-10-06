@@ -137,6 +137,7 @@ export function CommandDeck({
   onPauseSession,
   onUndo,
   onResolveDecision,
+  onDirectWorker,
   onSelectIdentityProject,
   onResolveIdentity,
   onLoadMoreIdentityConflicts,
@@ -191,6 +192,7 @@ export function CommandDeck({
   onPauseSession: (session: SessionRow) => void;
   onUndo: (intervention: Intervention) => void;
   onResolveDecision: (intervention: Intervention, decision: HumanDecisionChoice) => void;
+  onDirectWorker?: (session: SessionRow, text: string) => void;
   onSelectIdentityProject: (legacyProjectId: string) => void;
   onResolveIdentity: (attempt: ProjectIdentityResolutionAttempt) => void;
   onLoadMoreIdentityConflicts: () => void;
@@ -297,6 +299,7 @@ export function CommandDeck({
               decisionsFresh={decisionsFresh}
               onOpen={onOpenSession}
               onResolve={onResolveDecision}
+              onDirectWorker={onDirectWorker}
               onSelectIdentityProject={onSelectIdentityProject}
               onResolveIdentity={onResolveIdentity}
               onLoadMoreIdentityConflicts={onLoadMoreIdentityConflicts}
@@ -551,6 +554,7 @@ function DecisionsView({
   decisionsFresh,
   onOpen,
   onResolve,
+  onDirectWorker,
   onSelectIdentityProject,
   onResolveIdentity,
   onLoadMoreIdentityConflicts,
@@ -573,6 +577,7 @@ function DecisionsView({
   decisionsFresh: boolean;
   onOpen: (session: SessionRow) => void;
   onResolve: (intervention: Intervention, decision: HumanDecisionChoice) => void;
+  onDirectWorker?: (session: SessionRow, text: string) => void;
   onSelectIdentityProject: (legacyProjectId: string) => void;
   onResolveIdentity: (attempt: ProjectIdentityResolutionAttempt) => void;
   onLoadMoreIdentityConflicts: () => void;
@@ -837,6 +842,7 @@ function DecisionsView({
           busy={!mutationsAvailable || feedback?.state === "submitting"}
           onOpen={onOpen}
           onResolve={onResolve}
+          onDirectWorker={onDirectWorker}
         />
       ))}
       {!permissionActions.length && !lifecycleActions.length && !requestedActions.length && !generalActions.length && !unexplainedSessions.length ? (
@@ -968,6 +974,7 @@ function GeneralDecisionCard({
   busy,
   onOpen,
   onResolve,
+  onDirectWorker,
 }: {
   intervention: Intervention;
   session?: SessionRow;
@@ -975,8 +982,10 @@ function GeneralDecisionCard({
   busy: boolean;
   onOpen: (session: SessionRow) => void;
   onResolve: (intervention: Intervention, decision: HumanDecisionChoice) => void;
+  onDirectWorker?: (session: SessionRow, text: string) => void;
 }) {
   const [answer, setAnswer] = useState("");
+  const [recordedAnswer, setRecordedAnswer] = useState("");
   const submission = useRef(false);
   const answerInput = useRef<HTMLInputElement>(null);
   const question = intervention.proposed_action?.payload?.question;
@@ -1029,6 +1038,20 @@ function GeneralDecisionCard({
             {feedback.message}
           </p>
         ) : null}
+        {feedback?.state === "success"
+        && !replay
+        && session
+        && session.capabilities?.send_message === true
+        && recordedAnswer
+        && onDirectWorker ? (
+          <button
+            type="button"
+            className="ghost decision-direct-worker"
+            onClick={() => onDirectWorker(session, recordedAnswer)}
+          >
+            Message the worker with this ruling ↗
+          </button>
+        ) : null}
       </div>
       <div className="decision-controls" role="group" aria-label="Resolve escalation">
         <form
@@ -1043,6 +1066,7 @@ function GeneralDecisionCard({
             submission.current = true;
             if (answerInput.current) answerInput.current.value = "";
             setAnswer(prepared.nextValue);
+            setRecordedAnswer(prepared.decision);
             onResolve(intervention, prepared.decision);
           }}
         >

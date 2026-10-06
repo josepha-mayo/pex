@@ -451,6 +451,11 @@ export function App() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [decisionFeedback, setDecisionFeedback] = useState<DecisionFeedback | null>(null);
+  const [taskDraft, setTaskDraft] = useState<{
+    sessionId: string;
+    nonce: number;
+    text: string;
+  } | null>(null);
   const [identityConflicts, setIdentityConflicts] =
     useState<ProjectIdentityConflictPage | null>(null);
   const [identityTargetProjectId, setIdentityTargetProjectId] = useState<string | null>(null);
@@ -2687,6 +2692,11 @@ export function App() {
     window.location.hash = "deck";
   }
 
+  function directWorker(session: SessionRow, text: string) {
+    setTaskDraft({ sessionId: session.id, nonce: Date.now(), text });
+    openInspector(session.id);
+  }
+
   function showSurface(next: Surface) {
     if (next !== "compact" && current) selectSession(current.id);
     setSurface(next);
@@ -3008,6 +3018,7 @@ export function App() {
               <OperatorTaskComposer key={`${current.id}:${attachedGoal.id}:${current.project_id || current.cwd}`}
                 request={sharedConnectionRequest}
                 binding={{ sessionId: current.id, goalId: attachedGoal.id, projectId: current.project_id || current.cwd || "" }}
+                initialDraft={taskDraft?.sessionId === current.id ? taskDraft : undefined}
                 available={sessionStateFresh && goalStateFresh && !bridgeError && !current.supervision_paused}
                 onDelivered={() => void refreshPet()}
                 onInspect={() => openInspector(current.id)} />
@@ -3270,6 +3281,7 @@ export function App() {
           onPauseSession={(session) => void pauseOrResume(session)}
           onUndo={(item) => void undoIntervention(item)}
           onResolveDecision={(item, decision) => void resolveHumanDecision(item, decision)}
+          onDirectWorker={directWorker}
           onSelectIdentityProject={selectIdentityProject}
           onResolveIdentity={(attempt) => void resolveProjectIdentity(attempt)}
           onLoadMoreIdentityConflicts={loadMoreIdentityConflicts}

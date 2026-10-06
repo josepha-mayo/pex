@@ -45,10 +45,11 @@ function setBindingOutcome(key: string, value: Outcome | null) {
   for (const listener of listeners.get(key) || []) listener(value);
 }
 
-export function OperatorTaskComposer({ request, binding, available, onDelivered, onInspect }: {
+export function OperatorTaskComposer({ request, binding, available, initialDraft, onDelivered, onInspect }: {
   request: SharedRequest;
   binding: TaskBinding;
   available: boolean;
+  initialDraft?: { nonce: number; text: string };
   onDelivered: () => void;
   onInspect: () => void;
 }) {
@@ -59,6 +60,22 @@ export function OperatorTaskComposer({ request, binding, available, onDelivered,
   const [outcome, setOutcome] = useState<Outcome | null>(() => outcomes.get(bindingKey) || storedOutcome(bindingKey));
   const pending = useRef<AbortController | null>(null);
   const checkingRef = useRef(false);
+  const appliedDraftNonce = useRef(0);
+
+  useEffect(() => {
+    // A prefilled draft (e.g. a recorded ruling forwarded from Decisions) only
+    // fills an untouched, unblocked composer — never overwrites an in-flight
+    // attempt or an existing receipt state.
+    if (
+      initialDraft
+      && initialDraft.nonce !== appliedDraftNonce.current
+      && !outcome
+      && !pending.current
+    ) {
+      appliedDraftNonce.current = initialDraft.nonce;
+      setText(initialDraft.text);
+    }
+  }, [initialDraft, outcome]);
 
   async function checkReceipt(idempotencyKey: string) {
     if (checkingRef.current) return;
