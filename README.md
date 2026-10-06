@@ -269,15 +269,17 @@ against the bytes that were actually on disk. Judges replay the exact events
 the live pipeline saw (tagged **from live** in the setup card). The whole
 fixture suite is scored on every push by `scripts/eval_replays.py`.
 
-![Replay fixtures, each with a one-line "what this arc proves" summary](docs/demo/assets/pex-fixtures-summaries-2198b9c.png)
+![Replay fixtures, each with a one-line "what this arc proves" summary](docs/demo/assets/pex-fixtures-summaries-ae2ba7c.png)
 
-*The judge's first screen: ten scripted fixtures plus two captured live
+*The judge's first screen: twelve scripted fixtures plus two captured live
 runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not a
-synthetic trajectory. The suite spans tamper-and-restore, runner-config
-injection, stale evidence, premature claims, drift loops, forbidden-outcome
-violations (nudge and pre-write escalation), a worker dispute that
-escalates to the human instead of a re-nudge, and permission brokering —
-each scored in CI against its declared arc.*
+synthetic trajectory. Attach-aware fixtures are tagged so the second and
+third acts are discoverable. The suite spans tamper-and-restore,
+runner-config injection, stale evidence, premature claims, drift loops,
+forbidden-outcome violations (nudge and pre-write escalation), a worker
+dispute that escalates to the human instead of a re-nudge, permission
+brokering, and the ruling-continuity pair — each scored in CI against its
+declared arc.*
 
 The whole judge path as a 45-second recorded capture of the real UI —
 fixture click → auto-opened Inspector → verdict timeline with the worker's
