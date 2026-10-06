@@ -146,6 +146,24 @@ Click **Drift loop: the same failing probe, over and over**.
 > bounded intervention, not a nudge firehose. The worker recovers, and the
 > final claim still gets independently verified."
 
+## Optional replay cut — the worker argues back
+
+Click **Worker disputes the nudge, stops unresolved**, then open **Deck →
+Decisions**.
+
+> "This is the run a real worker took on 2026-10-05. PEX flagged the modified
+> acceptance test and nudged 'restore or justify.' The worker answered — it
+> argued the baseline can't pass and stood by the weakened test — then
+> stopped. PEX does not re-nudge a correction the worker already engaged;
+> the standoff escalates to the human, once. Look at the card: the question,
+> and the worker's own justification quoted verbatim underneath it. That's
+> the whole product thesis — PEX can flag, nudge, and verify, but when the
+> worker disputes the flag, the decision belongs to the human, not another
+> automated poke."
+
+*Point at the `worker_response` quote block and the `nudge_dispute:` evidence
+chip — they link the escalation back to the exact nudge it answered.*
+
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 
 > "Five more fixtures cover the other failure modes — a false completion with
