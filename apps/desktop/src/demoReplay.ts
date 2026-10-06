@@ -130,6 +130,19 @@ export function isReplaySession(session: SessionRow | null | undefined): boolean
   return session?.metadata?.replay === true && session?.metadata?.not_live_control === true;
 }
 
+// The replay vendor id embeds the fixture: replay-<fixture>-<hex> (or
+// replay-inline-<hex> for judge-authored trajectories). The rail labels the
+// run by its source so several replays stay distinguishable.
+const REPLAY_VENDOR_ID = /^replay-([a-z0-9][a-z0-9_-]{0,62})-[0-9a-f]{4,}$/;
+
+export function replayFixtureLabel(session: SessionRow | null | undefined): string | null {
+  if (!isReplaySession(session) || typeof session?.id !== "string") return null;
+  const vendor = session.id.split(":").pop() || "";
+  const match = REPLAY_VENDOR_ID.exec(vendor);
+  if (!match) return null;
+  return match[1] === "inline" ? "custom trajectory" : match[1];
+}
+
 // Provenance for a replay session's intent authority: attached replays run
 // under an existing goal's ledger (recorded rulings govern); fixture replays
 // mint their own goal.

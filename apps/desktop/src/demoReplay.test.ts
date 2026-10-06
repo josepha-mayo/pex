@@ -9,6 +9,7 @@ import {
   parseReplaySessionId,
   parseReplayVerdict,
   parseTrajectoriesResponse,
+  replayFixtureLabel,
 } from "./demoReplay.ts";
 import type { SessionRow } from "./types.ts";
 
@@ -186,6 +187,22 @@ test("replay verdict carries the observed arc and the adjudicated completion", (
   );
   assert.equal(parseReplayVerdict({ replay: true, not_live_control: false }), null);
   assert.equal(parseReplayVerdict(null), null);
+});
+
+test("replay rail label names the source fixture or the custom trajectory", () => {
+  const base: SessionRow = {
+    id: "synthetic:replay-ruling_continuity_eval-c720e688",
+    harness_type: "synthetic",
+    status: "stopped",
+    metadata: { replay: true, not_live_control: true },
+  };
+  assert.equal(replayFixtureLabel(base), "ruling_continuity_eval");
+  const inline = { ...base, id: "synthetic:replay-inline-a6795034" };
+  assert.equal(replayFixtureLabel(inline), "custom trajectory");
+  const nonReplay = { ...base, metadata: { replay: true, not_live_control: false } };
+  assert.equal(replayFixtureLabel(nonReplay), null);
+  const oddId = { ...base, id: "synthetic:other-1" };
+  assert.equal(replayFixtureLabel(oddId), null);
 });
 
 test("live worker label requires a real harness with a Deep or Strong transport", () => {

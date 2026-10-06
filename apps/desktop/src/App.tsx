@@ -43,6 +43,7 @@ import {
   parseReplaySessionId,
   parseReplayVerdict,
   parseTrajectoriesResponse,
+  replayFixtureLabel,
   type DemoFixture,
   type ReplayVerdict,
 } from "./demoReplay";
@@ -2956,7 +2957,8 @@ export function App() {
                 <small>{railLabels[index]}{(railLabelCounts.get(`${session.harness_type}:${railLabels[index]}`) || 0) > 1
                   ? ` · ${session.id.slice(-6)}` : ""}</small>
                 {isReplaySession(session)
-                  ? <small><span className="replay-badge">Recorded replay</span></small>
+                  ? <small><span className="replay-badge">Recorded replay</span>
+                      {replayFixtureLabel(session) ? ` · ${replayFixtureLabel(session)}` : ""}</small>
                   : isLiveWorkerSession(session)
                     ? <small><span className="replay-badge live-badge">Live</span> {titleCase(session.status)}{session.observation?.stalled
                         ? ` · quiet ${observationAgeLabel(session.observation.last_event_age_seconds ?? 0)}` : ""}</small>
@@ -3144,8 +3146,8 @@ export function App() {
                       ledger govern the run instead of a fresh goal being minted.
                       {(attachedGoal?.ruling_count || 0) > 0 ? (
                         <strong>
-                          {" "}⚑ {attachedGoal!.ruling_count} recorded ruling
-                          {attachedGoal!.ruling_count === 1 ? "" : "s"} govern this goal.
+                          {" "}⚑ governed by {attachedGoal!.ruling_count} recorded ruling
+                          {attachedGoal!.ruling_count === 1 ? "" : "s"}.
                         </strong>
                       ) : null}
                     </span>
