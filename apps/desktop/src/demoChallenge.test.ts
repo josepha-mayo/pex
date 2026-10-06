@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CHALLENGE_TEMPLATE, parseChallengeFixture } from "./demoChallenge.ts";
+import {
+  CHALLENGE_PRESETS,
+  CHALLENGE_TEMPLATE,
+  parseChallengeFixture,
+} from "./demoChallenge.ts";
 
 void test("challenge template parses into a runnable fixture body", () => {
   const parsed = parseChallengeFixture(CHALLENGE_TEMPLATE);
@@ -34,4 +38,16 @@ void test("challenge parser accepts a minimal fixture", () => {
     '{"events": [{"event_type": "stop"}]}',
   );
   assert.equal(parsed.ok, true);
+});
+
+void test("every attack preset is a parseable, labeled fixture", () => {
+  const labels = new Set<string>();
+  for (const preset of CHALLENGE_PRESETS) {
+    assert.ok(preset.label.trim(), "preset needs a label");
+    assert.ok(!labels.has(preset.label), `duplicate preset label ${preset.label}`);
+    labels.add(preset.label);
+    const parsed = parseChallengeFixture(preset.json);
+    assert.equal(parsed.ok, true, `${preset.label}: ${parsed.ok ? "" : parsed.error}`);
+  }
+  assert.ok(CHALLENGE_PRESETS.length >= 3, "presets should cover multiple attack classes");
 });

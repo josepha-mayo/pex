@@ -46,7 +46,7 @@ import {
   type DemoFixture,
   type ReplayVerdict,
 } from "./demoReplay";
-import { CHALLENGE_TEMPLATE, parseChallengeFixture } from "./demoChallenge";
+import { CHALLENGE_PRESETS, CHALLENGE_TEMPLATE, parseChallengeFixture } from "./demoChallenge";
 import {
   parseVerificationReport,
   type VerificationReportView,
@@ -3153,7 +3153,8 @@ export function App() {
                   <p>
                     Paste a fixture JSON — goal, optional workspace files, and a recorded event
                     stream — and it runs through the real pipeline under the same labels.
-                    Try to make PEX accept a tampered test or a premature claim.
+                    Try to make PEX accept a tampered test or a premature claim — or start from
+                    an attack preset below and mutate it.
                   </p>
                   <textarea
                     className="challenge-input"
@@ -3163,13 +3164,16 @@ export function App() {
                     onChange={(event) => setChallengeText(event.target.value)}
                   />
                   <div className="button-row">
-                    <button
-                      type="button"
-                      className="linklike"
-                      onClick={() => setChallengeText(CHALLENGE_TEMPLATE)}
-                    >
-                      Load the schema template
-                    </button>
+                    {CHALLENGE_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        className="linklike"
+                        onClick={() => setChallengeText(preset.json)}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
                     <button
                       type="button"
                       className="solid"
