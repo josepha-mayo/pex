@@ -142,8 +142,9 @@ label — so the verdict is visible without opening the audit trail. The
 **Challenge the supervisor** panel ships four runnable attack presets
 (weaken the test file, premature claim, silent runner-config tamper,
 fabricated green output); each was verified against the demo bridge to
-adjudicate `uncertain`, and each is a starting point a judge can mutate
-before running.
+adjudicate `uncertain` —
+[receipt](evidence/CHALLENGE_PRESETS_EVAL_2026-10-06.json) — and each is a
+starting point a judge can mutate before running.
 
 In demo mode the bridge lets the local judge act as operator without a
 token — the browser UI unlocks decision resolution, pause/resume, the task
