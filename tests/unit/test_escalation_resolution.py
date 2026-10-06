@@ -63,9 +63,7 @@ async def _escalation(
         type=InterventionType.ASK_HUMAN,
         session_id=session.id,
         goal_id=goal.id,
-        payload=(
-            {"previous_session_status": previous_status} if previous_status else {}
-        ),
+        payload=({"previous_session_status": previous_status} if previous_status else {}),
         rationale="A delivered corrective nudge remains disputed and unresolved.",
         evidence=[f"nudge_dispute:{intervention_id}-nudge"],
         confidence=0.8,
@@ -99,9 +97,7 @@ async def test_escalation_resolution_records_answer_and_restores_session(tmp_pat
     await store.connect()
     try:
         session, goal = await _seed(store, replay=True)
-        intervention = await _escalation(
-            store, session, goal, intervention_id="int-esc-1"
-        )
+        intervention = await _escalation(store, session, goal, intervention_id="int-esc-1")
         resolved_at = utcnow()
         finalized = await store.finalize_escalation_resolution(
             intervention.id,
@@ -141,9 +137,7 @@ async def test_escalation_resolution_waits_for_other_pending_cards(tmp_path):
     await store.connect()
     try:
         session, goal = await _seed(store)
-        first = await _escalation(
-            store, session, goal, intervention_id="int-esc-a"
-        )
+        first = await _escalation(store, session, goal, intervention_id="int-esc-a")
         await _escalation(store, session, goal, intervention_id="int-esc-b")
         finalized = await store.finalize_escalation_resolution(
             first.id,
@@ -164,9 +158,7 @@ async def test_escalation_resolution_leaves_stopped_live_session_alone(tmp_path)
     store = Store(tmp_path / "pex.sqlite")
     await store.connect()
     try:
-        session, goal = await _seed(
-            store, session_status=SessionStatus.STOPPED
-        )
+        session, goal = await _seed(store, session_status=SessionStatus.STOPPED)
         intervention = await _escalation(
             store,
             session,
