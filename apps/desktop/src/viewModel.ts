@@ -1214,6 +1214,70 @@ export function currentGoals(goals: Goal[]): Goal[] {
   return goals.filter((goal) => !superseded.has(goal.id));
 }
 
+export type GoalFieldDiff = {
+  field: string;
+  removed: string[];
+  added: string[];
+};
+
+const GOAL_SCALAR_FIELDS: Array<{ key: keyof Goal; label: string }> = [
+  { key: "title", label: "Title" },
+  { key: "objective", label: "Objective" },
+  { key: "deadline", label: "Deadline" },
+];
+const GOAL_LIST_FIELDS: Array<{ key: keyof Goal; label: string }> = [
+  { key: "acceptance_criteria", label: "Acceptance" },
+  { key: "constraints", label: "Constraints" },
+  { key: "forbidden_outcomes", label: "Forbidden outcomes" },
+  { key: "non_goals", label: "Non-goals" },
+  { key: "preferences", label: "Preferences" },
+  { key: "evidence_requirements", label: "Required evidence" },
+];
+
+// Ordered walk back through the supersedes chain: nearest predecessor first.
+// Cycles and missing rows stop the walk — the API keeps chains acyclic, but a
+// pruned or not-yet-fetched ancestor must not wedge the render.
+export function goalLineageChain(goalId: string, goals: Goal[]): Goal[] {
+  const byId = new Map(goals.map((goal) => [goal.id, goal]));
+  const chain: Goal[] = [];
+  const seen = new Set([goalId]);
+  let cursor = byId.get(goalId);
+  while (cursor?.supersedes && !seen.has(cursor.supersedes) && chain.length < 25) {
+    seen.add(cursor.supersedes);
+    const parent = byId.get(cursor.supersedes);
+    if (!parent) break;
+    chain.push(parent);
+    cursor = parent;
+  }
+  return chain;
+}
+
+// Field-level intent diff between a superseded goal and its successor.
+export function goalFieldDiff(previous: Goal, next: Goal): GoalFieldDiff[] {
+  const diffs: GoalFieldDiff[] = [];
+  for (const { key, label } of GOAL_SCALAR_FIELDS) {
+    const before = String(previous[key] ?? "").trim();
+    const after = String(next[key] ?? "").trim();
+    if (before !== after) {
+      diffs.push({
+        field: label,
+        removed: before ? [before] : [],
+        added: after ? [after] : [],
+      });
+    }
+  }
+  for (const { key, label } of GOAL_LIST_FIELDS) {
+    const before = (previous[key] as string[] | undefined) ?? [];
+    const after = (next[key] as string[] | undefined) ?? [];
+    const removed = before.filter((item) => !after.includes(item));
+    const added = after.filter((item) => !before.includes(item));
+    if (removed.length || added.length) {
+      diffs.push({ field: label, removed, added });
+    }
+  }
+  return diffs;
+}
+
 export function splitPetCatalog(
   starters: CatalogPet[],
   catalog: CatalogPet[],

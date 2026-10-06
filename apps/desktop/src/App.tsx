@@ -3217,6 +3217,7 @@ export function App() {
           onExportEvidencePack={() => void exportEvidencePack()}
           onFetchAcceptanceDiff={fetchAcceptanceDiff}
           goals={availableGoals}
+          allGoals={goals}
           action={action}
           handoffStatus={action?.id ? handoffAssimilation[action.id] : undefined}
           status={status}

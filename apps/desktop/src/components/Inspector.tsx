@@ -35,6 +35,8 @@ import {
   meaningfulEvidence,
   nextExpectedEvent,
   observationGapCopy,
+  goalFieldDiff,
+  goalLineageChain,
   partitionLedgerDecisions,
   supervisorReviewAllowanceCopy,
   supervisorInferenceReceipt,
@@ -79,6 +81,7 @@ export function Inspector({
   onExportEvidencePack,
   onFetchAcceptanceDiff,
   goals,
+  allGoals,
   action,
   handoffStatus,
   status,
@@ -133,6 +136,7 @@ export function Inspector({
   onExportEvidencePack?: () => void;
   onFetchAcceptanceDiff?: (path: string) => Promise<AcceptanceDiff>;
   goals: Goal[];
+  allGoals?: Goal[];
   action?: LastAction | null;
   handoffStatus?: HandoffAssimilationStatus | "unreachable";
   status: StatusCopy;
@@ -184,6 +188,11 @@ export function Inspector({
   const canAttach = canAttachPersistentGoal(current);
   const ledger = partitionLedgerDecisions(ledgerDecisions);
   const deadline = goalDeadlineCopy(goal?.deadline);
+  const lineage = goal ? goalLineageChain(goal.id, allGoals ?? goals) : [];
+  const lineageDiffs = lineage.map((ancestor, index) => ({
+    ancestor,
+    diffs: goalFieldDiff(ancestor, index === 0 ? goal! : lineage[index - 1]),
+  }));
   const actionName = recordedActionLabel(action);
   const actionWhy = actionExplanation(action);
   const handoffCopy = action?.action === "FRESH_HANDOFF"
@@ -554,6 +563,38 @@ export function Inspector({
               <Boundary label="Recorded rulings" values={ledger.rulings.map((item) => item.statement)} />
             </div>
             </details>
+            {lineageDiffs.length ? (
+              <details className="goal-options goal-lineage-history">
+              <summary>
+                Revision history · {lineageDiffs.length} amendment{lineageDiffs.length === 1 ? "" : "s"} — recorded rulings inherit forward
+              </summary>
+              {lineageDiffs.map(({ ancestor, diffs }) => (
+                <div className="lineage-hop" key={ancestor.id}>
+                  <p className="lineage-title">
+                    <small>Previous revision</small>
+                    <strong>{ancestor.title}</strong>
+                  </p>
+                  {diffs.length ? (
+                    <ul className="lineage-diff">
+                      {diffs.map((diff) => (
+                        <li key={diff.field}>
+                          <span className="lineage-field">{diff.field}</span>
+                          {diff.removed.map((value) => (
+                            <span className="lineage-removed" key={`r-${value}`}>− {value}</span>
+                          ))}
+                          {diff.added.map((value) => (
+                            <span className="lineage-added" key={`a-${value}`}>+ {value}</span>
+                          ))}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="lineage-unchanged">Intent fields unchanged — metadata-only revision.</p>
+                  )}
+                </div>
+              ))}
+              </details>
+            ) : null}
             {onEditGoal ? (
               <div className="button-row">
                 <button type="button" className="ghost" onClick={onEditGoal} disabled={savingGoal || !goalActionsAvailable}>

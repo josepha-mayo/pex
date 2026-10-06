@@ -3562,3 +3562,56 @@ html.pet-shell #root {
   color: var(--accent, #8ab4ff);
   opacity: 0.9;
 }
+
+.lineage-hop {
+  border-left: 2px solid var(--line, #2b3446);
+  margin: 0.45rem 0;
+  padding-left: 0.75rem;
+}
+
+.lineage-title small {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.lineage-diff {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+}
+
+.lineage-diff li {
+  margin: 0.25rem 0;
+}
+
+.lineage-field {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.lineage-removed,
+.lineage-added {
+  display: block;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 11px;
+  word-break: break-word;
+}
+
+.lineage-removed {
+  color: #e57373;
+}
+
+.lineage-added {
+  color: #81c784;
+}
+
+.lineage-unchanged {
+  font-size: 12px;
+  opacity: 0.7;
+  margin: 0.3rem 0;
+}

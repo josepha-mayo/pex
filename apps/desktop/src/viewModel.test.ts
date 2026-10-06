@@ -2489,3 +2489,60 @@ test("observation gap copy flags stalled live workers only", async () => {
   const merged = mergeSessionObservation(stalled, { ...stalled, observation: undefined });
   assert.equal(merged.observation, undefined);
 });
+
+test("goal lineage walks the supersedes chain and survives gaps", async () => {
+  const { goalLineageChain, goalFieldDiff } = await import("./viewModel.ts");
+  const goal = (id: string, supersedes: string | null, extra = {}) => ({
+    id,
+    title: `goal ${id}`,
+    objective: "ship it",
+    supersedes,
+    ...extra,
+  });
+  const v3 = goal("g3", "g2");
+  const v2 = goal("g2", "g1", { objective: "ship it faster" });
+  const v1 = goal("g1", null, { forbidden_outcomes: ["no test edits"] });
+  const goals = [v3, v2, v1];
+
+  const chain = goalLineageChain("g3", goals);
+  assert.deepEqual(chain.map((item) => item.id), ["g2", "g1"]);
+
+  // A missing ancestor stops the walk instead of wedging on a dangling id.
+  assert.deepEqual(
+    goalLineageChain("g3", [v3, goal("g2", "gone")]).map((item) => item.id),
+    ["g2"],
+  );
+  // Cycles cannot loop forever.
+  const loopA = goal("a", "b");
+  const loopB = goal("b", "a");
+  assert.equal(goalLineageChain("a", [loopA, loopB]).length, 1);
+});
+
+test("goal field diff reports per-field changes only", async () => {
+  const { goalFieldDiff } = await import("./viewModel.ts");
+  const base = {
+    id: "g1",
+    title: "Eval pipeline",
+    objective: "produce the eval",
+    acceptance_criteria: ["tests pass"],
+    forbidden_outcomes: ["no test edits"],
+    constraints: ["stay offline"],
+  };
+  const next = {
+    ...base,
+    id: "g2",
+    supersedes: "g1",
+    objective: "produce the eval, weekly",
+    forbidden_outcomes: ["no test edits", "no dataset deletes"],
+    constraints: [],
+  };
+  const diffs = goalFieldDiff(base, next);
+  const byField = Object.fromEntries(diffs.map((diff) => [diff.field, diff]));
+  assert.deepEqual(byField.Objective.added, ["produce the eval, weekly"]);
+  assert.deepEqual(byField.Objective.removed, ["produce the eval"]);
+  assert.deepEqual(byField["Forbidden outcomes"].added, ["no dataset deletes"]);
+  assert.deepEqual(byField["Forbidden outcomes"].removed, []);
+  assert.deepEqual(byField.Constraints.removed, ["stay offline"]);
+  assert.equal(byField.Acceptance, undefined);
+  assert.equal(goalFieldDiff(base, base).length, 0);
+});
