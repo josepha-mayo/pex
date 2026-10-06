@@ -903,6 +903,13 @@ p {
   margin-top: -4px !important;
 }
 .replay-verdict-determinism.replay-verdict-diverged { color: var(--amber); }
+.replay-suite { margin-top: 10px; }
+.replay-suite-line {
+  color: var(--mint);
+  font-size: 11.5px;
+  margin: 6px 0 0;
+}
+.replay-suite-line.replay-suite-missed { color: var(--amber); }
 .replay-verdict-completion { margin-bottom: 6px !important; }
 .replay-verdict-label {
   display: block;

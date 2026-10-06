@@ -487,6 +487,16 @@ export function App() {
   const [challengeText, setChallengeText] = useState("");
   const [attachReplayGoal, setAttachReplayGoal] = useState(false);
   const [determinismCheck, setDeterminismCheck] = useState(false);
+  // In-app suite run: every fixture through the real pipeline, scored
+  // against its own declared arc — eval_replays.py's rigor, one click.
+  const [suiteRun, setSuiteRun] = useState<{
+    running: boolean;
+    done: number;
+    total: number;
+    current: string | null;
+    met: number;
+    misses: { fixture: string; failure: string }[];
+  } | null>(null);
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
@@ -1805,6 +1815,38 @@ export function App() {
         verdict: null,
       }));
     }
+  }
+
+  async function runDemoSuite() {
+    if (!demoFixtures?.length || demoReplay.running || suiteRun?.running) return;
+    setSuiteRun({ running: true, done: 0, total: demoFixtures.length, current: null, met: 0, misses: [] });
+    let met = 0;
+    const misses: { fixture: string; failure: string }[] = [];
+    for (const [index, fixture] of demoFixtures.entries()) {
+      setSuiteRun({ running: true, done: index, total: demoFixtures.length, current: fixture.id, met, misses });
+      try {
+        const payload = await bridgeJson<unknown>("/v1/demo/replay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // Suite runs mint their own goals — the same contract eval_replays.py
+          // enforces, not the attached-ledger variant.
+          body: JSON.stringify({ fixture: fixture.id }),
+        });
+        const verdict = parseReplayVerdict(payload);
+        if (verdict?.declared?.met === true) {
+          met += 1;
+        } else {
+          misses.push({
+            fixture: fixture.id,
+            failure: verdict?.declared?.failures[0] ?? "declared arc not met",
+          });
+        }
+      } catch {
+        misses.push({ fixture: fixture.id, failure: "replay request failed" });
+      }
+    }
+    setSuiteRun({ running: false, done: demoFixtures.length, total: demoFixtures.length, current: null, met, misses });
+    await refreshPet();
   }
 
   function runChallenge() {
@@ -3201,6 +3243,26 @@ export function App() {
                     </span>
                   </label>
                 ) : null}
+                <div className="replay-suite">
+                  <button
+                    type="button"
+                    className="ghost"
+                    disabled={Boolean(demoReplay.running) || Boolean(suiteRun?.running)}
+                    onClick={() => void runDemoSuite()}
+                  >
+                    {suiteRun?.running
+                      ? `Suite running… ${suiteRun.done}/${suiteRun.total} (${suiteRun.current ?? ""})`
+                      : `Run the whole suite — ${demoFixtures.length} fixtures, self-scored`}
+                  </button>
+                  {suiteRun && !suiteRun.running ? (
+                    <p className={suiteRun.misses.length ? "replay-suite-line replay-suite-missed" : "replay-suite-line"}>
+                      {suiteRun.met}/{suiteRun.total} declared arcs met
+                      {suiteRun.misses.length
+                        ? ` — missed: ${suiteRun.misses.map((m) => m.fixture).join(", ")}`
+                        : " — the demo verifies itself, the same way eval_replays.py does in CI."}
+                    </p>
+                  ) : null}
+                </div>
                 <details className="demo-challenge">
                   <summary>
                     <span>Challenge the supervisor</span>
