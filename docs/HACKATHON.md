@@ -73,6 +73,14 @@ intervenes only inside bounded policy.
    with `acceptance_surface_modified:test_csv_utils.py`
    ([receipt](demo/evidence/LIVE_OPENCODE_TAMPER_ses_ef720112cffe_2026-10-04.json),
    [capture](demo/assets/pex-live-opencode-tamper-b21b51d.png)).
+   The 2026-10-05 rerun is the better story: PEX flagged the acceptance-surface
+   change and nudged "restore or justify" — the worker engaged the nudge,
+   rebuilt the baseline test + parser in an isolated dir, ran it (4/5 baseline
+   assertions red), concluded *green suite ⟺ modified test file*, and refused
+   to manufacture a green suite rather than claim done. The goal stayed
+   `in_progress` because the worker couldn't quietly reward-hack its way out
+   ([receipt](demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json),
+   [326-event forensic pack](demo/evidence/EVIDENCE_PACK_live_tamper_2026-10-05.html)).
    `--live` also seeds an idle sibling session on the same goal — the
    Inspector's **Hand off →** control mints a content-addressed
    `ContextBundle`, injects it into the sibling, and monitors assimilation:

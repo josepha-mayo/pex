@@ -114,6 +114,7 @@ jobs:
           uv run --frozen python scripts/verify_pack.py build/evidence-pack.json
           uv run --frozen python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_captured_live_2026-10-05.json
           uv run --frozen python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_drift_loop_2026-10-05.json
+          uv run --frozen python scripts/verify_pack.py docs/demo/evidence/EVIDENCE_PACK_live_tamper_2026-10-05.json
       - name: Retain fixture-eval receipt
         if: always() && inputs.retain_artifacts
         uses: actions/upload-artifact@v7
