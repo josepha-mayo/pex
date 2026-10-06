@@ -1046,25 +1046,6 @@ async def resolve_lifecycle_decision(
     )
 
 
-def _is_pending_general_escalation(intervention: Intervention) -> bool:
-    """A planner-driven ASK_HUMAN escalation awaiting a recorded human answer.
-
-    Typed human decisions (mcp_human_request) resolve through their own
-    delivery-bound path; permission and lifecycle decisions have theirs. This
-    is the durable-record path for the supervisor's own escalations — the
-    answer is evidence on the ledger, not a promise the worker heard it.
-    """
-    return (
-        intervention.proposed_action.type == InterventionType.ASK_HUMAN
-        and intervention.action_taken == InterventionType.ASK_HUMAN.value
-        and intervention.policy_verdict == PolicyVerdict.ASK_HUMAN
-        and intervention.result == "escalated"
-        and not intervention.outcome
-        and intervention.helped is None
-        and intervention.metadata.get("decision_kind") != "mcp_human_request"
-    )
-
-
 @dataclass(frozen=True)
 class EscalationResolutionResult:
     intervention: Intervention
