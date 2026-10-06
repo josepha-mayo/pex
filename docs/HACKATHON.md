@@ -37,7 +37,12 @@ intervenes only inside bounded policy.
    statement and nudges before damage), and `constraint_block_eval` (the
    same conflict caught *before* the write lands → `ASK_HUMAN` — keep the
    rule or confirm an override; ends honestly `uncertain` with no
-   completion evidence).
+   completion evidence). Every replay renders an **Observed supervision
+   arc** card — the intervention chain, the adjudicated completion, and
+   the cited constraint — and the **Challenge the supervisor** panel ships
+   four runnable attack presets (weakened test, premature claim, silent
+   runner-config tamper, fabricated green output) a judge can mutate and
+   re-run.
 3. Click **Evidence pack** in the Inspector — the app recomputes every digest
    *in your browser* while it downloads (a TypeScript port of the verifier,
    independent of the bridge). Then `python scripts/verify_pack.py
@@ -121,10 +126,10 @@ Nemotron inference follows the same runbook's main path.
 
 - **Runs today offline:** the full supervision pipeline, deterministic triage,
   acceptance-surface sealing and tamper detection, the replay demo, local
-  subprocess public-test verification, 5,444 backend tests (latest full run on
-  the `85af5ce` tree, 0 failures). `python scripts/eval_replays.py` scores the
-  shipped fixture suite against its declared supervision arcs — 12/12 on
-  2026-10-05
+  subprocess public-test verification, 5,462 backend tests (latest full run
+  2026-10-06, 0 failures). `python scripts/eval_replays.py` scores the
+  shipped fixture suite against its declared supervision arcs — 14/14 on
+  2026-10-06
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.json) —
   [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.html) with the
   same JSON embedded).
