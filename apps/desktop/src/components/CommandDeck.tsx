@@ -1027,7 +1027,7 @@ function GeneralDecisionCard({
         <p className="decision-rationale">
           {replay
             ? "Recorded replay — answering closes the durable question and journals the ruling on the goal's decision ledger; the recorded worker cannot receive it."
-            : "Recording your answer closes this escalation and journals the ruling on the goal's decision ledger, so future supervision inherits it. To direct the live worker, send a message in its session afterward."}
+            : "Recording your answer closes this escalation and journals the ruling on the goal's decision ledger — it stays in force for later sessions, even if the goal is amended. To direct the live worker, send a message in its session afterward."}
         </p>
         {feedback ? (
           <p

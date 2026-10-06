@@ -102,7 +102,10 @@ intervenes only inside bounded policy.
    ledger is demonstrably live: tick **Attach replays to the selected goal**
    and rerun the sealed-test attack via `ruling_continuity_eval` — the nudge
    cites the recorded ruling (`agent_contradiction: <your ruling>`), because
-   the goal's own text never forbade it.
+   the goal's own text never forbade it. Rulings also survive goal amendment:
+   an override-mode edit mints a successor goal and rebinds sessions, while
+   `escalation_ruling` entries inherit forward through the `supersedes`
+   lineage — a human decision cannot be retired by editing the goal text.
    `--live` also seeds an idle sibling session on the same goal — the
    Inspector's **Hand off →** control mints a content-addressed
    `ContextBundle`, injects it into the sibling, and monitors assimilation:
@@ -122,8 +125,8 @@ Nemotron inference follows the same runbook's main path.
   the `85af5ce` tree, 0 failures). `python scripts/eval_replays.py` scores the
   shipped fixture suite against its declared supervision arcs — 12/12 on
   2026-10-05
-  ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json) —
-  [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.html) with the
+  ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.json) —
+  [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.html) with the
   same JSON embedded).
 - **Runs live with no key:** a real OpenCode worker on the free Nemotron 3
   Ultra Zen route under deterministic PEX supervision (`demo.py --live`);

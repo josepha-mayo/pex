@@ -51,7 +51,7 @@ UI, tick **Attach replays to the selected goal** under the fixture grid.
 
 Every fixture is scored on
 every push by `scripts/eval_replays.py` against a declared arc
-(`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`).
+(`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.json`).
 
 ## Write your own — challenge the supervisor
 

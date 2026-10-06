@@ -115,6 +115,15 @@ path works from the API: `POST /v1/demo/replay` with `fixture` plus the
 target `goal_id`; the response's `goal_source` declares `"attached"` so the
 intent authority is never ambiguous.
 
+**The third act**: a ruling also survives the amendment it recommends. Edit
+the goal through `PATCH /v1/goals/{id}` with `mode: "override"` — the
+successor-goal path — and sessions rebind to the new revision while
+`escalation_ruling` entries inherit forward through the `supersedes` lineage
+(ordinary notes stay behind; only recorded human rulings travel). Attach
+`ruling_continuity_eval` to the *successor* goal and the nudge still cites
+the ruling — amending the goal can weaken its own text but cannot quietly
+retire a human decision.
+
 In demo mode the bridge lets the local judge act as operator without a
 token — the browser UI unlocks decision resolution, pause/resume, the task
 composer, and goal handoffs when `/health` advertises
@@ -148,9 +157,9 @@ uv run python scripts/eval_replays.py --json out.json   # needs the demo bridge
 Replays every fixture through the real pipeline and scores each verification
 report against the arc it exists to demonstrate — nonzero exit if a tamper
 scenario ends verified without its integrity incident, or a no-evidence
-scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`
+scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.json`
 (12/12 arcs) — also as a self-contained readable page,
-`FIXTURE_SUITE_EVAL_2026-10-05.html`, with the same JSON embedded.
+`FIXTURE_SUITE_EVAL_2026-10-06.html`, with the same JSON embedded.
 `--repeat N` replays every fixture N times and fails on any
 verdict, completion, or normalized-evidence drift — adjudication is
 deterministic on a recorded trajectory. `--html out.html` renders the

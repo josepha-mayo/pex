@@ -710,6 +710,74 @@ async def test_recorded_ruling_governs_a_second_replay_on_the_same_goal(
 
 
 @pytest.mark.asyncio
+async def test_recorded_ruling_governs_after_an_override_mode_goal_edit(
+    client: AsyncClient,
+):
+    """A ruling survives the very resolution path the card suggests.
+
+    Resolve the dispute, then amend the goal with mode="override" — which
+    mints a successor goal row and rebinds sessions to it. The ruling must
+    still govern replays attached to the successor: durable human intent
+    outlives the goal revision it was recorded under.
+    """
+
+    replay = await client.post("/v1/demo/replay", json={"fixture": "nudge_dispute_eval"})
+    assert replay.status_code == 200, replay.text
+    body = replay.json()
+    escalation = next(
+        item for item in body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
+    )
+    session = await state.store.get_session(body["session_id"])
+    assert session is not None and session.goal_id is not None
+    goal_id = session.goal_id
+
+    resolved = await client.post(
+        f"/v1/decisions/{escalation['id']}/resolve",
+        json={"decision": "Do not modify the sealed baseline test file"},
+    )
+    assert resolved.status_code == 200, resolved.text
+
+    goals = (await client.get("/v1/goals")).json()
+    current = next(item for item in goals if item["id"] == goal_id)
+    patched = await client.patch(
+        f"/v1/goals/{goal_id}",
+        json={
+            "idempotency_key": "e2e-override-after-ruling",
+            "mode": "override",
+            "expected_intent_revision": current["intent_revision"],
+            "objective": current["objective"] + " Weekly standoff reporting.",
+        },
+    )
+    assert patched.status_code == 200, patched.text
+    successor = patched.json()
+    assert successor["id"] != goal_id
+    assert successor["supersedes"] == goal_id
+
+    migrated = await state.store.get_session(session.id)
+    assert migrated.goal_id == successor["id"]
+
+    decisions = (await client.get(f"/v1/goals/{successor['id']}/decisions")).json()
+    assert any(
+        item.get("statement") == "Do not modify the sealed baseline test file" for item in decisions
+    )
+
+    second = await client.post(
+        "/v1/demo/replay",
+        json={"fixture": "ruling_continuity_eval", "goal_id": successor["id"]},
+    )
+    assert second.status_code == 200, second.text
+    second_body = second.json()
+    assert second_body["goal_id"] == successor["id"]
+    assert second_body["goal_source"] == "attached"
+    nudge = next(
+        item for item in second_body["interventions"] if item.get("action_taken") == "SEND_NUDGE"
+    )
+    blob = json.dumps(nudge)
+    assert "agent_contradiction" in blob
+    assert "Do not modify the sealed baseline test file" in blob
+
+
+@pytest.mark.asyncio
 async def test_replay_attach_rejects_an_unknown_goal(client: AsyncClient):
     response = await client.post(
         "/v1/demo/replay",

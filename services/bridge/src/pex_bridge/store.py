@@ -5619,6 +5619,39 @@ async def _load_bound_goal(
     return goal, binding
 
 
+_GOAL_LINEAGE_WALK_LIMIT = 64
+
+
+async def _goal_superseded_ancestor_ids(
+    transaction: aiosqlite.Connection,
+    goal_id: str,
+) -> list[str]:
+    """Return the ids of goals this goal superseded, nearest-link first.
+
+    Goal edits made with mode="override" mint a successor row; sessions rebind
+    to it, but unmanaged human artifacts such as escalation rulings stay bound
+    to the predecessor. Callers merge those rulings into the successor's reads
+    so a recorded human ruling keeps governing after the goal is amended.
+    """
+
+    ancestor_ids: list[str] = []
+    seen = {goal_id}
+    cursor_id = goal_id
+    while len(ancestor_ids) < _GOAL_LINEAGE_WALK_LIMIT:
+        cursor = await transaction.execute(
+            "SELECT json_extract(json, '$.supersedes') FROM goals WHERE id = ?",
+            (cursor_id,),
+        )
+        row = await cursor.fetchone()
+        parent_id = row[0] if row is not None else None
+        if not isinstance(parent_id, str) or not parent_id or parent_id in seen:
+            break
+        seen.add(parent_id)
+        ancestor_ids.append(parent_id)
+        cursor_id = parent_id
+    return ancestor_ids
+
+
 async def _load_bound_session(
     transaction: aiosqlite.Connection,
     session_id: str,
@@ -25801,6 +25834,7 @@ class Store:
             valid_from=resolved_at,
             sensitivity=Sensitivity.INTERNAL,
             metadata={
+                "kind": "escalation_ruling",
                 "decision_id": decision.id,
                 "source_session_id": session.id,
                 "status": DecisionStatus.ACTIVE.value,
@@ -29108,13 +29142,28 @@ class Store:
                             "context project identity does not match its goal",
                             code="artifact_project_identity_changed",
                         )
+                    ancestor_ids = await _goal_superseded_ancestor_ids(transaction, goal.id)
+                    ancestor_clause = ""
+                    ancestor_parameters: list[Any] = []
+                    if ancestor_ids:
+                        placeholders = ", ".join("?" for _ in ancestor_ids)
+                        ancestor_clause = (
+                            f" OR (goal_id IN ({placeholders}) "
+                            "AND json_extract(json, '$.metadata.kind') "
+                            "= 'escalation_ruling')"
+                        )
+                        ancestor_parameters = ancestor_ids
                     query = "SELECT json FROM context_items WHERE project_binding = ? "
                     query += (
-                        "AND (goal_id = ? OR goal_id IS NULL)"
+                        f"AND (goal_id = ? OR goal_id IS NULL{ancestor_clause})"
                         if include_project_wide
-                        else "AND goal_id = ?"
+                        else f"AND (goal_id = ?{ancestor_clause})"
                     )
-                    parameters = [goal_binding.project_binding, goal_id]
+                    parameters = [
+                        goal_binding.project_binding,
+                        goal_id,
+                        *ancestor_parameters,
+                    ]
                 else:
                     live_binding = await _project_binding_snapshot(transaction, project_id)
                     query = "SELECT json FROM context_items WHERE project_binding = ?"
@@ -29225,10 +29274,31 @@ class Store:
             raise ValueError(f"decision limit must be between 1 and {MAX_LIST_QUERY_LIMIT}")
         if offset < 0:
             raise ValueError("decision offset cannot be negative")
+        ancestor_ids: list[str] = []
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN")
+            try:
+                ancestor_ids = await _goal_superseded_ancestor_ids(transaction, goal_id)
+                await transaction.commit()
+            except Exception:
+                await transaction.rollback()
+                raise
+        parameters: list[Any] = [goal_id]
+        scope = "goal_id = ?"
+        if ancestor_ids:
+            placeholders = ", ".join("?" for _ in ancestor_ids)
+            scope += (
+                f" OR (goal_id IN ({placeholders}) "
+                "AND json_extract(json, '$.metadata.kind') = 'escalation_ruling' "
+                "AND json_extract(json, '$.status') IN ('active', 'uncertain'))"
+            )
+            parameters.extend(ancestor_ids)
+        parameters.extend((limit, offset))
         cur = await self.db.execute(
-            "SELECT json FROM decisions WHERE goal_id = ? "
+            f"SELECT json FROM decisions WHERE {scope} "
             "ORDER BY json_extract(json, '$.created_at') DESC, id DESC LIMIT ? OFFSET ?",
-            (goal_id, limit, offset),
+            tuple(parameters),
         )
         rows = await cur.fetchall()
         return [Decision.model_validate_json(r["json"]) for r in rows]
@@ -29249,10 +29319,23 @@ class Store:
             await _configure_connection(transaction)
             await transaction.execute("BEGIN")
             try:
-                _, binding = await _load_bound_goal(transaction, goal_id)
+                goal, binding = await _load_bound_goal(transaction, goal_id)
+                ancestor_ids = await _goal_superseded_ancestor_ids(transaction, goal.id)
+                parameters: list[Any] = [binding.project_binding, goal_id]
+                scope = "goal_id = ?"
+                if ancestor_ids:
+                    placeholders = ", ".join("?" for _ in ancestor_ids)
+                    scope += (
+                        f" OR (goal_id IN ({placeholders}) "
+                        "AND json_extract(json, '$.metadata.kind') "
+                        "= 'escalation_ruling' "
+                        "AND json_extract(json, '$.status') "
+                        "IN ('active', 'uncertain'))"
+                    )
+                    parameters.extend(ancestor_ids)
                 query = (
-                    "SELECT json FROM decisions WHERE goal_id = ? "
-                    "AND project_binding = ? ORDER BY "
+                    "SELECT json FROM decisions WHERE project_binding = ? "
+                    f"AND ({scope}) ORDER BY "
                 )
                 if prioritize_active_human:
                     query += (
@@ -29262,9 +29345,8 @@ class Store:
                         "THEN 1 ELSE 2 END, "
                     )
                 query += "json_extract(json, '$.created_at') DESC, id DESC LIMIT ? OFFSET ?"
-                cursor = await transaction.execute(
-                    query, (goal_id, binding.project_binding, limit, offset),
-                )
+                parameters.extend((limit, offset))
+                cursor = await transaction.execute(query, tuple(parameters))
                 rows = await cursor.fetchall()
                 await transaction.commit()
                 return [Decision.model_validate_json(row["json"]) for row in rows]

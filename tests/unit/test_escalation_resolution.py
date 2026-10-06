@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import pytest
-from pex_bridge.store import Store, utcnow
+from pex_bridge.store import Store, new_id, utcnow
 from pex_protocol.actions import InterventionType, ProposedAction, RiskLevel
-from pex_protocol.enums import Authority, HarnessType, PolicyVerdict, SessionStatus
-from pex_protocol.goal import Goal
+from pex_protocol.enums import (
+    Authority,
+    DecisionSource,
+    DecisionStatus,
+    HarnessType,
+    PolicyVerdict,
+    SessionStatus,
+)
+from pex_protocol.goal import Decision, Goal
 from pex_protocol.intervention import Intervention
 from pex_protocol.project_identity import PathPlatform, ProjectLocator, ProjectOrigin
 from pex_protocol.session import HarnessSession
@@ -229,5 +236,61 @@ async def test_escalation_resolution_rejects_missing_and_foreign_cards(tmp_path)
                 resolved_at=utcnow(),
                 resolved_by="local_operator",
             )
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_escalation_ruling_survives_goal_supersede(tmp_path):
+    """A recorded ruling keeps governing after an override-mode goal edit.
+
+    Supersession migrates sessions to the successor goal; the ruling must travel
+    with them through lineage rather than stay orphaned on the predecessor.
+    """
+
+    store = Store(tmp_path / "pex.sqlite")
+    await store.connect()
+    try:
+        session, goal = await _seed(store)
+        intervention = await _escalation(store, session, goal, intervention_id="int-esc-x")
+        await store.finalize_escalation_resolution(
+            intervention.id,
+            answer="Keep the requirement; the sealed test file stays the baseline.",
+            resolved_at=utcnow(),
+            resolved_by="local_operator",
+        )
+        unrelated = Decision(
+            id="decision-unmanaged-note",
+            goal_id=goal.id,
+            statement="Prefer pathlib over os.path in new code.",
+            rationale="Style preference recorded outside the escalation flow.",
+            source=DecisionSource.HUMAN,
+            status=DecisionStatus.ACTIVE,
+            created_at=utcnow(),
+            metadata={"kind": "operator_note"},
+        )
+        await store.add_decision(unrelated)
+
+        successor = goal.model_copy(
+            update={
+                "id": new_id("goal_"),
+                "objective": goal.objective + " Report open standoffs weekly.",
+                "supersedes": goal.id,
+                "updated_at": utcnow(),
+            }
+        )
+        attached = await store.supersede_goal(goal.id, successor)
+        assert session.id in attached
+        migrated = await store.get_session(session.id)
+        assert migrated.goal_id == successor.id
+
+        decisions = await store.list_decisions_for_authority(successor.id)
+        statements = {decision.statement for decision in decisions}
+        assert "Keep the requirement; the sealed test file stays the baseline." in statements
+        assert "Prefer pathlib over os.path in new code." not in statements
+
+        context = await store.list_context_for_authority("escalation-project", goal_id=successor.id)
+        contents = {item.content for item in context}
+        assert "Keep the requirement; the sealed test file stays the baseline." in contents
     finally:
         await store.close()
