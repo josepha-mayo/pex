@@ -28,6 +28,7 @@ import json
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -50,6 +51,62 @@ def _npm() -> str:
         if found:
             return found
     sys.exit("npm is required for the UI dev server (install Node.js first).")
+
+
+def _pid_on_port(port: int) -> str | None:
+    """Best-effort PID of a loopback listener — for an actionable error."""
+
+    try:
+        if os.name == "nt":
+            out = subprocess.run(
+                ["netstat", "-ano", "-p", "tcp"],
+                capture_output=True,
+                text=True,
+            ).stdout
+            for line in out.splitlines():
+                parts = line.split()
+                if (
+                    len(parts) >= 5
+                    and parts[1].rsplit(":", 1)[-1] == str(port)
+                    and parts[3].upper() == "LISTENING"
+                ):
+                    return parts[-1]
+        else:
+            out = subprocess.run(
+                ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"],
+                capture_output=True,
+                text=True,
+            ).stdout
+            first = out.strip().splitlines()
+            return first[0] if first else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return None
+
+
+def _ensure_port_free(port: int, label: str, env_name: str) -> None:
+    """Fail loudly on a stale service instead of probing someone else's health.
+
+    A squatting process answers the readiness probe just as well as our own
+    child — the run then proceeds against the wrong service (or its own child
+    exits and tears the demo down). Check the port *before* spawning so the
+    message can name the real culprit.
+    """
+
+    probe = socket.socket()
+    try:
+        occupied = probe.connect_ex(("127.0.0.1", port)) == 0
+    finally:
+        probe.close()
+    if not occupied:
+        return
+    pid = _pid_on_port(port)
+    owner = f" (pid {pid})" if pid else ""
+    kill_hint = f"stop it (e.g. `taskkill /PID {pid} /F`)" if pid else "stop it"
+    sys.exit(
+        f"{label} port 127.0.0.1:{port} is already in use{owner} — likely a stale "
+        f"service from an earlier run; {kill_hint} first, or set {env_name}."
+    )
 
 
 def _wait_http(url: str, timeout: float = 45.0, child=None) -> bool:
@@ -121,7 +178,10 @@ def main(argv: list[str] | None = None) -> int:
         # pile up stale (and zombie "working") workers from older runs.
         # Set PEX_DEMO_HOME yourself to keep a stable home between runs.
         bridge_env["PEX_DEMO_HOME"] = str(ROOT / "build" / "demo" / f"home-{stamp}")
+    _ensure_port_free(BRIDGE_PORT, "demo bridge", "PEX_DEMO_PORT")
+    _ensure_port_free(VITE_PORT, "vite dev server", "PEX_VITE_PORT")
     if args.live:
+        _ensure_port_free(OPENCODE_PORT, "opencode serve", "PEX_OPENCODE_PORT")
         from scripts import demo_live
 
         executable = demo_live.resolve_opencode()
