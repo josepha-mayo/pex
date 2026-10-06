@@ -134,6 +134,17 @@ active constraint … keep that ledger rule, or is this an explicit
 override?" — rather than silently obeying. A recorded ruling is not just
 worker-facing; it is the operator's own future self held to account.
 
+**What a run reports**: every replay response now carries the goal's
+completion projection, and the panel renders an **Observed supervision
+arc** card after each run — the humanized intervention chain, the
+adjudicated completion status and reason, and the replay (not-live)
+label — so the verdict is visible without opening the audit trail. The
+**Challenge the supervisor** panel ships four runnable attack presets
+(weaken the test file, premature claim, silent runner-config tamper,
+fabricated green output); each was verified against the demo bridge to
+adjudicate `uncertain`, and each is a starting point a judge can mutate
+before running.
+
 In demo mode the bridge lets the local judge act as operator without a
 token — the browser UI unlocks decision resolution, pause/resume, the task
 composer, and goal handoffs when `/health` advertises
