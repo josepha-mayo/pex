@@ -98,7 +98,11 @@ intervenes only inside bounded policy.
    becomes durable intent that future planning and prompt linting inherit —
    clears the inbox, and restores the session's pre-decision status.
    Idempotent on replay, conflict-safe on divergence, and honest that
-   recording ≠ worker delivery (`worker_delivery: not_attempted`).
+   recording ≠ worker delivery (`worker_delivery: not_attempted`). And the
+   ledger is demonstrably live: tick **Attach replays to the selected goal**
+   and rerun the sealed-test attack via `ruling_continuity_eval` — the nudge
+   cites the recorded ruling (`agent_contradiction: <your ruling>`), because
+   the goal's own text never forbade it.
    `--live` also seeds an idle sibling session on the same goal — the
    Inspector's **Hand off →** control mints a content-addressed
    `ContextBundle`, injects it into the sibling, and monitors assimilation:

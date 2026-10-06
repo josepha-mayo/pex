@@ -904,6 +904,20 @@ p {
   text-align: left;
 }
 
+.replay-attach {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--faint);
+  cursor: pointer;
+}
+.replay-attach input {
+  margin-top: 2px;
+  accent-color: var(--good, #3fb950);
+}
+
 .demo-challenge {
   margin-top: 12px;
   border-top: 1px dashed var(--line);

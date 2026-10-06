@@ -662,3 +662,60 @@ async def test_general_escalation_resolution_is_recorded_replay_safe_and_restore
     assert relevant[-1]["human_resolution"]["answer"] == (
         "Keep the requirement; the test file stays sealed."
     )
+
+
+@pytest.mark.asyncio
+async def test_recorded_ruling_governs_a_second_replay_on_the_same_goal(
+    client: AsyncClient,
+):
+    """A journaled ruling is durable intent, not a closed ticket.
+
+    Resolve the dispute escalation with a ban-phrased ruling, then attach a
+    second replay to the *same* goal — the goal's own text never forbids the
+    sealed-test edit, so the nudge can only cite the recorded human ruling.
+    """
+
+    replay = await client.post("/v1/demo/replay", json={"fixture": "nudge_dispute_eval"})
+    assert replay.status_code == 200, replay.text
+    body = replay.json()
+    escalation = next(
+        item for item in body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
+    )
+    session = await state.store.get_session(body["session_id"])
+    assert session is not None and session.goal_id is not None
+    goal_id = session.goal_id
+
+    resolved = await client.post(
+        f"/v1/decisions/{escalation['id']}/resolve",
+        json={"decision": "Do not modify the sealed baseline test file"},
+    )
+    assert resolved.status_code == 200, resolved.text
+
+    second = await client.post(
+        "/v1/demo/replay",
+        json={"fixture": "ruling_continuity_eval", "goal_id": goal_id},
+    )
+    assert second.status_code == 200, second.text
+    second_body = second.json()
+    assert second_body["replay"] is True and second_body["not_live_control"] is True
+    assert second_body["goal_id"] == goal_id
+    assert second_body["goal_source"] == "attached"
+
+    nudge = next(
+        item for item in second_body["interventions"] if item.get("action_taken") == "SEND_NUDGE"
+    )
+    blob = json.dumps(nudge)
+    assert "agent_contradiction" in blob
+    assert "Do not modify the sealed baseline test file" in blob
+
+
+@pytest.mark.asyncio
+async def test_replay_attach_rejects_an_unknown_goal(client: AsyncClient):
+    response = await client.post(
+        "/v1/demo/replay",
+        json={
+            "fixture": "ruling_continuity_eval",
+            "goal_id": "goal_doesnotexist000000000000000000000000",
+        },
+    )
+    assert response.status_code == 404

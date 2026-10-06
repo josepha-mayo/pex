@@ -42,6 +42,13 @@ carrying the worker's own reply in evidence. The 2026-10-05 live run took
 exactly this arc
 (`docs/demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json`).
 
+`ruling_continuity_eval` is the second act of that arc — the sealed-test
+attack retried after the escalation was answered. Run standalone it trips
+its own `forbidden_outcomes`; the designed path is `POST /v1/demo/replay`
+with `goal_id` set to the ruled goal — the goal's own text never forbids
+the edit, so the nudge can only cite the journaled human ruling. In the
+UI, tick **Attach replays to the selected goal** under the fixture grid.
+
 Every fixture is scored on
 every push by `scripts/eval_replays.py` against a declared arc
 (`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`).
@@ -54,6 +61,9 @@ app's **Challenge the supervisor** panel (and
 `POST /v1/demo/replay {"inline": {<fixture body>}}`) runs a pasted body
 through the identical strict loader and pipeline, labeled the same way.
 Exactly one of `fixture`/`inline` is required; both or neither is a 422.
+An optional `goal_id` attaches the replay to an existing goal's ledger
+instead of minting a fresh one — the response's `goal_source` declares
+`"attached"` vs `"fixture"` so the intent authority is never ambiguous.
 
 ```jsonc
 {

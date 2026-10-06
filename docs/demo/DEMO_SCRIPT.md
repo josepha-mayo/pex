@@ -170,6 +170,15 @@ Decisions**.
 chip — they link the escalation back to the exact nudge it answered. Then
 record a ruling live to show the inbox count drop.*
 
+> "And the ruling isn't a sticky note — it's journaled onto the goal's
+> decision ledger as durable human intent. Watch: rule 'Do not modify the
+> sealed baseline test file,' then tick *Attach replays to the selected goal*
+> and run `ruling_continuity_eval` — a second recorded worker tries the same
+> sealed-test edit on the same goal. The goal's own text never forbids it.
+> The nudge that fires cites *my ruling* — `agent_contradiction: Do not
+> modify the sealed baseline test file`. The human's answer becomes the
+> constraint that catches the next attack."
+
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 
 > "Five more fixtures cover the other failure modes — a false completion with

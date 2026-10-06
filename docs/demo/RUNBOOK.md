@@ -99,8 +99,21 @@ planning and prompt linting as durable human intent), clears the card, and
 restores the session's pre-decision status — the same answer replays
 idempotently, a different one returns `escalation_resolution_conflict`.
 Recording is deliberately not worker delivery (`worker_delivery:
-not_attempted`); on a live session the follow-through is a real message in
-the worker's session.
+not_attempted`); on a live session the card then offers **Message the worker
+with this ruling ↗**, which opens the session's task composer with the ruling
+prefilled — the operator reviews and sends through the same exactly-once,
+receipt-checked delivery path.
+
+**The second act**: a recorded ruling is durable intent, not a closed ticket.
+With the ruled session selected, tick **Attach replays to the selected goal**
+under the fixture grid and run `ruling_continuity_eval` — the same sealed-test
+attack replayed onto the ruled goal. The goal's own text never forbids the
+edit, so the `SEND_NUDGE` that fires cites the journaled ruling
+(`agent_contradiction: Do not modify the sealed baseline test file`) — the
+human's recorded answer is the constraint now doing the catching. The same
+path works from the API: `POST /v1/demo/replay` with `fixture` plus the
+target `goal_id`; the response's `goal_source` declares `"attached"` so the
+intent authority is never ambiguous.
 
 In demo mode the bridge lets the local judge act as operator without a
 token — the browser UI unlocks decision resolution, pause/resume, the task

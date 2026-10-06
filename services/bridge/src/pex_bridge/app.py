@@ -2996,6 +2996,10 @@ class AskIn(_StrictRequestModel):
 class DemoReplayIn(_StrictRequestModel):
     fixture: BoundedId | None = None
     inline: dict | None = None
+    # Attach the replayed trajectory to an existing goal's ledger instead of
+    # minting a fresh one — the "second act" path that lets a recorded human
+    # ruling govern a new replay. The session is still replay/not_live_control.
+    goal_id: BoundedId | None = None
 
     @model_validator(mode="after")
     def _exactly_one_source(self):
@@ -6756,6 +6760,9 @@ def create_app() -> FastAPI:
             raise HTTPException(400, str(exc)) from exc
         goal_spec = data.get("goal") or {}
         try:
+            # When the caller attaches an existing goal, the fixture's goal
+            # block is never minted — the response's goal_source declares
+            # which intent authority governed the run.
             validated_goal = (
                 GoalIn.model_validate(
                     {
@@ -6764,7 +6771,7 @@ def create_app() -> FastAPI:
                         "title": goal_spec.get("title") or "Replay",
                     }
                 )
-                if goal_spec
+                if goal_spec and body.goal_id is None
                 else None
             )
             replay_events = [
@@ -6793,23 +6800,44 @@ def create_app() -> FastAPI:
                 400, "demo fixture workspace could not be materialized"
             ) from exc
 
+        attached_goal: Goal | None = None
+        goal_source = "fixture"
+        if body.goal_id is not None:
+            try:
+                attached_goal = await state.store.get_goal_for_authority(body.goal_id)
+            except ProjectIdentityBlockedError as exc:
+                raise HTTPException(
+                    409,
+                    {
+                        "code": exc.code,
+                        "detail": "attach goal workspace authority changed",
+                    },
+                ) from exc
+            if attached_goal is None:
+                raise HTTPException(404, "attach goal not found")
+            goal_source = "attached"
+
         session = state.adapters.synthetic.seed_session(
             vendor_id=f"replay-{fixture_id[:48]}-{secrets.token_hex(4)}",
             cwd=str(workspace_root) if workspace_root is not None else None,
         )
         session.metadata["replay"] = True
         session.metadata["not_live_control"] = True
-        session.project_id = validated_goal.project_id if validated_goal else "demo"
-        if validated_goal:
-            now = utcnow()
-            goal = Goal(
-                **validated_goal.model_dump(),
-                id=new_id("goal_"),
-                created_at=now,
-                updated_at=now,
-            )
-            await state.store.upsert_goal(goal)
-            session.goal_id = goal.id
+        if attached_goal is not None:
+            session.project_id = attached_goal.project_id
+            session.goal_id = attached_goal.id
+        else:
+            session.project_id = validated_goal.project_id if validated_goal else "demo"
+            if validated_goal:
+                now = utcnow()
+                goal = Goal(
+                    **validated_goal.model_dump(),
+                    id=new_id("goal_"),
+                    created_at=now,
+                    updated_at=now,
+                )
+                await state.store.upsert_goal(goal)
+                session.goal_id = goal.id
         await state.store.upsert_session(session)
         replay_pipeline = Pipeline(
             state.store,
@@ -6875,6 +6903,8 @@ def create_app() -> FastAPI:
             "replay": True,
             "not_live_control": True,
             "session_id": session.id,
+            "goal_id": session.goal_id,
+            "goal_source": goal_source,
             "inbox": inbox,
             "interventions": interventions,
         }

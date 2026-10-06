@@ -474,6 +474,7 @@ export function App() {
     error: string | null;
   }>({ running: false, fixture: null, error: null });
   const [challengeText, setChallengeText] = useState("");
+  const [attachReplayGoal, setAttachReplayGoal] = useState(false);
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
@@ -1730,9 +1731,10 @@ export function App() {
       const payload = await bridgeJson<unknown>("/v1/demo/replay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          inline !== undefined ? { inline } : { fixture: fixtureId },
-        ),
+        body: JSON.stringify({
+          ...(inline !== undefined ? { inline } : { fixture: fixtureId }),
+          ...(attachReplayGoal && current?.goal_id ? { goal_id: current.goal_id } : {}),
+        }),
       });
       const sessionId = parseReplaySessionId(payload);
       if (!sessionId) {
@@ -3089,6 +3091,19 @@ export function App() {
                     </button>
                   ))}
                 </div>
+                {current?.goal_id ? (
+                  <label className="replay-attach">
+                    <input
+                      type="checkbox"
+                      checked={attachReplayGoal}
+                      onChange={(event) => setAttachReplayGoal(event.target.checked)}
+                    />
+                    <span>
+                      Attach replays to the selected goal — recorded rulings on its
+                      ledger govern the run instead of a fresh goal being minted.
+                    </span>
+                  </label>
+                ) : null}
                 <details className="demo-challenge">
                   <summary>
                     <span>Challenge the supervisor</span>
