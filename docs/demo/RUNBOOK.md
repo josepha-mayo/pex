@@ -115,9 +115,10 @@ path works from the API: `POST /v1/demo/replay` with `fixture` plus the
 target `goal_id`; the response's `goal_source` declares `"attached"` so the
 intent authority is never ambiguous.
 
-**The third act**: a ruling also survives the amendment it recommends. Edit
-the goal through `PATCH /v1/goals/{id}` with `mode: "override"` — the
-successor-goal path — and sessions rebind to the new revision while
+**The third act**: a ruling also survives the amendment it recommends. In
+the goal editor tick **Save as a new revision (override)** (or call
+`PATCH /v1/goals/{id}` with `mode: "override"`) — the successor-goal path —
+and sessions rebind to the new revision while
 `escalation_ruling` entries inherit forward through the `supersedes` lineage
 (ordinary notes stay behind; only recorded human rulings travel). Attach
 `ruling_continuity_eval` to the *successor* goal and the nudge still cites
