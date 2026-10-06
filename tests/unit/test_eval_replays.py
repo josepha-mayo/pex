@@ -1,13 +1,20 @@
 """The fixture-suite scorer asserts each shipped scenario keeps the
 supervision arc it exists to demonstrate — and refuses to pass a supported
-completion over a tampered surface."""
+completion over a tampered surface. Declared arcs live inside the fixture
+files themselves (``expected``) and are scored by
+``pex_bridge.demo.score_declared_arc`` — the same function the replay
+endpoint uses, so the suite and the UI can never drift apart."""
 
 from __future__ import annotations
 
+from pex_bridge.demo import (
+    list_fixtures,
+    load_fixture,
+    parse_declared_expectation,
+    score_declared_arc,
+)
+
 from scripts.eval_replays import (
-    EXPECTED,
-    FixtureExpectation,
-    _evaluate,
     _normalized_evidence,
     render_html,
 )
@@ -20,33 +27,51 @@ def _result(**overrides) -> dict:
         "integrity_incidents": 1,
         "verdicts": ["uncertain", "supported"],
         "evidence_strings": ["acceptance_surface_modified:tests/test_core.py"],
+        "interventions": ["SEND_NUDGE", "NOOP"],
     }
     base.update(overrides)
     return base
 
 
+def _expected(fixture_id: str) -> dict:
+    expected = parse_declared_expectation(load_fixture(fixture_id))
+    assert expected is not None, f"{fixture_id} must declare an expected arc"
+    return expected
+
+
+def test_every_shipped_fixture_declares_a_checkable_arc() -> None:
+    fixtures = list_fixtures()
+    assert len(fixtures) >= 14
+    for item in fixtures:
+        expected = item.get("expected")
+        assert isinstance(expected, dict), f"{item['id']} lacks a declared arc"
+        assert expected.get("completion_in"), f"{item['id']} has no completion_in"
+        assert isinstance(expected.get("summary"), str) and expected["summary"]
+
+
 def test_tampered_fixture_expectation_accepts_the_real_arc() -> None:
-    assert _evaluate(_result(), EXPECTED["tampered_acceptance_eval"]) == []
+    assert score_declared_arc(_expected("tampered_acceptance_eval"), _result()) == []
 
 
 def test_supported_completion_over_tamper_is_scored_a_failure() -> None:
     # The outcome the whole mechanism exists to prevent: a green verdict with
     # no acceptance-surface evidence recorded.
     result = _result(integrity_incidents=0, evidence_strings=[])
-    failures = _evaluate(result, EXPECTED["tampered_acceptance_eval"])
+    failures = score_declared_arc(_expected("tampered_acceptance_eval"), result)
     assert any("integrity" in f for f in failures)
     assert any("evidence" in f for f in failures)
 
 
 def test_wrong_completion_status_fails() -> None:
-    failures = _evaluate(
-        _result(completion_status="uncertain"), EXPECTED["tampered_acceptance_eval"]
+    failures = score_declared_arc(
+        _expected("tampered_acceptance_eval"),
+        _result(completion_status="uncertain"),
     )
     assert any("completion" in f for f in failures)
 
 
 def test_dataset_fixture_must_never_report_supported() -> None:
-    expectation = EXPECTED["dataset_before_eval"]
+    expectation = _expected("dataset_before_eval")
     ok = _result(
         completion_status="uncertain",
         claims_adjudicated=1,
@@ -54,10 +79,26 @@ def test_dataset_fixture_must_never_report_supported() -> None:
         verdicts=["uncertain"],
         evidence_strings=[],
     )
-    assert _evaluate(ok, expectation) == []
+    assert score_declared_arc(expectation, ok) == []
     green = dict(ok, verdicts=["uncertain", "supported"])
-    failures = _evaluate(green, expectation)
+    failures = score_declared_arc(expectation, green)
     assert any("supported" in f for f in failures)
+
+
+def test_interventions_any_enforced_where_declared() -> None:
+    expectation = _expected("constraint_block_eval")
+    ok = _result(
+        completion_status="uncertain",
+        claims_adjudicated=0,
+        integrity_incidents=0,
+        verdicts=["uncertain"],
+        evidence_strings=[],
+        interventions=["ASK_HUMAN"],
+    )
+    assert score_declared_arc(expectation, ok) == []
+    missing = dict(ok, interventions=["NOOP"])
+    failures = score_declared_arc(expectation, missing)
+    assert any("ASK_HUMAN" in f for f in failures)
 
 
 def test_normalized_evidence_strips_per_run_event_ids() -> None:
@@ -80,11 +121,33 @@ def test_normalized_evidence_strips_per_run_event_ids() -> None:
 
 
 def test_claim_floor_is_enforced() -> None:
-    failures = _evaluate(
+    failures = score_declared_arc(
+        {"completion_in": ["verified_complete"], "min_claims": 2},
         _result(claims_adjudicated=1),
-        FixtureExpectation(completion_in={"verified_complete"}, min_claims=2),
     )
     assert any("claims" in f for f in failures)
+
+
+def test_declared_expectation_parsing_bounds_and_rejects() -> None:
+    # Garbage shapes normalize to None rather than crashing or scoring.
+    assert parse_declared_expectation({}) is None
+    assert parse_declared_expectation({"expected": "nope"}) is None
+    assert parse_declared_expectation({"expected": {"min_claims": 3}}) is None
+    parsed = parse_declared_expectation(
+        {
+            "expected": {
+                "completion_in": ["verified_complete", 5, None],
+                "min_claims": "many",  # wrong type dropped
+                "interventions_any": ["ASK_HUMAN"],
+                "summary": " ends unresolved ",
+            }
+        }
+    )
+    assert parsed == {
+        "completion_in": ["verified_complete"],
+        "interventions_any": ["ASK_HUMAN"],
+        "summary": "ends unresolved",
+    }
 
 
 def test_eval_html_receipt_renders_arcs_and_embeds_json() -> None:

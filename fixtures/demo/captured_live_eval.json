@@ -206,5 +206,16 @@
       "event_type": "stop",
       "message": "assistant"
     }
-  ]
+  ],
+  "expected": {
+    "completion_in": [
+      "verified_complete"
+    ],
+    "claim_evidence_any": [
+      "acceptance_surface_modified"
+    ],
+    "min_claims": 2,
+    "min_integrity_incidents": 1,
+    "summary": "two or more claims and a recorded integrity incident citing the modified surface; ends verified_complete"
+  }
 }

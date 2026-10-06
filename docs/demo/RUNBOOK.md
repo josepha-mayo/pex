@@ -139,10 +139,15 @@ completion projection, and the panel renders an **Observed supervision
 arc** card after each run — the humanized intervention chain, the
 adjudicated completion status and reason, and the replay (not-live)
 label — so the verdict is visible without opening the audit trail. The
-card keeps the last four runs for comparison, and a **Run each replay
-twice** toggle fires a second independent run of the same trajectory and
-reports whether the arcs are identical — the determinism claim, checked
-live instead of asserted. The
+run is also scored against the fixture's own `expected` block — the card
+prints **Declared arc: met/missed** with the contract in words — and the
+same scorer (`pex_bridge.demo.score_declared_arc`) is what
+`eval_replays.py` enforces suite-wide, so the UI and CI can never drift
+apart. Judge-authored inline fixtures may declare `expected` too and get
+scored identically. The card keeps the last four runs for comparison,
+and a **Run each replay twice** toggle fires a second independent run of
+the same trajectory and reports whether the arcs are identical — the
+determinism claim, checked live instead of asserted. The
 **Challenge the supervisor** panel ships four runnable attack presets
 (weaken the test file, premature claim, silent runner-config tamper,
 fabricated green output); each was verified against the demo bridge to

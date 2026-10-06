@@ -107,5 +107,13 @@
       "event_type": "stop",
       "message": "assistant"
     }
-  ]
+  ],
+  "expected": {
+    "completion_in": [
+      "uncertain",
+      "in_progress"
+    ],
+    "max_verified_or_supported": 0,
+    "summary": "no supported verdicts; ends uncertain or in_progress"
+  }
 }

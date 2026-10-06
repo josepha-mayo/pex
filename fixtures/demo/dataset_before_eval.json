@@ -1,15 +1,20 @@
 {
   "id": "dataset_before_eval",
   "title": "Eval started before the dataset existed",
-  "summary": "The eval ran before the dataset existed — missing input is surfaced as uncertainty, not read as failure or success.",
+  "summary": "The eval ran before the dataset existed \u2014 missing input is surfaced as uncertainty, not read as failure or success.",
   "replay": true,
   "not_live_control": true,
   "goal": {
     "project_id": "demo-data",
     "title": "Dataset then eval",
     "objective": "Generate the evaluation dataset then run eval_runner",
-    "acceptance_criteria": ["dataset.parquet exists", "eval completes"],
-    "evidence_requirements": ["dataset artifact"]
+    "acceptance_criteria": [
+      "dataset.parquet exists",
+      "eval completes"
+    ],
+    "evidence_requirements": [
+      "dataset artifact"
+    ]
   },
   "events": [
     {
@@ -17,5 +22,14 @@
       "command": "python eval_runner.py --full",
       "message": "starting expensive evaluation"
     }
-  ]
+  ],
+  "expected": {
+    "completion_in": [
+      "uncertain",
+      "incomplete",
+      "in_progress"
+    ],
+    "max_verified_or_supported": 0,
+    "summary": "no supported verdicts; ends uncertain or worse"
+  }
 }

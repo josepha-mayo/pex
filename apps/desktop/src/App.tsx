@@ -3258,6 +3258,21 @@ export function App() {
                         cites “{demoReplay.verdict.citedConstraint}”
                       </p>
                     ) : null}
+                    {demoReplay.verdict.declared ? (
+                      <p
+                        className={
+                          demoReplay.verdict.declared.met === false
+                            ? "replay-verdict-determinism replay-verdict-diverged"
+                            : "replay-verdict-determinism"
+                        }
+                      >
+                        {demoReplay.verdict.declared.met === true
+                          ? `Declared arc: met — ${demoReplay.verdict.declared.summary ?? "all declared checks passed"}`
+                          : demoReplay.verdict.declared.met === false
+                            ? `Declared arc: missed — ${demoReplay.verdict.declared.failures[0] ?? "declared checks failed"}`
+                            : "Declared arc: scoring unavailable for this run"}
+                      </p>
+                    ) : null}
                     {demoReplay.verdict.determinism ? (
                       <p
                         className={

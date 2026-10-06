@@ -595,6 +595,12 @@ async def test_general_escalation_resolution_is_recorded_replay_safe_and_restore
     # the arc without a second fetch — status/reason, never narration.
     assert body["completion"]["status"] in {"uncertain", "incomplete", "in_progress"}
     assert isinstance(body["completion"]["reason"], str)
+    # The fixture's declared arc is scored by the bridge against this run —
+    # the same contract scripts/eval_replays.py enforces suite-wide.
+    declared = body["declared"]
+    assert declared["met"] is True
+    assert declared["failures"] == []
+    assert "ASK_HUMAN" in declared["expectation"]["interventions_any"]
     escalation = next(
         item for item in body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
     )

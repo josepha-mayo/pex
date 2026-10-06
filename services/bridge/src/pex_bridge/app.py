@@ -6744,8 +6744,10 @@ def create_app() -> FastAPI:
         from pex_bridge.demo import (
             load_fixture,
             materialize_workspace,
+            parse_declared_expectation,
             parse_inline_fixture,
             remove_workspace_files,
+            score_declared_arc,
         )
 
         fixture_id = body.fixture or "inline"
@@ -6929,6 +6931,50 @@ def create_app() -> FastAPI:
                 }
             except (LookupError, ProjectIdentityBlockedError):
                 completion = None
+        declared: dict[str, Any] | None = None
+        expected = parse_declared_expectation(data)
+        if expected is not None and session.goal_id:
+            try:
+                # Score the run against the arc the fixture declares — the
+                # same contract scripts/eval_replays.py enforces suite-wide.
+                report = await _verification_report_payload(session.goal_id)
+                report_claims = report.get("claims") or []
+                report_evidence: set[str] = set()
+                for claim in report_claims:
+                    for item in claim.get("evidence") or []:
+                        report_evidence.add(str(item))
+                declared_failures = score_declared_arc(
+                    expected,
+                    {
+                        "completion_status": (completion or {}).get("status"),
+                        "claims_adjudicated": len(report_claims),
+                        "integrity_incidents": (report.get("summary") or {}).get(
+                            "integrity_incidents"
+                        )
+                        or 0,
+                        "verdicts": [
+                            str(claim.get("verification_status") or "")
+                            for claim in report_claims
+                        ],
+                        "interventions": [
+                            str(i.get("action_taken") or i.get("type") or "")
+                            for i in interventions
+                        ],
+                        "evidence_strings": sorted(report_evidence),
+                    },
+                )
+                declared = {
+                    "expectation": expected,
+                    "met": not declared_failures,
+                    "failures": declared_failures[:8],
+                }
+            except (LookupError, ProjectIdentityBlockedError):
+                declared = {
+                    "expectation": expected,
+                    "scored": False,
+                    "met": None,
+                    "failures": [],
+                }
         return {
             "replay": True,
             "not_live_control": True,
@@ -6938,6 +6984,7 @@ def create_app() -> FastAPI:
             "inbox": inbox,
             "interventions": interventions,
             "completion": completion,
+            "declared": declared,
         }
 
     @app.get("/v1/adapters")

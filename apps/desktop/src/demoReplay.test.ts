@@ -191,6 +191,56 @@ test("replay verdict carries the observed arc and the adjudicated completion", (
   assert.equal(parseReplayVerdict(null), null);
 });
 
+test("the verdict parses the declared-arc scoring honestly", () => {
+  const verdict = parseReplayVerdict({
+    replay: true,
+    not_live_control: true,
+    session_id: "s",
+    interventions: [{ action_taken: "SEND_NUDGE" }],
+    completion: { status: "uncertain" },
+    declared: {
+      expectation: {
+        completion_in: ["uncertain"],
+        summary: "at least one nudge; ends unresolved",
+      },
+      met: true,
+      failures: [],
+    },
+  });
+  assert.deepEqual(verdict?.declared, {
+    met: true,
+    failures: [],
+    summary: "at least one nudge; ends unresolved",
+  });
+  // A missed arc keeps its failure strings; a skipped score is null, never true.
+  const missed = parseReplayVerdict({
+    replay: true,
+    not_live_control: true,
+    session_id: "s",
+    declared: { met: false, failures: ["no intervention of type ['ASK_HUMAN']"], expectation: {} },
+  });
+  assert.equal(missed?.declared?.met, false);
+  assert.equal(missed?.declared?.failures[0], "no intervention of type ['ASK_HUMAN']");
+  const unscored = parseReplayVerdict({
+    replay: true,
+    not_live_control: true,
+    session_id: "s",
+    declared: { met: null, scored: false, failures: [] },
+  });
+  assert.equal(unscored?.declared?.met, null);
+  // Garbage shapes degrade to absent, never to a fabricated "met".
+  for (const declared of [undefined, null, "yes", { met: "yes" }]) {
+    const parsed = parseReplayVerdict({
+      replay: true, not_live_control: true, session_id: "s", declared,
+    });
+    if (typeof declared === "object" && declared !== null && "met" in declared) {
+      assert.equal(parsed?.declared?.met, null);
+    } else {
+      assert.equal(parsed?.declared, undefined);
+    }
+  }
+});
+
 test("replay rail label names the source fixture or the custom trajectory", () => {
   const base: SessionRow = {
     id: "synthetic:replay-ruling_continuity_eval-c720e688",

@@ -956,8 +956,13 @@ p {
   cursor: pointer;
 }
 .replay-attach input {
-  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  margin: 2px 0 0;
   accent-color: var(--good, #3fb950);
+  flex: none;
 }
 
 .demo-challenge {

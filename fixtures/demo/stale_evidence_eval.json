@@ -1,15 +1,19 @@
 {
   "id": "stale_evidence_eval",
   "title": "Stale evidence: green run predates the last edit",
-  "summary": "A green run that predates the last edit is stale — PEX demands fresh evidence before believing completion.",
+  "summary": "A green run that predates the last edit is stale \u2014 PEX demands fresh evidence before believing completion.",
   "replay": true,
   "not_live_control": true,
   "goal": {
     "project_id": "demo-eval",
     "title": "Eval pipeline",
     "objective": "Produce a complete evaluation with passing tests",
-    "acceptance_criteria": ["tests pass"],
-    "evidence_requirements": ["pytest output"]
+    "acceptance_criteria": [
+      "tests pass"
+    ],
+    "evidence_requirements": [
+      "pytest output"
+    ]
   },
   "workspace": {
     "files": {
@@ -33,17 +37,27 @@
     {
       "event_type": "file_edit",
       "message": "wrote eval_runner.py",
-      "file_paths": ["eval_runner.py"]
+      "file_paths": [
+        "eval_runner.py"
+      ]
     },
     {
       "event_type": "shell",
       "command": "pytest -q",
-      "process_state": {"pytest": {"ok": true, "exit_code": 0, "passed": 1}}
+      "process_state": {
+        "pytest": {
+          "ok": true,
+          "exit_code": 0,
+          "passed": 1
+        }
+      }
     },
     {
       "event_type": "file_edit",
       "message": "tweaked eval_runner.py after the green run",
-      "file_paths": ["eval_runner.py"]
+      "file_paths": [
+        "eval_runner.py"
+      ]
     },
     {
       "event_type": "stop",
@@ -52,11 +66,27 @@
     {
       "event_type": "shell",
       "command": "pytest -q",
-      "process_state": {"pytest": {"ok": true, "exit_code": 0, "passed": 1}}
+      "process_state": {
+        "pytest": {
+          "ok": true,
+          "exit_code": 0,
+          "passed": 1
+        }
+      }
     },
     {
       "event_type": "stop",
       "message": "Re-ran the suite after the last edit; green for real."
     }
-  ]
+  ],
+  "expected": {
+    "completion_in": [
+      "verified_complete"
+    ],
+    "claim_evidence_any": [
+      "later_edit"
+    ],
+    "min_claims": 2,
+    "summary": "two or more claims with later-edit evidence on file; ends verified_complete"
+  }
 }

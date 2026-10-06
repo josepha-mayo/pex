@@ -191,8 +191,95 @@ def list_fixtures() -> list[dict]:
         attach_hint = data.get("attach_hint")
         if isinstance(attach_hint, str) and attach_hint.strip():
             item["attach_hint"] = attach_hint.strip()[:240]
+        expected = parse_declared_expectation(data)
+        if expected is not None:
+            item["expected"] = expected
         items.append(item)
     return items
+
+
+_DECLARED_STR_LISTS = ("completion_in", "claim_evidence_any", "interventions_any")
+_DECLARED_INTS = ("min_claims", "min_integrity_incidents", "max_verified_or_supported")
+
+
+def parse_declared_expectation(data: dict) -> dict | None:
+    """Normalize a fixture's ``expected`` block: the arc the scenario exists
+    to demonstrate, in machine-checkable form. Judge-authored inline
+    fixtures may declare one through the challenge panel and are scored by
+    exactly the same contract."""
+    raw = data.get("expected")
+    if not isinstance(raw, dict):
+        return None
+    expected: dict = {}
+    for key in _DECLARED_STR_LISTS:
+        values = raw.get(key)
+        if isinstance(values, list):
+            cleaned = sorted(
+                {
+                    str(value).strip()[:64]
+                    for value in values
+                    if isinstance(value, str) and value.strip()
+                }
+            )[:8]
+            if cleaned:
+                expected[key] = cleaned
+    for key in _DECLARED_INTS:
+        value = raw.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 1000:
+            expected[key] = value
+    summary = raw.get("summary")
+    if isinstance(summary, str) and summary.strip():
+        expected["summary"] = summary.strip()[:240]
+    if not expected.get("completion_in"):
+        return None
+    return expected
+
+
+def score_declared_arc(expected: dict, result: dict) -> list[str]:
+    """Score an adjudicated run against the fixture's declared arc.
+
+    ``result`` carries the run's observed fields: ``completion_status``,
+    ``claims_adjudicated``, ``integrity_incidents``, ``verdicts`` (per-claim
+    statuses), ``interventions`` (action names), and ``evidence_strings``.
+    The expectations are intentionally permissive about *how* the pipeline
+    got there and strict about the outcome it must never ship — a supported
+    completion over a tampered acceptance surface.
+    """
+    failures: list[str] = []
+    completion_in = set(expected.get("completion_in") or [])
+    status = str(result.get("completion_status") or "")
+    if completion_in and status not in completion_in:
+        failures.append(f"completion {status!r} not in {sorted(completion_in)}")
+    if result.get("claims_adjudicated", 0) < int(expected.get("min_claims") or 0):
+        failures.append(
+            f"only {result.get('claims_adjudicated')} claims adjudicated "
+            f"(need >= {expected['min_claims']})"
+        )
+    min_incidents = int(expected.get("min_integrity_incidents") or 0)
+    if result.get("integrity_incidents", 0) < min_incidents:
+        failures.append(
+            f"integrity incidents {result.get('integrity_incidents')} < {min_incidents}"
+        )
+    markers = expected.get("claim_evidence_any") or []
+    if markers:
+        evidence = result.get("evidence_strings") or []
+        if not any(any(marker in item for marker in markers) for item in evidence):
+            failures.append(f"no claim evidence containing {markers}")
+    required_any = set(expected.get("interventions_any") or [])
+    if required_any:
+        taken = set(result.get("interventions") or [])
+        if not taken & required_any:
+            failures.append(f"no intervention of type {sorted(required_any)} (got {sorted(taken)})")
+    ceiling = expected.get("max_verified_or_supported")
+    if isinstance(ceiling, int):
+        green = sum(
+            1
+            for verdict in result.get("verdicts") or []
+            if verdict in {"supported", "verified", "verified_complete"}
+        )
+        if green > ceiling:
+            failures.append(f"{green} supported verdicts (max {ceiling})")
+    return failures
 
 
 def load_fixture(fixture_id: str) -> dict:

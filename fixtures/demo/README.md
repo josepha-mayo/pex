@@ -56,9 +56,27 @@ escalates to the human (`ASK_HUMAN`: "conflicts with the active constraint
 … keep that ledger rule, or is this an explicit override?") instead of
 silently obeying. Durable intent bounds the operator's own sloppiness too.
 
-Every fixture is scored on
-every push by `scripts/eval_replays.py` against a declared arc
-(`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.json`).
+Every fixture carries an `expected` block — the arc it exists to
+demonstrate, machine-checkable:
+
+```jsonc
+"expected": {
+  "completion_in": ["uncertain", "incomplete", "in_progress"],
+  "interventions_any": ["SEND_NUDGE"],      // at least one of these actions
+  "claim_evidence_any": ["later_edit"],     // some claim evidence contains…
+  "min_claims": 2,                          // adjudicated-claim floor
+  "min_integrity_incidents": 1,             // tamper flags that must appear
+  "max_verified_or_supported": 0,           // supported-verdict ceiling
+  "summary": "what the contract asserts, one line"
+}
+```
+
+The replay endpoint scores every run against that block and returns
+`declared: {expectation, met, failures}` — the UI's verdict card prints
+the result, and `scripts/eval_replays.py` enforces the *same* contract
+suite-wide on every push
+(`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.json`). A fixture
+without `expected` fails the suite as "declares no expected arc".
 
 ## Write your own — challenge the supervisor
 

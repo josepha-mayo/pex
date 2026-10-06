@@ -89,6 +89,14 @@ export type ReplayVerdict = {
   // Set when the same trajectory was run twice back-to-back: whether the
   // observed arcs were identical — the determinism claim, checked live.
   determinism?: "identical" | "diverged";
+  // The fixture's declared arc scored by the bridge against this exact run —
+  // the same contract eval_replays.py enforces suite-wide. Absent when the
+  // fixture declares no contract; `met: null` means scoring was skipped.
+  declared?: {
+    met: boolean | null;
+    failures: string[];
+    summary?: string;
+  };
 };
 
 // Two arcs count as identical when the intervention chain, the cited
@@ -137,6 +145,22 @@ export function parseReplayVerdict(payload: unknown): ReplayVerdict | null {
     const { status, reason } = payload.completion;
     if (typeof status === "string" && status.trim()) verdict.status = status.trim();
     if (typeof reason === "string" && reason.trim()) verdict.reason = reason.trim();
+  }
+  if (isRecord(payload.declared)) {
+    const { met, failures, expectation } = payload.declared;
+    const declared: NonNullable<ReplayVerdict["declared"]> = {
+      met: met === true ? true : met === false ? false : null,
+      failures: Array.isArray(failures)
+        ? failures
+            .filter((f): f is string => typeof f === "string" && f.trim().length > 0)
+            .map((f) => f.trim().slice(0, 240))
+            .slice(0, 8)
+        : [],
+    };
+    if (isRecord(expectation) && typeof expectation.summary === "string" && expectation.summary.trim()) {
+      declared.summary = expectation.summary.trim().slice(0, 240);
+    }
+    verdict.declared = declared;
   }
   return verdict;
 }
