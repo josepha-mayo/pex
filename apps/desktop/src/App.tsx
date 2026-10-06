@@ -41,8 +41,10 @@ import {
   isReplaySession,
   parseReplayGoalSource,
   parseReplaySessionId,
+  parseReplayVerdict,
   parseTrajectoriesResponse,
   type DemoFixture,
+  type ReplayVerdict,
 } from "./demoReplay";
 import { CHALLENGE_TEMPLATE, parseChallengeFixture } from "./demoChallenge";
 import {
@@ -128,6 +130,7 @@ import {
   encodeWebSocketTokenProtocol,
   eventPageResumeCursor,
   goalToDraft,
+  humanize,
   newUndoIdempotencyKey,
   isPendingHumanDecision,
   isPendingGeneralEscalation,
@@ -474,7 +477,8 @@ export function App() {
     running: boolean;
     fixture: string | null;
     error: string | null;
-  }>({ running: false, fixture: null, error: null });
+    verdict: ReplayVerdict | null;
+  }>({ running: false, fixture: null, error: null, verdict: null });
   const [challengeText, setChallengeText] = useState("");
   const [attachReplayGoal, setAttachReplayGoal] = useState(false);
   const [scale, setScale] = useState(1);
@@ -1728,7 +1732,7 @@ export function App() {
 
   async function runDemoReplay(fixtureId: string, inline?: Record<string, unknown>) {
     if (demoReplay.running) return;
-    setDemoReplay({ running: true, fixture: fixtureId, error: null });
+    setDemoReplay({ running: true, fixture: fixtureId, error: null, verdict: null });
     try {
       const payload = await bridgeJson<unknown>("/v1/demo/replay", {
         method: "POST",
@@ -1743,10 +1747,14 @@ export function App() {
         setDemoReplay({
           running: false, fixture: fixtureId,
           error: "Replay did not return a labeled session.",
+          verdict: null,
         });
         return;
       }
-      setDemoReplay({ running: false, fixture: fixtureId, error: null });
+      setDemoReplay({
+        running: false, fixture: fixtureId,
+        error: null, verdict: parseReplayVerdict(payload),
+      });
       if (parseReplayGoalSource(payload) === "attached") {
         setNote(
           "Replay attached to the selected goal — its recorded rulings and ledger govern this run.",
@@ -1758,6 +1766,7 @@ export function App() {
       setDemoReplay({
         running: false, fixture: fixtureId,
         error: `Replay could not run: ${operationError(error, "bridge rejected the request")}`,
+        verdict: null,
       });
     }
   }
@@ -1765,7 +1774,7 @@ export function App() {
   function runChallenge() {
     const parsed = parseChallengeFixture(challengeText);
     if (!parsed.ok) {
-      setDemoReplay({ running: false, fixture: "inline", error: parsed.error });
+      setDemoReplay({ running: false, fixture: "inline", error: parsed.error, verdict: null });
       return;
     }
     void runDemoReplay("inline", parsed.fixture);
@@ -3173,6 +3182,34 @@ export function App() {
                     </button>
                   </div>
                 </details>
+                {demoReplay.verdict ? (
+                  <div className="replay-verdict" role="status">
+                    <p className="eyebrow">
+                      Observed supervision arc ·{" "}
+                      {demoReplay.fixture === "inline" ? "custom trajectory" : demoReplay.fixture}
+                    </p>
+                    <p className="replay-verdict-arc">
+                      {demoReplay.verdict.actions.length
+                        ? demoReplay.verdict.actions.map(humanize).join(" → ")
+                        : "No interventions — the trajectory ran unchallenged."}
+                    </p>
+                    {demoReplay.verdict.status ? (
+                      <p className="replay-verdict-completion">
+                        Completion: <strong>{demoReplay.verdict.status}</strong>
+                        {demoReplay.verdict.reason ? (
+                          <small> · {humanize(demoReplay.verdict.reason)}</small>
+                        ) : null}
+                      </p>
+                    ) : (
+                      <p className="replay-verdict-completion">
+                        <small>Completion was not adjudicated for this run.</small>
+                      </p>
+                    )}
+                    <small className="replay-verdict-label">
+                      Deterministic replay — not live worker control.
+                    </small>
+                  </div>
+                ) : null}
                 {demoReplay.error ? (
                   <p className="demo-replay-error" role="status">{demoReplay.error}</p>
                 ) : null}

@@ -883,6 +883,23 @@ p {
   color: var(--amber);
   font-size: 12px;
 }
+.replay-verdict {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+}
+.replay-verdict .eyebrow { margin-bottom: 4px; }
+.replay-verdict-arc { font-weight: 600; }
+.replay-verdict-completion { margin-bottom: 6px !important; }
+.replay-verdict-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 .fixture-captured-tag {
   display: block;
   margin-top: 2px;

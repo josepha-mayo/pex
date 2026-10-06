@@ -76,6 +76,38 @@ export function parseReplayGoalSource(payload: unknown): "attached" | null {
   return payload.goal_source === "attached" ? "attached" : null;
 }
 
+export type ReplayVerdict = {
+  // Intervention actions the supervisor actually took, in order.
+  actions: string[];
+  // Adjudicated completion from the goal projection — absent means the run
+  // was not adjudicated, never that it passed.
+  status?: string;
+  reason?: string;
+};
+
+// The replay response carries the observed supervision arc plus the goal's
+// completion projection so the post-run card can state the verdict without a
+// second fetch. Malformed entries drop out rather than fabricate an arc.
+export function parseReplayVerdict(payload: unknown): ReplayVerdict | null {
+  if (!isRecord(payload)) return null;
+  if (payload.replay !== true || payload.not_live_control !== true) return null;
+  const actions: string[] = [];
+  if (Array.isArray(payload.interventions)) {
+    for (const raw of payload.interventions) {
+      if (!isRecord(raw)) continue;
+      const action = raw.action_taken ?? raw.type;
+      if (typeof action === "string" && action.trim()) actions.push(action.trim());
+    }
+  }
+  const verdict: ReplayVerdict = { actions };
+  if (isRecord(payload.completion)) {
+    const { status, reason } = payload.completion;
+    if (typeof status === "string" && status.trim()) verdict.status = status.trim();
+    if (typeof reason === "string" && reason.trim()) verdict.reason = reason.trim();
+  }
+  return verdict;
+}
+
 export function isReplaySession(session: SessionRow | null | undefined): boolean {
   return session?.metadata?.replay === true && session?.metadata?.not_live_control === true;
 }

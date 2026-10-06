@@ -7,6 +7,7 @@ import {
   replayGoalSourceCopy,
   parseReplayGoalSource,
   parseReplaySessionId,
+  parseReplayVerdict,
   parseTrajectoriesResponse,
 } from "./demoReplay.ts";
 import type { SessionRow } from "./types.ts";
@@ -154,6 +155,32 @@ test("replay goal-source copy surfaces attached provenance only", () => {
   };
   assert.equal(replayGoalSourceCopy(fixture), "");
   assert.equal(replayGoalSourceCopy({ ...base, metadata: {} }), "");
+});
+
+test("replay verdict carries the observed arc and the adjudicated completion", () => {
+  const verdict = parseReplayVerdict({
+    replay: true,
+    not_live_control: true,
+    session_id: "synthetic:replay-x-1",
+    interventions: [
+      { action_taken: "SEND_NUDGE" },
+      { type: "SUPPRESSED_COOLDOWN" },
+      { action_taken: 42 },
+      "not-a-record",
+    ],
+    completion: { status: "uncertain", reason: "no_current_supported_completion_evidence" },
+  });
+  assert.deepEqual(verdict, {
+    actions: ["SEND_NUDGE", "SUPPRESSED_COOLDOWN"],
+    status: "uncertain",
+    reason: "no_current_supported_completion_evidence",
+  });
+  assert.deepEqual(
+    parseReplayVerdict({ replay: true, not_live_control: true, session_id: "s" }),
+    { actions: [] },
+  );
+  assert.equal(parseReplayVerdict({ replay: true, not_live_control: false }), null);
+  assert.equal(parseReplayVerdict(null), null);
 });
 
 test("live worker label requires a real harness with a Deep or Strong transport", () => {

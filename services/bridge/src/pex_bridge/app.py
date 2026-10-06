@@ -6915,6 +6915,20 @@ def create_app() -> FastAPI:
             state.adapters.synthetic.inbox.pop(session.id, None)
             if workspace_holder is not None:
                 workspace_holder.cleanup()
+        completion: dict[str, Any] | None = None
+        if session.goal_id:
+            try:
+                # The adjudicated verdict travels with the run so the UI can
+                # summarize the supervisor's arc without a second round trip.
+                projection = await state.store.goal_completion_projection(
+                    session.goal_id
+                )
+                completion = {
+                    "status": projection.get("status"),
+                    "reason": projection.get("reason"),
+                }
+            except (LookupError, ProjectIdentityBlockedError):
+                completion = None
         return {
             "replay": True,
             "not_live_control": True,
@@ -6923,6 +6937,7 @@ def create_app() -> FastAPI:
             "goal_source": goal_source,
             "inbox": inbox,
             "interventions": interventions,
+            "completion": completion,
         }
 
     @app.get("/v1/adapters")
