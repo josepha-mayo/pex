@@ -165,6 +165,7 @@ test("replay verdict carries the observed arc and the adjudicated completion", (
     interventions: [
       { action_taken: "SEND_NUDGE" },
       { type: "SUPPRESSED_COOLDOWN" },
+      { action_taken: "NOOP" },
       { action_taken: 42 },
       "not-a-record",
     ],

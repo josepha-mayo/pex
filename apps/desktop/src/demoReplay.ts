@@ -96,7 +96,11 @@ export function parseReplayVerdict(payload: unknown): ReplayVerdict | null {
     for (const raw of payload.interventions) {
       if (!isRecord(raw)) continue;
       const action = raw.action_taken ?? raw.type;
-      if (typeof action === "string" && action.trim()) actions.push(action.trim());
+      // NOOP is a deliberate stay-quiet observation, not an arc step — the
+      // audit trail drops it and so does this summary.
+      if (typeof action === "string" && action.trim() && action.trim() !== "NOOP") {
+        actions.push(action.trim());
+      }
     }
   }
   const verdict: ReplayVerdict = { actions };
