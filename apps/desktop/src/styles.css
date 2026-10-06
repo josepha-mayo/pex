@@ -892,6 +892,11 @@ p {
 }
 .replay-verdict .eyebrow { margin-bottom: 4px; }
 .replay-verdict-arc { font-weight: 600; }
+.replay-verdict-cite {
+  color: var(--mint);
+  font-style: italic;
+  margin-top: -6px !important;
+}
 .replay-verdict-completion { margin-bottom: 6px !important; }
 .replay-verdict-label {
   display: block;

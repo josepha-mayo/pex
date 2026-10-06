@@ -79,6 +79,9 @@ export function parseReplayGoalSource(payload: unknown): "attached" | null {
 export type ReplayVerdict = {
   // Intervention actions the supervisor actually took, in order.
   actions: string[];
+  // The constraint the first contradicting nudge cited — when a replay runs
+  // attached to a ruled goal this is the journaled ruling itself.
+  citedConstraint?: string;
   // Adjudicated completion from the goal projection — absent means the run
   // was not adjudicated, never that it passed.
   status?: string;
@@ -92,6 +95,7 @@ export function parseReplayVerdict(payload: unknown): ReplayVerdict | null {
   if (!isRecord(payload)) return null;
   if (payload.replay !== true || payload.not_live_control !== true) return null;
   const actions: string[] = [];
+  let citedConstraint: string | undefined;
   if (Array.isArray(payload.interventions)) {
     for (const raw of payload.interventions) {
       if (!isRecord(raw)) continue;
@@ -101,9 +105,19 @@ export function parseReplayVerdict(payload: unknown): ReplayVerdict | null {
       if (typeof action === "string" && action.trim() && action.trim() !== "NOOP") {
         actions.push(action.trim());
       }
+      if (citedConstraint === undefined && Array.isArray(raw.evidence)) {
+        for (const item of raw.evidence) {
+          if (typeof item === "string" && item.startsWith("agent_contradiction:")) {
+            const constraint = item.slice("agent_contradiction:".length).trim();
+            if (constraint) citedConstraint = constraint;
+            break;
+          }
+        }
+      }
     }
   }
   const verdict: ReplayVerdict = { actions };
+  if (citedConstraint !== undefined) verdict.citedConstraint = citedConstraint;
   if (isRecord(payload.completion)) {
     const { status, reason } = payload.completion;
     if (typeof status === "string" && status.trim()) verdict.status = status.trim();

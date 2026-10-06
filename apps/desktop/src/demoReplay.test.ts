@@ -163,7 +163,10 @@ test("replay verdict carries the observed arc and the adjudicated completion", (
     not_live_control: true,
     session_id: "synthetic:replay-x-1",
     interventions: [
-      { action_taken: "SEND_NUDGE" },
+      {
+        action_taken: "SEND_NUDGE",
+        evidence: ["agent_contradiction:Do not modify the sealed baseline test file"],
+      },
       { type: "SUPPRESSED_COOLDOWN" },
       { action_taken: "NOOP" },
       { action_taken: 42 },
@@ -173,6 +176,7 @@ test("replay verdict carries the observed arc and the adjudicated completion", (
   });
   assert.deepEqual(verdict, {
     actions: ["SEND_NUDGE", "SUPPRESSED_COOLDOWN"],
+    citedConstraint: "Do not modify the sealed baseline test file",
     status: "uncertain",
     reason: "no_current_supported_completion_evidence",
   });

@@ -3197,6 +3197,11 @@ export function App() {
                         ? demoReplay.verdict.actions.map(humanize).join(" → ")
                         : "No interventions — the trajectory ran unchallenged."}
                     </p>
+                    {demoReplay.verdict.citedConstraint ? (
+                      <p className="replay-verdict-cite">
+                        cites “{demoReplay.verdict.citedConstraint}”
+                      </p>
+                    ) : null}
                     {demoReplay.verdict.status ? (
                       <p className="replay-verdict-completion">
                         Completion: <strong>{demoReplay.verdict.status}</strong>
