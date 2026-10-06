@@ -153,6 +153,35 @@ export function replayGoalSourceCopy(session: SessionRow | null | undefined): st
     : "";
 }
 
+// One-line summary of a replay session's observed supervision arc, derived
+// from the session's fetched interventions — works for reopened sessions,
+// not just the run the client just performed.
+export function replayArcCopy(
+  session: SessionRow | null | undefined,
+  interventions: { action_taken?: string; evidence?: string[] }[] | null | undefined,
+  completionStatus?: string | null,
+): string {
+  if (!isReplaySession(session)) return "";
+  const actions = (interventions || [])
+    .map((item) => item.action_taken)
+    .filter((item): item is string => typeof item === "string" && item !== "NOOP");
+  const parts: string[] = [];
+  if (actions.length) {
+    parts.push(`arc: ${actions.map((a) => a.toLowerCase().replace(/_/g, " ")).join(" → ")}`);
+  }
+  const cited = (interventions || [])
+    .flatMap((item) => item.evidence || [])
+    .find((item) => typeof item === "string" && item.startsWith("agent_contradiction:"));
+  if (cited) {
+    const constraint = cited.slice("agent_contradiction:".length).trim();
+    if (constraint) parts.push(`cites “${constraint}”`);
+  }
+  if (typeof completionStatus === "string" && completionStatus.trim()) {
+    parts.push(`completion ${completionStatus.trim()}`);
+  }
+  return parts.join(" · ");
+}
+
 // A live worker is the honest counterpart to a replay: a real harness (not the
 // in-process synthetic adapter) whose transport was probed as Deep or Strong.
 // Basic/observe-only/unprobed sessions get no live label — PEX can see them

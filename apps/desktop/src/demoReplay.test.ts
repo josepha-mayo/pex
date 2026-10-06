@@ -9,6 +9,7 @@ import {
   parseReplaySessionId,
   parseReplayVerdict,
   parseTrajectoriesResponse,
+  replayArcCopy,
   replayFixtureLabel,
 } from "./demoReplay.ts";
 import type { SessionRow } from "./types.ts";
@@ -203,6 +204,33 @@ test("replay rail label names the source fixture or the custom trajectory", () =
   assert.equal(replayFixtureLabel(nonReplay), null);
   const oddId = { ...base, id: "synthetic:other-1" };
   assert.equal(replayFixtureLabel(oddId), null);
+});
+
+test("a reopened replay restates its arc, citation, and verdict from interventions", () => {
+  const session = {
+    id: "synthetic:replay-x-1",
+    harness_type: "synthetic",
+    status: "stopped",
+    metadata: { replay: true, not_live_control: true },
+  } as SessionRow;
+  const copy = replayArcCopy(
+    session,
+    [
+      { action_taken: "SEND_NUDGE", evidence: ["agent_contradiction:Do not modify the sealed baseline test file"] },
+      { action_taken: "SUPPRESSED_COOLDOWN" },
+      { action_taken: "NOOP" },
+    ],
+    "uncertain",
+  );
+  assert.match(copy, /send nudge → suppressed cooldown/);
+  assert.match(copy, /sealed baseline test file/);
+  assert.match(copy, /completion uncertain/);
+  assert.doesNotMatch(copy, /noop/i);
+  assert.equal(replayArcCopy(session, [], "uncertain"), "completion uncertain");
+  assert.equal(
+    replayArcCopy({ ...session, metadata: { replay: true, not_live_control: false } }, []),
+    "",
+  );
 });
 
 test("live worker label requires a real harness with a Deep or Strong transport", () => {

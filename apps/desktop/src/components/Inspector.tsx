@@ -3,7 +3,7 @@ import { useState, type FormEvent, type ReactNode, type RefObject } from "react"
 import type { GoalDraft } from "./GoalEditor";
 import { GoalEditor } from "./GoalEditor";
 import { unifiedDiff } from "../diffText";
-import { isLiveWorkerSession, isReplaySession, replayFixtureLabel, replayGoalSourceCopy } from "../demoReplay";
+import { isLiveWorkerSession, isReplaySession, replayArcCopy, replayFixtureLabel, replayGoalSourceCopy } from "../demoReplay";
 import { AskPex } from "./AskPex";
 import { goalCompletionCopy } from "../completionPresentation";
 import { handoffAssimilationPresentation } from "../handoffPresentation";
@@ -287,6 +287,11 @@ export function Inspector({
                   <span className="replay-badge">Recorded replay</span> · not live worker control
                   {replayFixtureLabel(current) ? ` · ${replayFixtureLabel(current)}` : ""}
                   {replayGoalSourceCopy(current)}
+                  {replayArcCopy(current, sessionInterventions, completion?.status) ? (
+                    <small className="replay-arc-line">
+                      {replayArcCopy(current, sessionInterventions, completion?.status)}
+                    </small>
+                  ) : null}
                 </dd>
               </div>
             ) : current && isLiveWorkerSession(current) ? (
