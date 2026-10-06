@@ -108,6 +108,7 @@ import {
   partitionLedgerDecisions,
   isStale,
   isPendingHumanDecision,
+  isPendingGeneralEscalation,
   isPendingLifecycleDecision,
   isPendingPermissionDecision,
   isPendingRequestedHumanDecision,
@@ -1395,6 +1396,58 @@ test("typed worker decision requests expose exact options and are human-resolvab
   );
   assert.equal(
     isPendingRequestedHumanDecision({ ...pending, result: "human_decision_delivered" }),
+    false,
+  );
+});
+
+test("general supervisor escalations are pending only while unanswered", () => {
+  const pending = {
+    id: "int-escalation",
+    session_id: "opencode:ses-1",
+    action_taken: "ASK_HUMAN",
+    policy_verdict: "ask_human",
+    result: "escalated",
+    outcome: "",
+    helped: null,
+    metadata: {},
+    proposed_action: {
+      type: "ASK_HUMAN",
+      rationale: "The worker disputed the flagged requirement and stopped.",
+      payload: {
+        question: "Keep the flagged requirement, or amend the goal?",
+        worker_response: "The baseline contradicts the implementation.",
+      },
+    },
+  };
+
+  assert.equal(isPendingGeneralEscalation(pending), true);
+  assert.equal(isPendingHumanDecision(pending), true);
+  assert.equal(isPendingRequestedHumanDecision(pending), false);
+  assert.equal(
+    isPendingGeneralEscalation({
+      ...pending,
+      metadata: { decision_kind: "mcp_human_request" },
+    }),
+    false,
+  );
+  assert.equal(
+    isPendingGeneralEscalation({
+      ...pending,
+      result: "human_answered",
+      outcome: "human_answered",
+    }),
+    false,
+  );
+  assert.equal(
+    isPendingGeneralEscalation({ ...pending, action_taken: "SEND_NUDGE" }),
+    false,
+  );
+  assert.equal(
+    isPendingGeneralEscalation({ ...pending, outcome: "verified" }),
+    false,
+  );
+  assert.equal(
+    isPendingGeneralEscalation({ ...pending, helped: true }),
     false,
   );
 });

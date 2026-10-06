@@ -92,7 +92,11 @@ intervenes only inside bounded policy.
    [forensic pack](demo/evidence/EVIDENCE_PACK_live_dispute_2026-10-06.html)).
    The same run exposed escalation fan-out on a worker that keeps disputing —
    repeat standoffs over the same acceptance surface now share one open
-   human question instead of re-papering the inbox.
+   human question instead of re-papering the inbox. And the card is
+   resolvable: **Record answer** journals the ruling on the intervention's
+   audit trail, clears the inbox, and restores the session's pre-decision
+   status — idempotent on replay, conflict-safe on divergence, and honest
+   that recording ≠ worker delivery (`worker_delivery: not_attempted`).
    `--live` also seeds an idle sibling session on the same goal — the
    Inspector's **Hand off →** control mints a content-addressed
    `ContextBundle`, injects it into the sibling, and monitors assimilation:

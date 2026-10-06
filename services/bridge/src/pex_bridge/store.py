@@ -25598,6 +25598,143 @@ class Store:
                 raise
         await self._try_sync_intervention_audit()
 
+    async def finalize_escalation_resolution(
+        self,
+        intervention_id: str,
+        *,
+        answer: str,
+        resolved_at: datetime,
+        resolved_by: str,
+        record_type: str = "human_resolution",
+    ) -> dict[str, Any]:
+        """Record a human answer to a general ASK_HUMAN escalation, once.
+
+        One transaction: reload the intervention under authority, reject a
+        conflicting repeat, journal the audit revision, mark the escalation
+        answered, and restore the session's pre-decision status when no other
+        pending human intervention still owns it. Worker delivery is not part
+        of this record — it is the operator's separate message act.
+        """
+        _validate_store_id(intervention_id, label="escalation intervention id")
+        async with self._write_lock:
+            try:
+                await self.db.execute("BEGIN IMMEDIATE")
+                intervention, _, session, _, _ = await _load_bound_intervention(
+                    self.db,
+                    intervention_id,
+                )
+                existing = (intervention.metadata or {}).get("human_resolution")
+                still_pending = (
+                    intervention.result == "escalated"
+                    and intervention.helped is None
+                    and not intervention.outcome
+                )
+                if not still_pending:
+                    await self.db.commit()
+                    if isinstance(existing, dict) and existing.get("answer") == answer:
+                        return {
+                            "replayed": True,
+                            "resolution": dict(existing),
+                            "intervention": intervention,
+                            "session": session,
+                        }
+                    raise PermissionError("escalation_resolution_conflict")
+                resolution = {
+                    "status": "recorded",
+                    "answer": answer,
+                    "resolved_at": _utc_iso(resolved_at),
+                    "resolved_by": resolved_by,
+                }
+                intervention.metadata = dict(intervention.metadata or {})
+                intervention.metadata["human_resolution"] = resolution
+                intervention.result = "human_answered"
+                intervention.outcome = "human_answered"
+                await _update_bound_intervention(self.db, intervention)
+                audit_json = json.dumps(
+                    self._intervention_audit_record(intervention, record_type),
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                )
+                await self.db.execute(
+                    "INSERT INTO intervention_audit(intervention_id, record_type, json) "
+                    "VALUES (?, ?, ?)",
+                    (intervention.id, record_type, audit_json),
+                )
+
+                if session.status == SessionStatus.NEEDS_DECISION:
+                    other_pending_cursor = await self.db.execute(
+                        "SELECT 1 FROM interventions WHERE session_id = ? AND id != ? "
+                        "AND COALESCE(json_extract(json, '$.payload.policy_verdict'), "
+                        "json_extract(json, '$.policy_verdict')) = 'ask_human' "
+                        "AND (COALESCE(json_extract(json, '$.payload.result'), "
+                        "json_extract(json, '$.result')) IN "
+                        "('permission_awaiting_human', 'awaiting_human', 'escalated', "
+                        "'human_decision_delivery_reserved', 'human_decision_dispatching') "
+                        "OR COALESCE(json_extract(json, '$.payload.result'), "
+                        "json_extract(json, '$.result')) LIKE '%!_failed' ESCAPE '!' "
+                        "OR COALESCE(json_extract(json, '$.payload.result'), "
+                        "json_extract(json, '$.result')) LIKE "
+                        "'%!_delivery!_uncertain' ESCAPE '!') LIMIT 1",
+                        (session.id, intervention.id),
+                    )
+                    other_pending = await other_pending_cursor.fetchone() is not None
+                    session_metadata = dict(session.metadata or {})
+                    attention = session_metadata.get("human_decision_attention")
+                    tracked_ids = (
+                        [
+                            str(value)
+                            for value in attention.get("pending_intervention_ids", [])
+                            if isinstance(value, str) and value
+                        ]
+                        if isinstance(attention, dict)
+                        else []
+                    )
+                    remaining = [v for v in tracked_ids if v != intervention.id]
+                    if isinstance(attention, dict) and intervention.id in tracked_ids:
+                        if remaining:
+                            updated_attention = dict(attention)
+                            updated_attention["pending_intervention_ids"] = remaining
+                            updated_attention["pending_count"] = len(remaining)
+                            session_metadata["human_decision_attention"] = updated_attention
+                        else:
+                            session_metadata.pop("human_decision_attention", None)
+                        session.metadata = session_metadata
+                    if not other_pending and not remaining:
+                        previous = str(
+                            intervention.proposed_action.payload.get("previous_session_status")
+                            or (
+                                str(attention.get("base_status") or "")
+                                if isinstance(attention, dict)
+                                else ""
+                            )
+                            or ("stopped" if session_metadata.get("replay") else "working")
+                        )
+                        try:
+                            restored = SessionStatus(previous)
+                        except ValueError:
+                            restored = SessionStatus.WORKING
+                        if restored == SessionStatus.NEEDS_DECISION:
+                            restored = SessionStatus.WORKING
+                        session.status = restored
+                    session.last_activity = resolved_at
+                    session_update = await self.db.execute(
+                        "UPDATE sessions SET json = ?, revision = revision + 1 WHERE id = ?",
+                        (_dump(session), session.id),
+                    )
+                    if session_update.rowcount != 1:
+                        raise RuntimeError("escalation session update was lost")
+                await self.db.commit()
+            except Exception:
+                await self.db.rollback()
+                raise
+        await self._try_sync_intervention_audit()
+        return {
+            "replayed": False,
+            "resolution": resolution,
+            "intervention": intervention,
+            "session": session,
+        }
+
     def _intervention_audit_record(
         self,
         intervention: Intervention,
@@ -25663,6 +25800,7 @@ class Store:
             "permission_resolution": metadata.get("permission_resolution"),
             "lifecycle_resolution": metadata.get("lifecycle_resolution"),
             "human_decision_resolution": metadata.get("human_decision_resolution"),
+            "human_resolution": metadata.get("human_resolution"),
             "mcp_principal_id": metadata.get("mcp_principal_id"),
             "mcp_mutation_id": metadata.get("mcp_mutation_id"),
             "created_at": intervention.created_at.isoformat(),

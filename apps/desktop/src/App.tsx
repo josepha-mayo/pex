@@ -129,6 +129,7 @@ import {
   goalToDraft,
   newUndoIdempotencyKey,
   isPendingHumanDecision,
+  isPendingGeneralEscalation,
   isPendingLifecycleDecision,
   isPendingRequestedHumanDecision,
   moodForState,
@@ -2267,7 +2268,11 @@ export function App() {
     ) return;
     const requestedDecision = isPendingRequestedHumanDecision(intervention);
     const lifecycleDecision = isPendingLifecycleDecision(intervention);
-    if (!requestedDecision && decision !== "allow" && decision !== "deny") return;
+    const escalationDecision = isPendingGeneralEscalation(intervention);
+    if (
+      !requestedDecision && !escalationDecision
+      && decision !== "allow" && decision !== "deny"
+    ) return;
     const requestedOptions = intervention.proposed_action?.payload?.options;
     const feedbackDecision = humanDecisionFeedbackChoice(
       requestedDecision ? requestedOptions : undefined,
@@ -2278,6 +2283,8 @@ export function App() {
       ? "Delivering"
       : lifecycleDecision
       ? decision === "allow" ? "Approving" : "Declining"
+      : escalationDecision
+      ? "Recording"
       : decision === "allow" ? "Allowing" : "Denying";
     setDecisionFeedback({
       interventionId: intervention.id,
@@ -2285,13 +2292,16 @@ export function App() {
       decision: feedbackDecision,
       message: requestedDecision
         ? `${verb} this exact answer to the requesting worker…`
+        : escalationDecision
+        ? `${verb} this exact answer on the escalation's durable record…`
         : `${verb} this exact ${lifecycleDecision ? "lifecycle action" : "permission request"}…`,
     });
     try {
       const resolved = await bridgeJson<{
-        kind?: "permission" | "lifecycle" | "human_decision";
+        kind?: "permission" | "lifecycle" | "human_decision" | "escalation";
         delivered?: boolean;
         executed?: boolean;
+        recorded?: boolean;
         replayed?: boolean;
         resolution?: { status?: string };
       }>(
@@ -2304,18 +2314,25 @@ export function App() {
       );
       const requested = resolved.kind === "human_decision";
       const lifecycle = resolved.kind === "lifecycle";
+      const escalation = resolved.kind === "escalation";
       const lifecycleStatus = resolved.resolution?.status;
       const confirmed = requested
         ? resolved.delivered === true && lifecycleStatus === "delivered"
         : lifecycle
         ? lifecycleStatus === "delivered" || lifecycleStatus === "denied"
+        : escalation
+        ? resolved.recorded === true
         : resolved.delivered === true;
       if (!confirmed) throw new Error("The bridge did not confirm this exact human decision.");
       const requestedPresentation = requested
         ? humanDecisionPresentation("delivered", resolved.replayed)
         : null;
       const message = requestedPresentation?.message ?? (resolved.replayed
-        ? `This ${permissionDecision} decision was already recorded; PEX did not apply it twice.`
+        ? escalation
+          ? "This answer was already recorded; PEX did not apply it twice."
+          : `This ${permissionDecision} decision was already recorded; PEX did not apply it twice.`
+        : escalation
+        ? "Escalation answer recorded on the durable ledger. Directing a live worker is a separate act — send a message in its session."
         : lifecycle
         ? decision === "allow"
           ? "Lifecycle action approved and its result was recorded."

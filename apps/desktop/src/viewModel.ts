@@ -1386,11 +1386,24 @@ export function isPendingRequestedHumanDecision(intervention: Intervention): boo
   );
 }
 
+export function isPendingGeneralEscalation(intervention: Intervention): boolean {
+  return (
+    intervention.action_taken === "ASK_HUMAN" &&
+    intervention.proposed_action?.type === "ASK_HUMAN" &&
+    intervention.policy_verdict === "ask_human" &&
+    intervention.result === "escalated" &&
+    !intervention.outcome &&
+    intervention.helped == null &&
+    intervention.metadata?.decision_kind !== "mcp_human_request"
+  );
+}
+
 export function isPendingHumanDecision(intervention: Intervention): boolean {
   return (
     isPendingPermissionDecision(intervention) ||
     isPendingLifecycleDecision(intervention) ||
-    isPendingRequestedHumanDecision(intervention)
+    isPendingRequestedHumanDecision(intervention) ||
+    isPendingGeneralEscalation(intervention)
   );
 }
 

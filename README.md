@@ -285,23 +285,33 @@ real dev UI — no mocked frames).
 *The `constraint_block_eval` arc landing in Deck → Decisions: the durable
 ledger escalates the conflicting action to a readable question — what the
 worker tried (`delete dataset fixtures to regenerate`), which rule it hit
-(`Do not delete the dataset fixtures`), and the honest label that a recorded
-replay cannot be answered. On a live session the same card carries the
-resolve guidance for a real worker.*
+(`Do not delete the dataset fixtures`), and an honest resolution control:
+your ruling is recorded on the ledger (`worker_delivery: not_attempted` —
+PEX never pretends the recorded worker heard it), and on a live session the
+card points at the session's real message channel for the follow-through.*
 
 ![A dispute escalation quoting the worker's verbatim justification](docs/demo/assets/pex-nudge-dispute-card.png)
 
 *And the inverse case from `nudge_dispute_eval`: the worker answered PEX's
 corrective nudge with a justification, then stopped without resolving the
 flag. PEX doesn't re-nudge a delivered correction — the standoff escalates
-to the human once, with the worker's own words quoted in the card. The same
-arc ran live on 2026-10-05
+to the human once, with the worker's own words quoted in the card. The
+ruling is recorded durably and replay-safely — the same answer replays, a
+different one conflicts — and the session returns to its pre-decision
+status. The same arc ran live on 2026-10-05
 ([`LIVE_OPENCODE_TAMPER_PUSHBACK`](docs/demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json)),
 and the 2026-10-06 rerun verified the escalation itself on a real worker —
 four disputed nudges each landed a human card while the goal stayed
 `uncertain`
 ([receipt](docs/demo/evidence/LIVE_OPENCODE_TAMPER_DISPUTE_ses_ef0f0d88_2026-10-06.json),
 [forensic pack](docs/demo/evidence/EVIDENCE_PACK_live_dispute_2026-10-06.html)).*
+
+![The dispute card accepting the human's ruling](docs/demo/assets/pex-nudge-dispute-resolve.png)
+
+*The card is resolvable, not just readable: "Your ruling" records the human's
+answer on the intervention's audit trail (`human_resolution`), removes it
+from the pending inbox, and restores the session's status — honestly labeled
+that recording ≠ worker delivery.*
 
 ## Supported harnesses
 

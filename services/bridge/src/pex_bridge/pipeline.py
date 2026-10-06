@@ -3489,12 +3489,18 @@ class Pipeline:
                 # terminal status.
                 or (session.metadata or {}).get("replay")
             ):
+                action.payload.setdefault(
+                    "previous_session_status", session.status.value
+                )
                 session.status = SessionStatus.NEEDS_DECISION
         elif action.type == InterventionType.ASK_HUMAN:
             local_outcome = "escalated"
             if session.status != SessionStatus.STOPPED or (session.metadata or {}).get(
                 "replay"
             ):
+                action.payload.setdefault(
+                    "previous_session_status", session.status.value
+                )
                 session.status = SessionStatus.NEEDS_DECISION
         elif action.type == InterventionType.ANNOTATE:
             local_outcome = "annotated"

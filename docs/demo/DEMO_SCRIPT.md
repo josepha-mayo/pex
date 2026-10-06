@@ -159,10 +159,16 @@ Decisions**.
 > and the worker's own justification quoted verbatim underneath it. That's
 > the whole product thesis — PEX can flag, nudge, and verify, but when the
 > worker disputes the flag, the decision belongs to the human, not another
-> automated poke."
+> automated poke. And the card is resolvable, not just readable — type a
+> ruling and hit **Record answer**: the answer lands on the intervention's
+> audit trail, the card leaves the inbox, and the session goes back to its
+> pre-decision status. What it will *not* do is pretend the worker heard it —
+> the receipt says `worker_delivery: not_attempted`, because for a live worker
+> the follow-through is a real message in its session."
 
 *Point at the `worker_response` quote block and the `nudge_dispute:` evidence
-chip — they link the escalation back to the exact nudge it answered.*
+chip — they link the escalation back to the exact nudge it answered. Then
+record a ruling live to show the inbox count drop.*
 
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 

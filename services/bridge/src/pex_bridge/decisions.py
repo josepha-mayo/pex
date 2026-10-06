@@ -1044,3 +1044,89 @@ async def resolve_lifecycle_decision(
         resolution=resolution,
         executed=executed,
     )
+
+
+def _is_pending_general_escalation(intervention: Intervention) -> bool:
+    """A planner-driven ASK_HUMAN escalation awaiting a recorded human answer.
+
+    Typed human decisions (mcp_human_request) resolve through their own
+    delivery-bound path; permission and lifecycle decisions have theirs. This
+    is the durable-record path for the supervisor's own escalations — the
+    answer is evidence on the ledger, not a promise the worker heard it.
+    """
+    return (
+        intervention.proposed_action.type == InterventionType.ASK_HUMAN
+        and intervention.action_taken == InterventionType.ASK_HUMAN.value
+        and intervention.policy_verdict == PolicyVerdict.ASK_HUMAN
+        and intervention.result == "escalated"
+        and not intervention.outcome
+        and intervention.helped is None
+        and intervention.metadata.get("decision_kind") != "mcp_human_request"
+    )
+
+
+@dataclass(frozen=True)
+class EscalationResolutionResult:
+    intervention: Intervention
+    session: HarnessSession
+    resolution: dict[str, Any]
+    replayed: bool = False
+
+    def response(self) -> dict[str, Any]:
+        return {
+            "ok": True,
+            "kind": "escalation",
+            "recorded": True,
+            # Recording is the guarantee this endpoint gives. Directing a live
+            # worker is a separate durable act (the session message endpoint),
+            # and claiming silent delivery here would be dishonest.
+            "worker_delivery": "not_attempted",
+            "replayed": self.replayed,
+            "resolution": self.resolution,
+            "intervention": self.intervention.model_dump(mode="json"),
+            "session": self.session.model_dump(mode="json"),
+        }
+
+
+async def resolve_general_escalation(
+    store: Store,
+    intervention_id: str,
+    *,
+    answer: str,
+    resolved_by: str = "local_operator",
+) -> EscalationResolutionResult:
+    """Record the human's answer to a supervisor escalation, once.
+
+    The resolution is durable ledger evidence: the escalation leaves the
+    pending queue, the session returns to its pre-decision status when no
+    other pending intervention owns it, and the answer itself is journaled
+    on the intervention's audit trail. Worker delivery is deliberately out
+    of scope.
+    """
+    intervention = await _intervention_for_authority(store, intervention_id)
+    await _session_for_resolution_classification(store, intervention, kind="escalation")
+    try:
+        finalized = await store.finalize_escalation_resolution(
+            intervention_id,
+            answer=answer,
+            resolved_at=utcnow(),
+            resolved_by=resolved_by,
+        )
+    except ProjectIdentityBlockedError as exc:
+        raise DecisionResolutionError(409, exc.code, str(exc)) from exc
+    except LookupError as exc:
+        raise DecisionResolutionError(404, "decision_not_found", str(exc)) from exc
+    except PermissionError as exc:
+        raise DecisionResolutionError(
+            409,
+            "escalation_resolution_conflict",
+            "This escalation was already answered differently.",
+        ) from exc
+    except (RuntimeError, ValueError) as exc:
+        raise DecisionResolutionError(409, "escalation_binding_changed", str(exc)) from exc
+    return EscalationResolutionResult(
+        intervention=finalized["intervention"],
+        session=finalized["session"],
+        resolution=finalized["resolution"],
+        replayed=bool(finalized["replayed"]),
+    )

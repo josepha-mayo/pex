@@ -589,6 +589,7 @@ function DecisionsView({
     ...permissionActions,
     ...lifecycleActions,
     ...requestedActions,
+    ...generalActions,
   ]
     .some((item) => item.id === feedback.interventionId);
   const explainedSessions = new Set(
@@ -827,45 +828,17 @@ function DecisionsView({
           ) : <span />}
         </article>
       ))}
-      {generalActions.map((item) => {
-        const session = sessions.find((row) => row.id === item.session_id);
-        const question = item.proposed_action?.payload?.question;
-        const workerReply = item.proposed_action?.payload?.worker_response;
-        const headline = typeof question === "string" && question.trim()
-          ? question.trim()
-          : item.diagnosis || "PEX requested human authority";
-        const evidence = (item.evidence || []).filter(
-          (entry) => typeof entry === "string" && entry.trim(),
-        );
-        return (
-        <article className="decision-card" key={item.id}>
-          <span className="decision-mark">!</span>
-          <div>
-            <p className="eyebrow">Policy · {humanize(item.risk || "unknown risk")}</p>
-            <h2>{headline}</h2>
-            <p>{item.proposed_action?.rationale || item.result || "No additional rationale was recorded."}</p>
-            {typeof workerReply === "string" && workerReply.trim() ? (
-              <blockquote className="worker-reply">“{workerReply.trim()}”</blockquote>
-            ) : null}
-            {evidence.length ? (
-              <span className="verification-evidence">
-                {evidence.map((entry) => (
-                  <code key={entry}>{entry}</code>
-                ))}
-              </span>
-            ) : null}
-            <p className="decision-rationale">
-              {isReplaySession(session)
-                ? "Recorded replay — the escalation is durable evidence; a recorded worker cannot be answered."
-                : "Resolve by messaging the worker in its session, or edit the goal to lift the constraint."}
-            </p>
-          </div>
-          {session && canOpenSession(session) ? (
-            <button type="button" className="solid" onClick={() => onOpen(session)}>Open agent</button>
-          ) : null}
-        </article>
-        );
-      })}
+      {generalActions.map((item) => (
+        <GeneralDecisionCard
+          key={item.id}
+          intervention={item}
+          session={sessions.find((row) => row.id === item.session_id)}
+          feedback={feedback?.interventionId === item.id ? feedback : null}
+          busy={!mutationsAvailable || feedback?.state === "submitting"}
+          onOpen={onOpen}
+          onResolve={onResolve}
+        />
+      ))}
       {!permissionActions.length && !lifecycleActions.length && !requestedActions.length && !generalActions.length && !unexplainedSessions.length ? (
         decisionsFresh
           ? <EmptyState title="No unresolved worker decisions" body="Current bridge state has no unresolved worker decisions. Project identity is reported separately above." />
@@ -978,6 +951,118 @@ function RequestedDecisionCard({
             </button>
           </form>
         )}
+        {session && canOpenSession(session) ? (
+          <button type="button" className="text-button" onClick={() => onOpen(session)}>
+            Open agent
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function GeneralDecisionCard({
+  intervention,
+  session,
+  feedback,
+  busy,
+  onOpen,
+  onResolve,
+}: {
+  intervention: Intervention;
+  session?: SessionRow;
+  feedback: DecisionFeedback | null;
+  busy: boolean;
+  onOpen: (session: SessionRow) => void;
+  onResolve: (intervention: Intervention, decision: HumanDecisionChoice) => void;
+}) {
+  const [answer, setAnswer] = useState("");
+  const submission = useRef(false);
+  const answerInput = useRef<HTMLInputElement>(null);
+  const question = intervention.proposed_action?.payload?.question;
+  const workerReply = intervention.proposed_action?.payload?.worker_response;
+  const headline = typeof question === "string" && question.trim()
+    ? question.trim()
+    : intervention.diagnosis || "PEX requested human authority";
+  const evidence = (intervention.evidence || []).filter(
+    (entry) => typeof entry === "string" && entry.trim(),
+  );
+  const replay = isReplaySession(session);
+  const statusId = `general-decision-status-${intervention.id}`;
+  const canSubmit = prepareFreeformDecision(
+    answer,
+    busy || submission.current,
+  ) !== null;
+
+  useEffect(() => {
+    if (!busy) submission.current = false;
+  }, [busy]);
+
+  return (
+    <article className="decision-card">
+      <span className="decision-mark">!</span>
+      <div>
+        <p className="eyebrow">Policy · {humanize(intervention.risk || "unknown risk")}</p>
+        <h2>{headline}</h2>
+        <p>{intervention.proposed_action?.rationale || intervention.result || "No additional rationale was recorded."}</p>
+        {typeof workerReply === "string" && workerReply.trim() ? (
+          <blockquote className="worker-reply">“{workerReply.trim()}”</blockquote>
+        ) : null}
+        {evidence.length ? (
+          <span className="verification-evidence">
+            {evidence.map((entry) => (
+              <code key={entry}>{entry}</code>
+            ))}
+          </span>
+        ) : null}
+        <p className="decision-rationale">
+          {replay
+            ? "Recorded replay — answering closes the durable question; the recorded worker cannot receive it."
+            : "Recording your answer closes this escalation on the ledger. To direct the live worker, send a message in its session afterward."}
+        </p>
+        {feedback ? (
+          <p
+            id={statusId}
+            className={`decision-inline-status decision-inline-${feedback.state}`}
+            role={feedback.state === "error" ? "alert" : "status"}
+          >
+            {feedback.message}
+          </p>
+        ) : null}
+      </div>
+      <div className="decision-controls" role="group" aria-label="Resolve escalation">
+        <form
+          className="decision-freeform"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const prepared = prepareFreeformDecision(
+              answer,
+              busy || submission.current,
+            );
+            if (!prepared) return;
+            submission.current = true;
+            if (answerInput.current) answerInput.current.value = "";
+            setAnswer(prepared.nextValue);
+            onResolve(intervention, prepared.decision);
+          }}
+        >
+          <label htmlFor={`general-decision-answer-${intervention.id}`}>
+            Your ruling
+          </label>
+          <input
+            ref={answerInput}
+            id={`general-decision-answer-${intervention.id}`}
+            value={answer}
+            maxLength={500}
+            disabled={busy}
+            aria-describedby={feedback ? statusId : undefined}
+            placeholder={replay ? "Record the ruling on this replay…" : "e.g. Keep the requirement; restore the test"}
+            onChange={(event) => setAnswer(event.target.value)}
+          />
+          <button type="submit" className="solid" disabled={busy || !canSubmit}>
+            {feedback?.state === "submitting" ? "Recording…" : "Record answer"}
+          </button>
+        </form>
         {session && canOpenSession(session) ? (
           <button type="button" className="text-button" onClick={() => onOpen(session)}>
             Open agent

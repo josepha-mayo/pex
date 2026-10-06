@@ -6101,6 +6101,7 @@ def create_app() -> FastAPI:
     ):
         from pex_bridge.decisions import (
             DecisionResolutionError,
+            resolve_general_escalation,
             resolve_lifecycle_decision,
             resolve_permission_decision,
             resolve_requested_human_decision,
@@ -6153,6 +6154,22 @@ def create_app() -> FastAPI:
                         },
                     )
                 return response
+            if (
+                pending
+                and pending.proposed_action.type == InterventionType.ASK_HUMAN
+                and pending.action_taken == InterventionType.ASK_HUMAN.value
+            ):
+                # A supervisor escalation (nudge dispute, constraint standoff)
+                # is a recorded human answer — durable evidence, not worker
+                # delivery. Delivery is the operator's separate message call.
+                escalation = await resolve_general_escalation(
+                    state.store,
+                    intervention_id=decision_id,
+                    answer=body.decision,
+                )
+                if not escalation.replayed:
+                    await _publish_committed_decision_update(escalation.intervention)
+                return escalation.response()
             if pending and pending.proposed_action.type in lifecycle_types:
                 lifecycle = await resolve_lifecycle_decision(
                     state.store,

@@ -571,3 +571,81 @@ async def test_generic_rest_delivery_failures_preserve_structured_honest_status(
     assert calls == (0 if mode == "unsupported" else 1)
     live = await state.store.get_session(session["id"])
     assert live is not None and live.status.value == "needs_decision"
+
+
+@pytest.mark.asyncio
+async def test_general_escalation_resolution_is_recorded_replay_safe_and_restores(
+    client: AsyncClient,
+    tmp_path,
+):
+    """A human answer resolves a supervisor escalation — once, durably.
+
+    The answer is ledger evidence, not worker delivery: the response must
+    say ``worker_delivery: not_attempted``, the escalation leaves the
+    pending inbox, and the replayed session returns to its pre-decision
+    (stopped) status. Repeating the same answer replays; a different one
+    conflicts.
+    """
+
+    replay = await client.post("/v1/demo/replay", json={"fixture": "nudge_dispute_eval"})
+    assert replay.status_code == 200, replay.text
+    body = replay.json()
+    assert body["replay"] is True and body["not_live_control"] is True
+    escalation = next(
+        item for item in body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
+    )
+    session_id = body["session_id"]
+    pending_session = await state.store.get_session(session_id)
+    assert pending_session.status.value == "needs_decision"
+
+    resolved = await client.post(
+        f"/v1/decisions/{escalation['id']}/resolve",
+        json={"decision": "Keep the requirement; the test file stays sealed."},
+    )
+    assert resolved.status_code == 200, resolved.text
+    resolved_body = resolved.json()
+    assert resolved_body["ok"] is True
+    assert resolved_body["kind"] == "escalation"
+    assert resolved_body["recorded"] is True
+    assert resolved_body["worker_delivery"] == "not_attempted"
+    assert resolved_body["replayed"] is False
+    assert resolved_body["resolution"]["status"] == "recorded"
+    assert resolved_body["resolution"]["answer"] == (
+        "Keep the requirement; the test file stays sealed."
+    )
+    assert resolved_body["intervention"]["result"] == "human_answered"
+    assert resolved_body["intervention"]["outcome"] == "human_answered"
+
+    replay_session = await state.store.get_session(session_id)
+    assert replay_session.status.value == "stopped"
+
+    metrics = (await client.get("/v1/attention/metrics")).json()
+    pending_ids = {item["id"] for item in metrics["current_pending"]["items"]}
+    assert escalation["id"] not in pending_ids
+
+    replayed = await client.post(
+        f"/v1/decisions/{escalation['id']}/resolve",
+        json={"decision": "Keep the requirement; the test file stays sealed."},
+    )
+    assert replayed.status_code == 200
+    assert replayed.json()["replayed"] is True
+
+    conflict = await client.post(
+        f"/v1/decisions/{escalation['id']}/resolve",
+        json={"decision": "Amend the goal; accept the worker's position."},
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"]["code"] == "escalation_resolution_conflict"
+
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "PEX_INTERVENTION_LOG.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    relevant = [row for row in records if row["intervention_id"] == escalation["id"]]
+    assert relevant[0]["record_type"] == "created"
+    assert relevant[-1]["record_type"] == "human_resolution"
+    assert relevant[-1]["human_resolution"]["answer"] == (
+        "Keep the requirement; the test file stays sealed."
+    )
