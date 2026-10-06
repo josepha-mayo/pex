@@ -43,6 +43,8 @@ flowchart TB
 - Secrets are redacted before cloud.
 - Adapter capabilities are negotiated, never assumed equal.
 - Progress is evidence-based.
+- Bounded intervention: a delivered correction the worker engages but does not
+  resolve is a human decision (`ASK_HUMAN`, once), never an unbounded nudge loop.
 - AgentCore Runtime / Memory / CloudWatch are optional deployment integrations. They are not claimed as live until deployed.
 
 ## Strands usage
