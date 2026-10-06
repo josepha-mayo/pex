@@ -220,6 +220,44 @@ async def test_compaction_contract_reaches_worker_after_durable_pipeline(tmp_pat
         await store.close()
 
 
+@pytest.mark.asyncio
+async def test_event_processing_reads_committed_view_not_a_held_snapshot(tmp_path):
+    """``get_event_processing`` must never read through a transaction held
+    open on the shared writer connection.
+
+    A read issued on ``store.db`` inside another open transaction sees that
+    transaction's snapshot: rows committed on other connections meanwhile
+    are invisible — the drain loop then crashes on "row disappeared"
+    (observed as a replay 500). The committed view must come from a
+    dedicated connection, like every other authority read.
+    """
+    store, _, session, _ = await _pipeline(tmp_path)
+    try:
+        # Any open transaction on the shared writer connection — in flight
+        # or leaked — freezes self.db reads at its own snapshot. A real
+        # table read establishes the snapshot.
+        await store.db.execute("BEGIN")
+        await (await store.db.execute("SELECT count(*) FROM event_processing")).fetchone()
+        event = _event(session, "evt-committed-view")
+        # accept_pipeline_event commits on its own connection; the held
+        # snapshot on self.db cannot see the new row.
+        acceptance = await store.accept_pipeline_event(event, session_snapshot=session)
+        assert acceptance["created"] is True
+        held = await (
+            await store.db.execute(
+                "SELECT 1 FROM event_processing WHERE event_id = ?",
+                (event.event_id,),
+            )
+        ).fetchone()
+        assert held is None  # proves the snapshot really is stale
+        processing = await store.get_event_processing(event.event_id)
+        assert processing is not None
+        assert processing["state"] == "accepted"
+    finally:
+        await store.db.execute("ROLLBACK")
+        await store.close()
+
+
 def test_local_supervisor_dispatch_budget_outlives_main_agent_budget():
     assert LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS == 70.0
     assert REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS == 30.0

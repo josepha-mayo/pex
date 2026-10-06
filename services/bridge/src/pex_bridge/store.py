@@ -13,7 +13,8 @@ import re
 import secrets
 import stat
 import threading
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -7309,6 +7310,49 @@ async def _prepare_main_effect_payload(
     return payload
 
 
+class _BufferedCursor:
+    """In-memory cursor over rows already fetched on a committed-view connection.
+
+    ``_committed_execute`` reads eagerly so the dedicated connection closes
+    with the query instead of leaking until garbage collection; call sites
+    keep the usual ``fetchone``/``fetchall``/``async for`` cursor surface.
+    """
+
+    def __init__(self, rows: list[aiosqlite.Row]) -> None:
+        self._rows = rows
+        self._pos = 0
+
+    async def fetchone(self) -> aiosqlite.Row | None:
+        if self._pos >= len(self._rows):
+            return None
+        row = self._rows[self._pos]
+        self._pos += 1
+        return row
+
+    async def fetchall(self) -> list[aiosqlite.Row]:
+        rows = self._rows[self._pos :]
+        self._pos = len(self._rows)
+        return rows
+
+    def __aiter__(self) -> _BufferedCursor:
+        return self
+
+    async def __anext__(self) -> aiosqlite.Row:
+        row = await self.fetchone()
+        if row is None:
+            raise StopAsyncIteration
+        return row
+
+    async def __aenter__(self) -> _BufferedCursor:
+        return self
+
+    async def __aexit__(self, *exc: object) -> None:
+        return None
+
+    async def close(self) -> None:
+        self._pos = len(self._rows)
+
+
 class Store:
     def __init__(self, path: Path, *, process_boot_id: str | None = None) -> None:
         self.path = path
@@ -10180,32 +10224,32 @@ class Store:
     ) -> dict[str, Any] | None:
         if not isinstance(legacy_project_id, str) or not legacy_project_id:
             raise ValueError("legacy project id is invalid")
-        cursor = await self.db.execute(
-            "SELECT project_identity_id, status, json FROM legacy_project_bindings "
-            "WHERE legacy_project_id = ?",
-            (legacy_project_id,),
-        )
-        row = await cursor.fetchone()
-        if row is None or row["status"] != "active" or row["project_identity_id"] is None:
-            return None
-        identity_id = str(row["project_identity_id"])
-        identity_cursor = await self.db.execute(
-            "SELECT json FROM project_identities WHERE id = ?",
-            (identity_id,),
-        )
-        identity_row = await identity_cursor.fetchone()
-        if identity_row is None:
-            raise RuntimeError("active project identity is missing")
-        locators_cursor = await self.db.execute(
-            "SELECT json FROM project_locators WHERE project_identity_id = ? ORDER BY fingerprint",
-            (identity_id,),
-        )
+        async with self._committed_connection() as committed:
+            cursor = await committed.execute(
+                "SELECT project_identity_id, status, json FROM legacy_project_bindings "
+                "WHERE legacy_project_id = ?",
+                (legacy_project_id,),
+            )
+            row = await cursor.fetchone()
+            if row is None or row["status"] != "active" or row["project_identity_id"] is None:
+                return None
+            identity_id = str(row["project_identity_id"])
+            identity_cursor = await committed.execute(
+                "SELECT json FROM project_identities WHERE id = ?",
+                (identity_id,),
+            )
+            identity_row = await identity_cursor.fetchone()
+            if identity_row is None:
+                raise RuntimeError("active project identity is missing")
+            locators_cursor = await committed.execute(
+                "SELECT json FROM project_locators WHERE project_identity_id = ? "
+                "ORDER BY fingerprint",
+                (identity_id,),
+            )
+            locators = await locators_cursor.fetchall()
         return {
             "identity": ProjectIdentity.model_validate_json(identity_row["json"]),
-            "locators": [
-                ProjectLocator.model_validate_json(item["json"])
-                for item in await locators_cursor.fetchall()
-            ],
+            "locators": [ProjectLocator.model_validate_json(item["json"]) for item in locators],
             "binding": _strict_json_loads(str(row["json"])),
         }
 
@@ -10228,7 +10272,8 @@ class Store:
         except ValueError:
             return False
         try:
-            current = await _project_binding_snapshot(self.db, project_id)
+            async with self._committed_connection() as committed:
+                current = await _project_binding_snapshot(committed, project_id)
         except (ProjectIdentityBlockedError, RuntimeError, ValueError):
             return False
         return hmac.compare_digest(current, validated_binding)
@@ -10243,7 +10288,9 @@ class Store:
             or "\x00" in project_id
         ):
             raise ValueError("project id is invalid")
-        return validate_project_binding(await _project_binding_snapshot(self.db, project_id))
+        async with self._committed_connection() as committed:
+            snapshot = await _project_binding_snapshot(committed, project_id)
+        return validate_project_binding(snapshot)
 
     async def list_project_identity_conflicts_page(
         self,
@@ -10257,35 +10304,39 @@ class Store:
             raise ValueError("project identity conflict limit is invalid")
         if not isinstance(offset, int) or isinstance(offset, bool) or not 0 <= offset <= 1_000_000:
             raise ValueError("project identity conflict offset is invalid")
-        count_cursor = await self.db.execute(
-            "SELECT COUNT(*) AS count FROM legacy_project_bindings WHERE status = 'quarantined'"
-        )
-        count_row = await count_cursor.fetchone()
-        total = int(count_row["count"]) if count_row is not None else 0
-        cursor = await self.db.execute(
-            "SELECT legacy_project_id, json FROM legacy_project_bindings "
-            "WHERE status = 'quarantined' "
-            "ORDER BY json_extract(json, '$.quarantined_at') DESC, legacy_project_id "
-            "LIMIT ? OFFSET ?",
-            (limit, offset),
-        )
-        conflicts: list[dict[str, Any]] = []
-        async for row in cursor:
-            binding = _strict_json_loads(str(row["json"]))
-            if not isinstance(binding, dict):
-                raise RuntimeError("legacy project binding is invalid")
-            candidates = sorted({str(value) for value in binding.get("candidate_identity_ids", [])})
-            conflicts.append(
-                {
-                    "schema": "pex.project-identity-conflict-summary.v1",
-                    "legacy_project_id": str(row["legacy_project_id"]),
-                    "status": "quarantined",
-                    "candidate_identity_ids": candidates,
-                    "candidate_count": len(candidates),
-                    "quarantined_at": binding.get("quarantined_at"),
-                    "updated_at": binding.get("updated_at"),
-                }
+        async with self._committed_connection() as committed:
+            count_cursor = await committed.execute(
+                "SELECT COUNT(*) AS count FROM legacy_project_bindings "
+                "WHERE status = 'quarantined'"
             )
+            count_row = await count_cursor.fetchone()
+            total = int(count_row["count"]) if count_row is not None else 0
+            cursor = await committed.execute(
+                "SELECT legacy_project_id, json FROM legacy_project_bindings "
+                "WHERE status = 'quarantined' "
+                "ORDER BY json_extract(json, '$.quarantined_at') DESC, legacy_project_id "
+                "LIMIT ? OFFSET ?",
+                (limit, offset),
+            )
+            conflicts: list[dict[str, Any]] = []
+            async for row in cursor:
+                binding = _strict_json_loads(str(row["json"]))
+                if not isinstance(binding, dict):
+                    raise RuntimeError("legacy project binding is invalid")
+                candidates = sorted(
+                    {str(value) for value in binding.get("candidate_identity_ids", [])}
+                )
+                conflicts.append(
+                    {
+                        "schema": "pex.project-identity-conflict-summary.v1",
+                        "legacy_project_id": str(row["legacy_project_id"]),
+                        "status": "quarantined",
+                        "candidate_identity_ids": candidates,
+                        "candidate_count": len(candidates),
+                        "quarantined_at": binding.get("quarantined_at"),
+                        "updated_at": binding.get("updated_at"),
+                    }
+                )
         next_offset = offset + len(conflicts)
         return {
             "schema": "pex.project-identity-conflict-page.v1",
@@ -10324,44 +10375,47 @@ class Store:
             or not 0 <= candidate_offset <= 1_000_000
         ):
             raise ValueError("project identity candidate offset is invalid")
-        cursor = await self.db.execute(
-            "SELECT json FROM legacy_project_bindings "
-            "WHERE legacy_project_id = ? AND status = 'quarantined'",
-            (legacy_project_id,),
-        )
-        row = await cursor.fetchone()
-        if row is None:
-            return None
-        binding = _strict_json_loads(str(row["json"]))
-        if not isinstance(binding, dict):
-            raise RuntimeError("legacy project binding is invalid")
-        candidate_ids = sorted({str(value) for value in binding.get("candidate_identity_ids", [])})
-        selected_ids = candidate_ids[candidate_offset : candidate_offset + candidate_limit]
-        candidates: list[dict[str, Any]] = []
-        for identity_id in selected_ids:
-            identity_cursor = await self.db.execute(
-                "SELECT json FROM project_identities WHERE id = ?",
-                (identity_id,),
+        async with self._committed_connection() as committed:
+            cursor = await committed.execute(
+                "SELECT json FROM legacy_project_bindings "
+                "WHERE legacy_project_id = ? AND status = 'quarantined'",
+                (legacy_project_id,),
             )
-            identity_row = await identity_cursor.fetchone()
-            if identity_row is None:
-                raise RuntimeError("quarantined project identity candidate is missing")
-            locator_cursor = await self.db.execute(
-                "SELECT json FROM project_locators WHERE project_identity_id = ? "
-                "ORDER BY fingerprint",
-                (identity_id,),
+            row = await cursor.fetchone()
+            if row is None:
+                return None
+            binding = _strict_json_loads(str(row["json"]))
+            if not isinstance(binding, dict):
+                raise RuntimeError("legacy project binding is invalid")
+            candidate_ids = sorted(
+                {str(value) for value in binding.get("candidate_identity_ids", [])}
             )
-            candidates.append(
-                {
-                    "identity": ProjectIdentity.model_validate_json(
-                        identity_row["json"]
-                    ).model_dump(mode="json"),
-                    "locators": [
-                        ProjectLocator.model_validate_json(item["json"]).model_dump(mode="json")
-                        for item in await locator_cursor.fetchall()
-                    ],
-                }
-            )
+            selected_ids = candidate_ids[candidate_offset : candidate_offset + candidate_limit]
+            candidates: list[dict[str, Any]] = []
+            for identity_id in selected_ids:
+                identity_cursor = await committed.execute(
+                    "SELECT json FROM project_identities WHERE id = ?",
+                    (identity_id,),
+                )
+                identity_row = await identity_cursor.fetchone()
+                if identity_row is None:
+                    raise RuntimeError("quarantined project identity candidate is missing")
+                locator_cursor = await committed.execute(
+                    "SELECT json FROM project_locators WHERE project_identity_id = ? "
+                    "ORDER BY fingerprint",
+                    (identity_id,),
+                )
+                candidates.append(
+                    {
+                        "identity": ProjectIdentity.model_validate_json(
+                            identity_row["json"]
+                        ).model_dump(mode="json"),
+                        "locators": [
+                            ProjectLocator.model_validate_json(item["json"]).model_dump(mode="json")
+                            for item in await locator_cursor.fetchall()
+                        ],
+                    }
+                )
         next_offset = candidate_offset + len(selected_ids)
         return {
             "schema": "pex.project-identity-conflict-detail.v1",
@@ -10391,7 +10445,7 @@ class Store:
             or legacy_project_id != legacy_project_id.rstrip("\r\n")
         ):
             raise ValueError("legacy project id is invalid")
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT status FROM legacy_project_bindings WHERE legacy_project_id = ?",
             (legacy_project_id,),
         )
@@ -10421,7 +10475,7 @@ class Store:
         active = await self.resolve_project_identity(legacy_project_id)
         if active is None:
             raise RuntimeError("active project identity disappeared during read")
-        resolution_cursor = await self.db.execute(
+        resolution_cursor = await self._committed_execute(
             "SELECT json FROM project_identity_resolutions "
             "WHERE legacy_project_id = ? ORDER BY resolved_at DESC, id DESC LIMIT 1",
             (legacy_project_id,),
@@ -10632,6 +10686,52 @@ class Store:
         if self._db is None:
             raise RuntimeError("store is not connected")
         return self._db
+
+    @asynccontextmanager
+    async def _committed_connection(self) -> AsyncIterator[aiosqlite.Connection]:
+        """A dedicated connection pinned to the authoritative committed view.
+
+        Reads issued on the shared writer connection (``self.db``) execute
+        inside whatever ``BEGIN IMMEDIATE`` block is in flight (or leaked)
+        there and see that transaction's older snapshot — the drain loop
+        then misses rows that provably committed (observed as a replay 500
+        on "row disappeared"). A fresh WAL connection always sees committed
+        data; every statement inside this block shares one snapshot.
+        """
+        async with aiosqlite.connect(self.path, timeout=5.0) as connection:
+            await _configure_connection(connection)
+            # One deferred read transaction per call: every statement below
+            # shares a single committed snapshot, never a borrowed one.
+            await connection.execute("BEGIN")
+            yield connection
+
+    async def _committed_execute(self, sql: str, params: tuple = ()) -> _BufferedCursor:
+        """Run one read on a dedicated connection, buffering its rows.
+
+        Drop-in for bare ``self.db.execute`` reads: the dedicated WAL
+        connection sees the authoritative committed view instead of any
+        transaction that happens to be open on the shared writer
+        connection, then closes while the caller iterates buffered rows.
+        """
+        async with self._committed_connection() as connection:
+            cursor = await connection.execute(sql, params)
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        return _BufferedCursor(rows)
+
+    async def _committed_fetchone(
+        self, sql: str, params: tuple = ()
+    ) -> aiosqlite.Row | None:
+        async with self._committed_connection() as connection:
+            cursor = await connection.execute(sql, params)
+            return await cursor.fetchone()
+
+    async def _committed_fetchall(self, sql: str, params: tuple = ()) -> list[aiosqlite.Row]:
+        async with self._committed_connection() as connection:
+            cursor = await connection.execute(sql, params)
+            return await cursor.fetchall()
 
     async def record_cursor_inbox_rejection(
         self,
@@ -11555,8 +11655,9 @@ class Store:
         )
 
     async def get_goal(self, goal_id: str) -> Goal | None:
-        cur = await self.db.execute("SELECT json FROM goals WHERE id = ?", (goal_id,))
-        row = await cur.fetchone()
+        row = await self._committed_fetchone(
+            "SELECT json FROM goals WHERE id = ?", (goal_id,)
+        )
         return Goal.model_validate_json(row["json"]) if row else None
 
     async def get_goal_intent_view(self, goal_id: str) -> dict[str, Any] | None:
@@ -11672,8 +11773,7 @@ class Store:
                 raise
 
     async def list_goals(self) -> list[Goal]:
-        cur = await self.db.execute("SELECT json FROM goals")
-        rows = await cur.fetchall()
+        rows = await self._committed_fetchall("SELECT json FROM goals")
         goals = [Goal.model_validate_json(r["json"]) for r in rows]
         return sorted(
             goals,
@@ -11693,13 +11793,13 @@ class Store:
             raise ValueError(f"goal limit must be between 1 and {MAX_LIST_QUERY_LIMIT}")
         if offset < 0:
             raise ValueError("goal offset cannot be negative")
-        cur = await self.db.execute(
+        rows = await self._committed_fetchall(
             "SELECT json FROM goals "
             "ORDER BY json_extract(json, '$.updated_at') DESC, "
             "json_extract(json, '$.created_at') DESC, id DESC LIMIT ? OFFSET ?",
             (limit, offset),
         )
-        return [Goal.model_validate_json(row["json"]) for row in await cur.fetchall()]
+        return [Goal.model_validate_json(row["json"]) for row in rows]
 
     async def list_goal_intent_views_page(
         self,
@@ -11798,7 +11898,7 @@ class Store:
 
         if not goal_id or len(goal_id) > 512:
             raise ValueError("goal id is invalid")
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT 1 FROM goals WHERE json_extract(json, '$.supersedes') = ? LIMIT 1",
             (goal_id,),
         )
@@ -12648,8 +12748,9 @@ class Store:
                 raise
 
     async def get_session(self, session_id: str) -> HarnessSession | None:
-        cur = await self.db.execute("SELECT json FROM sessions WHERE id = ?", (session_id,))
-        row = await cur.fetchone()
+        row = await self._committed_fetchone(
+            "SELECT json FROM sessions WHERE id = ?", (session_id,)
+        )
         return HarnessSession.model_validate_json(row["json"]) if row else None
 
     async def recall_acceptance_baseline(
@@ -12835,7 +12936,7 @@ class Store:
         """Read the canonical session plus its Store-owned CAS state."""
 
         _validate_store_id(session_id, label="session control id")
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT * FROM sessions WHERE id = ?",
             (session_id,),
         )
@@ -12856,7 +12957,7 @@ class Store:
             _validate_store_id(session_id, label="session control id")
         if not unique_ids:
             return {}
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT * FROM sessions WHERE id IN (SELECT value FROM json_each(?))",
             (json.dumps(unique_ids),),
         )
@@ -14038,7 +14139,7 @@ class Store:
 
     async def get_mcp_principal(self, principal_id: str) -> dict[str, Any] | None:
         _validate_store_id(principal_id, label="MCP principal id")
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM mcp_principals WHERE id = ?",
             (principal_id,),
         )
@@ -15942,7 +16043,7 @@ class Store:
             "id DESC LIMIT ? OFFSET ?"
         )
         parameters.extend((limit, offset))
-        cur = await self.db.execute(query, tuple(parameters))
+        cur = await self._committed_execute(query, tuple(parameters))
         return [HarnessSession.model_validate_json(row["json"]) for row in await cur.fetchall()]
 
     async def list_sessions_for_goal_for_authority(
@@ -16202,7 +16303,7 @@ class Store:
         if not counts:
             return counts
         async with self._write_lock:
-            cursor = await self.db.execute(
+            cursor = await self._committed_execute(
                 "SELECT session_id, COUNT(*) AS reserved "
                 "FROM supervisor_dispatch_reservations "
                 "WHERE session_id IN (SELECT value FROM json_each(?)) "
@@ -16226,7 +16327,7 @@ class Store:
             )
         if offset < 0:
             raise ValueError("session offset cannot be negative")
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM sessions "
             "ORDER BY COALESCE(json_extract(json, '$.last_activity'), '') DESC, id DESC "
             "LIMIT ? OFFSET ?",
@@ -16251,10 +16352,9 @@ class Store:
         if session_id is not None:
             if not accepted_event_id:
                 return []
-            async with self._write_lock:
+            async with self._committed_connection() as committed:
                 try:
-                    await self.db.execute("BEGIN")
-                    target_cursor = await self.db.execute(
+                    target_cursor = await committed.execute(
                         "SELECT p.event_id, p.session_id, p.harness_type, p.goal_id, "
                         "p.project_id, p.mode, p.accepted_session_json, "
                         "p.accepted_project_binding, s.vendor_session_id AS "
@@ -16273,24 +16373,20 @@ class Store:
                         else None
                     )
                     if cohort is None:
-                        await self.db.commit()
                         return []
                     target_project = target_row["project_id"]
                     if not isinstance(target_project, str) or not target_project:
-                        await self.db.commit()
                         return []
                     try:
                         current_binding = await _project_binding_snapshot(
-                            self.db,
+                            committed,
                             target_project,
                         )
                     except (RuntimeError, TypeError, ValueError):
-                        await self.db.commit()
                         return []
                     if current_binding != cohort["project_binding"]:
-                        await self.db.commit()
                         return []
-                    candidate_cursor = await self.db.execute(
+                    candidate_cursor = await committed.execute(
                         "SELECT p.event_id, p.session_id, p.harness_type, p.goal_id, "
                         "p.project_id, p.mode, p.accepted_session_json, "
                         "p.accepted_project_binding, p.plan_json, s.vendor_session_id AS "
@@ -16306,7 +16402,6 @@ class Store:
                     )
                     candidate_rows = await candidate_cursor.fetchall()
                     if len(candidate_rows) > MAX_FINGERPRINT_COHORT_EVENTS:
-                        await self.db.commit()
                         return []
                     eligible: list[tuple[aiosqlite.Row, dict[str, Any]]] = []
                     for candidate in candidate_rows:
@@ -16338,7 +16433,7 @@ class Store:
                     intervention_rows: dict[str, aiosqlite.Row] = {}
                     if intervention_ids:
                         placeholders = ",".join("?" for _ in intervention_ids)
-                        intervention_cursor = await self.db.execute(
+                        intervention_cursor = await committed.execute(
                             "SELECT id, session_id, goal_id, project_id, project_binding, "
                             "vendor_session_id, harness_type, action_hash, version, json "
                             f"FROM interventions WHERE id IN ({placeholders})",
@@ -16373,9 +16468,7 @@ class Store:
                             verified_sessions.add(bound_session_id)
                         if action_taken == "APPLY_OVERLAY":
                             overlay_sessions.add(bound_session_id)
-                    await self.db.commit()
                 except BaseException:
-                    await self.db.rollback()
                     raise
             observed = len(observed_sessions)
             if observed == 0:
@@ -16403,7 +16496,7 @@ class Store:
                 )
             ]
 
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "WITH safe_sessions AS (SELECT harness_type, CASE WHEN json_valid(json) "
             "THEN json ELSE '{}' END AS safe_json FROM sessions), "
             "safe_interventions AS (SELECT session_id, harness_type, CASE WHEN "
@@ -16608,7 +16701,7 @@ class Store:
                 raise
 
     async def get_lifecycle_resource(self, resource_id: str) -> dict[str, Any] | None:
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM lifecycle_resources WHERE id = ?",
             (resource_id,),
         )
@@ -16616,7 +16709,7 @@ class Store:
         return _strict_json_loads(str(row["json"])) if row else None
 
     async def list_lifecycle_resources(self, session_id: str) -> list[dict[str, Any]]:
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM lifecycle_resources WHERE session_id = ? ORDER BY id",
             (session_id,),
         )
@@ -17287,7 +17380,7 @@ class Store:
 
     async def get_cleanup_operation(self, operation_id: str) -> dict[str, Any] | None:
         _validate_store_id(operation_id, label="cleanup operation id")
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT json FROM lifecycle_operations WHERE id = ?",
             (operation_id,),
         )
@@ -17303,13 +17396,13 @@ class Store:
     ) -> list[dict[str, Any]]:
         _validate_query_page(label="cleanup operation", limit=limit, offset=offset)
         if session_id is None:
-            cursor = await self.db.execute(
+            cursor = await self._committed_execute(
                 "SELECT json FROM lifecycle_operations ORDER BY id LIMIT ? OFFSET ?",
                 (limit, offset),
             )
         else:
             _validate_store_id(session_id, label="cleanup operation session id")
-            cursor = await self.db.execute(
+            cursor = await self._committed_execute(
                 "SELECT json FROM lifecycle_operations WHERE session_id = ? ORDER BY id "
                 "LIMIT ? OFFSET ?",
                 (session_id, limit, offset),
@@ -18098,7 +18191,7 @@ class Store:
         return {"finalized": True, "replayed": False, "operation": operation}
 
     async def get_restore_operation(self, operation_id: str) -> dict[str, Any] | None:
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT json FROM lifecycle_restore_operations WHERE id = ?",
             (operation_id,),
         )
@@ -18114,13 +18207,13 @@ class Store:
     ) -> list[dict[str, Any]]:
         _validate_query_page(label="restore operation", limit=limit, offset=offset)
         if session_id is None:
-            cursor = await self.db.execute(
+            cursor = await self._committed_execute(
                 "SELECT json FROM lifecycle_restore_operations ORDER BY id LIMIT ? OFFSET ?",
                 (limit, offset),
             )
         else:
             _validate_store_id(session_id, label="restore operation session id")
-            cursor = await self.db.execute(
+            cursor = await self._committed_execute(
                 "SELECT json FROM lifecycle_restore_operations WHERE session_id = ? ORDER BY "
                 "id LIMIT ? OFFSET ?",
                 (session_id, limit, offset),
@@ -18754,11 +18847,10 @@ class Store:
 
     async def get_event_processing(self, event_id: str) -> dict[str, Any] | None:
         _validate_store_id(event_id, label="event id")
-        cursor = await self.db.execute(
+        row = await self._committed_fetchone(
             "SELECT * FROM event_processing WHERE event_id = ?",
             (event_id,),
         )
-        row = await cursor.fetchone()
         return _event_processing_record(row) if row is not None else None
 
     async def list_recoverable_event_processing(
@@ -18771,7 +18863,7 @@ class Store:
                 f"event processing limit must be between 1 and {MAX_EVENT_QUERY_LIMIT}"
             )
         placeholders = ",".join("?" for _ in EVENT_PROCESSING_TERMINAL_STATES)
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT * FROM event_processing WHERE mode = 'pipeline' "
             f"AND state NOT IN ({placeholders}) ORDER BY accept_seq LIMIT ?",
             (*sorted(EVENT_PROCESSING_TERMINAL_STATES), limit),
@@ -22043,7 +22135,7 @@ class Store:
     ) -> dict[str, Any] | None:
         _validate_store_id(event_id, label="event id")
         _validate_store_id(effect_key, label="event effect key")
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT * FROM event_effects WHERE event_id = ? AND effect_key = ?",
             (event_id, effect_key),
         )
@@ -24327,7 +24419,7 @@ class Store:
 
     async def get_event(self, event_id: str) -> HarnessEvent | None:
         _validate_store_id(event_id, label="event id")
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM events WHERE event_id = ?",
             (event_id,),
         )
@@ -24337,7 +24429,7 @@ class Store:
     async def recent_events(self, session_id: str, limit: int = 80) -> list[HarnessEvent]:
         if not 1 <= limit <= MAX_EVENT_QUERY_LIMIT:
             raise ValueError(f"event limit must be between 1 and {MAX_EVENT_QUERY_LIMIT}")
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT e.json FROM event_processing AS p "
             "JOIN events AS e ON e.event_id = p.event_id "
             "WHERE p.session_id = ? ORDER BY p.accept_seq DESC LIMIT ?",
@@ -24355,7 +24447,7 @@ class Store:
         they must suppress a current-activity claim, not be skipped over.
         """
         _validate_store_id(session_id, label="event session id")
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT e.json, p.mode, p.accepted_project_binding "
             "FROM event_processing AS p JOIN events AS e ON e.event_id = p.event_id "
             "WHERE p.session_id = ? ORDER BY p.accept_seq DESC LIMIT 1",
@@ -24382,7 +24474,7 @@ class Store:
         _validate_store_id(event_id, label="event id")
         if not 1 <= limit <= MAX_EVENT_QUERY_LIMIT:
             raise ValueError(f"event limit must be between 1 and {MAX_EVENT_QUERY_LIMIT}")
-        bound_cursor = await self.db.execute(
+        bound_cursor = await self._committed_execute(
             "SELECT accept_seq, session_id FROM event_processing WHERE event_id = ?",
             (event_id,),
         )
@@ -24391,7 +24483,7 @@ class Store:
             raise LookupError("event processing row not found")
         if str(bound["session_id"]) != session_id:
             raise ValueError("event prefix session binding mismatch")
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT e.json FROM event_processing AS p "
             "JOIN events AS e ON e.event_id = p.event_id "
             "WHERE p.session_id = ? AND p.accept_seq <= ? "
@@ -24629,33 +24721,34 @@ class Store:
             raise ValueError("event harness type is invalid")
         if not 1 <= limit <= MAX_EVENT_QUERY_LIMIT:
             raise ValueError(f"event limit must be between 1 and {MAX_EVENT_QUERY_LIMIT}")
-        await _reject_quarantined_project_binding(self.db, project_id)
-        cur = await self.db.execute(
-            "SELECT e.json FROM event_processing AS p "
-            "JOIN events AS e ON e.event_id = p.event_id "
-            "WHERE p.session_id = ? AND p.goal_id = ? "
-            "AND p.harness_type = ? ORDER BY p.accept_seq DESC LIMIT ?",
-            (session_id, goal_id, harness_type, MAX_EVENT_QUERY_LIMIT),
-        )
-        newest: list[HarnessEvent] = []
-        for row in await cur.fetchall():
-            event = HarnessEvent.model_validate_json(row["json"])
-            if event.project_id is None or not await _same_live_project_binding(
-                self.db,
-                event.project_id,
-                project_id,
-            ):
-                continue
-            newest.append(event)
-            if len(newest) == limit:
-                break
+        async with self._committed_connection() as committed:
+            await _reject_quarantined_project_binding(committed, project_id)
+            cur = await committed.execute(
+                "SELECT e.json FROM event_processing AS p "
+                "JOIN events AS e ON e.event_id = p.event_id "
+                "WHERE p.session_id = ? AND p.goal_id = ? "
+                "AND p.harness_type = ? ORDER BY p.accept_seq DESC LIMIT ?",
+                (session_id, goal_id, harness_type, MAX_EVENT_QUERY_LIMIT),
+            )
+            newest: list[HarnessEvent] = []
+            for row in await cur.fetchall():
+                event = HarnessEvent.model_validate_json(row["json"])
+                if event.project_id is None or not await _same_live_project_binding(
+                    committed,
+                    event.project_id,
+                    project_id,
+                ):
+                    continue
+                newest.append(event)
+                if len(newest) == limit:
+                    break
         newest.reverse()
         return newest
 
     async def latest_events(self, limit: int = 40) -> list[HarnessEvent]:
         if not 1 <= limit <= MAX_EVENT_QUERY_LIMIT:
             raise ValueError(f"event limit must be between 1 and {MAX_EVENT_QUERY_LIMIT}")
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT e.json FROM event_processing AS p "
             "JOIN events AS e ON e.event_id = p.event_id "
             "ORDER BY p.accept_seq DESC LIMIT ?",
@@ -24691,49 +24784,53 @@ class Store:
 
         # Combining MIN and MAX across this join scans the full publication
         # history on every idle socket poll. Seek each indexed endpoint instead,
-        # in one statement so both bounds still describe the same DB snapshot.
-        async with self.db.execute(
-            "SELECT (SELECT pub.accept_seq FROM event_publications AS pub "
-            "JOIN event_processing AS p ON p.accept_seq = pub.accept_seq "
-            "ORDER BY pub.accept_seq ASC LIMIT 1) AS earliest, "
-            "(SELECT pub.accept_seq FROM event_publications AS pub "
-            "JOIN event_processing AS p ON p.accept_seq = pub.accept_seq "
-            "ORDER BY pub.accept_seq DESC LIMIT 1) AS latest",
-        ) as bounds_cursor:
-            bounds = await bounds_cursor.fetchone()
-        earliest = int(bounds["earliest"]) if bounds and bounds["earliest"] is not None else 0
-        watermark = int(bounds["latest"]) if bounds and bounds["latest"] is not None else 0
-        frozen_through = watermark if through is None else through
-        if frozen_through > watermark:
-            raise ValueError("event cursor through exceeds the current watermark")
-        if after > frozen_through:
-            raise ValueError("event cursor after exceeds through")
-        gap = earliest > 0 and after < earliest - 1
-        items: list[dict[str, Any]] = []
-        if not gap and after < frozen_through:
-            clauses = ["pub.accept_seq > ?", "pub.accept_seq <= ?"]
-            args: list[Any] = [after, frozen_through]
-            if session_id is not None:
-                clauses.append("p.session_id = ?")
-                args.append(session_id)
-            args.append(limit)
-            cursor = await self.db.execute(
-                "SELECT pub.accept_seq, e.json FROM event_publications AS pub "
+        # in one statement so both bounds still describe the same DB snapshot —
+        # and keep the item page on that same committed snapshot too.
+        async with self._committed_connection() as committed:
+            async with await committed.execute(
+                "SELECT (SELECT pub.accept_seq FROM event_publications AS pub "
                 "JOIN event_processing AS p ON p.accept_seq = pub.accept_seq "
-                "JOIN events AS e ON e.event_id = pub.event_id WHERE "
-                + " AND ".join(clauses)
-                + " ORDER BY pub.accept_seq LIMIT ?",
-                tuple(args),
+                "ORDER BY pub.accept_seq ASC LIMIT 1) AS earliest, "
+                "(SELECT pub.accept_seq FROM event_publications AS pub "
+                "JOIN event_processing AS p ON p.accept_seq = pub.accept_seq "
+                "ORDER BY pub.accept_seq DESC LIMIT 1) AS latest",
+            ) as bounds_cursor:
+                bounds = await bounds_cursor.fetchone()
+            earliest = (
+                int(bounds["earliest"]) if bounds and bounds["earliest"] is not None else 0
             )
-            for row in await cursor.fetchall():
-                items.append(
-                    {
-                        "cursor": str(int(row["accept_seq"])),
-                        "event": HarnessEvent.model_validate_json(row["json"]).model_dump(
-                            mode="json"
-                        ),
-                    }
+            watermark = int(bounds["latest"]) if bounds and bounds["latest"] is not None else 0
+            frozen_through = watermark if through is None else through
+            if frozen_through > watermark:
+                raise ValueError("event cursor through exceeds the current watermark")
+            if after > frozen_through:
+                raise ValueError("event cursor after exceeds through")
+            gap = earliest > 0 and after < earliest - 1
+            items: list[dict[str, Any]] = []
+            if not gap and after < frozen_through:
+                clauses = ["pub.accept_seq > ?", "pub.accept_seq <= ?"]
+                args: list[Any] = [after, frozen_through]
+                if session_id is not None:
+                    clauses.append("p.session_id = ?")
+                    args.append(session_id)
+                args.append(limit)
+                cursor = await committed.execute(
+                    "SELECT pub.accept_seq, e.json FROM event_publications AS pub "
+                    "JOIN event_processing AS p ON p.accept_seq = pub.accept_seq "
+                    "JOIN events AS e ON e.event_id = pub.event_id WHERE "
+                    + " AND ".join(clauses)
+                    + " ORDER BY pub.accept_seq LIMIT ?",
+                    tuple(args),
                 )
+                for row in await cursor.fetchall():
+                    items.append(
+                        {
+                            "cursor": str(int(row["accept_seq"])),
+                            "event": HarnessEvent.model_validate_json(row["json"]).model_dump(
+                                mode="json"
+                            ),
+                        }
+                    )
         next_cursor = items[-1]["cursor"] if items else str(after)
         return {
             "schema": "pex.event-page.v1",
@@ -24892,7 +24989,7 @@ class Store:
         if not 1 <= limit <= 1000:
             raise ValueError("event follow-up recovery limit is invalid")
         now = utcnow().isoformat()
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT * FROM event_followups WHERE state = 'pending' OR "
             "(state = 'claimed' AND (lease_expires_at IS NULL OR lease_expires_at <= ? "
             "OR substr(lease_owner, 1, length(?)) != ?)) "
@@ -26101,8 +26198,10 @@ class Store:
         """
 
         async with self._audit_flush_lock:
-            cur = await self.db.execute("SELECT id, json FROM intervention_audit ORDER BY id")
-            rows = [(int(row["id"]), str(row["json"])) for row in await cur.fetchall()]
+            audit_rows = await self._committed_fetchall(
+                "SELECT id, json FROM intervention_audit ORDER BY id"
+            )
+            rows = [(int(row["id"]), str(row["json"])) for row in audit_rows]
             await asyncio.to_thread(self._append_missing_audit_rows, rows)
 
     def _append_missing_audit_rows(self, rows: list[tuple[int, str]]) -> None:
@@ -26186,7 +26285,7 @@ class Store:
             query = "SELECT json FROM interventions ORDER BY ts DESC, rowid DESC"
         query += " LIMIT ? OFFSET ?"
         parameters.extend((limit, offset))
-        cur = await self.db.execute(query, tuple(parameters))
+        cur = await self._committed_execute(query, tuple(parameters))
         rows = await cur.fetchall()
         return [_stored_intervention(r["json"]) for r in rows]
 
@@ -27016,7 +27115,7 @@ class Store:
 
         _validate_store_id(goal_id, label="intervention goal id")
         _validate_query_page(label="intervention", limit=limit, offset=offset)
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM interventions "
             "WHERE goal_id = ? OR (project_binding IS NULL "
             "AND json_extract(json, '$.goal_id') = ?) "
@@ -27036,7 +27135,7 @@ class Store:
             raise ValueError("intervention session id is invalid")
         if not action_type or len(action_type) > 128:
             raise ValueError("intervention action type is invalid")
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM interventions WHERE session_id = ? "
             "AND COALESCE(json_extract(json, '$.payload.proposed_action.type'), "
             "json_extract(json, '$.proposed_action.type')) = ? "
@@ -27047,7 +27146,7 @@ class Store:
         return _stored_intervention(row["json"]) if row else None
 
     async def get_intervention(self, intervention_id: str) -> Intervention | None:
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM interventions WHERE id = ?",
             (intervention_id,),
         )
@@ -27249,7 +27348,7 @@ class Store:
             "'%!_delivery!_uncertain' ESCAPE '!') "
             "LIMIT 1"
         )
-        cur = await self.db.execute(query, tuple(parameters))
+        cur = await self._committed_execute(query, tuple(parameters))
         return await cur.fetchone() is not None
 
     async def get_human_decision_resolution(
@@ -28137,7 +28236,7 @@ class Store:
         return {"created": True, "record": record}
 
     async def get_permission_resolution(self, intervention_id: str) -> dict[str, Any] | None:
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM permission_resolutions WHERE intervention_id = ?",
             (intervention_id,),
         )
@@ -28493,7 +28592,7 @@ class Store:
         return finalized
 
     async def get_lifecycle_resolution(self, intervention_id: str) -> dict[str, Any] | None:
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM lifecycle_resolutions WHERE intervention_id = ?",
             (intervention_id,),
         )
@@ -29107,7 +29206,7 @@ class Store:
 
     async def get_context(self, context_id: str) -> ContextItem | None:
         _validate_store_id(context_id, label="context id")
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM context_items WHERE id = ?",
             (context_id,),
         )
@@ -29128,7 +29227,7 @@ class Store:
         ):
             raise ValueError("context project id is invalid")
         _validate_store_id(goal_id, label="context goal id")
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json_extract(json, '$.kind') AS kind, COUNT(*) AS item_count "
             "FROM context_items WHERE project_id = ? AND goal_id = ? "
             "AND json_extract(json, '$.sensitivity') NOT IN (?, ?) "
@@ -29203,7 +29302,7 @@ class Store:
             raise ValueError(f"context limit must be between 1 and {MAX_LIST_QUERY_LIMIT}")
         if offset < 0:
             raise ValueError("context offset cannot be negative")
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             "SELECT json FROM context_items WHERE project_id = ? "
             "ORDER BY json_extract(json, '$.valid_from') DESC, id DESC LIMIT ? OFFSET ?",
             (project_id, limit, offset),
@@ -29404,7 +29503,7 @@ class Store:
             )
             parameters.extend(ancestor_ids)
         parameters.extend((limit, offset))
-        cur = await self.db.execute(
+        cur = await self._committed_execute(
             f"SELECT json FROM decisions WHERE {scope} "
             "ORDER BY json_extract(json, '$.created_at') DESC, id DESC LIMIT ? OFFSET ?",
             tuple(parameters),
@@ -29476,8 +29575,9 @@ class Store:
         raise PermissionError("direct overlay updates are disabled")
 
     async def get_overlay(self, overlay_id: str) -> Overlay | None:
-        cur = await self.db.execute("SELECT json FROM overlays WHERE id = ?", (overlay_id,))
-        row = await cur.fetchone()
+        row = await self._committed_fetchone(
+            "SELECT json FROM overlays WHERE id = ?", (overlay_id,)
+        )
         return _stored_overlay(row["json"]) if row else None
 
     async def get_overlay_for_authority(self, overlay_id: str) -> Overlay | None:
@@ -29511,7 +29611,7 @@ class Store:
         _validate_store_id(overlay_id, label="overlay id")
         if kind not in {"apply", "revert"}:
             raise ValueError("overlay operation kind is invalid")
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT * FROM overlay_operations WHERE overlay_id = ? AND kind = ? "
             "ORDER BY attempt_count DESC LIMIT 1",
             (overlay_id, kind),
@@ -30080,7 +30180,7 @@ class Store:
         """
 
         _validate_store_id(owner_intervention_id, label="overlay owner intervention")
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT overlay_id FROM overlay_operations WHERE kind = 'apply' "
             "AND owner_intervention_id = ? AND state = 'delivered' "
             "AND project_binding IS NOT NULL "
@@ -30601,12 +30701,12 @@ class Store:
         if not 1 <= limit <= MAX_LIST_QUERY_LIMIT:
             raise ValueError(f"overlay limit must be between 1 and {MAX_LIST_QUERY_LIMIT}")
         if session_id is None:
-            cur = await self.db.execute(
+            cur = await self._committed_execute(
                 "SELECT json FROM overlays ORDER BY rowid DESC LIMIT ?",
                 (limit,),
             )
         else:
-            cur = await self.db.execute(
+            cur = await self._committed_execute(
                 "SELECT json FROM overlays WHERE session_id = ? ORDER BY rowid DESC LIMIT ?",
                 (session_id, limit),
             )
@@ -30620,7 +30720,7 @@ class Store:
     async def active_overlays_forensic(self, session_id: str) -> list[Overlay]:
         """Return historical active projections without granting runtime authority."""
 
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT json FROM overlays WHERE session_id = ? "
             "AND applied_at IS NOT NULL AND reverted_at IS NULL "
             "AND EXISTS (SELECT 1 FROM overlay_operations AS a "
@@ -30811,7 +30911,7 @@ class Store:
             cursor_time = _overlay_timestamp(after_expires_at)
             parameters.extend((cursor_time, cursor_time, after_id))
         parameters.append(limit)
-        cursor = await self.db.execute(
+        cursor = await self._committed_execute(
             "SELECT o.id, o.session_id, o.expires_at FROM overlays AS o "
             "JOIN overlay_operations AS a ON a.overlay_id = o.id "
             "AND a.kind = 'apply' AND a.state = 'delivered' "
