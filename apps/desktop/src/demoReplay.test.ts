@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   isLiveWorkerSession,
   isReplaySession,
+  parseReplayGoalSource,
   parseReplaySessionId,
   parseTrajectoriesResponse,
 } from "./demoReplay.ts";
@@ -83,6 +84,24 @@ test("a replay result must return a labeled session id", () => {
     { replay: true, not_live_control: true, session_id: 7 },
   ]) {
     assert.equal(parseReplaySessionId(payload), null);
+  }
+});
+
+test("goal_source: attached is the only attach signal the UI trusts", () => {
+  assert.equal(
+    parseReplayGoalSource({
+      replay: true, not_live_control: true,
+      session_id: "synthetic:replay-x", goal_source: "attached",
+    }),
+    "attached",
+  );
+  for (const payload of [
+    null, {},
+    { replay: true, not_live_control: true, session_id: "x", goal_source: "fixture" },
+    { replay: true, not_live_control: true, session_id: "x", goal_source: "ATTACHED" },
+    { replay: true, not_live_control: true, session_id: "x" },
+  ]) {
+    assert.equal(parseReplayGoalSource(payload), null);
   }
 });
 

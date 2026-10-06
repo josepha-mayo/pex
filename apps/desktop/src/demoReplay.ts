@@ -63,6 +63,12 @@ export function parseReplaySessionId(payload: unknown): string | null {
   return typeof sessionId === "string" && sessionId.trim() ? sessionId.trim() : null;
 }
 
+/** "attached" means the run borrowed an existing goal's ledger; else minted. */
+export function parseReplayGoalSource(payload: unknown): "attached" | null {
+  if (!isRecord(payload)) return null;
+  return payload.goal_source === "attached" ? "attached" : null;
+}
+
 export function isReplaySession(session: SessionRow | null | undefined): boolean {
   return session?.metadata?.replay === true && session?.metadata?.not_live_control === true;
 }

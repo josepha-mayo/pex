@@ -39,6 +39,7 @@ import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } 
 import {
   isLiveWorkerSession,
   isReplaySession,
+  parseReplayGoalSource,
   parseReplaySessionId,
   parseTrajectoriesResponse,
   type DemoFixture,
@@ -1745,6 +1746,11 @@ export function App() {
         return;
       }
       setDemoReplay({ running: false, fixture: fixtureId, error: null });
+      if (parseReplayGoalSource(payload) === "attached") {
+        setNote(
+          "Replay attached to the selected goal — its recorded rulings and ledger govern this run.",
+        );
+      }
       await refreshPet();
       openInspector(sessionId);
     } catch (error) {
