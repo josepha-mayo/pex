@@ -184,7 +184,14 @@ the desktop together, then the Recorded-replay card in the app walks
 **Challenge the supervisor** panel goes further: paste a fixture JSON of your
 own — goal, optional workspace files, and a recorded event stream — and it
 runs through the same strict loader and real pipeline under the same replay
-labels. Try to make PEX accept a tampered test or a premature claim.
+labels. Try to make PEX accept a tampered test or a premature claim — or
+start from one of four runnable attack presets and mutate it. Every run
+renders an **Observed supervision arc** card: the intervention chain, the
+adjudicated completion status, and the constraint a contradiction nudge
+cited (on a goal-attached run, that citation is the journaled human
+ruling itself).
+
+![The post-replay verdict card showing the observed arc and cited constraint](docs/demo/assets/pex-replay-verdict-card.png)
 
 ![PEX Inspector on the replayed tamper catch](docs/demo/assets/pex-claim-verification-f3347dd.png)
 
