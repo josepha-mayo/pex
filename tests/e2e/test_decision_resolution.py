@@ -601,6 +601,17 @@ async def test_general_escalation_resolution_is_recorded_replay_safe_and_restore
     assert declared["met"] is True
     assert declared["failures"] == []
     assert "ASK_HUMAN" in declared["expectation"]["interventions_any"]
+    # The worker's own claim travels with its adjudication — the run shows
+    # what narration-only supervision would have accepted.
+    narration = body.get("narration_check")
+    if narration is not None:
+        assert isinstance(narration["claim"], str) and narration["claim"]
+        assert narration["status"] in {
+            "supported",
+            "contradicted",
+            "acceptance_gap",
+            "uncertain",
+        }
     escalation = next(
         item for item in body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
     )

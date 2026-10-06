@@ -6931,13 +6931,43 @@ def create_app() -> FastAPI:
                 }
             except (LookupError, ProjectIdentityBlockedError):
                 completion = None
+        report: dict[str, Any] | None = None
+        if session.goal_id:
+            try:
+                report = await _verification_report_payload(session.goal_id)
+            except (LookupError, ProjectIdentityBlockedError):
+                report = None
+        # The pitch in one line: the worker's own claim vs what independent
+        # verification found. A narration-only supervisor accepts the claim;
+        # PEX adjudicates it against the workspace.
+        narration_check: dict[str, Any] | None = None
+        if report:
+            severity = {
+                "contradicted": 0,
+                "acceptance_gap": 1,
+                "uncertain": 2,
+                "supported": 3,
+            }
+            worst: tuple[int, str, str] | None = None
+            for claim in report.get("claims") or []:
+                statements = claim.get("claim_statements") or []
+                if not statements:
+                    continue
+                status = str(claim.get("verification_status") or "")
+                rank = severity.get(status, 4)
+                if worst is None or rank < worst[0]:
+                    worst = (rank, str(statements[0]), status)
+            if worst is not None:
+                narration_check = {"claim": worst[1], "status": worst[2]}
         declared: dict[str, Any] | None = None
         expected = parse_declared_expectation(data)
         if expected is not None and session.goal_id:
             try:
                 # Score the run against the arc the fixture declares — the
                 # same contract scripts/eval_replays.py enforces suite-wide.
-                report = await _verification_report_payload(session.goal_id)
+                if report is None:
+                    raise LookupError("verification report unavailable")
+                report_claims = report.get("claims") or []
                 report_claims = report.get("claims") or []
                 report_evidence: set[str] = set()
                 for claim in report_claims:
@@ -6985,6 +7015,7 @@ def create_app() -> FastAPI:
             "interventions": interventions,
             "completion": completion,
             "declared": declared,
+            "narration_check": narration_check,
         }
 
     @app.get("/v1/adapters")

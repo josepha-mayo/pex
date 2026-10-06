@@ -3320,6 +3320,20 @@ export function App() {
                         cites “{demoReplay.verdict.citedConstraint}”
                       </p>
                     ) : null}
+                    {demoReplay.verdict.narrationCheck ? (
+                      <p
+                        className={
+                          demoReplay.verdict.narrationCheck.status === "supported"
+                            ? "replay-verdict-determinism"
+                            : "replay-verdict-determinism replay-verdict-diverged"
+                        }
+                      >
+                        Narration check: “{demoReplay.verdict.narrationCheck.claim}” →{" "}
+                        {demoReplay.verdict.narrationCheck.status === "supported"
+                          ? "verified against the workspace"
+                          : `${demoReplay.verdict.narrationCheck.status} — narration-only supervision would have accepted it`}
+                      </p>
+                    ) : null}
                     {demoReplay.verdict.declared ? (
                       <p
                         className={

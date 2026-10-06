@@ -187,11 +187,14 @@ runs through the same strict loader and real pipeline under the same replay
 labels. Try to make PEX accept a tampered test or a premature claim — or
 start from one of four runnable attack presets and mutate it. Every run
 renders an **Observed supervision arc** card: the intervention chain, the
-adjudicated completion status, and the constraint a contradiction nudge
+adjudicated completion status, the constraint a contradiction nudge
 cited (on a goal-attached run, that citation is the journaled human
-ruling itself).
+ruling itself), the fixture's declared arc scored by the bridge, and the
+**narration check** — the worker's own claim quoted verbatim next to what
+independent verification made of it. A narration-only supervisor would
+have accepted the claim; PEX adjudicates it.
 
-![The post-replay verdict card showing the observed arc and cited constraint](docs/demo/assets/pex-replay-verdict-card.png)
+![The post-replay verdict card: observed arc, narration check, declared-arc score, adjudicated completion](docs/demo/assets/pex-replay-verdict-card.png)
 
 ![PEX Inspector on the replayed tamper catch](docs/demo/assets/pex-claim-verification-f3347dd.png)
 

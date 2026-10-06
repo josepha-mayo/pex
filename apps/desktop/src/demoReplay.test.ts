@@ -241,6 +241,26 @@ test("the verdict parses the declared-arc scoring honestly", () => {
   }
 });
 
+test("the verdict parses the worker-claim-vs-adjudication contrast", () => {
+  const verdict = parseReplayVerdict({
+    replay: true,
+    not_live_control: true,
+    session_id: "s",
+    narration_check: { claim: "All acceptance checks pass", status: "contradicted" },
+  });
+  assert.deepEqual(verdict?.narrationCheck, {
+    claim: "All acceptance checks pass",
+    status: "contradicted",
+  });
+  // Missing or malformed narration checks simply omit the line.
+  for (const narration_check of [undefined, null, {}, { claim: "" }, { claim: 1, status: 2 }]) {
+    const parsed = parseReplayVerdict({
+      replay: true, not_live_control: true, session_id: "s", narration_check,
+    });
+    assert.equal(parsed?.narrationCheck, undefined);
+  }
+});
+
 test("replay rail label names the source fixture or the custom trajectory", () => {
   const base: SessionRow = {
     id: "synthetic:replay-ruling_continuity_eval-c720e688",

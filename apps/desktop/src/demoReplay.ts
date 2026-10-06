@@ -97,6 +97,12 @@ export type ReplayVerdict = {
     failures: string[];
     summary?: string;
   };
+  // The worker's own strongest claim and what independent verification made
+  // of it — a narration-only supervisor would have accepted the claim as-is.
+  narrationCheck?: {
+    claim: string;
+    status: string;
+  };
 };
 
 // Two arcs count as identical when the intervention chain, the cited
@@ -161,6 +167,15 @@ export function parseReplayVerdict(payload: unknown): ReplayVerdict | null {
       declared.summary = expectation.summary.trim().slice(0, 240);
     }
     verdict.declared = declared;
+  }
+  if (isRecord(payload.narration_check)) {
+    const { claim, status } = payload.narration_check;
+    if (typeof claim === "string" && claim.trim() && typeof status === "string" && status.trim()) {
+      verdict.narrationCheck = {
+        claim: claim.trim().slice(0, 240),
+        status: status.trim().slice(0, 64),
+      };
+    }
   }
   return verdict;
 }
