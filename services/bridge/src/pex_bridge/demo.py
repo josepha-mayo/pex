@@ -206,6 +206,21 @@ def load_fixture(fixture_id: str) -> dict:
         raise ValueError("demo fixture exceeds the 1 MiB safety bound")
     with path.open("rb") as handle:
         raw = handle.read(MAX_DEMO_FIXTURE_BYTES + 1)
+    return _parse_fixture_bytes(raw)
+
+
+def parse_inline_fixture(data: dict) -> dict:
+    """Validate a judge-supplied fixture body through the exact same gate a
+    fixture file passes: the body is re-serialized to bytes and run through
+    the strict parser (unique keys, finite numbers, shape + bounds)."""
+    try:
+        raw = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    except (TypeError, ValueError, RecursionError) as exc:
+        raise ValueError("demo fixture must be JSON-serializable") from exc
+    return _parse_fixture_bytes(raw)
+
+
+def _parse_fixture_bytes(raw: bytes) -> dict:
     if len(raw) > MAX_DEMO_FIXTURE_BYTES:
         raise ValueError("demo fixture exceeds the 1 MiB safety bound")
     try:

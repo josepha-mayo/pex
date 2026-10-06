@@ -43,6 +43,7 @@ import {
   parseTrajectoriesResponse,
   type DemoFixture,
 } from "./demoReplay";
+import { CHALLENGE_TEMPLATE, parseChallengeFixture } from "./demoChallenge";
 import {
   parseVerificationReport,
   type VerificationReportView,
@@ -466,6 +467,7 @@ export function App() {
     fixture: string | null;
     error: string | null;
   }>({ running: false, fixture: null, error: null });
+  const [challengeText, setChallengeText] = useState("");
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
@@ -1715,14 +1717,16 @@ export function App() {
     return () => controller.abort();
   }, [demoReplayAvailable, bridgeError]);
 
-  async function runDemoReplay(fixtureId: string) {
+  async function runDemoReplay(fixtureId: string, inline?: Record<string, unknown>) {
     if (demoReplay.running) return;
     setDemoReplay({ running: true, fixture: fixtureId, error: null });
     try {
       const payload = await bridgeJson<unknown>("/v1/demo/replay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fixture: fixtureId }),
+        body: JSON.stringify(
+          inline !== undefined ? { inline } : { fixture: fixtureId },
+        ),
       });
       const sessionId = parseReplaySessionId(payload);
       if (!sessionId) {
@@ -1741,6 +1745,15 @@ export function App() {
         error: `Replay could not run: ${operationError(error, "bridge rejected the request")}`,
       });
     }
+  }
+
+  function runChallenge() {
+    const parsed = parseChallengeFixture(challengeText);
+    if (!parsed.ok) {
+      setDemoReplay({ running: false, fixture: "inline", error: parsed.error });
+      return;
+    }
+    void runDemoReplay("inline", parsed.fixture);
   }
 
   async function openSession(session?: SessionRow) {
@@ -3048,6 +3061,43 @@ export function App() {
                     </button>
                   ))}
                 </div>
+                <details className="demo-challenge">
+                  <summary>
+                    <span>Challenge the supervisor</span>
+                    <span>your own trajectory</span>
+                  </summary>
+                  <p>
+                    Paste a fixture JSON — goal, optional workspace files, and a recorded event
+                    stream — and it runs through the real pipeline under the same labels.
+                    Try to make PEX accept a tampered test or a premature claim.
+                  </p>
+                  <textarea
+                    className="challenge-input"
+                    spellCheck={false}
+                    placeholder={CHALLENGE_TEMPLATE}
+                    value={challengeText}
+                    onChange={(event) => setChallengeText(event.target.value)}
+                  />
+                  <div className="button-row">
+                    <button
+                      type="button"
+                      className="linklike"
+                      onClick={() => setChallengeText(CHALLENGE_TEMPLATE)}
+                    >
+                      Load the schema template
+                    </button>
+                    <button
+                      type="button"
+                      className="solid"
+                      disabled={demoReplay.running}
+                      onClick={runChallenge}
+                    >
+                      {demoReplay.running && demoReplay.fixture === "inline"
+                        ? "Replaying…"
+                        : "Run my trajectory"}
+                    </button>
+                  </div>
+                </details>
                 {demoReplay.error ? (
                   <p className="demo-replay-error" role="status">{demoReplay.error}</p>
                 ) : null}

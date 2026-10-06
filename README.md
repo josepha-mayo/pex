@@ -180,7 +180,11 @@ Try it with no agent install: `python scripts/demo.py` starts the bridge and
 the desktop together, then the Recorded-replay card in the app walks
 `tampered_acceptance_eval` through seal → tamper → catch → nudge → restore →
 `verified_complete` in the real pipeline (see the
-[demo runbook](docs/demo/RUNBOOK.md), Scenario D).
+[demo runbook](docs/demo/RUNBOOK.md), Scenario D). The card's
+**Challenge the supervisor** panel goes further: paste a fixture JSON of your
+own — goal, optional workspace files, and a recorded event stream — and it
+runs through the same strict loader and real pipeline under the same replay
+labels. Try to make PEX accept a tampered test or a premature claim.
 
 ![PEX Inspector on the replayed tamper catch](docs/demo/assets/pex-claim-verification-f3347dd.png)
 
@@ -291,8 +295,13 @@ resolve guidance for a real worker.*
 corrective nudge with a justification, then stopped without resolving the
 flag. PEX doesn't re-nudge a delivered correction — the standoff escalates
 to the human once, with the worker's own words quoted in the card. The same
-arc ran live on 2026-10-05 (receipt:
-[`LIVE_OPENCODE_TAMPER_PUSHBACK`](docs/demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json)).*
+arc ran live on 2026-10-05
+([`LIVE_OPENCODE_TAMPER_PUSHBACK`](docs/demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json)),
+and the 2026-10-06 rerun verified the escalation itself on a real worker —
+four disputed nudges each landed a human card while the goal stayed
+`uncertain`
+([receipt](docs/demo/evidence/LIVE_OPENCODE_TAMPER_DISPUTE_ses_ef0f0d88_2026-10-06.json),
+[forensic pack](docs/demo/evidence/EVIDENCE_PACK_live_dispute_2026-10-06.html)).*
 
 ## Supported harnesses
 

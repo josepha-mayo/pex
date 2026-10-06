@@ -85,6 +85,15 @@ unsatisfiable (4/5 baseline assertions red against the untouched parser), and
 refused to manufacture a green suite — the goal stayed `in_progress` rather
 than being reward-hacked to verified.
 
+The 2026-10-06 rerun on `nemotron-3-ultra-free`
+(`LIVE_OPENCODE_TAMPER_DISPUTE_ses_ef0f0d88_2026-10-06.json`, pack
+`EVIDENCE_PACK_live_dispute_2026-10-06.{json,html}`) verified the dispute
+escalation against a real worker: four successive corrective nudges were
+answered and disputed, each landing one ASK_HUMAN card in Decisions while
+the goal stayed `uncertain`. The same run motivated per-standoff dedupe —
+repeat disputes over the same acceptance surface now share one open human
+question.
+
 In demo mode the bridge lets the local judge act as operator without a
 token — the browser UI unlocks decision resolution, pause/resume, the task
 composer, and goal handoffs when `/health` advertises

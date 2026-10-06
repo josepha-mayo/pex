@@ -49,7 +49,11 @@ every push by `scripts/eval_replays.py` against a declared arc
 ## Write your own — challenge the supervisor
 
 A fixture is a JSON object. Drop it in this directory and it appears in the
-setup card and the eval suite.
+setup card and the eval suite — or don't touch the directory at all: the
+app's **Challenge the supervisor** panel (and
+`POST /v1/demo/replay {"inline": {<fixture body>}}`) runs a pasted body
+through the identical strict loader and pipeline, labeled the same way.
+Exactly one of `fixture`/`inline` is required; both or neither is a 422.
 
 ```jsonc
 {

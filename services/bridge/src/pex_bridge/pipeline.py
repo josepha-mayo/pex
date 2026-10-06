@@ -4713,11 +4713,33 @@ class Pipeline:
             harness_type=session.harness_type,
         )
         tag = f"nudge_dispute:{nudge.id}"
-        return any(
-            item.action_taken == InterventionType.ASK_HUMAN.value
-            and any(tag == str(entry) for entry in (item.evidence or []))
-            for item in prior
-        )
+        dispute_surfaces = {
+            str(entry).split(":", 1)[-1]
+            for entry in (nudge.evidence or [])
+            if str(entry).startswith("acceptance_surface_")
+        }
+        for item in prior:
+            if item.action_taken != InterventionType.ASK_HUMAN.value:
+                continue
+            entries = [str(entry) for entry in (item.evidence or [])]
+            if tag in entries:
+                return True
+            # A resolved escalation leaves the standoff answered — a later
+            # genuinely-new dispute may surface a fresh question.
+            if item.outcome or item.helped is not None:
+                continue
+            if not any(entry.startswith("nudge_dispute:") for entry in entries):
+                continue
+            # An open dispute card covering the same surface is already with
+            # the human: the standoff is one question, not one card per nudge.
+            open_surfaces = {
+                entry.split(":", 1)[-1]
+                for entry in entries
+                if entry.startswith("acceptance_surface_")
+            }
+            if not dispute_surfaces or open_surfaces & dispute_surfaces:
+                return True
+        return False
 
     @staticmethod
     def _event_matches_worker_delivery(
@@ -4963,11 +4985,22 @@ class Pipeline:
             return False
         observed_ids.append(event.event_id)
         prior.metadata["outcome_event_ids"] = observed_ids[-20:]
-        if event.message_delta:
-            prior.worker_response = event.message_delta[:4000]
-        elif event.file_paths:
+        # Adapters pad frames with non-content text — an event-kind fallback
+        # ("message.updated") or a bare role label ("assistant"). Those are
+        # markers, not the worker's reply, and must never overwrite real
+        # response text recorded from an earlier delta in the same turn.
+        metadata = event.metadata or {}
+        delta = event.message_delta
+        is_marker = bool(delta) and (
+            metadata.get("transport_text_fallback") is True
+            or delta == metadata.get("sse_type")
+            or delta.strip().lower() in {"assistant", "user", "system", "tool"}
+        )
+        if delta and not is_marker:
+            prior.worker_response = delta[:4000]
+        elif event.file_paths and not prior.worker_response:
             prior.worker_response = "edited " + ", ".join(event.file_paths[:8])
-        elif event.command:
+        elif event.command and not prior.worker_response:
             prior.worker_response = f"ran {event.command[:500]}"
         return True
 

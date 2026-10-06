@@ -904,6 +904,50 @@ p {
   text-align: left;
 }
 
+.demo-challenge {
+  margin-top: 12px;
+  border-top: 1px dashed var(--line);
+  padding-top: 10px;
+}
+.demo-challenge summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.demo-challenge summary span:last-child {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.demo-challenge > p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 10px 0;
+}
+.challenge-input {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel, transparent);
+  color: var(--paper);
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.challenge-input::placeholder {
+  color: var(--faint);
+  opacity: 0.55;
+}
+
 .verification-summary {
   margin: 8px 0 0;
   color: var(--muted);

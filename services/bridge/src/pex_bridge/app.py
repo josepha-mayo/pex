@@ -2994,7 +2994,14 @@ class AskIn(_StrictRequestModel):
 
 
 class DemoReplayIn(_StrictRequestModel):
-    fixture: BoundedId
+    fixture: BoundedId | None = None
+    inline: dict | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one_source(self):
+        if (self.fixture is None) == (self.inline is None):
+            raise ValueError("provide exactly one of fixture or inline")
+        return self
 
 
 class DemoEventIn(_StrictRequestModel):
@@ -6716,12 +6723,16 @@ def create_app() -> FastAPI:
         from pex_bridge.demo import (
             load_fixture,
             materialize_workspace,
+            parse_inline_fixture,
             remove_workspace_files,
         )
 
-        fixture_id = body.fixture
+        fixture_id = body.fixture or "inline"
         try:
-            data = load_fixture(fixture_id)
+            if body.inline is not None:
+                data = parse_inline_fixture(body.inline)
+            else:
+                data = load_fixture(fixture_id)
         except FileNotFoundError as exc:
             raise HTTPException(404, "unknown fixture") from exc
         except ValueError as exc:

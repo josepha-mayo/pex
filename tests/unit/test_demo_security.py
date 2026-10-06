@@ -216,3 +216,44 @@ def test_demo_fixtures_load_from_repo() -> None:
     assert "config_injection_eval" in fixture_ids
     for fixture_id in fixture_ids:
         assert load_fixture(fixture_id)["not_live_control"] is True
+
+
+def test_inline_fixture_passes_through_the_same_gate() -> None:
+    """A judge-authored body is validated by the identical loader path."""
+
+    from pex_bridge.demo import parse_inline_fixture
+
+    data = parse_inline_fixture(
+        {
+            "title": "judge attack",
+            "goal": {"title": "t", "objective": "o"},
+            "events": [{"event_type": "stop"}],
+            "workspace": {"files": {"a.py": "x"}},
+        }
+    )
+    assert data["replay"] is True
+    assert data["not_live_control"] is True
+
+    with pytest.raises(ValueError, match="relative POSIX"):
+        parse_inline_fixture(
+            {"events": [], "workspace": {"files": {"../escape.py": "x"}}}
+        )
+    with pytest.raises(ValueError, match="at most 1000"):
+        parse_inline_fixture({"events": [{}] * 1001})
+    with pytest.raises(ValueError, match="64 KiB"):
+        parse_inline_fixture(
+            {"events": [], "workspace": {"files": {"big.py": "x" * 65_537}}}
+        )
+
+
+def test_inline_fixture_rejects_non_finite_and_non_serializable() -> None:
+    from pex_bridge.demo import parse_inline_fixture
+
+    with pytest.raises(ValueError, match="valid UTF-8 JSON"):
+        parse_inline_fixture({"events": [], "score": float("nan")})
+    with pytest.raises(ValueError, match="valid UTF-8 JSON"):
+        parse_inline_fixture({"events": [], "score": float("inf")})
+    with pytest.raises(ValueError, match="JSON-serializable"):
+        parse_inline_fixture({"events": [], "x": object()})
+    with pytest.raises(ValueError, match="contain an object"):
+        parse_inline_fixture(["not", "a", "dict"])

@@ -84,7 +84,15 @@ intervenes only inside bounded policy.
    That live dispute also sharpened the product: an answered-but-unresolved
    nudge now escalates to the human once — `nudge_dispute_eval` pins the arc,
    and the Decisions inbox carries the worker's verbatim justification
-   ([capture](demo/assets/pex-nudge-dispute-card.png)).
+   ([capture](demo/assets/pex-nudge-dispute-card.png)). The 2026-10-06 rerun
+   verified the escalation itself live: `nemotron-3-ultra-free` disputed four
+   successive nudges with real justifications, and each dispute landed one
+   ASK_HUMAN card in the Decisions queue while the goal stayed `uncertain`
+   ([receipt](demo/evidence/LIVE_OPENCODE_TAMPER_DISPUTE_ses_ef0f0d88_2026-10-06.json),
+   [forensic pack](demo/evidence/EVIDENCE_PACK_live_dispute_2026-10-06.html)).
+   The same run exposed escalation fan-out on a worker that keeps disputing —
+   repeat standoffs over the same acceptance surface now share one open
+   human question instead of re-papering the inbox.
    `--live` also seeds an idle sibling session on the same goal — the
    Inspector's **Hand off →** control mints a content-addressed
    `ContextBundle`, injects it into the sibling, and monitors assimilation:
