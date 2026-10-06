@@ -897,6 +897,12 @@ p {
   font-style: italic;
   margin-top: -6px !important;
 }
+.replay-verdict-determinism {
+  color: var(--mint);
+  font-size: 11px;
+  margin-top: -4px !important;
+}
+.replay-verdict-determinism.replay-verdict-diverged { color: var(--amber); }
 .replay-verdict-completion { margin-bottom: 6px !important; }
 .replay-verdict-label {
   display: block;

@@ -44,6 +44,7 @@ import {
   parseReplayVerdict,
   parseTrajectoriesResponse,
   replayFixtureLabel,
+  replayVerdictsIdentical,
   type DemoFixture,
   type ReplayVerdict,
 } from "./demoReplay";
@@ -485,6 +486,7 @@ export function App() {
   }>({ running: false, fixture: null, error: null, verdict: null, history: [] });
   const [challengeText, setChallengeText] = useState("");
   const [attachReplayGoal, setAttachReplayGoal] = useState(false);
+  const [determinismCheck, setDeterminismCheck] = useState(false);
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
@@ -1739,14 +1741,15 @@ export function App() {
     setDemoReplay((previous) => ({
       ...previous, running: true, fixture: fixtureId, error: null, verdict: null,
     }));
+    const replayBody = JSON.stringify({
+      ...(inline !== undefined ? { inline } : { fixture: fixtureId }),
+      ...(attachReplayGoal && current?.goal_id ? { goal_id: current.goal_id } : {}),
+    });
     try {
       const payload = await bridgeJson<unknown>("/v1/demo/replay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...(inline !== undefined ? { inline } : { fixture: fixtureId }),
-          ...(attachReplayGoal && current?.goal_id ? { goal_id: current.goal_id } : {}),
-        }),
+        body: replayBody,
       });
       const sessionId = parseReplaySessionId(payload);
       if (!sessionId) {
@@ -1759,6 +1762,18 @@ export function App() {
         return;
       }
       const verdict = parseReplayVerdict(payload);
+      if (verdict && determinismCheck) {
+        // Same trajectory, second independent run: the arc must match the
+        // first exactly for the determinism claim to hold.
+        const second = await bridgeJson<unknown>("/v1/demo/replay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: replayBody,
+        });
+        verdict.determinism = replayVerdictsIdentical(verdict, parseReplayVerdict(second))
+          ? "identical"
+          : "diverged";
+      }
       setDemoReplay((previous) => ({
         running: false, fixture: fixtureId,
         error: null, verdict,
@@ -3156,6 +3171,17 @@ export function App() {
                     </button>
                   ))}
                 </div>
+                <label className="replay-attach">
+                  <input
+                    type="checkbox"
+                    checked={determinismCheck}
+                    onChange={(event) => setDeterminismCheck(event.target.checked)}
+                  />
+                  <span>
+                    Run each replay twice — identical arcs prove the supervision is
+                    deterministic, not a lucky path.
+                  </span>
+                </label>
                 {current?.goal_id ? (
                   <label className="replay-attach">
                     <input
@@ -3230,6 +3256,20 @@ export function App() {
                     {demoReplay.verdict.citedConstraint ? (
                       <p className="replay-verdict-cite">
                         cites “{demoReplay.verdict.citedConstraint}”
+                      </p>
+                    ) : null}
+                    {demoReplay.verdict.determinism ? (
+                      <p
+                        className={
+                          demoReplay.verdict.determinism === "identical"
+                            ? "replay-verdict-determinism"
+                            : "replay-verdict-determinism replay-verdict-diverged"
+                        }
+                      >
+                        Determinism: 2 independent runs ·{" "}
+                        {demoReplay.verdict.determinism === "identical"
+                          ? "identical arc"
+                          : "arcs diverged"}
                       </p>
                     ) : null}
                     {demoReplay.verdict.status ? (

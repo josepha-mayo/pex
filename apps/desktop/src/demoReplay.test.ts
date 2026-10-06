@@ -11,6 +11,7 @@ import {
   parseTrajectoriesResponse,
   replayArcCopy,
   replayFixtureLabel,
+  replayVerdictsIdentical,
 } from "./demoReplay.ts";
 import type { SessionRow } from "./types.ts";
 
@@ -231,6 +232,16 @@ test("a reopened replay restates its arc, citation, and verdict from interventio
     replayArcCopy({ ...session, metadata: { replay: true, not_live_control: false } }, []),
     "",
   );
+});
+
+test("two arcs count identical only on full agreement", () => {
+  const base = { actions: ["SEND_NUDGE", "SUPPRESSED_COOLDOWN"], citedConstraint: "x", status: "uncertain" };
+  assert.equal(replayVerdictsIdentical(base, { ...base }), true);
+  assert.equal(replayVerdictsIdentical(base, { ...base, actions: ["SEND_NUDGE"] }), false);
+  assert.equal(replayVerdictsIdentical(base, { ...base, status: "verified_complete" }), false);
+  assert.equal(replayVerdictsIdentical(base, { ...base, citedConstraint: "y" }), false);
+  assert.equal(replayVerdictsIdentical(base, null), false);
+  assert.equal(replayVerdictsIdentical(base, { actions: ["SEND_NUDGE", "SUPPRESSED_COOLDOWN"], status: "uncertain" }), false);
 });
 
 test("live worker label requires a real harness with a Deep or Strong transport", () => {

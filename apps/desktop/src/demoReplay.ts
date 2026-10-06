@@ -86,7 +86,22 @@ export type ReplayVerdict = {
   // was not adjudicated, never that it passed.
   status?: string;
   reason?: string;
+  // Set when the same trajectory was run twice back-to-back: whether the
+  // observed arcs were identical — the determinism claim, checked live.
+  determinism?: "identical" | "diverged";
 };
+
+// Two arcs count as identical when the intervention chain, the cited
+// constraint, and the adjudicated completion all match — determinism is
+// claimed only on full agreement.
+export function replayVerdictsIdentical(a: ReplayVerdict | null, b: ReplayVerdict | null): boolean {
+  if (!a || !b) return false;
+  return (
+    JSON.stringify(a.actions) === JSON.stringify(b.actions) &&
+    (a.citedConstraint || "") === (b.citedConstraint || "") &&
+    (a.status || "") === (b.status || "")
+  );
+}
 
 // The replay response carries the observed supervision arc plus the goal's
 // completion projection so the post-run card can state the verdict without a
