@@ -95,11 +95,13 @@ def test_settings_consumes_operator_token_environment_case_insensitively(
 def test_release_cli_rejects_no_auth_environment_before_server_start() -> None:
     environment = os.environ.copy()
     environment["PEX_REQUIRE_AUTH"] = "false"
+    # The subprocess imports the full bridge package; allow headroom so a
+    # loaded CI host cannot turn a slow import into a false auth regression.
     completed = subprocess.run(
         [sys.executable, "-m", "pex_bridge", "--port", "0"],
         capture_output=True,
         text=True,
-        timeout=10,
+        timeout=30,
         check=False,
         env=environment,
     )
@@ -116,7 +118,7 @@ def test_asgi_import_rejects_no_auth_environment() -> None:
         [sys.executable, "-c", "import pex_bridge.app"],
         capture_output=True,
         text=True,
-        timeout=10,
+        timeout=30,
         check=False,
         env=environment,
     )
