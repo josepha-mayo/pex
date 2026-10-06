@@ -3142,6 +3142,12 @@ export function App() {
                     <span>
                       Attach replays to the selected goal — recorded rulings on its
                       ledger govern the run instead of a fresh goal being minted.
+                      {(attachedGoal?.ruling_count || 0) > 0 ? (
+                        <strong>
+                          {" "}⚑ {attachedGoal!.ruling_count} recorded ruling
+                          {attachedGoal!.ruling_count === 1 ? "" : "s"} govern this goal.
+                        </strong>
+                      ) : null}
                     </span>
                   </label>
                 ) : null}
