@@ -1976,6 +1976,13 @@ test("ledger decisions are partitioned without inventing personality", () => {
       metadata: { kind: "decision" },
     },
     {
+      id: "d4",
+      goal_id: "g",
+      statement: "Do not modify the sealed baseline test file",
+      status: "active",
+      metadata: { kind: "escalation_ruling", intervention_id: "int_1" },
+    },
+    {
       id: "d2",
       goal_id: "g",
       statement: "Do not rewrite the evaluator as a new service",
@@ -2001,6 +2008,12 @@ test("ledger decisions are partitioned without inventing personality", () => {
   assert.deepEqual(
     partitioned.unresolved.map((item) => item.statement),
     ["Which checkpoint format should survive?"],
+  );
+  // A journaled escalation ruling is its own ledger bucket — visible on the
+  // goal, but never re-adopted into the editor's managed "decisions" field.
+  assert.deepEqual(
+    partitioned.rulings.map((item) => item.statement),
+    ["Do not modify the sealed baseline test file"],
   );
 });
 

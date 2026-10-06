@@ -1178,6 +1178,7 @@ export function partitionLedgerDecisions(rows: LedgerDecision[]): {
   decisions: LedgerDecision[];
   rejected: LedgerDecision[];
   unresolved: LedgerDecision[];
+  rulings: LedgerDecision[];
 } {
   const live = rows.filter((item) => item.status !== "superseded");
   return {
@@ -1188,8 +1189,14 @@ export function partitionLedgerDecisions(rows: LedgerDecision[]): {
     unresolved: live.filter(
       (item) =>
         ledgerDecisionKind(item) === "unresolved_question" ||
-        (item.status === "uncertain" && ledgerDecisionKind(item) !== "rejected_approach"),
+        (item.status === "uncertain" &&
+          ledgerDecisionKind(item) !== "rejected_approach" &&
+          ledgerDecisionKind(item) !== "escalation_ruling"),
     ),
+    // Escalation rulings are journaled human answers, not managed-ledger
+    // decisions — they must render on the goal but must never be re-adopted
+    // into the editor's managed "Current decisions" field.
+    rulings: live.filter((item) => ledgerDecisionKind(item) === "escalation_ruling"),
   };
 }
 

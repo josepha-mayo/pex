@@ -551,6 +551,7 @@ export function Inspector({
               <Boundary label="Decisions" values={ledger.decisions.map((item) => item.statement)} />
               <Boundary label="Rejected approaches" values={ledger.rejected.map((item) => item.statement)} />
               <Boundary label="Unresolved questions" values={ledger.unresolved.map((item) => item.statement)} />
+              <Boundary label="Recorded rulings" values={ledger.rulings.map((item) => item.statement)} />
             </div>
             </details>
             {onEditGoal ? (
