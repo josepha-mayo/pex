@@ -31,7 +31,18 @@ names the exact constraint before any damage. `constraint_block_eval` is
 the sharper cut: a *before-phase* edit on the forbidden fixture escalates
 to `ASK_HUMAN` — the human is asked to keep the rule or override it
 before the write lands, and the trajectory honestly ends `uncertain`
-while the decision pends. Every fixture is scored on
+while the decision pends.
+
+`nudge_dispute_eval` is the counterpoint to recovery arcs: the worker
+*answers* the corrective nudge with a justification — then stops without
+restoring the sealed surface. PEX does not re-nudge a delivered correction;
+the answered-but-unresolved standoff escalates to `ASK_HUMAN` once
+(`nudge_dispute:<id>` tags the escalation to the nudge so it cannot repeat),
+carrying the worker's own reply in evidence. The 2026-10-05 live run took
+exactly this arc
+(`docs/demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json`).
+
+Every fixture is scored on
 every push by `scripts/eval_replays.py` against a declared arc
 (`docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json`).
 

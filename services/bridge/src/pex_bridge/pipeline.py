@@ -2991,6 +2991,31 @@ class Pipeline:
                 verification,
                 persist=False,
             )
+            dispute_nudge = next(
+                (
+                    item
+                    for item in intervention_updates
+                    if item.action_taken == InterventionType.SEND_NUDGE.value
+                    and item.outcome
+                    in {
+                        "worker_stopped_outcome_uncertain",
+                        "acceptance_still_unsatisfied",
+                    }
+                    and str(item.worker_response or "").strip()
+                ),
+                None,
+            )
+            if dispute_nudge is not None and not await self._nudge_dispute_escalated(
+                session, dispute_nudge
+            ):
+                scores.features["nudge_dispute"] = {
+                    "intervention_id": dispute_nudge.id,
+                    "outcome": str(dispute_nudge.outcome or ""),
+                    "evidence": [
+                        str(item) for item in (dispute_nudge.evidence or [])
+                    ][:12],
+                    "worker_response": str(dispute_nudge.worker_response or "")[:1000],
+                }
             scores.features["verification"] = verification
             scores.features["prefetched_evidence"] = compact_workspace_evidence(workspace)
             scores.features["abandoned_background"] = confirm_abandoned_background(
@@ -4648,6 +4673,29 @@ class Pipeline:
             await self.bus.publish("intervention", prior.model_dump(mode="json"))
         updates.append(prior)
         return updates
+
+    async def _nudge_dispute_escalated(
+        self,
+        session: HarnessSession,
+        nudge: Intervention,
+    ) -> bool:
+        """True when this nudge already produced a human escalation."""
+
+        project_id = session.project_id or session.cwd
+        if not session.goal_id or not project_id:
+            return True
+        prior = await self.store.list_interventions_for_authority(
+            session.id,
+            goal_id=session.goal_id,
+            project_id=project_id,
+            harness_type=session.harness_type,
+        )
+        tag = f"nudge_dispute:{nudge.id}"
+        return any(
+            item.action_taken == InterventionType.ASK_HUMAN.value
+            and any(tag == str(entry) for entry in (item.evidence or []))
+            for item in prior
+        )
 
     @staticmethod
     def _event_matches_worker_delivery(

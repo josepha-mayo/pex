@@ -1326,3 +1326,55 @@ def test_unknown_probe_kind_stays_noop():
     action = plan_deterministic(request)
     assert action.type == InterventionType.NOOP
     assert "unsupported_probe:invented_kind" in action.evidence
+
+
+def test_answered_but_unresolved_nudge_escalates_to_human():
+    request = SupervisorRequest(
+        session=_session(),
+        goal=_goal(),
+        event=_event(EventType.STOP),
+        scores=TrajectoryScores(
+            features={
+                "nudge_dispute": {
+                    "intervention_id": "intervention_abc",
+                    "outcome": "worker_stopped_outcome_uncertain",
+                    "evidence": ["acceptance_surface_modified:tests/test_core.py"],
+                    "worker_response": (
+                        "The baseline cannot pass against the shipped parser; "
+                        "I am keeping the weakened test."
+                    ),
+                },
+                "verification": {
+                    "status": "uncertain",
+                    "acceptance_surface": {"modified": ["tests/test_core.py"]},
+                },
+            }
+        ),
+    )
+    action = plan_deterministic(request)
+    assert action.type == InterventionType.ASK_HUMAN
+    assert action.authority_required == Authority.HUMAN
+    assert "nudge_dispute:intervention_abc" in action.evidence
+    assert any("acceptance_surface_modified" in item for item in action.evidence)
+    assert "worker" in action.payload["question"].lower()
+    assert "baseline cannot pass" in action.payload["worker_response"]
+
+
+def test_unanswered_stopped_nudge_does_not_escalate_via_planner():
+    # The pipeline only sets nudge_dispute when the worker actually answered;
+    # without the feature the STOP falls through to the normal nudge path.
+    request = SupervisorRequest(
+        session=_session(),
+        goal=_goal(),
+        event=_event(EventType.STOP),
+        scores=TrajectoryScores(
+            features={
+                "verification": {
+                    "status": "uncertain",
+                    "acceptance_surface": {"modified": ["tests/test_core.py"]},
+                }
+            }
+        ),
+    )
+    action = plan_deterministic(request)
+    assert action.type != InterventionType.ASK_HUMAN

@@ -98,7 +98,7 @@ Nemotron inference follows the same runbook's main path.
   acceptance-surface sealing and tamper detection, the replay demo, local
   subprocess public-test verification, 5,444 backend tests (latest full run on
   the `85af5ce` tree, 0 failures). `python scripts/eval_replays.py` scores the
-  shipped fixture suite against its declared supervision arcs — 11/11 on
+  shipped fixture suite against its declared supervision arcs — 12/12 on
   2026-10-05
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.json) —
   [readable form](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-05.html) with the

@@ -680,6 +680,43 @@ def plan_deterministic(request: SupervisorRequest) -> ProposedAction:
                 "Waiting for the sibling speculative probe to finish.",
                 ["speculative:waiting"],
             )
+        dispute = features.get("nudge_dispute")
+        if isinstance(dispute, dict) and dispute.get("intervention_id"):
+            nudge_id = str(dispute["intervention_id"])
+            worker_words = str(dispute.get("worker_response") or "").strip()
+            return ProposedAction(
+                type=InterventionType.ASK_HUMAN,
+                session_id=request.session.id,
+                goal_id=goal.id if goal else None,
+                payload={
+                    "question": (
+                        "The worker answered PEX's corrective nudge but did not "
+                        "resolve the flagged condition, then stopped. Keep the "
+                        "flagged requirement and direct the worker, or amend the "
+                        "goal to accept the worker's position?"
+                    ),
+                    "worker_response": worker_words[:1000],
+                },
+                rationale=(
+                    "A delivered corrective nudge remains unresolved after the "
+                    "worker's reply and stop; this dispute is a human decision, "
+                    "not another nudge."
+                ),
+                evidence=[
+                    f"nudge_dispute:{nudge_id}",
+                    f"outcome:{dispute.get('outcome') or 'unknown'}",
+                    *[
+                        str(item)
+                        for item in (dispute.get("evidence") or [])
+                        if str(item).strip()
+                    ][:8],
+                    *([f"worker_response:{worker_words[:300]}"] if worker_words else []),
+                ][:128],
+                confidence=0.8,
+                risk=RiskLevel.MEDIUM,
+                reversible=False,
+                authority_required=Authority.HUMAN,
+            )
         verification = features.get("verification") or {}
         correction = str(verification.get("correction") or "").strip()
         evidence = [str(item) for item in (verification.get("evidence") or []) if item]

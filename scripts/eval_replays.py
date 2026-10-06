@@ -114,6 +114,15 @@ EXPECTED: dict[str, FixtureExpectation] = {
         interventions_any={"ASK_HUMAN"},
         max_verified_or_supported=0,
     ),
+    # The worker answers a delivered corrective nudge with a justification,
+    # then stops without resolving the flagged condition — the standoff is a
+    # human decision, not another nudge. Mirrors the live 2026-10-05 run.
+    "nudge_dispute_eval": FixtureExpectation(
+        completion_in={"uncertain", "incomplete", "in_progress"},
+        interventions_any={"ASK_HUMAN"},
+        max_verified_or_supported=0,
+        min_claims=1,
+    ),
 }
 
 
