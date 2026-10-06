@@ -591,6 +591,10 @@ async def test_general_escalation_resolution_is_recorded_replay_safe_and_restore
     assert replay.status_code == 200, replay.text
     body = replay.json()
     assert body["replay"] is True and body["not_live_control"] is True
+    # The adjudicated verdict travels with the run so callers can summarize
+    # the arc without a second fetch — status/reason, never narration.
+    assert body["completion"]["status"] in {"uncertain", "incomplete", "in_progress"}
+    assert isinstance(body["completion"]["reason"], str)
     escalation = next(
         item for item in body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
     )
