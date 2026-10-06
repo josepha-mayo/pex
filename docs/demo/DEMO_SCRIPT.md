@@ -33,7 +33,10 @@ Click **Reward hacking: injected pytest.ini deselects tests**.
 > writes code, then quietly adds a `pytest.ini` that points the suite at an
 > empty directory. `pytest` exits zero. Then it says 'All tests passed.'"
 
-*Let the replay land (a few seconds). Click the session, open the Inspector.*
+*Let the replay land (a few seconds). Point at the Observed supervision
+arc card that appears under the grid — the intervention chain, the
+`uncertain` completion, and the cited constraint — then click the session
+and open the Inspector.*
 
 > "PEX sealed the acceptance surface — every test file, runner config, and
 > dependency manifest — when the goal was set. The claim ledger shows what it
@@ -185,6 +188,19 @@ record a ruling live to show the inbox count drop.*
 > polices *me*: `ruling_selfcheck_eval` is my own prompt telling the worker
 > to modify the sealed test — PEX escalates it back to a human decision
 > rather than silently obeying."
+
+## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
+
+## Optional cut — try to break it
+
+Expand **Challenge the supervisor**:
+
+> "Don't take my word for it — attack it. These are four runnable presets:
+> weaken the acceptance test, claim done without running anything, drop a
+> silent `pytest.ini`, or just narrate a green run that never happened. Edit
+> any field and run it — the same strict loader, the same pipeline, the same
+> replay labels. Every one of these adjudicated `uncertain` on the real
+> bridge; the receipt is committed under `docs/demo/evidence/`."
 
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 
