@@ -292,5 +292,13 @@ async def test_escalation_ruling_survives_goal_supersede(tmp_path):
         context = await store.list_context_for_authority("escalation-project", goal_id=successor.id)
         contents = {item.content for item in context}
         assert "Keep the requirement; the sealed test file stays the baseline." in contents
+
+        # The listing surfaces governed-by-rulings provenance: the predecessor
+        # owns the ruling directly and the successor inherits it — the
+        # unrelated operator_note decision does not count.
+        views = await store.list_goal_intent_views_page()
+        counts = {row["id"]: row["ruling_count"] for row in views}
+        assert counts.get(goal.id) == 1
+        assert counts.get(successor.id) == 1
     finally:
         await store.close()

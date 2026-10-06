@@ -441,11 +441,23 @@ export function Inspector({
                     : "Attach a goal to a live vendor session, not this desktop row"}
                 </option>
                 {canAttach
-                  ? goals.map((item) => (
-                      <option value={item.id} key={item.id}>
-                        {item.title}
-                      </option>
-                    ))
+                  ? [...goals]
+                      .sort((a, b) => (b.ruling_count || 0) - (a.ruling_count || 0))
+                      .map((item) => {
+                        const duplicateTitle =
+                          goals.filter((other) => other.title === item.title).length > 1;
+                        const ruled = (item.ruling_count || 0) > 0;
+                        return (
+                          <option value={item.id} key={item.id}>
+                            {ruled ? "⚑ " : ""}
+                            {item.title}
+                            {ruled ? ` · ruled ×${item.ruling_count}` : ""}
+                            {duplicateTitle
+                              ? ` · ${item.created_at ? String(item.created_at).slice(5, 16).replace("T", " ") : item.id.slice(-6)}`
+                              : ""}
+                          </option>
+                        );
+                      })
                   : null}
               </select>
             </label>

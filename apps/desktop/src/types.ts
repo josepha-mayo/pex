@@ -166,6 +166,10 @@ export type Goal = {
   supersedes?: string | null;
   intent_revision?: number;
   intent_hash?: string;
+  created_at?: string;
+  // Recorded human rulings governing this goal, counting rulings inherited
+  // through the supersedes lineage — set by the goals intent view.
+  ruling_count?: number;
 };
 
 export type GoalCompletion = {

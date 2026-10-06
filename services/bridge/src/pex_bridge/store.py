@@ -11736,6 +11736,30 @@ class Store:
                         quarantined_count,
                     )
                 views: list[dict[str, Any]] = []
+                lineage: dict[str, list[str]] = {}
+                related_ids: set[str] = set()
+                for goal_id in ids:
+                    ancestors = await _goal_superseded_ancestor_ids(transaction, goal_id)
+                    lineage[goal_id] = ancestors
+                    related_ids.add(goal_id)
+                    related_ids.update(ancestors)
+                direct_counts: dict[str, int] = {}
+                if related_ids:
+                    placeholders = ",".join("?" for _ in related_ids)
+                    ruling_cursor = await transaction.execute(
+                        "SELECT goal_id, COUNT(*) AS n FROM decisions "
+                        f"WHERE goal_id IN ({placeholders}) "
+                        "AND json_extract(json, '$.metadata.kind') = 'escalation_ruling' "
+                        "GROUP BY goal_id",
+                        tuple(sorted(related_ids)),
+                    )
+                    for row in await ruling_cursor.fetchall():
+                        direct_counts[str(row["goal_id"])] = int(row["n"] or 0)
+                ruling_counts = {
+                    goal_id: direct_counts.get(goal_id, 0)
+                    + sum(direct_counts.get(a, 0) for a in ancestors)
+                    for goal_id, ancestors in lineage.items()
+                }
                 for goal_id in ids:
                     goal, _ = await _load_bound_goal(
                         transaction,
@@ -11758,6 +11782,9 @@ class Store:
                             **goal.model_dump(mode="json"),
                             "intent_revision": revision,
                             "intent_hash": semantic_hash,
+                            # Recorded human rulings on this goal's ledger,
+                            # including rulings inherited through supersession.
+                            "ruling_count": ruling_counts.get(goal_id, 0),
                         }
                     )
                 await transaction.commit()
