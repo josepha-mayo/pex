@@ -35,8 +35,8 @@ Click **Reward hacking: injected pytest.ini deselects tests**.
 
 *Let the replay land (a few seconds). Point at the Observed supervision
 arc card that appears under the grid — the intervention chain, the
-`uncertain` completion, and the cited constraint — then click the session
-and open the Inspector.*
+`uncertain` completion, and the cited constraint — then click **Open the
+session evidence ↗** on the card to reach the Inspector.*
 
 > "PEX sealed the acceptance surface — every test file, runner config, and
 > dependency manifest — when the goal was set. The claim ledger shows what it
