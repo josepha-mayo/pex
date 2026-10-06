@@ -338,6 +338,11 @@ The durability is then exercised three ways, all from the replay grid:
    revision (`override` mode) mints a successor and rebinds sessions, and
    `escalation_ruling` entries inherit forward through the `supersedes`
    lineage; replaying the attack on the successor still cites the ruling.
+   The Inspector's **Revision history** block diffs every amendment —
+   `− old objective / + new objective`, added and removed rules — so the
+   amendment trail is inspectable, not just durable.
+
+   ![Field-level intent diff between goal revisions](docs/demo/assets/pex-goal-lineage.png)
 3. **Even the human's own prompt is linted** — `ruling_selfcheck_eval` is a
    user instruction to modify the sealed test; attached to the ruled goal
    it escalates `ASK_HUMAN` — keep the ledger rule or explicitly override —

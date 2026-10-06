@@ -37,6 +37,7 @@ import {
   fingerprintTokenBehavior,
   humanize,
   goalDeadlineCopy,
+  interventionThreadRef,
   isPendingHumanDecision,
   isPendingLifecycleDecision,
   isPendingPermissionDecision,
@@ -1330,6 +1331,7 @@ function InterventionsView({
             ? (humanResolution as Record<string, unknown>).ledger_decision_id
             : null;
         const showRuling = typeof ruling === "string" && ruling.trim();
+        const thread = interventionThreadRef(item, interventions);
         return (
           <article className="audit-row" key={item.id}>
             <div className="audit-time">
@@ -1339,6 +1341,11 @@ function InterventionsView({
             <div className="audit-copy">
               <p className="eyebrow">Observed condition</p>
               <h2>{item.diagnosis || humanize(item.trigger || "unspecified trigger")}</h2>
+              {thread ? (
+                <p className="audit-thread">
+                  ↩ in response to {humanize(thread.action_taken)} · {formatTime(thread.created_at)}
+                </p>
+              ) : null}
               {item.evidence?.length ? (
                 <details>
                   <summary>{item.evidence.length} evidence item{item.evidence.length === 1 ? "" : "s"}</summary>

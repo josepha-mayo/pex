@@ -3615,3 +3615,10 @@ html.pet-shell #root {
   opacity: 0.7;
   margin: 0.3rem 0;
 }
+
+.audit-thread {
+  font-size: 11px;
+  color: var(--accent, #8ab4ff);
+  margin: 0.15rem 0 0;
+  opacity: 0.85;
+}

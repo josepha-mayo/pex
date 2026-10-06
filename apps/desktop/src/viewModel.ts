@@ -1234,6 +1234,22 @@ const GOAL_LIST_FIELDS: Array<{ key: keyof Goal; label: string }> = [
   { key: "evidence_requirements", label: "Required evidence" },
 ];
 
+// When an intervention's evidence cites a prior intervention id (e.g.
+// `nudge_dispute:intervention_…`), resolve the record it answers so the
+// audit trail can render the thread instead of a flat list.
+export function interventionThreadRef(
+  item: Intervention,
+  all: Intervention[],
+): Intervention | null {
+  for (const entry of item.evidence ?? []) {
+    const hit = all.find(
+      (other) => other.id !== item.id && String(entry).includes(other.id),
+    );
+    if (hit) return hit;
+  }
+  return null;
+}
+
 // Ordered walk back through the supersedes chain: nearest predecessor first.
 // Cycles and missing rows stop the walk — the API keeps chains acyclic, but a
 // pruned or not-yet-fetched ancestor must not wedge the render.

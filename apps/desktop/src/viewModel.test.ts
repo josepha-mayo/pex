@@ -2546,3 +2546,21 @@ test("goal field diff reports per-field changes only", async () => {
   assert.equal(byField.Acceptance, undefined);
   assert.equal(goalFieldDiff(base, base).length, 0);
 });
+
+test("intervention thread refs resolve evidence-cited records", async () => {
+  const { interventionThreadRef } = await import("./viewModel.ts");
+  const nudge = { id: "intervention_nudge1", action_taken: "SEND_NUDGE", evidence: [] };
+  const escalation = {
+    id: "intervention_esc1",
+    action_taken: "ASK_HUMAN",
+    evidence: [`nudge_dispute:${nudge.id}`, "acceptance_surface_modified:tests/t.py"],
+  };
+  const unrelated = { id: "intervention_other", action_taken: "REQUEST_VERIFICATION", evidence: [] };
+  const all = [escalation, nudge, unrelated];
+  assert.equal(interventionThreadRef(escalation, all)?.id, nudge.id);
+  assert.equal(interventionThreadRef(nudge, all), null);
+  assert.equal(interventionThreadRef(unrelated, all), null);
+  // Never self-references.
+  const self = { id: "intervention_self", evidence: ["tag:intervention_self"] };
+  assert.equal(interventionThreadRef(self, [self]), null);
+});
