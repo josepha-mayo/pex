@@ -394,6 +394,54 @@ async def test_demo_replay_drift_overlay_refusal_seals_event(client):
 
 
 @pytest.mark.asyncio
+async def test_demo_replay_nudge_dispute_escalates_once(client):
+    """An answered-but-unresolved nudge escalates to the human, not re-nudge.
+
+    The worker justifies the tamper instead of restoring it and stops. PEX
+    must escalate that standoff to ASK_HUMAN once — the pending question
+    must survive in the decisions inbox even though the recorded session
+    has stopped (live stopped sessions keep their terminal status).
+    """
+
+    replay = await client.post(
+        "/v1/demo/replay", json={"fixture": "nudge_dispute_eval"}
+    )
+    assert replay.status_code == 200
+    body = replay.json()
+    assert body["replay"] is True and body["not_live_control"] is True
+
+    nudge = next(
+        item
+        for item in body["interventions"]
+        if item.get("action_taken") == "SEND_NUDGE"
+    )
+    assert nudge["result"] == "sent"
+    escalations = [
+        item
+        for item in body["interventions"]
+        if item.get("action_taken") == "ASK_HUMAN"
+    ]
+    assert len(escalations) == 1
+    escalation = escalations[0]
+    assert escalation["policy_verdict"] == "ask_human"
+    assert escalation["result"] == "escalated"
+    assert any(
+        entry == f"nudge_dispute:{nudge['id']}" for entry in escalation["evidence"]
+    )
+    assert "worker_response" in escalation["proposed_action"]["payload"]
+    assert "baseline" in escalation["proposed_action"]["payload"]["worker_response"]
+
+    replay_session = await state.store.get_session(body["session_id"])
+    assert replay_session.status.value == "needs_decision"
+    metrics = (await client.get("/v1/attention/metrics")).json()
+    assert metrics["current_pending"]["count"] >= 1
+    pending_ids = {
+        item["id"] for item in metrics["current_pending"]["items"]
+    }
+    assert escalation["id"] in pending_ids
+
+
+@pytest.mark.asyncio
 async def test_command_deck_degrades_one_failed_adapter_probe(client: AsyncClient, monkeypatch):
     class BrokenAdapter:
         name = "broken"

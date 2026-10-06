@@ -3440,3 +3440,15 @@ html.pet-shell #root {
     transition-duration: 0.01ms !important;
   }
 }
+
+.worker-reply {
+  margin: 0.35rem 0 0.5rem;
+  padding: 0.4rem 0.65rem;
+  border-left: 3px solid var(--accent, #6ea8fe);
+  background: color-mix(in srgb, var(--accent, #6ea8fe) 8%, transparent);
+  color: var(--muted, #9aa4b2);
+  font-style: italic;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  border-radius: 0 4px 4px 0;
+}

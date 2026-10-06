@@ -2991,6 +2991,12 @@ class Pipeline:
                 verification,
                 persist=False,
             )
+            open_surface = {
+                str(path)
+                for surface in [verification.get("acceptance_surface") or {}]
+                for key in ("modified", "deleted", "added_config", "unhashed")
+                for path in (surface.get(key) or [])
+            }
             dispute_nudge = next(
                 (
                     item
@@ -3002,6 +3008,11 @@ class Pipeline:
                         "acceptance_still_unsatisfied",
                     }
                     and str(item.worker_response or "").strip()
+                    and any(
+                        str(entry).split(":", 1)[-1] in open_surface
+                        for entry in (item.evidence or [])
+                        if str(entry).startswith("acceptance_surface_")
+                    )
                 ),
                 None,
             )
@@ -3464,15 +3475,26 @@ class Pipeline:
                 local_outcome = (
                     "escalated" if action.type == InterventionType.ASK_HUMAN else "awaiting_human"
                 )
-            if session.status != SessionStatus.STOPPED or action.type in {
-                InterventionType.START_AGENT,
-                InterventionType.STOP_AGENT,
-                InterventionType.FORK_PROBE,
-            }:
+            if (
+                session.status != SessionStatus.STOPPED
+                or action.type
+                in {
+                    InterventionType.START_AGENT,
+                    InterventionType.STOP_AGENT,
+                    InterventionType.FORK_PROBE,
+                }
+                # A recorded replay stops with its escalation still open —
+                # the pending question is the fixture's evidence, so the
+                # inbox must see it. A stopped live worker keeps its
+                # terminal status.
+                or (session.metadata or {}).get("replay")
+            ):
                 session.status = SessionStatus.NEEDS_DECISION
         elif action.type == InterventionType.ASK_HUMAN:
             local_outcome = "escalated"
-            if session.status != SessionStatus.STOPPED:
+            if session.status != SessionStatus.STOPPED or (session.metadata or {}).get(
+                "replay"
+            ):
                 session.status = SessionStatus.NEEDS_DECISION
         elif action.type == InterventionType.ANNOTATE:
             local_outcome = "annotated"

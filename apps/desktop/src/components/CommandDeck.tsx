@@ -830,6 +830,7 @@ function DecisionsView({
       {generalActions.map((item) => {
         const session = sessions.find((row) => row.id === item.session_id);
         const question = item.proposed_action?.payload?.question;
+        const workerReply = item.proposed_action?.payload?.worker_response;
         const headline = typeof question === "string" && question.trim()
           ? question.trim()
           : item.diagnosis || "PEX requested human authority";
@@ -843,6 +844,9 @@ function DecisionsView({
             <p className="eyebrow">Policy · {humanize(item.risk || "unknown risk")}</p>
             <h2>{headline}</h2>
             <p>{item.proposed_action?.rationale || item.result || "No additional rationale was recorded."}</p>
+            {typeof workerReply === "string" && workerReply.trim() ? (
+              <blockquote className="worker-reply">“{workerReply.trim()}”</blockquote>
+            ) : null}
             {evidence.length ? (
               <span className="verification-evidence">
                 {evidence.map((entry) => (

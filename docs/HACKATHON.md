@@ -81,6 +81,10 @@ intervenes only inside bounded policy.
    `in_progress` because the worker couldn't quietly reward-hack its way out
    ([receipt](demo/evidence/LIVE_OPENCODE_TAMPER_PUSHBACK_ses_ef18550c_2026-10-05.json),
    [326-event forensic pack](demo/evidence/EVIDENCE_PACK_live_tamper_2026-10-05.html)).
+   That live dispute also sharpened the product: an answered-but-unresolved
+   nudge now escalates to the human once — `nudge_dispute_eval` pins the arc,
+   and the Decisions inbox carries the worker's verbatim justification
+   ([capture](demo/assets/pex-nudge-dispute-card.png)).
    `--live` also seeds an idle sibling session on the same goal — the
    Inspector's **Hand off →** control mints a content-addressed
    `ContextBundle`, injects it into the sibling, and monitors assimilation:
