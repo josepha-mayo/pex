@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   isLiveWorkerSession,
   isReplaySession,
+  replayGoalSourceCopy,
   parseReplayGoalSource,
   parseReplaySessionId,
   parseTrajectoriesResponse,
@@ -132,6 +133,27 @@ test("replay sessions stay honestly labeled and only when both markers hold", ()
   }
   assert.equal(isReplaySession(null), false);
   assert.equal(isReplaySession(undefined), false);
+});
+
+test("replay goal-source copy surfaces attached provenance only", () => {
+  const base: SessionRow = {
+    id: "synthetic:replay-x-1",
+    harness_type: "synthetic",
+    status: "idle",
+    metadata: { replay: true, not_live_control: true },
+  };
+  assert.equal(replayGoalSourceCopy(base), "");
+  const attached = {
+    ...base,
+    metadata: { ...base.metadata, replay_goal_source: "attached" },
+  };
+  assert.match(replayGoalSourceCopy(attached), /existing goal/);
+  const fixture = {
+    ...base,
+    metadata: { ...base.metadata, replay_goal_source: "fixture" },
+  };
+  assert.equal(replayGoalSourceCopy(fixture), "");
+  assert.equal(replayGoalSourceCopy({ ...base, metadata: {} }), "");
 });
 
 test("live worker label requires a real harness with a Deep or Strong transport", () => {

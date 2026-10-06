@@ -80,6 +80,16 @@ export function isReplaySession(session: SessionRow | null | undefined): boolean
   return session?.metadata?.replay === true && session?.metadata?.not_live_control === true;
 }
 
+// Provenance for a replay session's intent authority: attached replays run
+// under an existing goal's ledger (recorded rulings govern); fixture replays
+// mint their own goal.
+export function replayGoalSourceCopy(session: SessionRow | null | undefined): string {
+  if (!isReplaySession(session)) return "";
+  return session?.metadata?.replay_goal_source === "attached"
+    ? " · governed by an existing goal's ledger"
+    : "";
+}
+
 // A live worker is the honest counterpart to a replay: a real harness (not the
 // in-process synthetic adapter) whose transport was probed as Deep or Strong.
 // Basic/observe-only/unprobed sessions get no live label — PEX can see them

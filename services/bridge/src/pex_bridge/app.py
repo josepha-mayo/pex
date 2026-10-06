@@ -6838,6 +6838,7 @@ def create_app() -> FastAPI:
         )
         session.metadata["replay"] = True
         session.metadata["not_live_control"] = True
+        session.metadata["replay_goal_source"] = goal_source
         if attached_goal is not None:
             session.project_id = attached_goal.project_id
             session.goal_id = attached_goal.id
