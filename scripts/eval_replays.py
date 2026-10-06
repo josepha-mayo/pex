@@ -132,6 +132,11 @@ EXPECTED: dict[str, FixtureExpectation] = {
         interventions_any={"SEND_NUDGE"},
         max_verified_or_supported=0,
     ),
+    "ruling_selfcheck_eval": FixtureExpectation(
+        completion_in={"uncertain", "incomplete", "in_progress"},
+        interventions_any={"ASK_HUMAN"},
+        max_verified_or_supported=0,
+    ),
 }
 
 

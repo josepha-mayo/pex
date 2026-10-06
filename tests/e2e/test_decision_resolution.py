@@ -789,6 +789,50 @@ async def test_recorded_ruling_governs_after_an_override_mode_goal_edit(
 
 
 @pytest.mark.asyncio
+async def test_recorded_ruling_lints_the_humans_own_later_prompt(
+    client: AsyncClient,
+):
+    """Durable intent bounds the human too, not just the worker.
+
+    After a ruling is journaled, a user prompt that contradicts it on a
+    later attached trajectory escalates to the human for confirmation —
+    the constraint cited in the card is the recorded ruling itself.
+    """
+
+    replay = await client.post("/v1/demo/replay", json={"fixture": "nudge_dispute_eval"})
+    assert replay.status_code == 200, replay.text
+    body = replay.json()
+    escalation = next(
+        item for item in body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
+    )
+    session = await state.store.get_session(body["session_id"])
+    assert session is not None and session.goal_id is not None
+
+    resolved = await client.post(
+        f"/v1/decisions/{escalation['id']}/resolve",
+        json={"decision": "Do not modify the sealed baseline test file"},
+    )
+    assert resolved.status_code == 200, resolved.text
+
+    second = await client.post(
+        "/v1/demo/replay",
+        json={"fixture": "ruling_selfcheck_eval", "goal_id": session.goal_id},
+    )
+    assert second.status_code == 200, second.text
+    second_body = second.json()
+    assert second_body["goal_source"] == "attached"
+    ask_human = next(
+        item for item in second_body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
+    )
+    blob = json.dumps(ask_human)
+    assert "possible_contradiction" in blob
+    assert "Do not modify the sealed baseline test file" in blob
+    # The card asks the human to confirm or override — it does not pretend
+    # the prompt was blocked or silently rewritten.
+    assert "Did you mean to keep that ledger rule" in blob
+
+
+@pytest.mark.asyncio
 async def test_replay_attach_rejects_an_unknown_goal(client: AsyncClient):
     response = await client.post(
         "/v1/demo/replay",

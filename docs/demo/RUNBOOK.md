@@ -125,6 +125,15 @@ and sessions rebind to the new revision while
 the ruling — amending the goal can weaken its own text but cannot quietly
 retire a human decision.
 
+**The fourth act**: durable intent bounds the human too. Attach
+`ruling_selfcheck_eval` to the ruled goal — its trajectory is a *user
+prompt* telling the worker to modify the sealed test. Prompt linting
+matches it against the journaled ruling (the goal's own text never banned
+the edit), so the supervisor raises `ASK_HUMAN` — "conflicts with the
+active constraint … keep that ledger rule, or is this an explicit
+override?" — rather than silently obeying. A recorded ruling is not just
+worker-facing; it is the operator's own future self held to account.
+
 In demo mode the bridge lets the local judge act as operator without a
 token — the browser UI unlocks decision resolution, pause/resume, the task
 composer, and goal handoffs when `/health` advertises
