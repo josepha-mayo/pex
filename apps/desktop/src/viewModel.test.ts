@@ -1941,6 +1941,31 @@ test("ledger edit maps the stored goal onto a PATCH update payload", () => {
   assert.deepEqual(payload.preferences, ["smallest reversible change"]);
 });
 
+test("ledger edit can request an override-mode successor revision", () => {
+  const payload = updateGoalPayload(
+    {
+      projectId: "pex",
+      title: "Ship",
+      objective: "Win honestly",
+      observationOnly: false,
+      acceptance: "",
+      constraints: "",
+      nonGoals: "",
+      preferences: "",
+      evidence: "",
+      decisions: "",
+      rejectedApproaches: "",
+      unresolvedQuestions: "",
+    },
+    7,
+    "idem-override-1",
+    "override",
+  );
+  assert.equal(payload.mode, "override");
+  assert.equal(payload.expected_intent_revision, 7);
+  assert.equal(payload.idempotency_key, "idem-override-1");
+});
+
 test("ledger decisions are partitioned without inventing personality", () => {
   const partitioned = partitionLedgerDecisions([
     {
@@ -1992,7 +2017,7 @@ test("goal mutations preserve committed success across refresh failures", async 
   assert.match(app, /method:\s*"PATCH"/);
   assert.match(
     app,
-    /prepareGoalControlAttempt\([\s\S]*?goalControlAttempts\.current\.get\(attemptKey\),[\s\S]*?"update",[\s\S]*?updateGoalPayload\(goalDraft, editingGoal\.intent_revision!\)/,
+    /prepareGoalControlAttempt\([\s\S]*?goalControlAttempts\.current\.get\(attemptKey\),[\s\S]*?"update",[\s\S]*?updateGoalPayload\(\s*goalDraft,[\s\S]*?editingGoal\.intent_revision![\s\S]*?goalOverrideMode \? "override" : "update",?[\s\S]*?\)/,
   );
   assert.match(app, /goalControlAttempts\.current\.set\(attemptKey, prepared\.attempt\)/);
   assert.match(app, /goalControlAttempts\.current\.delete\(attemptKey\)/);

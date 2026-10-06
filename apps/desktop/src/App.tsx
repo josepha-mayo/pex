@@ -422,6 +422,7 @@ export function App() {
   const [goalDraft, setGoalDraft] = useState<GoalDraft>(EMPTY_GOAL);
   const [goalEditorRevision, setGoalEditorRevision] = useState(0);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [goalOverrideMode, setGoalOverrideMode] = useState(false);
   const [settingsDestination, setSettingsDestination] = useState<SettingsSection | undefined>();
   const [goalFocusRequest, setGoalFocusRequest] = useState(0);
   const handledGoalFocusRequest = useRef(0);
@@ -1969,7 +1970,12 @@ export function App() {
           goalControlAttempts.current.get(attemptKey),
           "update",
           editingGoalId,
-          updateGoalPayload(goalDraft, editingGoal.intent_revision!),
+          updateGoalPayload(
+            goalDraft,
+            editingGoal.intent_revision!,
+            undefined,
+            goalOverrideMode ? "override" : "update",
+          ),
         );
         goalControlAttempts.current.set(attemptKey, prepared.attempt);
         const updated = await bridgeJson<GoalMutationResponse>(
@@ -1987,10 +1993,16 @@ export function App() {
         setGoals((rows) => [updated, ...rows.filter((row) => row.id !== updated.id)]);
         markCanonical("goals", "fresh");
         setEditingGoalId(null);
+        setGoalOverrideMode(false);
         setGoalDraft(EMPTY_GOAL);
-        const ledgerNote = updated.goal_mutation_receipt.changed
-          ? "Persistent ledger updated."
-          : "Persistent ledger already matched; no change was needed.";
+        const ledgerNote =
+          updated.goal_mutation_receipt.mode === "override"
+            ? updated.goal_mutation_receipt.changed
+              ? "Saved as a new goal revision — sessions rebind to the successor; recorded rulings stay in force."
+              : "Persistent ledger already matched; no change was needed."
+            : updated.goal_mutation_receipt.changed
+              ? "Persistent ledger updated."
+              : "Persistent ledger already matched; no change was needed.";
         setNote(ledgerNote);
         // The scoped goal-evidence effect refreshes this revision. An unscoped
         // post-save read could overwrite a newly selected goal's decision view.
@@ -2682,6 +2694,7 @@ export function App() {
   function selectSession(sessionId: string) {
     if (sessionId !== current?.id) {
       setEditingGoalId(null);
+      setGoalOverrideMode(false);
       setGoalDraft(EMPTY_GOAL);
       editingGoalLedgerKey.current = null;
     }
@@ -3205,6 +3218,7 @@ export function App() {
           savingGoal={savingGoal}
           attachingGoal={attachingGoal}
           editingGoal={Boolean(editingGoalId)}
+          goalOverrideMode={goalOverrideMode}
           note={note}
           canonicalStateAvailable={inspectorCanonicalStateAvailable}
           canonicalStateIssue={inspectorIssue}
@@ -3229,6 +3243,7 @@ export function App() {
                     return;
                   }
                   editingGoalLedgerKey.current = goalLedgerKey(attachedGoal);
+                  setGoalOverrideMode(false);
                   setEditingGoalId(attachedGoal.id);
                   setGoalDraft(
                     goalToDraft(
@@ -3242,8 +3257,10 @@ export function App() {
           }
           onCancelEdit={() => {
             setEditingGoalId(null);
+            setGoalOverrideMode(false);
             setGoalDraft(EMPTY_GOAL);
           }}
+          onGoalOverrideModeChange={setGoalOverrideMode}
           onQuestion={setQuestion}
           onAsk={(event) => void askPex(event)}
           onAskPrompt={(prompt) => void askPex(null, prompt)}

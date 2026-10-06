@@ -1063,9 +1063,9 @@ export function updateGoalPayload(input: {
   decisions?: string;
   rejectedApproaches?: string;
   unresolvedQuestions?: string;
-}, expectedIntentRevision: number, idempotencyKey?: string): {
+}, expectedIntentRevision: number, idempotencyKey?: string, mode: "update" | "override" = "update"): {
   idempotency_key?: string;
-  mode: "update";
+  mode: "update" | "override";
   expected_intent_revision: number;
   title: string;
   objective: string;
@@ -1087,7 +1087,7 @@ export function updateGoalPayload(input: {
   const created = createGoalPayload({ projectId: "unused", ...input });
   return {
     ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
-    mode: "update",
+    mode,
     expected_intent_revision: expectedIntentRevision,
     title: created.title,
     objective: created.objective,

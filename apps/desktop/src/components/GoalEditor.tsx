@@ -25,10 +25,12 @@ export function GoalEditor({
   willAttach,
   editing,
   projectIdentity,
+  overrideMode,
   onChange,
   onFillExample,
   onSubmit,
   onCancel,
+  onOverrideModeChange,
 }: {
   draft: GoalDraft;
   saving: boolean;
@@ -36,10 +38,12 @@ export function GoalEditor({
   willAttach: boolean;
   editing?: boolean;
   projectIdentity?: string;
+  overrideMode?: boolean;
   onChange: (field: keyof GoalDraft, value: string | boolean) => void;
   onFillExample?: () => void;
   onSubmit: (event: FormEvent) => void;
   onCancel?: () => void;
+  onOverrideModeChange?: (value: boolean) => void;
 }) {
   return (
     <form className="goal-form" onSubmit={onSubmit} aria-busy={saving}>
@@ -192,6 +196,17 @@ export function GoalEditor({
       </div>
       </div>
       </details>
+      {editing && onOverrideModeChange ? (
+        <label className="checkbox-label goal-override-mode">
+          <input
+            type="checkbox"
+            checked={overrideMode === true}
+            onChange={(event) => onOverrideModeChange(event.target.checked)}
+          />
+          Save as a new revision (override) · keeps this goal immutable and
+          rebinds sessions to the successor — recorded rulings stay in force
+        </label>
+      ) : null}
       {disabled && !saving ? (
         <p className="goal-help" role="status">
           You can prepare this draft now. Saving is available when PEX reconnects and refreshes local state.

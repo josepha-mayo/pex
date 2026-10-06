@@ -93,6 +93,7 @@ export function Inspector({
   savingGoal,
   attachingGoal,
   editingGoal,
+  goalOverrideMode,
   note,
   canonicalStateAvailable = true,
   canonicalStateIssue,
@@ -111,6 +112,7 @@ export function Inspector({
   onCreateGoal,
   onEditGoal,
   onCancelEdit,
+  onGoalOverrideModeChange,
   onQuestion,
   onAsk,
   onAskPrompt,
@@ -145,6 +147,7 @@ export function Inspector({
   savingGoal: boolean;
   attachingGoal: boolean;
   editingGoal?: boolean;
+  goalOverrideMode?: boolean;
   note?: string | null;
   canonicalStateAvailable?: boolean;
   canonicalStateIssue?: string | null;
@@ -163,6 +166,7 @@ export function Inspector({
   onCreateGoal: (event: FormEvent) => void;
   onEditGoal?: () => void;
   onCancelEdit?: () => void;
+  onGoalOverrideModeChange?: (value: boolean) => void;
   onQuestion: (value: string) => void;
   onAsk: (event: FormEvent) => void;
   onAskPrompt?: (prompt: string) => void;
@@ -581,10 +585,12 @@ export function Inspector({
             willAttach={canAttach && !editingGoal}
             editing={editingGoal}
             projectIdentity={current?.project_id || current?.cwd || undefined}
+            overrideMode={goalOverrideMode}
             onFillExample={onFillExample}
             onChange={onGoalChange}
             onSubmit={onCreateGoal}
             onCancel={onCancelEdit}
+            onOverrideModeChange={onGoalOverrideModeChange}
           />
         </details>
         {note ? <p className="note" role="status" aria-live="polite">{note}</p> : null}
