@@ -282,9 +282,9 @@ brokering, and the ruling-continuity pair — each scored in CI against its
 declared arc.*
 
 The whole judge path as a 45-second recorded capture of the real UI —
-fixture click → auto-opened Inspector → verdict timeline with the worker's
-own claims → the sealed-baseline diff of the weakened test → in-browser
-evidence-pack verification:
+fixture click → verdict card → Inspector's claim timeline with the
+worker's own claims → the sealed-baseline diff of the weakened test →
+in-browser evidence-pack verification:
 [`pex-replay-walkthrough-b28d999.mp4`](docs/demo/assets/pex-replay-walkthrough-b28d999.mp4)
 (recorded via `apps/desktop/scripts/capture-walkthrough.mjs` against the
 real dev UI — no mocked frames).

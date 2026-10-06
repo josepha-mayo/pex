@@ -479,7 +479,10 @@ export function App() {
     fixture: string | null;
     error: string | null;
     verdict: ReplayVerdict | null;
-  }>({ running: false, fixture: null, error: null, verdict: null });
+    // Recent arcs so a judge can compare runs — attached-vs-fresh rulings,
+    // different attack classes — without leaving the panel.
+    history: { fixture: string; attached: boolean; verdict: ReplayVerdict }[];
+  }>({ running: false, fixture: null, error: null, verdict: null, history: [] });
   const [challengeText, setChallengeText] = useState("");
   const [attachReplayGoal, setAttachReplayGoal] = useState(false);
   const [scale, setScale] = useState(1);
@@ -1733,7 +1736,9 @@ export function App() {
 
   async function runDemoReplay(fixtureId: string, inline?: Record<string, unknown>) {
     if (demoReplay.running) return;
-    setDemoReplay({ running: true, fixture: fixtureId, error: null, verdict: null });
+    setDemoReplay((previous) => ({
+      ...previous, running: true, fixture: fixtureId, error: null, verdict: null,
+    }));
     try {
       const payload = await bridgeJson<unknown>("/v1/demo/replay", {
         method: "POST",
@@ -1745,37 +1750,54 @@ export function App() {
       });
       const sessionId = parseReplaySessionId(payload);
       if (!sessionId) {
-        setDemoReplay({
+        setDemoReplay((previous) => ({
+          ...previous,
           running: false, fixture: fixtureId,
           error: "Replay did not return a labeled session.",
           verdict: null,
-        });
+        }));
         return;
       }
-      setDemoReplay({
+      const verdict = parseReplayVerdict(payload);
+      setDemoReplay((previous) => ({
         running: false, fixture: fixtureId,
-        error: null, verdict: parseReplayVerdict(payload),
-      });
+        error: null, verdict,
+        history: verdict
+          ? [
+              {
+                fixture: fixtureId,
+                attached: parseReplayGoalSource(payload) === "attached",
+                verdict,
+              },
+              ...previous.history,
+            ].slice(0, 4)
+          : previous.history,
+      }));
       if (parseReplayGoalSource(payload) === "attached") {
         setNote(
           "Replay attached to the selected goal — its recorded rulings and ledger govern this run.",
         );
       }
       await refreshPet();
-      openInspector(sessionId);
+      // Select the session but stay on this surface — the verdict card is
+      // the run's landing; the Inspector is one click away on the card.
+      selectSession(sessionId);
     } catch (error) {
-      setDemoReplay({
+      setDemoReplay((previous) => ({
+        ...previous,
         running: false, fixture: fixtureId,
         error: `Replay could not run: ${operationError(error, "bridge rejected the request")}`,
         verdict: null,
-      });
+      }));
     }
   }
 
   function runChallenge() {
     const parsed = parseChallengeFixture(challengeText);
     if (!parsed.ok) {
-      setDemoReplay({ running: false, fixture: "inline", error: parsed.error, verdict: null });
+      setDemoReplay((previous) => ({
+        ...previous, running: false, fixture: "inline", error: parsed.error, verdict: null,
+      }));
       return;
     }
     void runDemoReplay("inline", parsed.fixture);
@@ -3225,6 +3247,29 @@ export function App() {
                     <small className="replay-verdict-label">
                       Deterministic replay — not live worker control.
                     </small>
+                    <div className="button-row">
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => openInspector()}
+                      >
+                        Open the session evidence ↗
+                      </button>
+                    </div>
+                    {demoReplay.history.length > 1 ? (
+                      <ul className="replay-verdict-history">
+                        {demoReplay.history.slice(1).map((run, index) => (
+                          <li key={`${run.fixture}-${index}`}>
+                            {run.fixture === "inline" ? "custom trajectory" : run.fixture}
+                            {run.attached ? " · attached" : ""} →{" "}
+                            {run.verdict.actions.length
+                              ? run.verdict.actions.map(humanize).join(" → ")
+                              : "no interventions"}
+                            {run.verdict.status ? ` · ${run.verdict.status}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                 ) : null}
                 {demoReplay.error ? (
