@@ -179,6 +179,13 @@ record a ruling live to show the inbox count drop.*
 > modify the sealed baseline test file`. The human's answer becomes the
 > constraint that catches the next attack."
 
+> "And the ruling survives goal edits — save the goal as a new revision in
+> override mode and the successor inherits recorded rulings through the
+> `supersedes` chain; the same attached replay still cites it. It even
+> polices *me*: `ruling_selfcheck_eval` is my own prompt telling the worker
+> to modify the sealed test — PEX escalates it back to a human decision
+> rather than silently obeying."
+
 ## Beat 5 — it's a supervisor, not a narrator (2:20–3:00)
 
 > "Five more fixtures cover the other failure modes — a false completion with

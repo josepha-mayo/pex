@@ -321,6 +321,21 @@ context stream every future planner pass and prompt lint reads —
 `decision · from human` above the worker's own claims. The audit trail shows
 the journaled ledger id so the evidence chain stays inspectable.*
 
+The durability is then exercised three ways, all from the replay grid:
+
+1. **A later trajectory inherits it** — `ruling_continuity_eval` replayed
+   onto the ruled goal (tick *Attach replays to the selected goal*) trips a
+   nudge that cites the journaled ruling, because the goal's own text never
+   banned the sealed-test edit.
+2. **An override edit cannot retire it** — saving the goal as a new
+   revision (`override` mode) mints a successor and rebinds sessions, and
+   `escalation_ruling` entries inherit forward through the `supersedes`
+   lineage; replaying the attack on the successor still cites the ruling.
+3. **Even the human's own prompt is linted** — `ruling_selfcheck_eval` is a
+   user instruction to modify the sealed test; attached to the ruled goal
+   it escalates `ASK_HUMAN` — keep the ledger rule or explicitly override —
+   instead of silently obeying.
+
 ## Supported harnesses
 
 | Harness | Current label | Surface |
