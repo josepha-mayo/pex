@@ -309,9 +309,10 @@ four disputed nudges each landed a human card while the goal stayed
 ![The dispute card accepting the human's ruling](docs/demo/assets/pex-nudge-dispute-resolve.png)
 
 *The card is resolvable, not just readable: "Your ruling" records the human's
-answer on the intervention's audit trail (`human_resolution`), removes it
-from the pending inbox, and restores the session's status — honestly labeled
-that recording ≠ worker delivery.*
+answer on the intervention's audit trail (`human_resolution`) *and* projects
+it onto the goal's Decision ledger — future supervision inherits the ruling —
+removes it from the pending inbox, and restores the session's status —
+honestly labeled that recording ≠ worker delivery.*
 
 ## Supported harnesses
 

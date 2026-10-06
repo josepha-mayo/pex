@@ -94,11 +94,13 @@ the goal stayed `uncertain`. The same run motivated per-standoff dedupe —
 repeat disputes over the same acceptance surface now share one open human
 question. Each card is resolvable from the rail: type the ruling, hit
 **Record answer**, and PEX journals a `human_resolution` audit revision,
-clears the card, and restores the session's pre-decision status — the same
-answer replays idempotently, a different one returns
-`escalation_resolution_conflict`. Recording is deliberately not worker
-delivery (`worker_delivery: not_attempted`); on a live session the
-follow-through is a real message in the worker's session.
+projects the ruling onto the goal's Decision ledger (visible to future
+planning and prompt linting as durable human intent), clears the card, and
+restores the session's pre-decision status — the same answer replays
+idempotently, a different one returns `escalation_resolution_conflict`.
+Recording is deliberately not worker delivery (`worker_delivery:
+not_attempted`); on a live session the follow-through is a real message in
+the worker's session.
 
 In demo mode the bridge lets the local judge act as operator without a
 token — the browser UI unlocks decision resolution, pause/resume, the task

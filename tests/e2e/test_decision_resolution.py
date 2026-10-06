@@ -637,6 +637,19 @@ async def test_general_escalation_resolution_is_recorded_replay_safe_and_restore
     assert conflict.status_code == 409
     assert conflict.json()["detail"]["code"] == "escalation_resolution_conflict"
 
+    # The ruling is durable human intent: it journals onto the goal's
+    # Decision ledger once (the replayed call added no second row), so
+    # future planning and prompt linting inherit the human's call.
+    assert replay_session.goal_id is not None
+    decisions = await state.store.list_decisions_for_authority(replay_session.goal_id)
+    rulings = [item for item in decisions if item.metadata.get("kind") == "escalation_ruling"]
+    assert len(rulings) == 1
+    ruling = rulings[0]
+    assert ruling.statement == "Keep the requirement; the test file stays sealed."
+    assert ruling.source.value == "human"
+    assert ruling.metadata["intervention_id"] == escalation["id"]
+    assert ruling.id == resolved_body["resolution"]["ledger_decision_id"]
+
     records = [
         json.loads(line)
         for line in (tmp_path / "PEX_INTERVENTION_LOG.jsonl")

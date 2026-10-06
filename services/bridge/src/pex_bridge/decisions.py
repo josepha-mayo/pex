@@ -1080,9 +1080,10 @@ async def resolve_general_escalation(
 
     The resolution is durable ledger evidence: the escalation leaves the
     pending queue, the session returns to its pre-decision status when no
-    other pending intervention owns it, and the answer itself is journaled
-    on the intervention's audit trail. Worker delivery is deliberately out
-    of scope.
+    other pending intervention owns it, the answer is journaled on the
+    intervention's audit trail, and the ruling is projected onto the goal's
+    Decision ledger so future supervision inherits the human's call. Worker
+    delivery is deliberately out of scope.
     """
     intervention = await _intervention_for_authority(store, intervention_id)
     await _session_for_resolution_classification(store, intervention, kind="escalation")

@@ -1017,8 +1017,8 @@ function GeneralDecisionCard({
         ) : null}
         <p className="decision-rationale">
           {replay
-            ? "Recorded replay — answering closes the durable question; the recorded worker cannot receive it."
-            : "Recording your answer closes this escalation on the ledger. To direct the live worker, send a message in its session afterward."}
+            ? "Recorded replay — answering closes the durable question and journals the ruling on the goal's decision ledger; the recorded worker cannot receive it."
+            : "Recording your answer closes this escalation and journals the ruling on the goal's decision ledger, so future supervision inherits it. To direct the live worker, send a message in its session afterward."}
         </p>
         {feedback ? (
           <p
@@ -1301,6 +1301,10 @@ function InterventionsView({
           humanResolution && typeof humanResolution === "object"
             ? (humanResolution as Record<string, unknown>).resolved_by
             : null;
+        const rulingLedgerId =
+          humanResolution && typeof humanResolution === "object"
+            ? (humanResolution as Record<string, unknown>).ledger_decision_id
+            : null;
         const showRuling = typeof ruling === "string" && ruling.trim();
         return (
           <article className="audit-row" key={item.id}>
@@ -1333,6 +1337,11 @@ function InterventionsView({
                 <blockquote className="worker-reply audit-ruling">
                   <small>Recorded ruling{typeof rulingBy === "string" && rulingBy ? ` by ${rulingBy}` : ""}</small>
                   {ruling.trim()}
+                  {typeof rulingLedgerId === "string" && rulingLedgerId ? (
+                    <small className="audit-ledger-ref">
+                      Journaled to the goal's decision ledger · <code>{rulingLedgerId}</code>
+                    </small>
+                  ) : null}
                 </blockquote>
               ) : null}
               {isHandoff ? (

@@ -25611,9 +25611,10 @@ class Store:
 
         One transaction: reload the intervention under authority, reject a
         conflicting repeat, journal the audit revision, mark the escalation
-        answered, and restore the session's pre-decision status when no other
-        pending human intervention still owns it. Worker delivery is not part
-        of this record — it is the operator's separate message act.
+        answered, journal the ruling onto the goal's decision ledger so future
+        supervision inherits it, and restore the session's pre-decision status
+        when no other pending human intervention still owns it. Worker delivery
+        is not part of this record — it is the operator's separate message act.
         """
         _validate_store_id(intervention_id, label="escalation intervention id")
         async with self._write_lock:
@@ -25644,12 +25645,24 @@ class Store:
                     "answer": answer,
                     "resolved_at": _utc_iso(resolved_at),
                     "resolved_by": resolved_by,
+                    "ledger_decision_id": stable_event_artifact_id(
+                        intervention.id, "escalation_ruling_decision"
+                    ),
                 }
                 intervention.metadata = dict(intervention.metadata or {})
                 intervention.metadata["human_resolution"] = resolution
                 intervention.result = "human_answered"
                 intervention.outcome = "human_answered"
                 await _update_bound_intervention(self.db, intervention)
+                if session.goal_id:
+                    await self._journal_escalation_ruling_pair(
+                        intervention,
+                        session,
+                        decision_id=resolution["ledger_decision_id"],
+                        answer=answer,
+                        resolved_at=resolved_at,
+                        resolved_by=resolved_by,
+                    )
                 audit_json = json.dumps(
                     self._intervention_audit_record(intervention, record_type),
                     ensure_ascii=False,
@@ -25734,6 +25747,119 @@ class Store:
             "intervention": intervention,
             "session": session,
         }
+
+    async def _journal_escalation_ruling_pair(
+        self,
+        intervention: Intervention,
+        session: HarnessSession,
+        *,
+        decision_id: str,
+        answer: str,
+        resolved_at: datetime,
+        resolved_by: str,
+    ) -> None:
+        """Project the recorded ruling onto the goal's Decision ledger.
+
+        Runs inside the caller's write transaction so a crash cannot leave an
+        answered escalation without its durable ruling. The pair mirrors the
+        explicit-override projection: an ordinary (unmanaged) human Decision —
+        not a canonical intent-ledger kind — so it feeds planner and prompt-lint
+        context without rewriting the goal's intent hash. Ids are deterministic
+        per intervention, which keeps a redelivered resolution idempotent.
+        """
+
+        goal, goal_binding = await _load_bound_goal(
+            self.db, str(session.goal_id), require_live=False
+        )
+        statement = answer.strip()[:500]
+        decision = Decision(
+            id=decision_id,
+            goal_id=goal.id,
+            statement=statement,
+            rationale="Human ruling recorded on a supervisor escalation.",
+            source=DecisionSource.HUMAN,
+            status=DecisionStatus.ACTIVE,
+            created_at=resolved_at,
+            sensitivity=Sensitivity.INTERNAL,
+            metadata={
+                "kind": "escalation_ruling",
+                "intervention_id": intervention.id,
+                "session_id": session.id,
+                "resolved_by": resolved_by,
+            },
+        )
+        context = ContextItem(
+            id=stable_event_artifact_id(intervention.id, "escalation_ruling_context"),
+            project_id=session.project_id or session.cwd or goal.project_id,
+            goal_id=goal.id,
+            kind=ContextKind.DECISION,
+            content=decision.statement,
+            source_refs=[intervention.id],
+            provenance=SourceKind.HUMAN,
+            confidence=0.9,
+            relevance_tags=["escalation_ruling", "decision"],
+            valid_from=resolved_at,
+            sensitivity=Sensitivity.INTERNAL,
+            metadata={
+                "decision_id": decision.id,
+                "source_session_id": session.id,
+                "status": DecisionStatus.ACTIVE.value,
+            },
+        )
+
+        decision_cursor = await self.db.execute(
+            "INSERT OR IGNORE INTO decisions("
+            "id, goal_id, project_id, project_binding, json) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                decision.id,
+                decision.goal_id,
+                goal_binding.project_id,
+                goal_binding.project_binding,
+                _dump(decision),
+            ),
+        )
+        if decision_cursor.rowcount != 1:
+            existing_cursor = await self.db.execute(
+                "SELECT project_id, project_binding, json FROM decisions WHERE id = ?",
+                (decision.id,),
+            )
+            existing_row = await existing_cursor.fetchone()
+            if (
+                existing_row is None
+                or Decision.model_validate_json(existing_row["json"]) != decision
+                or existing_row["project_id"] != goal_binding.project_id
+                or existing_row["project_binding"] != goal_binding.project_binding
+            ):
+                raise ValueError("decision id collision contains different content")
+
+        context_cursor = await self.db.execute(
+            "INSERT OR IGNORE INTO context_items("
+            "id, project_id, project_binding, goal_id, json) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                context.id,
+                context.project_id,
+                goal_binding.project_binding,
+                context.goal_id,
+                _dump(context),
+            ),
+        )
+        if context_cursor.rowcount != 1:
+            existing_cursor = await self.db.execute(
+                "SELECT project_id, project_binding, goal_id, json "
+                "FROM context_items WHERE id = ?",
+                (context.id,),
+            )
+            existing_row = await existing_cursor.fetchone()
+            if (
+                existing_row is None
+                or ContextItem.model_validate_json(existing_row["json"]) != context
+                or existing_row["project_id"] != context.project_id
+                or existing_row["project_binding"] != context.project_binding
+                or existing_row["goal_id"] != context.goal_id
+            ):
+                raise ValueError("context item id collision contains different content")
 
     def _intervention_audit_record(
         self,
