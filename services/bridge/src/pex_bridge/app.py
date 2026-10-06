@@ -6815,6 +6815,21 @@ def create_app() -> FastAPI:
                 ) from exc
             if attached_goal is None:
                 raise HTTPException(404, "attach goal not found")
+            try:
+                # An override-mode edit rebinds sessions to the successor —
+                # attaching to the predecessor must follow the lineage to the
+                # same live tip, not pin the replay to a retired revision.
+                tip = await state.store.resolve_goal_lineage_tip(attached_goal.id)
+            except ProjectIdentityBlockedError as exc:
+                raise HTTPException(
+                    409,
+                    {
+                        "code": exc.code,
+                        "detail": "attach goal lineage authority changed",
+                    },
+                ) from exc
+            if tip is not None:
+                attached_goal = tip
             goal_source = "attached"
 
         session = state.adapters.synthetic.seed_session(

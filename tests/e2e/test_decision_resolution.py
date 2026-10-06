@@ -776,6 +776,17 @@ async def test_recorded_ruling_governs_after_an_override_mode_goal_edit(
     assert "agent_contradiction" in blob
     assert "Do not modify the sealed baseline test file" in blob
 
+    # A stale handle follows the lineage too: attaching to the retired
+    # predecessor lands on the live successor, never on a dead revision.
+    third = await client.post(
+        "/v1/demo/replay",
+        json={"fixture": "ruling_continuity_eval", "goal_id": goal_id},
+    )
+    assert third.status_code == 200, third.text
+    third_body = third.json()
+    assert third_body["goal_id"] == successor["id"]
+    assert third_body["goal_source"] == "attached"
+
 
 @pytest.mark.asyncio
 async def test_replay_attach_rejects_an_unknown_goal(client: AsyncClient):

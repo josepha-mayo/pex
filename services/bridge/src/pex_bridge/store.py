@@ -6817,6 +6817,49 @@ async def _reject_superseded_bound_goal(
         raise ValueError("goal has been superseded")
 
 
+async def _live_goal_successor(
+    transaction: aiosqlite.Connection,
+    goal: Goal,
+    binding: ArtifactBinding,
+) -> tuple[Goal, ArtifactBinding] | None:
+    """Return the live authoritative successor of a superseded goal, if any.
+
+    Mirrors the same-binding successor rules used by
+    ``_has_authoritative_goal_successor`` but resolves the successor row so
+    callers can follow the lineage forward (e.g. replay attach aimed at a
+    goal that was later overridden).
+    """
+
+    cursor = await transaction.execute(
+        "SELECT id FROM goals WHERE json_valid(json) "
+        "AND json_extract(json, '$.supersedes') = ? "
+        "AND project_binding = ? ORDER BY id LIMIT 1001",
+        (goal.id, binding.project_binding),
+    )
+    for row in await cursor.fetchall():
+        successor, successor_binding = await _load_bound_goal(
+            transaction,
+            str(row["id"]),
+            require_live=False,
+        )
+        if (
+            successor.supersedes != goal.id
+            or successor_binding.project_binding != binding.project_binding
+        ):
+            continue
+        try:
+            live_binding = await _project_binding_snapshot(
+                transaction,
+                successor.project_id,
+            )
+        except ProjectIdentityBlockedError:
+            continue
+        if live_binding != successor_binding.project_binding:
+            continue
+        return successor, successor_binding
+    return None
+
+
 async def _load_active_mcp_principal_authority(
     transaction: aiosqlite.Connection,
     principal_id: str,
@@ -11580,6 +11623,45 @@ class Store:
             try:
                 try:
                     goal, _ = await _load_bound_goal(transaction, goal_id)
+                except LookupError:
+                    await transaction.commit()
+                    return None
+                await transaction.commit()
+                return goal
+            except Exception:
+                await transaction.rollback()
+                raise
+
+    async def resolve_goal_lineage_tip(self, goal_id: str) -> Goal | None:
+        """Follow override supersessions forward to the live goal revision.
+
+        Sessions rebind to the successor on an override-mode edit, so a caller
+        holding a predecessor id (a stale selection, a replay attach request)
+        should land on the tip where the sessions and inherited rulings live.
+        Returns ``None`` when the goal is missing or its binding is dead.
+        """
+
+        _validate_store_id(goal_id, label="goal id")
+        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
+            await _configure_connection(transaction)
+            await transaction.execute("BEGIN")
+            try:
+                try:
+                    goal, binding = await _load_bound_goal(transaction, goal_id)
+                except LookupError:
+                    await transaction.commit()
+                    return None
+                seen = {goal.id}
+                for _ in range(_GOAL_LINEAGE_WALK_LIMIT):
+                    successor = await _live_goal_successor(transaction, goal, binding)
+                    if successor is None or successor[0].id in seen:
+                        break
+                    goal, binding = successor
+                    seen.add(goal.id)
+                try:
+                    # Re-validate the tip under the live-binding rule the
+                    # authority read applies to the requested goal.
+                    goal, _ = await _load_bound_goal(transaction, goal.id)
                 except LookupError:
                     await transaction.commit()
                     return None
