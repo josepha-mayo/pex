@@ -321,6 +321,13 @@ context stream every future planner pass and prompt lint reads —
 `decision · from human` above the worker's own claims. The audit trail shows
 the journaled ledger id so the evidence chain stays inspectable.*
 
+The full ruling arc as a 65-second recorded capture of the real UI —
+dispute escalation → typed ruling → journaled ledger entry → an attached
+second replay whose nudge cites the recorded ruling verbatim:
+[`pex-ruling-arc-eabd646.mp4`](docs/demo/assets/pex-ruling-arc-eabd646.mp4)
+(recorded via `apps/desktop/scripts/capture-ruling-arc.mjs` — no mocked
+frames).
+
 The durability is then exercised three ways, all from the replay grid:
 
 1. **A later trajectory inherits it** — `ruling_continuity_eval` replayed
