@@ -314,6 +314,13 @@ it onto the goal's Decision ledger — future supervision inherits the ruling �
 removes it from the pending inbox, and restores the session's status —
 honestly labeled that recording ≠ worker delivery.*
 
+![The recorded ruling sitting at the top of the goal's durable context](docs/demo/assets/pex-ledger-ruling-context.png)
+
+*Durable intent, not a sticky note: the ruling lands in the same canonical
+context stream every future planner pass and prompt lint reads —
+`decision · from human` above the worker's own claims. The audit trail shows
+the journaled ledger id so the evidence chain stays inspectable.*
+
 ## Supported harnesses
 
 | Harness | Current label | Surface |
