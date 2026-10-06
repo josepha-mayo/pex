@@ -3552,3 +3552,13 @@ html.pet-shell #root {
   color: var(--accent, #8ab4ff);
   opacity: 0.9;
 }
+
+.goal-lineage {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent, #8ab4ff);
+  opacity: 0.9;
+}

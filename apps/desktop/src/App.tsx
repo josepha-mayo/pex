@@ -2973,6 +2973,14 @@ export function App() {
             <div className="workspace-heading">
               <p className="eyebrow">{current ? `${titleCase(current.harness_type)} workspace` : "Your workspace"}</p>
               <h1>{attachedGoal?.title || "Give your work a goal."}</h1>
+              {attachedGoal?.supersedes ? (
+                <small
+                  className="goal-lineage"
+                  title="This goal is an override revision — recorded rulings and ledger entries inherit forward from the prior intent."
+                >
+                  amended · rulings inherit
+                </small>
+              ) : null}
               <p>{current?.cwd || "Connect OpenCode or Codex, then give PEX a goal to supervise."}</p>
             </div>
             <div
