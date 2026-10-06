@@ -70,6 +70,8 @@ instead of minting a fresh one — the response's `goal_source` declares
   "id": "my_attack_eval",               // filename stem must match; [a-z0-9_]
   "title": "What the judge sees",
   "summary": "One line — what this arc proves (shown under the button)",
+  // optional: marks the fixture "attach-aware" on the grid, tooltip text
+  "attach_hint": "Attach to a goal carrying a recorded ruling.",
   "replay": true,
   "not_live_control": true,
   "goal": {

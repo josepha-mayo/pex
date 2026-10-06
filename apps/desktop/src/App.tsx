@@ -3107,6 +3107,11 @@ export function App() {
                           from live
                         </small>
                       ) : null}
+                      {fixture.attachHint ? (
+                        <small className="fixture-attach-tag" title={fixture.attachHint}>
+                          attach-aware
+                        </small>
+                      ) : null}
                     </button>
                   ))}
                 </div>

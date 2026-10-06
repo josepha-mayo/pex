@@ -3542,3 +3542,13 @@ html.pet-shell #root {
   font-size: 0.66rem;
   word-break: break-all;
 }
+
+.fixture-attach-tag {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent, #8ab4ff);
+  opacity: 0.9;
+}

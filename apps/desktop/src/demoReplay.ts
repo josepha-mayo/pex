@@ -14,6 +14,9 @@ export type DemoFixture = {
   // (scripts/capture_replay.py) — the replay is real captured traffic,
   // which is a stronger claim than a synthetic trajectory.
   capturedFromLive?: string;
+  // Set when the fixture is designed to attach to an existing goal (e.g.
+  // the second-act ruling-continuity trajectory).
+  attachHint?: string;
 };
 
 // A fixture id is bridge-minted and bounded; arbitrary strings are refused
@@ -26,16 +29,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function parseFixture(raw: unknown): DemoFixture | null {
   if (!isRecord(raw)) return null;
-  const { id, title, summary, captured_from_live_session: captured } = raw;
+  const { id, title, summary, captured_from_live_session: captured, attach_hint } = raw;
   if (typeof id !== "string" || !FIXTURE_ID.test(id)) return null;
   if (typeof title !== "string" || !title.trim()) return null;
   if (summary !== undefined && typeof summary !== "string") return null;
+  if (attach_hint !== undefined && typeof attach_hint !== "string") return null;
   const fixture: DemoFixture = { id, title: title.trim() };
   if (typeof summary === "string" && summary.trim()) {
     fixture.summary = summary.trim().slice(0, 240);
   }
   if (typeof captured === "string" && captured.trim()) {
     fixture.capturedFromLive = captured.trim();
+  }
+  if (typeof attach_hint === "string" && attach_hint.trim()) {
+    fixture.attachHint = attach_hint.trim().slice(0, 240);
   }
   return fixture;
 }

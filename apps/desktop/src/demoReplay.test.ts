@@ -24,17 +24,26 @@ const listed = {
       events: 32,
       captured_from_live_session: "opencode:ses_x",
     },
+    {
+      id: "ruling_continuity_eval",
+      title: "Second act: the ruling still governs",
+      replay: true,
+      events: 4,
+      attach_hint: "Attach to a goal carrying a recorded ruling.",
+    },
   ],
 };
 
 test("the replay control only appears for an honestly labeled fixture list", () => {
   const fixtures = parseTrajectoriesResponse(listed);
-  assert.equal(fixtures?.length, 3);
+  assert.equal(fixtures?.length, 4);
   assert.equal(fixtures?.[1]?.id, "tampered_acceptance_eval");
   assert.equal(fixtures?.[2]?.capturedFromLive, "opencode:ses_x");
   assert.equal(fixtures?.[0]?.capturedFromLive, undefined);
   assert.equal(fixtures?.[2]?.summary, "What this arc proves.");
   assert.equal(fixtures?.[0]?.summary, undefined);
+  assert.equal(fixtures?.[3]?.attachHint, "Attach to a goal carrying a recorded ruling.");
+  assert.equal(fixtures?.[0]?.attachHint, undefined);
 
   for (const payload of [
     null, "[]", 42,
@@ -57,6 +66,7 @@ test("one malformed fixture removes the entire replay control", () => {
     { id: "ID With Spaces", title: "x" },
     { id: 42, title: "x" },
     { id: "ok_id", title: "x", summary: 42 },
+    { id: "ok_id", title: "x", attach_hint: 42 },
     "tampered_acceptance_eval",
   ]) {
     const payload = {

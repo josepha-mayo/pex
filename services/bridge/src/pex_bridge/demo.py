@@ -188,6 +188,9 @@ def list_fixtures() -> list[dict]:
         captured = data.get("captured_from_live_session")
         if isinstance(captured, str) and captured:
             item["captured_from_live_session"] = captured
+        attach_hint = data.get("attach_hint")
+        if isinstance(attach_hint, str) and attach_hint.strip():
+            item["attach_hint"] = attach_hint.strip()[:240]
         items.append(item)
     return items
 
