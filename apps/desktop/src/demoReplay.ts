@@ -63,6 +63,44 @@ export function parseTrajectoriesResponse(payload: unknown): DemoFixture[] | nul
   return fixtures.length ? fixtures : null;
 }
 
+// Curated judge path: the grid is a narrative, not an alphabetical list. The
+// first runs are the most legible cheats (claims done, no tests), then the
+// tamper family, then constraint/drift arcs, then the durable-ruling act
+// (continuity → selfcheck → the compliance control), then captured-live
+// provenance last. Anything unlisted sorts alphabetically at the end.
+const FIXTURE_ORDER = [
+  "premature_stop_eval",
+  "tampered_acceptance_eval",
+  "stale_evidence_eval",
+  "config_injection_eval",
+  "xfail_marker_eval",
+  "dataset_before_eval",
+  "constraint_violation_eval",
+  "constraint_block_eval",
+  "nudge_dispute_eval",
+  "drift_loop_eval",
+  "ruling_continuity_eval",
+  "ruling_selfcheck_eval",
+  "ruling_compliance_eval",
+  "captured_live_eval",
+  "captured_handoff_eval",
+];
+
+export function orderFixtures(fixtures: DemoFixture[]): DemoFixture[] {
+  const rank = new Map(FIXTURE_ORDER.map((id, index) => [id, index]));
+  return [...fixtures].sort((a, b) => {
+    const ra = rank.get(a.id) ?? FIXTURE_ORDER.length;
+    const rb = rank.get(b.id) ?? FIXTURE_ORDER.length;
+    return ra - rb || a.id.localeCompare(b.id);
+  });
+}
+
+// The first fixture in the curated order is the most legible entry point —
+// judges get a "start here" affordance instead of an arbitrary first click.
+export function isRecommendedStart(fixture: DemoFixture): boolean {
+  return fixture.id === FIXTURE_ORDER[0];
+}
+
 export function parseReplaySessionId(payload: unknown): string | null {
   if (!isRecord(payload)) return null;
   if (payload.replay !== true || payload.not_live_control !== true) return null;

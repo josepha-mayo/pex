@@ -39,6 +39,8 @@ import { firstRunGuidance, statusWithFirstRunGuidance, supervisorAvailability } 
 import {
   isLiveWorkerSession,
   isReplaySession,
+  isRecommendedStart,
+  orderFixtures,
   parseReplayGoalSource,
   parseReplaySessionId,
   parseReplayVerdict,
@@ -1738,7 +1740,10 @@ export function App() {
     demoFixtureTried.current = true;
     const controller = new AbortController();
     bridgeJson<unknown>("/v1/demo/trajectories", { signal: controller.signal })
-      .then((payload) => setDemoFixtures(parseTrajectoriesResponse(payload)))
+      .then((payload) => {
+        const fixtures = parseTrajectoriesResponse(payload);
+        setDemoFixtures(fixtures ? orderFixtures(fixtures) : null);
+      })
       .catch(() => {
         setDemoFixtures(null);
         demoFixtureTried.current = false;
@@ -3203,6 +3208,14 @@ export function App() {
                           title={`Exported from recorded live session ${fixture.capturedFromLive}`}
                         >
                           from live
+                        </small>
+                      ) : null}
+                      {isRecommendedStart(fixture) ? (
+                        <small
+                          className="fixture-attach-tag"
+                          title="The most legible first run: the worker claims done without ever running the suite — PEX catches the unsupported claim."
+                        >
+                          start here
                         </small>
                       ) : null}
                       {fixture.attachHint ? (

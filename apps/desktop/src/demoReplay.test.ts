@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   isLiveWorkerSession,
+  isRecommendedStart,
   isReplaySession,
+  orderFixtures,
   replayGoalSourceCopy,
   parseReplayGoalSource,
   parseReplaySessionId,
@@ -333,4 +335,26 @@ test("live worker label requires a real harness with a Deep or Strong transport"
     false,
   );
   assert.equal(isLiveWorkerSession(null), false);
+});
+
+test("fixture order tells the story and flags the entry point", () => {
+  const fixtures = [
+    { id: "captured_live_eval", title: "c" },
+    { id: "ruling_compliance_eval", title: "r" },
+    { id: "premature_stop_eval", title: "p" },
+    { id: "tampered_acceptance_eval", title: "t" },
+    { id: "unknown_future_eval", title: "u" },
+    { id: "aaa_unlisted_eval", title: "a" },
+  ];
+  const ordered = orderFixtures(fixtures).map((f) => f.id);
+  assert.deepEqual(ordered, [
+    "premature_stop_eval",
+    "tampered_acceptance_eval",
+    "ruling_compliance_eval",
+    "captured_live_eval",
+    "aaa_unlisted_eval",
+    "unknown_future_eval",
+  ]);
+  assert.equal(isRecommendedStart({ id: "premature_stop_eval", title: "p" }), true);
+  assert.equal(isRecommendedStart({ id: "captured_live_eval", title: "c" }), false);
 });

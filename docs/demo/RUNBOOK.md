@@ -189,7 +189,7 @@ Replays every fixture through the real pipeline and scores each verification
 report against the arc it exists to demonstrate — nonzero exit if a tamper
 scenario ends verified without its integrity incident, or a no-evidence
 scenario ends supported. Latest receipt: `docs/demo/evidence/FIXTURE_SUITE_EVAL_2026-10-06.json`
-(12/12 arcs) — also as a self-contained readable page,
+(15/15 arcs) — also as a self-contained readable page,
 `FIXTURE_SUITE_EVAL_2026-10-06.html`, with the same JSON embedded.
 `--repeat N` replays every fixture N times and fails on any
 verdict, completion, or normalized-evidence drift — adjudication is

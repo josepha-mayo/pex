@@ -53,9 +53,11 @@ stays quiet when the work is actually complete.
 - A live goal handoff delivered a content-addressed context bundle into a sibling
   OpenCode session (`handoff_injected`) and honestly reported
   `awaiting_target_evidence` rather than claiming assimilation.
-- `scripts/eval_replays.py` scores all fourteen shipped replay fixtures against
-  their declared supervision arcs in CI — 14/14, including stale-evidence,
-  runner-config-injection, worker-dispute, and ruling-continuity vectors.
+- `scripts/eval_replays.py` scores all fifteen shipped replay fixtures against
+  their declared supervision arcs in CI — 15/15, including stale-evidence,
+  runner-config-injection, worker-dispute, ruling-continuity, and a
+  ruling-compliance positive control (the ledger verifies compliant work, it
+  does not only punish violations).
 
 ## What PEX refuses to fake
 

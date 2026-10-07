@@ -198,7 +198,12 @@ def list_fixtures() -> list[dict]:
     return items
 
 
-_DECLARED_STR_LISTS = ("completion_in", "claim_evidence_any", "interventions_any")
+_DECLARED_STR_LISTS = (
+    "completion_in",
+    "claim_evidence_any",
+    "interventions_any",
+    "interventions_never",
+)
 _DECLARED_INTS = ("min_claims", "min_integrity_incidents", "max_verified_or_supported")
 
 
@@ -270,6 +275,11 @@ def score_declared_arc(expected: dict, result: dict) -> list[str]:
         taken = set(result.get("interventions") or [])
         if not taken & required_any:
             failures.append(f"no intervention of type {sorted(required_any)} (got {sorted(taken)})")
+    forbidden = set(expected.get("interventions_never") or [])
+    if forbidden:
+        fired = set(result.get("interventions") or []) & forbidden
+        if fired:
+            failures.append(f"forbidden interventions fired {sorted(fired)}")
     ceiling = expected.get("max_verified_or_supported")
     if isinstance(ceiling, int):
         green = sum(

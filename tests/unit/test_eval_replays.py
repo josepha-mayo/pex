@@ -101,6 +101,21 @@ def test_interventions_any_enforced_where_declared() -> None:
     assert any("ASK_HUMAN" in f for f in failures)
 
 
+def test_interventions_never_blocks_declared_forbidden_actions() -> None:
+    expectation = _expected("ruling_compliance_eval")
+    assert "ASK_HUMAN" in expectation["interventions_never"]
+    ok = _result(
+        completion_status="verified_complete",
+        claims_adjudicated=2,
+        verdicts=["supported", "supported"],
+        interventions=["RESPOND_PERMISSION", "NOOP"],
+    )
+    assert score_declared_arc(expectation, ok) == []
+    fired = dict(ok, interventions=["SEND_NUDGE", "ASK_HUMAN"])
+    failures = score_declared_arc(expectation, fired)
+    assert any("ASK_HUMAN" in f for f in failures)
+
+
 def test_normalized_evidence_strips_per_run_event_ids() -> None:
     first = _result(
         evidence_strings=[

@@ -6950,6 +6950,11 @@ def create_app() -> FastAPI:
             }
             worst: tuple[int, str, str] | None = None
             for claim in report.get("claims") or []:
+                # The report spans the whole goal ledger; on an attached run
+                # it includes prior sessions' claims. This check is about the
+                # trajectory that just ran — scope it to this session.
+                if claim.get("session_id") != session.id:
+                    continue
                 statements = claim.get("claim_statements") or []
                 if not statements:
                     continue

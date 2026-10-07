@@ -274,15 +274,19 @@ fixture suite is scored on every push by `scripts/eval_replays.py`.
 
 ![Replay fixtures, each with a one-line "what this arc proves" summary](docs/demo/assets/pex-fixtures-summaries-ae2ba7c.png)
 
-*The judge's first screen: twelve scripted fixtures plus two captured live
+*The judge's first screen: thirteen scripted fixtures plus two captured live
 runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not a
-synthetic trajectory. Attach-aware fixtures are tagged so the second and
-third acts are discoverable. The suite spans tamper-and-restore,
-runner-config injection, stale evidence, premature claims, drift loops,
-forbidden-outcome violations (nudge and pre-write escalation), a worker
-dispute that escalates to the human instead of a re-nudge, permission
-brokering, and the ruling-continuity pair — each scored in CI against its
-declared arc.*
+synthetic trajectory. A **start here** tag marks the most legible first run
+and the grid is ordered as a narrative: cheats first, then the
+durable-ruling act, then captured-live provenance. Attach-aware fixtures are
+tagged so the second and third acts are discoverable. The suite spans
+tamper-and-restore, runner-config injection, stale evidence, premature
+claims, drift loops, forbidden-outcome violations (nudge and pre-write
+escalation), a worker dispute that escalates to the human instead of a
+re-nudge, permission brokering, the ruling-continuity pair, and a positive
+control — a worker that complies with a recorded ruling earns
+`verified_complete` with zero false-positive interventions — each scored in
+CI against its declared arc.*
 
 The whole judge path as a 45-second recorded capture of the real UI —
 fixture click → verdict card → Inspector's claim timeline with the
