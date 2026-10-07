@@ -125,6 +125,11 @@ NAMED_HOOK_PERMISSION_PIPELINE_TIMEOUT_SECONDS = 5.0
 NAMED_HOOK_EVENT_PIPELINE_TIMEOUT_SECONDS = 5.0
 NAMED_HOOK_STOP_PIPELINE_TIMEOUT_SECONDS = 40.0
 ADAPTER_PROBE_TIMEOUT_SECONDS = 2.0
+# Probe cache TTLs: a live adapter's capabilities can change with session
+# attach/detach so refresh fast; a timed-out adapter is expensive to keep
+# re-probing and rarely resurrects within seconds.
+_ADAPTER_PROBE_CACHE_TTL_LIVE = 3.0
+_ADAPTER_PROBE_CACHE_TTL_DEAD = 30.0
 ADAPTER_DISCOVERY_TIMEOUT_SECONDS = 5.0
 ADAPTER_MESSAGE_TIMEOUT_SECONDS = 10.0
 ADAPTER_FOCUS_TIMEOUT_SECONDS = 5.0
@@ -1022,6 +1027,11 @@ class AppState:
         self.supervisor_credential_status = "not_configured"
         self.supervisor_secret_store: SupervisorSecretStore = KeyringSupervisorSecretStore()
         self.supervisor_config_lock = asyncio.Lock()
+        # Adapter capability probes are bounded (2s) but polled endpoints call
+        # them every refresh; a dead adapter burns the whole timeout per call.
+        # Cache per adapter name: live probes re-check quickly, failed probes
+        # stay "unavailable" longer — resurrection is rare and bounded.
+        self._adapter_probe_cache: dict[str, tuple[float, AdapterCapabilities]] = {}
         self.supervisor_config_generation = 0
         self.supervisor_config_task: asyncio.Task[Any] | None = None
         self.supervisor_config_operation: _SupervisorConfigOperation | None = None
@@ -1821,6 +1831,41 @@ async def _bounded_adapter_probe(adapter: Any) -> AdapterCapabilities:
     return AdapterCapabilities(notes="Adapter probe unavailable or timed out.")
 
 
+def _adapter_probe_dead(caps: AdapterCapabilities) -> bool:
+    """A probe result counts as dead when nothing live was observed."""
+
+    label = str(getattr(caps, "support_label", "") or "")
+    notes = str(getattr(caps, "notes", "") or "").lower()
+    return label == "unavailable" or "timed out" in notes or "unavailable" in notes
+
+
+async def _cached_adapter_probe(adapter: Any) -> AdapterCapabilities:
+    """A bounded probe backed by a short-TTL per-adapter cache.
+
+    ``/v1/deck`` and ``/v1/adapters`` are polled; without a cache every poll
+    pays the full probe timeout for each dead adapter (an OpenCode server
+    that isn't running burns 2s per refresh). Live results expire fast so
+    real capability changes surface within seconds; failures linger so a
+    dead adapter stops stalling every poll.
+    """
+
+    name = str(getattr(adapter, "name", "unknown"))
+    now = asyncio.get_running_loop().time()
+    cached = state._adapter_probe_cache.get(name)
+    if cached is not None:
+        at, caps = cached
+        ttl = (
+            _ADAPTER_PROBE_CACHE_TTL_DEAD
+            if _adapter_probe_dead(caps)
+            else _ADAPTER_PROBE_CACHE_TTL_LIVE
+        )
+        if now - at < ttl:
+            return caps
+    caps = await _bounded_adapter_probe(adapter)
+    state._adapter_probe_cache[name] = (now, caps)
+    return caps
+
+
 async def _bounded_adapter_probes(adapters: list[Any]) -> list[AdapterCapabilities]:
     """Probe a registry against one non-blocking desktop-process snapshot.
 
@@ -1838,7 +1883,7 @@ async def _bounded_adapter_probes(adapters: list[Any]) -> list[AdapterCapabiliti
     snapshot = await asyncio.to_thread(capture_running_image_snapshot)
     with scoped_running_image_snapshot(snapshot):
         return list(
-            await asyncio.gather(*[_bounded_adapter_probe(adapter) for adapter in adapters])
+            await asyncio.gather(*[_cached_adapter_probe(adapter) for adapter in adapters])
         )
 
 
@@ -4789,13 +4834,10 @@ def create_app() -> FastAPI:
         offset: int = Query(default=0, ge=0, le=1_000_000),
         _: None = Depends(_require_token),
     ):
-        try:
-            await asyncio.wait_for(
-                state.pipeline.refresh_desktop_sessions(),
-                timeout=DESKTOP_REFRESH_TIMEOUT_SECONDS,
-            )
-        except TimeoutError:
-            logger.warning("Session refresh timed out; returning durable state")
+        # A polled read must never pay the discovery timeout — kick the
+        # refresh in the background; durable rows return immediately and the
+        # next poll picks up whatever desktop discovery lands.
+        state.pipeline.ensure_desktop_refresh()
         now = utcnow()
         return [
             _session_with_observation(s, now)
@@ -6384,7 +6426,7 @@ def create_app() -> FastAPI:
 
         async def probe_for_deck(adapter: Any) -> dict[str, Any]:
             try:
-                caps = await asyncio.wait_for(adapter.probe(), timeout=2.0)
+                caps = await _cached_adapter_probe(adapter)
             except Exception:
                 return {
                     "name": adapter.name,
@@ -6941,6 +6983,7 @@ def create_app() -> FastAPI:
         # verification found. A narration-only supervisor accepts the claim;
         # PEX adjudicates it against the workspace.
         narration_check: dict[str, Any] | None = None
+        verified_facts: list[str] = []
         if report:
             severity = {
                 "contradicted": 0,
@@ -6949,6 +6992,7 @@ def create_app() -> FastAPI:
                 "supported": 3,
             }
             worst: tuple[int, str, str] | None = None
+            session_claims: list[tuple[int, dict[str, Any]]] = []
             for claim in report.get("claims") or []:
                 # The report spans the whole goal ledger; on an attached run
                 # it includes prior sessions' claims. This check is about the
@@ -6956,14 +7000,26 @@ def create_app() -> FastAPI:
                 if claim.get("session_id") != session.id:
                     continue
                 statements = claim.get("claim_statements") or []
-                if not statements:
-                    continue
                 status = str(claim.get("verification_status") or "")
                 rank = severity.get(status, 4)
+                session_claims.append((rank, claim))
+                if not statements:
+                    continue
                 if worst is None or rank < worst[0]:
                     worst = (rank, str(statements[0]), status)
             if worst is not None:
                 narration_check = {"claim": worst[1], "status": worst[2]}
+            # The deciding evidence, verbatim — sealed-surface diffs, pytest
+            # exits, staleness markers. Ordered so the most-contradicted
+            # claim's facts come first; capped for the card.
+            for _, claim in sorted(session_claims, key=lambda item: item[0]):
+                for entry in claim.get("evidence") or []:
+                    text = str(entry).strip()[:160]
+                    if text and text not in verified_facts:
+                        verified_facts.append(text)
+                if len(verified_facts) >= 4:
+                    break
+            verified_facts = verified_facts[:4]
         declared: dict[str, Any] | None = None
         expected = parse_declared_expectation(data)
         if expected is not None and session.goal_id:
@@ -6972,7 +7028,6 @@ def create_app() -> FastAPI:
                 # same contract scripts/eval_replays.py enforces suite-wide.
                 if report is None:
                     raise LookupError("verification report unavailable")
-                report_claims = report.get("claims") or []
                 report_claims = report.get("claims") or []
                 report_evidence: set[str] = set()
                 for claim in report_claims:
@@ -7021,6 +7076,7 @@ def create_app() -> FastAPI:
             "completion": completion,
             "declared": declared,
             "narration_check": narration_check,
+            "verified_facts": verified_facts,
         }
 
     @app.get("/v1/adapters")

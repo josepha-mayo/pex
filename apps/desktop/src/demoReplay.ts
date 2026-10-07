@@ -141,6 +141,10 @@ export type ReplayVerdict = {
     claim: string;
     status: string;
   };
+  // Verbatim deciding evidence for this session's claims — sealed-surface
+  // diffs, pytest exits, staleness markers. This is what "independent
+  // verification" means concretely; the card quotes it.
+  verifiedFacts?: string[];
 };
 
 // Two arcs count as identical when the intervention chain, the cited
@@ -214,6 +218,13 @@ export function parseReplayVerdict(payload: unknown): ReplayVerdict | null {
         status: status.trim().slice(0, 64),
       };
     }
+  }
+  if (Array.isArray(payload.verified_facts)) {
+    const facts = payload.verified_facts
+      .filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+      .map((item) => item.trim().slice(0, 200))
+      .slice(0, 6);
+    if (facts.length) verdict.verifiedFacts = facts;
   }
   return verdict;
 }

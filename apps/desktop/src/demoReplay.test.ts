@@ -178,12 +178,14 @@ test("replay verdict carries the observed arc and the adjudicated completion", (
       "not-a-record",
     ],
     completion: { status: "uncertain", reason: "no_current_supported_completion_evidence" },
+    verified_facts: ["pytest_ok=false", " later_edit:tests/test_math.py ", 42, ""],
   });
   assert.deepEqual(verdict, {
     actions: ["SEND_NUDGE", "SUPPRESSED_COOLDOWN"],
     citedConstraint: "Do not modify the sealed baseline test file",
     status: "uncertain",
     reason: "no_current_supported_completion_evidence",
+    verifiedFacts: ["pytest_ok=false", "later_edit:tests/test_math.py"],
   });
   assert.deepEqual(
     parseReplayVerdict({ replay: true, not_live_control: true, session_id: "s" }),

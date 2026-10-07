@@ -854,6 +854,7 @@ class Pipeline:
         self.supervision_paused = False
         self._desktop_refresh_lock = asyncio.Lock()
         self._desktop_refresh_attempted_at: float | None = None
+        self._desktop_refresh_task: asyncio.Task[None] | None = None
         self._opencode_http_seen_transport: object | None = None
         self._handoff_mutation_lock = asyncio.Lock()
         self._session_locks_guard = asyncio.Lock()
@@ -6793,6 +6794,32 @@ class Pipeline:
                 ),
             },
         )
+
+    def ensure_desktop_refresh(self) -> None:
+        """Kick a desktop discovery in the background instead of blocking a read.
+
+        Polled read endpoints (``/v1/sessions``) must not pay the discovery
+        timeout on every call — a host without agent desktop apps would burn
+        seconds per refresh. The refresh writes discoveries to the Store, so
+        the next poll picks them up; the in-flight task and the existing
+        min-interval throttle keep calls cheap and deduplicated.
+        """
+        now = time.monotonic()
+        if self._desktop_refresh_lock.locked() or (
+            self._desktop_refresh_attempted_at is not None
+            and now - self._desktop_refresh_attempted_at < DESKTOP_REFRESH_MIN_INTERVAL_SECONDS
+        ):
+            return
+        task = self._desktop_refresh_task
+        if task is None or task.done():
+            self._desktop_refresh_task = asyncio.create_task(
+                self.refresh_desktop_sessions()
+            )
+            # Consume failures so a dead discovery never surfaces as an
+            # unretrieved task exception — the next poll simply retries.
+            self._desktop_refresh_task.add_done_callback(
+                lambda done: done.exception() if not done.cancelled() else None
+            )
 
     async def refresh_desktop_sessions(self) -> None:
         now = time.monotonic()

@@ -3347,6 +3347,14 @@ export function App() {
                           : `${demoReplay.verdict.narrationCheck.status} — narration-only supervision would have accepted it`}
                       </p>
                     ) : null}
+                    {demoReplay.verdict.verifiedFacts?.length ? (
+                      <p
+                        className="replay-verdict-determinism"
+                        title="The deciding evidence, verbatim from the adjudication ledger"
+                      >
+                        Verified facts: {demoReplay.verdict.verifiedFacts.join(" · ")}
+                      </p>
+                    ) : null}
                     {demoReplay.verdict.declared ? (
                       <p
                         className={

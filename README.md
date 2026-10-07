@@ -288,6 +288,12 @@ control — a worker that complies with a recorded ruling earns
 `verified_complete` with zero false-positive interventions — each scored in
 CI against its declared arc.*
 
+![The positive-control verdict card: a compliant run verifies under the ruling](docs/demo/assets/pex-compliance-card.png)
+
+*A durable ledger that only ever blocks would be a trap, not a supervisor —
+the positive-control fixture proves the same ruling that catches a violating
+trajectory signs off on a compliant one.*
+
 The whole judge path as a 45-second recorded capture of the real UI —
 fixture click → verdict card → Inspector's claim timeline with the
 worker's own claims → the sealed-baseline diff of the weakened test →

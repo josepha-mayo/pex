@@ -1420,6 +1420,9 @@ _MCP_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$")
 _MCP_SCOPE_PATTERN = re.compile(r"^pex\.[a-z][a-z0-9_.-]{0,123}$")
 logger = logging.getLogger(__name__)
 _PROCESS_BOOT_ID = f"boot_{uuid4().hex}"
+# Committed-view read pool: enough concurrency for drain + UI + projection
+# readers without letting a burst open unbounded SQLite connections.
+_COMMITTED_READ_POOL_SIZE = 4
 EVENT_PROCESSING_TERMINAL_STATES = frozenset(
     {
         "complete",
@@ -7362,6 +7365,12 @@ class Store:
         self._db: aiosqlite.Connection | None = None
         self._write_lock = asyncio.Lock()
         self._audit_flush_lock = asyncio.Lock()
+        # Bounded pool of committed-view read connections. Each borrow opens
+        # its own deferred snapshot, so pooled conns idle unlocked and never
+        # hand a caller an older committed view.
+        self._read_pool: asyncio.Queue[aiosqlite.Connection] | None = None
+        self._read_pool_capacity = _COMMITTED_READ_POOL_SIZE
+        self._read_pool_lock = asyncio.Lock()
 
     async def connect(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -9750,8 +9759,7 @@ class Store:
                 "outcome": "human_lifecycle_delivery_uncertain",
             }
         try:
-            async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-                await _configure_connection(transaction)
+            async with self._pooled_connection() as transaction:
                 await transaction.execute("BEGIN")
                 try:
                     operation, _, manifest = await _load_cleanup_operation(
@@ -9954,6 +9962,24 @@ class Store:
             await self._try_sync_intervention_audit()
             await self._db.close()
             self._db = None
+        if self._read_pool is not None:
+            pool = self._read_pool
+            self._read_pool = None
+            async with self._read_pool_lock:
+                self._read_pool_capacity = _COMMITTED_READ_POOL_SIZE
+            while True:
+                try:
+                    connection = pool.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+                try:
+                    await connection.execute("ROLLBACK")
+                except Exception:
+                    pass
+                try:
+                    await connection.close()
+                except Exception:
+                    pass
 
     async def register_project_locator(
         self,
@@ -10687,6 +10713,67 @@ class Store:
             raise RuntimeError("store is not connected")
         return self._db
 
+    async def _borrow_committed_connection(self) -> aiosqlite.Connection:
+        """Take a pooled committed-view connection, creating one on demand."""
+        if self._read_pool is None:
+            async with self._read_pool_lock:
+                if self._read_pool is None:
+                    self._read_pool = asyncio.Queue()
+        try:
+            return self._read_pool.get_nowait()
+        except asyncio.QueueEmpty:
+            pass
+        async with self._read_pool_lock:
+            create = self._read_pool_capacity > 0
+            if create:
+                self._read_pool_capacity -= 1
+        if not create:
+            return await self._read_pool.get()
+        connection = await aiosqlite.connect(self.path, timeout=5.0)
+        try:
+            await _configure_connection(connection)
+        except BaseException:
+            await connection.close()
+            async with self._read_pool_lock:
+                self._read_pool_capacity += 1
+            raise
+        return connection
+
+    @asynccontextmanager
+    async def _pooled_connection(self) -> AsyncIterator[aiosqlite.Connection]:
+        """Borrow a pooled WAL connection for one committed-view operation.
+
+        The caller manages its own statements — a read-only ``BEGIN`` /
+        ``commit`` pair or loose SELECTs both work. On return the connection
+        is rolled back (a no-op when the caller already committed) so it
+        re-enters the pool unlocked: no stale snapshot survives a borrow,
+        and idle pooled connections never block writers.
+        """
+        pool = await self._read_pool_check()
+        connection = await self._borrow_committed_connection()
+        broken = False
+        try:
+            yield connection
+        except BaseException:
+            broken = True
+            raise
+        finally:
+            try:
+                await connection.rollback()
+            except Exception:
+                broken = True
+            if broken:
+                # Never return a suspect connection to the pool — release its
+                # capacity slot so the next borrow creates a fresh one.
+                try:
+                    await connection.close()
+                except Exception:
+                    pass
+                async with self._read_pool_lock:
+                    self._read_pool_capacity += 1
+            else:
+                pool.put_nowait(connection)
+
     @asynccontextmanager
     async def _committed_connection(self) -> AsyncIterator[aiosqlite.Connection]:
         """A dedicated connection pinned to the authoritative committed view.
@@ -10695,15 +10782,31 @@ class Store:
         inside whatever ``BEGIN IMMEDIATE`` block is in flight (or leaked)
         there and see that transaction's older snapshot — the drain loop
         then misses rows that provably committed (observed as a replay 500
-        on "row disappeared"). A fresh WAL connection always sees committed
-        data; every statement inside this block shares one snapshot.
+        on "row disappeared"). A pooled WAL connection sees committed data;
+        every statement inside this block shares one snapshot.
+
+        Connections are pooled because projection paths issue hundreds of
+        reads per call (per-session authority checks) and a fresh
+        ``aiosqlite.connect`` per read costs real milliseconds each. The
+        pool preserves the contract: a borrowed connection opens a fresh
+        deferred ``BEGIN`` (so its snapshot is the state committed *now*),
+        and ``rollback`` on return leaves it unlocked — never holding a
+        stale snapshot between borrows, never blocking writers while idle.
         """
-        async with aiosqlite.connect(self.path, timeout=5.0) as connection:
-            await _configure_connection(connection)
-            # One deferred read transaction per call: every statement below
+        async with self._pooled_connection() as connection:
+            # One deferred read transaction per borrow: every statement
             # shares a single committed snapshot, never a borrowed one.
             await connection.execute("BEGIN")
             yield connection
+
+    async def _read_pool_check(self) -> asyncio.Queue[aiosqlite.Connection]:
+        if self._db is None:
+            raise RuntimeError("store is not connected")
+        if self._read_pool is None:
+            async with self._read_pool_lock:
+                if self._read_pool is None:
+                    self._read_pool = asyncio.Queue()
+        return self._read_pool
 
     async def _committed_execute(self, sql: str, params: tuple = ()) -> _BufferedCursor:
         """Run one read on a dedicated connection, buffering its rows.
@@ -10810,8 +10913,7 @@ class Store:
             raise ValueError("Cursor rejection limit is invalid")
         if type(offset) is not int or not 0 <= offset <= 1_000_000:
             raise ValueError("Cursor rejection offset is invalid")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 count_cursor = await transaction.execute(
@@ -10873,8 +10975,7 @@ class Store:
         )
         if prepared is None:  # pragma: no cover - required argument invariant
             raise ValueError("goal control replay requires actor authority")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 record = await _lookup_goal_control_operation(
@@ -11664,8 +11765,7 @@ class Store:
         """Return one snapshot-validated Goal plus semantic CAS metadata."""
 
         _validate_store_id(goal_id, label="goal id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 authority_cursor = await transaction.execute(
@@ -11718,8 +11818,7 @@ class Store:
         """Load a goal only while its immutable project snapshot is still live."""
 
         _validate_store_id(goal_id, label="goal id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 try:
@@ -11743,8 +11842,7 @@ class Store:
         """
 
         _validate_store_id(goal_id, label="goal id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 try:
@@ -11813,8 +11911,7 @@ class Store:
             raise ValueError(f"goal limit must be between 1 and {MAX_LIST_QUERY_LIMIT}")
         if offset < 0:
             raise ValueError("goal offset cannot be negative")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 cursor = await transaction.execute(
@@ -11908,8 +12005,7 @@ class Store:
         """Return only a same-identity successor while the parent binding is live."""
 
         _validate_store_id(goal_id, label="goal id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 goal, binding = await _load_bound_goal(transaction, goal_id)
@@ -12220,8 +12316,7 @@ class Store:
         server-selected path persisted at publication, never inferred metadata.
         """
         snapshot = session.model_copy(deep=True)
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 result = await _require_session_workspace_current(transaction, snapshot)
@@ -12761,8 +12856,7 @@ class Store:
         """Return the sealed acceptance-surface baseline for one binding."""
 
         key = _acceptance_baseline_key(session_id, goal_id)
-        async with aiosqlite.connect(self.path, timeout=5.0) as connection:
-            await _configure_connection(connection)
+        async with self._pooled_connection() as connection:
             cursor = await connection.execute(
                 "SELECT json FROM fingerprints WHERE key = ?",
                 (key,),
@@ -12866,8 +12960,7 @@ class Store:
         """Load a session only while its immutable project/goal binding is live."""
 
         _validate_store_id(session_id, label="session id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 try:
@@ -12907,8 +13000,7 @@ class Store:
         if not unique_ids:
             return {}
 
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 sessions: dict[str, HarnessSession] = {}
@@ -12974,8 +13066,7 @@ class Store:
         """Return derived standing authority without changing observer capabilities."""
 
         _validate_store_id(session_id, label="autonomous correction session id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 cursor = await transaction.execute(
@@ -14160,8 +14251,7 @@ class Store:
         if now is not None and now.tzinfo is None:
             raise ValueError("MCP principal lookup time must be timezone-aware")
         checked_at = now or utcnow()
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 cursor = await transaction.execute(
@@ -14467,8 +14557,7 @@ class Store:
         checked_at = now or utcnow()
         if not isinstance(checked_at, datetime) or checked_at.tzinfo is None:
             raise ValueError("hook credential lookup time must be timezone-aware")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 cursor = await transaction.execute(
@@ -16064,8 +16153,7 @@ class Store:
         ):
             raise ValueError("session project id is invalid")
         _validate_query_page(label="session", limit=limit, offset=offset)
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 goal, binding = await _load_bound_goal(transaction, goal_id)
@@ -16106,8 +16194,7 @@ class Store:
 
     async def goal_completion_projection(self, goal_id: str) -> dict[str, Any]:
         _validate_store_id(goal_id, label="goal completion id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 goal, binding = await _load_bound_goal(transaction, goal_id)
@@ -16722,8 +16809,7 @@ class Store:
         """Return a resource only while creation and current cleanup authority agree."""
 
         _validate_store_id(resource_id, label="lifecycle resource id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 try:
@@ -16758,8 +16844,7 @@ class Store:
         _validate_store_id(session_id, label="lifecycle resource session id")
         _validate_store_id(goal_id, label="lifecycle resource goal id")
         _validate_query_page(label="lifecycle resource", limit=limit, offset=offset)
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 session, binding = await _load_bound_session(
@@ -17414,8 +17499,7 @@ class Store:
         operation_id: str,
     ) -> dict[str, Any] | None:
         _validate_store_id(operation_id, label="cleanup operation id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 try:
@@ -17445,8 +17529,7 @@ class Store:
         _validate_store_id(session_id, label="cleanup operation session id")
         _validate_store_id(goal_id, label="cleanup operation goal id")
         _validate_query_page(label="cleanup operation", limit=limit, offset=offset)
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 session, binding = await _load_bound_session(
@@ -17507,8 +17590,7 @@ class Store:
 
         for row in rows:
             operation_id = str(row["id"])
-            async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-                await _configure_connection(transaction)
+            async with self._pooled_connection() as transaction:
                 await transaction.execute("BEGIN")
                 try:
                     operation, _, _ = await _load_cleanup_operation(
@@ -18225,8 +18307,7 @@ class Store:
         operation_id: str,
     ) -> dict[str, Any] | None:
         _validate_store_id(operation_id, label="restore operation id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 try:
@@ -18256,8 +18337,7 @@ class Store:
         _validate_store_id(session_id, label="restore operation session id")
         _validate_store_id(goal_id, label="restore operation goal id")
         _validate_query_page(label="restore operation", limit=limit, offset=offset)
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 session, binding = await _load_bound_session(
@@ -18308,8 +18388,7 @@ class Store:
         recovered: list[dict[str, Any]] = []
         for row in rows:
             operation_id = str(row["id"])
-            async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-                await _configure_connection(transaction)
+            async with self._pooled_connection() as transaction:
                 await transaction.execute("BEGIN")
                 try:
                     operation, _, _, _ = await _load_restore_operation(
@@ -19148,8 +19227,7 @@ class Store:
 
     async def get_operator_effect(self, effect_id: str) -> dict[str, Any] | None:
         _validate_store_id(effect_id, label="operator effect id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 cursor = await transaction.execute(
@@ -20790,8 +20868,7 @@ class Store:
         _validate_store_id(principal_id, label="operator effect principal")
         if _MCP_REQUEST_ID_PATTERN.fullmatch(idempotency_key) is None:
             raise ValueError("operator effect idempotency key is invalid")
-        async with aiosqlite.connect(self.path, timeout=5.0) as connection:
-            await _configure_connection(connection)
+        async with self._pooled_connection() as connection:
             await connection.execute("BEGIN")
             try:
                 cursor = await connection.execute(
@@ -21770,8 +21847,7 @@ class Store:
         """Return typed post-delivery evidence without upgrading it to proof."""
 
         _validate_store_id(effect_id, label="operator effect id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as connection:
-            await _configure_connection(connection)
+        async with self._pooled_connection() as connection:
             await connection.execute("BEGIN")
             try:
                 cursor = await connection.execute(
@@ -24519,8 +24595,7 @@ class Store:
             raise ValueError("event harness type is invalid")
         if not 1 <= limit <= MAX_EVENT_QUERY_LIMIT:
             raise ValueError(f"event limit must be between 1 and {MAX_EVENT_QUERY_LIMIT}")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 goal, binding = await _load_bound_goal(transaction, goal_id)
@@ -24637,8 +24712,7 @@ class Store:
             raise ValueError("event harness type is invalid")
         if not 1 <= limit <= MAX_EVENT_QUERY_LIMIT:
             raise ValueError(f"event limit must be between 1 and {MAX_EVENT_QUERY_LIMIT}")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 goal, binding = await _load_bound_goal(transaction, goal_id)
@@ -26300,8 +26374,7 @@ class Store:
         therefore stays null while the observed lower bound is exposed explicitly.
         """
 
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 captured_at = utcnow().isoformat()
@@ -27167,8 +27240,7 @@ class Store:
         """
 
         _validate_store_id(intervention_id, label="intervention id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 try:
@@ -27193,8 +27265,7 @@ class Store:
         """Return one intervention only while its frozen target identity is live."""
 
         _validate_store_id(intervention_id, label="intervention id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 try:
@@ -27233,8 +27304,7 @@ class Store:
             raise ValueError("intervention harness type is invalid")
         if not project_id or len(project_id) > MAX_PROJECT_ID_LENGTH:
             raise ValueError("intervention project id is invalid")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 session, session_binding = await _load_bound_session(
@@ -27293,8 +27363,7 @@ class Store:
         _validate_query_page(label="intervention", limit=limit, offset=offset)
         if not project_id or len(project_id) > MAX_PROJECT_ID_LENGTH:
             raise ValueError("intervention project id is invalid")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 goal, binding = await _load_bound_goal(transaction, goal_id)
@@ -27356,8 +27425,7 @@ class Store:
         intervention_id: str,
     ) -> dict[str, Any] | None:
         _validate_store_id(intervention_id, label="human decision intervention id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 loaded = await _load_validated_human_decision_resolution(
@@ -27377,8 +27445,7 @@ class Store:
         """Return a resolution projected from current canonical rows, never a stale receipt."""
 
         _validate_store_id(intervention_id, label="human decision intervention id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 loaded = await _load_validated_human_decision_resolution(
@@ -28865,8 +28932,7 @@ class Store:
         if not isinstance(action, ProposedAction):
             raise TypeError("lifecycle dispatch action is invalid")
         containment = action.type == InterventionType.STOP_AGENT
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 (
@@ -29255,8 +29321,7 @@ class Store:
         ):
             raise ValueError("context project id is invalid")
         _validate_store_id(goal_id, label="context goal id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 goal, binding = await _load_bound_goal(transaction, goal_id)
@@ -29334,8 +29399,7 @@ class Store:
             observed_at.tzinfo is None or observed_at.utcoffset() is None
         ):
             raise ValueError("context observation time must be timezone-aware")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 parameters: list[Any]
@@ -29483,8 +29547,7 @@ class Store:
         if offset < 0:
             raise ValueError("decision offset cannot be negative")
         ancestor_ids: list[str] = []
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 ancestor_ids = await _goal_superseded_ancestor_ids(transaction, goal_id)
@@ -29523,8 +29586,7 @@ class Store:
 
         _validate_store_id(goal_id, label="decision goal id")
         _validate_query_page(label="decision", limit=limit, offset=offset)
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 goal, binding = await _load_bound_goal(transaction, goal_id)
@@ -29584,8 +29646,7 @@ class Store:
         """Return an overlay only while its immutable creation identity is live."""
 
         _validate_store_id(overlay_id, label="overlay id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 cursor = await transaction.execute(
@@ -29628,8 +29689,7 @@ class Store:
         """Return a fully scalar/JSON-validated operation receipt."""
 
         _validate_store_id(operation_id, label="overlay operation id")
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 cursor = await transaction.execute(
@@ -30741,8 +30801,7 @@ class Store:
 
         if global_supervision_paused:
             return []
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 session_cursor = await transaction.execute(
@@ -30824,8 +30883,7 @@ class Store:
         if after_id is not None:
             _validate_store_id(after_id, label="overlay expiry cursor id")
         cutoff = _overlay_timestamp(now or utcnow())
-        async with aiosqlite.connect(self.path, timeout=5.0) as transaction:
-            await _configure_connection(transaction)
+        async with self._pooled_connection() as transaction:
             await transaction.execute("BEGIN")
             try:
                 overlays: list[Overlay] = []
