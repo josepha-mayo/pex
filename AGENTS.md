@@ -22,6 +22,12 @@
   `tag:python:3.12-slim` deliberately reports `sandbox_image_missing_pytest`.
 - Never commit runtime data, secrets, credentials, or generated databases.
   Inspect the staged file list before committing.
+- Operator controls that imply a live worker must refuse `not_live_control`
+  sessions honestly — server-side first (`pause/resume-supervision` 409s),
+  then the UI affordance. Focus, pause, and handoff-targeting are already
+  guarded; a replay's goal context is still a legitimate handoff *source*.
+  When adding a new session-scoped mutation, check
+  `session.metadata.not_live_control` before wiring it.
 
 ## Verification
 
@@ -40,6 +46,12 @@ npm test
 npx tsc --noEmit
 npm run build
 ```
+
+`npm test` runs an explicit file list in `package.json` — a new `*.test.ts`
+is silently skipped until it is added there. JSX components cannot be run
+under `node --test` (no JSX transform), so testable logic lives in plain
+`.ts` modules (`viewModel.ts`, `capabilities.ts`, …) beside the `.tsx`
+that renders it.
 
 Release preflight must run with `apps/desktop` as cwd:
 
