@@ -1116,7 +1116,8 @@ p {
 .verdict-verified_complete { color: var(--mint); }
 .verdict-acceptance_gap { color: var(--coral); }
 .verdict-in_progress,
-.verdict-incomplete { color: var(--amber); }
+.verdict-incomplete,
+.verdict-needs_decision { color: var(--amber); }
 .verdict-observed { color: var(--muted); }
 
 .verification-claim {

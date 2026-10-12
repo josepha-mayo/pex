@@ -3111,6 +3111,9 @@ export function App() {
                 {isReplaySession(session)
                   ? <small><span className="replay-badge">Recorded replay</span>
                       {replayFixtureLabel(session) ? ` · ${replayFixtureLabel(session)}` : ""}
+                      {session.status === "needs_decision"
+                        ? <span className="verdict-chip verdict-needs_decision">needs you</span>
+                        : ""}
                       {typeof session.metadata?.replay_verdict === "string"
                         ? <span className={`verdict-chip verdict-${session.metadata.replay_verdict}`}>
                             {session.metadata.replay_verdict.replace(/_/g, " ")}</span>
