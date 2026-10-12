@@ -258,6 +258,61 @@ async def test_event_processing_reads_committed_view_not_a_held_snapshot(tmp_pat
         await store.close()
 
 
+async def test_committed_read_pool_reuses_connections(tmp_path):
+    """Pooled committed reads must still see the latest committed snapshot.
+
+    The pool exists because projection paths issue hundreds of reads per
+    call; reusing a connection must never hand a caller an older committed
+    view — each borrow opens a fresh deferred snapshot.
+    """
+    store, _, session, _ = await _pipeline(tmp_path)
+    try:
+        async with store._committed_connection() as first:
+            assert first is not None
+        async with store._committed_connection() as second:
+            # A returned connection is re-borrowed instead of reconnecting.
+            assert second is first
+        event = _event(session, "evt-pool-committed")
+        acceptance = await store.accept_pipeline_event(
+            event, session_snapshot=session
+        )
+        assert acceptance["created"] is True
+        processing = await store.get_event_processing(event.event_id)
+        assert processing is not None
+        assert processing["state"] == "accepted"
+    finally:
+        await store.close()
+
+
+async def test_desktop_refresh_kick_dedupes_in_flight(tmp_path):
+    """``ensure_desktop_refresh`` must never run two discoveries or block.
+
+    Polled endpoints call it on every request; a host without agent
+    desktops would otherwise pay the discovery timeout per poll.
+    """
+    store, _, _, pipeline = await _pipeline(tmp_path)
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow_refresh() -> None:
+        entered.set()
+        await release.wait()
+
+    pipeline.refresh_desktop_sessions = slow_refresh  # type: ignore[method-assign]
+    try:
+        pipeline.ensure_desktop_refresh()
+        await asyncio.wait_for(entered.wait(), 2)
+        first = pipeline._desktop_refresh_task
+        assert first is not None
+        pipeline.ensure_desktop_refresh()
+        assert pipeline._desktop_refresh_task is first
+    finally:
+        release.set()
+        if pipeline._desktop_refresh_task is not None:
+            await pipeline._desktop_refresh_task
+        await store.close()
+
+
 def test_local_supervisor_dispatch_budget_outlives_main_agent_budget():
     assert LOCAL_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS == 70.0
     assert REMOTE_SUPERVISOR_DISPATCH_TIMEOUT_SECONDS == 30.0

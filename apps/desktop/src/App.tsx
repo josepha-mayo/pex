@@ -498,7 +498,9 @@ export function App() {
     current: string | null;
     met: number;
     misses: { fixture: string; failure: string }[];
+    results: { fixture: string; met: boolean | null; completion: string | null; failures: string[] }[];
   } | null>(null);
+  const [suiteReceiptCopied, setSuiteReceiptCopied] = useState(false);
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
@@ -1824,11 +1826,13 @@ export function App() {
 
   async function runDemoSuite() {
     if (!demoFixtures?.length || demoReplay.running || suiteRun?.running) return;
-    setSuiteRun({ running: true, done: 0, total: demoFixtures.length, current: null, met: 0, misses: [] });
+    setSuiteReceiptCopied(false);
+    setSuiteRun({ running: true, done: 0, total: demoFixtures.length, current: null, met: 0, misses: [], results: [] });
     let met = 0;
     const misses: { fixture: string; failure: string }[] = [];
+    const results: { fixture: string; met: boolean | null; completion: string | null; failures: string[] }[] = [];
     for (const [index, fixture] of demoFixtures.entries()) {
-      setSuiteRun({ running: true, done: index, total: demoFixtures.length, current: fixture.id, met, misses });
+      setSuiteRun({ running: true, done: index, total: demoFixtures.length, current: fixture.id, met, misses, results });
       try {
         const payload = await bridgeJson<unknown>("/v1/demo/replay", {
           method: "POST",
@@ -1838,7 +1842,14 @@ export function App() {
           body: JSON.stringify({ fixture: fixture.id }),
         });
         const verdict = parseReplayVerdict(payload);
-        if (verdict?.declared?.met === true) {
+        const metFlag = verdict?.declared?.met ?? null;
+        results.push({
+          fixture: fixture.id,
+          met: metFlag,
+          completion: verdict?.status ?? null,
+          failures: verdict?.declared?.failures ?? [],
+        });
+        if (metFlag === true) {
           met += 1;
         } else {
           misses.push({
@@ -1847,11 +1858,28 @@ export function App() {
           });
         }
       } catch {
+        results.push({ fixture: fixture.id, met: null, completion: null, failures: ["replay request failed"] });
         misses.push({ fixture: fixture.id, failure: "replay request failed" });
       }
     }
-    setSuiteRun({ running: false, done: demoFixtures.length, total: demoFixtures.length, current: null, met, misses });
+    setSuiteRun({ running: false, done: demoFixtures.length, total: demoFixtures.length, current: null, met, misses, results });
     await refreshPet();
+  }
+
+  async function copySuiteReceipt() {
+    if (!suiteRun || suiteRun.running || !suiteRun.results.length) return;
+    const receipt = {
+      replay: true,
+      not_live_control: true,
+      kind: "in_app_fixture_suite_receipt/v1",
+      note: "Recorded replay suite — same declared-arc contract as scripts/eval_replays.py; not a benchmark.",
+      ran_at: new Date().toISOString(),
+      total: suiteRun.total,
+      met: suiteRun.met,
+      results: suiteRun.results,
+    };
+    await navigator.clipboard.writeText(JSON.stringify(receipt, null, 2));
+    setSuiteReceiptCopied(true);
   }
 
   function runChallenge() {
@@ -3042,7 +3070,11 @@ export function App() {
                   ? ` · ${session.id.slice(-6)}` : ""}</small>
                 {isReplaySession(session)
                   ? <small><span className="replay-badge">Recorded replay</span>
-                      {replayFixtureLabel(session) ? ` · ${replayFixtureLabel(session)}` : ""}</small>
+                      {replayFixtureLabel(session) ? ` · ${replayFixtureLabel(session)}` : ""}
+                      {typeof session.metadata?.replay_verdict === "string"
+                        ? <span className={`verdict-chip verdict-${session.metadata.replay_verdict}`}>
+                            {session.metadata.replay_verdict.replace(/_/g, " ")}</span>
+                        : ""}</small>
                   : isLiveWorkerSession(session)
                     ? <small><span className="replay-badge live-badge">Live</span> {titleCase(session.status)}{session.observation?.stalled
                         ? ` · quiet ${observationAgeLabel(session.observation.last_event_age_seconds ?? 0)}` : ""}</small>
@@ -3187,6 +3219,16 @@ export function App() {
               <div className="demo-replay">
                 <p className="eyebrow">See the loop without a worker</p>
                 <p>Replay a recorded supervision trajectory through the real pipeline — labeled as a replay, never live worker control.</p>
+                <details className="judge-quickstart">
+                  <summary>Five-minute judge path</summary>
+                  <ol>
+                    <li>Click <strong>False completion without tests</strong> (tagged <em>start here</em>) — the worker claims done with no test run; PEX adjudicates the claim unsupported and ends <code>uncertain</code>.</li>
+                    <li>Read the verdict card: the arc, the worker's own claim vs. its verdict, the verbatim deciding evidence, and the fixture's declared arc scored live.</li>
+                    <li>Click <strong>Open the session evidence</strong> — the Inspector shows the claim timeline and the sealed-baseline diff.</li>
+                    <li>Tick <strong>Attach replays</strong> on a ruled goal and run <em>Second-act replay</em> — the recorded ruling governs the new run, not the goal text. The <em>complies</em> fixture proves it isn't a trap.</li>
+                    <li><strong>Run the whole suite</strong> — every fixture self-scored, same contract as <code>eval_replays.py</code> in CI.</li>
+                  </ol>
+                </details>
                 <div className="button-row">
                   {demoFixtures.map((fixture) => (
                     <button
@@ -3275,6 +3317,11 @@ export function App() {
                         : " — the demo verifies itself, the same way eval_replays.py does in CI."}
                     </p>
                   ) : null}
+                  {suiteRun && !suiteRun.running && suiteRun.results.length ? (
+                    <button type="button" className="ghost" onClick={() => void copySuiteReceipt()}>
+                      {suiteReceiptCopied ? "Receipt copied" : "Copy suite receipt (JSON)"}
+                    </button>
+                  ) : null}
                 </div>
                 <details className="demo-challenge">
                   <summary>
@@ -3353,6 +3400,13 @@ export function App() {
                         title="The deciding evidence, verbatim from the adjudication ledger"
                       >
                         Verified facts: {demoReplay.verdict.verifiedFacts.join(" · ")}
+                      </p>
+                    ) : null}
+                    {demoReplay.verdict.stats ? (
+                      <p className="replay-verdict-determinism">
+                        {demoReplay.verdict.stats.events} events adjudicated ·{" "}
+                        {demoReplay.verdict.stats.claims} claims ·{" "}
+                        {demoReplay.verdict.stats.incidents} integrity incidents
                       </p>
                     ) : null}
                     {demoReplay.verdict.declared ? (

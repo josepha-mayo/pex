@@ -612,12 +612,21 @@ async def test_general_escalation_resolution_is_recorded_replay_safe_and_restore
             "acceptance_gap",
             "uncertain",
         }
+    # Quantified adjudication travels with the run.
+    stats = body["stats"]
+    assert stats["events_adjudicated"] >= 1
+    assert stats["claims_adjudicated"] >= 0
+    assert isinstance(stats["integrity_incidents"], int)
+    assert isinstance(body.get("verified_facts") or [], list)
     escalation = next(
         item for item in body["interventions"] if item.get("action_taken") == "ASK_HUMAN"
     )
     session_id = body["session_id"]
     pending_session = await state.store.get_session(session_id)
     assert pending_session.status.value == "needs_decision"
+    # The adjudicated verdict is stamped on the session row so rail and
+    # Inspector surfaces show the outcome without a per-goal projection fetch.
+    assert pending_session.metadata.get("replay_verdict") == body["completion"]["status"]
 
     resolved = await client.post(
         f"/v1/decisions/{escalation['id']}/resolve",

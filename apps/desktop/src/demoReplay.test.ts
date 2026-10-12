@@ -360,3 +360,20 @@ test("fixture order tells the story and flags the entry point", () => {
   assert.equal(isRecommendedStart({ id: "premature_stop_eval", title: "p" }), true);
   assert.equal(isRecommendedStart({ id: "captured_live_eval", title: "c" }), false);
 });
+
+test("replay verdict carries quantified adjudication stats", () => {
+  const verdict = parseReplayVerdict({
+    replay: true,
+    not_live_control: true,
+    session_id: "s",
+    stats: { events_adjudicated: 32, claims_adjudicated: 4, integrity_incidents: 1 },
+  });
+  assert.deepEqual(verdict?.stats, { events: 32, claims: 4, incidents: 1 });
+  const missing = parseReplayVerdict({
+    replay: true,
+    not_live_control: true,
+    session_id: "s",
+    stats: { events_adjudicated: "lots" },
+  });
+  assert.equal(missing?.stats, undefined);
+});

@@ -883,6 +883,27 @@ p {
   color: var(--amber);
   font-size: 12px;
 }
+.judge-quickstart {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.judge-quickstart summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.judge-quickstart ol {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+.judge-quickstart li { margin-bottom: 4px; line-height: 1.45; }
+.judge-quickstart code {
+  font-size: 11px;
+  padding: 0 3px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
 .replay-verdict {
   margin-top: 12px;
   padding: 10px 12px;
@@ -1081,6 +1102,21 @@ p {
 .verdict-contradicted,
 .verdict-unsatisfied { color: var(--coral); }
 .verdict-uncertain { color: var(--amber); }
+
+.verdict-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.verdict-verified_complete { color: var(--mint); }
+.verdict-acceptance_gap { color: var(--coral); }
+.verdict-in_progress,
+.verdict-incomplete { color: var(--amber); }
 .verdict-observed { color: var(--muted); }
 
 .verification-claim {

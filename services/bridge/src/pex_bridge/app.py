@@ -7065,6 +7065,27 @@ def create_app() -> FastAPI:
                     "met": None,
                     "failures": [],
                 }
+        stats = {
+            "events_adjudicated": len(replay_events),
+            "claims_adjudicated": len(
+                [
+                    claim
+                    for claim in (report or {}).get("claims") or []
+                    if claim.get("session_id") == session.id
+                ]
+            ),
+            "integrity_incidents": (report or {}).get("summary", {}).get("integrity_incidents")
+            or 0,
+        }
+        # Stamp the adjudicated verdict onto the session row — ingest is
+        # complete, so nothing else writes this session; the rail and the
+        # Inspector can show the outcome without a per-goal projection fetch.
+        if completion and completion.get("status"):
+            persisted = await state.store.get_session(session.id)
+            if persisted is not None:
+                persisted.metadata = dict(persisted.metadata or {})
+                persisted.metadata["replay_verdict"] = str(completion["status"])
+                await state.store.upsert_session(persisted)
         return {
             "replay": True,
             "not_live_control": True,
@@ -7077,6 +7098,7 @@ def create_app() -> FastAPI:
             "declared": declared,
             "narration_check": narration_check,
             "verified_facts": verified_facts,
+            "stats": stats,
         }
 
     @app.get("/v1/adapters")

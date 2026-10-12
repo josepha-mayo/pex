@@ -145,6 +145,13 @@ export type ReplayVerdict = {
   // diffs, pytest exits, staleness markers. This is what "independent
   // verification" means concretely; the card quotes it.
   verifiedFacts?: string[];
+  // Quantified adjudication: how many events ran through the pipeline, how
+  // many of this session's claims were adjudicated, integrity incidents.
+  stats?: {
+    events: number;
+    claims: number;
+    incidents: number;
+  };
 };
 
 // Two arcs count as identical when the intervention chain, the cited
@@ -225,6 +232,18 @@ export function parseReplayVerdict(payload: unknown): ReplayVerdict | null {
       .map((item) => item.trim().slice(0, 200))
       .slice(0, 6);
     if (facts.length) verdict.verifiedFacts = facts;
+  }
+  if (isRecord(payload.stats)) {
+    const events = payload.stats.events_adjudicated;
+    const claims = payload.stats.claims_adjudicated;
+    const incidents = payload.stats.integrity_incidents;
+    if (
+      typeof events === "number" &&
+      typeof claims === "number" &&
+      typeof incidents === "number"
+    ) {
+      verdict.stats = { events, claims, incidents };
+    }
   }
   return verdict;
 }
