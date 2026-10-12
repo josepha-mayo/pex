@@ -48,7 +48,11 @@ intervenes only inside bounded policy.
    and the fixture's **declared arc scored live** by the same contract
    `eval_replays.py` enforces. The verdict is also stamped onto the
    session row, so the worker rail shows each replay's outcome as a chip.
-   The fixture grid is a curated narrative — `premature_stop_eval` is
+   Operator controls that imply a live worker — **Open agent**, **Pause
+   supervision**, handoff *targets* — refuse honestly on replay sessions
+   (the pause endpoint returns 409 rather than write a control receipt
+   against a trajectory that was never live). The fixture grid is a
+   curated narrative — `premature_stop_eval` is
    tagged *start here* — a **Run the whole suite** button self-scores all
    fixtures in-app, and the panel's built-in *Five-minute judge path*
    collapsible walks the steps above without leaving the app. The
