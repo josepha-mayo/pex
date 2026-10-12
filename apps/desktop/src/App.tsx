@@ -22,6 +22,7 @@ import {
 import { Inspector } from "./components/Inspector";
 import { PetStage } from "./components/PetStage";
 import { SettingsPage, type SettingsSection } from "./components/SettingsPage";
+import { CapabilitiesPanel } from "./components/CapabilitiesPanel";
 import { SharedConnectionPanel } from "./components/SharedConnectionPanel";
 import { OpenCodeConnectionPanel } from "./components/OpenCodeConnectionPanel";
 import { CodexConnectionPanel } from "./components/CodexConnectionPanel";
@@ -2965,6 +2966,15 @@ export function App() {
         hookCredential={hookBootstrap?.token || ""}
         hookCredentialExpiresAt={hookBootstrap?.expires_at || ""}
         provisioningHook={provisioningHook}
+        capabilitiesPanel={
+          <CapabilitiesPanel
+            adapters={deck.adapters}
+            supervisor={supervisor}
+            bench={bench}
+            fixtureCount={demoFixtures ? demoFixtures.length : null}
+            unauthenticatedOperator={demoOperatorActions}
+          />
+        }
         workerConnection={<>
           <OpenCodeConnectionPanel request={sharedConnectionRequest} available={sessionStateFresh}
             onReturnHome={() => showSurface("compact")}

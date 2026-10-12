@@ -15,7 +15,7 @@ import {
 } from "../viewModel";
 
 type HookHarness = "cursor" | "claude_code" | "qwen" | "hermes" | "opencode";
-export type SettingsSection = "companion" | "supervisor" | "connections" | "goals";
+export type SettingsSection = "companion" | "supervisor" | "connections" | "goals" | "capabilities";
 
 export function SettingsPage({
   initialSection,
@@ -51,6 +51,7 @@ export function SettingsPage({
   provisioningHook,
   companionRoster,
   workerConnection,
+  capabilitiesPanel,
   onBack,
   onCreateGoal,
   onNickname,
@@ -109,6 +110,7 @@ export function SettingsPage({
   provisioningHook: boolean;
   companionRoster?: ReactNode;
   workerConnection?: ReactNode;
+  capabilitiesPanel?: ReactNode;
   onBack: () => void;
   onNickname: (value: string) => void;
   onScale: (value: number) => void;
@@ -132,7 +134,7 @@ export function SettingsPage({
   onCopyHook: () => void;
   onClearHook: () => void;
 }) {
-  const sections: SettingsSection[] = ["supervisor", "connections", "goals", "companion"];
+  const sections: SettingsSection[] = ["supervisor", "connections", "goals", "capabilities", "companion"];
   const [section, setSection] = useState<SettingsSection>(
     initialSection ?? "supervisor",
   );
@@ -213,6 +215,7 @@ export function SettingsPage({
           aria-labelledby={`settings-tab-${section}`}
         >
           {section === "connections" ? workerConnection : null}
+          {section === "capabilities" ? capabilitiesPanel : null}
           {section === "connections" ? (
           <details className="settings-disclosure settings-wide">
             <summary>
