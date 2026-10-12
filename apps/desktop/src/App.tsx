@@ -502,6 +502,7 @@ export function App() {
   } | null>(null);
   const suiteCancelRef = useRef(false);
   const [suiteReceiptCopied, setSuiteReceiptCopied] = useState(false);
+  const [verdictReceiptCopied, setVerdictReceiptCopied] = useState(false);
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
   const [clickThrough, setClickThrough] = useState(false);
@@ -1756,6 +1757,7 @@ export function App() {
 
   async function runDemoReplay(fixtureId: string, inline?: Record<string, unknown>) {
     if (demoReplay.running) return;
+    setVerdictReceiptCopied(false);
     setDemoReplay((previous) => ({
       ...previous, running: true, fixture: fixtureId, error: null, verdict: null,
     }));
@@ -1892,6 +1894,32 @@ export function App() {
     };
     await navigator.clipboard.writeText(JSON.stringify(receipt, null, 2));
     setSuiteReceiptCopied(true);
+  }
+
+  async function copyVerdictReceipt() {
+    const verdict = demoReplay.verdict;
+    if (!verdict || !demoReplay.fixture) return;
+    const run = demoReplay.history[0];
+    const receipt = {
+      replay: true,
+      not_live_control: true,
+      kind: "replay_verdict_receipt/v1",
+      note: "Deterministic recorded replay — not live worker control.",
+      ran_at: new Date().toISOString(),
+      fixture: demoReplay.fixture,
+      session_id: run?.sessionId ?? null,
+      attached: run?.attached ?? false,
+      completion: { status: verdict.status ?? null, reason: verdict.reason ?? null },
+      observed_arc: verdict.actions,
+      cited_constraint: verdict.citedConstraint ?? null,
+      narration_check: verdict.narrationCheck ?? null,
+      verified_facts: verdict.verifiedFacts ?? [],
+      stats: verdict.stats ?? null,
+      declared: verdict.declared ?? null,
+      determinism: verdict.determinism ?? null,
+    };
+    await navigator.clipboard.writeText(JSON.stringify(receipt, null, 2));
+    setVerdictReceiptCopied(true);
   }
 
   function runChallenge() {
@@ -3494,6 +3522,13 @@ export function App() {
                         onClick={() => openInspector()}
                       >
                         Open the session evidence ↗
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => void copyVerdictReceipt()}
+                      >
+                        {verdictReceiptCopied ? "Receipt copied" : "Copy verdict receipt (JSON)"}
                       </button>
                     </div>
                     {demoReplay.history.length > 1 ? (
