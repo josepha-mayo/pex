@@ -168,5 +168,9 @@ Nemotron inference follows the same runbook's main path.
 - **Not claimed:** formal benchmark scores (PexBench is unfrozen), AWS
   AgentCore deployment (protocol-tested locally only), live ConTree results.
 
+The same matrix exists in-app: **Settings → Capabilities** derives each row
+from the live bridge (probed adapters, supervisor state, the bench endpoint)
+rather than shipping static copy — it is linked from the judge quickstart.
+
 See [DIFFERENTIATION.md](DIFFERENTIATION.md) for the orchestrator-vs-supervisor
 argument and [TESTING.md](TESTING.md) for the evidence inventory.
