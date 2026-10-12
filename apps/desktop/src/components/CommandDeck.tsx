@@ -447,7 +447,10 @@ function NowView({
                 {canOpen ? "Open agent" : "Open unavailable"}
               </button>
               <button type="button" className="ghost" onClick={() => onSelect(session.id)}>Inspect</button>
-              <button type="button" className="ghost" disabled={!mutationsAvailable} onClick={() => onPause(session)}>
+              <button type="button" className="ghost"
+                disabled={!mutationsAvailable || session.metadata?.not_live_control === true}
+                title={session.metadata?.not_live_control === true ? "A recorded replay has no live supervision to pause" : undefined}
+                onClick={() => onPause(session)}>
                 {session.supervision_paused ? "Resume" : "Pause"}
               </button>
             </div>

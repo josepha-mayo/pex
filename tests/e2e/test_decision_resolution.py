@@ -872,3 +872,27 @@ async def test_replay_attach_rejects_an_unknown_goal(client: AsyncClient):
         },
     )
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_replay_sessions_reject_supervision_pause(client: AsyncClient):
+    """A recorded replay has no live supervision to pause or resume.
+
+    The operator controls must not write durable control state for a
+    not_live_control session — the audit ledger would claim a control act
+    against a trajectory that was never live.
+    """
+
+    replay = await client.post("/v1/demo/replay", json={"fixture": "premature_stop_eval"})
+    assert replay.status_code == 200, replay.text
+    session_id = replay.json()["session_id"]
+
+    paused = await client.post(f"/v1/sessions/{session_id}/pause-supervision")
+    assert paused.status_code == 409, paused.text
+    assert "recorded replay" in paused.text
+    resumed = await client.post(f"/v1/sessions/{session_id}/resume-supervision")
+    assert resumed.status_code == 409, resumed.text
+
+    session = await state.store.get_session(session_id)
+    assert session is not None
+    assert session.supervision_paused is not True

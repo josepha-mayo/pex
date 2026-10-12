@@ -6001,6 +6001,11 @@ def create_app() -> FastAPI:
         control = await state.store.get_session_control_state(session_id)
         if control is None:
             raise HTTPException(404, "session not found")
+        if control["session"].metadata.get("not_live_control") is True:
+            raise HTTPException(
+                409,
+                "recorded replay session: there is no live supervision to pause",
+            )
         result = await state.store.set_session_supervision_paused(
             session_id,
             paused=True,
@@ -6017,6 +6022,11 @@ def create_app() -> FastAPI:
         control = await state.store.get_session_control_state(session_id)
         if control is None:
             raise HTTPException(404, "session not found")
+        if control["session"].metadata.get("not_live_control") is True:
+            raise HTTPException(
+                409,
+                "recorded replay session: there is no live supervision to resume",
+            )
         result = await state.store.set_session_supervision_paused(
             session_id,
             paused=False,

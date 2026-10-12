@@ -1717,6 +1717,7 @@ export function App() {
   );
   // Same-goal siblings that can accept an injected context bundle. The bridge
   // re-checks the capability server-side; this list is only a UI affordance.
+  // Recorded replays are excluded — there is no live worker to inject into.
   const handoffTargets = useMemo(
     () =>
       current?.goal_id
@@ -1724,7 +1725,8 @@ export function App() {
             (session) =>
               session.id !== current.id &&
               session.goal_id === current.goal_id &&
-              session.capabilities?.inject_context === true,
+              session.capabilities?.inject_context === true &&
+              session.metadata?.not_live_control !== true,
           )
         : [],
     [sessions, current?.goal_id, current?.id],
