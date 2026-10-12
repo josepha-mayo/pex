@@ -739,6 +739,24 @@ test("Codex App Server sessions never claim ChatGPT desktop focus", () => {
   }), true);
 });
 
+test("recorded replays never offer live-agent focus", () => {
+  const replay = {
+    id: "synthetic:replay-premature_stop_eval-1",
+    harness_type: "synthetic",
+    status: "stopped",
+    capabilities: { focus_ui: true },
+    metadata: { replay: true, not_live_control: true },
+  };
+  assert.equal(canFocusSession(replay), false);
+  assert.equal(canOpenSession(replay), false);
+  // A live synthetic session with the same capability still can.
+  assert.equal(canFocusSession({
+    ...replay,
+    id: "synthetic:live-1",
+    metadata: {},
+  }), true);
+});
+
 test("Open agent uses a local window or an allowlisted existing Devin link", () => {
   assert.equal(safeExternalUrl("javascript:alert(1)"), null);
   assert.equal(safeExternalUrl("https://evil.example/sessions/devin-1"), null);

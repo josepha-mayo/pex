@@ -1370,6 +1370,9 @@ export function splitPetCatalog(
 }
 
 export function canFocusSession(session: SessionRow | undefined): boolean {
+  // A recorded replay is not live worker control — there is no agent UI
+  // to focus regardless of what the adapter claims it could do.
+  if (session?.metadata?.not_live_control === true) return false;
   if (!supportsCapability(session, "focus_ui")) return false;
   // A connected Codex App Server session has no corresponding desktop chat.
   // The adapter can truthfully focus ChatGPT.exe only for its observe-only row.
