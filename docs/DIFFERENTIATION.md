@@ -28,17 +28,23 @@ stays quiet when the work is actually complete.
 | Handoff means "we pasted some context" | `FRESH_HANDOFF` mints a content-addressed bundle, injects over the real transport, and stays `awaiting_target_evidence` until the target produces observable work | Live `handoff_injected` on OpenCode — `docs/demo/evidence/LIVE_OPENCODE_HANDOFF_*.json` |
 | Replays can be steered | Recorded sessions are sealed evidence (`not_live_control`); they cannot be re-attached, resolved, or handed a bundle | `session_not_live_control` enforced at the store; demo badges them everywhere |
 | A worker dispute is just another ticket | A human ruling on an escalation journals onto the goal's decision ledger — it governs later attached replays, survives override-mode goal edits through `supersedes` lineage, and lints even the human's own contradicting prompt back to a human decision | `nudge_dispute_eval` → resolution → `ruling_continuity_eval`/`ruling_selfcheck_eval` attach arcs; lineage-inheritance e2e; idempotent/conflict-safe resolve API |
+| "All tests passed" is proof | Worker narration is a claim, not a verdict — every replay pairs the worker's own words with what independent adjudication found, plus the verbatim facts that decided it | `narration_check` + `verified_facts` + run `stats` on every replay response; the narration-only counterfactual is rendered on the card |
+| A replay is "press play" | Operator controls that imply a live worker refuse recorded sessions honestly — pause/resume 409s server-side, focus and handoff targeting are disabled, and the rail still flags a replay that needs a decision | `not_live_control` guards at endpoint and UI layers; e2e pin on the 409 path |
+| The demo blurs what it cannot do | The in-app honesty matrix derives every capability claim from live probes — adapters, supervisor credentials, bench state — so key-gated, unfrozen, and not-deployed rows label themselves | Settings → Capabilities; unit-pinned derivation rules |
 
 ## What is real today
 
 - Exactly two Codex-v2 companions, Pex and Von, are packaged in both verified installers.
 - Clean source `c3cc44c` produced verified MSI and NSIS inventories with zero package blockers.
-- Current focused gates pass 373 frontend tests (five platform-gated skips), 92
+- Current focused gates pass 391 frontend tests (five platform-gated skips), 92
   supervision/recovery tests, and 243 expanded Strands/provider/AgentCore/evidence
   tests (four skips). The latest
-  complete Python regression is 5,462 passed and 41 skipped on the `c9fc4ec` tree
-  (one subprocess import-timeout flake that passes solo); the earlier
-  4,440-pass run at `570964b` is retained as a historical data point.
+  complete Python regression is 5,468 passed and 41 skipped on the then-current
+  tree
+  (three cases failed on that run and were fixed immediately after — a
+  probe-cache contract regression and a connection-reset race in the model
+  relay, both root-caused and pinned); the earlier
+  5,462-pass run at `c9fc4ec` is retained as a historical data point.
 - A real Codex Spark worker and free Muse/Strands supervisor demonstrated restraint and
   specific same-thread recovery on clean `e864389`.
 - A real OpenCode 1.18.30 worker and free Muse/Strands supervisor demonstrated one
