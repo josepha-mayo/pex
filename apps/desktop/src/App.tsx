@@ -3091,6 +3091,16 @@ export function App() {
               </div>
             ) : null}
             <button type="button" className="ghost" onClick={() => openSettings("connections")}>Connect a worker</button>
+            {!railSessions.length && demoReplayAvailable && demoFixtures?.length ? (
+              <button type="button" className="ghost" disabled={demoReplay.running}
+                onClick={() => {
+                  const first = demoFixtures.find((fixture) => isRecommendedStart(fixture))
+                    ?? demoFixtures[0];
+                  void runDemoReplay(first.id);
+                }}>
+                {demoReplay.running ? "Replay running…" : "Or run a recorded replay — no install needed"}
+              </button>
+            ) : null}
             <div className={`workspace-rail-footer tone-${bridgeError ? "offline" : sessionStateFresh ? "work" : "quiet"}`}>
               <span className="status-dot" aria-hidden="true" />
               <span>{bridgeError ? "Local bridge unavailable" : sessionStateFresh ? "Local bridge connected" : "Waiting for local bridge"}</span>

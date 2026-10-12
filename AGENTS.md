@@ -80,3 +80,18 @@ preflight test, which now has a 300 s budget).
   path), `docs/demo/RUNBOOK.md` (live and replay demos),
   `docs/demo/DEMO_SCRIPT.md` (video narration), and the app's Recorded-replay
   fixture buttons (no worker install needed).
+- SQLite read conventions (hard-won): the long-lived `store.db` connection can
+  hold a stale snapshot while another connection commits — reads that need the
+  committed view must go through `store._committed_connection()` /
+  `_committed_fetch*`, which borrow from a bounded pool of pre-configured read
+  connections (fresh `BEGIN` per borrow, rollback on return). Never add a bare
+  `self.db.execute(...)` read outside a transaction; the audit pattern is the
+  dedicated-conn + `BEGIN` used throughout `store.py`. In-transaction reads on
+  `self.db` inside `BEGIN IMMEDIATE` write blocks are correct and must stay on
+  that connection.
+- `scripts/eval_replays.py` adjudicates every fixture in `fixtures/demo/`
+  through the real bridge and emits the suite receipt with `--json`/`--html`
+  (flags are `--json <path>` and `--html <path>` — not `--json-out`). The
+  fixture expectation contract lives in each fixture's `expectation` block and
+  supports `completion_in`, `interventions_any`, `interventions_never`,
+  `max_verified_or_supported`, and evidence requirements.
