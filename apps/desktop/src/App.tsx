@@ -3292,6 +3292,7 @@ export function App() {
                     <li>Click <strong>Open the session evidence</strong> — the Inspector shows the claim timeline and the sealed-baseline diff.</li>
                     <li>Make a ruling of your own: run <strong>Worker disputes the nudge</strong>, open <strong>Decisions</strong>, and record your answer — it journals onto the goal ledger. Then tick <strong>Attach replays</strong> and run <em>Second-act replay</em> — <em>your</em> ruling now governs the new run. The <em>complies</em> fixture proves it isn't a trap.</li>
                     <li><strong>Run the whole suite</strong> — every fixture self-scored, same contract as <code>eval_replays.py</code> in CI.</li>
+                    <li>Skeptical about what is real? <button type="button" className="text-button" onClick={() => openSettings("capabilities")}>Settings → Capabilities</button> lists what this build actually does, derived from live probes — what is key-gated, unfrozen, or not deployed is labelled, not implied.</li>
                   </ol>
                 </details>
                 <div className="button-row">
