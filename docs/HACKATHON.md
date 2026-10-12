@@ -19,7 +19,9 @@ intervenes only inside bounded policy.
 
 1. `python scripts/demo.py` (after `npm install` under `apps/desktop`) boots the
    demo bridge and dev UI in one step — the setup card offers **Recorded
-   replay** fixtures with no agent install.
+   replay** fixtures with no agent install, and an empty workers rail offers
+   **Or run a recorded replay** that starts the recommended fixture in one
+   click.
 2. Replay `tampered_acceptance_eval`. It walks a reward-hacking worker through
    the real pipeline: sealed acceptance baseline → test weakened → green "all
    tests passed" claim → `uncertain` verdict → corrective nudge naming the
@@ -39,10 +41,20 @@ intervenes only inside bounded policy.
    rule or confirm an override; ends honestly `uncertain` with no
    completion evidence). Every replay renders an **Observed supervision
    arc** card — the intervention chain, the adjudicated completion, and
-   the cited constraint — and the **Challenge the supervisor** panel ships
-   four runnable attack presets (weakened test, premature claim, silent
-   runner-config tamper, fabricated green output) a judge can mutate and
-   re-run.
+   the cited constraint — plus the **narration check** (the worker's own
+   claim vs. its adjudication — what narration-only supervision would have
+   accepted), the **verified facts** behind the verdict verbatim from the
+   adjudication ledger, run **stats** (events/claims/integrity incidents),
+   and the fixture's **declared arc scored live** by the same contract
+   `eval_replays.py` enforces. The verdict is also stamped onto the
+   session row, so the worker rail shows each replay's outcome as a chip.
+   The fixture grid is a curated narrative — `premature_stop_eval` is
+   tagged *start here* — a **Run the whole suite** button self-scores all
+   fixtures in-app, and the panel's built-in *Five-minute judge path*
+   collapsible walks the steps above without leaving the app. The
+   **Challenge the supervisor** panel ships four runnable attack presets
+   (weakened test, premature claim, silent runner-config tamper,
+   fabricated green output) a judge can mutate and re-run.
 3. Click **Evidence pack** in the Inspector — the app recomputes every digest
    *in your browser* while it downloads (a TypeScript port of the verifier,
    independent of the bridge). Then `python scripts/verify_pack.py
@@ -111,6 +123,11 @@ intervenes only inside bounded policy.
    an override-mode edit mints a successor goal and rebinds sessions, while
    `escalation_ruling` entries inherit forward through the `supersedes`
    lineage — a human decision cannot be retired by editing the goal text.
+   And the ruling ledger isn't a trap: `ruling_compliance_eval` attaches a
+   worker that *complies* with the recorded ruling — PEX verifies the work
+   and ends `verified_complete` with zero false-positive interventions
+   (the declared arc pins `interventions_never` on the contradiction
+   path).
    `--live` also seeds an idle sibling session on the same goal — the
    Inspector's **Hand off →** control mints a content-addressed
    `ContextBundle`, injects it into the sibling, and monitors assimilation:
