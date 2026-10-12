@@ -1814,6 +1814,9 @@ export function App() {
       // Select the session but stay on this surface — the verdict card is
       // the run's landing; the Inspector is one click away on the card.
       selectSession(sessionId);
+      // The replay minted a fresh goal server-side — refresh the goal list
+      // so attachedGoal resolves instead of hanging on "checking the goal".
+      void refreshPetGoals();
     } catch (error) {
       setDemoReplay((previous) => ({
         ...previous,
@@ -1863,6 +1866,9 @@ export function App() {
       }
     }
     setSuiteRun({ running: false, done: demoFixtures.length, total: demoFixtures.length, current: null, met, misses, results });
+    // A suite mints one goal per fixture — refresh so the goals land in
+    // state instead of waiting on the pet-shell poll cadence.
+    void refreshPetGoals();
     await refreshPet();
   }
 
