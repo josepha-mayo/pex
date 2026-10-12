@@ -484,7 +484,7 @@ export function App() {
     verdict: ReplayVerdict | null;
     // Recent arcs so a judge can compare runs — attached-vs-fresh rulings,
     // different attack classes — without leaving the panel.
-    history: { fixture: string; attached: boolean; verdict: ReplayVerdict }[];
+    history: { fixture: string; sessionId: string | null; attached: boolean; verdict: ReplayVerdict }[];
   }>({ running: false, fixture: null, error: null, verdict: null, history: [] });
   const [challengeText, setChallengeText] = useState("");
   const [attachReplayGoal, setAttachReplayGoal] = useState(false);
@@ -1799,6 +1799,7 @@ export function App() {
           ? [
               {
                 fixture: fixtureId,
+                sessionId,
                 attached: parseReplayGoalSource(payload) === "attached",
                 verdict,
               },
@@ -3499,7 +3500,18 @@ export function App() {
                       <ul className="replay-verdict-history">
                         {demoReplay.history.slice(1).map((run, index) => (
                           <li key={`${run.fixture}-${index}`}>
-                            {run.fixture === "inline" ? "custom trajectory" : run.fixture}
+                            {run.sessionId ? (
+                              <button
+                                type="button"
+                                className="text-button"
+                                title="Open this run's session evidence"
+                                onClick={() => openInspector(run.sessionId ?? undefined)}
+                              >
+                                {run.fixture === "inline" ? "custom trajectory" : run.fixture}
+                              </button>
+                            ) : (
+                              run.fixture === "inline" ? "custom trajectory" : run.fixture
+                            )}
                             {run.attached ? " · attached" : ""} →{" "}
                             {run.verdict.actions.length
                               ? run.verdict.actions.map(humanize).join(" → ")
