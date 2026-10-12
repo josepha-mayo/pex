@@ -260,6 +260,31 @@ test("independent verifier failures are not successful quiet reviews", () => {
   assert.equal(recordedActionLabel({id: "valid", session_id: session.id, action: "NOOP", evidence: ["independent_verifier:rejected"]}), "Stayed quiet");
 });
 
+test("headline action surfaces the last real change over a trailing quiet review", () => {
+  const session = { id: "opencode:test", harness_type: "opencode", status: "stopped" };
+  const projected = actionForSession(session, [
+    { id: "quiet-tail", session_id: session.id, action_taken: "NOOP" },
+    { id: "real-nudge", session_id: session.id, action_taken: "SEND_NUDGE", outcome: "nudge_sent" },
+  ]);
+  assert.equal(projected?.id, "real-nudge");
+  assert.equal(recordedActionLabel(projected), "send nudge");
+  // A session that only ever observed still headlines its quiet review.
+  const allQuiet = actionForSession(session, [
+    { id: "q1", session_id: session.id, action_taken: "NOOP" },
+    { id: "q2", session_id: session.id, action_taken: "NOOP" },
+  ]);
+  assert.equal(allQuiet?.id, "q1");
+  assert.equal(recordedActionLabel(allQuiet), "Stayed quiet");
+  // A failed review headlines itself — it is the story, not a change.
+  const failedTail = actionForSession(session, [
+    { id: "failed", session_id: session.id, action_taken: "NOOP",
+      evidence: ["independent_verifier:timeout"] },
+    { id: "real-nudge-2", session_id: session.id, action_taken: "SEND_NUDGE" },
+  ]);
+  assert.equal(failedTail?.id, "failed");
+  assert.equal(recordedActionLabel(failedTail), "Review incomplete");
+});
+
 test("Inspector session projection preserves native Strands usage receipts", () => {
   const session = { id: "opencode:test", harness_type: "opencode", status: "stopped" };
   const intervention = {

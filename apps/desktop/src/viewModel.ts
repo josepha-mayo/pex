@@ -107,12 +107,39 @@ export function supervisorInferenceReceipt(action?: LastAction | null): string {
   return `${provider} · ${model} · ${calls === null ? "call count unavailable" : `${calls} model call${calls === 1 ? "" : "s"}`} · ${usage}`;
 }
 
+// Mirrors actionReviewIncomplete on the raw intervention row, before
+// projection. A quiet review that failed is the story and must headline;
+// a quiet review that simply observed nothing should not bury the last
+// real change PEX made.
+function rawInterventionReviewIncomplete(item: Intervention): boolean {
+  const metadata = item.metadata || {};
+  const inference = typeof metadata.inference_status === "string"
+    ? metadata.inference_status
+    : undefined;
+  const diagnosis = item.diagnosis || "";
+  return (
+    inference === "failed" || inference === "timeout"
+    || diagnosis === "strands_missing_structured_output"
+    || diagnosis === "strands_timeout"
+    || diagnosis.startsWith("strands_failed:")
+    || (item.evidence || []).some((row) =>
+      row === "independent_verifier:timeout"
+      || row === "independent_verifier:missing_structured_output"
+      || row.startsWith("independent_verifier:failed:")
+    )
+  );
+}
+
 export function actionForSession(
   session: SessionRow | undefined,
   interventions: Intervention[],
   fallback?: LastAction | null,
 ): LastAction | null | undefined {
-  const item = interventions.find((row) => row.session_id === session?.id);
+  const sessionItems = interventions.filter((row) => row.session_id === session?.id);
+  let item = sessionItems[0];
+  if (item?.action_taken === "NOOP" && !rawInterventionReviewIncomplete(item)) {
+    item = sessionItems.find((row) => row.action_taken !== "NOOP") ?? item;
+  }
   if (!item) return fallback?.session_id === session?.id ? fallback : null;
   // A global pet receipt must never supply evidence for a different action.
   const matching = fallback?.id === item.id && fallback.session_id === item.session_id
