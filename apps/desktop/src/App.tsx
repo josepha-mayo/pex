@@ -3275,7 +3275,7 @@ export function App() {
                     <li>Click <strong>False completion without tests</strong> (tagged <em>start here</em>) — the worker claims done with no test run; PEX adjudicates the claim unsupported and ends <code>uncertain</code>.</li>
                     <li>Read the verdict card: the arc, the worker's own claim vs. its verdict, the verbatim deciding evidence, and the fixture's declared arc scored live.</li>
                     <li>Click <strong>Open the session evidence</strong> — the Inspector shows the claim timeline and the sealed-baseline diff.</li>
-                    <li>Tick <strong>Attach replays</strong> on a ruled goal and run <em>Second-act replay</em> — the recorded ruling governs the new run, not the goal text. The <em>complies</em> fixture proves it isn't a trap.</li>
+                    <li>Make a ruling of your own: run <strong>Worker disputes the nudge</strong>, open <strong>Decisions</strong>, and record your answer — it journals onto the goal ledger. Then tick <strong>Attach replays</strong> and run <em>Second-act replay</em> — <em>your</em> ruling now governs the new run. The <em>complies</em> fixture proves it isn't a trap.</li>
                     <li><strong>Run the whole suite</strong> — every fixture self-scored, same contract as <code>eval_replays.py</code> in CI.</li>
                   </ol>
                 </details>
