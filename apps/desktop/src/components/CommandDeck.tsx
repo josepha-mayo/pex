@@ -1545,7 +1545,8 @@ function BenchView({ bench, bridgeOnline }: { bench: BenchState; bridgeOnline: b
         <EmptyState
           title={bridgeOnline ? "No verified benchmark runs" : "Benchmark state unavailable"}
           body={bridgeOnline
-            ? bench.message || "PEX will show immutable, reproducible runs here when the bridge exposes them."
+            ? (bench.message ? `${bench.message} ` : "")
+              + "Until a frozen manifest exists, the Recorded replay suite on Home exercises the same adjudication contract on labelled, recorded trajectories — evidence, but not a benchmark score."
             : "PEX could not reach the local bridge to check benchmark runs."}
         />
       ) : (
