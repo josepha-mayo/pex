@@ -1029,9 +1029,9 @@ class AppState:
         self.supervisor_config_lock = asyncio.Lock()
         # Adapter capability probes are bounded (2s) but polled endpoints call
         # them every refresh; a dead adapter burns the whole timeout per call.
-        # Cache per adapter name: live probes re-check quickly, failed probes
-        # stay "unavailable" longer — resurrection is rare and bounded.
-        self._adapter_probe_cache: dict[str, tuple[float, AdapterCapabilities]] = {}
+        # Cached per adapter instance: live probes re-check quickly, failed
+        # probes stay "unavailable" longer — resurrection is rare and bounded.
+        self._adapter_probe_cache: dict[int, tuple[float, AdapterCapabilities]] = {}
         self.supervisor_config_generation = 0
         self.supervisor_config_task: asyncio.Task[Any] | None = None
         self.supervisor_config_operation: _SupervisorConfigOperation | None = None
@@ -1813,6 +1813,12 @@ def _public_supervisor_health() -> dict[str, Any]:
     }
 
 
+# Synthesized caps produced when a probe itself fails. ``/v1/deck`` collapses
+# these to an honest two-field shape; an adapter that *successfully* reports
+# support_label=unavailable keeps its own notes instead.
+_ADAPTER_PROBE_FAILED_NOTES = "Adapter probe unavailable or timed out."
+
+
 async def _bounded_adapter_probe(adapter: Any) -> AdapterCapabilities:
     """Probe one adapter without letting a dead integration stall the control plane."""
 
@@ -1828,7 +1834,7 @@ async def _bounded_adapter_probe(adapter: Any) -> AdapterCapabilities:
             getattr(adapter, "name", "unknown"),
             type(exc).__name__,
         )
-    return AdapterCapabilities(notes="Adapter probe unavailable or timed out.")
+    return AdapterCapabilities(notes=_ADAPTER_PROBE_FAILED_NOTES)
 
 
 def _adapter_probe_dead(caps: AdapterCapabilities) -> bool:
@@ -1849,9 +1855,11 @@ async def _cached_adapter_probe(adapter: Any) -> AdapterCapabilities:
     dead adapter stops stalling every poll.
     """
 
-    name = str(getattr(adapter, "name", "unknown"))
+    # Registry members are stable instances; keying by identity keeps two
+    # same-named adapters from sharing a cache entry.
+    key = id(adapter)
     now = asyncio.get_running_loop().time()
-    cached = state._adapter_probe_cache.get(name)
+    cached = state._adapter_probe_cache.get(key)
     if cached is not None:
         at, caps = cached
         ttl = (
@@ -1862,7 +1870,7 @@ async def _cached_adapter_probe(adapter: Any) -> AdapterCapabilities:
         if now - at < ttl:
             return caps
     caps = await _bounded_adapter_probe(adapter)
-    state._adapter_probe_cache[name] = (now, caps)
+    state._adapter_probe_cache[key] = (now, caps)
     return caps
 
 
@@ -6428,6 +6436,8 @@ def create_app() -> FastAPI:
             try:
                 caps = await _cached_adapter_probe(adapter)
             except Exception:
+                caps = None
+            if caps is None or caps.notes == _ADAPTER_PROBE_FAILED_NOTES:
                 return {
                     "name": adapter.name,
                     "capabilities": {
