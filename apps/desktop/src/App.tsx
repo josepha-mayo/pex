@@ -500,6 +500,7 @@ export function App() {
     misses: { fixture: string; failure: string }[];
     results: { fixture: string; met: boolean | null; completion: string | null; failures: string[] }[];
   } | null>(null);
+  const suiteCancelRef = useRef(false);
   const [suiteReceiptCopied, setSuiteReceiptCopied] = useState(false);
   const [scale, setScale] = useState(1);
   const [nickname, setNickname] = useState("");
@@ -1830,11 +1831,13 @@ export function App() {
   async function runDemoSuite() {
     if (!demoFixtures?.length || demoReplay.running || suiteRun?.running) return;
     setSuiteReceiptCopied(false);
+    suiteCancelRef.current = false;
     setSuiteRun({ running: true, done: 0, total: demoFixtures.length, current: null, met: 0, misses: [], results: [] });
     let met = 0;
     const misses: { fixture: string; failure: string }[] = [];
     const results: { fixture: string; met: boolean | null; completion: string | null; failures: string[] }[] = [];
     for (const [index, fixture] of demoFixtures.entries()) {
+      if (suiteCancelRef.current) break;
       setSuiteRun({ running: true, done: index, total: demoFixtures.length, current: fixture.id, met, misses, results });
       try {
         const payload = await bridgeJson<unknown>("/v1/demo/replay", {
@@ -1865,7 +1868,7 @@ export function App() {
         misses.push({ fixture: fixture.id, failure: "replay request failed" });
       }
     }
-    setSuiteRun({ running: false, done: demoFixtures.length, total: demoFixtures.length, current: null, met, misses, results });
+    setSuiteRun({ running: false, done: results.length, total: demoFixtures.length, current: null, met, misses, results });
     // A suite mints one goal per fixture — refresh so the goals land in
     // state instead of waiting on the pet-shell poll cadence.
     void refreshPetGoals();
@@ -1881,6 +1884,8 @@ export function App() {
       note: "Recorded replay suite — same declared-arc contract as scripts/eval_replays.py; not a benchmark.",
       ran_at: new Date().toISOString(),
       total: suiteRun.total,
+      completed: suiteRun.done,
+      stopped_early: suiteRun.done < suiteRun.total,
       met: suiteRun.met,
       results: suiteRun.results,
     };
@@ -3325,12 +3330,24 @@ export function App() {
                       ? `Suite running… ${suiteRun.done}/${suiteRun.total} (${suiteRun.current ?? ""})`
                       : `Run the whole suite — ${demoFixtures.length} fixtures, self-scored`}
                   </button>
+                  {suiteRun?.running ? (
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => { suiteCancelRef.current = true; }}
+                    >
+                      Stop after this fixture
+                    </button>
+                  ) : null}
                   {suiteRun && !suiteRun.running ? (
                     <p className={suiteRun.misses.length ? "replay-suite-line replay-suite-missed" : "replay-suite-line"}>
-                      {suiteRun.met}/{suiteRun.total} declared arcs met
+                      {suiteRun.done < suiteRun.total ? `Stopped at ${suiteRun.done}/${suiteRun.total} — ` : ""}
+                      {suiteRun.met}/{suiteRun.done || suiteRun.total} declared arcs met
                       {suiteRun.misses.length
                         ? ` — missed: ${suiteRun.misses.map((m) => m.fixture).join(", ")}`
-                        : " — the demo verifies itself, the same way eval_replays.py does in CI."}
+                        : suiteRun.done === suiteRun.total
+                          ? " — the demo verifies itself, the same way eval_replays.py does in CI."
+                          : ""}
                     </p>
                   ) : null}
                   {suiteRun && !suiteRun.running && suiteRun.results.length ? (

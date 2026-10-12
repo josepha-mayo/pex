@@ -134,6 +134,14 @@ active constraint … keep that ledger rule, or is this an explicit
 override?" — rather than silently obeying. A recorded ruling is not just
 worker-facing; it is the operator's own future self held to account.
 
+**The control**: the ledger is a contract, not a trap. Attach
+`ruling_compliance_eval` — a trajectory where the worker *complies* with
+the recorded ruling, runs the required test, and stops with real
+evidence. PEX verifies the work and ends `verified_complete` with no
+contradiction nudge — the declared arc pins `interventions_never` on the
+contradiction path, so the suite itself proves the ruling ledger does
+not false-positive on compliant work.
+
 **What a run reports**: every replay response now carries the goal's
 completion projection, and the panel renders an **Observed supervision
 arc** card after each run — the humanized intervention chain, the
@@ -147,7 +155,18 @@ apart. Judge-authored inline fixtures may declare `expected` too and get
 scored identically. The card keeps the last four runs for comparison,
 and a **Run each replay twice** toggle fires a second independent run of
 the same trajectory and reports whether the arcs are identical — the
-determinism claim, checked live instead of asserted. The
+determinism claim, checked live instead of asserted. The card also shows
+the **narration check** (the worker's own claim verbatim beside its
+adjudication — what narration-only supervision would have accepted), the
+**verified facts** — the deciding evidence pulled straight from the
+adjudication ledger — and run **stats** (events/claims/integrity
+incidents). The adjudicated verdict is stamped onto the session row, so
+the worker rail lists each replay's outcome chip next to its fixture.
+The fixture grid is curated into a narrative (`premature_stop_eval` is
+tagged *start here*), the panel embeds a collapsible five-minute judge
+path, **Run the whole suite** self-scores every fixture in-app with a
+copyable JSON receipt, and an empty workers rail offers a one-click
+recorded replay for machines with no agent install. The
 **Challenge the supervisor** panel ships four runnable attack presets
 (weaken the test file, premature claim, silent runner-config tamper,
 fabricated green output); each was verified against the demo bridge to
