@@ -178,6 +178,7 @@ def make_server(socket_path: str, *, model: str, relay=relay_request,
             self.connection.settimeout(5)
 
         def do_POST(self):
+            consumed = 0
             try:
                 lengths = self.headers.get_all("Content-Length", [])
                 if (
@@ -192,6 +193,7 @@ def make_server(socket_path: str, *, model: str, relay=relay_request,
                 if not 0 < size <= MAX_REQUEST_BYTES:
                     raise ValueError("invalid HTTP request length")
                 raw = self.rfile.read(size)
+                consumed += len(raw)
                 if len(raw) != size:
                     raise ValueError("incomplete HTTP request")
                 body = _decode(raw)
@@ -220,6 +222,21 @@ def make_server(socket_path: str, *, model: str, relay=relay_request,
                 if len(payload) > MAX_RESPONSE_BYTES:
                     raise ValueError("translated response exceeds bound")
             except Exception:
+                # Drain what the client already sent before answering. Closing a
+                # socket with unread request bytes resets the connection and the
+                # 502 never reaches the caller (observed as aborted connections
+                # on Windows loopback).
+                try:
+                    declared = int(self.headers.get("Content-Length") or 0)
+                except (TypeError, ValueError):
+                    declared = 0
+                try:
+                    if declared > consumed:
+                        self.rfile.read(min(declared - consumed, MAX_REQUEST_BYTES))
+                    elif declared == 0 and self.headers.get("Transfer-Encoding"):
+                        self.rfile.read1(MAX_REQUEST_BYTES)
+                except (OSError, ValueError):
+                    pass
                 self.send_error(502, "Bounded model relay request failed")
                 return
             self.send_response(200)
