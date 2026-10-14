@@ -7129,11 +7129,22 @@ def create_app() -> FastAPI:
         # Stamp the adjudicated verdict onto the session row — ingest is
         # complete, so nothing else writes this session; the rail and the
         # Inspector can show the outcome without a per-goal projection fetch.
-        if completion and completion.get("status"):
+        # Worker-invoked pex_* calls are stamped too: the pipeline counter
+        # mutates the in-memory session, which is not guaranteed persisted on
+        # the replay path — the fixture count is authoritative here.
+        worker_pex_calls = sum(
+            1
+            for raw in replay_events
+            if raw.event_type == EventType.TOOL_CALL and str(raw.tool_name or "").startswith("pex")
+        )
+        if completion and completion.get("status") or worker_pex_calls:
             persisted = await state.store.get_session(session.id)
             if persisted is not None:
                 persisted.metadata = dict(persisted.metadata or {})
-                persisted.metadata["replay_verdict"] = str(completion["status"])
+                if completion and completion.get("status"):
+                    persisted.metadata["replay_verdict"] = str(completion["status"])
+                if worker_pex_calls:
+                    persisted.metadata["worker_pex_calls"] = worker_pex_calls
                 await state.store.upsert_session(persisted)
         return {
             "replay": True,

@@ -1204,6 +1204,19 @@ class Pipeline:
             if processing["mode"] != "pipeline":
                 return self._receipt_intervention(processing)
             return await self._drain_event_and_followups(event.event_id)
+        # A worker invoking the supervision surface mid-run is first-class
+        # supervision signal — count distinct pex_* tool calls onto the
+        # session row so the UI can show "worker consulted PEX ×N" without a
+        # per-session ledger scan. Pending/completed frames of one call share
+        # opencode_tool_call_id; the seen set dedups across harnesses.
+        if event.event_type == EventType.TOOL_CALL and str(event.tool_name or "").startswith("pex"):
+            call_key = str(event.metadata.get("opencode_tool_call_id") or event.event_id)
+            seen = [str(item) for item in session.metadata.get("worker_pex_call_ids") or []]
+            if call_key not in seen:
+                session.metadata["worker_pex_call_ids"] = (seen + [call_key])[-64:]
+                session.metadata["worker_pex_calls"] = (
+                    int(session.metadata.get("worker_pex_calls") or 0) + 1
+                )
         opencode_live = (
             await self.store.get_session_for_authority(session.id)
             if event.harness_type == HarnessType.OPENCODE else None

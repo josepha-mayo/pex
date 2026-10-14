@@ -442,6 +442,33 @@ async def test_demo_replay_nudge_dispute_escalates_once(client):
 
 
 @pytest.mark.asyncio
+async def test_demo_replay_stamps_worker_pex_calls(client):
+    """A captured run where the worker consulted the supervision surface
+    replays with the call count stamped onto the session row — and ordinary
+    tool calls never earn the stamp."""
+    replay = await client.post("/v1/demo/replay", json={"fixture": "captured_mcp_eval"})
+    assert replay.status_code == 200
+    replay_session = await state.store.get_session(replay.json()["session_id"])
+    assert replay_session.metadata["worker_pex_calls"] == 2
+    assert replay_session.metadata["replay"] is True
+    assert replay_session.metadata["not_live_control"] is True
+
+    inline = {
+        "title": "ordinary tool call",
+        "goal": {"title": "g", "objective": "o"},
+        "events": [
+            {"event_type": "user_prompt", "message": "work"},
+            {"event_type": "tool_call", "tool_name": "todowrite"},
+            {"event_type": "stop"},
+        ],
+    }
+    replay2 = await client.post("/v1/demo/replay", json={"inline": inline})
+    assert replay2.status_code == 200
+    session2 = await state.store.get_session(replay2.json()["session_id"])
+    assert "worker_pex_calls" not in session2.metadata
+
+
+@pytest.mark.asyncio
 async def test_demo_replay_accepts_inline_fixture_body(client):
     """A judge-authored trajectory runs through the same strict loader."""
 

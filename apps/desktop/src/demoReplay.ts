@@ -311,6 +311,17 @@ export function replayArcCopy(
   return parts.join(" · ");
 }
 
+// Distinct pex_* tool calls the worker made mid-run — stamped by the ingest
+// pipeline for live sessions and by the replay finalizer for fixtures. It
+// proves the worker consulted the supervision surface; the calls themselves
+// are evidence, not verdicts.
+export function workerPexCalls(session: SessionRow | null | undefined): number {
+  const value = session?.metadata?.worker_pex_calls;
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
+    : 0;
+}
+
 // A live worker is the honest counterpart to a replay: a real harness (not the
 // in-process synthetic adapter) whose transport was probed as Deep or Strong.
 // Basic/observe-only/unprobed sessions get no live label — PEX can see them

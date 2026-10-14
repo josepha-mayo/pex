@@ -15,6 +15,7 @@ import {
   replayFixtureLabel,
   replayFixtureNameFromId,
   replayVerdictsIdentical,
+  workerPexCalls,
 } from "./demoReplay.ts";
 import type { SessionRow } from "./types.ts";
 
@@ -140,6 +141,24 @@ test("replay sessions stay honestly labeled and only when both markers hold", ()
   }
   assert.equal(isReplaySession(null), false);
   assert.equal(isReplaySession(undefined), false);
+});
+
+test("workerPexCalls reads only a positive stamped count", () => {
+  const base: SessionRow = {
+    id: "opencode:ses_x",
+    harness_type: "opencode",
+    status: "busy",
+  };
+  assert.equal(workerPexCalls({ ...base, metadata: { worker_pex_calls: 2 } }), 2);
+  assert.equal(workerPexCalls({ ...base, metadata: { worker_pex_calls: 2.7 } }), 2);
+  for (const metadata of [
+    undefined, {}, { worker_pex_calls: 0 }, { worker_pex_calls: -1 },
+    { worker_pex_calls: "2" }, { worker_pex_calls: Number.NaN },
+  ]) {
+    assert.equal(workerPexCalls({ ...base, metadata }), 0);
+  }
+  assert.equal(workerPexCalls(null), 0);
+  assert.equal(workerPexCalls(undefined), 0);
 });
 
 test("replay goal-source copy surfaces attached provenance only", () => {
