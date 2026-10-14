@@ -160,7 +160,9 @@ intervenes only inside bounded policy.
 
 The same scenario as raw API calls is [Scenario D in the demo
 runbook](demo/RUNBOOK.md). Supervising a live OpenCode worker with real
-Nemotron inference follows the same runbook's main path.
+Nemotron inference follows the same runbook's main path. The bridge also
+serves interactive OpenAPI docs at `http://127.0.0.1:7420/docs` (75 routes,
+all callable in-page) and a scoped MCP tool surface at `/mcp/`.
 
 ## What is real vs gated
 
