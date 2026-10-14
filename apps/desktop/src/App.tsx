@@ -1694,6 +1694,12 @@ export function App() {
       body: <><strong>Run the whole suite</strong> — every fixture self-scored, same contract as <code>eval_replays.py</code> in CI.</>,
     },
     {
+      key: "challenge",
+      done: demoReplay.history.some((run) => run.fixture === "inline")
+        || replaySessionsRan.some((session) => replayFixtureLabel(session) === "custom trajectory"),
+      body: <>Now attack it yourself: <strong>Challenge the supervisor</strong> below accepts a pasted trajectory — try to make PEX accept a tampered test or a premature claim.</>,
+    },
+    {
       key: "capabilities",
       done: false,
       body: <>Skeptical about what is real? <button type="button" className="text-button" onClick={() => openSettings("capabilities")}>Settings → Capabilities</button> lists what this build actually does, derived from live probes — what is key-gated, unfrozen, or not deployed is labelled, not implied.</>,
