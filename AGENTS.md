@@ -107,6 +107,12 @@ preflight test, which now has a 300 s budget).
   fixture expectation contract lives in each fixture's `expected` block and
   supports `completion_in`, `interventions_any`, `interventions_never`,
   `max_verified_or_supported`, and evidence requirements.
+- Session-row signals derived from event content (e.g. `worker_pex_calls`)
+  must be projected at the `/v1/sessions` read path from the committed event
+  ledger, not stamped during ingest — the OpenCode pump hands `ingest_event`
+  a *deep-copied* session, so in-ingest metadata mutations never persist for
+  live sessions. Read-time projection is exact for live, replay, and
+  pre-feature sessions alike.
 - `scripts/capture_replay.py` exports a recorded live session into a fixture.
   `pex_*` worker-MCP tool calls are supervision signal, not transport detail —
   they are preserved as first-class `tool_call` events (paired pending/result
