@@ -4876,17 +4876,29 @@ def create_app() -> FastAPI:
         # next poll picks up whatever desktop discovery lands.
         state.pipeline.ensure_desktop_refresh()
         now = utcnow()
-        return [
+        pex_calls = await state.store.worker_pex_call_counts()
+        rows = [
             _session_with_observation(s, now)
             for s in await state.store.list_sessions(limit=limit, offset=offset)
         ]
+        for row in rows:
+            calls = pex_calls.get(str(row.get("id") or ""), 0)
+            if calls:
+                # Exact ledger count wins over any stamped metadata — the same
+                # field name reads identically on live and replayed sessions.
+                row.setdefault("metadata", {})["worker_pex_calls"] = calls
+        return rows
 
     @app.get("/v1/sessions/{session_id}")
     async def get_session(session_id: str, _: None = Depends(_require_token)):
         session = await state.store.get_session(session_id)
         if not session:
             raise HTTPException(404, "session not found")
-        return _session_with_observation(session, utcnow())
+        data = _session_with_observation(session, utcnow())
+        pex_calls = (await state.store.worker_pex_call_counts()).get(session.id, 0)
+        if pex_calls:
+            data.setdefault("metadata", {})["worker_pex_calls"] = pex_calls
+        return data
 
     @app.post("/v1/goals")
     async def create_goal(
@@ -7129,22 +7141,13 @@ def create_app() -> FastAPI:
         # Stamp the adjudicated verdict onto the session row — ingest is
         # complete, so nothing else writes this session; the rail and the
         # Inspector can show the outcome without a per-goal projection fetch.
-        # Worker-invoked pex_* calls are stamped too: the pipeline counter
-        # mutates the in-memory session, which is not guaranteed persisted on
-        # the replay path — the fixture count is authoritative here.
-        worker_pex_calls = sum(
-            1
-            for raw in replay_events
-            if raw.event_type == EventType.TOOL_CALL and str(raw.tool_name or "").startswith("pex")
-        )
-        if completion and completion.get("status") or worker_pex_calls:
+        # (worker_pex_calls is not stamped here — the /v1/sessions read path
+        # projects the exact ledger count so live and replay agree.)
+        if completion and completion.get("status"):
             persisted = await state.store.get_session(session.id)
             if persisted is not None:
                 persisted.metadata = dict(persisted.metadata or {})
-                if completion and completion.get("status"):
-                    persisted.metadata["replay_verdict"] = str(completion["status"])
-                if worker_pex_calls:
-                    persisted.metadata["worker_pex_calls"] = worker_pex_calls
+                persisted.metadata["replay_verdict"] = str(completion["status"])
                 await state.store.upsert_session(persisted)
         return {
             "replay": True,

@@ -24931,6 +24931,31 @@ class Store:
             "has_more": bool(items and int(next_cursor) < frozen_through),
         }
 
+    async def worker_pex_call_counts(self) -> dict[str, int]:
+        """Distinct pex_* tool calls per session, from the committed ledger.
+
+        A worker invoking the supervision surface is supervision signal — the
+        UI's "PEX ×N" chips ride this projection instead of ingest-time
+        bookkeeping that can lag or outlive session-row persistence. Live
+        OpenCode emits pending+completed frames per call; dedup on the
+        transport call id (falling back to the event id for harnesses and
+        replays that journal one frame per call).
+        """
+
+        async with self._committed_connection() as committed:
+            async with await committed.execute(
+                "SELECT session_id, COUNT(DISTINCT "
+                "COALESCE("
+                "json_extract(json, '$.metadata.opencode_tool_call_id'), "
+                "event_id"
+                ")) AS n "
+                "FROM events "
+                "WHERE json_extract(json, '$.event_type') = 'tool_call' "
+                "AND json_extract(json, '$.tool_name') LIKE 'pex%' "
+                "GROUP BY session_id",
+            ) as cursor:
+                return {str(row[0]): int(row[1]) for row in await cursor.fetchall()}
+
     async def claim_event_followup(
         self,
         *,

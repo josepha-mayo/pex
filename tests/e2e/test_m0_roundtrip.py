@@ -442,9 +442,10 @@ async def test_demo_replay_nudge_dispute_escalates_once(client):
 
 
 @pytest.mark.asyncio
-async def test_ingest_counts_pex_tool_calls_once_per_call(client):
-    """Pending + completed frames of one pex_* call share a call id and count
-    once — the session row carries how often the worker consulted PEX."""
+async def test_worker_pex_call_counts_dedup_by_call_id(client):
+    """Pending + completed ledger frames of one pex_* call share a transport
+    call id and count once — the sessions read path projects the exact count
+    from the committed ledger for live and replayed sessions alike."""
     session = HarnessSession(
         id="synthetic:pex-calls",
         harness_type=HarnessType.SYNTHETIC,
@@ -455,7 +456,7 @@ async def test_ingest_counts_pex_tool_calls_once_per_call(client):
     await state.store.upsert_session(session)
 
     async def emit(index: int, tool: str, call_id: str) -> None:
-        await state.pipeline.ingest_event(
+        await state.store.accept_pipeline_event(
             HarnessEvent(
                 event_id=f"pex-ev-{index}",
                 ts=datetime.now(UTC),
@@ -466,28 +467,31 @@ async def test_ingest_counts_pex_tool_calls_once_per_call(client):
                 tool_name=tool,
                 metadata={"opencode_tool_call_id": call_id},
             ),
-            session,
+            session_snapshot=session,
         )
 
-    # Pending then completed frames of the same logical call.
     await emit(1, "pex_pex_get_goal", "call_1")
     await emit(2, "pex_pex_get_goal", "call_1")
     await emit(3, "pex_pex_verify_claim", "call_2")
     await emit(4, "todowrite", "call_3")
-    assert session.metadata["worker_pex_calls"] == 2
+    assert (await state.store.worker_pex_call_counts()) == {session.id: 2}
+    listed = await client.get("/v1/sessions")
+    row = next(s for s in listed.json() if s["id"] == session.id)
+    assert row["metadata"]["worker_pex_calls"] == 2
 
 
 @pytest.mark.asyncio
 async def test_demo_replay_stamps_worker_pex_calls(client):
     """A captured run where the worker consulted the supervision surface
-    replays with the call count stamped onto the session row — and ordinary
-    tool calls never earn the stamp."""
+    carries the exact pex_* call count on its API row — and ordinary tool
+    calls never earn the signal."""
     replay = await client.post("/v1/demo/replay", json={"fixture": "captured_mcp_eval"})
     assert replay.status_code == 200
-    replay_session = await state.store.get_session(replay.json()["session_id"])
-    assert replay_session.metadata["worker_pex_calls"] == 2
-    assert replay_session.metadata["replay"] is True
-    assert replay_session.metadata["not_live_control"] is True
+    sid = replay.json()["session_id"]
+    detail = await client.get(f"/v1/sessions/{sid}")
+    assert detail.json()["metadata"]["worker_pex_calls"] == 2
+    assert detail.json()["metadata"]["replay"] is True
+    assert detail.json()["metadata"]["not_live_control"] is True
 
     inline = {
         "title": "ordinary tool call",
@@ -500,8 +504,8 @@ async def test_demo_replay_stamps_worker_pex_calls(client):
     }
     replay2 = await client.post("/v1/demo/replay", json={"inline": inline})
     assert replay2.status_code == 200
-    session2 = await state.store.get_session(replay2.json()["session_id"])
-    assert "worker_pex_calls" not in session2.metadata
+    detail2 = await client.get(f"/v1/sessions/{replay2.json()['session_id']}")
+    assert "worker_pex_calls" not in detail2.json()["metadata"]
 
 
 @pytest.mark.asyncio
