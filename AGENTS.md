@@ -122,6 +122,13 @@ preflight test, which now has a 300 s budget).
   from `_PROMPTABLE_STALE`) or the pet's `needs_you` (counted from projected
   sessions, not the freshness-filtered live set). If a new status carries a
   pending obligation, keep both projections in sync.
+- Worker-requested human decisions (`pex.request_decision` → ASK_HUMAN):
+  resolving one on a *terminal* session still records the ruling durably
+  (Decision row + resolved context + resolution receipt) and finalizes the
+  reserved delivery effect as `failed`/`session_terminal` — the answer is
+  durable intent even when no live worker can receive it. Liveness gates
+  (paused, live project binding, goal supersession) protect delivery only;
+  identity checks (session/goal/pending-context binding) still apply.
 - Deep links: `#inspector/<encodeURIComponent(sessionId)>` restores the
   selected session on load/reload; `openInspector` writes it. Keep
   `surfaceFromHash`/`sessionFromHash` parsing tolerant of stale ids (the

@@ -146,6 +146,12 @@ Click **Worker reads its goal, then asks PEX to verify its claim** —
 > signed ledger contains both calls. The supervision isn't a channel the
 > worker can't see — it's a tool it chose to check itself against."
 
+*If asked whether the worker can escalate itself — the live tamper run did
+exactly that: the task ordered a test edit the goal forbids, so the worker
+called `pex_pex_request_decision` with the conflict spelled out and three
+options. The ruling lands on the goal ledger whether or not that worker is
+still around to hear it — durable intent, honest delivery status.*
+
 ## Optional replay cut — drift and bounded intervention
 
 Click **Drift loop: the same failing probe, over and over**.

@@ -363,6 +363,7 @@ async def resolve_requested_human_decision(
 
     existing = await store.get_current_human_decision_resolution(intervention_id)
     resuming_reserved = False
+    session_terminal = False
     record: dict[str, Any] | None = None
     if existing is not None:
         canonical_choice = human_decision_choice_receipt(
@@ -431,6 +432,7 @@ async def resolve_requested_human_decision(
                 )
             return _human_decision_result(current, replayed=True)
         record = reserved.get("record")
+        session_terminal = bool(reserved.get("session_terminal"))
 
     if not isinstance(record, dict):
         raise DecisionResolutionError(
@@ -439,6 +441,17 @@ async def resolve_requested_human_decision(
             "The durable human decision reservation is invalid.",
         )
     effect_id = str(record.get("effect_id") or "")
+    if session_terminal:
+        # The worker session ended before the ruling; the ruling was still
+        # recorded durably — finalize honestly instead of dispatching.
+        finalized = await store.finalize_human_decision_delivery(
+            intervention_id=intervention_id,
+            effect_id=effect_id,
+            status="failed",
+            delivery_code="session_terminal",
+            finished_at=utcnow(),
+        )
+        return _human_decision_result(finalized["record"], replayed=False)
     reserved_result = _human_decision_result(record, replayed=False)
     session = reserved_result.session
     adapter = adapters.get(session.harness_type.value)

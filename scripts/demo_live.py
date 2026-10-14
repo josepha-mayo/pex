@@ -158,7 +158,10 @@ def _mcp_hint(session_id: str) -> str:
         f'(pex_pex_get_goal in your tool list) with session_id "{session_id}" '
         "to read the exact goal you are being supervised against. You may "
         "also call pex_verify_claim to check a completion claim against PEX's "
-        "independent evidence before you say it."
+        "independent evidence before you say it. If your instructions conflict "
+        "with the goal's forbidden outcomes, do not act on the conflict "
+        "silently — call pex_request_decision with a `question` for the human "
+        "operator."
     )
 
 

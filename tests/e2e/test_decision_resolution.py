@@ -14,7 +14,7 @@ from pex_bridge.pipeline import Pipeline
 from pex_bridge.store import MCP_REQUEST_DECISION_TOOL, Store, utcnow
 from pex_protocol.capabilities import AdapterCapabilities, PermissionResponseMode
 from pex_protocol.context import HumanDecisionRequest
-from pex_protocol.enums import EventType
+from pex_protocol.enums import EventType, SessionStatus
 from pex_protocol.goal import Goal
 
 _OPERATOR_TOKEN = "test-operator-token-0123456789abcdef"
@@ -571,6 +571,61 @@ async def test_generic_rest_delivery_failures_preserve_structured_honest_status(
     assert calls == (0 if mode == "unsupported" else 1)
     live = await state.store.get_session(session["id"])
     assert live is not None and live.status.value == "needs_decision"
+
+
+@pytest.mark.asyncio
+async def test_terminal_worker_decision_resolution_is_recorded_not_delivered(
+    client: AsyncClient,
+):
+    """A worker that ends its turn after asking still earns a durable ruling.
+
+    The pending question must not become unresolvable: the choice is recorded
+    on the goal ledger, the pending context clears, and delivery reports
+    honestly that the terminal worker never received it.
+    """
+
+    session, opened = await _pending_generic_decision(
+        request_id="rest-terminal-0001",
+        options=["approve", "deny"],
+    )
+    live = await state.store.get_session(session["id"])
+    assert live is not None and live.status.value == "needs_decision"
+    live.status = SessionStatus.STOPPED
+    await state.store.upsert_session(live)
+
+    response = await client.post(
+        f"/v1/decisions/{opened['intervention']['id']}/resolve",
+        json={"decision": "deny"},
+    )
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "human_decision_failed"
+    receipt = detail["resolution"]
+    assert receipt["delivered"] is False
+    assert receipt["delivery_status"] == "failed"
+    assert receipt["resolution"]["delivery_code"] == "session_terminal"
+
+    # The ruling itself is durable: a Decision row lands on the goal ledger
+    # and the pending question no longer reads as awaiting a human.
+    decisions = await client.get(f"/v1/goals/{opened['intervention']['goal_id']}/decisions")
+    rulings = decisions.json()
+    assert any(
+        ruling["metadata"].get("intervention_id") == opened["intervention"]["id"]
+        and ruling["metadata"].get("delivery_status") == "failed"
+        for ruling in rulings
+    )
+    replay = await client.post(
+        f"/v1/decisions/{opened['intervention']['id']}/resolve",
+        json={"decision": "deny"},
+    )
+    assert replay.status_code == 409
+    assert replay.json()["detail"]["resolution"]["resolution"]["status"] == "failed"
+    conflict = await client.post(
+        f"/v1/decisions/{opened['intervention']['id']}/resolve",
+        json={"decision": "approve"},
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"]["code"] == "human_decision_conflict"
 
 
 @pytest.mark.asyncio

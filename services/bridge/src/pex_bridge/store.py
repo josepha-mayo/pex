@@ -27615,12 +27615,15 @@ class Store:
                     )
                 except LookupError as exc:
                     raise ValueError("human decision session no longer exists") from exc
-                if session.status in {
+                # A terminal worker cannot receive the answer, but the human's
+                # ruling is still durable intent: record it, then finalize the
+                # reserved effect as failed/session_terminal instead of leaving
+                # the pending question unresolvable forever.
+                session_terminal = session.status in {
                     SessionStatus.STOPPED,
                     SessionStatus.ERROR,
                     SessionStatus.DETACHED,
-                }:
-                    raise ValueError("human decision session is terminal")
+                }
                 try:
                     goal, goal_binding = await _load_bound_goal(
                         transaction,
@@ -27629,31 +27632,36 @@ class Store:
                 except LookupError as exc:
                     raise ValueError("human decision goal no longer exists") from exc
                 project_id = _session_project(session)
-                if session.supervision_paused or goal.paused:
-                    raise ValueError("human decision delivery is paused")
-                if session.goal_id != goal.id or not await _same_live_project_binding(
-                    transaction,
-                    project_id,
-                    goal.project_id,
-                ):
+                if session.goal_id != goal.id:
                     raise ValueError("human decision active binding changed")
-                if (
-                    action.payload.get("source_vendor_session_id") != session.vendor_session_id
-                    or action.payload.get("source_harness_type") != session.harness_type.value
-                    or not isinstance(action.payload.get("source_project_id"), str)
-                    or not await _same_live_project_binding(
+                if not session_terminal:
+                    if session.supervision_paused or goal.paused:
+                        raise ValueError("human decision delivery is paused")
+                    if not await _same_live_project_binding(
                         transaction,
-                        str(action.payload.get("source_project_id")),
                         project_id,
-                    )
-                ):
-                    raise ValueError("human decision worker binding changed")
-                if await _has_authoritative_goal_successor(
-                    transaction,
-                    goal,
-                    goal_binding,
-                ):
-                    raise ValueError("human decision goal has been superseded")
+                        goal.project_id,
+                    ):
+                        raise ValueError("human decision active binding changed")
+                    if (
+                        action.payload.get("source_vendor_session_id")
+                        != session.vendor_session_id
+                        or action.payload.get("source_harness_type")
+                        != session.harness_type.value
+                        or not isinstance(action.payload.get("source_project_id"), str)
+                        or not await _same_live_project_binding(
+                            transaction,
+                            str(action.payload.get("source_project_id")),
+                            project_id,
+                        )
+                    ):
+                        raise ValueError("human decision worker binding changed")
+                    if await _has_authoritative_goal_successor(
+                        transaction,
+                        goal,
+                        goal_binding,
+                    ):
+                        raise ValueError("human decision goal has been superseded")
                 project_binding = await _project_binding_snapshot(
                     transaction,
                     project_id,
@@ -27837,7 +27845,7 @@ class Store:
                 await transaction.rollback()
                 raise
         await self._try_sync_intervention_audit()
-        return {"created": True, "record": record}
+        return {"created": True, "record": record, "session_terminal": session_terminal}
 
     async def start_human_decision_delivery(
         self,

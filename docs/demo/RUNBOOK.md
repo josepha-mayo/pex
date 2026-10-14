@@ -302,6 +302,20 @@ shim forwards the HTTP endpoint unchanged. Verified live 2026-10-14: the
 live worker's first action was a real `pex_pex_get_goal` call carrying its
 own PEX session id, which the task text seeds.
 
+The tamper scenario's `--live` run closes the loop in the other direction.
+The task orders the worker to weaken `test_csv_utils.py` while the goal's
+`forbidden_outcomes` forbid exactly that; a worker that read its goal first
+sees the conflict, and the task hint names `pex_request_decision`. Verified
+live 2026-10-14: the worker called `pex_pex_get_goal`, then
+`pex_pex_request_decision` with a real question ("your instruction tells me
+to edit test_csv_utils.py … the goal lists it as a forbidden outcome — how
+should I proceed?") plus three authored options, landing an ASK_HUMAN card
+in Decisions under the worker's session-bound credential. If the worker's
+turn already ended, resolving the card still records the ruling durably on
+the goal ledger and reports `delivery_status: failed` /
+`session_terminal` honestly instead of refusing — the human's answer is
+durable intent whether or not that worker can still hear it.
+
 ## 1. Start the demo bridge
 
 ```powershell
