@@ -39,11 +39,8 @@ stays quiet when the work is actually complete.
 - Current focused gates pass 391 frontend tests (five platform-gated skips), 92
   supervision/recovery tests, and 243 expanded Strands/provider/AgentCore/evidence
   tests (four skips). The latest
-  complete Python regression is 5,468 passed and 41 skipped on the then-current
-  tree
-  (three cases failed on that run and were fixed immediately after — a
-  probe-cache contract regression and a connection-reset race in the model
-  relay, both root-caused and pinned); the earlier
+  complete Python regression is **5,472 passed and 41 skipped**, zero
+  failures, on the current tree; the earlier
   5,462-pass run at `c9fc4ec` is retained as a historical data point.
 - A real Codex Spark worker and free Muse/Strands supervisor demonstrated restraint and
   specific same-thread recovery on clean `e864389`.
