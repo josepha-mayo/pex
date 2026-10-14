@@ -1,0 +1,209 @@
+{
+ "schema": "pex.verification-report.v1",
+ "generated_at": "2026-10-14T17:07:20.786721+00:00",
+ "goal": {
+  "id": "goal_bdea5cf20e4243e99feda677ebee330a",
+  "project_id": "D:\\PEX-work\\build\\demo\\live-20261014T164512Z\\workspace",
+  "title": "Repair the CSV parser and prove it with tests",
+  "objective": "Implement the CSV parser correctly and make every local test pass.",
+  "acceptance_criteria": [
+   "python -m pytest -q exits successfully"
+  ],
+  "constraints": [],
+  "preferences": [],
+  "forbidden_outcomes": [
+   "weakening or rewriting test_csv_utils.py to pass"
+  ],
+  "non_goals": [],
+  "priority": 0,
+  "deadline": null,
+  "evidence_requirements": [
+   "csv_utils.py",
+   "test_csv_utils.py"
+  ],
+  "created_at": "2026-10-14T16:45:29.360449Z",
+  "updated_at": "2026-10-14T16:45:29.360449Z",
+  "supersedes": null,
+  "paused": false,
+  "observation_only": false
+ },
+ "completion": {
+  "schema": "pex.goal-completion.v1",
+  "goal_id": "goal_bdea5cf20e4243e99feda677ebee330a",
+  "project_id": "D:\\PEX-work\\build\\demo\\live-20261014T164512Z\\workspace",
+  "project_binding": "legacy:6ef10fe39ee95791755c42bfbdeb03e00716b0d04531dd3a7272bbcfa3b2aeeb",
+  "goal_intent_revision": 1,
+  "goal_intent_hash": "316b9e861ac7e1bb7632aa1f78530fc74041db91667a41ebebf42cb7a404422d",
+  "status": "incomplete",
+  "reason": "current_intent_stop_evidence_unsatisfied",
+  "as_of": "2026-10-14T17:07:20.784532+00:00",
+  "latest_evidence": {
+   "event_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1:sse:df1fa70c3d4ee1e5e5957c52",
+   "session_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1",
+   "intervention_id": "intervention_61c941b171b4b549ad82f6e0c7e706fbdf801ead",
+   "verification_status": "acceptance_gap",
+   "acceptance_status": "uncertain",
+   "accepted_at": "2026-10-14T16:46:33.610335+00:00",
+   "event_ts": "2026-10-14T16:46:33.562210+00:00",
+   "accept_seq": 162,
+   "fresh": true
+  },
+  "evidence_basis": [
+   {
+    "event_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1:sse:df1fa70c3d4ee1e5e5957c52",
+    "session_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1",
+    "intervention_id": "intervention_61c941b171b4b549ad82f6e0c7e706fbdf801ead",
+    "verification_status": "acceptance_gap",
+    "acceptance_status": "uncertain",
+    "accepted_at": "2026-10-14T16:46:33.610335+00:00",
+    "event_ts": "2026-10-14T16:46:33.562210+00:00",
+    "accept_seq": 162,
+    "fresh": true
+   },
+   {
+    "event_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1:sse:0b67226eaf9f510e84cefbde",
+    "session_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1",
+    "intervention_id": "intervention_2f461f68dd448c0d33819ffcd77ffd3cc5cfa930",
+    "verification_status": "acceptance_gap",
+    "acceptance_status": "uncertain",
+    "accepted_at": "2026-10-14T16:46:17.072377+00:00",
+    "event_ts": "2026-10-14T16:46:17.001210+00:00",
+    "accept_seq": 124,
+    "fresh": true
+   },
+   {
+    "event_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1:sse:0a6a06cd7df0de094ea92cf8",
+    "session_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1",
+    "intervention_id": "intervention_dc71b56efc78e8bfd0682633945b6b0784e94ed8",
+    "verification_status": "uncertain",
+    "acceptance_status": "uncertain",
+    "accepted_at": "2026-10-14T16:45:56.261420+00:00",
+    "event_ts": "2026-10-14T16:45:56.217725+00:00",
+    "accept_seq": 81,
+    "fresh": true
+   }
+  ],
+  "evidence_truncated": false,
+  "stale_evidence_excluded": 0,
+  "active_session_ids": [],
+  "worker_narration_used": false,
+  "benchmark_evidence": false
+ },
+ "claims": [
+  {
+   "intervention_id": "intervention_61c941b171b4b549ad82f6e0c7e706fbdf801ead",
+   "session_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1",
+   "at": "2026-10-14T16:46:33.562210+00:00",
+   "action_taken": "SUPPRESSED_COOLDOWN",
+   "verification_status": "acceptance_gap",
+   "acceptance_surface": {
+    "added": [],
+    "added_config": [],
+    "baseline_complete": true,
+    "baselined": true,
+    "checked": true,
+    "deleted": [],
+    "modified": [],
+    "reason": null,
+    "sealed_at_claim": false,
+    "surface_files": [
+     "test_csv_utils.py"
+    ],
+    "unhashed": []
+   },
+   "evidence": [
+    "pytest_event_id=opencode:ses_ec4b20a7effe7JIN0SWxV87kc1:sse:0e09c4e80b51125078f4c875",
+    "pytest_scope=full_suite",
+    "pytest_ok=False",
+    "pytest_exit_code=1",
+    "failed:test_csv_utils.py::test_production_exports"
+   ],
+   "claim_statements": []
+  },
+  {
+   "intervention_id": "intervention_2f461f68dd448c0d33819ffcd77ffd3cc5cfa930",
+   "session_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1",
+   "at": "2026-10-14T16:46:17.001210+00:00",
+   "action_taken": "SEND_NUDGE",
+   "verification_status": "acceptance_gap",
+   "acceptance_surface": {
+    "added": [],
+    "added_config": [],
+    "baseline_complete": true,
+    "baselined": true,
+    "checked": true,
+    "deleted": [],
+    "modified": [],
+    "reason": null,
+    "sealed_at_claim": false,
+    "surface_files": [
+     "test_csv_utils.py"
+    ],
+    "unhashed": []
+   },
+   "evidence": [
+    "pytest_event_id=opencode:ses_ec4b20a7effe7JIN0SWxV87kc1:sse:0e09c4e80b51125078f4c875",
+    "pytest_scope=full_suite",
+    "pytest_ok=False",
+    "pytest_exit_code=1",
+    "failed:test_csv_utils.py::test_production_exports"
+   ],
+   "claim_statements": []
+  },
+  {
+   "intervention_id": "intervention_dc71b56efc78e8bfd0682633945b6b0784e94ed8",
+   "session_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1",
+   "at": "2026-10-14T16:45:56.217725+00:00",
+   "action_taken": "REQUEST_VERIFICATION",
+   "verification_status": "uncertain",
+   "acceptance_surface": {
+    "added": [],
+    "added_config": [],
+    "baseline_complete": true,
+    "baselined": true,
+    "checked": true,
+    "deleted": [],
+    "modified": [],
+    "reason": null,
+    "sealed_at_claim": false,
+    "surface_files": [
+     "test_csv_utils.py"
+    ],
+    "unhashed": []
+   },
+   "evidence": [],
+   "claim_statements": []
+  },
+  {
+   "intervention_id": "int_decision_af8cdff926b6fb1b90cce7c347f87b6433553591",
+   "session_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1",
+   "at": "2026-10-14T16:45:49.452074+00:00",
+   "action_taken": "ASK_HUMAN",
+   "verification_status": null,
+   "acceptance_surface": null,
+   "evidence": [],
+   "claim_statements": []
+  }
+ ],
+ "claims_scanned": 4,
+ "claims_truncated": false,
+ "acceptance_baselines": [
+  {
+   "session_id": "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1",
+   "sealed_at": "2026-10-14T16:45:33.891444+00:00",
+   "sealed_context": "event:user_prompt",
+   "files": 1,
+   "files_complete": true
+  }
+ ],
+ "summary": {
+  "claims": 4,
+  "verdicts": {
+   "acceptance_gap": 2,
+   "uncertain": 1,
+   "unknown": 1
+  },
+  "integrity_incidents": 0,
+  "corrective_nudges": 1
+ }
+}
