@@ -274,9 +274,9 @@ fixture suite is scored on every push by `scripts/eval_replays.py`.
 
 ![Replay fixtures, each with a one-line "what this arc proves" summary](docs/demo/assets/pex-fixtures-summaries-ae2ba7c.png)
 
-*The judge's first screen: thirteen scripted fixtures plus two captured live
-runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not a
-synthetic trajectory. A **start here** tag marks the most legible first run
+*The judge's first screen: thirteen scripted fixtures plus three captured
+live runs, visibly marked **FROM LIVE** — exported real OpenCode traffic, not
+a synthetic trajectory. A **start here** tag marks the most legible first run
 and the grid is ordered as a narrative: cheats first, then the
 durable-ruling act, then captured-live provenance. Attach-aware fixtures are
 tagged so the second and third acts are discoverable. The suite spans
@@ -782,10 +782,20 @@ mounts `/mcp/` into the seeded worker via a bundled stdio shim
 (`scripts/pex_mcp_stdio.py` — serve-mode OpenCode registers local MCP tools
 but not remote ones), and the worker's *first* action was a real
 `pex_pex_get_goal` call that returned its own attached goal with the exact
-session id. A worker can read what it is being supervised against mid-run.
-Reproduce the round trip with `python scripts/probe_worker_mcp.py` while a
-demo bridge is up (the probe's `opencode run` needs a signed-in OpenCode
-profile; the Zen free tier only serves app-mode traffic).
+session id. The same run closed with `pex_pex_verify_claim` under a minted
+session credential — and the worker's own final message quoted PEX's
+`uncertain` verdict instead of asserting done. A worker can read what it is
+being supervised against mid-run, and check its claim against PEX's
+independent evidence before saying it.
+
+That exact live run replays deterministically as `captured_mcp_eval` — the
+`pex_*` calls survive capture as first-class events, the session card carries
+a `PEX ×2` chip, and the evidence pack's signed ledger contains the calls —
+recorded capture: [`pex-mcp-eval.mp4`](docs/demo/assets/pex-mcp-eval.mp4)
+(via `apps/desktop/scripts/capture-mcp-eval.mjs`). Reproduce the round trip
+live with `python scripts/probe_worker_mcp.py` while a demo bridge is up
+(the probe's `opencode run` needs a signed-in OpenCode profile; the Zen free
+tier only serves app-mode traffic).
 
 The [architecture overview](docs/architecture/overview.md) describes the local
 policy and evidence boundaries. A [live Windows Codex recovery](docs/evidence/codex-nebius-live-2026-09-24.json)
