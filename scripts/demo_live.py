@@ -211,10 +211,31 @@ def start_supervised_session(
         "bridge OpenCode attachment",
     )
     directory = urllib.parse.quote(str(workspace))
-    vendor_id = _call("POST", f"{opencode}/session?directory={directory}", {})["id"]
-    session_id = f"opencode:{vendor_id}"
-    quoted = urllib.parse.quote(session_id, safe="")
-    _poll(lambda: _call("GET", f"{bridge}/v1/sessions/{quoted}"), 60, "bridge session discovery")
+    session_id = ""
+    for attempt in range(2):
+        vendor_id = _call("POST", f"{opencode}/session?directory={directory}", {})["id"]
+        session_id = f"opencode:{vendor_id}"
+        quoted = urllib.parse.quote(session_id, safe="")
+        try:
+            print(
+                "waiting for the bridge to discover session "
+                f"{vendor_id} via the OpenCode event stream ...",
+                flush=True,
+            )
+            _poll(
+                lambda quoted=quoted: _call("GET", f"{bridge}/v1/sessions/{quoted}"),
+                120,
+                "bridge session discovery",
+            )
+            break
+        except TimeoutError:
+            # A cold `opencode serve` can open its event stream after the
+            # session was created - the create emits no replayable event, so
+            # the first attempt can race. Recreate and retry once; the
+            # orphaned empty session is unsupervised but harmless.
+            if attempt == 1:
+                raise
+            print("session discovery timed out; recreating the session ...", flush=True)
     goal = _call("POST", f"{bridge}/v1/goals", goal_payload(workspace, scenario))
     goal_id = goal.get("id") or goal["goal"]["id"]
     _call("POST", f"{bridge}/v1/sessions/{quoted}/attach", {"goal_id": goal_id})
@@ -235,7 +256,7 @@ def start_supervised_session(
         quoted_sibling = urllib.parse.quote(sibling_id, safe="")
         _poll(
             lambda: _call("GET", f"{bridge}/v1/sessions/{quoted_sibling}"),
-            60,
+            120,
             "bridge sibling session discovery",
         )
         _call("POST", f"{bridge}/v1/sessions/{quoted_sibling}/attach", {"goal_id": goal_id})
