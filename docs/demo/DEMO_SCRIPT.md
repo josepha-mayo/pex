@@ -131,6 +131,21 @@ Then click **Evidence pack** on the session:
 > sealed digests, flagged bytes, a hash-chained event ledger, a manifest.
 > `verify_pack.py` recomputes all of it offline."
 
+## Optional replay cut — the worker consults PEX itself (MCP)
+
+Click **Worker reads its goal, then asks PEX to verify its claim** —
+`captured_mcp_eval`, another FROM LIVE export.
+
+> "This one isn't just supervised traffic — it's a worker *using* the
+> supervision. PEX mounts an MCP server on the bridge; this recorded OpenCode
+> run opened with a real `pex_pex_get_goal` call carrying its own session id,
+> and before it claimed done it called `pex_pex_verify_claim` under a minted
+> session credential. PEX adjudicated the claim `uncertain` — and the
+> worker's final message quoted that verdict instead of asserting success.
+> Watch the session row: it carries a `PEX ×2` chip, and the evidence pack's
+> signed ledger contains both calls. The supervision isn't a channel the
+> worker can't see — it's a tool it chose to check itself against."
+
 ## Optional replay cut — drift and bounded intervention
 
 Click **Drift loop: the same failing probe, over and over**.
