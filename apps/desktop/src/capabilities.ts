@@ -146,6 +146,11 @@ export function capabilityRows({
     },
     supervisorRow(supervisor),
     ...adapterRows(adapters),
+    {
+      capability: "MCP tool surface",
+      status: "implemented",
+      detail: "A scoped Model Context Protocol server is mounted at /mcp — workers with session-bound credentials can read their goal, verify claims, request decisions, or hand off; local anonymous calls are read-only.",
+    },
     benchRow(bench),
     {
       capability: "Isolated public-test sandbox (Nebius ConTree)",
