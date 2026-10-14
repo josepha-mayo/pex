@@ -755,6 +755,28 @@ or a comparative benchmark result.
 
 The cloud supervisor can propose actions. It cannot bypass local policy.
 
+### PEX is also an MCP server
+
+Every bridge mounts a scoped [Model Context Protocol](https://modelcontextprotocol.io)
+server at `/mcp/` — the supervision state is itself an agent tool surface:
+
+`pex.get_goal` · `pex.get_relevant_context` · `pex.get_project_state` ·
+`pex.find_agent_with_context` · `pex.report_progress` · `pex.request_decision` ·
+`pex.handoff` · `pex.verify_claim`
+
+A worker (or any MCP client) holding a session credential can read its own
+goal, request a human decision, verify a claim before making it, or hand the
+goal context to a sibling — supervision as a tool the agent calls, not a
+channel it can't see. Credentials are minted per session via
+`POST /v1/sessions/{id}/mcp-credential` (operator-gated, TTL'd,
+scope-limited: a worker's token can reach only its own session's surfaces;
+write-scoped tools like `pex.verify_claim`/`pex.handoff` are session-bound,
+never operator-wide). Loopback-anonymous callers get read-only scope, so the
+demo bridge serves `tools/list` + read tools with no setup at all. The
+server's own `instructions` tell connecting agents to treat returned worker
+text as untrusted evidence — the honesty contract holds inside the protocol
+too.
+
 The [architecture overview](docs/architecture/overview.md) describes the local
 policy and evidence boundaries. A [live Windows Codex recovery](docs/evidence/codex-nebius-live-2026-09-24.json)
 showed Nemotron 3 Super correcting one incomplete stop on the same thread and

@@ -14,6 +14,7 @@ intervenes only inside bounded policy.
 | At least one NVIDIA open model | Nemotron is the suggested default: `nvidia/nemotron-3-super-120b-a12b` ([`providers.py`](../services/supervisor/src/pex_supervisor/providers.py)) |
 | Agents/tools that write, run, and test code | PEX supervises real OpenCode and Codex sessions that write and test code in their own workspaces ([supported harnesses](../README.md#supported-harnesses)) |
 | Token Factory Sandboxes | `PEX_PUBLIC_PYTEST_BACKEND=contree` dispatches the bounded public pytest verification set into a disposable, network-isolated Nebius ConTree VM ([`contree.py`](../services/bridge/src/pex_bridge/contree.py), [README](../README.md#nebius-contree-sandboxed-verification)) |
+| Agent-tool interoperability | The bridge itself mounts a scoped MCP server at `/mcp/` — `pex.verify_claim`, `pex.request_decision`, `pex.handoff`, `pex.get_goal`, and friends let a *worker* call the supervisor as a tool, under session-bound TTL'd credentials ([README](../README.md#pex-is-also-an-mcp-server)) |
 
 ## The five-minute judge path
 
