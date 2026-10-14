@@ -2513,7 +2513,10 @@ test("browser mode calls the bridge same-origin through the dev proxy", async ()
   // A non-Tauri page may sit behind a tunnel or preview port, so pinning
   // 127.0.0.1:7420 would send every call cross-origin and render it dead.
   assert.match(app, /const BRIDGE =[\s\S]*?!TAURI[\s\S]*?window\.location\.origin !== "null"[\s\S]*?"http:\/\/127\.0\.0\.1:7420"/u);
-  assert.match(vite, /proxy:\s*\{[\s\S]*?"\/v1"[\s\S]*?target:\s*"http:\/\/127\.0\.0\.1:7420"[\s\S]*?changeOrigin:\s*true[\s\S]*?ws:\s*true[\s\S]*?\}/u);
+  // The proxy follows PEX_BRIDGE_URL (demo.py moves the bridge with
+  // PEX_DEMO_PORT) with 7420 as the fallback — a hardcoded target renders a
+  // different bridge's canonical state.
+  assert.match(vite, /proxy:\s*\{[\s\S]*?"\/v1"[\s\S]*?target:\s*process\.env\.PEX_BRIDGE_URL\s*\?\?\s*"http:\/\/127\.0\.0\.1:7420"[\s\S]*?changeOrigin:\s*true[\s\S]*?ws:\s*true[\s\S]*?\}/u);
   assert.match(vite, /origin:\s*"http:\/\/127\.0\.0\.1:1420"/u);
 });
 
