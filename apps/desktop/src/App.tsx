@@ -1640,6 +1640,17 @@ export function App() {
   const startFixture = demoFixtures?.find((fixture) => isRecommendedStart(fixture))
     ?? demoFixtures?.[0];
   const replaySessionsRan = sessions.filter((session) => isReplaySession(session));
+  // The verdict card routes a run that escalated to ASK_HUMAN straight to the
+  // Decisions view. The session row may be outside the compact rail's
+  // promptable set, so "not visible" still counts as waiting.
+  const latestReplaySessionId = demoReplay.history[0]?.sessionId;
+  const latestReplaySession = latestReplaySessionId
+    ? sessions.find((session) => session.id === latestReplaySessionId)
+    : undefined;
+  const replayRunAwaitingDecision = Boolean(
+    demoReplay.verdict?.actions.includes("ASK_HUMAN")
+      && (!latestReplaySession || latestReplaySession.status === "needs_decision"),
+  );
   const journeySteps = demoFixtures?.length ? [
     {
       key: "first-run",
@@ -3598,6 +3609,15 @@ export function App() {
                       Deterministic replay — not live worker control.
                     </small>
                     <div className="button-row">
+                      {replayRunAwaitingDecision ? (
+                        <button
+                          type="button"
+                          className="solid"
+                          onClick={() => openDecisions()}
+                        >
+                          A ruling is waiting — open Decisions ↗
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="ghost"
