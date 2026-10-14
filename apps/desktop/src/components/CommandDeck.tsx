@@ -1194,6 +1194,8 @@ function GoalsView({
             <div className="card-heading">
               <h3>{goal.title || goal.objective}</h3>
               <small>
+                <code>{goal.id.slice(0, 18)}</code>
+                {" · "}
                 {goal.intent_revision && goal.intent_revision > 1
                   ? `revision ${goal.intent_revision} · `
                   : ""}
