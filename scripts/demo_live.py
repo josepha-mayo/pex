@@ -222,8 +222,14 @@ def start_supervised_session(
                 f"{vendor_id} via the OpenCode event stream ...",
                 flush=True,
             )
+            # The singular session route is a store-only read; the list route
+            # also kicks an adapter rediscovery, which is what catches a
+            # session created before the bridge's event stream subscribed.
             _poll(
-                lambda quoted=quoted: _call("GET", f"{bridge}/v1/sessions/{quoted}"),
+                lambda quoted=quoted: (
+                    _call("GET", f"{bridge}/v1/sessions")
+                    and _call("GET", f"{bridge}/v1/sessions/{quoted}")
+                ),
                 120,
                 "bridge session discovery",
             )
@@ -255,7 +261,10 @@ def start_supervised_session(
         sibling_id = f"opencode:{sibling_vendor}"
         quoted_sibling = urllib.parse.quote(sibling_id, safe="")
         _poll(
-            lambda: _call("GET", f"{bridge}/v1/sessions/{quoted_sibling}"),
+            lambda: (
+                _call("GET", f"{bridge}/v1/sessions")
+                and _call("GET", f"{bridge}/v1/sessions/{quoted_sibling}")
+            ),
             120,
             "bridge sibling session discovery",
         )

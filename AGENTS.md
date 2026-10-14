@@ -184,3 +184,12 @@ preflight test, which now has a 300 s budget).
 - `opencode run` (headless) hits Zen's free-tier gate without a signed-in
   OpenCode profile — `serve` mode does not. `scripts/probe_worker_mcp.py`
   exercises the run-mode path and needs real worker credentials.
+- Bridge session discovery has two paths and they are not equivalent:
+  `GET /v1/sessions` (list) kicks a throttled background
+  `refresh_desktop_sessions()` (~8s min interval) that re-runs
+  `adapter.discover_sessions()` — this catches sessions created before the
+  adapter's event stream subscribed. `GET /v1/sessions/{id}` (singular) is a
+  store-only read that kicks nothing. Anything that waits for a freshly
+  created session to appear must poll the LIST route first
+  (`scripts/demo_live.py` does), or a cold `opencode serve` boot can leave
+  the session invisible for the whole wait window.
