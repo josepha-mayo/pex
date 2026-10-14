@@ -1207,8 +1207,9 @@ class Pipeline:
         # A worker invoking the supervision surface mid-run is first-class
         # supervision signal — count distinct pex_* tool calls onto the
         # session row so the UI can show "worker consulted PEX ×N" without a
-        # per-session ledger scan. Pending/completed frames of one call share
-        # opencode_tool_call_id; the seen set dedups across harnesses.
+        # ledger scan. Live OpenCode emits pending then completed frames for
+        # one call; opencode_tool_call_id dedups them (the id list rides the
+        # in-memory session within a poll batch even before an upsert lands).
         if event.event_type == EventType.TOOL_CALL and str(event.tool_name or "").startswith("pex"):
             call_key = str(event.metadata.get("opencode_tool_call_id") or event.event_id)
             seen = [str(item) for item in session.metadata.get("worker_pex_call_ids") or []]

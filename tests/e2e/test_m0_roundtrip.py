@@ -442,6 +442,42 @@ async def test_demo_replay_nudge_dispute_escalates_once(client):
 
 
 @pytest.mark.asyncio
+async def test_ingest_counts_pex_tool_calls_once_per_call(client):
+    """Pending + completed frames of one pex_* call share a call id and count
+    once — the session row carries how often the worker consulted PEX."""
+    session = HarnessSession(
+        id="synthetic:pex-calls",
+        harness_type=HarnessType.SYNTHETIC,
+        vendor_session_id="pex-calls",
+        project_id="proj",
+        status=SessionStatus.WORKING,
+    )
+    await state.store.upsert_session(session)
+
+    async def emit(index: int, tool: str, call_id: str) -> None:
+        await state.pipeline.ingest_event(
+            HarnessEvent(
+                event_id=f"pex-ev-{index}",
+                ts=datetime.now(UTC),
+                harness_type=session.harness_type,
+                session_id=session.id,
+                project_id="proj",
+                event_type=EventType.TOOL_CALL,
+                tool_name=tool,
+                metadata={"opencode_tool_call_id": call_id},
+            ),
+            session,
+        )
+
+    # Pending then completed frames of the same logical call.
+    await emit(1, "pex_pex_get_goal", "call_1")
+    await emit(2, "pex_pex_get_goal", "call_1")
+    await emit(3, "pex_pex_verify_claim", "call_2")
+    await emit(4, "todowrite", "call_3")
+    assert session.metadata["worker_pex_calls"] == 2
+
+
+@pytest.mark.asyncio
 async def test_demo_replay_stamps_worker_pex_calls(client):
     """A captured run where the worker consulted the supervision surface
     replays with the call count stamped onto the session row — and ordinary
