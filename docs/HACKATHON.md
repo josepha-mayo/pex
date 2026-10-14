@@ -55,8 +55,11 @@ intervenes only inside bounded policy.
    curated narrative — `premature_stop_eval` is
    tagged *start here* — a **Run the whole suite** button self-scores all
    fixtures in-app, and the panel's built-in *Five-minute judge path*
-   collapsible walks the steps above without leaving the app. The
-   **Challenge the supervisor** panel ships four runnable attack presets
+   collapsible walks the steps above as a **self-checking list** — each
+   step ticks itself off from real state (a replay run, a resolved
+   ruling, an attached second act, the suite receipt) so judges can see
+   where they are. The **Challenge the supervisor** panel ships four
+   runnable attack presets
    (weakened test, premature claim, silent runner-config tamper,
    fabricated green output) a judge can mutate and re-run.
 3. Click **Evidence pack** in the Inspector — the app recomputes every digest
@@ -127,6 +130,11 @@ intervenes only inside bounded policy.
    an override-mode edit mints a successor goal and rebinds sessions, while
    `escalation_ruling` entries inherit forward through the `supersedes`
    lineage — a human decision cannot be retired by editing the goal text.
+   The ledger is legible too: each ruling renders under **Recorded rulings**
+   with provenance (*ruled by a human · from replay ‹fixture›*, deep-linking
+   to the source session), and **Sessions under this goal** lists every
+   session the intent governed — the disputed run's `uncertain` next to the
+   compliant run's `verified complete`.
    And the ruling ledger isn't a trap: `ruling_compliance_eval` attaches a
    worker that *complies* with the recorded ruling — PEX verifies the work
    and ends `verified_complete` with zero false-positive interventions
