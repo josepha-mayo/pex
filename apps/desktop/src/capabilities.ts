@@ -35,6 +35,17 @@ export const CAPABILITY_STATUS_CLASS: Record<CapabilityStatus, string> = {
   "not deployed": "cap-bad",
 };
 
+// Provider ids are opaque to a judge; the platform the hackathon asks about
+// gets its real name, everyone else renders raw.
+const PROVIDER_LABEL: Record<string, string> = {
+  nebius: "Nebius Token Factory",
+};
+
+function providerLabel(provider?: string | null, backend?: string | null): string {
+  const raw = provider || backend || "Configured backend";
+  return PROVIDER_LABEL[raw] || raw;
+}
+
 function supervisorRow(supervisor: SupervisorInfo | null): CapabilityRow {
   if (!supervisor) {
     return {
@@ -47,14 +58,14 @@ function supervisorRow(supervisor: SupervisorInfo | null): CapabilityRow {
     return {
       capability: "Model-assisted supervision",
       status: "live",
-      detail: `${supervisor.provider || supervisor.backend || "Configured backend"} · ${supervisor.model_id || "model not reported"} — a model actually loaded.`,
+      detail: `${providerLabel(supervisor.provider, supervisor.backend)} · ${supervisor.model_id || "model not reported"} — a model actually loaded.`,
     };
   }
   if (supervisor.credential_configured === true || supervisor.has_api_key === true) {
     return {
       capability: "Model-assisted supervision",
       status: "configured",
-      detail: `${supervisor.provider || supervisor.backend || "Backend"} credentials are stored; the model is not active yet (${supervisor.activation_status || "status unreported"}).`,
+      detail: `${providerLabel(supervisor.provider, supervisor.backend)} credentials are stored; the model is not active yet (${supervisor.activation_status || "status unreported"}).`,
     };
   }
   return {

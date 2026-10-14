@@ -4,7 +4,8 @@ How PEX maps to the track, what to run first, and what the evidence does and
 does not claim. PEX is a goal-aware supervisor for coding agents you already
 run: it attaches to OpenCode or Codex sessions, keeps a durable goal ledger,
 independently verifies completion claims against workspace evidence, and
-intervenes only inside bounded policy.
+intervenes only inside bounded policy. The Devpost field-by-field draft lives
+in [`docs/SUBMISSION_DRAFT.md`](SUBMISSION_DRAFT.md).
 
 ## Track requirements → where PEX satisfies them
 

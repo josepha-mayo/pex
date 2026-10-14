@@ -40,7 +40,8 @@ test("a loaded model reports live; stored credentials without a model report con
   });
   const liveRow = rowFor(live, "Model-assisted supervision");
   assert.equal(liveRow.status, "live");
-  assert.match(liveRow.detail, /nebius/);
+  assert.match(liveRow.detail, /Nebius Token Factory/);
+  assert.match(liveRow.detail, /nemotron-3-super/);
   assert.match(liveRow.detail, /actually loaded/);
 
   const configured = capabilityRows({

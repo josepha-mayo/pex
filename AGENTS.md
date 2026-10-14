@@ -39,6 +39,9 @@ Run from `D:\PEX-work` (Windows paths shown; adapt for Linux):
 .\.venv\Scripts\ruff format --check services packages tests scripts
 ```
 
+Both ruff gates run in CI (`checks.yml`); the tree was normalized in
+`ec69621`, so format diffs now mean your change, not inherited drift.
+
 Desktop (`apps/desktop`):
 
 ```powershell
@@ -65,6 +68,9 @@ preflight test, which now has a 300 s budget).
 
 ## Notes
 
+- Judge-facing commands always use `uv run python …` (self-syncing workspace
+  env); a bare `python scripts/demo.py` now fails fast with an actionable
+  message because the bridge spawns on the same interpreter.
 - `python scripts/demo.py` is the one-command path: it starts the demo bridge
   (`scripts/demo_bridge.py`, `http://127.0.0.1:7420`, unauthenticated and
   loopback-only) plus the vite dev UI on `:1420` with a `/v1` proxy, waits for
@@ -113,6 +119,12 @@ preflight test, which now has a 300 s budget).
   a *deep-copied* session, so in-ingest metadata mutations never persist for
   live sessions. Read-time projection is exact for live, replay, and
   pre-feature sessions alike.
+- Fixture ids share one strict contract on both sides —
+  `[a-z0-9][a-z0-9_-]{0,62}` in `pex_bridge/demo.py` and `demoReplay.ts` —
+  because the desktop drops ids it cannot parse and the bridge must never
+  advertise an unclickable fixture. New fixtures get lowercase+underscore
+  stems and a `FIXTURE_ORDER` slot (`demoReplay.ts`) if they belong in the
+  curated narrative.
 - `scripts/capture_replay.py` exports a recorded live session into a fixture.
   `pex_*` worker-MCP tool calls are supervision signal, not transport detail —
   they are preserved as first-class `tool_call` events (paired pending/result
@@ -134,6 +146,10 @@ preflight test, which now has a 300 s budget).
   intervention in `current_pending` after the session stops, and the pet's
   `needs_you` counts it — session-bound permission requests still die with
   their session.
+- `note` (all operational-failure copy) must render on every surface —
+  Inspector/Settings render it in-context; compact Home and the Command Deck
+  get it via the topbar-level `surface-note` in `App.tsx` (`surface !==
+  "inspector"`). A new surface must not leave action failures silent.
 - Deep links: `#inspector/<encodeURIComponent(sessionId)>` restores the
   selected session on load/reload; `openInspector` writes it. Keep
   `surfaceFromHash`/`sessionFromHash` parsing tolerant of stale ids (the
