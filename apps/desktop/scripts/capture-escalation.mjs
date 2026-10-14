@@ -4,22 +4,37 @@
 // the durable ruling it received after the worker's turn ended.
 //
 // Run with the demo stack up (bridge :7420 + vite :1420):
-//   node apps/desktop/scripts/capture-escalation.mjs
+//   node apps/desktop/scripts/capture-escalation.mjs            # stills
+//   node apps/desktop/scripts/capture-escalation.mjs --video    # webm in build/video/
 import { launchBrowser } from "./browser.mjs";
+import { mkdirSync } from "node:fs";
 
 const UI = process.env.PEX_UI_URL ?? "http://[::1]:1420";
 const SESSION = "opencode:ses_ec4b20a7effe7JIN0SWxV87kc1";
+const VIDEO = process.argv.includes("--video");
 
 const browser = await launchBrowser();
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+const context = await browser.newContext({
+  viewport: { width: 1280, height: 900 },
+  ...(VIDEO
+    ? { recordVideo: { dir: "build/video", size: { width: 1280, height: 900 } } }
+    : {}),
+});
+if (VIDEO) mkdirSync("build/video", { recursive: true });
+const page = await context.newPage();
+
+const shot = async (name) => {
+  if (!VIDEO) await page.screenshot({ path: `build/${name}`, fullPage: false });
+};
+const dwell = (ms) => page.waitForTimeout(ms);
 
 // Inspector deep-linked to the escalation session: session card (PEX ×N chip)
 // plus the supervision log row for the worker's own request_decision call.
 await page.goto(`${UI}/#inspector/${encodeURIComponent(SESSION)}`, {
   waitUntil: "domcontentloaded",
 });
-await page.waitForTimeout(6000);
-await page.screenshot({ path: "build/escalation-inspector.png", fullPage: false });
+await dwell(VIDEO ? 8000 : 6000);
+await shot("escalation-inspector.png");
 
 // Expand the goal "Checks and details" disclosure to reach Recorded rulings.
 const details = page
@@ -28,14 +43,14 @@ const details = page
 if (await details.count()) {
   await details.scrollIntoViewIfNeeded();
   await details.click({ timeout: 6000 }).catch(() => {});
-  await page.waitForTimeout(1500);
+  await dwell(VIDEO ? 2500 : 1500);
 }
 const rulings = page.locator(".goal-rulings").first();
 if (await rulings.count()) {
   await rulings.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(600);
+  await dwell(VIDEO ? 2500 : 600);
 }
-await page.screenshot({ path: "build/escalation-rulings.png", fullPage: false });
+await shot("escalation-rulings.png");
 
 // Deck -> Interventions: the ASK_HUMAN row shows diagnosis + the honest
 // session_terminal delivery receipt.
@@ -44,13 +59,13 @@ await page
   .first()
   .click({ timeout: 6000 })
   .catch(() => {});
-await page.waitForTimeout(4000);
+await dwell(4000);
 await page
   .locator('button:has-text("Interventions"), [role="tab"]:has-text("Interventions")')
   .first()
   .click({ timeout: 6000 })
   .catch(() => {});
-await page.waitForTimeout(6000);
+await dwell(VIDEO ? 8000 : 6000);
 await page
   .waitForSelector('article:has-text("decision"), :has-text("mcp_request_decision")', {
     timeout: 15000,
@@ -61,9 +76,11 @@ const card = page
   .first();
 if (await card.count()) {
   await card.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(500);
+  await dwell(VIDEO ? 2500 : 500);
 }
-await page.screenshot({ path: "build/escalation-interventions.png", fullPage: false });
+await shot("escalation-interventions.png");
 
+if (VIDEO) await dwell(1500); // let the last frame breathe before the recorder stops
+await context.close();
 await browser.close();
-console.log("wrote build/escalation-*.png");
+console.log(VIDEO ? "wrote build/video/*.webm" : "wrote build/escalation-*.png");

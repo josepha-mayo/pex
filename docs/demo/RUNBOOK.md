@@ -558,6 +558,11 @@ dispute → typed ruling → attached-second-run arc
 (`pex-ruling-arc-*.mp4`), and `capture-judge-arc.mjs` records the newer
 telling of the same arc through the verdict-card Decisions CTA and the
 Deck → Goals registry payoff (`pex-judge-arc-*.mp4`).
+`capture-escalation.mjs --video` records the worker-initiated escalation
+against the persisted 2026-10-14 live home — the worker's own
+`pex_request_decision`, the ASK_HUMAN card, and the journaled ruling under
+Recorded rulings (`pex-escalation-arc-*.mp4`, real live-session data, not a
+replay).
 
 For the submission video, [DEMO_SCRIPT.md](DEMO_SCRIPT.md) is a ~3-minute
 narration keyed to the same on-screen flow.
