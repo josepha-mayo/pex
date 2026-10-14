@@ -274,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
             # A cold `opencode serve` (node startup + model catalog fetch) can
             # exceed the default readiness window on this machine.
             budget = 120.0 if name == "opencode serve" else 45.0
-            print(f"waiting for {name} at {url} …", flush=True)
+            print(f"waiting for {name} at {url} ...", flush=True)
             if not _wait_http(url, timeout=budget, child=child):
                 failed.append(name)
         for name in failed:
