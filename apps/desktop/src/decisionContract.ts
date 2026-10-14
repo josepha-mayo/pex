@@ -68,6 +68,16 @@ export function decisionDeliveryStatus(error: unknown): DecisionDeliveryStatus |
   return isRecord(resolution) ? closedDeliveryStatus(resolution.status) : null;
 }
 
+export function decisionDeliveryCode(error: unknown): string | null {
+  if (!(error instanceof BridgeRequestError) || !error.detail) return null;
+  const response = error.detail.resolution;
+  if (!isRecord(response)) return null;
+  const resolution = response.resolution;
+  if (!isRecord(resolution)) return null;
+  const code = resolution.delivery_code;
+  return typeof code === "string" ? code : null;
+}
+
 export function humanDecisionPresentation(
   status: DecisionDeliveryStatus,
   replayed = false,
@@ -110,7 +120,16 @@ export function humanDecisionPresentation(
 }
 
 export function humanDecisionFailurePresentation(error: unknown) {
-  return humanDecisionPresentation(decisionDeliveryStatus(error) ?? "failed");
+  const status = decisionDeliveryStatus(error) ?? "failed";
+  if (status === "failed" && decisionDeliveryCode(error) === "session_terminal") {
+    return {
+      state: "error" as const,
+      deliveryStatus: status,
+      message:
+        "Decision recorded on the durable ledger; the worker session had already ended, so the answer could not be delivered to it.",
+    };
+  }
+  return humanDecisionPresentation(status);
 }
 
 export function humanDecisionFeedbackChoice(

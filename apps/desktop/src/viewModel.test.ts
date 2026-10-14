@@ -1529,6 +1529,41 @@ test("typed decision errors preserve distinct honest delivery outcomes", () => {
   assert.equal(messages.size, 4);
 });
 
+test("a terminal worker decision reports the ruling as recorded, not delivered", () => {
+  const error = bridgeRequestError(409, "delivery failed", {
+    detail: {
+      code: "human_decision_failed",
+      message: "The answer was recorded, but this exact worker could not confirm delivery.",
+      resolution: {
+        delivered: false,
+        delivery_status: "failed",
+        resolution: { status: "failed", delivery_code: "session_terminal" },
+      },
+    },
+  });
+  const presentation = humanDecisionFailurePresentation(error);
+  assert.equal(presentation.state, "error");
+  assert.equal(presentation.deliveryStatus, "failed");
+  assert.match(presentation.message, /recorded on the durable ledger/i);
+  assert.match(presentation.message, /had already ended/i);
+
+  const other = bridgeRequestError(409, "delivery failed", {
+    detail: {
+      code: "human_decision_failed",
+      message: "recorded",
+      resolution: {
+        delivered: false,
+        delivery_status: "failed",
+        resolution: { status: "failed", delivery_code: "send_failed" },
+      },
+    },
+  });
+  assert.equal(
+    humanDecisionFailurePresentation(other).message,
+    "Decision recorded, but PEX could not safely begin delivery to this worker.",
+  );
+});
+
 test("freeform decision submission is exact-once, cleared, and masked from feedback", async () => {
   const raw = "swordfish-private-desktop-answer";
   assert.equal(humanDecisionFeedbackChoice([], raw), FREEFORM_DECISION_LABEL);
