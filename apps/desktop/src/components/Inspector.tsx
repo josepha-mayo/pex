@@ -193,6 +193,17 @@ export function Inspector({
     ancestor,
     diffs: goalFieldDiff(ancestor, index === 0 ? goal! : lineage[index - 1]),
   }));
+  // Every session supervised under this goal or an amended ancestor revision —
+  // rulings inherit forward through `supersedes`, so sessions bound to an
+  // earlier revision of the same intent still belong to this goal's story.
+  const governedGoalIds = goal ? new Set([goal.id, ...lineage.map((item) => item.id)]) : null;
+  const governedSessions = governedGoalIds
+    ? sessions
+        .filter((session) => session.goal_id != null && governedGoalIds.has(session.goal_id))
+        .sort((a, b) =>
+          String(a.last_activity ?? a.id).localeCompare(String(b.last_activity ?? b.id)),
+        )
+    : [];
   const actionName = recordedActionLabel(action);
   const actionWhy = actionExplanation(action);
   const handoffCopy = action?.action === "FRESH_HANDOFF"
@@ -651,6 +662,35 @@ export function Inspector({
                 </div>
               ))}
               </details>
+            ) : null}
+            {governedSessions.length > 1 ? (
+              <div className="goal-governed-sessions">
+                <small>Sessions under this goal</small>
+                <ul>
+                  {governedSessions.map((session) => (
+                    <li key={session.id}>
+                      {onSelectSession && session.id !== current?.id ? (
+                        <button type="button" className="text-button governed-session"
+                          onClick={() => onSelectSession(session.id)}>
+                          {replayFixtureLabel(session) ?? titleCase(session.harness_type)}
+                        </button>
+                      ) : (
+                        <span className="governed-session governed-current">
+                          {replayFixtureLabel(session) ?? titleCase(session.harness_type)}
+                        </span>
+                      )}
+                      {isReplaySession(session) ? <span className="replay-badge">replay</span> : null}
+                      {session.id === current?.id ? <small>· this session</small> : null}
+                      <small>· {titleCase(session.status)}</small>
+                      {typeof session.metadata?.replay_verdict === "string" ? (
+                        <span className={`verdict-chip verdict-${session.metadata.replay_verdict}`}>
+                          {session.metadata.replay_verdict.replace(/_/g, " ")}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
             {onEditGoal ? (
               <div className="button-row">

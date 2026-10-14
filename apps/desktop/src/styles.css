@@ -1860,6 +1860,48 @@ p {
   text-transform: inherit;
 }
 
+.goal-governed-sessions {
+  margin-top: 12px;
+}
+
+.goal-governed-sessions > small {
+  color: var(--faint);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.goal-governed-sessions ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 0;
+  margin: 8px 0 0;
+  list-style: none;
+}
+
+.goal-governed-sessions li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.goal-governed-sessions .governed-session {
+  padding: 0;
+  font-size: inherit;
+  font-weight: 680;
+}
+
+.goal-governed-sessions .governed-current {
+  color: var(--mint);
+}
+
+.goal-governed-sessions li small {
+  color: var(--faint);
+}
+
 .goal-boundaries small {
   color: var(--faint);
   font-size: 9px;
