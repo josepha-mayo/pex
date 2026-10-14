@@ -196,6 +196,16 @@ def export(
             if process_state:
                 entry["process_state"] = process_state
             fixture_events.append(entry)
+        elif etype == "tool_call" and str(tool).startswith("pex"):
+            # A worker invoking the supervision surface is supervision
+            # signal, not transport detail: preserve the call so replays
+            # show the worker reading its goal or asking PEX to verify a
+            # claim. Paired pending/completed frames already collapsed.
+            call = {"event_type": "tool_call", "tool_name": tool}
+            summary = tool_input.get("claim") or tool_input.get("summary")
+            if summary:
+                call["message"] = str(summary)[:400]
+            fixture_events.append(call)
         elif etype == "stop":
             fixture_events.append(
                 {

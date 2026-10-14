@@ -259,10 +259,14 @@ uv run python scripts/capture_replay.py `
   --tamper --out fixtures/demo/captured_live_eval.json
 ```
 
-Two captures ship in the suite: `captured_live_eval` (the tamper run) and
+Three captures ship in the suite: `captured_live_eval` (the tamper run),
 `captured_handoff_eval` (the handoff *target* session — it opens with the
 real injected context bundle and preserves PEX's `REQUEST_VERIFICATION`
-demand for an attributable run).
+demand for an attributable run), and `captured_mcp_eval` (the worker-MCP
+run — the OpenCode worker's `pex_pex_get_goal` and `pex_pex_verify_claim`
+calls replay as first-class `tool_call` events, so a judge watches a real
+worker read its goal and check its own claim against PEX's independent
+evidence, deterministically).
 
 Reads the demo home's stored event ledger (no running bridge needed), dedups
 OpenCode's SSE re-deliveries, reconstructs workspace mutations from the

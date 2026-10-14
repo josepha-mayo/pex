@@ -104,9 +104,13 @@ preflight test, which now has a 300 s budget).
 - `scripts/eval_replays.py` adjudicates every fixture in `fixtures/demo/`
   through the real bridge and emits the suite receipt with `--json`/`--html`
   (flags are `--json <path>` and `--html <path>` — not `--json-out`). The
-  fixture expectation contract lives in each fixture's `expectation` block and
+  fixture expectation contract lives in each fixture's `expected` block and
   supports `completion_in`, `interventions_any`, `interventions_never`,
   `max_verified_or_supported`, and evidence requirements.
+- `scripts/capture_replay.py` exports a recorded live session into a fixture.
+  `pex_*` worker-MCP tool calls are supervision signal, not transport detail —
+  they are preserved as first-class `tool_call` events (paired pending/result
+  frames collapse by call id); other unmapped tools stay filtered.
 - Attention durability: `needs_decision` is a durable human obligation, not a
   recency hint — it never ages out of `collapse_promptable_agents` (exempt
   from `_PROMPTABLE_STALE`) or the pet's `needs_you` (counted from projected

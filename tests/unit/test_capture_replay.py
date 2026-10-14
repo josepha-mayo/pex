@@ -142,6 +142,53 @@ def test_export_reconstructs_edit_mutations(tmp_path: Path) -> None:
     assert mutation["files"]["test_core.py"] == tampered
 
 
+def test_export_preserves_pex_tool_calls_but_not_transport_tools(
+    tmp_path: Path,
+) -> None:
+    """A worker consulting the supervision surface mid-run is the signal a
+    judge replays for: the call must survive capture as a first-class
+    tool_call event. Unrelated transport tools stay filtered."""
+    db = _db(
+        tmp_path,
+        [
+            _tool_frame(
+                1,
+                "call-1",
+                completed=True,
+                event_type="tool_call",
+                tool_name="pex_pex_get_goal",
+                tool_input={"session_id": "opencode:ses_x"},
+            ),
+            _tool_frame(
+                2,
+                "call-2",
+                completed=True,
+                event_type="tool_call",
+                tool_name="todowrite",
+                tool_input={"todos": []},
+            ),
+            _tool_frame(
+                3,
+                "call-3",
+                completed=True,
+                event_type="tool_call",
+                tool_name="pex_pex_verify_claim",
+                tool_input={"claim": "all tests pass"},
+            ),
+            _frame(4, event_type="stop", message_delta="assistant"),
+        ],
+    )
+    fixture = export(db, "opencode:ses_x", WORKSPACE, dict(SEED), "t")
+    calls = [
+        (e.get("tool_name"), e.get("message"))
+        for e in fixture["events"]
+        if e["event_type"] == "tool_call"
+    ]
+    assert ("pex_pex_get_goal", None) in calls
+    assert ("pex_pex_verify_claim", "all tests pass") in calls
+    assert not any(name == "todowrite" for name, _ in calls)
+
+
 def test_export_labels_replay_provenance(tmp_path: Path) -> None:
     db = _db(tmp_path, [_frame(1, event_type="stop", message_delta="assistant")])
     fixture = export(db, "opencode:ses_x", WORKSPACE, dict(SEED), "t", fixture_id="captured_x")

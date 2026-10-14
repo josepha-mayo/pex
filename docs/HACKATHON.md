@@ -33,7 +33,10 @@ intervenes only inside bounded policy.
    tamper run by `scripts/capture_replay.py`, so a judge watches the exact
    events the live pipeline saw. `captured_handoff_eval` is the handoff
    *target's* captured trajectory — it opens with the injected PEX context
-   bundle itself. Three more arcs worth a look: `drift_loop_eval` (repeated
+   bundle itself. `captured_mcp_eval` is the worker-MCP run: the real
+   OpenCode worker calls `pex_pex_get_goal` before editing and
+   `pex_pex_verify_claim` before claiming done, and both calls replay as
+   first-class events — supervision as a tool the worker actually used. Three more arcs worth a look: `drift_loop_eval` (repeated
    identical failures → bounded overlay proposal, honestly refused on a
    recorded session), `constraint_violation_eval` (the worker narrates
    intent to violate a recorded `forbidden_outcome` → the ledger catches the
