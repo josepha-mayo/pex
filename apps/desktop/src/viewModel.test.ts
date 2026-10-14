@@ -2093,6 +2093,22 @@ test("ledger decisions are partitioned without inventing personality", () => {
     partitioned.rulings.map((item) => item.statement),
     ["Do not modify the sealed baseline test file"],
   );
+
+  // Rows journaled before the kind stamp (legacy MCP-resolved rulings) carry
+  // only their intervention binding — still rulings, never managed intent.
+  const legacy = partitionLedgerDecisions([
+    {
+      id: "d5",
+      goal_id: "g",
+      statement: "Answered before the kind marker existed",
+      status: "active",
+      metadata: { intervention_id: "int_9", source_session_id: "s1" },
+    },
+  ]);
+  assert.deepEqual(legacy.rulings.map((item) => item.statement), [
+    "Answered before the kind marker existed",
+  ]);
+  assert.deepEqual(legacy.decisions, []);
 });
 
 test("goal mutations preserve committed success across refresh failures", async () => {

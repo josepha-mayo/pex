@@ -1229,7 +1229,12 @@ export function partitionLedgerDecisions(rows: LedgerDecision[]): {
 
 function ledgerDecisionKind(item: LedgerDecision): string {
   const kind = item.metadata?.kind;
-  return typeof kind === "string" && kind.trim() ? kind : "decision";
+  if (typeof kind === "string" && kind.trim()) return kind;
+  // Rows journaled by the MCP resolution path before the kind stamp still
+  // carry their intervention binding — that marker is unique to escalation
+  // rulings (managed decisions never set intervention_id), so they classify
+  // as the rulings they are instead of defaulting into editable intent.
+  return typeof item.metadata?.intervention_id === "string" ? "escalation_ruling" : "decision";
 }
 
 export function currentGoals(goals: Goal[]): Goal[] {
