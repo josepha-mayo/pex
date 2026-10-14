@@ -321,6 +321,24 @@ hear it (the pack's ASK_HUMAN record carries
 `human_decision_delivery_failed` and the hash-chained ledger retains all
 three worker PEX calls).
 
+And the ruling *propagates*: resolving writes a HUMAN-provenance DECISION
+context item that supersedes the pending question, so the next worker on
+the same goal reads it in its own `pex.get_relevant_context` bundle.
+Verified live against the same run — the idle sibling `ses_ec4b200b…`,
+created before the ruling existed, received the full ruling text:
+
+```powershell
+uv run python scripts/probe_ruling_continuity.py `
+  --goal goal_bdea5cf20e4243e99feda677ebee330a `
+  --session opencode:ses_ec4b200baffef4pX5C9hFa2ulN
+# → "Decision: Follow the goal: do NOT edit test_csv_utils.py …"
+#   provenance=human — CONTINUITY VERIFIED
+```
+
+The probe creates a fresh sibling session (or takes `--session`), mints an
+MCP credential, and asserts a `decision`-kind bundle item carries the
+ruling — durable human intent reaching a worker that never asked.
+
 ## 1. Start the demo bridge
 
 ```powershell

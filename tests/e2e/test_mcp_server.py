@@ -821,6 +821,47 @@ async def test_mcp_write_tools_accept_flat_worker_arguments(tmp_path):
                             live = await state.store.get_session(source_id)
                             assert live is not None
                             assert live.status.value == "needs_decision"
+
+                # The ruling is durable intent: a sibling session that never
+                # asked still receives it in its context bundle.
+                resolved = await http.post(
+                    f"/v1/decisions/{decision['intervention']['id']}/resolve",
+                    json={"decision": "keep going"},
+                )
+                assert resolved.status_code == 200
+                sibling_credential = await http.post(f"/v1/sessions/{target.id}/mcp-credential")
+                assert sibling_credential.status_code == 200
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://127.0.0.1",
+                    headers={"Authorization": (f"Bearer {sibling_credential.json()['token']}")},
+                ) as sibling_http:
+                    async with streamable_http_client(
+                        "http://127.0.0.1/mcp/",
+                        http_client=sibling_http,
+                    ) as (read_stream, write_stream, _sid):
+                        async with ClientSession(read_stream, write_stream) as sibling_mcp:
+                            await sibling_mcp.initialize()
+                            bundle = _structured(
+                                await sibling_mcp.call_tool(
+                                    "pex.get_relevant_context",
+                                    {
+                                        "session_id": target.id,
+                                        "token_budget": 8_000,
+                                    },
+                                )
+                            )
+                            decision_items = [
+                                item
+                                for item in bundle.get("items", [])
+                                if item.get("kind") == "decision"
+                            ]
+                            assert any(
+                                "Tests are failing; stop or keep going?" in item["content"]
+                                and "Decision: keep going" in item["content"]
+                                and item.get("provenance") == "human"
+                                for item in decision_items
+                            )
     finally:
         await store.close()
 
