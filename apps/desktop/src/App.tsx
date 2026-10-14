@@ -950,7 +950,11 @@ export function App() {
     const route = () => {
       const routedShell = shellFromHash();
       setShell(routedShell);
-      if (routedShell === "main") setSurface(surfaceFromHash());
+      if (routedShell === "main") {
+        setSurface(surfaceFromHash());
+        const linkedSession = sessionFromHash();
+        if (linkedSession) setSelectedId(linkedSession);
+      }
     };
     route();
     window.addEventListener("hashchange", route);
@@ -2980,7 +2984,9 @@ export function App() {
   function openInspector(sessionId: string | undefined = current?.id) {
     if (sessionId) selectSession(sessionId);
     setSurface("inspector");
-    window.location.hash = "inspector";
+    window.location.hash = sessionId
+      ? `inspector/${encodeURIComponent(sessionId)}`
+      : "inspector";
   }
 
   function openDecisions() {
@@ -4062,6 +4068,20 @@ function shellFromHash(): Shell {
 
 function surfaceFromHash(): Surface {
   const hash = window.location.hash.replace(/^#\/?/, "");
-  if (hash === "inspector" || hash === "deck") return hash;
+  const surface = hash.split("/")[0];
+  if (surface === "inspector" || surface === "deck") return surface;
   return "compact";
+}
+
+// `#inspector/<encoded session id>` deep-links a specific session's evidence —
+// refresh-safe and shareable between judges.
+function sessionFromHash(): string | null {
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  const [surface, ...rest] = hash.split("/");
+  if (surface !== "inspector" || !rest.length || !rest[0]) return null;
+  try {
+    return decodeURIComponent(rest.join("/"));
+  } catch {
+    return null;
+  }
 }
