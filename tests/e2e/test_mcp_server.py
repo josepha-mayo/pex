@@ -661,6 +661,171 @@ async def test_mcp_mutation_tools_use_canonical_pipeline_paths(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_mcp_write_tools_accept_flat_worker_arguments(tmp_path):
+    """Workers emit flat args; nested `request:`/`report:` wrappers trip real clients."""
+    operator_token = "mcp-flat-operator-token-at-least-32"
+    app, store = await _make_app(
+        tmp_path,
+        require_auth=True,
+        token=operator_token,
+    )
+    try:
+        async with app.state.pex_mcp.session_manager.run():
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://127.0.0.1",
+                headers={"Authorization": f"Bearer {operator_token}"},
+            ) as http:
+                source_id, goal_id = await _seed_attached_session(http)
+                target = state.adapters.synthetic.seed_session(vendor_id="flat-target")
+                target.project_id = "demo"
+                await state.store.upsert_session(target)
+                attached = await http.post(
+                    f"/v1/sessions/{target.id}/attach",
+                    json=await _attach_request(target.id, goal_id),
+                )
+                assert attached.status_code == 200
+                evidence_context_id = new_id("ctx_")
+                await state.store.add_context(
+                    ContextItem(
+                        id=evidence_context_id,
+                        project_id="demo",
+                        goal_id=goal_id,
+                        kind=ContextKind.FACT,
+                        content="Dataset is at artifacts/prepared_dataset.parquet.",
+                        source_refs=["event:flat-evidence"],
+                        provenance=SourceKind.HARNESS,
+                        confidence=0.9,
+                        relevance_tags=["dataset", "atlas"],
+                        valid_from=datetime.now(UTC),
+                        sensitivity=Sensitivity.INTERNAL,
+                        metadata={"source_session_id": source_id},
+                    )
+                )
+                credential = await http.post(f"/v1/sessions/{source_id}/mcp-credential")
+                assert credential.status_code == 200
+                worker_token = credential.json()["token"]
+
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://127.0.0.1",
+                    headers={"Authorization": f"Bearer {worker_token}"},
+                ) as worker_http:
+                    async with streamable_http_client(
+                        "http://127.0.0.1/mcp/",
+                        http_client=worker_http,
+                    ) as (read_stream, write_stream, _sid):
+                        async with ClientSession(read_stream, write_stream) as mcp:
+                            await mcp.initialize()
+
+                            missing_refs = await mcp.call_tool(
+                                "pex.report_progress",
+                                {"session_id": source_id, "summary": "halfway"},
+                            )
+                            assert missing_refs.isError is True
+
+                            progress_payload = {
+                                "session_id": source_id,
+                                "summary": "Wired the atlas dataset path.",
+                                "evidence_refs": [
+                                    {"type": "context", "id": evidence_context_id},
+                                ],
+                            }
+                            progress = _structured(
+                                await mcp.call_tool(
+                                    "pex.report_progress",
+                                    progress_payload,
+                                )
+                            )
+                            assert progress["ok"] is True
+                            # No caller key: the derived key still replays deterministically.
+                            progress_replay = _structured(
+                                await mcp.call_tool(
+                                    "pex.report_progress",
+                                    progress_payload,
+                                )
+                            )
+                            assert progress_replay["replayed"] is True
+                            assert progress_replay["mutation_id"] == progress["mutation_id"]
+
+                            uncertain = _structured(
+                                await mcp.call_tool(
+                                    "pex.verify_claim",
+                                    {
+                                        "session_id": source_id,
+                                        "claim": "I am done.",
+                                    },
+                                )
+                            )
+                            assert uncertain["status"] == "uncertain"
+                            assert uncertain["verified"] is False
+
+                            handoff_payload = {
+                                "session_id": source_id,
+                                "target_session_id": target.id,
+                            }
+                            handed = _structured(
+                                await mcp.call_tool("pex.handoff", handoff_payload)
+                            )
+                            assert handed["ok"] is True
+                            assert handed["bundle_receipt"]["schema"] == (
+                                "pex.handoff-bundle-receipt.v1"
+                            )
+                            assert "bundle" not in handed
+                            handoff_replay = _structured(
+                                await mcp.call_tool("pex.handoff", handoff_payload)
+                            )
+                            assert handoff_replay["replayed"] is True
+                            assert (
+                                handoff_replay["intervention"]["id"] == handed["intervention"]["id"]
+                            )
+                            self_target = await mcp.call_tool(
+                                "pex.handoff",
+                                {
+                                    "session_id": source_id,
+                                    "target_session_id": source_id,
+                                },
+                            )
+                            assert self_target.isError is True
+
+                            missing_question = await mcp.call_tool(
+                                "pex.request_decision",
+                                {"session_id": source_id},
+                            )
+                            assert missing_question.isError is True
+                            decision_payload = {
+                                "session_id": source_id,
+                                "question": "Tests are failing; stop or keep going?",
+                                "options": ["stop", "keep going"],
+                                "urgency": "blocking",
+                            }
+                            decision = _structured(
+                                await mcp.call_tool(
+                                    "pex.request_decision",
+                                    decision_payload,
+                                )
+                            )
+                            assert decision["auto_resolved"] is False
+                            assert decision["session_status"] == "needs_decision"
+                            decision_replay = _structured(
+                                await mcp.call_tool(
+                                    "pex.request_decision",
+                                    decision_payload,
+                                )
+                            )
+                            assert decision_replay["replayed"] is True
+                            assert (
+                                decision_replay["intervention"]["id"]
+                                == decision["intervention"]["id"]
+                            )
+                            live = await state.store.get_session(source_id)
+                            assert live is not None
+                            assert live.status.value == "needs_decision"
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
 async def test_project_state_uses_goal_scoped_queries_before_bounding(
     tmp_path,
     monkeypatch,

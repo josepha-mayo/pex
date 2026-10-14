@@ -125,8 +125,10 @@ async def test_mcp_list_tools_bounds_every_caller_controlled_value():
     }
     assert set(verify_schema.get("required", [])) == {"session_id"}
     handoff_schema = schemas["pex.handoff"]
-    assert set(handoff_schema.get("properties", {})) == {"session_id", "request"}
-    assert set(handoff_schema.get("required", [])) == {"session_id", "request"}
+    assert {"session_id", "request", "target_session_id", "token_budget", "idempotency_key"} == set(
+        handoff_schema.get("properties", {})
+    )
+    assert set(handoff_schema.get("required", [])) == {"session_id"}
     handoff_fields = _object_properties(
         handoff_schema["properties"]["request"],
         handoff_schema,

@@ -797,6 +797,16 @@ live with `python scripts/probe_worker_mcp.py` while a demo bridge is up
 (the probe's `opencode run` needs a signed-in OpenCode profile; the Zen free
 tier only serves app-mode traffic).
 
+And the loop closes upward: every write tool accepts the flat argument shape
+a worker actually emits (a nested `request:` wrapper trips real workers —
+verified by watching one fail it three times). Verified live 2026-10-14 on
+the tamper scenario (`ses_ec4b20a7`): the worker read its goal, saw the task
+order a forbidden edit, and escalated itself via `pex_pex_request_decision`
+with the conflict spelled out and three options — the human ruling recorded
+durably even though the worker's turn had already ended
+([receipt](docs/demo/evidence/LIVE_OPENCODE_TAMPER_ESCALATION_ses_ec4b20a7_2026-10-14.json)
++ [evidence pack](docs/demo/evidence/EVIDENCE_PACK_live_escalation_2026-10-14.json)).
+
 The [architecture overview](docs/architecture/overview.md) describes the local
 policy and evidence boundaries. A [live Windows Codex recovery](docs/evidence/codex-nebius-live-2026-09-24.json)
 showed Nemotron 3 Super correcting one incomplete stop on the same thread and

@@ -9,6 +9,7 @@ from pex_protocol.context import (
     ClaimVerificationRequest,
     ContextHandoffRequest,
     HumanDecisionRequest,
+    ProgressEvidenceReference,
     ProgressReport,
 )
 from pydantic import Field
@@ -286,16 +287,49 @@ def build_mcp_server() -> tuple[FastMCP, Any]:
     @mcp.tool(name="pex.report_progress", structured_output=True)
     async def report_progress(
         session_id: _BoundedSessionId,
-        report: ProgressReport,
-        ctx: Context,
+        report: ProgressReport | None = None,
+        ctx: Context = None,
+        summary: Annotated[str | None, Field(min_length=1, max_length=4_000)] = None,
+        evidence_refs: Annotated[
+            list[ProgressEvidenceReference] | None,
+            Field(min_length=1, max_length=24),
+        ] = None,
+        idempotency_key: Annotated[
+            str | None,
+            Field(
+                min_length=8,
+                max_length=128,
+                pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            ),
+        ] = None,
     ) -> dict[str, Any]:
-        """Record provenance-backed progress. Self-assertion is never verified completion."""
+        """Record provenance-backed progress. Self-assertion is never verified completion.
+
+        Pass the report as `report: {summary, evidence_refs, ...}` or flattened
+        as top-level `summary` + `evidence_refs` (+ optional `idempotency_key`;
+        a stable key is derived from session + summary when omitted).
+        """
 
         state, session, _goal, principal = await _bound_state(
             ctx,
             session_id,
             required_scope=MCP_REPORT_PROGRESS_SCOPE,
         )
+        if report is None:
+            if not summary or not evidence_refs:
+                raise ValueError(
+                    "report_progress needs report.summary + report.evidence_refs or "
+                    "top-level summary + evidence_refs"
+                )
+            report = ProgressReport(
+                summary=summary,
+                evidence_refs=tuple(evidence_refs),
+                idempotency_key=(
+                    idempotency_key
+                    or "mcp-flat-"
+                    + hashlib.sha256(f"{session.id}\n{summary}".encode()).hexdigest()[:32]
+                ),
+            )
         return await state.pipeline.record_reported_progress(
             session,
             principal=principal,
@@ -359,16 +393,49 @@ def build_mcp_server() -> tuple[FastMCP, Any]:
     @mcp.tool(name="pex.handoff", structured_output=True)
     async def handoff(
         session_id: _BoundedSessionId,
-        request: ContextHandoffRequest,
-        ctx: Context,
+        request: ContextHandoffRequest | None = None,
+        ctx: Context = None,
+        target_session_id: Annotated[
+            str | None,
+            Field(min_length=1, max_length=512, pattern=r"^[^\x00-\x1f\x7f]+$"),
+        ] = None,
+        token_budget: _TokenBudget | None = None,
+        idempotency_key: Annotated[
+            str | None,
+            Field(
+                min_length=8,
+                max_length=128,
+                pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            ),
+        ] = None,
     ) -> dict[str, Any]:
-        """Route the smallest relevant provenance-bound bundle to a sibling session."""
+        """Route the smallest relevant provenance-bound bundle to a sibling session.
+
+        Pass the request as `request: {target_session_id, ...}` or flattened as
+        top-level `target_session_id` (+ optional `token_budget`,
+        `idempotency_key`; a stable key is derived from session + target when
+        omitted).
+        """
 
         state, source, _goal, _principal = await _bound_state(
             ctx,
             session_id,
             required_scope=MCP_HANDOFF_SCOPE,
         )
+        if request is None:
+            if not target_session_id:
+                raise ValueError(
+                    "handoff needs request.target_session_id or a top-level target_session_id"
+                )
+            request = ContextHandoffRequest(
+                target_session_id=target_session_id,
+                token_budget=token_budget if token_budget is not None else 2_000,
+                idempotency_key=(
+                    idempotency_key
+                    or "mcp-flat-"
+                    + hashlib.sha256(f"{source.id}\n{target_session_id}".encode()).hexdigest()[:32]
+                ),
+            )
         try:
             result = await state.pipeline.request_context_handoff(
                 source,
