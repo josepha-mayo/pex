@@ -1215,7 +1215,7 @@ test("workspace home keeps evidence access and an optional companion", async () 
     "utf8",
   );
   const compactStart = app.indexOf('aria-label="PEX compact companion"');
-  const compactEnd = app.indexOf('surface === "inspector"');
+  const compactEnd = app.indexOf('{surface === "inspector" ? (');
   const compact = app.slice(compactStart, compactEnd);
   assert.match(compact, /Live PEX counts/);
   assert.match(compact, /Review evidence/);
