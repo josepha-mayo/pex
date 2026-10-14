@@ -19,7 +19,9 @@ export default defineConfig({
     // behind Settings.for_test.
     proxy: {
       "/v1": {
-        target: "http://127.0.0.1:7420",
+        // demo.py moves the bridge when PEX_DEMO_PORT is set — the proxy must
+        // follow, or the UI renders a different bridge's canonical state.
+        target: process.env.PEX_BRIDGE_URL ?? "http://127.0.0.1:7420",
         changeOrigin: true,
         ws: true,
         headers: { origin: "http://127.0.0.1:1420" },

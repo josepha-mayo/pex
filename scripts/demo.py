@@ -229,6 +229,10 @@ def main(argv: list[str] | None = None) -> int:
                 "--strictPort",
             ],
             cwd=ROOT / "apps" / "desktop",
+            env={
+                **os.environ,
+                "PEX_BRIDGE_URL": f"http://127.0.0.1:{BRIDGE_PORT}",
+            },
             start_new_session=(os.name != "nt"),
         ),
     ]
