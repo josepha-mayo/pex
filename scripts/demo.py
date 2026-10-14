@@ -7,7 +7,7 @@ Run from the repository root:
 
 Starts the test-scoped demo bridge on http://127.0.0.1:7420 and the vite dev
 server on http://127.0.0.1:1420 (which proxies /v1 to the bridge), then prints
-the URL to open. Ctrl+C stops everything. No agent install is required — the
+the URL to open. Ctrl+C stops everything. No agent install is required - the
 setup card offers recorded-replay fixtures immediately.
 
 ``--live`` additionally starts ``opencode serve`` on a free OpenCode Zen model
@@ -54,7 +54,7 @@ def _npm() -> str:
 
 
 def _pid_on_port(port: int) -> str | None:
-    """Best-effort PID of a loopback listener — for an actionable error."""
+    """Best-effort PID of a loopback listener - for an actionable error."""
 
     try:
         if os.name == "nt":
@@ -88,7 +88,7 @@ def _ensure_port_free(port: int, label: str, env_name: str) -> None:
     """Fail loudly on a stale service instead of probing someone else's health.
 
     A squatting process answers the readiness probe just as well as our own
-    child — the run then proceeds against the wrong service (or its own child
+    child - the run then proceeds against the wrong service (or its own child
     exits and tears the demo down). Check the port *before* spawning so the
     message can name the real culprit.
     """
@@ -109,7 +109,7 @@ def _ensure_port_free(port: int, label: str, env_name: str) -> None:
     else:
         kill_hint = "stop it"
     sys.exit(
-        f"{label} port 127.0.0.1:{port} is already in use{owner} — likely a stale "
+        f"{label} port 127.0.0.1:{port} is already in use{owner} - likely a stale "
         f"service from an earlier run; {kill_hint} first, or set {env_name}."
     )
 
@@ -121,7 +121,7 @@ def _wait_http(url: str, timeout: float = 45.0, child=None) -> bool:
             return False
         try:
             # /health runs the bounded adapter probes (tasklist + loopback
-            # checks), which takes a few seconds on Windows — not instant.
+            # checks), which takes a few seconds on Windows - not instant.
             with urllib.request.urlopen(url, timeout=10) as response:
                 return response.status == 200
         except Exception:
@@ -171,14 +171,12 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = _parse(argv)
     if not (ROOT / "apps" / "desktop" / "node_modules").is_dir():
-        sys.exit("apps/desktop dependencies are missing — run `npm install` there first.")
+        sys.exit("apps/desktop dependencies are missing - run `npm install` there first.")
     try:
         import importlib.util
 
         missing = [
-            name
-            for name in ("uvicorn", "pex_bridge")
-            if importlib.util.find_spec(name) is None
+            name for name in ("uvicorn", "pex_bridge") if importlib.util.find_spec(name) is None
         ]
     except ImportError:
         missing = ["uvicorn", "pex_bridge"]

@@ -120,9 +120,7 @@ async def test_mutation_origin_guard_rejects_untrusted_browser_origins(method: s
     async with AsyncClient(
         transport=ASGITransport(app=guarded), base_url="http://127.0.0.1"
     ) as client:
-        response = await client.request(
-            method, "/", headers={"Origin": "https://evil.example"}
-        )
+        response = await client.request(method, "/", headers={"Origin": "https://evil.example"})
     assert response.status_code == 403
     assert response.json() == {"detail": "untrusted mutation origin"}
 
@@ -136,9 +134,7 @@ async def test_mutation_origin_guard_accepts_allowlisted_and_native_callers() ->
         assert (
             await client.post("/", headers={"Origin": "http://localhost:1420"})
         ).status_code == 200
-        assert (
-            await client.post("/", headers={"Origin": "tauri://localhost"})
-        ).status_code == 200
+        assert (await client.post("/", headers={"Origin": "tauri://localhost"})).status_code == 200
         # Native hook/CLI clients send no Origin — the bearer check downstream
         # authenticates them, so the guard must not block the header's absence.
         assert (await client.post("/")).status_code == 200
