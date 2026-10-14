@@ -128,7 +128,11 @@ preflight test, which now has a 300 s budget).
 - `scripts/capture_replay.py` exports a recorded live session into a fixture.
   `pex_*` worker-MCP tool calls are supervision signal, not transport detail —
   they are preserved as first-class `tool_call` events (paired pending/result
-  frames collapse by call id); other unmapped tools stay filtered.
+  frames collapse by call id); other unmapped tools stay filtered. Session ids
+  are namespaced (`--session opencode:ses_…`), `--seed false-test-claim
+  --tamper` regenerates the tamper workspace, and the exported fixture still
+  needs a hand-written `expected` block + `summary` — adjudicate it once
+  through `/v1/demo/replay` and declare the observed honest verdict.
 - Attention durability: `needs_decision` is a durable human obligation, not a
   recency hint — it never ages out of `collapse_promptable_agents` (exempt
   from `_PROMPTABLE_STALE`) or the pet's `needs_you` (counted from projected
