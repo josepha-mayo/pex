@@ -27612,6 +27612,7 @@ class Store:
                     status=DecisionStatus.ACTIVE,
                     created_at=resolved_at,
                     metadata={
+                        "kind": "escalation_ruling",
                         "intervention_id": intervention.id,
                         "source_session_id": session.id,
                         "question": question,
@@ -27634,6 +27635,7 @@ class Store:
                     supersedes=pending.id,
                     sensitivity=Sensitivity.INTERNAL,
                     metadata={
+                        "kind": "escalation_ruling",
                         "decision_id": decision.id,
                         "source_session_id": session.id,
                         "status": DecisionStatus.ACTIVE.value,

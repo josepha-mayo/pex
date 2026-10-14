@@ -829,8 +829,22 @@ async def test_mcp_write_tools_accept_flat_worker_arguments(tmp_path):
                                 "Tests are failing; stop or keep going?" in item["content"]
                                 and "Decision: keep going" in item["content"]
                                 and item.get("provenance") == "human"
+                                and item.get("metadata", {}).get("kind") == "escalation_ruling"
                                 for item in decision_items
                             )
+
+                # The ruling partitions as a journaled escalation ruling on the
+                # goal ledger — durable intent, never re-adoptable into the
+                # goal's managed decision text.
+                rows = await state.store.list_decisions_for_authority(goal_id)
+                mcp_rulings = [
+                    row
+                    for row in rows
+                    if row.metadata.get("kind") == "escalation_ruling"
+                    and row.metadata.get("intervention_id") == decision["intervention"]["id"]
+                ]
+                assert len(mcp_rulings) == 1
+                assert mcp_rulings[0].statement == "keep going"
     finally:
         await store.close()
 
