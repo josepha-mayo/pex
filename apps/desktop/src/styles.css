@@ -1113,6 +1113,11 @@ p {
   color: var(--mint);
 }
 
+.pex-calls-badge {
+  border-color: var(--accent, var(--mint));
+  color: var(--accent, var(--mint));
+}
+
 .stall-warning {
   color: var(--amber);
 }

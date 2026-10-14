@@ -1,5 +1,5 @@
 import { handoffAssimilationPresentation } from "../handoffPresentation";
-import { isLiveWorkerSession, isReplaySession, replayFixtureNameFromId } from "../demoReplay";
+import { isLiveWorkerSession, isReplaySession, replayFixtureNameFromId, workerPexCalls } from "../demoReplay";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AskPex } from "./AskPex";
@@ -429,6 +429,14 @@ function NowView({
                   <span className="replay-badge">Recorded replay</span>
                 ) : isLiveWorkerSession(session) ? (
                   <span className="replay-badge live-badge">Live worker</span>
+                ) : null}
+                {workerPexCalls(session) > 0 ? (
+                  <span
+                    className="replay-badge pex-calls-badge"
+                    title={`worker called PEX supervision tools ${workerPexCalls(session)}× — evidence, not verdicts`}
+                  >
+                    PEX ×{workerPexCalls(session)}
+                  </span>
                 ) : null}
                 <span className={`state-pill state-${session.status}`}>{humanize(session.status)}</span>
               </span>
