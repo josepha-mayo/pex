@@ -503,6 +503,7 @@ export function App() {
   } | null>(null);
   const suiteCancelRef = useRef(false);
   const [suiteReceiptCopied, setSuiteReceiptCopied] = useState(false);
+  const [suiteMdCopied, setSuiteMdCopied] = useState(false);
   const [verdictReceiptCopied, setVerdictReceiptCopied] = useState(false);
   // In-session flag for the judge checklist: a dispute escalation resolved
   // through this UI records a ruling even when the session row is collapsed
@@ -1915,6 +1916,7 @@ export function App() {
   async function runDemoSuite() {
     if (!demoFixtures?.length || demoReplay.running || suiteRun?.running) return;
     setSuiteReceiptCopied(false);
+    setSuiteMdCopied(false);
     suiteCancelRef.current = false;
     setSuiteRun({ running: true, done: 0, total: demoFixtures.length, current: null, met: 0, misses: [], results: [] });
     let met = 0;
@@ -1975,6 +1977,20 @@ export function App() {
     };
     await navigator.clipboard.writeText(JSON.stringify(receipt, null, 2));
     setSuiteReceiptCopied(true);
+  }
+
+  async function copySuiteMarkdown() {
+    if (!suiteRun || suiteRun.running || !suiteRun.results.length) return;
+    const lines = [
+      `| fixture | declared arc | completion |`,
+      `| --- | --- | --- |`,
+      ...suiteRun.results.map((row) =>
+        `| ${row.fixture} | ${row.met === true ? "met" : row.met === false ? `missed — ${row.failures[0] ?? "declared arc not met"}` : "unscored"} | ${row.completion ?? "n/a"} |`),
+      ``,
+      `PEX replay suite — ${suiteRun.met}/${suiteRun.done} declared arcs met${suiteRun.done < suiteRun.total ? ` (stopped at ${suiteRun.done}/${suiteRun.total})` : ""}. Recorded supervision trajectories adjudicated by the real pipeline — not a benchmark. ${new Date().toISOString()}`,
+    ];
+    await navigator.clipboard.writeText(lines.join("\n"));
+    setSuiteMdCopied(true);
   }
 
   async function copyVerdictReceipt() {
@@ -3479,9 +3495,14 @@ export function App() {
                     </p>
                   ) : null}
                   {suiteRun && !suiteRun.running && suiteRun.results.length ? (
-                    <button type="button" className="ghost" onClick={() => void copySuiteReceipt()}>
-                      {suiteReceiptCopied ? "Receipt copied" : "Copy suite receipt (JSON)"}
-                    </button>
+                    <>
+                      <button type="button" className="ghost" onClick={() => void copySuiteReceipt()}>
+                        {suiteReceiptCopied ? "Receipt copied" : "Copy suite receipt (JSON)"}
+                      </button>
+                      <button type="button" className="ghost" onClick={() => void copySuiteMarkdown()}>
+                        {suiteMdCopied ? "Markdown copied" : "Copy as markdown"}
+                      </button>
+                    </>
                   ) : null}
                 </div>
                 <details className="demo-challenge">
