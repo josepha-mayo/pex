@@ -7204,17 +7204,20 @@ def create_app() -> FastAPI:
         session = await state.store.get_session_for_authority(body.session_id)
         if not session:
             raise HTTPException(404, "session not found")
-        event = state.adapters.synthetic.emit(
-            session,
-            body.event_type,
-            message_delta=body.message,
-            command=body.command,
-            tool_name=body.tool_name,
-            file_paths=body.file_paths,
-            process_state=body.process_state,
-            error=body.error,
-            **({"phase": body.phase} if body.phase else {}),
-        )
+        try:
+            event = state.adapters.synthetic.emit(
+                session,
+                body.event_type,
+                message_delta=body.message,
+                command=body.command,
+                tool_name=body.tool_name,
+                file_paths=body.file_paths,
+                process_state=body.process_state,
+                error=body.error,
+                **({"phase": body.phase} if body.phase else {}),
+            )
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
         intervention = await state.pipeline.ingest_event(event, session)
         return {
             "event": event.model_dump(mode="json"),

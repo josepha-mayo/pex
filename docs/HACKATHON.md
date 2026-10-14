@@ -140,6 +140,18 @@ intervenes only inside bounded policy.
    an override-mode edit mints a successor goal and rebinds sessions, while
    `escalation_ruling` entries inherit forward through the `supersedes`
    lineage — a human decision cannot be retired by editing the goal text.
+   The 2026-10-14 tamper rerun completes the loop in the other direction:
+   the worker read its own goal via `pex_pex_get_goal`, saw the task order a
+   forbidden edit, and *escalated itself* via `pex_pex_request_decision` —
+   the conflict spelled out, three authored options, `urgency: blocking` —
+   landing an ASK_HUMAN card under its session-bound credential. Its turn
+   ended before a human answered; the ruling still recorded durably with
+   honest `delivery_status: failed` / `session_terminal`, and the idle
+   sibling session now receives the ruling in its own
+   `pex.get_relevant_context` bundle — durable human intent outliving the
+   worker that asked, reaching a worker that never asked
+   ([receipt](demo/evidence/LIVE_OPENCODE_TAMPER_ESCALATION_ses_ec4b20a7_2026-10-14.json),
+   [pack](demo/evidence/EVIDENCE_PACK_live_escalation_2026-10-14.json)).
    The ledger is legible too: each ruling renders under **Recorded rulings**
    with provenance (*ruled by a human · from replay ‹fixture›*, deep-linking
    to the source session), and **Sessions under this goal** lists every

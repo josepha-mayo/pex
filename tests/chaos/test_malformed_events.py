@@ -36,6 +36,27 @@ async def test_malformed_cursor_hook_does_not_crash_bridge(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_synthetic_event_for_unbound_session_returns_409_not_500(client: AsyncClient):
+    """A persisted session whose adapter binding is gone (e.g. bridge restart)
+    must refuse honestly — a binding mismatch is not a server crash."""
+    adapter = state.adapters.synthetic
+    session = adapter.seed_session(vendor_id="orphaned-synthetic", cwd="D:/scratch")
+    await state.store.upsert_session(session)
+    adapter.sessions.pop(session.id, None)
+    res = await client.post(
+        "/v1/synthetic/events",
+        json={
+            "session_id": session.id,
+            "event_type": EventType.STOP.value,
+            "message": "done",
+        },
+    )
+    assert res.status_code == 409
+    health = await client.get("/health")
+    assert health.json()["ok"] is True
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("limit", [None, 1])
 @pytest.mark.parametrize("configure_during_dispatch", [False, True])
 async def test_malformed_adapter_event_does_not_stop_sibling_supervision(
