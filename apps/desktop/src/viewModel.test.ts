@@ -2561,6 +2561,30 @@ test("goal lineage walks the supersedes chain and survives gaps", async () => {
   assert.equal(goalLineageChain("a", [loopA, loopB]).length, 1);
 });
 
+test("governed sessions include ancestor revisions and stay ordered", async () => {
+  const { governedSessionsForGoal } = await import("./viewModel.ts");
+  const goals = [
+    { id: "g2", title: "v2", objective: "ship it", supersedes: "g1" },
+    { id: "g1", title: "v1", objective: "ship it" },
+    { id: "other", title: "other", objective: "elsewhere" },
+  ];
+  const session = (id: string, goal_id: string | null, last_activity?: string) => ({
+    id,
+    goal_id,
+    harness_type: "synthetic",
+    status: "stopped",
+    last_activity,
+  });
+  const sessions = [
+    session("s-new", "g2", "2026-02-02T00:00:00Z"),
+    session("s-old", "g1", "2026-01-01T00:00:00Z"),
+    session("s-unbound", null),
+    session("s-other", "other"),
+  ];
+  const governed = governedSessionsForGoal(goals[0], goals, sessions);
+  assert.deepEqual(governed.map((item) => item.id), ["s-old", "s-new"]);
+});
+
 test("goal field diff reports per-field changes only", async () => {
   const { goalFieldDiff } = await import("./viewModel.ts");
   const base = {

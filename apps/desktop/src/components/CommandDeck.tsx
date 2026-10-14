@@ -1,5 +1,5 @@
 import { handoffAssimilationPresentation } from "../handoffPresentation";
-import { isLiveWorkerSession, isReplaySession } from "../demoReplay";
+import { isLiveWorkerSession, isReplaySession, replayFixtureNameFromId } from "../demoReplay";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AskPex } from "./AskPex";
@@ -29,6 +29,9 @@ import {
   contextGoal,
   contextForWorker,
   contextItemMarks,
+  currentGoals,
+  goalLineageChain,
+  governedSessionsForGoal,
   fingerprintCompletionReliability,
   fingerprintFailureModes,
   fingerprintPrematureRate,
@@ -57,6 +60,7 @@ import {
 const VIEWS: Array<{ id: DeckView; label: string; hint: string }> = [
   { id: "now", label: "Now", hint: "live work" },
   { id: "decisions", label: "Decisions", hint: "needs you" },
+  { id: "goals", label: "Goals", hint: "durable intent" },
   { id: "context", label: "Context", hint: "durable state" },
   { id: "interventions", label: "Interventions", hint: "audit trail" },
   { id: "agents", label: "Agents", hint: "fingerprints" },
@@ -305,6 +309,14 @@ export function CommandDeck({
               onResolveIdentity={onResolveIdentity}
               onLoadMoreIdentityConflicts={onLoadMoreIdentityConflicts}
               onLoadMoreIdentityCandidates={onLoadMoreIdentityCandidates}
+            />
+          ) : null}
+          {activeView === "goals" ? (
+            <GoalsView
+              goals={goals}
+              sessions={sessions}
+              sourceFresh={goalsFresh && sessionsFresh}
+              onSelect={onSelectSession}
             />
           ) : null}
           {activeView === "context" ? (
@@ -1139,6 +1151,106 @@ function permissionTitle(details: ReturnType<typeof permissionRequestDetails>): 
   return "Permission requires human authority";
 }
 
+// Every persistent goal, the sessions it has governed (including sessions
+// bound to amended ancestor revisions — rulings inherit forward through
+// `supersedes`), and the verdict each run earned. This is where durable
+// intent surviving worker churn is visible at a glance.
+function GoalsView({
+  goals,
+  sessions,
+  sourceFresh,
+  onSelect,
+}: {
+  goals: Goal[];
+  sessions: SessionRow[];
+  sourceFresh: boolean;
+  onSelect: (sessionId: string) => void;
+}) {
+  const active = currentGoals(goals);
+  if (!sourceFresh) {
+    return (
+      <EmptyState
+        title="Goal state unavailable"
+        body="PEX could not refresh canonical goals and sessions — the registry is not shown from cache."
+      />
+    );
+  }
+  if (!active.length) {
+    return (
+      <EmptyState
+        title="No persistent goals yet"
+        body="Attach a goal to a worker, or run a recorded replay — the goal's ledger and every session it supervises appear here."
+      />
+    );
+  }
+  return (
+    <div className="goals-view">
+      {active.map((goal) => {
+        const lineage = goalLineageChain(goal.id, goals);
+        const governed = governedSessionsForGoal(goal, goals, sessions);
+        const pendingCount = governed.filter((session) => session.status === "needs_decision").length;
+        return (
+          <article className="goal-card" key={goal.id}>
+            <div className="card-heading">
+              <h3>{goal.title || goal.objective}</h3>
+              <small>
+                {goal.intent_revision && goal.intent_revision > 1
+                  ? `revision ${goal.intent_revision} · `
+                  : ""}
+                {typeof goal.ruling_count === "number" && goal.ruling_count > 0
+                  ? `ruled ×${goal.ruling_count} · `
+                  : ""}
+                {governed.length ? `${governed.length} session${governed.length === 1 ? "" : "s"} governed` : "no sessions bound yet"}
+                {pendingCount ? ` · ${pendingCount} waiting on you` : ""}
+              </small>
+            </div>
+            <p className="goal-card-objective">{goal.objective}</p>
+            {lineage.length ? (
+              <p className="goal-card-lineage">
+                Amended {lineage.length} time{lineage.length === 1 ? "" : "s"} — prior revisions
+                stay in the ledger and keep their rulings.
+              </p>
+            ) : null}
+            {governed.length ? (
+              <ul className="goal-card-sessions">
+                {governed.map((session) => {
+                  const replayName = replayFixtureNameFromId(session.id);
+                  const verdict = typeof session.metadata?.replay_verdict === "string"
+                    ? session.metadata.replay_verdict
+                    : null;
+                  return (
+                    <li key={session.id}>
+                      <button
+                        type="button"
+                        className="text-button"
+                        title={`Open ${session.id} in the Inspector`}
+                        onClick={() => onSelect(session.id)}
+                      >
+                        {replayName ?? session.label ?? session.id}
+                      </button>
+                      <small>{titleCase(session.harness_type)} · {humanize(session.status)}</small>
+                      {isReplaySession(session) ? (
+                        <span className="replay-badge">Recorded replay</span>
+                      ) : null}
+                      {verdict ? (
+                        <span className={`verdict-chip verdict-${verdict}`}>
+                          {verdict.replace(/_/g, " ")}
+                        </span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="note">No worker has run under this goal yet.</p>
+            )}
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
 function ContextView({
   goals,
   items,
@@ -1621,6 +1733,7 @@ function viewDescription(view: DeckView): string {
   const copy: Record<DeckView, string> = {
     now: "Live sessions, one-line goals, evidence, intervention count, and attention state.",
     decisions: "Only unresolved choices requiring human judgment.",
+    goals: "Persistent intent, amendments, rulings, and every session each goal has governed.",
     context: "Durable facts, decisions, constraints, artifacts, sources, and staleness.",
     interventions: "Observed condition → evidence → action → outcome.",
     agents: "Observed harness behavior and configuration suggestions, with unknowns left unknown.",

@@ -1,7 +1,7 @@
 import type { PetMood } from "./pets/atlas";
 
 export type Surface = "compact" | "inspector" | "deck";
-export type DeckView = "now" | "decisions" | "context" | "interventions" | "agents" | "bench";
+export type DeckView = "now" | "decisions" | "goals" | "context" | "interventions" | "agents" | "bench";
 
 export type BridgeBootstrapStatus = {
   phase: "starting" | "ready" | "failed";

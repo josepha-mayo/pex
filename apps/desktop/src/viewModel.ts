@@ -1321,6 +1321,25 @@ export function goalFieldDiff(previous: Goal, next: Goal): GoalFieldDiff[] {
   return diffs;
 }
 
+// Every session supervised under a goal or an amended ancestor revision —
+// rulings inherit forward through `supersedes`, so sessions bound to an
+// earlier revision of the same intent still belong to this goal's story.
+export function governedSessionsForGoal(
+  goal: Goal,
+  goals: Goal[],
+  sessions: SessionRow[],
+): SessionRow[] {
+  const governedGoalIds = new Set([
+    goal.id,
+    ...goalLineageChain(goal.id, goals).map((item) => item.id),
+  ]);
+  return sessions
+    .filter((session) => session.goal_id != null && governedGoalIds.has(session.goal_id))
+    .sort((a, b) =>
+      String(a.last_activity ?? a.id).localeCompare(String(b.last_activity ?? b.id)),
+    );
+}
+
 export function splitPetCatalog(
   starters: CatalogPet[],
   catalog: CatalogPet[],

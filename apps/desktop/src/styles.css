@@ -3825,3 +3825,73 @@ html.pet-shell #root {
   margin: 0.15rem 0 0;
   opacity: 0.85;
 }
+
+.goals-view {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.goal-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel-soft);
+  content-visibility: auto;
+  contain-intrinsic-size: 190px;
+}
+
+.goal-card .card-heading h3 {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.goal-card .card-heading small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.goal-card-objective {
+  margin: 8px 0 0;
+  color: #d0ddd5;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.goal-card-lineage {
+  margin: 6px 0 0;
+  color: var(--faint);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.goal-card-sessions {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.goal-card-sessions li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.goal-card-sessions li > small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.goal-card > .note {
+  margin: 8px 0 0;
+  color: var(--faint);
+  font-size: 10.5px;
+}

@@ -37,6 +37,7 @@ import {
   observationGapCopy,
   goalFieldDiff,
   goalLineageChain,
+  governedSessionsForGoal,
   partitionLedgerDecisions,
   supervisorReviewAllowanceCopy,
   supervisorInferenceReceipt,
@@ -193,16 +194,8 @@ export function Inspector({
     ancestor,
     diffs: goalFieldDiff(ancestor, index === 0 ? goal! : lineage[index - 1]),
   }));
-  // Every session supervised under this goal or an amended ancestor revision —
-  // rulings inherit forward through `supersedes`, so sessions bound to an
-  // earlier revision of the same intent still belong to this goal's story.
-  const governedGoalIds = goal ? new Set([goal.id, ...lineage.map((item) => item.id)]) : null;
-  const governedSessions = governedGoalIds
-    ? sessions
-        .filter((session) => session.goal_id != null && governedGoalIds.has(session.goal_id))
-        .sort((a, b) =>
-          String(a.last_activity ?? a.id).localeCompare(String(b.last_activity ?? b.id)),
-        )
+  const governedSessions = goal
+    ? governedSessionsForGoal(goal, allGoals ?? goals, sessions)
     : [];
   const actionName = recordedActionLabel(action);
   const actionWhy = actionExplanation(action);
