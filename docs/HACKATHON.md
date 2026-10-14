@@ -190,7 +190,7 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
 - **Runs today offline:** the full supervision pipeline, deterministic triage,
   acceptance-surface sealing and tamper detection, the replay demo, local
   subprocess public-test verification, 5,530 backend tests collected
-  (latest full run 2026-10-13, 0 failures). `python scripts/eval_replays.py` scores the
+  (latest full run 2026-10-13, 0 failures). `uv run python scripts/eval_replays.py` scores the
   shipped fixture suite against its declared supervision arcs — 17/17,
   re-verified 2026-10-14
   ([receipt](demo/evidence/FIXTURE_SUITE_EVAL_2026-10-14.json) —
@@ -207,6 +207,8 @@ all callable in-page) and a scoped MCP tool surface at `/mcp/`.
   live contract test (`PEX_LIVE_CONTREE=1 pytest tests/contract/test_live_contree.py`);
   a configured-but-unavailable sandbox reports an honest `error_type` and
   never silently falls back to local execution.
+- **Not claimed:** formal benchmark scores (PexBench is unfrozen), AWS
+  AgentCore deployment (protocol-tested locally only), live ConTree results.
 
 ## Security posture (for the design-minded judge)
 
@@ -217,8 +219,6 @@ credential scoping, bearer-token containment (the packaged Tauri host keeps it
 in Rust memory, never in worker files or env), cross-origin mutation guards,
 and the honest trust boundary (no cryptographic isolation from same-user OS
 processes — stated, not hand-waved).
-- **Not claimed:** formal benchmark scores (PexBench is unfrozen), AWS
-  AgentCore deployment (protocol-tested locally only), live ConTree results.
 
 The same matrix exists in-app: **Settings → Capabilities** derives each row
 from the live bridge (probed adapters, supervisor state, the bench endpoint)

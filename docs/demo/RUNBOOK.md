@@ -353,7 +353,15 @@ ruling — durable human intent reaching a worker that never asked.
 ```powershell
 uv run python scripts/demo_bridge.py
 # semantic reviews, bounded at 3 dispatches/session:
-$env:PEX_CLOUD_REASONING="true"; uv run python scripts/demo_bridge.py
+$env:PEX_CLOUD_REASONING="true"; uv run uv run python scripts/demo_bridge.py
+```
+
+With a Token Factory key, verify the supervisor wiring in seconds before
+the live run (real catalog + one real Nemotron completion — exits 2
+honestly with no key):
+
+```powershell
+$env:NEBIUS_API_KEY="…"; uv run python scripts/check_token_factory.py --infer
 ```
 
 The bridge listens on `http://127.0.0.1:7420` and stores its throwaway
@@ -535,7 +543,7 @@ independent verification step off the demo machine entirely:
 PEX_PUBLIC_PYTEST_BACKEND=contree \
 PEX_CONTREE_API_KEY=... PEX_CONTREE_PROJECT=... \
 PEX_CONTREE_IMAGE=<uuid-or-tag-with-pytest> \
-python scripts/demo_bridge.py
+uv run python scripts/demo_bridge.py
 ```
 
 With those set, the materialized workspace's public pytest runs inside a

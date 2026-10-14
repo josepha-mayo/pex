@@ -219,7 +219,8 @@ reads claimed → `uncertain` → `acceptance_surface_modified:test_csv_utils.py
 
 The **Evidence pack** button goes further: a hash-chained bundle of the
 report, sealed baseline bytes, flagged bytes, and the full event ledger —
-verified offline with `python scripts/verify_pack.py`:
+verified offline with `python scripts/verify_pack.py` (stdlib-only — no
+venv, no install):
 
 ```text
 PASS manifest digest recomputes (71f745d2c05d7132..)
@@ -739,7 +740,7 @@ native visual acceptance and installer testing remain separate checks.
 
 Editable references: [SVG](docs/architecture/pex-architecture.svg) and
 [Mermaid](docs/architecture/pex-architecture.mmd). Regenerate the architecture
-PNG with `python scripts/render_architecture.py`.
+PNG with `uv run python scripts/render_architecture.py`.
 
 User input is the pet and persistent goals. Each semantic inspection can create a
 fresh bounded Strands supervisor with request-scoped, read-only evidence tools
@@ -802,7 +803,7 @@ That exact live run replays deterministically as `captured_mcp_eval` — the
 a `PEX ×2` chip, and the evidence pack's signed ledger contains the calls —
 recorded capture: [`pex-mcp-eval.mp4`](docs/demo/assets/pex-mcp-eval.mp4)
 (via `apps/desktop/scripts/capture-mcp-eval.mjs`). Reproduce the round trip
-live with `python scripts/probe_worker_mcp.py` while a demo bridge is up
+live with `uv run python scripts/probe_worker_mcp.py` while a demo bridge is up
 (the probe's `opencode run` needs a signed-in OpenCode profile; the Zen free
 tier only serves app-mode traffic).
 
