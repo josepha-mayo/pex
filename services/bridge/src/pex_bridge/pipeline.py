@@ -7168,7 +7168,10 @@ class Pipeline:
         drifting = sum(1 for s in live if s.status.value == "drifting")
         blocked = sum(1 for s in live if s.status.value in {"blocked", "error"})
         paused = sum(1 for s in live if s.supervision_paused)
-        needs = [s for s in live if s.status == SessionStatus.NEEDS_DECISION]
+        # A pending human decision is durable state — it must not age out of
+        # the attention surface the way a quiet live session does. Count it
+        # across every projected session, not only the 10-minute live window.
+        needs = [s for s in sessions if s.status == SessionStatus.NEEDS_DECISION]
         last = interventions[0] if interventions else None
         status_detail = (
             needs
@@ -7366,7 +7369,9 @@ def collapse_live_agents(
     )
 
 
-_PROMPTABLE_STATUSES = {"idle", "discovered", "stopped"}
+# needs_decision is promptable because the operator's next act on that session
+# is the decision itself — it must stay selectable on the rail.
+_PROMPTABLE_STATUSES = {"idle", "discovered", "stopped", "needs_decision"}
 _PROMPTABLE_STALE = timedelta(hours=24)
 
 

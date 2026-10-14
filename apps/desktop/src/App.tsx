@@ -3308,7 +3308,12 @@ export function App() {
                   </details>
                 ) : null}
                 <div className="button-row">
-                  <button type="button" className="solid" onClick={() => openInspector()}>Review evidence</button>
+                  {current?.status === "needs_decision" ? (
+                    <button type="button" className="solid" onClick={() => openDecisions()}>
+                      A decision is waiting — open Decisions ↗
+                    </button>
+                  ) : null}
+                  <button type="button" className={current?.status === "needs_decision" ? "ghost" : "solid"} onClick={() => openInspector()}>Review evidence</button>
                   {current ? <button type="button" className="ghost" disabled={!sessionStateFresh || !operatorActionsAvailable || current.metadata?.not_live_control === true}
                     title={current.metadata?.not_live_control === true
                       ? "A recorded replay has no live supervision to pause"

@@ -687,6 +687,27 @@ async def test_pet_and_deck_exclude_noncurrent_authority_from_counts_and_action(
 
 
 @pytest.mark.asyncio
+async def test_pet_needs_you_survives_observation_staleness(client: AsyncClient):
+    """A pending human decision is durable — it must not age out with liveness."""
+    now = datetime.now(UTC)
+    # Older than the 10-minute live window but still unresolved.
+    _, pending_session, _ = await _seed_projection_row(
+        suffix="pending-decision",
+        status=SessionStatus.NEEDS_DECISION,
+        action_type=InterventionType.ASK_HUMAN,
+        created_at=now - timedelta(hours=1),
+    )
+    pet_response = await client.get("/v1/pet")
+    assert pet_response.status_code == 200
+    pet = pet_response.json()
+    assert pet["needs_you"] == 1
+    assert "needs a decision" in pet["headline"]
+    # And the stale-but-unresolved row stays selectable on the rail instead of
+    # being collapsed out as non-promptable.
+    assert pending_session.id in [row["id"] for row in pet["sessions"]]
+
+
+@pytest.mark.asyncio
 async def test_command_deck_fingerprints_use_stop_verification_counts(client: AsyncClient):
     from datetime import UTC, datetime
 
