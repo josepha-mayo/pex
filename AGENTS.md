@@ -107,3 +107,16 @@ preflight test, which now has a 300 s budget).
   fixture expectation contract lives in each fixture's `expectation` block and
   supports `completion_in`, `interventions_any`, `interventions_never`,
   `max_verified_or_supported`, and evidence requirements.
+- Attention durability: `needs_decision` is a durable human obligation, not a
+  recency hint — it never ages out of `collapse_promptable_agents` (exempt
+  from `_PROMPTABLE_STALE`) or the pet's `needs_you` (counted from projected
+  sessions, not the freshness-filtered live set). If a new status carries a
+  pending obligation, keep both projections in sync.
+- Deep links: `#inspector/<encodeURIComponent(sessionId)>` restores the
+  selected session on load/reload; `openInspector` writes it. Keep
+  `surfaceFromHash`/`sessionFromHash` parsing tolerant of stale ids (the
+  Inspector falls back to its no-worker state).
+- Shared derivations live in `viewModel.ts` so JSX components stay thin and
+  logic stays node-testable: e.g. `governedSessionsForGoal` (goal + ancestor
+  lineage → governed sessions) is shared by the Inspector strip and the
+  deck's Goals registry.

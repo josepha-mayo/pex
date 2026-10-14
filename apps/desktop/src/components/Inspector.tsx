@@ -199,6 +199,7 @@ export function Inspector({
     : [];
   const actionName = recordedActionLabel(action);
   const actionWhy = actionExplanation(action);
+  const [linkCopied, setLinkCopied] = useState(false);
   const handoffCopy = action?.action === "FRESH_HANDOFF"
     ? handoffAssimilationPresentation(handoffStatus)
     : null;
@@ -216,9 +217,27 @@ export function Inspector({
           <h1>{goal?.title || current?.label || "Waiting for an attached goal"}</h1>
           <p>{goal?.objective || (current ? meaningfulEvidence(current) : status.detail)}</p>
         </div>
-        <button type="button" className="solid" onClick={onOpenDeck}>
-          Open command deck
-        </button>
+        <div className="button-row inspector-heading-actions">
+          {current ? (
+            <button
+              type="button"
+              className="ghost"
+              title="Copy a shareable link to this session's evidence view"
+              onClick={() => {
+                const url = `${window.location.origin}${window.location.pathname}#inspector/${encodeURIComponent(current.id)}`;
+                void navigator.clipboard.writeText(url).then(() => {
+                  setLinkCopied(true);
+                  window.setTimeout(() => setLinkCopied(false), 2500);
+                });
+              }}
+            >
+              {linkCopied ? "Link copied" : "Copy evidence link"}
+            </button>
+          ) : null}
+          <button type="button" className="solid" onClick={onOpenDeck}>
+            Open command deck
+          </button>
+        </div>
       </header>
       {supervisorNotice}
       {canonicalStateIssue ? (
