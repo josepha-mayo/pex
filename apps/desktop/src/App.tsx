@@ -3428,7 +3428,9 @@ export function App() {
                   <ol className="journey-list">
                     {journeySteps.map((step) => (
                       <li key={step.key} className={step.done ? "journey-step done" : "journey-step"}>
-                        <span className="journey-check" aria-hidden="true">{step.done ? "✓" : ""}</span>
+                        <span className="journey-check" aria-hidden="true">
+                          {step.done ? "✓" : step.key === "capabilities" ? "→" : ""}
+                        </span>
                         <span>{step.body}</span>
                       </li>
                     ))}
