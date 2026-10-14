@@ -3214,8 +3214,10 @@ export function App() {
                 ) : null}
                 <div className="button-row">
                   <button type="button" className="solid" onClick={() => openInspector()}>Review evidence</button>
-                  {current ? <button type="button" className="ghost" disabled={!sessionStateFresh || !operatorActionsAvailable}
-                    title={!operatorActionsAvailable ? "Available in the authenticated PEX desktop app or the demo operator bridge" : undefined}
+                  {current ? <button type="button" className="ghost" disabled={!sessionStateFresh || !operatorActionsAvailable || current.metadata?.not_live_control === true}
+                    title={current.metadata?.not_live_control === true
+                      ? "A recorded replay has no live supervision to pause"
+                      : !operatorActionsAvailable ? "Available in the authenticated PEX desktop app or the demo operator bridge" : undefined}
                     onClick={() => void pauseOrResume()}>
                     {current.supervision_paused ? "Resume supervision" : "Pause supervision"}
                   </button> : null}

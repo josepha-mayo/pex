@@ -259,7 +259,14 @@ const REPLAY_VENDOR_ID = /^replay-([a-z0-9][a-z0-9_-]{0,62})-[0-9a-f]{4,}$/;
 
 export function replayFixtureLabel(session: SessionRow | null | undefined): string | null {
   if (!isReplaySession(session) || typeof session?.id !== "string") return null;
-  const vendor = session.id.split(":").pop() || "";
+  return replayFixtureNameFromId(session.id);
+}
+
+// Fixture name embedded in a replay session id, usable where only the id
+// string is available (e.g. ruling provenance metadata).
+export function replayFixtureNameFromId(sessionId: string | null | undefined): string | null {
+  if (typeof sessionId !== "string") return null;
+  const vendor = sessionId.split(":").pop() || "";
   const match = REPLAY_VENDOR_ID.exec(vendor);
   if (!match) return null;
   return match[1] === "inline" ? "custom trajectory" : match[1];

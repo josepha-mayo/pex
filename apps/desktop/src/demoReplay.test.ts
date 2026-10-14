@@ -13,6 +13,7 @@ import {
   parseTrajectoriesResponse,
   replayArcCopy,
   replayFixtureLabel,
+  replayFixtureNameFromId,
   replayVerdictsIdentical,
 } from "./demoReplay.ts";
 import type { SessionRow } from "./types.ts";
@@ -279,6 +280,11 @@ test("replay rail label names the source fixture or the custom trajectory", () =
   assert.equal(replayFixtureLabel(nonReplay), null);
   const oddId = { ...base, id: "synthetic:other-1" };
   assert.equal(replayFixtureLabel(oddId), null);
+  // The id-string helper backs ruling provenance, where no SessionRow exists.
+  assert.equal(replayFixtureNameFromId(base.id), "ruling_continuity_eval");
+  assert.equal(replayFixtureNameFromId("synthetic:replay-inline-a6795034"), "custom trajectory");
+  assert.equal(replayFixtureNameFromId("codex:desktop"), null);
+  assert.equal(replayFixtureNameFromId(undefined), null);
 });
 
 test("a reopened replay restates its arc, citation, and verdict from interventions", () => {

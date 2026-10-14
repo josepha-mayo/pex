@@ -1848,6 +1848,18 @@ p {
   border-radius: 10px;
 }
 
+.goal-boundaries > .goal-rulings {
+  grid-column: 1 / -1;
+}
+
+.goal-rulings .ruling-source {
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
 .goal-boundaries small {
   color: var(--faint);
   font-size: 9px;

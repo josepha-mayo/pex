@@ -3,7 +3,7 @@ import { useState, type FormEvent, type ReactNode, type RefObject } from "react"
 import type { GoalDraft } from "./GoalEditor";
 import { GoalEditor } from "./GoalEditor";
 import { unifiedDiff } from "../diffText";
-import { isLiveWorkerSession, isReplaySession, replayArcCopy, replayFixtureLabel, replayGoalSourceCopy } from "../demoReplay";
+import { isLiveWorkerSession, isReplaySession, replayArcCopy, replayFixtureLabel, replayFixtureNameFromId, replayGoalSourceCopy } from "../demoReplay";
 import { AskPex } from "./AskPex";
 import { goalCompletionCopy } from "../completionPresentation";
 import { handoffAssimilationPresentation } from "../handoffPresentation";
@@ -584,7 +584,40 @@ export function Inspector({
               <Boundary label="Decisions" values={ledger.decisions.map((item) => item.statement)} />
               <Boundary label="Rejected approaches" values={ledger.rejected.map((item) => item.statement)} />
               <Boundary label="Unresolved questions" values={ledger.unresolved.map((item) => item.statement)} />
-              <Boundary label="Recorded rulings" values={ledger.rulings.map((item) => item.statement)} />
+              <div className="goal-rulings">
+                <small>Recorded rulings</small>
+                {ledger.rulings.length ? (
+                  <ul>
+                    {ledger.rulings.map((ruling) => {
+                      const sourceSessionId =
+                        typeof ruling.metadata?.session_id === "string" ? ruling.metadata.session_id : null;
+                      const sourceFixture = replayFixtureNameFromId(sourceSessionId);
+                      return (
+                        <li key={ruling.id}>
+                          {ruling.statement}
+                          <div>
+                            <small>
+                              ruled by {ruling.source === "human" ? "a human" : ruling.source ?? "the human"}
+                              {sourceSessionId && onSelectSession ? (
+                                <>
+                                  {" · "}
+                                  <button type="button" className="text-button ruling-source"
+                                    onClick={() => onSelectSession(sourceSessionId)}>
+                                    from replay {sourceFixture ?? sourceSessionId.slice(-6)}
+                                  </button>
+                                </>
+                              ) : sourceFixture ? ` · from replay ${sourceFixture}` : ""}
+                              {ruling.status === "superseded" ? " · superseded" : ""}
+                            </small>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p>None recorded</p>
+                )}
+              </div>
             </div>
             </details>
             {lineageDiffs.length ? (
