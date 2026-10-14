@@ -34,6 +34,11 @@ flowchart TB
   bridge -->|deterministic typed action| policy
   runtime -.->|deploy target hosts both Agents| strands
   runtime -.-> verifier
+
+  mcpserver[MCP server /mcp — scoped tools]
+  bridge --> mcpserver
+  worker2[Worker/agent MCP clients]
+  mcpserver <-->|session-bound scoped credentials| worker2
 ```
 
 ## Invariants
@@ -46,6 +51,7 @@ flowchart TB
 - Bounded intervention: a delivered correction the worker engages but does not
   resolve is a human decision (`ASK_HUMAN`, once), never an unbounded nudge loop.
 - AgentCore Runtime / Memory / CloudWatch are optional deployment integrations. They are not claimed as live until deployed.
+- The mounted MCP server is a scoped surface, not a backdoor: session-bound credentials carry read/report/decision/handoff scopes, are bound to one session+goal+vendor triple, expire, and a superseded goal invalidates them; anonymous local callers are read-only.
 
 ## Strands usage
 
