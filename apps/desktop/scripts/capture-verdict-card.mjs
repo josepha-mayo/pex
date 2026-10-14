@@ -2,13 +2,9 @@
 // fixture: narration check, verified facts, stats, declared arc, completion.
 // Run: node scripts/capture-verdict-card.mjs
 // Needs vite dev on :1420 and the demo bridge on :7420.
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 
-const browser = await chromium.launch(
-  process.env.PEX_BROWSER_EXE
-    ? { executablePath: process.env.PEX_BROWSER_EXE }
-    : {},
-);
+const browser = await launchBrowser();
 try {
   // Tall viewport so the verdict card is on-screen without scrolling —
   // element screenshots through nested scroll containers can clip the

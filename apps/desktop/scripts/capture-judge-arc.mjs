@@ -5,16 +5,13 @@
 // Run: node scripts/capture-judge-arc.mjs <out.webm>
 // Needs vite dev on :1420 and the demo bridge on :7420. Convert with:
 //   ffmpeg -i out.webm -c:v libx264 -pix_fmt yuv420p out.mp4
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const out = process.argv[2] || "build/pex-judge-arc.webm";
 mkdirSync("build/video", { recursive: true });
 
-const launchOpts = process.env.PEX_BROWSER_EXE
-  ? { executablePath: process.env.PEX_BROWSER_EXE }
-  : {};
-const browser = await chromium.launch(launchOpts);
+const browser = await launchBrowser();
 const context = await browser.newContext({
   recordVideo: { dir: "build/video", size: { width: 1280, height: 800 } },
 });

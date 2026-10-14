@@ -1,13 +1,9 @@
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 
 const sessionId = "synthetic:replay-tampered_acceptance_eval-f9b4e4f5";
 const out = "docs/demo/assets/pex-tamper-diff-c281f0f.png";
 
-const browser = await chromium.launch({
-  executablePath:
-    process.env.PEX_BROWSER_EXE ||
-    "C:/Program Files (x86)/Microsoft/EdgeCore/154.0.4258.53/msedge.exe",
-});
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 await page.goto("http://localhost:1420", { waitUntil: "networkidle" });
 await page.waitForTimeout(1500);

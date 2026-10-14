@@ -1,6 +1,6 @@
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 
-const browser = await chromium.launch();
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 await page.goto("http://localhost:1420/", { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".worker-choice", { timeout: 30000 });

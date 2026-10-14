@@ -1,14 +1,10 @@
 // One-off demo capture: screenshot the goal composer after the
 // "Load a worked example" fill. Run: node scripts/capture-example-goal.mjs
 // (needs vite dev on :1420 and the demo bridge on :7420).
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 
 const outAfter = process.argv[2] || "build/goal-example.png";
-const browser = await chromium.launch({
-  executablePath:
-    process.env.PEX_BROWSER_EXE ||
-    "C:/Program Files (x86)/Microsoft/EdgeCore/154.0.4258.53/msedge.exe",
-});
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
 await page.goto("http://localhost:1420", { waitUntil: "networkidle" });
 await page.waitForTimeout(1200);

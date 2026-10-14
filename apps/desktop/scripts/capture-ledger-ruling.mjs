@@ -1,7 +1,5 @@
-import { chromium } from "playwright";
-const browser = await chromium.launch({
-  executablePath: process.env.PEX_BROWSER_EXE || "C:/Program Files (x86)/Microsoft/EdgeCore/154.0.4258.53/msedge.exe",
-});
+import { launchBrowser } from "./browser.mjs";
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 await page.goto("http://[::1]:1420", { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(5000);

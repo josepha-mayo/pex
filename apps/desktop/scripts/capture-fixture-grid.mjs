@@ -1,8 +1,6 @@
 // Screenshot the Recorded-replay fixture block on Home.
-import { chromium } from "playwright";
-const browser = await chromium.launch({
-  executablePath: process.env.PEX_BROWSER_EXE || "C:/Program Files (x86)/Microsoft/EdgeCore/154.0.4258.53/msedge.exe",
-});
+import { launchBrowser } from "./browser.mjs";
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1280, height: 1400 } });
 await page.goto("http://localhost:1420", { waitUntil: "domcontentloaded" });
 const block = page.locator('.demo-replay').first();

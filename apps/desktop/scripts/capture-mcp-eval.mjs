@@ -6,17 +6,13 @@
 // Run: node scripts/capture-mcp-eval.mjs <out.webm>
 // Needs vite dev on :1420 and the demo bridge on :7420. Convert with:
 //   ffmpeg -i out.webm -c:v libx264 -pix_fmt yuv420p out.mp4
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const out = process.argv[2] || "build/pex-mcp-eval.webm";
 mkdirSync("build/video", { recursive: true });
 
-const browser = await chromium.launch(
-  process.env.PEX_BROWSER_EXE
-    ? { executablePath: process.env.PEX_BROWSER_EXE }
-    : {},
-);
+const browser = await launchBrowser();
 const context = await browser.newContext({
   viewport: { width: 1280, height: 800 },
   recordVideo: { dir: "build/video", size: { width: 1280, height: 800 } },

@@ -4,17 +4,13 @@
 // Run: node scripts/capture-ruling-arc.mjs <out.webm>
 // Needs vite dev on :1420 and the demo bridge on :7420. Convert with:
 //   ffmpeg -i out.webm -c:v libx264 -pix_fmt yuv420p out.mp4
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const out = process.argv[2] || "build/pex-ruling-arc.webm";
 mkdirSync("build/video", { recursive: true });
 
-const browser = await chromium.launch({
-  executablePath:
-    process.env.PEX_BROWSER_EXE ||
-    "C:/Program Files (x86)/Microsoft/EdgeCore/154.0.4258.53/msedge.exe",
-});
+const browser = await launchBrowser();
 const context = await browser.newContext({
   viewport: { width: 1280, height: 800 },
   recordVideo: { dir: "build/video", size: { width: 1280, height: 800 } },

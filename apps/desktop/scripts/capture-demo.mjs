@@ -1,16 +1,12 @@
 // One-off demo capture: screenshot the Inspector on a replayed session.
 // Run: node scripts/capture-demo.mjs  (needs vite dev on :1420 and the demo
 // bridge on :7420 with at least one replayed session).
-import { chromium } from "playwright";
+import { launchBrowser } from "./browser.mjs";
 
 const sessionId = process.argv[2] || process.env.PEX_DEMO_SESSION || "";
 const out = process.argv[3] || "build/demo-inspector.png";
 
-const browser = await chromium.launch({
-  executablePath:
-    process.env.PEX_BROWSER_EXE ||
-    "C:/Program Files (x86)/Microsoft/EdgeCore/154.0.4258.53/msedge.exe",
-});
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
 await page.goto("http://localhost:1420", { waitUntil: "networkidle" });
 await page.waitForTimeout(1200);
