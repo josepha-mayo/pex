@@ -375,6 +375,12 @@ its amendment lineage, ruling count, and each session it has governed —
 including sessions bound to superseded revisions — with that session's
 adjudicated verdict and a deep link into its evidence.
 
+![Deck → Goals registry: the ruled goal governing the dispute and compliance replays](docs/demo/assets/pex-goals-registry.png)
+
+*One card carries the whole arc: `ruled ×1 · 2 sessions governed` — the
+disputed run adjudicated `uncertain`, the later compliant run `verified
+complete` under the same durable intent.*
+
 ## Supported harnesses
 
 | Harness | Current label | Surface |
